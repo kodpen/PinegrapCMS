@@ -926,6 +926,7 @@ echo pg_page_shell(array(
                 <ul class="menu pg-menu-end">
                     <li><a class="menu-item" href="' . h($export_base) . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="menu-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
+                    <li>' . pg_list_excel_link($export_base, 'menu-item') . '</li>
                     <li><button type="button" class="menu-item" data-bs-toggle="dialog" data-bs-target="#pg_tr_import"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import CSV') . '</button></li>
                     <li><button type="button" class="menu-item" data-bs-toggle="dialog" data-bs-target="#pg_tr_clear_modal"' . (($clear_all_count > 0) ? '' : ' disabled="disabled"') . '><i class="bi bi-eraser me-3" aria-hidden="true"></i>' . lang('Clear translations') . '</button></li>
                     <li><hr class="menu-divider"></li>

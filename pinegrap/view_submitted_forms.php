@@ -184,13 +184,14 @@ $increase_day['stop_year'] = $increase_day['new_year'];
 $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['forms']['view_submitted_forms'] ?? array()));
 
 // if user requested to export forms, export forms
-if (($_GET['submit_data'] ?? '') == 'Export Forms') {
+if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0] ?? '');
     } else {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
 
+    pg_list_excel_capture(array('submitted' => 'date', 'last_modified' => 'date', 'quiz_score' => 'number'), lang('Forms'));
     pg_csv_download_start('forms.csv');
 
     // The import recognises these leading columns (pg_submitted_form_import_fixed_columns()).
@@ -777,6 +778,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link pg-link-secondary py-0 m-1" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_submitted_forms.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Forms" class="btn btn-link pg-link-secondary py-0 m-1" onclick="return export_forms()"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    ' . pg_list_excel_button('pg-button pg-button-ghost', 'onclick="return export_forms()"') . '
                                 </div>
                                 ' . $output_delete_forms_button . '
                             </form>

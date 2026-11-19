@@ -63,6 +63,7 @@ if (!erp_audit_ready()) {
     $liveform->mark_error('', lang('The audit trail comes with the software update; run the update to use it.'));
 } elseif (($_GET['format'] ?? '') === 'csv') {
     log_activity(lang('erp audit trail was exported'), $_SESSION['sessionusername']);
+    pg_list_excel_capture(array(0 => 'date', 6 => 'number', 8 => 'money'), lang('Audit trail'));
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="erp-audit-' . date('Ymd-His') . '.csv"');
     header('Cache-Control: no-store');
@@ -166,7 +167,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (erp_audit_ready() ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?' . h(http_build_query($query + array('format' => 'csv'))) . '"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . lang('Download as CSV') . '</a>' : '') . '
+                ' . (erp_audit_ready() ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?' . h(http_build_query($query + array('format' => 'csv'))) . '"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . lang('Download as CSV') . '</a>' . pg_list_excel_link('erp_audit.php?' . http_build_query($query + array('format' => 'csv'))) : '') . '
                 ' . (!empty($query) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php">' . lang('Clear filters') . '</a>' : '') . '
                 <div class="pg-toolbar-grow pg-text-meta">' . lang('Newest first; the lines one action wrote are shown together.') . '</div>
             </nav>

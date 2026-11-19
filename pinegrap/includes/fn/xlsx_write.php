@@ -8,11 +8,13 @@
  * needs - the workbook, one worksheet, a style sheet with a bold heading
  * and two date formats - and puts every cell inline, so no shared strings
  * table has to be kept in step. A value decides its cell: an int or a float
- * is a number, array('date' => 'Y-m-d' or 'Y-m-d H:i') is a date the
- * spreadsheet can sort and sum, anything else is text.
+ * is a number, array('date' => 'Y-m-d', 'Y-m-d H:i' or 'Y-m-d H:i:s') is a
+ * date the spreadsheet can sort and sum, array('money' => 12.5) is a number
+ * shown with two decimals, anything else is text.
  *
- * The ERP export (includes/erp/export.php) and the workflow table download
- * (workspace_wtables.php) both write through it. Reading a workbook is the
+ * The ERP export (includes/erp/export.php), the workflow table download
+ * (workspace_wtables.php) and the panel lists' Export to Excel
+ * (includes/fn/list_excel.php) write through it. Reading a workbook is the
  * business of includes/fn/office.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -57,8 +59,9 @@ function pg_xlsx_xml($value)
 }
 
 /**
- * A date (Y-m-d) or a date and time (Y-m-d H:i) as the spreadsheet's serial
- * number: days since 1899-12-30, the time as the fraction of a day.
+ * A date (Y-m-d) or a date and time (Y-m-d H:i, Y-m-d H:i:s) as the
+ * spreadsheet's serial number: days since 1899-12-30, the time as the
+ * fraction of a day.
  *
  * @param string $value
  * @return float|int|null null when it is no such date
@@ -67,7 +70,7 @@ function pg_xlsx_date_serial($value)
 {
     $value = (string) $value;
 
-    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/', $value, $parts) || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/', $value, $parts) || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
         return null;
     }
 
@@ -81,13 +84,18 @@ function pg_xlsx_date_serial($value)
 
     $minutes = ((int) $parts[4] * 60) + (int) $parts[5];
 
+    if (isset($parts[6]) && ((int) $parts[6] > 0)) {
+        return round($days + ((($minutes * 60) + (int) $parts[6]) / 86400), 10);
+    }
+
     return ($minutes > 0) ? round($days + ($minutes / 1440), 10) : $days;
 }
 
 /**
  * The <row> elements for a block of rows: numbers as numeric cells, dates
- * (array('date' => …)) as dated numeric cells, everything else as inline
- * text. Empty values leave the cell out.
+ * (array('date' => …)) as dated numeric cells, money (array('money' => …))
+ * as numeric cells with two decimals, everything else as inline text. Empty
+ * values leave the cell out.
  *
  * @param array $rows
  * @param int   $first_row  Row number of the first row
@@ -110,6 +118,12 @@ function pg_xlsx_sheet_rows($rows, $first_row, $style = 0)
             }
 
             $reference = pg_xlsx_column_letter($index) . $number;
+
+            if (is_array($value) && isset($value['money']) && is_numeric($value['money'])) {
+                // Style 4 is the money format (pg_xlsx_write_plain()).
+                $xml .= '<c r="' . $reference . '" s="4"><v>' . rtrim(rtrim(number_format((float) $value['money'], 6, '.', ''), '0'), '.') . '</v></c>';
+                continue;
+            }
 
             if (is_array($value)) {
                 $serial = isset($value['date']) ? pg_xlsx_date_serial($value['date']) : null;
@@ -212,8 +226,9 @@ function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
         // present because some readers look for it before the sheet.
         'xl/sharedStrings.xml' => $head .
             '<sst xmlns="' . $ns . 'spreadsheetml/2006/main" count="0" uniqueCount="0"/>',
-        // Four cell formats: 0 plain, 1 the bold heading, 2 a date (built-in
-        // format 14), 3 a date and time (built-in 22). Fills and borders are
+        // Five cell formats: 0 plain, 1 the bold heading, 2 a date (built-in
+        // format 14), 3 a date and time (built-in 22), 4 money (built-in 4,
+        // #,##0.00). Fills and borders are
         // required by Excel even when nothing uses them.
         'xl/styles.xml' => $head .
             '<styleSheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
@@ -221,8 +236,9 @@ function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
             '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' .
             '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' .
             '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
-            '<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' .
-            '<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="22" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' .
+            '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' .
+            '<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="22" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' .
+            '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' .
             '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' .
             '</styleSheet>',
         'xl/worksheets/sheet1.xml' => $sheet,

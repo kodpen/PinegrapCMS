@@ -41,6 +41,8 @@ $query = 'direction=' . $direction . '&as_of=' . $as_of;
 // The file: the same table, written before any page output.
 if (!empty($_GET['csv'])) {
     $csv = erp_aging_csv($folded);
+    // Documents counted, then the age buckets and the total in money.
+    pg_list_excel_capture(array(1 => 'number') + array_fill(2, count($csv['columns']) - 2, 'money'), lang('Aging'));
 
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="aging_' . $direction . '_' . $as_of . '.csv"');
@@ -131,6 +133,7 @@ pg_page_shell(array(
                 <span class="pg-report-range text-wrap">' . h(lang(array('string' => '{var:1} as of {var:2}: {var:3} document(s) open on {var:4} account(s)', 'vars' => array($direction_titles[$direction], prepare_form_data_for_output($as_of, 'date', false), (int) $folded['totals']['count'], count($folded['accounts']))))) . '</span>
                 <a class="pg-button pg-button-quiet ms-auto" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt" aria-hidden="true"></i>' . lang('Invoices') . '</a>
                 <a class="pg-button pg-button-quiet" href="erp_aging.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . lang('Download CSV') . '</a>
+                ' . pg_list_excel_link('erp_aging.php?' . $query . '&csv=1', 'pg-button pg-button-quiet') . '
             </form>
             <form method="get" action="erp_aging.php" class="disable_shortcut" id="erp_aging_direction">' . ((isset($_GET['as_of']) && is_scalar($_GET['as_of']) && ((string) $_GET['as_of'] !== '')) ? '<input type="hidden" name="as_of" value="' . h((string) $_GET['as_of']) . '" />' : '') . '</form>
 
