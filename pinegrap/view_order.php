@@ -836,11 +836,6 @@ if (!$_POST) {
     // the save and cancel buttons will only be outputted if a real ship to exists
     $output_save_button = '';
 
-    // Initialised here rather than inside the ship-to branch below: orders with
-    // no real ship_to (digital goods, gift-card-only carts) must still be able
-    // to show the restore button, otherwise the variable is undefined at render.
-    $output_restore_button = '';
-
     $output_order_details = '<h2 class="list-group-item mb-0 pg-title-section">' . lang('Order Details') . '</h2>';
 
     if ($ship_to_exists == true) {
@@ -1690,11 +1685,6 @@ if (!$_POST) {
             $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
-        // if the order is cancelled, output a restore button to revert it to complete
-        if ($status == 'cancelled') {
-            $output_restore_button = '<button type="submit" name="submit_restore_order" value="restore" class="btn my-1 btn-solid theme-warning" data-confirm-content="' . lang('Are you sure you want to restore this order to complete?') . '"><i class="bi bi-arrow-counterclockwise me-3"></i><span class="pg-btn-label">' . lang('Restore Order') . '</span></button>';
-        }
-
     // else a real ship to does not exist
     } else {
         $output_custom_field_1_heading = '';
@@ -1963,6 +1953,11 @@ if (!$_POST) {
                     );
         }
     }
+
+    // A cancelled order goes back to complete with or without a shipping
+    // address: built after both branches above, so an order of downloads,
+    // gift cards or a counter sale without shipping gets the button too.
+    $output_restore_button = pg_order_view_restore_button($status);
 
     // if multi currency is enabled, output miscellaneous fieldset with currency information
     if (ECOMMERCE_MULTICURRENCY === true) {
