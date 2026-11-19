@@ -38,6 +38,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_highlights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
@@ -289,6 +290,7 @@ function ws_openapi_objects()
         'WorkspacePerson'           => 'ws_api_person_schema',
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
         'WorkspaceMessageFeedback'  => 'ws_api_message_feedback_schema',
+        'WorkspaceMessageHighlight' => 'ws_api_message_highlight_schema',
         'WorkspaceMessageVia'       => 'ws_api_message_via_schema',
         'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
@@ -908,6 +910,61 @@ function ws_api_routes()
             'description' => 'Takes a message out of the person\'s own view, the way Delete for me in the message menu does: the others still see it as it is. Any message the person can read may go, whoever wrote it, but a line the workspace wrote itself; a mention in it leaves the bell. The answer is the message with hidden true, and every later read gives it with hidden true so the app leaves it out while since_id and before_id still count it. The person\'s other devices learn it as a change from the moment it went: changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it with hidden true, to that person alone; nobody else\'s device is told anything. It cannot be undone. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Readers' highlights on a message (api_highlights.php): the
+        // person's own, so no tool for a connection, which is refused.
+        array(
+            'id'          => 'workspace.messages.highlights.set',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/highlights',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_highlight',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => array('id' => 'integer', 'message' => 'WorkspaceMessage'),
+            'summary'     => 'Highlight a part of a message',
+            'description' => 'Highlights a part of a message, the way selecting text in it and choosing For everyone or For me does. quote is the part and occurrence which of its places it is (0 the first; every place it begins counts, overlapping ones too), both in highlight_text of the message (WorkspaceMessage), the body as the panel draws it for this reader with every run of white space folded to one space; that is neither text nor body, so draw and select in highlight_text. scope all is seen by everyone who can read the message and needs can_highlight_all true (false in an archived channel or where the person may not write); me is seen by the person alone. Highlighting the same place again changes the scope (and the note when one is sent) of the person\'s highlight there rather than adding one. Refusals: 404 for a message the person cannot read, a deleted one or a line the workspace wrote; 422 validation_failed with field scope, quote (empty, longer than 1,000 characters, or not at that place in highlight_text) or note (longer than 255); 422 limit_message_mine (10 on one message by the person), limit_message (30 on one message) or limit_person (2,000 kept by the person). The answer is the highlight\'s id and the message as every read now gives it. Nobody is told. A highlight for everyone changes the message, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it to every reader\'s devices; a For me one changes nothing there, so the person\'s other devices get it on their next full read of the channel. highlights on a message carries every For everyone highlight and, to the person\'s own team devices session alone, their For me ones; an application key and an OAuth connection never receive For me highlights. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'quote', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The part highlighted, as it reads in highlight_text, 1 to 1,000 characters once its white space is folded.'),
+                array('name' => 'occurrence', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'default' => 0, 'description' => 'Which place of quote in highlight_text: 0 the first.'),
+                array('name' => 'scope', 'in' => 'body', 'type' => 'enum', 'values' => array('all', 'me'), 'required' => true, 'description' => 'all: For everyone; me: For me.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'Plain text, up to 255 characters. Left out or null keeps the note of a highlight already at that place.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.highlights.note',
+            'method'      => 'POST',
+            'path'        => '/workspace/highlights/{id}/note',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_highlights_note',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Write the note of a highlight',
+            'description' => 'Writes, changes or clears the note of one of the person\'s highlights, the way Add note and Edit note on its card do: only its maker may, where can_note is true on it (a For everyone one not in an archived channel), 403 otherwise; a highlight the person cannot see is a 404. The answer is the message as every read now gives it. A note on a For everyone highlight changes the message for every reader\'s devices; on a For me one the person\'s other devices get it on their next full read. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'highlights[].id of a message.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Plain text, up to 255 characters; empty or left out clears it.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.highlights.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/highlights/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_highlights_delete',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Remove a highlight',
+            'description' => 'Removes a highlight, the way Remove on its card does, where can_remove is true on it: a For me one by its maker; a For everyone one by its maker, the message\'s writer or whoever may delete the message, not in an archived channel. Otherwise 403; a highlight the person cannot see is a 404. The answer is the message as every read now gives it. Removing a For everyone highlight changes the message for every reader\'s devices; a For me one goes from the person\'s other devices on their next full read. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'highlights[].id of a message.'),
             ),
         ),
 
