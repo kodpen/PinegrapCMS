@@ -10,7 +10,8 @@ module: booking_links
 - No member, or a link that offers no service (all with a deposit), is the one 404.
 - A hold only on a start of `pg_booking_link_times()`; `pg_booking_hold()` with source `link`, kept in the widget's session keys (one hold per session, `pg_booking_release_session_hold()`).
 - Confirm: `pg_booking_link_held()` (this member, an offered service), details as the widget's with the consent box required (`pg_booking_link_details()`), `pg_booking_confirm()`; a hold that ran out is booked at once while the time is free. Taken or expired: the day's times again with `pg_booking_link_answer_text()`.
-- The done card (`&done=1`, this session's booking only): facts, the meeting address, Add to calendar (`booking_manage.php` .ics).
+- The done card (`&done=1`, this session's booking only, `booking_link_done` = id, token, status, staff id): facts, the meeting address, Add to calendar (`booking_manage.php` .ics).
+- Confirm sent again after its booking was made (a second click, or the form sent again from history) finds no hold: `pg_booking_link_resent()` sends it to the done card of that member's booking. It used to say the time ran out, and the visitor booked again.
 - Drawn in look A (`ui/look-new-parts.md`): `pg-button` (the chosen day and Confirm `-fill`, days and times `-sm -quiet`, Add to calendar `-quiet`), month arrows `pg-icon-button`, fields `pg-field-label` / `pg-input` / `pg-checkbox` with `pg-field-help pg-field-error`. The panel's stylesheet loads there (`output_header_secure()`), not the site's Bootstrap 5.3.8.
 
 ## Where does the meeting address show?

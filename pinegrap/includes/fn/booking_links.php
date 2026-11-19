@@ -460,6 +460,25 @@ function pg_booking_link_held($hold_id, $hold_slot, $member, $services)
 }
 
 /**
+ * Whether a Confirm that finds no hold is the form sent again for the
+ * booking this session just made with the member (a second click, or the
+ * form sent again from the browser's history): the page then shows that
+ * booking instead of saying the time ran out. Pure: the session's value
+ * comes in.
+ *
+ * @param mixed $done   $_SESSION['software']['booking_link_done']: id,
+ *                      token, status, staff id
+ * @param array $member
+ * @return bool
+ */
+function pg_booking_link_resent($done, $member)
+{
+    return is_array($done) && (count($done) === 4)
+        && ((int) $done[0] > 0)
+        && ((int) $done[3] === (int) $member['id']);
+}
+
+/**
  * What the page says when a hold or a confirmation is not written, '' for a
  * written one. Pure apart from the site's own words for a taken time.
  *

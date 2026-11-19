@@ -119,6 +119,12 @@ if ($bw_post) {
         $bw_values = $bw_details['values'];
         $bw_errors = $bw_details['errors'];
 
+        // The form sent again after its booking was made: the done card,
+        // not "the time ran out", or the visitor books a second time.
+        if (($bw_hold === null) && pg_booking_link_resent($_SESSION['software']['booking_link_done'] ?? null, $bw_member)) {
+            go($bw_page . '?c=' . $bw_code . '&done=1');
+        }
+
         if ($bw_hold === null) {
             $bw_error = pg_booking_link_answer_text('expired');
         } elseif (!$bw_errors) {
@@ -143,7 +149,7 @@ if ($bw_post) {
 
             if ($bw_done['answer'] === 'ok') {
                 unset($_SESSION['software']['booking_hold'], $_SESSION['software']['booking_hold_slot']);
-                $_SESSION['software']['booking_link_done'] = array((int) $bw_done['id'], (string) $bw_done['token'], $bw_status);
+                $_SESSION['software']['booking_link_done'] = array((int) $bw_done['id'], (string) $bw_done['token'], $bw_status, (int) $bw_member['id']);
                 go($bw_page . '?c=' . $bw_code . '&done=1');
             }
 
