@@ -87,6 +87,16 @@ function test_booking_manage_months()
 	pg_assert_same(25, count(pg_booking_manage_months($now, 730, 'Europe/Istanbul')), 'two years: 25 months at most');
 }
 
+// Times are shown in the site's zone with the zone named (bookings
+// decisions): the booking's facts and the move's times say which zone.
+function test_booking_manage_page_names_the_zone()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/booking_manage.php');
+
+	pg_assert_contains("lang('Time zone') => \$bm_times['zone']", $page, 'the facts name the zone');
+	pg_assert_contains("str_replace('{zone}', \$bm_times['zone'], lang('Times are in {zone}.'))", $page, 'the move times name the zone');
+}
+
 function test_booking_without_range()
 {
 	$ranges = array(array(100, 200), array(300, 400), array(300, 400));
