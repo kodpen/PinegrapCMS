@@ -1,0 +1,13 @@
+[
+	{ "about": "a shorter text keeps its size", "args": [200, 50, 180, 50], "scale": 1, "mark": false },
+	{ "about": "a wider text shrinks to the width", "args": [200, 50, 250, 50], "scale": 0.8, "mark": false },
+	{ "about": "more lines shrink to the height, 70% still fits", "args": [200, 70, 200, 100], "scale": 0.7, "mark": false },
+	{ "about": "never under 70%, and marked", "args": [200, 50, 400, 50], "scale": 0.7, "mark": true },
+	{ "about": "an empty box is left alone", "args": [0, 0, 0, 0], "scale": 1, "mark": false },
+	{ "about": "the scale is rounded to four places", "args": [300, 40, 370, 40], "scale": 0.8108, "mark": false },
+	{ "about": "just under the floor is marked", "args": [100, 40, 142.86, 40], "scale": 0.7, "mark": true },
+	{ "about": "just over the floor is not", "args": [100, 40, 142.857, 40], "scale": 0.7, "mark": false },
+	{ "about": "the smaller of the two shares wins", "args": [100, 30, 120, 45], "scale": 0.7, "mark": true },
+	{ "about": "a box with no width is fitted by its height only", "args": [0, 30, 500, 20], "scale": 1, "mark": false },
+	{ "about": "both sides shrink, the narrower share is taken", "args": [240, 60, 300, 66], "scale": 0.8, "mark": false }
+]
