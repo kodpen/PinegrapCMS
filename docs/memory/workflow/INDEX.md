@@ -121,6 +121,7 @@
 - decisions-made-product-76.md: Decisions list, product part 76 (2026-11-17): connectors managed in one place on Connections (poll 146); Voice message transcripts card moves (147); "E-posta gönderimi" category (148)
 - decisions-made-product-77.md: Decisions list, product part 77 (2026-11-17): the Connections management screen's look accepted (poll 149): the list, a service's page, feature cards without a key, the "Bağlantılar ›" entry
 - decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): Prototype view edits links; Incoming e-mail pinned and as a card; Gmail read by a connected account; Google set-up guidance
+- decisions-made-product-79.md: Decisions list, product part 79 (2026-11-19 on): the own Office code replaces PHPExcel and grows to full scope: more previews, wider editing, shared Excel export and import
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
