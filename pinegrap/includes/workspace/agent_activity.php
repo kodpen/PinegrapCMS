@@ -859,6 +859,14 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts, $form = nu
         lang('Last 30 days') . ': ' . ws_agent_activity_counts_text($mine['d30']),
     );
 
+    // How people marked its answers (agent_feedback.php), once any was.
+    $marks = function_exists('ws_agent_feedback_counts_by_agent') ? ws_agent_feedback_counts_by_agent(time()) : array();
+    $marked = ws_agent_feedback_counts_text($marks[ws_agent_request_value($agent)] ?? null);
+
+    if ($marked !== '') {
+        $facts[] = lang('Right or Wrong') . ': ' . $marked;
+    }
+
     // Claude and application agents run elsewhere: no figure of theirs.
     if (($agent['kind'] === 'model') && ws_ai_tokens_ready()) {
         $tokens = $mine['tokens'] ?? ws_ai_tokens_periods(array());

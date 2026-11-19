@@ -369,7 +369,7 @@ function pg_record_file_filter_sql($filters, $fields, $strict = false)
     );
     $dynamic_values = array(
         'current date', 'current date and time', 'current time', 'days ago',
-        'viewer', 'viewers email address', 'url parameter', 'shown record',
+        'viewer', 'viewers email address', 'url parameter', 'shown record', 'shown record rows',
     );
     $standard = array_flip(pg_record_file_standard_names());
 
@@ -387,10 +387,10 @@ function pg_record_file_filter_sql($filters, $fields, $strict = false)
         $dynamic = (isset($filter['dynamic_value']) && is_scalar($filter['dynamic_value'])) ? (string)$filter['dynamic_value'] : '';
         if (!in_array($dynamic, $dynamic_values, true)) $dynamic = '';
 
-        // A value from the address (a parameter, the shown record): a fixed
-        // value wins over it; without one a list leaves the filter out and a
-        // record view shows nothing.
-        if ($dynamic === 'url parameter' || $dynamic === 'shown record') {
+        // A value from the address (a parameter, the shown record or its
+        // rows): a fixed value wins over it; without one a list leaves the
+        // filter out and a record view shows nothing.
+        if ($dynamic === 'url parameter' || $dynamic === 'shown record' || $dynamic === 'shown record rows') {
             $dynamic = '';
             if ($value === '') {
                 if ($strict) return $closed;

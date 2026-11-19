@@ -3114,22 +3114,31 @@ function _eo_default_terms_html()
          . '<div class="alert alert-info small mt-4 mb-0">' . h(lang('This text can be customized by the operator:')) . ' <strong>' . h(lang('Designer → Express Order Settings → Terms Text (HTML)')) . '</strong>.</div>';
 }
 
-function _eo_render_installment_box($lf)
+// The installment choice's box before a card number is typed: the plans
+// list the script below fills, the hidden installment field holding plan
+// $saved (1 at least) of at most $max. Pure; the designer canvas draws its
+// twin (_sdInstallmentBoxHtml()).
+function pg_eo_installment_box_html($max, $saved)
 {
-    $max = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
-    $is_iyzipay = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
-    if (!$is_iyzipay || $max < 2) return ''; // operator hasn't opted in
-    $saved = $lf ? (int)$lf->get_field_value('installment') : 0;
+    $saved = (int)$saved;
     if ($saved < 1) $saved = 1;
-    $html =
-        '<div class="pg-eo-installments mt-2" data-pg-eo-installments="1" data-pg-eo-max="' . (int)$max . '">'
-      .   '<input type="hidden" name="installment" value="' . (int)$saved . '" class="pg-eo-installment-input">'
+    return '<div class="pg-eo-installments mt-2" data-pg-eo-installments="1" data-pg-eo-max="' . (int)$max . '">'
+      .   '<input type="hidden" name="installment" value="' . $saved . '" class="pg-eo-installment-input">'
       .   '<div class="small text-muted pg-eo-installment-status">'
       .     h(lang('Enter your card number to view installment options.'))
       .   '</div>'
       .   '<div class="pg-eo-installment-meta small text-muted mb-2" style="display:none"></div>'
       .   '<div class="pg-eo-installment-list"></div>'
       . '</div>';
+}
+
+function _eo_render_installment_box($lf)
+{
+    $max = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
+    $is_iyzipay = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
+    if (!$is_iyzipay || $max < 2) return ''; // operator hasn't opted in
+    $saved = $lf ? (int)$lf->get_field_value('installment') : 0;
+    $html = pg_eo_installment_box_html($max, $saved);
     // The fetcher JS lives in the monolithic _eo_render_payment_methods so it
     // ALSO needs to be emitted here for the bindings render path. Idempotent
     // — multiple installment containers on a page register only once.

@@ -79,12 +79,14 @@ if (!empty($_POST['form_item_view_page_id'])) {
             (page_id = ?)
             AND (collection = 'a')";
     $result = db_q($query, array((string) ($_POST['form_item_view_page_id'] ?? ''))) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+    // A posted page that is not a form item view (or no longer one) has no
+    // row: its form matches no form and it allows no edit.
+    $row = mysqli_fetch_assoc($result) ?: array();
     
-    $form_item_view_custom_form_page_id = $row['custom_form_page_id'];
-    $submitted_form_editable_by_registered_user = $row['submitted_form_editable_by_registered_user'];
-    $submitted_form_editable_by_submitter = $row['submitted_form_editable_by_submitter'];
-    $hook_code = $row['hook_code'];
+    $form_item_view_custom_form_page_id = $row['custom_form_page_id'] ?? '';
+    $submitted_form_editable_by_registered_user = $row['submitted_form_editable_by_registered_user'] ?? '';
+    $submitted_form_editable_by_submitter = $row['submitted_form_editable_by_submitter'] ?? '';
+    $hook_code = $row['hook_code'] ?? '';
 }
 
 // if user is a user level and does not have access to manage forms or the user does not have access to edit the folder the form is in
@@ -1002,11 +1004,12 @@ if (!$_POST) {
                 ) {
                     $send_to_parts = parse_url($send_to);
 
-                    $path_without_address_name = mb_substr($send_to_parts['path'], 0, mb_strrpos($send_to_parts['path'], '/') + 1);
+                    // A send-to address without a query string has no 'query' part.
+                    $path_without_address_name = mb_substr($send_to_parts['path'] ?? '', 0, mb_strrpos($send_to_parts['path'] ?? '', '/') + 1);
 
                     $send_to = $path_without_address_name . $new_address_name;
 
-                    if ($send_to_parts['query'] != '') {
+                    if (($send_to_parts['query'] ?? '') != '') {
                         $send_to .= '?' . $send_to_parts['query'];
                     }
                 }

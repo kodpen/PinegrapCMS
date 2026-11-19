@@ -9,8 +9,8 @@ description: Counter sale (add_order.php) and the ERP: customer in the session, 
 - An account opened at the till (`local_sale_quick_account()`) goes through `erp_account_quick_create()`, as on the document screens.
 
 ## How is VAT set on a counter-sale line?
-- `local_sale_line_rate()`: a `taxable` product's rate is `get_effective_tax_rate(products.tax_rate, zone rate)`, the zone rate being `erp_store_zone_rate()` with the ERP on (store state included) and `get_default_tax_rate()` without.
-- `local_sale_lines()` takes the sale's VAT per rate on the sum of its lines and spreads it back (`pg_tax_by_rate()`, #1168), as the checkout and the order's invoice do; `local_sale_line_tax()` (one line alone, rounded once) is within a kuruş of a line's share. `order_items.tax_total` is the line's share, `tax_rate` the rate, `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `orders.total = subtotal + tax`.
+- `local_sale_line_rate()`: `pg_order_line_tax_rate()`, the checkout's rule: 0 with the Commerce tax off (counter-sale-tax-switched-off), for a product not taxable or in no zone; else `get_effective_tax_rate(products.tax_rate, zone rate)`, the zone rate being `erp_store_zone_rate()` with the ERP on (store state included) and `get_default_tax_rate()` without.
+- `local_sale_lines()` takes the sale's VAT per rate on the sum of its lines and spreads it back (`pg_tax_by_rate()`, #1168), as the checkout and the order's invoice do; `local_sale_line_tax()` (one line alone, rounded once) is within a kuruş of a line's share. `order_items.tax_total` is the line's share, `tax_rate` the rate (written only with the tax on), `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `orders.total = subtotal + tax`.
 - `config.local_sale_prices = 'net'` (4.74) only changes what the till shows (prices without tax, tax added at the total); the figures are the same.
 - The bridge check "invoice total = order total" passes through this; an order closed without tax cannot be invoiced.
 

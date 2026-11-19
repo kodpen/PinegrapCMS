@@ -74,6 +74,19 @@ if ($_POST) {
         go($self);
     }
 
+    // A draft never sent exists on this site alone, so it is deleted here;
+    // its name and language become free for another draft.
+    if (isset($_POST['submit_delete']) && pg_whatsapp_design_deletable($design)) {
+        if (pg_whatsapp_design_delete($id)) {
+            log_activity(lang(array('string' => 'WhatsApp template draft deleted: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The draft was deleted.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
+        }
+
+        $liveform->add_error(lang('The draft was not deleted: it is no longer a draft.'));
+        go($self);
+    }
+
     // The offer code of a template WhatsApp holds: the site's own setting,
     // kept apart from the template, which cannot change.
     if (isset($_POST['submit_offer']) && !$editable && $id) {
@@ -134,7 +147,9 @@ if ($_POST) {
     }
 }
 
-$categories = pg_whatsapp_design_categories();
+// A saved Authentication template still shows its type, which is no longer
+// offered for a new template or a change of type.
+$categories = pg_whatsapp_design_category_choices($design['category']);
 $languages = pg_whatsapp_design_languages();
 
 // A template read from Meta may be in a language the designer does not
@@ -173,8 +188,8 @@ foreach (array(1 => lang('Design'), 2 => lang('WhatsApp approval'), 3 => lang('U
 // Basics: name, type, language.
 $output_types = '';
 
-foreach ($categories as $value => $label) {
-    $output_types .= '<button type="button" class="pg-seg-item" data-pg-wa-category="' . h($value) . '" aria-pressed="' . (($design['category'] === $value) ? 'true' : 'false') . '"' . $disabled . '>' . h($label) . '</button>';
+foreach ($categories as $value => $choice) {
+    $output_types .= '<button type="button" class="pg-seg-item" data-pg-wa-category="' . h($value) . '" aria-pressed="' . (($design['category'] === $value) ? 'true' : 'false') . '"' . ($choice['offered'] ? $disabled : ' disabled') . '>' . h($choice['label']) . '</button>';
 }
 
 $output_languages = '';
@@ -521,6 +536,10 @@ $output_actions = '';
 if ($editable) {
     $output_actions .= '<button type="submit" name="submit_save" value="1" class="pg-button pg-button-quiet"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save draft')) . '</button>'
         . '<button type="submit" name="submit_approval" value="1" class="pg-button pg-button-fill" data-confirm-content="' . h(lang('The template is saved and sent to WhatsApp for review. While WhatsApp reviews it, it cannot be changed.')) . '"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Send for approval')) . '</button>';
+}
+
+if (pg_whatsapp_design_deletable($design)) {
+    $output_actions .= '<button type="submit" name="submit_delete" value="1" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The draft is deleted from this site. WhatsApp never saw it, so nothing is deleted there.')) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete draft')) . '</button>';
 }
 
 if ($design['status'] === 'APPROVED') {

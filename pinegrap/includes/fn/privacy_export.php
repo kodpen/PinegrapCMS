@@ -42,6 +42,7 @@ function pg_privacy_export_sections()
         'identities'         => lang('Connected sign-in accounts'),
         'passkeys'           => lang('Passkeys'),
         'push_subscriptions' => lang('Device notifications'),
+        'site_push'          => lang('Site notifications'),
         'contact'            => lang('Contact'),
         'contact_groups'     => lang('Contact groups'),
         'address_book'       => lang('Address book'),
@@ -60,6 +61,7 @@ function pg_privacy_export_sections()
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
         'bookings'           => lang('Appointment bookings'),
+        'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -810,6 +812,11 @@ function pg_privacy_export_collect(array $found)
         $sections['push_subscriptions'] = _pg_privacy_export_select("SELECT * FROM push_subscriptions WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids, array('endpoint', 'p256dh', 'auth'), array('endpoint_hash'));
     }
 
+    // The site's news by browser notification, signed in (includes/fn/site_push.php).
+    if (pg_schema_has('site_push_subscription', 'user_id')) {
+        $sections['site_push'] = _pg_privacy_export_select("SELECT id, user_id, service, language, created_at, last_seen_at FROM site_push_subscription WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
+    }
+
     // Contact groups, with the opt-in of each.
     $sections['contact_groups'] = _pg_privacy_export_select(
         "SELECT x.contact_id, x.contact_group_id, g.name AS contact_group_name, o.opt_in
@@ -1028,6 +1035,19 @@ function pg_privacy_export_collect(array $found)
             ($booking_where !== '') ? array(1) : array(),
             array(),
             array('manage_token', 'slot_at', 'hold_until')
+        );
+    }
+
+    // Course progress: each lesson done, the first open of a course given by
+    // hand and the completion (kind 1, 2, 3), with the course's name.
+    if (pg_course_ready()) {
+        $sections['courses'] = _pg_privacy_export_select(
+            "SELECT course_progress.user_id, course_progress.course_id, course.name AS course_name, course_progress.lesson_id, course_progress.kind, course_progress.created_at
+            FROM course_progress
+            LEFT JOIN course ON course.id = course_progress.course_id
+            WHERE " . _pg_privacy_export_in('course_progress.user_id', $user_ids) . "
+            ORDER BY course_progress.course_id, course_progress.created_at",
+            $user_ids
         );
     }
 

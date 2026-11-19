@@ -12631,6 +12631,54 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-guests .ws-info-person-role {
   white-space: normal;
 }
+/* An agent's row in a narrow column: the name and its role stay on the
+   first line with the last seen at its right, the role is the part cut;
+   the badges move to the next line whole; the line under it wraps. */
+.ws-info-agents .ws-info-person {
+  align-items: flex-start;
+}
+.ws-info-agents .ws-info-person-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .15rem .4rem;
+  overflow: visible;
+  white-space: normal;
+}
+.ws-info-agent-title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .4rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ws-info-agent-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-role {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-info-agent-badges .ws-info-badge {
+  margin-left: 0;
+}
+.ws-info-agents .ws-info-person-role {
+  white-space: normal;
+}
+.ws-info-agents .ws-info-seen {
+  margin-top: .1rem;
+}
 /* Channel info's agents and last seen: an agent's face is a rounded square
    with its mark, a person's stays round; the last seen sits at the right. */
 .avatar.ws-agent-face {
@@ -12788,9 +12836,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-cha-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+/* The chosen agent is read whole: the list is as wide as its longest
+   agent, and when it and the button do not fit side by side it takes a row
+   of its own and the button goes under. */
+.ws-cha-add > select {
+  flex: 1 0 auto;
+  width: auto;
+  max-width: 100%;
+}
+.ws-cha-add > button {
+  flex: none;
 }
 @media (max-width: 575.98px) {
   .ws-cha-head {
@@ -12927,6 +12987,13 @@ b.ws-agent-card-anchor:focus-visible {
   flex: none;
 }
 .ws-agent-card-window .ws-agent-card-key {
+  white-space: nowrap;
+}
+/* Right or Wrong: one line for 7 days, one for 30, stacked at the end. */
+.ws-agent-card-value.is-lines {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
   white-space: nowrap;
 }
 .ws-agent-card-high {
@@ -14540,10 +14607,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 @media (min-width: 1700px) {
   :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     --ws-msg-tone: var(--pg-primary);
-    background: color-mix(in srgb, var(--ws-msg-tone) 1.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 5%, transparent);
   }
   .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 2.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 8%, transparent);
   }
   :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
@@ -14570,12 +14637,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-msg-avatar .avatar {
   --bs-avatar-size: var(--ws-avatar);
 }
+/* The head line wraps by its own column's width: the name keeps a line
+   of its own when it and the marks after it do not fit, and wraps between
+   words only when it alone is wider than the column. */
 .ws-msg-meta {
   font-size: .8rem;
   color: var(--pg-fg-2);
   display: flex;
-  gap: .5rem;
+  flex-wrap: wrap;
+  gap: .1rem .5rem;
   align-items: baseline;
+  min-width: 0;
+}
+/* A mark longer than the column (the client a message came through, an
+   MCP agent's mark) is cut with an ellipsis; its whole text is its title. */
+.ws-msg-meta > .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ws-msg-meta b {
   color: var(--pg-fg-body);
@@ -14646,22 +14725,27 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-/* On the Decisions tab each one is a card of its own. The cards flow in
-   columns that fill the pane, top to bottom and then the next column, so a
-   short card leaves no gap under it; a column is --ws-flow-col wide or up
-   to about twice that, one on a phone. The tag names the kind: no coloured
+/* On the Decisions tab each one is a card of its own, one under the other
+   down the pane: a card is as wide as the pane up to --ws-decision-max, so
+   nothing runs past the side and the pane only scrolls down (columns on a
+   pane of set height grew sideways). The tag names the kind: no coloured
    edge (a status update's either). In the conversation they keep the
    rhythm of the messages around them. */
 .ws-pane-decisions {
-  columns: var(--ws-flow-col);
-  column-gap: 1rem;
+  --ws-decision-max: 72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-x: hidden;
 }
-.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
-  column-span: all;
+.ws-pane-decisions > * {
+  width: 100%;
+  max-width: var(--ws-decision-max);
+  margin-inline: auto;
 }
 .ws-pane-decisions > .ws-msg {
-  break-inside: avoid;
-  margin: 0 0 1rem;
+  flex-shrink: 0;
+  margin-block: 0;
   padding: .9rem 1.1rem 1rem;
   border: 1px solid var(--pg-border-color);
   border-radius: 1rem;
@@ -14698,6 +14782,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-pane-decisions > .ws-msg .ws-msg-body {
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+/* A decision longer than about eight lines is folded (foldLong() in
+   workspace.js): its text fades out under the eighth line and Show more
+   under it opens the rest. */
+.ws-pane-decisions > .ws-msg .ws-msg-main > .ws-msg-body.ws-folded {
+  max-height: calc(1.55em * 8);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+  mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+}
+.ws-pane-decisions > .ws-msg .ws-fold-toggle {
+  margin-top: .35rem;
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -15150,7 +15247,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 
 /* A poll in the conversation. */
+/* The box is the container its narrow layout is read from (below), so it
+   follows the column it stands in, never the window. */
 .ws-poll {
+  container: ws-poll / inline-size;
   max-width: 34rem;
   margin-top: .4rem;
   padding: .55rem .65rem .45rem;
@@ -15266,6 +15366,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex-direction: column;
   gap: .1rem;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 .ws-poll-line {
   display: flex;
@@ -15295,8 +15396,13 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-poll-send {
   display: flex;
+  flex-wrap: wrap;
   gap: .4rem;
   margin-top: .4rem;
+}
+.ws-poll-send > :not(.btn) {
+  flex: 1 1 10rem;
+  min-width: 0;
 }
 .ws-poll-send > .btn {
   flex: 0 0 auto;
@@ -15346,6 +15452,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     display: none;
   }
 }
+/* The same in a narrow box on a wide window (a discussion panel): read
+   from the box's own width. A picture beside the options goes above
+   them, and "Write your own answer" takes a line of its own over Send
+   when the two do not fit. */
+@container ws-poll (max-width: 30rem) {
+  .ws-poll-option {
+    flex-wrap: wrap;
+  }
+  .ws-poll-text {
+    flex: 1 1 0;
+  }
+  .ws-poll-meta {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
+  .ws-poll-foot > .btn {
+    padding-inline: .35rem;
+  }
+  .ws-poll-foot-tight .ws-poll-foot-label {
+    display: none;
+  }
+  .ws-poll .ws-poll-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A row's own picture stays on the tick's line and the words take the
+     whole width under it, so they read in lines of several words. */
+  .ws-poll-thumb + .ws-poll-text {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
+}
 .ws-poll-desc,
 .ws-poll-links,
 .ws-poll-words {
@@ -15384,8 +15521,14 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   gap: .4rem;
   padding-left: 1.6rem;
 }
-.ws-poll.ws-poll-shape-split {
+.ws-poll:is(.ws-poll-shape-split, .ws-poll-shape-question) {
   max-width: 46rem;
+}
+/* A question's own picture: it stays at the left whatever the rows do;
+   Send and its error stand under the options beside it. */
+.ws-poll-column {
+  display: grid;
+  min-width: 0;
 }
 .ws-poll-split {
   display: grid;
@@ -15401,12 +15544,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-2);
   cursor: zoom-in;
+  position: relative;
 }
 .ws-poll-figure img {
   display: block;
   width: 100%;
   max-height: 18rem;
   object-fit: contain;
+}
+/* How many distinct pictures the viewer holds, at the frame's bottom right.
+   Its surface is nearly opaque, so it reads as one piece where it lies half
+   on the picture and half on the frame; the hairline keeps it standing on a
+   dark picture. The figures are tabular: the number may change while the
+   rows are pointed at. */
+.ws-poll-picture-count {
+  position: absolute;
+  right: .7rem;
+  bottom: .7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .15rem .5rem;
+  border: 1px solid color-mix(in srgb, var(--pg-media-mark-fg) 30%, transparent);
+  border-radius: 999px;
+  background: var(--pg-media-mark-bg);
+  color: var(--pg-media-mark-fg);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
 }
 @media (max-width: 575.98px) {
   .ws-poll-split {
@@ -15435,6 +15603,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex-wrap: wrap;
   align-items: center;
   gap: .25rem;
+}
+/* The chosen picture's thumbnail keeps an edge: a light picture would
+   vanish on the form's background (the question's and an option's). */
+.ws-poll-form-picture > .ws-poll-thumb {
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-xs);
 }
 .ws-poll-form-more > .btn {
   justify-self: start;
@@ -16020,6 +16194,133 @@ a.ws-person-link:hover .avatar {
   overflow-wrap: anywhere;
 }
 /* Changed after it was sent. */
+/* A reader's highlight on a message (workspace_highlights.js): a <mark>
+   around pieces of the drawn text in its maker's colour (data-ws-tone, the
+   tones of the message box tint), strong enough to read on the box's own
+   faint tint in both themes; one only its maker sees has a dotted
+   underline. Overlaps nest, so the inner one shows through both. */
+.ws-hl {
+  --ws-hl-tone: var(--pg-primary);
+  padding: 0;
+  color: inherit;
+  background: color-mix(in srgb, var(--ws-hl-tone) 24%, transparent);
+  border-radius: .15em;
+  cursor: pointer;
+}
+html[data-bs-theme="dark"] .ws-hl {
+  background: color-mix(in srgb, var(--ws-hl-tone) 34%, transparent);
+}
+.ws-hl.ws-hl-me {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .2em;
+}
+.ws-hl:focus-visible {
+  outline: 2px solid var(--ws-hl-tone);
+  outline-offset: 1px;
+}
+.ws-hl[data-ws-tone="info"], .ws-hl-swatch[data-ws-tone="info"] { --ws-hl-tone: var(--pg-info); }
+.ws-hl[data-ws-tone="warning"], .ws-hl-swatch[data-ws-tone="warning"] { --ws-hl-tone: var(--pg-warning); }
+.ws-hl[data-ws-tone="accent"], .ws-hl-swatch[data-ws-tone="accent"] { --ws-hl-tone: var(--pg-tone-violet); }
+.ws-hl[data-ws-tone="danger"], .ws-hl-swatch[data-ws-tone="danger"] { --ws-hl-tone: var(--pg-danger); }
+.ws-hl[data-ws-tone="secondary"], .ws-hl-swatch[data-ws-tone="secondary"] { --ws-hl-tone: var(--pg-secondary); }
+.ws-hl[data-ws-tone="success"], .ws-hl-swatch[data-ws-tone="success"] { --ws-hl-tone: var(--pg-success); }
+.ws-hl[data-ws-tone="inverse"], .ws-hl-swatch[data-ws-tone="inverse"] { --ws-hl-tone: var(--pg-fg-emphasis); }
+/* The toolbar on a selection and the card of a highlight float over the
+   conversation, outside its scrolling pane. */
+.ws-hl-bar, .ws-hl-card {
+  position: absolute;
+  z-index: 1080;
+}
+.ws-hl-bar {
+  align-items: center;
+  padding: .125rem;
+  background: var(--pg-bg-body);
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--bs-btn-border-radius);
+  box-shadow: var(--pg-shadow-float);
+}
+.ws-hl-bar-note {
+  padding: 0 .5rem;
+  color: var(--bs-secondary-fg);
+}
+.ws-hl-card {
+  width: min(20rem, calc(100vw - 1rem));
+  padding: .5rem .75rem;
+}
+.ws-hl-card-row + .ws-hl-card-row {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-hl-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .5rem;
+}
+.ws-hl-swatch {
+  --ws-hl-tone: var(--pg-primary);
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ws-hl-tone) 60%, transparent);
+}
+.ws-hl-note {
+  margin-top: .25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-hl-card-tools {
+  display: flex;
+  gap: .75rem;
+  margin-top: .25rem;
+}
+/* A highlight opened from My highlights lights up for a moment. */
+.ws-hl.ws-hl-flash {
+  outline: 2px solid var(--ws-hl-tone);
+  outline-offset: 1px;
+  animation: ws-hl-flash 1.2s ease-in-out 2;
+}
+@keyframes ws-hl-flash {
+  50% { background: color-mix(in srgb, var(--ws-hl-tone) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-hl.ws-hl-flash { animation: none; }
+}
+/* My highlights in My Notes: a tick, then the highlighted text whole in
+   the person's colour with where it is under it; the row leads to the
+   message. */
+.ws-hl-mine-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 0;
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-hl-mine-row:first-child {
+  border-top: 0;
+}
+.ws-hl-mine-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.ws-hl-mine-link:hover .ws-hl-mine-quote,
+.ws-hl-mine-link:focus-visible .ws-hl-mine-quote {
+  text-decoration: underline;
+}
+.ws-hl-mine-quote {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-hl-mine-quote .ws-hl {
+  cursor: inherit;
+}
+.ws-hl-mine-count {
+  font-variant-numeric: tabular-nums;
+  opacity: .8;
+}
 .ws-msg-edited {
   display: inline-block;
   margin-left: .35rem;
@@ -16030,6 +16331,48 @@ a.ws-person-link:hover .avatar {
 }
 .ws-msg-edited .bi {
   font-size: 11px;
+}
+/* The card of a message's first web address (link_preview.php): site
+   name, title and a description of two lines, the whole card one link. It
+   never widens the list: a long title or address breaks inside it. */
+.ws-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  max-width: 32rem;
+  min-width: 0;
+  margin: .3rem 0 .15rem;
+  padding: .45rem .7rem;
+  border: 1px solid var(--pg-border-color);
+  border-left: 3px solid var(--pg-primary);
+  border-radius: .5rem;
+  background: var(--pg-bg-2);
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.ws-link-card:hover,
+.ws-link-card:focus-visible {
+  border-color: var(--pg-fg-2);
+  text-decoration: none;
+}
+.ws-link-card-site {
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-link-card-title {
+  font-size: .875rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.ws-link-card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: .8125rem;
+  line-height: 1.4;
+  color: var(--pg-fg-2);
 }
 /* Translate on a message (workspace_translate.js): the line under it. */
 .ws-msg-tr {
@@ -17364,9 +17707,23 @@ a.ws-chip-message:hover,
   .ws-mail-reading .ws-mail-list {
     display: none;
   }
+  /* While a mail is read the toolbar and its filters fold away (the id
+     outranks #button_bar's own display rule): they stood
+     about 490 px above the pane, so the mail began below the first screen.
+     The pane's Close brings the list and the toolbar back. */
+  .ws-mail-reading > #button_bar.pg-toolbar,
+  .ws-mail-reading > .ws-mail-check-line {
+    display: none;
+  }
   .ws-mail-pane {
     position: static;
     max-height: none;
+    padding: .5rem;
+  }
+  /* The pane's and each mail's paddings left a mail about 260 px of a
+     375 px screen. */
+  .ws-mail-pane .ws-mail-item {
+    padding: .5rem;
   }
 }
 /* The "/" list of a note's inserts, under the caret. */
@@ -17456,6 +17813,22 @@ a.ws-chip-message:hover,
   white-space: nowrap;
   max-width: 45%;
 }
+/* A flow of the "/" list or of /flow's list: the name is what the row is
+   for, so "Start this flow" gives way first (it shrinks long before the
+   name is cut) and goes on a phone. */
+.ws-picker-flow-row .ws-picker-label {
+  flex-shrink: .001;
+}
+.ws-picker-flow-row .ws-picker-meta {
+  flex: 0 1000 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+@media (max-width: 575.98px) {
+  .ws-picker-flow-row .ws-picker-meta {
+    display: none;
+  }
+}
 /* A label with a second line under it (a slash command and its example). */
 .ws-picker-item .ws-picker-text {
   display: flex;
@@ -17469,6 +17842,19 @@ a.ws-chip-message:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A group's header in the "/" list (commandPickerGroups()): a muted line
+   as /help's group header, never picked, so no hover and no pointer. */
+.ws-picker-group {
+  padding: .5rem .5rem .2rem;
+  font-size: .75rem;
+  font-weight: 550;
+  color: var(--pg-fg-2);
+  cursor: default;
+  user-select: none;
+}
+.ws-picker-group:first-child {
+  padding-top: .25rem;
 }
 /* A registry agent in the @ menu: its icon with the state mark in the
    corner, its name cut before its role, and the usage mark of a window at
@@ -17610,6 +17996,17 @@ a.ws-chip-message:hover,
 }
 .ws-preview dd {
   margin: 0;
+}
+/* The /create row card: a text column's box is one line high at rest and
+   grows with its lines up to eight where the browser can, scrolling past
+   them. The recipe's box (textarea.pg-input) is placed here, not changed. */
+.ws-row-card textarea.pg-input.ws-row-text {
+  min-height: 0;
+  max-height: calc(8lh + 20px);
+  /* One line as high as the card's other fields (36 px). */
+  padding-block: calc((36px - 1lh - 2px) / 2);
+  field-sizing: content;
+  overflow-y: auto;
 }
 .ws-warning {
   display: flex;
@@ -18350,6 +18747,7 @@ a.ws-chip-message:hover,
    while the microphone is on. */
 .ws-voice {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ws-space-2);
   width: 22rem;
@@ -18373,9 +18771,18 @@ a.ws-chip-message:hover,
   border-radius: 50%;
   font-size: 1.1rem;
 }
+/* The name and the time keep at least 7rem: in a narrower player the
+   buttons after them take the next line as one group, at its right. */
 .ws-voice-main {
-  flex: 1 1 auto;
+  flex: 1 1 7rem;
   min-width: 0;
+}
+.ws-voice-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-left: auto;
 }
 .ws-voice-name {
   overflow: hidden;
@@ -18482,8 +18889,12 @@ a.ws-chip-message:hover,
     opacity: .3;
   }
 }
+/* A narrow column (a discussion panel, a phone) keeps the file's name at
+   least 8rem wide: the buttons then take the next line as one group, at
+   its right. */
 .ws-file-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .6rem;
   max-width: min(28rem, 100%);
@@ -18491,6 +18902,17 @@ a.ws-chip-message:hover,
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
+}
+.ws-file-card > .ws-grow {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.ws-file-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: .6rem;
+  margin-left: auto;
 }
 .ws-file-card .ws-file-name {
   display: block;
@@ -18632,6 +19054,15 @@ a.ws-chip-message:hover,
 }
 .ws-file-group > .ws-gallery {
   margin-bottom: 0;
+}
+/* The gallery is drawn a page at a time (FILE_PAGE in workspace.js); each
+   tile keeps its 4 / 3 box before its picture arrives, so a page loading
+   in moves nothing, and Show more under the grid draws the next page. */
+.ws-gallery-tile img {
+  display: block;
+}
+.ws-file-group > .ws-gallery-more {
+  margin-top: .6rem;
 }
 .ws-file-group .ws-file-list {
   border: 0;
@@ -19501,6 +19932,32 @@ button.ws-cal-more {
   white-space: normal;
   text-align: center;
 }
+/* Repeat every: the number and its unit on one line, at 390 too. */
+.ws-plan-every {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-plan-every .pg-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* A plan item's meeting link: the address, Jitsi and Join on one row that
+   wraps on a phone. */
+.ws-plan-meeting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ws-plan-meeting .pg-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+/* A button in a field's place (Meeting note) keeps its own width. */
+.ws-plan-field > .pg-button {
+  align-self: flex-start;
+}
 /* Somebody else's plan, read only: the fields dimmed as a disabled switch,
    nothing that invites typing. */
 .ws-plan-readonly .pg-input:disabled,
@@ -20280,14 +20737,62 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
 }
 /* Asking Claude: where a request stands, the tasks an answer proposes, and
-   the settings card. */
+   the settings card. An agent line is the icon and a wrapping body: a row
+   of the label, "since HH:MM" and Stop, then the progress note. The note
+   stays on that row only when the whole of it fits; otherwise it takes a
+   line of its own under the label. The same rule holds in every column
+   (the channel, a discussion panel, a phone). */
 .ws-claude-state {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: .35rem;
   margin-top: .3rem;
   font-size: .76rem;
   color: var(--pg-fg-2);
+}
+.ws-claude-state > .bi {
+  flex: none;
+}
+.ws-claude-state .ws-claude-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  column-gap: .35rem;
+  row-gap: .1rem;
+}
+/* The row shrinks to the column when it alone is wider. */
+.ws-claude-state .ws-claude-head {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+/* A label sharing its row with since and Stop (sent, running) stays on one
+   line and is cut with an ellipsis, the whole label in its title; when the
+   row is short, the word of "since" goes first (claudeStateFit() in
+   workspace.js). A label that is a sentence (waiting, failed, cancelled:
+   it says when it is tried again) wraps between words. */
+.ws-claude-state .ws-claude-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-claude-state.ws-claude-sent .ws-claude-label,
+.ws-claude-state.ws-claude-running .ws-claude-label {
+  white-space: nowrap;
+}
+.ws-claude-state .ws-claude-since,
+.ws-claude-state .ws-claude-stop {
+  flex: none;
+  white-space: nowrap;
+}
+.ws-claude-state.ws-claude-tight .ws-claude-since-word {
+  display: none;
 }
 .ws-claude-state.ws-claude-running > .bi,
 .ws-claude-state.ws-claude-sent > .bi {
@@ -20296,20 +20801,57 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-answered > .bi {
   color: var(--pg-success);
 }
-/* An agent's progress note and since when it holds the request: a long
-   note wraps inside the column instead of widening it. */
+/* An agent's progress note (up to 200 characters, never cut): its whole
+   width decides whether it fits on the row; on its own line it wraps
+   between words, and only a word longer than the line is split. */
 .ws-claude-state .ws-claude-note {
+  flex: 0 0 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow-wrap: break-word;
   font-style: italic;
-}
-.ws-claude-state .ws-claude-since {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
+}
+/* Right and Wrong under an agent's reply: the state line's colour at the
+   scale's 12 px; the chosen mark takes the answered or failed colour. */
+.ws-agent-feedback {
+  max-width: 34rem;
+  margin-top: .3rem;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-agent-feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark {
+  font-size: inherit;
+  color: inherit;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-right {
+  color: var(--pg-success);
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-wrong {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-agent-feedback-reason {
+  margin-top: .2rem;
+  overflow-wrap: anywhere;
+  font-style: italic;
+}
+.ws-agent-feedback-form {
+  display: grid;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+.ws-agent-feedback-actions {
+  display: flex;
+  gap: .3rem;
 }
 /* One column no wider than the list: a card is never wider than its text
    column, so a flow drawing wider than the card scrolls in its own pane
@@ -24054,7 +24596,9 @@ html.ws-flow-layer-on body {
    --pgc-radius, --pgc-radius-sm, --pgc-shadow, --pgc-shadow-accent,
    --pgc-line (arrows), --pgc-ring (selection ring), --pgc-node-accent (a
    box's border and ports), --pgc-marker and --pgc-marker-on (the url() of
-   the arrowhead markers the user draws). */
+   the arrowhead markers the user draws); with a focus --pgc-in (arrows
+   into the box in focus), --pgc-faint and --pgc-dim (opacities) and
+   --pgc-group (a heading's label). */
 .pgc-stage {
   position: relative;
   height: 100%;
@@ -24141,6 +24685,54 @@ html.ws-flow-layer-on body {
 }
 .pgc-edge-temp.pgc-hidden {
   display: none;
+}
+/* A canvas with a focus (adapter.focus): the arrows of the box in focus,
+   out solid in the accent and in dashed in --pgc-in; the others hidden, or
+   faint under them; the boxes and targets at neither end dimmed. */
+.pgc-edge.pgc-hidden {
+  display: none;
+}
+.pgc-edge.pgc-edge-out .pgc-edge-line {
+  stroke: var(--pgc-accent, var(--pg-primary));
+  marker-end: var(--pgc-marker-on, var(--pgc-marker, none));
+}
+.pgc-edge.pgc-edge-in .pgc-edge-line {
+  stroke: var(--pgc-in, var(--pg-warning));
+  stroke-dasharray: 6 4;
+}
+.pgc-edge.pgc-edge-faint {
+  opacity: var(--pgc-faint, 0.3);
+}
+/* A proposed arrow (dashed()): dashed in a neutral colour, whatever the
+   focus makes of it. */
+.pgc-edge.pgc-edge-dashed .pgc-edge-line {
+  stroke: var(--pgc-proposed, var(--pg-secondary));
+  stroke-dasharray: 6 4;
+}
+.pgc-boxes .pgc-dim {
+  opacity: var(--pgc-dim, 0.45);
+}
+/* Group headings behind the boxes (groups()): a label and a rule. */
+.pgc-groups {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.pgc-group {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pgc-group-label {
+  font-weight: var(--pg-weight-strong);
+  color: var(--pgc-group, var(--pg-fg-2));
+  white-space: nowrap;
+}
+.pgc-group-rule {
+  flex: 1;
+  border-top: 1px solid var(--pgc-line, var(--pg-border-color));
 }
 .pgc-node {
   position: absolute;
@@ -25721,6 +26313,29 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > thead > tr > :first-child,
   .pg-list-table-grid > thead > tr > [data-pg-col="actions"] {
     z-index: 3;
+  }
+  /* Each sticky cell is a layer of its own, so a row's open menu went
+     under the action cells of the rows below it: the cell holding the open
+     menu goes above them and the heading. */
+  .pg-list-table-grid > tbody > tr > [data-pg-col="actions"]:has(> .menu-wrapper > .menu.show) {
+    z-index: 4;
+  }  /* Content review: a long page or record name stops at 14rem (the whole
+     name is the link's title), so every column fits a 1440 px window under
+     every filter. */
+  .pg-list-table[data-pg-list-table="view_content_review"] .pg-list-table-grid > * > tr > [data-pg-col="name"] {
+    max-width: 14rem;
+  }
+  /* A long collection name in the Kind pill stops at 8rem too. */
+  .pg-list-table[data-pg-list-table="view_content_review"] .pg-list-table-grid > * > tr > [data-pg-col="kind"] {
+    max-width: 8rem;
+  }
+  .pg-list-table[data-pg-list-table="view_content_review"] [data-pg-col="kind"] .pg-pill {
+    max-width: 100%;
+  }
+  .pg-list-table[data-pg-list-table="view_content_review"] [data-pg-col="kind"] .pg-pill > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 /* The row's own buttons: small, at the row's right end. */
@@ -27623,6 +28238,11 @@ select.pg-list-table-field option.private {
      the scrim a dialog lays over the page. */
   --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
   --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  /* The surface and the text of a mark laid over a picture (a poll
+     picture's count). A picture does not change with the theme, so neither
+     does the mark: one value for both. */
+  --pg-media-mark-bg: rgba(17, 19, 24, 0.94);
+  --pg-media-mark-fg: #ffffff;
   --pg-radius-card: 16px;
   --pg-radius-sheet: 20px;
 
@@ -28303,6 +28923,19 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   display: flex;
   align-items: baseline;
   gap: 10px;
+}
+/* A head whose pill goes to a line of its own where the name and the pill
+   do not fit side by side: the name stands whole and breaks inside a word
+   only when it is longer than the column. */
+.pg-list-row-head-wrap {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+}
+.pg-list-row-head-wrap > .pg-list-row-title {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .pg-list-row-title {
   flex: 1;
@@ -29088,6 +29721,11 @@ body.erp_aging .pg-report-table th[scope="row"] {
   font-weight: 600;
   line-height: 1.3;
 }
+.pg-report-legends {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
 .pg-report-legend {
   display: inline-flex;
   align-items: center;
@@ -29427,6 +30065,26 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-table .pg-report-day {
   padding: 0 6px;
   min-width: 3.25rem;
+}
+/* The Customers report on a phone: the groups table's last-order rows as
+   blocks, their three cells one under the other, each under its column's
+   name (data-label), no sideways scroll; the period control and the
+   groups' definitions below. */
+@media (max-width: 575.98px) {
+  .pg-report-table.pg-customer-groups thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pg-report-table.pg-customer-groups tr { display: block; padding: 8px 16px; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .pg-report-table.pg-customer-groups tbody > tr:last-child { border-bottom: 0; }
+  .pg-report-table.pg-customer-groups th,
+  .pg-report-table.pg-customer-groups td { display: block; height: auto; padding: 4px 0; border: 0; text-align: start !important; white-space: normal; position: static; background: none; max-width: none; }
+  .pg-report-table.pg-customer-groups th { font-weight: var(--pg-weight-strong); }
+  .pg-report-table.pg-customer-groups td::before { content: attr(data-label); display: block; font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+  /* The period control: two rows of three equal cells across the column,
+     no word cut and no sideways scroll. */
+  .pg-report-tools .pg-seg.pg-customer-periods { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; overflow: visible; }
+  .pg-report-tools .pg-customer-periods .pg-seg-item { justify-content: center; }
+  /* The groups' definitions: one line each. */
+  .pg-customer-group-terms > span { display: block; }
+  .pg-customer-group-terms .pg-customer-group-sep { display: none; }
 }
 /* The frame's foot: Show all under a table that lists its first rows. */
 .pg-report-frame-foot:not([hidden]) {
@@ -29950,11 +30608,21 @@ textarea.pg-campaign-text {
 }
 
 /* The area's tab strip: the segmented control, one line at any width. Under
-   576 px only the open tab shows its label, the others their icon. */
+   576 px only the open tab shows its label, the others their icon.
+   The strip sits centred in the window's content area on every tab: each
+   tab screen's #content is centred there (the full width, or a list's
+   fit-content box with auto margins), so centring the strip in #content puts
+   it in the same place whatever width the screen takes. The auto margins
+   keep a strip wider than the window scrollable from its first tab, where
+   justify-content: center would cut off its start. */
 .pg-messages-tabs {
+  display: flex;
   margin-bottom: 20px;
   max-width: 100%;
   overflow-x: auto;
+}
+.pg-messages-tabs > .pg-seg {
+  margin-inline: auto;
 }
 /* A notice under the strip. */
 .pg-messages-note {
@@ -30232,6 +30900,7 @@ textarea.pg-campaign-text {
 @media (max-width: 575.98px) {
   .pg-messages-tabs .pg-seg {
     display: flex;
+    flex: 1 1 auto;
   }
   .pg-messages-tabs .pg-seg-item {
     flex: 1 1 auto;
@@ -31100,6 +31769,218 @@ button.pg-var-chip:focus-visible {
     .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
       align-self: start;
     }
+  }
+}
+
+}
+
+/* Connections (connections.php): where the parts of a service's row and the
+   attention block sit. Every part is a look A recipe (card, inner rows,
+   tile, pill, group label, count, segmented filter); these rules only place
+   them. On a phone the state moves under the text. */
+@layer custom {
+
+.connections-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.connections-find > form {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.connections-search {
+  width: 100%;
+}
+.connections-find > .pg-list-seg {
+  min-width: 0;
+  max-width: 100%;
+}
+.connections-attention {
+  border-color: color-mix(in srgb, var(--pg-tone-amber) 45%, transparent);
+}
+.connections-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+.connections-row:hover,
+.connections-row:focus-visible {
+  background: var(--pg-hover);
+}
+.connections-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.connections-row-name {
+  display: block;
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.connections-row-side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.connections-row-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.connections-toggle[aria-expanded="true"] .connections-row-chevron {
+  transform: rotate(180deg);
+}
+.connections-list > * + * {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+
+/* The drawers: 480 px floating off the right edge with the sheet's corners
+   and shadow (the report settings drawer's shape), sections split by a
+   line; on a phone a sheet from the bottom. */
+.connections-drawer {
+  --pg-drawer-width: 480px;
+  --pg-drawer-height: 88vh;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border-color: var(--pg-border-color-translucent);
+  box-shadow: var(--pg-shadow-sheet);
+}
+@media (min-width: 576px) {
+  .connections-drawer {
+    --pg-drawer-inset: 12px;
+    --pg-drawer-border-radius: var(--pg-radius-sheet);
+  }
+}
+.connections-drawer.drawer-bottom {
+  border-start-start-radius: var(--pg-radius-sheet);
+  border-start-end-radius: var(--pg-radius-sheet);
+}
+.connections-drawer > .drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer-head {
+  flex: 1;
+  min-width: 0;
+}
+.connections-drawer > .drawer-body {
+  gap: 0;
+  padding: 0;
+}
+.connections-drawer > .drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer .list-group-item {
+  background: none;
+}
+.connections-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 575.98px) {
+  .connections-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .connections-row-main {
+    flex-basis: calc(100% - 90px);
+  }
+  .connections-row-side {
+    order: 3;
+    flex-basis: 100%;
+    padding-left: 47px;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Courses: a course's lessons table (edit_course.php).
+   From 768 px a fixed layout: the two number columns are as wide as their
+   heading on one line, the page and quiz selects share the rest. Below it
+   each lesson stacks: its number at the left, the page across, the quiz
+   across, days and score side by side, the row's buttons last, each value
+   under its own label (the cell's data-label), so nothing a lesson needs
+   is cut or scrolled sideways at 390 px.
+   ========================================================================== */
+@layer custom {
+
+.pg-course-lessons th {
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .pg-course-lessons {
+    table-layout: fixed;
+    min-width: 40rem;
+  }
+  .pg-course-lessons .pg-course-col-number { width: 2.25rem; }
+  .pg-course-lessons .pg-course-col-days { width: 9rem; }
+  .pg-course-lessons .pg-course-col-quiz { width: 20%; }
+  .pg-course-lessons .pg-course-col-score { width: 8.5rem; }
+  .pg-course-lessons .pg-course-col-actions { width: 7rem; }
+}
+
+@media (max-width: 767.98px) {
+  .pg-course-lessons,
+  .pg-course-lessons tbody {
+    display: block;
+  }
+  .pg-course-lessons colgroup,
+  .pg-course-lessons thead {
+    display: none;
+  }
+  .pg-course-lessons tr {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: .75rem;
+    row-gap: .5rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .pg-course-lessons td {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pg-course-lessons td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
+  }
+  .pg-course-lessons [data-pg-course-number] {
+    grid-row: 1 / span 4;
+    padding-top: 1.6rem;
+  }
+  .pg-course-lessons .pg-course-cell-page,
+  .pg-course-lessons .pg-course-cell-quiz,
+  .pg-course-lessons .pg-course-cell-actions {
+    grid-column: 2 / 4;
+  }
+  .pg-course-lessons .pg-course-cell-page { grid-row: 1; }
+  .pg-course-lessons .pg-course-cell-quiz { grid-row: 2; }
+  .pg-course-lessons .pg-course-cell-days { grid-column: 2; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-score { grid-column: 3; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-actions { grid-row: 4; }
+  .pg-course-lessons .pg-input {
+    width: 100%;
   }
 }
 

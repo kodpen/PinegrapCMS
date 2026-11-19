@@ -1,12 +1,12 @@
 ---
 name: cart-recovery-touches
-description: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness
+description: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
 module: cart_recovery
 ---
 
 ## What is a touch?
 - One row of `cart_recovery_touch` per message sent or offer shown to a left cart: `order_id`, `channel` (`email`, `whatsapp`, `sms`, `page`), `source_type` + `source_id` (`campaign` = `email_campaigns.id`, `template`, `popup`), unix times `sent_at`, `clicked_at`, `restored_at`, `completed_at`, `completed_total` (minor units), `recovered`. Step `upgrade_2026_11_0_cart_recovery_touch()`, no backfill.
-- Owner (2026-11-15, poll 50): a new table; a cart counts as recovered when completed within 7 days of the last touch.
+- Owner (2026-11-15, poll 50): a new table; a cart counts as recovered when completed within 7 days of the last touch (`workflow/decisions-made-product-56.md`, `decisions-made-schema-21.md`). Why: before it only the `order_abandoned` mail existed, nothing recorded that a sent one worked, and `?r=` restored a cart writing nothing.
 
 ## Who writes it?
 - Only `includes/fn/cart_recovery.php`. `pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id)` is the one touch writer; a second call with the same order, channel and source writes nothing. Its names are checked by pure `pg_cart_recovery_touch_args()`.
@@ -26,3 +26,7 @@ module: cart_recovery
 ## What else holds?
 - Every write is behind `pg_cart_recovery_ready()` (`pg_schema_has()`): before the update, orders complete as before.
 - A purged or deleted order keeps its touches; the figures count rows of this table and join `orders` for nothing.
+
+## What was left out, and why?
+- No rollup table: a row per message, not per visit, so the table stays small; the figures read it by date range.
+- No flow start "When a cart is left" (recovery by WhatsApp or SMS through a flow): a later plan (`core/campaign-profile-flow-gaps.md`). Until then flow and order-moment WhatsApp keys write no touch (`cart-recovery-whatsapp-page.md`).

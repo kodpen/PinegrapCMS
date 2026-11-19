@@ -643,9 +643,10 @@ function pg_sw_default_date_format($type)
 // elements that hold $mark are judged, and one that goes leaves $mark in
 // its place, so the element around it is judged in turn.
 // With $wait (a product page whose variant picker redraws the values bound
-// to data-pg-bind), an empty element holding such a value stays, marked
-// hidden and data-pg-empty-wait, for the picker to show when it fills it;
-// an element already so marked is left as it is.
+// to data-pg-bind, and the "Quantity prices" box, data-pg-civ-qty-prices),
+// an empty element holding such a value, or that box, stays, marked hidden
+// and data-pg-empty-wait, for the picker to show when it fills it; an
+// element already so marked is left as it is.
 function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
@@ -679,7 +680,7 @@ function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
         // A player is judged with its own address, which its opening tag holds.
         $judged = pg_sw_is_player_tag($tag) ? $open . $inner . '</' . $tag . '>' : pg_sw_field_value($inner);
         if (pg_sw_has_content($judged)) continue;
-        if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
+        if ($wait && ((strpos($open . $inner, 'data-pg-bind=') !== false) || (strpos($open, 'data-pg-civ-qty-prices') !== false))) {
             $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
             continue;
         }
@@ -933,12 +934,25 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // My account: a subscription's action forms, built by
+        // subscriptions_account.php with the form token.
+        '__subscription_actions_html',
         // Cart: a payment schedule's frequency choices, the value selected.
         '__schedule_period_options_html',
         // Cart: a product form's pick list choices, the value selected.
         '__field_options_html',
         // Order view: a return request's reasons (the return form part).
         '__return_reason_options_html',
+        // Order preview: a recipient's shipping cost and custom form
+        // answers, an item's description, prices, stock note and product
+        // form answers, as the classic page prints them.
+        '__ship_to_cost_html',
+        '__ship_to_form_html',
+        '__line_title_html',
+        '__line_price_html',
+        '__line_amount_html',
+        '__line_stock_html',
+        '__line_forms_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -1551,10 +1565,17 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 // It is not an address filter of the page: no `params`, no label. Without
 // a shown record it is left out and without an address counted in
 // `address`, as 'url parameter' is.
+//
+// The dynamic value 'shown record rows' (lists only, on reference_code with
+// "is equal to"; its attribute names a rows field) lists the records of
+// this form that the shown record's rows field holds, and returns their
+// order in `order` (an ORDER BY part put before the list's own). Without a
+// shown record, a rows field or a row it lists none; without an address it
+// is counted in `address`. Anywhere else it is counted in `invalid`.
 function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = null)
 {
     $out = array('where' => '', 'tokens' => array(), 'missing' => 0, 'invalid' => 0,
-                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '', 'labels' => array());
+                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '', 'labels' => array(), 'order' => '');
     if (!is_array($filters) || !$filters) return $out;
 
     $operators = array(
@@ -1563,7 +1584,7 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     );
     $dynamic_values = array(
         'current date', 'current date and time', 'current time', 'days ago',
-        'viewer', 'viewers email address', 'url parameter', 'shown record',
+        'viewer', 'viewers email address', 'url parameter', 'shown record', 'shown record rows',
     );
     $size_operators = array('is less than', 'is less than or equal to', 'is greater than', 'is greater than or equal to');
     $standard = pg_sw_standard_fields();
@@ -1619,6 +1640,32 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
                 $value = pg_coll_shown_record_code($request);
                 if ($value === '') continue;
                 $shown = true;
+            }
+        }
+        // The rows of the record the detail page shows (lists only): a
+        // condition and an order of its own, never a comparison. A fixed
+        // value wins.
+        if ($dynamic === 'shown record rows') {
+            $dynamic = '';
+            if ($value === '') {
+                if (mb_strtolower($field, 'UTF-8') !== 'reference_code' || $operator !== 'is equal to') {
+                    $out['invalid']++;
+                    continue;
+                }
+                if ($request === null) {
+                    $out['address']++;
+                    continue;
+                }
+                $attribute  = isset($filter['dynamic_value_attribute']) ? $filter['dynamic_value_attribute'] : '';
+                $rows_field = is_scalar($attribute) ? trim((string)$attribute) : '';
+                $shown_code = pg_coll_shown_record_code($request);
+                $rows_codes = ($shown_code === '' || $rows_field === '')
+                    ? array()
+                    : pg_coll_rows_codes(pg_coll_rows_shown_value($custom_form_page_id, $shown_code, $rows_field));
+                $rows_sql = pg_coll_rows_list_sql($rows_codes);
+                $out['where'] .= $rows_sql['where'];
+                if ($out['order'] === '') $out['order'] = $rows_sql['order'];
+                continue;
             }
         }
         $dynamic_attribute = isset($filter['dynamic_value_attribute']) ? (int)$filter['dynamic_value_attribute'] : 0;
@@ -2216,6 +2263,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['tokens'] = array();
     }
     $filter_where = $filter_sql['where'];
+    // A record's rows (dynamic value 'shown record rows') stand in their
+    // field's order, before the list's own.
+    if (!empty($filter_sql['order'])) $order_by_sql = $filter_sql['order'] . ', ' . $order_by_sql;
     // The submitter's older records leave the list before anything else
     // counts them; the address check below reads the same rows.
     $filter_where .= pg_sw_form_list_one_per_submitter_sql($cfg);
@@ -4376,13 +4426,18 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's store credit balance, as the store credit section prints it.
+    $values['__store_credit_balance'] = h($extras['store_credit']['balance_info']);
     // The member's own allow-listed account values (pg_sw_entity_fields('account')).
     $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
     if (pg_sw_list_wanted('account')) {
-        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date')));
+        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date'))
+            + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings'])
+            + pg_sw_list_account_subscription_rows($values['account_id'], $extras['subscriptions'])
+            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards']));
     }
 
     // ── No loop_area — render entire tree once with account tokens ─────────
@@ -4623,6 +4678,28 @@ function _pg_member_drop_control(&$tree, $name)
 function _pg_member_drop_all_controls(&$tree)
 {
     _pg_member_drop_controls($tree, function ($tag, $attrs, $node) { return true; });
+}
+
+// The strong password rules a designer built (a password_rules box with
+// children of its own) print as designed while the site prints rules
+// ($rules_html not ''): the box loses its section binding, so the section
+// pass keeps its children instead of filling the server's block. With no
+// rules the binding stays and the section pass drops the box, as it drops
+// an empty one. A box without children is the server's block, as before.
+function pg_member_keep_designed_rules(&$tree, $rules_html)
+{
+    if ((string)$rules_html === '' || !is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    foreach ($tree['children'] as &$c) {
+        if (!is_array($c)) continue;
+        if (isset($c['props']['_bindings']['section']) && $c['props']['_bindings']['section'] === 'password_rules'
+            && !empty($c['children'])) {
+            unset($c['props']['_bindings']['section']);
+            if (empty($c['props']['_bindings'])) unset($c['props']['_bindings']);
+            continue;
+        }
+        pg_member_keep_designed_rules($c, $rules_html);
+    }
+    unset($c);
 }
 
 // Drop links whose href is bound to a token that resolved to '': a feature
@@ -5600,18 +5677,19 @@ function pg_sw_feed_category_xml($form_page_id, $field_id, $values)
     return $xml;
 }
 
-// The channel and the items of a form widget page's feed: the newest fifty
-// complete records of the form, the widget's own filters applied, each
-// with the fields whose RSS element is title, description, media or category.
-// An item links to the widget's detail page (?r=) when it has one, and to the
-// page itself for a record page; the channel describes the host page.
-// Same return shape as _pg_build_catalog_listing_rss_parts().
-function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+// The records a form feed lists, as rows, picked as the feed picks them:
+// the record page's own filters, or the list's together with its detail
+// page's, complete records only, the newest first by the moment each was
+// made, 50 at most. The feed and the flows' list box (flow_records.php) read
+// through it; $extra widens the pick for the box alone: `select` columns,
+// a `join`, a `where` condition and a `limit`, each SQL its caller built,
+// or a function given the filters and the form that answers them.
+// Returns records, cfg, form_page_id, detail_page_name, detail_pretty,
+// filter_clause and filters (the filters applied).
+function pg_sw_form_feed_pick($page_id, $page_name, $feed, $extra = array())
 {
     $cfg          = $feed['widget']['cfg'];
     $form_page_id = (int)$feed['custom_form_page_id'];
-    $base_path    = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-    $site         = URL_SCHEME . HOSTNAME_SETTING;
 
     // Where an item links: the record page is its own detail page; a list
     // links to its detail page when that page is bound to the same form.
@@ -5631,7 +5709,8 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
     // own (the records it would show), or the list's together with its
     // detail page's, so that no item links to a record that page keeps out.
     if ($feed['type'] === 'form_item_view') {
-        $filter_clause = pg_sw_record_filter_clause($form_page_id, pg_sw_record_view_filters($cfg), (int)$page_id, true);
+        $filters       = pg_sw_record_view_filters($cfg);
+        $filter_clause = pg_sw_record_filter_clause($form_page_id, $filters, (int)$page_id, true);
     } else {
         $filter_detail_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
         $detail_view      = ($filter_detail_id > 0)
@@ -5639,22 +5718,59 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
                 return pg_sw_form_widget_form_page_id($c) === $form_page_id;
             })
             : null;
+        $filters       = pg_sw_merge_record_filters($cfg, $detail_view ? $detail_view['cfg'] : array());
         // The list's URL filters read the feed's own address
         // (/tag?tag=climate&rss=true lists that tag's records).
         $filter_clause = pg_sw_list_record_filter_clause($form_page_id, $cfg, $detail_view ? $detail_view['cfg'] : array(), $filter_detail_id, pg_sw_filter_request());
     }
-    $filter_where  = $filter_clause['where'];
-    $filter_join   = $filter_clause['join'];
-    $records = db_items(
-        "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp
-         FROM forms
-         $filter_join
-         WHERE forms.page_id = '" . $form_page_id . "'
-           AND forms.complete = 1
-           $filter_where
-         ORDER BY forms.submitted_timestamp DESC
-         LIMIT 50"
+
+    if (is_callable($extra)) $extra = (array)$extra($filters, $form_page_id);
+
+    return array(
+        'records'          => (array)db_items(pg_sw_form_feed_pick_sql($form_page_id, $filter_clause, $extra)),
+        'cfg'              => $cfg,
+        'form_page_id'     => $form_page_id,
+        'detail_page_name' => $detail_page_name,
+        'detail_pretty'    => $detail_pretty,
+        'filter_clause'    => $filter_clause,
+        'filters'          => $filters,
     );
+}
+
+// The query of pg_sw_form_feed_pick(): the feed's own without $extra.
+// Pure.
+function pg_sw_form_feed_pick_sql($form_page_id, $filter_clause, $extra)
+{
+    $limit = isset($extra['limit']) ? max(1, (int)$extra['limit']) : 50;
+    return "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp" . (isset($extra['select']) ? (string)$extra['select'] : '') . "
+         FROM forms
+         " . $filter_clause['join'] . (isset($extra['join']) ? (string)$extra['join'] : '') . "
+         WHERE forms.page_id = '" . (int)$form_page_id . "'
+           AND forms.complete = 1
+           " . $filter_clause['where'] . (isset($extra['where']) ? (string)$extra['where'] : '') . "
+         ORDER BY forms.submitted_timestamp DESC
+         LIMIT " . $limit;
+}
+
+// The channel and the items of a form widget page's feed: the newest fifty
+// complete records of the form, the widget's own filters applied, each
+// with the fields whose RSS element is title, description, media or category.
+// An item links to the widget's detail page (?r=) when it has one, and to the
+// page itself for a record page; the channel describes the host page.
+// Same return shape as _pg_build_catalog_listing_rss_parts().
+function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+{
+    $pick             = pg_sw_form_feed_pick($page_id, $page_name, $feed);
+    $cfg              = $pick['cfg'];
+    $form_page_id     = $pick['form_page_id'];
+    $base_path        = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $site             = URL_SCHEME . HOSTNAME_SETTING;
+    $detail_page_name = $pick['detail_page_name'];
+    $detail_pretty    = $pick['detail_pretty'];
+    $filter_clause    = $pick['filter_clause'];
+    $filter_where     = $filter_clause['where'];
+    $filter_join      = $filter_clause['join'];
+    $records          = $pick['records'];
 
     // The category and media fields, read once; title and description per
     // record through pg_sw_submitted_form_rss_text().
@@ -7143,6 +7259,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'create') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array(
         'captcha'        => $captcha,
         'password_rules' => $rules_html,
@@ -8660,6 +8777,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     $google_html = (!$google_signup && function_exists('pg_signin_buttons')) ? pg_signin_buttons($send_to, 'membership') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array(
         'password_rules' => $rules_html,
         'google_signup'  => $google_html,
@@ -9348,24 +9466,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     // Sections.
     $picker = '';
     if ($default_view !== 'upcoming') {
-        $opts = '';
-        if (count($calendars) > 1) {
-            $opts .= '<select name="calendar_id" class="form-select form-select-sm w-auto" aria-label="' . h(lang('Calendar')) . '">'
-                   . '<option value="">' . h(lang('All Calendars')) . '</option>';
-            foreach ($calendars as $c) {
-                $opts .= '<option value="' . (int)$c['id'] . '"' . ((int)$c['id'] === $calendar_id ? ' selected' : '') . '>' . h($c['name']) . '</option>';
-            }
-            $opts .= '</select>';
-        }
-        $opts .= '<select name="view" class="form-select form-select-sm w-auto" aria-label="' . h(lang('View')) . '">'
-               . '<option value="monthly"' . ($view === 'monthly' ? ' selected' : '') . '>' . h(lang('Monthly')) . '</option>'
-               . '<option value="weekly"' . ($view === 'weekly' ? ' selected' : '') . '>' . h(lang('Weekly')) . '</option>'
-               . '</select>';
-        $picker = '<form method="get" action="' . h($path) . '" class="d-flex flex-wrap align-items-center gap-2">'
-                . _pg_sw_hidden_query_inputs(array('calendar_id', 'view'))
-                . $opts
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
-                . '</form>';
+        $picker = pg_sw_calendar_picker_html($path, _pg_sw_hidden_query_inputs(array('calendar_id', 'view')), $calendars, $calendar_id, $view);
     }
     // The days the grid draws: a week, or a month padded to whole weeks.
     $grid_start  = $range_start;
@@ -9535,15 +9636,8 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
             $in_stock  = ((int)$event['inventory'] === 0 || (int)$event['inventory_quantity'] > 0 || (int)$event['backorder'] === 1);
             if ($has_spots && $in_stock) {
                 $label = ((string)$event['reserve_button_label'] !== '') ? (string)$event['reserve_button_label'] : lang('Reserve');
-                $reserve_form = '<form action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php') . '" method="post" class="d-inline">'
-                    . get_token_field()
-                    . '<input type="hidden" name="send_to" value="' . h(get_request_uri()) . '">'
-                    . '<input type="hidden" name="page_id" value="' . (int)pg_sw_drawn_page_id() . '">'
-                    . '<input type="hidden" name="calendar_event_id" value="' . (int)$event_id . '">'
-                    . '<input type="hidden" name="recurrence_number" value="' . (int)$recurrence . '">'
-                    . '<input type="hidden" name="require_cookies" value="true">'
-                    . '<button type="submit" class="btn btn-primary">' . h($label) . '</button>'
-                    . '</form>';
+                $reserve_form = pg_sw_calendar_reserve_form_html(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php',
+                    get_token_field(), get_request_uri(), pg_sw_drawn_page_id(), $event_id, $recurrence, $label);
             } else {
                 $msg = array();
                 if ((int)$event['limit_reservations'] === 1 && (int)$event['number_of_remaining_spots'] === 0) $msg[] = (string)$event['no_remaining_spots_message'];

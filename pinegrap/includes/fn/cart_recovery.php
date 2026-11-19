@@ -14,6 +14,10 @@
  * use on that cart marks it clicked and restored
  * (pg_cart_recovery_key_used()).
  *
+ * A pop-up taken up on a page by a visitor whose session holds a cart is a
+ * touch of that cart (pg_cart_recovery_popup_taken(), from page_view.php's
+ * pop-up event branch).
+ *
  * A site whose update has not added the table writes nothing here and
  * completes orders as before.
  *
@@ -233,6 +237,53 @@ function pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id, $
     }
 
     return (int) mysqli_insert_id(db::$con);
+}
+
+/**
+ * Whether a pop-up event is a touch of the visitor's cart, pure: the event
+ * is "taken" and the session's unfinished order has at least one line. Any
+ * pop-up counts, not only one shown to visitors with a cart. The 6-hour
+ * left-cart test does not apply here: it is the rule of a sent message; the
+ * completion rule decides whether the cart came back.
+ *
+ * @param string $event      shown, closed or taken
+ * @param int    $order_id   the session's order, 0 for none
+ * @param int    $line_count its lines not saved for later
+ * @return bool
+ */
+function pg_cart_recovery_popup_touches($event, $order_id, $line_count)
+{
+    return ($event === 'taken') && ((int) $order_id > 0) && ((int) $line_count > 0);
+}
+
+/**
+ * A pop-up's event from page_view.php, after the count's gates (rate limit,
+ * staff, crawler, consent, signature): when it is a take-up and the session
+ * holds a cart, the cart gets a touch of channel page, source popup. The
+ * writer writes the same order and pop-up once.
+ *
+ * @param int    $auto_dialog_id
+ * @param string $event
+ * @return int the touch's id, 0 when nothing was written
+ */
+function pg_cart_recovery_popup_taken($auto_dialog_id, $event)
+{
+    if ($event !== 'taken') {
+        return 0;
+    }
+
+    $order_id = (isset($_SESSION['ecommerce']['order_id']) && is_scalar($_SESSION['ecommerce']['order_id']))
+        ? (int) $_SESSION['ecommerce']['order_id'] : 0;
+
+    // The cart audience's test (one active line), so both read a cart alike.
+    $line_count = (($order_id > 0) && function_exists('pg_auto_dialog_session_has_cart')
+        && pg_auto_dialog_session_has_cart()) ? 1 : 0;
+
+    if (!pg_cart_recovery_popup_touches($event, $order_id, $line_count)) {
+        return 0;
+    }
+
+    return pg_cart_recovery_touch($order_id, 'page', 'popup', (int) $auto_dialog_id);
 }
 
 /**

@@ -259,6 +259,36 @@ function test_image_editor_clip_split()
 	pg_assert_same(array(null, null, null, null), $r['edge'], 'nothing to split near an end, off the clip or at rest');
 }
 
+// Which clip a Split without a target takes (the play bar's button, the S
+// key): the one selected clip when the playhead can split it, else the one
+// the playhead can split lowest in the stack; never hidden or locked, never
+// within 0.1 s of source of an end, never at rest.
+function test_image_editor_clip_split_pick()
+{
+	$r = image_editor_clip_node(
+		'var a = clip({ id: "a" }), b = clip({ id: "b", start: 4000, row: "r2" }), c = clip({ id: "c", start: 9000 }), tx = { id: "t", type: "text" }, L = [a, b, c, tx];' . "\n"
+		. 'function p(layers, sel, t) { return M.clipSplitPick(layers, sel, t); }' . "\n"
+		. 'console.log(JSON.stringify({ here: p(L, ["b"], 4500), elsewhere: [p(L, ["c"], 4500), p(L, ["c"], 6000)], none: [p(L, [], 2000), p(L, [], 6000), p(L, [], 8500)],'
+		. ' rows: [p(L, [], 4500), p([b, a], [], 4500), p(L, ["a", "b"], 4500), p(L, ["t", "b"], 4500)],'
+		. ' edge: [p(L, ["a"], 1050), p(L, ["a"], 4950), p([a], ["a"], 4950)], rest: p(L, ["a"], null),'
+		. ' off: [p([clip({ id: "h", hidden: true })], [], 2000), p([clip({ id: "k", locked: true }), b], ["k"], 2000), p([clip({ id: "k", locked: true }), b], ["k"], 4500)], empty: [p([], [], 0), p(null, null, 0)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('b', $r['here'], 'the selected clip under the playhead, over a lower one');
+	pg_assert_same(array('a', 'b'), $r['elsewhere'], 'a clip selected elsewhere: the one the playhead can split');
+	pg_assert_same(array('a', 'b', null), $r['none'], 'nothing selected: the clip under the playhead, none past the clips');
+	pg_assert_same(array('a', 'b', 'a', 'b'), $r['rows'], 'two rows: the lowest in the stack, unless one clip is selected');
+	pg_assert_same(array(null, 'b', null), $r['edge'], 'too near an end of the selected clip: another clip, else none');
+	pg_assert_same(null, $r['rest'], 'nothing at rest');
+	pg_assert_same(array(null, null, 'b'), $r['off'], 'a hidden or locked clip is never taken');
+	pg_assert_same(array(null, null), $r['empty'], 'no layers');
+}
+
 // Move: the start shifts on the grid or snaps by either end, never before 0,
 // over a neighbour on its row or past the longest document; the length of
 // the document follows its clips; the parts of one source in order.

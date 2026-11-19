@@ -329,6 +329,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The site icon: its sizes are drawn now, so a picture that cannot be
     // drawn is said here rather than found missing on the site. A save draws
     // again even a source marked as failed (the server may have changed).
+    // The share card's switch and colours (includes/fn/share_card.php), only
+    // where the Social Sharing part drew them; a colour that is no #rrggbb
+    // keeps the card's default.
+    if (pg_schema_has('config_text') && array_key_exists('share_card_background', $_POST)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+
+        pg_config_text_save('share_card', (post_value('share_card') === '1') ? '1' : '');
+        pg_config_text_save('share_card_background', pg_share_card_color_value(post_value('share_card_background'), '#1f2937'));
+        pg_config_text_save('share_card_color', pg_share_card_color_value(post_value('share_card_color'), '#ffffff'));
+    }
+
     if ($site_icon_save_ready) {
         pg_config_text_save('site_icon', $site_icon_input);
 

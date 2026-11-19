@@ -512,6 +512,11 @@ case 'membership':
 	}
 	break;
 }
+// A lesson of a course that is not open yet for this member sends them to the
+// course's classroom page with a notice (includes/fn/courses.php).
+if (function_exists('pg_course_gate')) {
+	pg_course_gate($page_id, $folder_id, $access_control_type);
+}
 // Only the normal render branch below decides whether to draw the toolbar; the
 // PDF, RSS and iCalendar branches never touch it and all four fall through to
 // the same tail. Declared here so that tail can read it on every path.
@@ -3361,6 +3366,12 @@ if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
 }
 
+// The notice a closed lesson left for its classroom page, shown once
+// (includes/fn/courses.php); it marks the page as drawn for this member alone.
+if (function_exists('pg_course_notice_inject') && $rendered_html_page) {
+	$content = pg_course_notice_inject($content, $page_id);
+}
+
 // The real-user speed beacon (includes/fn/page_vitals.php): only on the page a
 // visitor sees, never to staff, the panel's preview or a background render.
 // Before the page cache, so the stored copy measures its visits too.
@@ -3371,6 +3382,21 @@ if (function_exists('pg_vitals_beacon_inject')) {
 		'panel_preview' => $pg_panel_preview,
 		'background' => pg_seo_rendering(),
 		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+	));
+}
+
+// The clicks and scroll depth script (includes/fn/page_clicks.php): with the
+// switch on, only on a public page a visitor who is not signed in sees.
+// Beside the speed beacon, whose request carries its figures too.
+if (function_exists('pg_clicks_beacon_inject')) {
+	$content = pg_clicks_beacon_inject($content, $page_id, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'panel_preview' => $pg_panel_preview,
+		'background' => pg_seo_rendering(),
+		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+		'signed_in' => (bool) USER_LOGGED_IN,
+		'public' => ($access_control_type == 'public'),
 	));
 }
 

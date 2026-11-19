@@ -178,10 +178,10 @@ if (!$_POST) {
     $installment_charges = $row['installment_charges'] / 100;
     $total = $row['total'] / 100;
     $total_cents = (int)$row['total'];
-    $gift_card_discount_cents = (int) round((float) $row['gift_card_discount']);
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
     // What a cancelled order still owes (payment money only when a payment
-    // arrived, the gift card part always), read before $row is reused below.
+    // arrived, the gift card part the cards really gave), read before $row is
+    // reused below.
     $refund_owed = pg_order_cancel_refund_owed($row);
 
     // Captured here with the rest of the order fields, and deliberately NOT
@@ -505,6 +505,8 @@ if (!$_POST) {
     // A VAT id VIES confirmed at checkout: the reverse charge behind the
     // tax-exempt flag, with the time of the check and the consultation number.
     $order_vat_note = pg_vat_order_note($row);
+    // Taken now: $row holds other result sets by the time the card is drawn.
+    $order_vat_id = (string) ($row['vat_id'] ?? '');
 
     $output_gift_card_discount_row = '';
 
@@ -835,11 +837,6 @@ if (!$_POST) {
     
     // the save and cancel buttons will only be outputted if a real ship to exists
     $output_save_button = '';
-
-    // Initialised here rather than inside the ship-to branch below: orders with
-    // no real ship_to (digital goods, gift-card-only carts) must still be able
-    // to show the restore button, otherwise the variable is undefined at render.
-    $output_restore_button = '';
 
     $output_order_details = '<h2 class="list-group-item mb-0 pg-title-section">' . lang('Order Details') . '</h2>';
 
@@ -1690,11 +1687,6 @@ if (!$_POST) {
             $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
-        // if the order is cancelled, output a restore button to revert it to complete
-        if ($status == 'cancelled') {
-            $output_restore_button = '<button type="submit" name="submit_restore_order" value="restore" class="btn my-1 btn-solid theme-warning" data-confirm-content="' . lang('Are you sure you want to restore this order to complete?') . '"><i class="bi bi-arrow-counterclockwise me-3"></i><span class="pg-btn-label">' . lang('Restore Order') . '</span></button>';
-        }
-
     // else a real ship to does not exist
     } else {
         $output_custom_field_1_heading = '';
@@ -1964,6 +1956,11 @@ if (!$_POST) {
         }
     }
 
+    // A cancelled order goes back to complete with or without a shipping
+    // address: built after both branches above, so an order of downloads,
+    // gift cards or a counter sale without shipping gets the button too.
+    $output_restore_button = pg_order_view_restore_button($status);
+
     // if multi currency is enabled, output miscellaneous fieldset with currency information
     if (ECOMMERCE_MULTICURRENCY === true) {
         $currency_name_and_code = '';
@@ -2224,10 +2221,12 @@ if (!$_POST) {
     if ($refund_owed['payment'] > 0 || $refund_owed['gift_card'] <= 0) {
         $refund_instructions .= '<div class="small">' . pg_order_refund_instruction($payment_method) . '</div>';
     }
-    if ($gift_card_discount_cents > 0) {
+    // What the cards really gave, less what a return gave back of it: a card
+    // that failed at checkout paid nothing and is owed nothing.
+    if ($refund_owed['gift_card'] > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
             'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-            'vars'   => array(pg_format_money($gift_card_discount_cents / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
+            'vars'   => array(pg_format_money($refund_owed['gift_card'] / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
     }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
@@ -2731,7 +2730,7 @@ if (!$_POST) {
                                                 <span class="translateable fg-secondary">' . lang('Tax-Exempt') . '</span>
                                                 <span class="text-end text-break">' . $tax_exempt . '</span>
                                             </div>
-                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h((string) $row['vat_id']) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
+                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h($order_vat_id) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
                                             ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
                                             <hr/>
                                             <div class="d-flex justify-content-between gap-3">

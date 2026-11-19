@@ -26,5 +26,5 @@ description: Plan publish-approval PA1 census, start file: the architect's decis
 
 ## Where are the waiting changes listed, and who is told?
 - Architect (2026-11-16, agent channel message 5857): A7's list is the module's own, independent of the assistant and the Workspace: opened from the count on the page's tab, always shown to roles 0 and 1. The Assistant panel and `designer_ai.js` are not touched. Its look goes to the owner in PA4.
-- Architect (2026-11-16, agent channel message 5857): A12 with the Workspace off: a third set in `pg_notification_off_kinds()` while the switch is on, counted by `pg_notification_off_lines_on()` too.
+- Architect (2026-11-16, agent channel message 6485): A12's bell lines are addressed rows of the panel's own `notifications` (one action per outcome, the page's name as the title, the words made when read), shown with the Workspace on or off; `ws_inbox`, `pg_notification_off_kinds()` and `pg_notification_off_lines_on()` are not touched. This replaces the line of message 5857.
 - A change inside a shared component stays out of the plan; it needs a yes of its own.

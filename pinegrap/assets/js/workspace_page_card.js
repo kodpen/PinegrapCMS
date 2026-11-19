@@ -521,7 +521,10 @@
             root.className = 'ws-page-card';
         } else {
             head.appendChild(h.icon('bi-window-stack'));
-            head.appendChild(h.el('strong', 'text-truncate', file.name.replace(/\.html$/i, '')));
+            var pageName = h.el('strong', 'text-truncate', file.name.replace(/\.html$/i, ''));
+
+            pageName.title = pageName.textContent;
+            head.appendChild(pageName);
             root.appendChild(head);
             root.appendChild(h.el('div', 'small fg-secondary mt-1', page.by ? h.t('page_by', page.by) : ''));
         }
@@ -846,7 +849,13 @@
 
         root.dataset.pageMessage = message.id;
         head.appendChild(h.icon('bi-easel2'));
+        // The name keeps the icon's row and at least 8rem of it: in a
+        // narrow column (a discussion panel) the chips take the next line
+        // instead of pushing the name under the icon. Cut, it keeps its
+        // whole text as its title.
         name.style.minWidth = '0';
+        name.style.flex = '1 1 8rem';
+        name.title = joinedCard.name;
         head.appendChild(name);
 
         [['bi-vector-pen', h.t('canvas_part_drawing')], ['bi-window', h.t('canvas_part_page')]].concat(

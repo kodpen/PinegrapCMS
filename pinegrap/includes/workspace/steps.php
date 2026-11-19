@@ -165,6 +165,10 @@ function ws_step_kinds()
         // Its fields follow from the kind of record it reads (ws_step_outputs()).
         'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
+        // The records a list page's feed gives, or those new since the last
+        // run (flow_records.php).
+        'list_records' => array('label' => lang('Read the records of a list'), 'type' => 'list_records', 'texts' => array(), 'lines' => array(),
+            'outputs' => array($number('count', lang('Records read')), $number('left_out', lang('Records left out')), $text('records', lang('The records as a list')))),
         // A contact put into a group or taken out (flow_contact_group.php).
         'contact_group' => array('label' => lang('Add to or take out of a contact group'), 'type' => 'contact_group', 'texts' => array('contact'), 'lines' => array('contact'),
             'outputs' => array($number('contact_id', lang('Contact')), $number('changed', lang('Group changed (1 or 0)')))),
@@ -414,6 +418,7 @@ function ws_step_outcomes()
  *            another), id (the record's id, or one value such as
  *            {{trigger.record_id}})
  * contact_group: ws_step_contact_group_normalize()
+ * list_records: ws_flow_records_normalize()
  *
  * @param string $kind
  * @param mixed  $config
@@ -446,6 +451,8 @@ function ws_step_config_normalize($kind, $config)
 
         // The person of the run's record is read when the box runs, never
         // typed (flow_mail_person.php); marketing only with their consent.
+        // A contact group is sent a campaign, with the records a records box
+        // read drawn after the text (flow_mail_campaign.php).
         case 'email':
             $to = $config['to'] ?? '';
             $recipient = (string) ($config['recipient'] ?? '');
@@ -458,8 +465,10 @@ function ws_step_config_normalize($kind, $config)
                 'subject'   => ws_flow_line($config['subject'] ?? '', 250),
                 'body'      => ws_flow_lines($config['body'] ?? '', 20000),
                 'page_id'   => $number($config['page_id'] ?? 0),
-                'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
+                'recipient' => in_array($recipient, array('record_person', 'group'), true) ? $recipient : 'typed',
                 'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
+                'group_id'  => ($recipient === 'group') ? $number($config['group_id'] ?? 0) : 0,
+                'records'   => (($recipient === 'group') && is_string($config['records'] ?? null) && ws_flow_node_id_valid($config['records'])) ? $config['records'] : '',
             ) + (function_exists('ws_flow_mail_sender_normalize') ? ws_flow_mail_sender_normalize($config) : array());
 
         case 'sms':
@@ -665,6 +674,9 @@ function ws_step_config_normalize($kind, $config)
         case 'contact_group':
             return ws_step_contact_group_normalize($config);
 
+        case 'list_records':
+            return ws_flow_records_normalize($config);
+
         case 'ai':
             return ws_step_ai_normalize($config);
 
@@ -706,7 +718,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             break;
 
         case 'email':
-            if ((($config['recipient'] ?? 'typed') !== 'record_person') && (trim($config['to']) === '')) {
+            if (!in_array($config['recipient'] ?? 'typed', array('record_person', 'group'), true) && (trim($config['to']) === '')) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs an address to write to.', 'vars' => $name));
             }
 
@@ -715,6 +727,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             $problems = array_merge($problems, function_exists('ws_flow_mail_sender_problems') ? ws_flow_mail_sender_problems($config, $name) : array());
+            $problems = array_merge($problems, function_exists('ws_flow_mail_group_problems') ? ws_flow_mail_group_problems($config, $name) : array());
 
             break;
 
@@ -904,6 +917,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             $problems = ws_step_contact_group_problems($config, $name);
             break;
 
+        case 'list_records':
+            $problems = ws_flow_records_problems($config, $name);
+            break;
+
         case 'ai':
             $problems = ws_step_ai_problems($config, $name);
             break;
@@ -950,7 +967,7 @@ function ws_step_check_stand_in($kind, $config)
 {
     $config = (array) $config;
 
-    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (trim((string) ($config['to'] ?? '')) === '')) {
+    if (($kind === 'email') && in_array($config['recipient'] ?? '', array('record_person', 'group'), true) && (trim((string) ($config['to'] ?? '')) === '')) {
         $config['to'] = 'person@example.com';
     }
 
@@ -1001,6 +1018,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
         return ws_step_contact_group_check($viewer, ws_step_config_normalize('contact_group', $config));
     }
 
+    // Nor is a box that reads a list page: only a page everybody may open.
+    if ($kind === 'list_records') {
+        return ws_step_list_records_check($viewer, ws_step_config_normalize('list_records', $config));
+    }
+
     // Nor is an SMS box: it queues its message itself (flow_sms_box.php).
     if ($kind === 'sms') {
         return ws_step_sms_check($viewer, $config);
@@ -1020,6 +1042,16 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     // Nor is an agent box: it writes to the agent itself (flow_agent_box.php).
     if ($kind === 'agent') {
         return ws_step_agent_check($viewer, $config);
+    }
+
+    // An e-mail to a contact group is made a campaign: the owner and the
+    // group are checked here, the rest of the e-mail as any other's.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'group')) {
+        $refusal = ws_flow_mail_group_refusal_for($viewer, $config);
+
+        if ($refusal !== '') {
+            return array('ok' => false, 'error' => $refusal, 'action' => null);
+        }
     }
 
     $config = ws_step_check_stand_in($kind, $config);
@@ -2258,6 +2290,10 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_whatsapp_do($action, $step_context + array('viewer' => $owner, 'row' => $row), ws_step_whatsapp_reference($run['id'], $step['node_id'], $step['pass'] ?? 0), $whatsapp_person);
     } elseif ($kind === 'contact_group') {
         $done = ws_step_contact_group_do($owner, $action, $run);
+    } elseif ($kind === 'list_records') {
+        $done = ws_step_list_records_do($owner, $action, $run);
+    } elseif (($kind === 'email') && (($config['recipient'] ?? '') === 'group')) {
+        $done = ws_flow_mail_group_do($owner, $action, $config, $values);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2504,6 +2540,18 @@ function ws_flow_box_try($viewer, $flow, $data)
         }
 
         $action = $tried['action'];
+
+        // A list page's records are read as a run now would read them: its
+        // window from the last run that sent to now, which nothing moves.
+        if ($kind === 'list_records') {
+            return ws_step_list_records_try($action, $flow) + array('outcome' => 'done', 'empty' => $tried['empty']) + $answer;
+        }
+
+        // An e-mail to a contact group is mailed to the person trying alone.
+        if (($kind === 'email') && (($config['recipient'] ?? '') === 'group')) {
+            return array('texts' => $tried['texts'], 'empty' => $tried['empty'])
+                + ws_flow_mail_group_try($viewer, $owner, ws_flow_mail_campaign_action($action, $config, $owner, array(), $values, array()), $config, $values, $graph, $flow) + $answer;
+        }
 
         // As the run sends it: a notice names the flow it comes from.
         if ($kind === 'notify') {

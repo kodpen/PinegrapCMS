@@ -319,9 +319,12 @@ function pg_stock_notify_status_message($status, $by_sms = false)
  * @param string $phone   the mobile number typed, '' for none; kept only
  *                        while the notice can go out as a text message and
  *                        the provider can text it
+ * @param string $push_secret this browser's visitor notification secret,
+ *                        '' for none: the device then waits for the notice
+ *                        too (pg_stock_notify_push_watch())
  * @return string pg_stock_notify_request_status()
  */
-function pg_stock_notify_request($product_id, $email, $user_id, $phone = '')
+function pg_stock_notify_request($product_id, $email, $user_id, $phone = '', $push_secret = '')
 {
     $product_id = (int) $product_id;
     $user_id = max(0, (int) $user_id);
@@ -342,6 +345,7 @@ function pg_stock_notify_request($product_id, $email, $user_id, $phone = '')
     $email = pg_stock_notify_email($email);
     $product = null;
     $already = false;
+    $already_id = 0;
     $waiting = 0;
     $number = $typed ? array('reachable' => ($phone !== ''), 'already' => false, 'waiting' => 0) : null;
 
@@ -350,11 +354,12 @@ function pg_stock_notify_request($product_id, $email, $user_id, $phone = '')
 
         // The address typed, or the account's own requests whatever address
         // it typed then.
-        $already = db_value(
+        $already_id = (int) db_value(
             "SELECT id FROM stock_notify
             WHERE (product_id = '" . $product_id . "') AND (sent_at = 0)
             AND ((email_address = '" . e($email) . "')" . (($user_id > 0) ? " OR (user_id = '" . $user_id . "')" : '') . ")
-            LIMIT 1") !== null;
+            LIMIT 1");
+        $already = ($already_id > 0);
 
         $waiting = (int) db_value("SELECT COUNT(*) FROM stock_notify WHERE (email_address = '" . e($email) . "') AND (sent_at = 0)");
 
@@ -376,6 +381,13 @@ function pg_stock_notify_request($product_id, $email, $user_id, $phone = '')
     if ($status === 'added') {
         db("INSERT INTO stock_notify (product_id, email_address, user_id, phone, created_at, sent_at)
             VALUES ('" . $product_id . "', '" . e($email) . "', '" . $user_id . "', '" . e($phone) . "', UNIX_TIMESTAMP(), 0)");
+        $already_id = (int) mysqli_insert_id(db::$con);
+    }
+
+    // The device asked from waits for the row, a new one or the one already
+    // waiting: pressing again on another device adds that device.
+    if (pg_stock_notify_status_ok($status)) {
+        pg_stock_notify_push_watch($push_secret, $already_id);
     }
 
     return $status;
@@ -523,6 +535,82 @@ function pg_stock_notify_mail($name, $url)
 }
 
 /**
+ * The visitor notification kind of a back-in-stock notice
+ * (site_push_message.kind, site_push_watch.kind).
+ */
+define('PG_SITE_PUSH_KIND_STOCK', 2);
+
+/**
+ * The device notification of a browser that asked: the name as its title,
+ * cut to the title's limit rather than refused, a fixed sentence in the
+ * subscription's language, and the product's path. Pure.
+ *
+ * @param string $name     the product's name as visitors read it
+ * @param string $path     its path on the site, '' for none (the home page)
+ * @param string $language the subscription's language ('' the site's)
+ * @return array title, body, url
+ */
+function pg_stock_notify_push_input($name, $path, $language)
+{
+    $name = trim(preg_replace('/\s+/u', ' ', (string) $name));
+    $in = ((string) $language !== '') ? array('language' => (string) $language) : array();
+
+    return array(
+        'title' => rtrim(mb_substr($name, 0, 60, 'UTF-8')),
+        'body'  => mb_substr(lang(array('string' => 'Back in stock. You asked to be told once.') + $in), 0, 200, 'UTF-8'),
+        'url'   => ((string) $path !== '') ? (string) $path : '/',
+    );
+}
+
+/**
+ * Makes the browser named by its secret wait for a request's notice
+ * (site_push_watch, kind 2). An unknown secret, or visitor notifications
+ * off, is ignored: the mail or text still goes.
+ *
+ * @param string $secret
+ * @param int    $row_id the stock_notify row
+ * @return int rows written
+ */
+function pg_stock_notify_push_watch($secret, $row_id)
+{
+    if (((string) $secret === '') || ((int) $row_id < 1) || !function_exists('pg_site_push_watch_ready')
+        || !pg_site_push_enabled() || !pg_site_push_watch_ready()) {
+        return 0;
+    }
+
+    $subscription = pg_site_push_subscription_by_secret((string) $secret);
+
+    return $subscription ? pg_site_push_watch_add(PG_SITE_PUSH_KIND_STOCK, array((int) $row_id), (int) $subscription['id']) : 0;
+}
+
+/**
+ * Tells the browsers waiting for one claimed request: one message each,
+ * beside the mail or the text, the wait taken (deleted) first so it goes
+ * once.
+ *
+ * @param int    $row_id the stock_notify row
+ * @param string $name   the product's name
+ * @param string $path   its path on the site
+ * @return int messages written
+ */
+function pg_stock_notify_push_send($row_id, $name, $path)
+{
+    $sent = 0;
+
+    foreach (pg_site_push_watchers(PG_SITE_PUSH_KIND_STOCK, $row_id) as $watcher) {
+        if (!pg_site_push_watch_take(PG_SITE_PUSH_KIND_STOCK, $row_id, (int) $watcher['subscription_id'], 0, true)) {
+            continue;
+        }
+
+        if (pg_site_push_message_to_one(pg_stock_notify_push_input($name, $path, (string) $watcher['language']), PG_SITE_PUSH_KIND_STOCK, (int) $watcher['subscription_id'])) {
+            $sent++;
+        }
+    }
+
+    return $sent;
+}
+
+/**
  * The fields of the text message's template.
  *
  * @param string $name the product's name as visitors read it
@@ -584,6 +672,9 @@ function pg_stock_notify_send($product_id)
 
     $whatsapp_on = function_exists('pg_whatsapp_stock_back_on') && pg_whatsapp_stock_back_on();
 
+    $push_on = function_exists('pg_site_push_watch_ready') && pg_site_push_enabled() && pg_site_push_watch_ready();
+    $path = ($push_on && ($url !== '')) ? pg_site_push_url_path($url, pg_site_push_hosts()) : '';
+
     $mailed = array();
     $whatsapped = array();
     $sent = 0;
@@ -593,6 +684,12 @@ function pg_stock_notify_send($product_id)
 
         if (mysqli_affected_rows(db::$con) !== 1) {
             continue;
+        }
+
+        // The devices that asked are told beside the mail or the text,
+        // never instead: a notification unseen for a day is dropped.
+        if ($push_on) {
+            pg_stock_notify_push_send((int) $row['id'], $name, $path);
         }
 
         $to = pg_stock_notify_email((string) $row['email_address']);
@@ -675,6 +772,47 @@ function pg_stock_notify_forget_sql($column, $id)
 }
 
 /**
+ * The statement that removes the device waits (site_push_watch, kind 2) of
+ * a deleted account's or product's requests; run before the requests go.
+ * Pure.
+ *
+ * @param string $column user_id or product_id
+ * @param mixed  $id
+ * @return string '' for anything else
+ */
+function pg_stock_notify_forget_watch_sql($column, $id)
+{
+    if (pg_stock_notify_forget_sql($column, $id) === '') {
+        return '';
+    }
+
+    return "DELETE w FROM site_push_watch AS w INNER JOIN stock_notify AS n ON (w.kind = '" . PG_SITE_PUSH_KIND_STOCK . "') AND (n.id = w.record_id) WHERE n." . $column . " = '" . (int) $id . "'";
+}
+
+/**
+ * Runs the forget statements of an account or a product: the device waits
+ * first, then the requests.
+ *
+ * @param string $column user_id or product_id
+ * @param mixed  $id
+ * @return void
+ */
+function pg_stock_notify_forget($column, $id)
+{
+    $delete = pg_stock_notify_forget_sql($column, $id);
+
+    if (($delete === '') || !pg_stock_notify_ready()) {
+        return;
+    }
+
+    if (function_exists('pg_site_push_watch_ready') && pg_site_push_watch_ready()) {
+        db(pg_stock_notify_forget_watch_sql($column, $id));
+    }
+
+    db($delete);
+}
+
+/**
  * Removes a deleted account's requests with the account (delete_users.php,
  * edit_user.php): MySQL 5.7 may hand the id to a new account after a
  * restart, which would get the old one's notices.
@@ -684,11 +822,8 @@ function pg_stock_notify_forget_sql($column, $id)
  */
 function pg_stock_notify_forget_user($user_id)
 {
-    $delete = pg_stock_notify_forget_sql('user_id', $user_id);
-
-    if (($delete !== '') && pg_stock_notify_ready()) {
-        db($delete);
-    }
+    // pg_stock_notify_forget_watch_sql() runs inside, before the requests go.
+    pg_stock_notify_forget('user_id', $user_id);
 }
 
 /**
@@ -700,11 +835,8 @@ function pg_stock_notify_forget_user($user_id)
  */
 function pg_stock_notify_forget_product($product_id)
 {
-    $delete = pg_stock_notify_forget_sql('product_id', $product_id);
-
-    if (($delete !== '') && pg_stock_notify_ready()) {
-        db($delete);
-    }
+    // pg_stock_notify_forget_watch_sql() runs inside, before the requests go.
+    pg_stock_notify_forget('product_id', $product_id);
 }
 
 /**

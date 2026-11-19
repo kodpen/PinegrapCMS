@@ -5,8 +5,9 @@ description: / commands over the API: GET /workspace/commands lists the registry
 
 ## What does GET /workspace/commands answer?
 - Route `workspace.commands.list` in includes/workspace/api.php; handler and presenters in includes/workspace/api_commands.php. workspace:read, no params.
-- `ws_commands($viewer)` of the key's owner in registry order (workspace-command-registry.md): a command the owner may not use is left out (/price, /stock, /product without the product rights; /claude, /ai until set up; /schedule, /timer as `ws_command_offered()` says).
-- Each row is a `WorkspaceCommand`: key, names, name, label, description, usage, example, args, live, app_id (0 built-in), app (null built-in). Applications' registered commands come last (workspace-app-commands.md). Each arg a `WorkspaceCommandArgument`: name, kind, label, optional, suggest, multiple, anywhere; an empty `suggest` is `null`. Texts in the site's language (`ws_command_turkish()`).
+- `ws_commands($viewer, true)` of the key's owner in registry order (workspace-command-registry.md): a command the owner may not use is left out (/price, /stock, /product without the product rights; /claude, /ai until set up; /schedule, /timer as `ws_command_offered()` says).
+- Each row is a `WorkspaceCommand`: key, names, name, label, description, usage, example, args, live, app_id (0 built-in), app (null built-in), shadowed (an application's command a later built-in name took: kept, never offered, workspace-command-registry.md). Applications' registered commands come last (workspace-app-commands.md).
+- Each arg a `WorkspaceCommandArgument`: name, kind, label, optional, suggest, multiple, anywhere; an empty `suggest` is `null`. Texts in the site's language (`ws_command_turkish()`).
 
 ## What does POST /workspace/commands/run do? (PR #3823, decided #3801)
 - Route `workspace.commands.run`, workspace:write, `'dry_run' => true`, `'mcp' => false`. Body: `channel_id`, `text`, and the composer's options `confirm`, `force`, `assignees`, `from`, `decision`, `on_sale`, `parent_id` (`ws_api_command_options()` reads them as ws_send in actions.php does).

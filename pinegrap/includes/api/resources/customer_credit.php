@@ -112,10 +112,10 @@ function api_store_credit_card_schema() {
 		'amount'     => 'integer',
 		'balance'    => 'integer',
 		'status'     => 'string',
-		'last_day'   => 'string?',
-		'expires_at' => 'string?',
+		'last_day'   => 'date?',
+		'expires_at' => 'datetime?',
 		'issued_by'  => 'integer?',
-		'created_at' => 'string?'
+		'created_at' => 'datetime?'
 	);
 
 }

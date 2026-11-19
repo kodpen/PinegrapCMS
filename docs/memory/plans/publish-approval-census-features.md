@@ -15,7 +15,7 @@ description: Plan publish-approval PA1 census: features A1 to A16, one line each
 - A9: stale on a missing node or a changed `was` value; the bell line from the module.
 - A10: the module's dismiss; the reason as its own key in `steps` JSON (no column); a sweep of `agent = 'editor'` rows on `decided_at`.
 - A11: the rule of `pg_design_ai_revert()` (who applied, `after_hash`), run by the module.
-- A12: `ws_notify()` lines; with the Workspace off a third set in `pg_notification_off_kinds()` while the switch is on, counted by `pg_notification_off_lines_on()` (`includes/notifications.php`).
+- A12: addressed rows of the panel's own `notifications` (`includes/notifications.php`, `includes/fn/content_proposals.php`), shown with the Workspace off; Architect (2026-11-16, agent channel message 6485).
 - A13: `ws_approval_create()` as the editor, the page tagged; `channel_id` / `message_id` on the row.
 - A14: the hook in `ws_approval_settle()`; rule "any"; the module checks that the closing person is role 0 or 1 at that moment, stale and the lock, and trusts no approvers list; anyone else's yes is noted.
 - A15: `ws_approval_close()` (settles "withdrawn") from the module on withdraw or replace.

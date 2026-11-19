@@ -355,6 +355,7 @@ function pg_visitors_sections()
         'google'      => lang('Google Search'),
         'pages'       => lang('Pages and Google'),
         'speed'       => lang('Page Speed'),
+        'clicks'      => lang('Clicks and scrolling'),
         'ai'          => lang('AI Visibility'),
         'places'      => lang('Places and Devices'),
     );

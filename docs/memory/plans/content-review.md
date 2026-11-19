@@ -35,3 +35,5 @@ priority: 6
 
 ## Whose look?
 - The Content review screen is new: the owner's, close-up pairs from CH2.
+- Owner (2026-11-16, agent channel poll 100, message 6855): "Evet, böyle çıksın" on the sheet of message 6854 (the list, the row menu and the selection bar, the three windows, dark, phone). CH2 leaves draft with that look.
+- Owner (2026-11-16, agent channel poll 102, message 7034): "Evet, böyle çıksın" on the sheet of message 7033: "Make a task" in the manager's row menu (CH3).

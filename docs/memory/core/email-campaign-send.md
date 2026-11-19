@@ -23,7 +23,7 @@ module: email_campaign_send
 - `pg_email_campaign_send_refusal($status)`: only `ready` sends; `paused`/`cancelled`/unknown refuse (a "send it now" link opened before a pause sent it before #5652); `complete` skips the send and shows the summary without finishing, logging or following up again.
 
 ## How does it say why a delivery failed?
-- `pg_email_campaign_delivery_problem($id)` reads the most frequent `last_error` of waiting or given-up recipients and the earliest `next_attempt_at`; `pg_email_campaign_problem_line()` prints it under the finish message (JSON `problem`, `smtp_url`) and on the edit screen's Progress box, with an SMTP Settings link for role <= 2.
+- `pg_email_campaign_delivery_problem($id)` reads the most frequent `last_error` of waiting or given-up recipients and the earliest `next_attempt_at`; `pg_email_campaign_problem_line()` prints it under the finish message (JSON `problem`, `smtp_url`) and on the edit screen's Progress box, with an "E-mail sending" link (its Campaign card) for role <= 2.
 - With the job off the summary no longer says "wait for another attempt" (nothing retries): it says to press Send Campaign again, from HH:MM.
 
 ## Why does saving a campaign with the job off not touch start_time?

@@ -65,6 +65,7 @@ function ws_api_command_present($entry)
         'live'        => (bool) $entry['live'],
         'app_id'      => (int) ($entry['app_id'] ?? 0),
         'app'         => ((string) ($entry['app'] ?? '') !== '') ? (string) $entry['app'] : null,
+        'shadowed'    => !empty($entry['shadowed']),
     );
 }
 
@@ -83,6 +84,7 @@ function ws_api_command_schema()
         'live'        => 'boolean',
         'app_id'      => 'integer',
         'app'         => 'string?',
+        'shadowed'    => 'boolean',
     );
 }
 
@@ -100,7 +102,7 @@ function ws_api_commands_present($entries)
 function ws_api_commands_list($params)
 {
     $viewer = ws_api_viewer();
-    $out = ws_api_commands_present(ws_commands($viewer));
+    $out = ws_api_commands_present(ws_commands($viewer, true));
 
     api_ok_list($out, count($out));
 }
@@ -209,7 +211,7 @@ function ws_api_commands_delete($params)
 // The answers of a command that are shown back before anything is written.
 function ws_api_command_preview_types()
 {
-    return array('preview', 'record_preview', 'create_preview', 'poll_form');
+    return array('preview', 'record_preview', 'create_preview', 'poll_form', 'plan_form', 'approval_form', 'status_form', 'checkin_form', 'leave_card', 'search', 'memory_form', 'flow_start', 'flow_form');
 }
 
 /**
@@ -276,37 +278,14 @@ function ws_api_command_kind($body, $options)
         return (ws_command_unknown($body) === '') ? 'none' : 'run';
     }
 
-    $rest = (string) $split['rest'];
-    $list = function ($text) {
-        return function_exists('ws_bulk_text_is_list') ? ws_bulk_text_is_list($text) : (strpos(trim($text), "\n") !== false);
-    };
+    $entry = ws_command_registry()[$split['command']] ?? null;
+    $class = ($entry !== null) ? $entry['api'] : 'run';
 
-    switch ($split['command']) {
-        case 'task':
-        case 'price':
-        case 'stock':
-            return 'preview';
-
-        // Several lines make a bulk card and nothing after the command in an
-        // answer reads the answered file: both are written at once.
-        case 'create':
-        case 'product':
-            $product = ($split['command'] === 'create') ? ws_command_parse_create($rest)['rest'] : $rest;
-
-            if ($list($rest) || ((trim($product) === '') && ((int) ($options['parent_id'] ?? 0) > 0))) {
-                return 'run';
-            }
-
-            return 'preview';
-
-        // Fewer than two options open the form; more post the poll.
-        case 'poll':
-            $parts = array_filter(array_map('trim', explode('|', $rest)), 'strlen');
-
-            return (count($parts) < 3) ? 'preview' : 'run';
+    if (($class === 'preview') || ($class === 'run')) {
+        return $class;
     }
 
-    return 'run';
+    return (string) call_user_func($class, (string) $split['rest'], $options, $split['command']);
 }
 
 /**

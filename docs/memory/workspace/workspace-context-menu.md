@@ -11,7 +11,7 @@ description: Workspace messages take focus (one roving Tab stop); the own contex
 
 ## How does the menu give focus back?
 - `ctxMenu()` and `floatBox()` call `takeOpener()` after `closeCtx()`: `document.activeElement` (not the body) is remembered, and an opener with `aria-haspopup` gets `aria-expanded="true"`.
-- `closeCtx()` gives focus back (`giveFocusBack()`) when focus was inside the menu or already on the body: Escape, Tab, an outside click, scroll and resize all go through it. An entry whose action left focus on the body gives it back again after the action.
+- `closeCtx()` gives focus back (`giveFocusBack()`) when focus was inside the menu or already on the body: Escape, Tab, an outside click, scroll and resize all go through it (a menu of the writing box moves with its button on a scroll or a height-only resize: `workspace-channel-composer.md`). An entry whose action left focus on the body gives it back again after the action.
 - Before, removing the focused menu dropped focus to `<body>` on every close and every pick.
 
 ## Which keys does the menu take?

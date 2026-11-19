@@ -18,6 +18,7 @@ description: How a session asks a decision question or the owner's approval of s
 - A PR opened before 2026-11-13 with `Approval: #<issue>` still waits on that issue: the `Karar` comment goes there and the issue is closed on landing.
 
 ## How does a question point at a picture or an earlier message?
-- With its tag `<#message:N>` in the text (`tools/ws_post.php`, a `tools/ws_poll.php ask` question), never "the picture above": the owner could not tell which picture an agent meant (2026-11-15). The tag opens the message for the reader (`workspace/message-reference.md`).
+- A picture goes inside the question's own box, never as "the picture above" and not only as a tag in the text (owner 2026-11-15 and 2026-11-16): sent with the question, `php tools/ws_poll.php ask --file=PATH "question" "option" …` (`owner-question-picture.md`).
+- An earlier message that is not a picture is named with its tag `<#message:N>` in the text (`tools/ws_post.php`, a `tools/ws_poll.php ask` question); the tag opens the message for the reader (`workspace/message-reference.md`).
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/owner-contact-channel.md

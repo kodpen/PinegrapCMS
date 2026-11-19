@@ -82,7 +82,7 @@ function ws_flow_quick_areas()
             'event:subscription.cancelled')),
         'invoices'      => $area(lang('Invoices'), 'bi-receipt', 'site', array('event:erp.invoice.created', 'event:erp.invoice.paid',
             'event:erp.invoice.overdue', 'event:erp.invoice.edoc_changed', 'event:erp.receipt.created', 'event:erp.edoc.received')),
-        'content'       => $area(lang('Content and campaigns'), 'bi-megaphone', 'site', array('event:page.created', 'event:page.updated',
+        'content'       => $area(lang('Content and campaigns'), 'bi-megaphone', 'site', array('event:page.created', 'event:page.updated', 'event:content.review_due',
             'event:campaign.sent', 'event:mail.bounced', 'event:whatsapp.received')),
         'workspace'     => $area(lang('Workspace'), 'bi-chat-square-text', 'site', array('event:workspace.task.completed',
             'event:workspace.task.status_changed', 'event:workspace.task.overdue', 'event:workspace.approval.decided', 'event:workspace.guest.message',
@@ -105,7 +105,7 @@ function ws_flow_quick_groups()
     return array(
         'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'whatsapp', 'notify', 'post', 'report')),
         'people'  => array('label' => lang('People'), 'kinds' => array('task_open', 'task', 'approval', 'lead', 'checkin', 'task_digest')),
-        'records' => array('label' => lang('Records'), 'kinds' => array('change', 'contact_group', 'record_get', 'row_add', 'row_set', 'row_get', 'rows_get')),
+        'records' => array('label' => lang('Records'), 'kinds' => array('change', 'contact_group', 'record_get', 'list_records', 'row_add', 'row_set', 'row_get', 'rows_get')),
         'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'for_each')),
         'system'  => array('label' => lang('System'), 'kinds' => array('ai', 'agent', 'webhook', 'web_check', 'start_flow', 'mcp')),
     );

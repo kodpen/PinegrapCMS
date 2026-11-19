@@ -248,6 +248,25 @@ function test_booking_agenda_scope_allows()
 	pg_assert_false(pg_booking_agenda_scope_allows(0, 0), 'a zero scope reaches nothing');
 }
 
+// The free times of a staff-made booking: an all-day event takes its last
+// second too, and a holiday read from a calendar and left out under
+// Workspace settings ("Do not count", ws_events.skipped) takes no time.
+function test_booking_agenda_ws_ranges_leave_out_skipped_days()
+{
+	pg_assert_same(
+		array(array(100, 200), array(500, 600)),
+		pg_booking_agenda_ws_ranges(array(
+			array('starts_at' => 100, 'ends_at' => 199, 'all_day' => 1, 'skipped' => 0),
+			array('starts_at' => '300', 'ends_at' => '399', 'all_day' => '1', 'skipped' => '1'),
+			array('starts_at' => 500, 'ends_at' => 600, 'all_day' => 0),
+		)),
+		'a day left out takes no time');
+
+	$reflection = new ReflectionFunction('pg_booking_agenda_ws_busy');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the agenda reads ws_events.skipped where it exists');
+}
+
 function test_booking_agenda_list_columns_and_row()
 {
 	$columns = pg_booking_agenda_list_columns();

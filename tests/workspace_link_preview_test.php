@@ -117,3 +117,99 @@ function test_workspace_link_preview_own_page()
 	pg_assert_same(null, ws_link_preview_own_page('https://example.com/files/a.pdf', 'example.com', '/'), 'a file');
 	pg_assert_same(null, ws_link_preview_own_page('https://example.com/a/b', 'example.com', '/'), 'deeper than a page');
 }
+
+function test_workspace_link_preview_card_html()
+{
+	$row = array('url' => 'https://example.com/a?b=1&c=2', 'title' => 'A <b>title</b>', 'description' => 'Say "hi" & go', 'site_name' => 'Ex<ample>', 'state' => 'shown');
+	$html = ws_link_preview_card_html($row);
+
+	pg_assert_same('<a class="ws-link-card" href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">'
+		. '<span class="ws-link-card-site">Ex&lt;ample&gt;</span><span class="ws-link-card-title">A &lt;b&gt;title&lt;/b&gt;</span>'
+		. '<span class="ws-link-card-text">Say &quot;hi&quot; &amp; go</span></a>', $html, 'every text escaped, a new tab, no opener');
+
+	pg_assert_same(false, strpos(ws_link_preview_card_html(array('description' => '', 'site_name' => '') + $row), 'ws-link-card-text'), 'no description, no line for it');
+
+	foreach (array('waiting', 'none', 'removed', '') as $state) {
+		pg_assert_same('', ws_link_preview_card_html(array('state' => $state) + $row), 'no card in state ' . $state);
+	}
+
+	pg_assert_same('', ws_link_preview_card_html(array('title' => '  ') + $row), 'no card without a title');
+	pg_assert_same('', ws_link_preview_card_html(array('url' => 'javascript:alert(1)') + $row), 'only a web address is a link');
+	pg_assert_same('', ws_link_preview_card_html(null), 'no row');
+}
+
+function test_workspace_link_preview_can_remove()
+{
+	$viewer = array('id' => 7);
+	$message = array('sender_kind' => 'user', 'sender_id' => 7, 'deleted_at' => 0);
+
+	pg_assert_true(ws_link_preview_can_remove($viewer, $message, true), 'the writer');
+	pg_assert_false(ws_link_preview_can_remove(array('id' => 8), $message, true), 'another person');
+	pg_assert_false(ws_link_preview_can_remove($viewer, $message, false), 'no card to remove');
+	pg_assert_false(ws_link_preview_can_remove($viewer, array('sender_kind' => 'app') + $message, true), 'an application\'s message');
+	pg_assert_false(ws_link_preview_can_remove($viewer, array('deleted_at' => 5) + $message, true), 'a deleted message');
+	pg_assert_false(ws_link_preview_can_remove(array('id' => 0), array('sender_id' => 0) + $message, true), 'nobody');
+}
+
+function test_workspace_link_preview_cards_off_without_the_switch()
+{
+	// With no table (the test runner has no database) the switch reads off:
+	// no card is drawn, whatever the ids.
+	pg_assert_same(array(), ws_link_preview_cards_map(array(1, 2, 3)), 'no cards while off');
+	pg_assert_same(array(), ws_link_preview_cards_map(array()), 'no ids');
+}
+
+function test_workspace_link_preview_card_wiring()
+{
+	$root = PG_FUNCTIONS_DIR;
+	$js = file_get_contents($root . '/assets/js/workspace.js');
+	$messages = file_get_contents($root . '/includes/workspace/messages.php');
+	$actions = file_get_contents($root . '/includes/workspace/actions.php');
+
+	pg_assert_true(strpos($messages, "\$payload['link_preview']") !== false && strpos($messages, "\$payload['can_remove_preview']") !== false, 'the payload carries the card');
+	pg_assert_true(strpos($actions, "case 'ws_link_preview_remove':") !== false, 'the remove action');
+	pg_assert_true(strpos($js, 'message.link_preview') !== false && strpos($js, "api('ws_link_preview_remove'") !== false, 'drawn and removed in the screen');
+	pg_assert_true(strpos($js, 'message.can_remove_preview') !== false, 'the menu entry only for the writer');
+}
+
+function test_workspace_link_preview_card_fields()
+{
+	$row = array('url' => 'https://example.com/a', 'title' => ' A <b>title</b> & more ', 'description' => 'Text "quoted"', 'site_name' => 'Example', 'state' => 'shown');
+	$fields = ws_link_preview_card_fields($row);
+
+	// The texts as stored: plain, trimmed, never escaped into HTML.
+	pg_assert_same(array('url' => 'https://example.com/a', 'title' => 'A <b>title</b> & more', 'description' => 'Text "quoted"', 'site_name' => 'Example'), $fields, 'a read row');
+
+	foreach (array('waiting', 'none', 'refused', 'removed', '') as $state) {
+		pg_assert_same(null, ws_link_preview_card_fields(array_merge($row, array('state' => $state))), 'nothing for ' . ($state === '' ? 'no state' : $state));
+	}
+
+	pg_assert_same(null, ws_link_preview_card_fields(array_merge($row, array('title' => '  '))), 'no title, no card');
+	pg_assert_same(null, ws_link_preview_card_fields(array_merge($row, array('url' => 'javascript:alert(1)'))), 'only a web address');
+	pg_assert_same(null, ws_link_preview_card_fields(null), 'no row');
+	pg_assert_same(array('url' => 'https://example.com/a', 'title' => 'T', 'description' => '', 'site_name' => ''), ws_link_preview_card_fields(array('url' => 'https://example.com/a', 'title' => 'T', 'state' => 'shown')), 'empty strings for what the page did not say');
+
+	// The screen's card is drawn from the same fields.
+	pg_assert_same('', ws_link_preview_card_html(array_merge($row, array('state' => 'removed'))), 'a removed card is not drawn');
+	pg_assert_true(strpos(ws_link_preview_card_html($row), 'A &lt;b&gt;title&lt;/b&gt; &amp; more') !== false, 'the screen escapes the same title');
+}
+
+function test_workspace_link_preview_api_off_without_the_switch()
+{
+	// The test runner has no database: the switch reads off and no message
+	// read over the API carries a card.
+	pg_assert_same(array(), ws_link_preview_card_rows_map(array(1, 2, 3)), 'no fields while off');
+	pg_assert_same(array(), ws_link_preview_card_rows_map(array()), 'no ids');
+}
+
+function test_workspace_link_preview_api_wiring()
+{
+	$root = PG_FUNCTIONS_DIR;
+	$resources = file_get_contents($root . '/includes/workspace/api_resources.php');
+	$api = file_get_contents($root . '/includes/workspace/api.php');
+
+	pg_assert_true(strpos($resources, "'link_preview'   => ws_api_message_link_preview(") !== false, 'the message carries the card');
+	pg_assert_true(strpos($resources, "'link_preview'   => 'WorkspaceMessageLinkPreview?'") !== false, 'declared nullable');
+	pg_assert_true(strpos($api, "'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema'") !== false, 'the object is named');
+	pg_assert_true(strpos($resources, 'ws_link_preview_card_rows_map($ids)') !== false, 'a page reads its cards in one query');
+}

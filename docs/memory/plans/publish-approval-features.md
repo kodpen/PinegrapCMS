@@ -25,6 +25,7 @@ description: Plan publish-approval, features A1 to A16: the switch, which saves 
 
 ## What does the Workspace add?
 - (A13) With the Workspace on and a channel named on the card, the change is also asked there as an approval request opened as the editor, with the page tagged; its approvers are the channel's members of roles 0 and 1, ten at most. An editor who cannot post there gets only the bell lines.
+  - Architect (2026-11-16): a channel named on the card that is archived, deleted or no longer a channel is asked nowhere in the Workspace; the change waits as any other and only the bell lines go.
 - (A14) A yes by a designer applies the change as A8 does, in that answer's request. A no dismisses it with the answer's text. A yes by anyone else is noted on the waiting change and applies nothing: only a designer may publish.
 - (A15) A change withdrawn or replaced takes its approval request back.
 

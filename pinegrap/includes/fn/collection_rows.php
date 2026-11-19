@@ -17,6 +17,9 @@
  * the removed rows deleted; a failure midway deletes the rows the save
  * created. The writes themselves are passed in (pg_coll_rows_db_ops()), so
  * the order and the undo are tested without a database.
+ * pg_coll_rows_list_sql() and pg_coll_rows_shown_value() serve a form list's
+ * dynamic value 'shown record rows': on a record page, the rows of the
+ * record shown, in the field's order.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1033,4 +1036,159 @@ function pg_coll_rows_parent_row($parent)
                                                 <dt class="fw-normal">' . h(lang('Row of')) . '</dt>
                                                 <dd class="mb-0 fw-bold text-end text-break"><a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int)$parent['id'] . '">' . h((string)$parent['reference_code']) . '</a></dd>
                                             </div>';
+}
+
+/**
+ * The condition and order of a list of the rows a rows field holds (pure):
+ * the records of the list's form whose reference code is one of $codes
+ * (pg_coll_rows_codes()), in that order. No code lists no record; a code
+ * that names no record matches nothing and leaves the others' order as it
+ * is.
+ *
+ * @param mixed $codes
+ * @return array array('where' => " AND (…)", 'order' => ORDER BY part or '')
+ */
+function pg_coll_rows_list_sql($codes)
+{
+    if (!is_array($codes) || !$codes) return array('where' => ' AND (TRUE = FALSE)', 'order' => '');
+    $quoted = array();
+    foreach ($codes as $code) $quoted[] = "'" . e((string)$code) . "'";
+    $list = implode(', ', $quoted);
+    return array(
+        'where' => " AND (forms.reference_code IN ($list))",
+        'order' => "FIELD(forms.reference_code, $list) ASC",
+    );
+}
+
+/**
+ * The stored value of the rows field named $field_name of the complete
+ * record whose reference code is $parent_code, when that field keeps its
+ * rows in the form on $child_page_id; '' when there is no such record or
+ * field.
+ *
+ * @param int    $child_page_id the list's form
+ * @param string $parent_code   the shown record's code
+ * @param string $field_name    the rows field's name
+ * @return string
+ */
+function pg_coll_rows_shown_value($child_page_id, $parent_code, $field_name)
+{
+    $child_page_id = (int)$child_page_id;
+    $parent_code = (string)$parent_code;
+    $field_name = trim((string)$field_name);
+    if ($child_page_id <= 0 || $parent_code === '' || $field_name === '' || !pg_coll_ready()) return '';
+
+    return (string)db_value(
+        "SELECT form_data.data FROM forms
+         INNER JOIN form_fields ON form_fields.page_id = forms.page_id
+         INNER JOIN form_data ON form_data.form_id = forms.id AND form_data.form_field_id = form_fields.id
+         WHERE forms.reference_code = '" . e($parent_code) . "'
+           AND forms.complete = 1
+           AND form_fields.name = '" . e($field_name) . "'
+           AND form_fields.type = 'text box'
+           AND form_fields.collection_kind = 'rows'
+           AND form_fields.reference_page_id = '$child_page_id'
+         LIMIT 1");
+}
+
+/**
+ * The SQL that reads the stored value of every rows list that keeps rows of
+ * child collection $child_page_id and holds one of $codes, but for the list
+ * of record $form_id's field $field_id (0 for a record not written yet):
+ * the lists a code written from outside the editor must not stand in
+ * (pure). A code is matched as a reference text box matches one
+ * (pg_coll_reference_holds_sql()). '' when there is no code.
+ *
+ * @param array $codes         pg_coll_rows_codes()
+ * @param int   $child_page_id
+ * @param int   $form_id
+ * @param int   $field_id
+ * @return string
+ */
+function pg_coll_rows_held_sql($codes, $child_page_id, $form_id, $field_id)
+{
+    $held = array();
+    foreach ((array)$codes as $code) $held[] = pg_coll_reference_holds_sql('form_data.data', (string)$code);
+    if (!$held) return '';
+
+    return "SELECT form_data.data FROM form_data
+        INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+        WHERE form_fields.collection_kind = 'rows'
+            AND form_fields.reference_page_id = '" . (int)$child_page_id . "'
+            AND NOT (form_data.form_id = '" . (int)$form_id . "' AND form_data.form_field_id = '" . (int)$field_id . "')
+            AND (" . implode(' OR ', $held) . ")";
+}
+
+/**
+ * Which of $codes another list already holds, in the order of $codes
+ * (pure). $held are the stored values pg_coll_rows_held_sql() reads.
+ *
+ * @param array $codes
+ * @param array $held
+ * @return array
+ */
+function pg_coll_rows_taken($codes, $held)
+{
+    $listed = array();
+    foreach ((array)$held as $value) {
+        foreach (pg_coll_rows_codes($value) as $code) $listed[$code] = true;
+    }
+    $taken = array();
+    foreach ((array)$codes as $code) {
+        if (isset($listed[(string)$code])) $taken[] = (string)$code;
+    }
+    return $taken;
+}
+
+/**
+ * Why a value written to a rows field from outside the rows editor (the
+ * API, a Workspace change) cannot be kept, '' when it can: only reference
+ * codes of the child collection's records, at most pg_coll_rows_max(), each
+ * standing in no other record's list, so no record takes over another's
+ * rows. The record's own list may keep its codes. Plain text.
+ *
+ * @param mixed  $value
+ * @param int    $child_page_id the field's child collection
+ * @param int    $form_id       the record written, 0 for a new one
+ * @param int    $field_id      the rows field
+ * @param string $name          the field's name, for the message
+ * @return string
+ */
+function pg_coll_rows_outside_refusal($value, $child_page_id, $form_id, $field_id, $name)
+{
+    if (is_scalar($value) && trim((string)$value) === '') return '';
+
+    if (!pg_coll_rows_value_ok($value, $child_page_id)) {
+        return lang(array(
+            'string' => 'The field {var:1} keeps rows: only reference codes of records of its rows collection, at most {var:2}, separated by commas.',
+            'vars'   => array((string)$name, pg_coll_rows_max()),
+        ));
+    }
+
+    $codes = pg_coll_rows_codes($value);
+    $taken = pg_coll_rows_taken($codes, db_values(pg_coll_rows_held_sql($codes, $child_page_id, $form_id, $field_id)));
+    if ($taken) {
+        return lang(array(
+            'string' => 'The field {var:1} names rows another record keeps: {var:2}.',
+            'vars'   => array((string)$name, implode(', ', $taken)),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Whether a field of a form is a rows field (pure). A writer from outside the
+ * rows editor checks its value (pg_coll_rows_outside_refusal()); Import
+ * Submitted Forms leaves its column out, since an imported code would make
+ * the record take over another record's rows, and names the column.
+ *
+ * @param int   $field_id
+ * @param array $kinds    pg_coll_field_kinds() of the field's form
+ * @return bool
+ */
+function pg_coll_is_rows_field($field_id, $kinds)
+{
+    $field_id = (int)$field_id;
+    return isset($kinds[$field_id]['kind']) && $kinds[$field_id]['kind'] === 'rows';
 }

@@ -896,7 +896,7 @@ function api_file_schema() {
 		'width'       => 'integer?',
 		'height'      => 'integer?',
 		'design'      => 'boolean',
-		'uploaded_at'      => 'string?',
+		'uploaded_at'      => 'datetime?',
 		'uploaded_at_unix' => 'integer'
 	);
 

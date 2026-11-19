@@ -228,7 +228,7 @@ function test_api_order_present_carries_the_last_change()
 
 	$schema = api_order_schema();
 
-	pg_assert_same('string?', $schema['modified_at'], 'declared nullable');
+	pg_assert_same('datetime?', $schema['modified_at'], 'declared nullable');
 	pg_assert_same('integer', $schema['modified_at_unix'], 'declared integer');
 	pg_assert_true(strpos(api_order_select(array()), 'orders.last_modified_timestamp') !== false, 'the select reads the stamp');
 }

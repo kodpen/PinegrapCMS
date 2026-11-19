@@ -272,55 +272,90 @@ function pg_credit_account_section_html(array $view)
         return '';
     }
 
-    $badges = array('open' => 'text-bg-success', 'used' => 'text-bg-secondary', 'expired' => 'text-bg-warning');
+    return '<div class="pg-sw-store-credit">'
+        . '<p class="mb-3">' . h(lang('Balance')) . ': <span class="fw-semibold">' . h($view['balance_info']) . '</span></p>'
+        . pg_credit_account_convert_html($view['convert'])
+        . pg_credit_account_cards_html($view['cards'])
+        . '</div>';
+}
 
-    $html = '<div class="pg-sw-store-credit">'
-        . '<p class="mb-3">' . h(lang('Balance')) . ': <span class="fw-semibold">' . h($view['balance_info']) . '</span></p>';
+/**
+ * The badge colour of a card's state (open, used, expired).
+ *
+ * @param string $state
+ * @return string success, secondary or warning
+ */
+function pg_credit_account_tone($state)
+{
+    $tones = array('open' => 'success', 'used' => 'secondary', 'expired' => 'warning');
 
-    $convert = $view['convert'];
+    return isset($tones[$state]) ? $tones[$state] : 'secondary';
+}
 
-    if (!empty($convert['shown'])) {
-        $html .= '<form action="' . h($convert['url']) . '" method="post" class="mb-3">'
-            . $convert['token_field']
-            . '<input type="hidden" name="send_to" value="' . h($convert['send_to']) . '">'
-            . '<label for="pg_sw_reward_points_convert" class="form-label">'
-            . h(lang(array('string' => 'Reward points: {var:1}', 'vars' => array(pg_format_number($convert['points'], 0))))) . '</label>'
-            . '<div class="input-group" style="max-width: 24rem">'
-            . '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="' . (int) $convert['minimum'] . '" max="' . (int) $convert['points'] . '" step="1" value="' . (int) $convert['points'] . '" required>'
-            . '<button type="submit" class="btn btn-outline-primary">' . h(lang('Convert to store credit')) . '</button>'
-            . '</div>'
-            . '<div class="form-text">' . h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($convert['value_info'], ENT_QUOTES, 'UTF-8'))))) . '</div>'
-            . '</form>';
+/**
+ * The reward points conversion form of the store credit section, with its
+ * form token; '' when it is not offered. Site output, Bootstrap 5.3.8.
+ *
+ * @param array $convert  pg_credit_account_convert()
+ * @return string
+ */
+function pg_credit_account_convert_html(array $convert)
+{
+    if (empty($convert['shown'])) {
+        return '';
     }
 
-    if (!empty($view['cards'])) {
-        $html .= '<div class="list-group">';
+    return '<form action="' . h($convert['url']) . '" method="post" class="mb-3">'
+        . $convert['token_field']
+        . '<input type="hidden" name="send_to" value="' . h($convert['send_to']) . '">'
+        . '<label for="pg_sw_reward_points_convert" class="form-label">'
+        . h(lang(array('string' => 'Reward points: {var:1}', 'vars' => array(pg_format_number($convert['points'], 0))))) . '</label>'
+        . '<div class="input-group" style="max-width: 24rem">'
+        . '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="' . (int) $convert['minimum'] . '" max="' . (int) $convert['points'] . '" step="1" value="' . (int) $convert['points'] . '" required>'
+        . '<button type="submit" class="btn btn-outline-primary">' . h(lang('Convert to store credit')) . '</button>'
+        . '</div>'
+        . '<div class="form-text">' . h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($convert['value_info'], ENT_QUOTES, 'UTF-8'))))) . '</div>'
+        . '</form>';
+}
 
-        foreach ($view['cards'] as $card) {
-            $html .= '<div class="list-group-item">'
-                . '<div class="d-flex justify-content-between align-items-start gap-2">'
-                . '<span><span class="fw-semibold">' . h($card['kind_label']) . '</span>'
-                . ' <span class="badge ' . $badges[$card['state']] . ' ms-1">' . h($card['state_label']) . '</span>'
-                . (($card['reason'] !== '') ? '<span class="d-block small text-body-secondary text-break">' . h($card['reason']) . '</span>' : '')
-                . '</span>'
-                . '<span class="text-end"><span class="fw-semibold">' . h($card['balance_info']) . '</span>'
-                . '<span class="d-block small text-body-secondary">' . h(lang(array('string' => 'of {var:1}', 'vars' => array($card['amount_info'])))) . '</span></span>'
-                . '</div>'
-                . (($card['last_day_info'] !== '') ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'Last day: {var:1}', 'vars' => array($card['last_day_info'])))) . '</div>' : '');
+/**
+ * The cards of the store credit section with the orders that spent them;
+ * '' without a card. Pure; the designer canvas draws its twin
+ * (_sdAccountStoreCreditHtml()).
+ *
+ * @param array $cards  pg_credit_account_view()'s cards
+ * @return string
+ */
+function pg_credit_account_cards_html(array $cards)
+{
+    if (empty($cards)) {
+        return '';
+    }
 
-            if (!empty($card['uses'])) {
-                $html .= '<ul class="list-unstyled small mb-0 mt-1">';
+    $html = '<div class="list-group">';
 
-                foreach ($card['uses'] as $use) {
-                    $number = '#' . h($use['order_number']);
-                    $html .= '<li>' . (($use['view_url'] !== '') ? '<a href="' . h($use['view_url']) . '">' . $number . '</a>' : $number)
-                        . ' <span class="text-body-secondary">' . h($use['date_info']) . '</span> −' . h($use['amount_info']) . '</li>';
-                }
+    foreach ($cards as $card) {
+        $html .= '<div class="list-group-item">'
+            . '<div class="d-flex justify-content-between align-items-start gap-2">'
+            . '<span><span class="fw-semibold">' . h($card['kind_label']) . '</span>'
+            . ' <span class="badge text-bg-' . pg_credit_account_tone($card['state']) . ' ms-1">' . h($card['state_label']) . '</span>'
+            . (($card['reason'] !== '') ? '<span class="d-block small text-body-secondary text-break">' . h($card['reason']) . '</span>' : '')
+            . '</span>'
+            . '<span class="text-end"><span class="fw-semibold">' . h($card['balance_info']) . '</span>'
+            . '<span class="d-block small text-body-secondary">' . h(lang(array('string' => 'of {var:1}', 'vars' => array($card['amount_info'])))) . '</span></span>'
+            . '</div>'
+            . (($card['last_day_info'] !== '') ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'Last day: {var:1}', 'vars' => array($card['last_day_info'])))) . '</div>' : '');
 
-                $html .= '</ul>';
+        if (!empty($card['uses'])) {
+            $html .= '<ul class="list-unstyled small mb-0 mt-1">';
+
+            foreach ($card['uses'] as $use) {
+                $number = '#' . h($use['order_number']);
+                $html .= '<li>' . (($use['view_url'] !== '') ? '<a href="' . h($use['view_url']) . '">' . $number . '</a>' : $number)
+                    . ' <span class="text-body-secondary">' . h($use['date_info']) . '</span> −' . h($use['amount_info']) . '</li>';
             }
 
-            $html .= '</div>';
+            $html .= '</ul>';
         }
 
         $html .= '</div>';

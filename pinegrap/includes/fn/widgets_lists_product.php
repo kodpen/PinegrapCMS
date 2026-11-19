@@ -14,7 +14,8 @@
 // Loaded by functions.php through require_once, never on its own.
 //
 // A product list repeats what one product holds: its images, its attribute
-// values, the products bought with it, the contents of a bundle. The catalog detail and listing
+// values, the products bought with it, the contents of a bundle, its
+// quantity prices (the detail view only). The catalog detail and listing
 // renderers read the rows of the sources their tree lists
 // (pg_sw_list_wanted()) for the products they show and publish them
 // (pg_sw_list_publish('product', …)); the finish pass draws each span from
@@ -85,6 +86,18 @@ function pg_sw_list_product_sources()
                 array('__bundle_item_quantity', lang('Quantity in the bundle')),
                 array('__bundle_item_url', lang('Product address')),
                 array('__bundle_item_image_url', lang('Image address')),
+            ),
+        ),
+        'product.quantity_prices' => array(
+            'family'       => 'product',
+            'key'          => '__id',
+            'label'        => lang('Quantity prices'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__qty_break_quantity', lang('Smallest quantity')),
+                array('__qty_break_price', lang('Price of one piece')),
+                array('__qty_break_label', lang('Quantity and price')),
             ),
         ),
     );
@@ -178,6 +191,29 @@ function pg_sw_list_product_bundle_rows($items, $url_prefix)
     return $out;
 }
 
+// The rows of a quantity prices list from the product's breaks
+// (pg_offer_quantity_breaks(): quantity, price in minor units), in their
+// order: the smallest quantity, the price of one piece as text and the
+// sentence "10 or more: each for …". The price is written as the product
+// page writes its own (pg_visitor_money_text()), the sign as a character:
+// the list pass escapes every row value once. $symbol null is the
+// visitor's currency.
+function pg_sw_list_product_quantity_price_rows($breaks, $symbol = null)
+{
+    $out = array();
+    foreach (is_array($breaks) ? $breaks : array() as $b) {
+        if (!is_array($b) || empty($b['quantity'])) continue;
+        $quantity = (int)$b['quantity'];
+        $price    = pg_visitor_money_text(((int)(isset($b['price']) ? $b['price'] : 0)) / 100, $symbol);
+        $out[] = array(
+            '__qty_break_quantity' => (string)$quantity,
+            '__qty_break_price'    => $price,
+            '__qty_break_label'    => lang(array('string' => '{var:1} or more: each for {var:2}', 'vars' => array($quantity, $price))),
+        );
+    }
+    return $out;
+}
+
 // What a catalog renderer publishes for the products it shows ($products:
 // rows with their id and image_name): source => product id => rows, for
 // each source in $sources (source => true). One query per source for all
@@ -189,11 +225,15 @@ function pg_sw_list_product_bundle_rows($items, $url_prefix)
 // renderer already read for the bundle tokens; null reads it here.
 function pg_sw_list_product_read($products, $sources, $detail_page_id = 0, $bundles = null)
 {
-    $out  = array();
-    $main = array();
+    $out   = array();
+    $main  = array();
+    $price = array();
     foreach (is_array($products) ? $products : array() as $p) {
         $pid = (is_array($p) && isset($p['id'])) ? (int)$p['id'] : 0;
-        if ($pid > 0) $main[$pid] = isset($p['image_name']) ? (string)$p['image_name'] : '';
+        if ($pid > 0) {
+            $main[$pid]  = isset($p['image_name']) ? (string)$p['image_name'] : '';
+            $price[$pid] = isset($p['price']) ? (int)$p['price'] : 0;
+        }
     }
     if (!$main || !is_array($sources)) return $out;
     $ids = implode(',', array_keys($main));
@@ -236,6 +276,15 @@ function pg_sw_list_product_read($products, $sources, $detail_page_id = 0, $bund
         $prefix = ($page !== '') ? (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($page) . '/' : '';
         foreach (array_keys($main) as $pid) {
             $out['product.bundle_items'][$pid] = isset($bundles[$pid]) ? pg_sw_list_product_bundle_rows($bundles[$pid], $prefix) : array();
+        }
+    }
+    // The visitor's own price is the list price, or a member's agreed
+    // price where the ERP gives one: a break must be cheaper than it.
+    if (isset($sources['product.quantity_prices'])) {
+        $member = pg_erp_member_prices();
+        foreach ($price as $pid => $list) {
+            $own = (isset($member[$pid]['price']) && (int)$member[$pid]['price'] < $list) ? (int)$member[$pid]['price'] : $list;
+            $out['product.quantity_prices'][$pid] = pg_sw_list_product_quantity_price_rows(pg_offer_quantity_breaks($pid, $list, $own));
         }
     }
     return $out;

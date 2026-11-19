@@ -55,6 +55,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 /** The most operations one proposal may carry. */
 define('PG_DESIGN_AI_MAX_OPS', 40);
 
+// The rows of design_proposals the assistant's readers see: a change a
+// content editor's save is waiting with (agent 'editor',
+// includes/fn/content_proposals.php) is read by that module alone.
+define('PG_DESIGN_AI_ROWS', "agent <> 'editor'");
+
 /** The most HTML one operation may carry, in bytes. */
 define('PG_DESIGN_AI_MAX_HTML', 204800);
 
@@ -3158,7 +3163,7 @@ function pg_design_ai_request_present($row)
 {
     $proposals = array();
 
-    foreach ((array) db_items("SELECT * FROM design_proposals WHERE request_id = '" . (int) $row['id'] . "' ORDER BY id") as $proposal) {
+    foreach ((array) db_items("SELECT * FROM design_proposals WHERE request_id = '" . (int) $row['id'] . "' AND " . PG_DESIGN_AI_ROWS . " ORDER BY id") as $proposal) {
         $proposals[] = pg_design_ai_proposal_present($proposal);
     }
 
@@ -3353,7 +3358,7 @@ function pg_design_ai_proposal($id)
         return null;
     }
 
-    $row = db_item("SELECT * FROM design_proposals WHERE id = '" . (int) $id . "' LIMIT 1");
+    $row = db_item("SELECT * FROM design_proposals WHERE id = '" . (int) $id . "' AND " . PG_DESIGN_AI_ROWS . " LIMIT 1");
 
     return is_array($row) ? $row : null;
 }
@@ -3756,7 +3761,7 @@ function pg_design_ai_attach($request_id, $channel_id, $message_id)
     }
 
     db("UPDATE design_proposals SET channel_id = '" . (int) $channel_id . "', message_id = '" . (int) $message_id . "'
-        WHERE request_id = '" . (int) $request_id . "' AND message_id = 0");
+        WHERE request_id = '" . (int) $request_id . "' AND message_id = 0 AND " . PG_DESIGN_AI_ROWS);
 }
 
 /**
@@ -3782,7 +3787,7 @@ function pg_design_ai_proposals_map($viewer, $message_ids)
         return ((int) $user_id > 0 && function_exists('ws_person_name')) ? ws_person_name($user_id) : '';
     };
 
-    foreach ((array) db_items("SELECT * FROM design_proposals WHERE message_id IN (" . implode(',', $ids) . ") ORDER BY id") as $row) {
+    foreach ((array) db_items("SELECT * FROM design_proposals WHERE message_id IN (" . implode(',', $ids) . ") AND " . PG_DESIGN_AI_ROWS . " ORDER BY id") as $row) {
         $item = pg_design_ai_proposal_present($row);
         $asker = ((int) $row['requested_by'] === (int) $viewer['id']);
 

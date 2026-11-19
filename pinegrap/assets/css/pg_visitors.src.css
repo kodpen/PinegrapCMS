@@ -640,6 +640,42 @@
     gap: .5rem;
   }
 
+  /* ── Section: clicks ────────────────────────────────────────────────── */
+
+  /* Switched off: two short lines and the way to turn it on. */
+  .pg-visitors-clicks-off {
+    max-width: 44rem;
+    padding: .5rem 0;
+  }
+
+  .pg-visitors-clicks-off-text {
+    margin: 0 0 .5rem;
+    font-size: .875rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-clicks-off-text:first-child {
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-clicks-off .btn {
+    margin-top: .5rem;
+  }
+
+  .pg-visitors-clicks-back {
+    margin: 0 0 .75rem;
+    font-size: .8125rem;
+  }
+
+  .pg-visitors-clicks-page {
+    margin-bottom: .75rem;
+    overflow-wrap: anywhere;
+  }
+
+  .pg-visitors-clicks .pg-visitors-tiles {
+    margin-bottom: 1rem;
+  }
+
   /* ── Section: ai ────────────────────────────────────────────────────── */
 
   /* A bot's most-read pages on one line each, wrapping as a whole. */

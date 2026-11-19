@@ -905,17 +905,36 @@ function pg_signin_button($key, $send_to = '', $signup = 'create')
         return '';
     }
 
-    if ($key === 'google') {
-        $label = lang('Sign in with Google');
-    } elseif ($key === 'apple') {
-        $label = lang('Sign in with Apple');
-    } elseif ($key === 'microsoft') {
-        $label = lang('Sign in with Microsoft');
-    } else {
-        $label = lang(array('string' => 'Sign in with {var:1}', 'vars' => pg_signin_provider_label($key)));
-    }
+    return pg_signin_button_html($key, $url, pg_signin_button_label($key));
+}
 
-    return pg_signin_button_html($key, $url, $label);
+// The words of a provider's "Sign in with ..." button.
+function pg_signin_button_label($key)
+{
+    if ($key === 'google') return lang('Sign in with Google');
+    if ($key === 'apple') return lang('Sign in with Apple');
+    if ($key === 'microsoft') return lang('Sign in with Microsoft');
+    return lang(array('string' => 'Sign in with {var:1}', 'vars' => pg_signin_provider_label($key)));
+}
+
+/**
+ * The sign-in buttons as the designer's canvas draws them: the block
+ * pg_signin_buttons() prints, one button per provider turned on now, every
+ * link '#'; Google's alone when none is on (the canvas fades it then). No
+ * passkey button: the site shows it only once the browser offers a passkey.
+ *
+ * @return string
+ */
+function pg_signin_canvas_sample()
+{
+    $keys = array();
+    if (function_exists('pg_signin_button_state')) {
+        $keys = array_keys(pg_signin_button_state()['shown']);
+    }
+    if (!$keys) $keys = array('google');
+    $html = '';
+    foreach ($keys as $key) $html .= pg_signin_button_html($key, '#', pg_signin_button_label($key));
+    return '<div class="pg-signin-buttons">' . $html . '</div>';
 }
 
 /**

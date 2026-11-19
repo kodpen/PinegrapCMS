@@ -96,6 +96,9 @@ if (!$_POST) {
 
     $screen = 'edit';
 
+    // The last 30 days' counts the Summary shows (includes/fn/auto_dialog_counts.php).
+    $auto_dialog_counts = pg_auto_dialog_count_of(pg_auto_dialog_count_figures($id), $id);
+
     $home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' ORDER BY page_timestamp DESC LIMIT 1");
 
     $preview_url = PATH . encode_url_path($home_page_name) . '?preview_auto_dialog=' . $auto_dialog['id'];

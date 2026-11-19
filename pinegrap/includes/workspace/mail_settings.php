@@ -1214,7 +1214,7 @@ function ws_mail_fetch_health(array $boxes, $now)
 
 /**
  * The mailboxes card: each box with its channel and last mail, its form,
- * and the .eml upload. In Site Settings (Channels, mail and voice, with
+ * and the .eml upload. In Site Settings (Mailboxes, with
  * $form) Test connection is a named submit button of the settings form
  * (ws_mail_test, value the box's id), and a box's form with its .eml upload,
  * and Add a mailbox, open in drawers (ws_settings_mail_drawer()).

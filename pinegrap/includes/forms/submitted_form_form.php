@@ -660,6 +660,10 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
         $output_fields .= pg_signature_includes();
     }
 
+    // "Find from the address" when the form has an address and the two
+    // coordinate fields (includes/fn/place_map.php).
+    $output_fields .= pg_place_map_form_tools((int) $page_id);
+
     // The note shows once; the add screen keeps its values in the session.
     if ($choose_again) {
         $liveform->assign_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN, array());

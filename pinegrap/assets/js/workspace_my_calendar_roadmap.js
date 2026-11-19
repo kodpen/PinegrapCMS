@@ -76,6 +76,8 @@
      */
     function section(h, s, plan, hooks) {
         var el = h.el;
+        // Every field comes from the kit's form parts, as the drawer's do.
+        var part = h.form;
         var editable = !plan || plan.mine !== false;
         var steps = [];
         var root = el('section', 'ws-roadmap');
@@ -87,8 +89,9 @@
         var list = el('ol', 'ws-roadmap-steps');
         var add = el('button', 'pg-button pg-button-quiet pg-button-sm', '');
         var foot = el('div', 'ws-roadmap-foot');
-        var moveRow = el('label', 'ws-plan-switch ws-roadmap-move');
-        var move = el('input', 'pg-switch');
+        var moveSwitch = part.switchRow(s('steps_move_following'), false);
+        var moveRow = moveSwitch.row;
+        var move = moveSwitch.input;
         var keep = el('button', 'pg-button pg-button-quiet pg-button-sm', '');
         var chooser = el('div', 'ws-roadmap-keep d-none');
 
@@ -119,9 +122,7 @@
             }
         });
 
-        move.type = 'checkbox';
-        moveRow.appendChild(move);
-        moveRow.appendChild(document.createTextNode(s('steps_move_following')));
+        moveRow.classList.add('ws-roadmap-move');
         root.appendChild(moveRow);
         var moveHelp = el('div', 'pg-text-meta ws-roadmap-move-help', s('steps_move_help'));
         root.appendChild(moveHelp);
@@ -171,15 +172,13 @@
         // A maker with templates keeps a new one or puts this roadmap in
         // place of one of theirs.
         function choose(mine) {
-            var pick = el('select', 'form-control form-control-sm');
+            var pick = part.select([['0', s('template_save_new')]].concat(mine.map(function (one) {
+                return [String(one.id), fill(s('template_save_over'), [one.title])];
+            })), '0', true);
             var go = el('button', 'pg-button pg-button-quiet pg-button-sm', s('template_keep'));
 
             h.clear(chooser);
             pick.setAttribute('aria-label', s('template_save'));
-            pick.appendChild(new Option(s('template_save_new'), '0'));
-            mine.forEach(function (one) {
-                pick.appendChild(new Option(fill(s('template_save_over'), [one.title]), String(one.id)));
-            });
             var cancel = el('button', 'pg-button pg-button-ghost pg-button-sm', s('template_cancel'));
 
             go.type = 'button';
@@ -301,8 +300,8 @@
         function stepRow(step, index) {
             var row = el('li', 'ws-roadmap-step' + (step.done ? ' is-done' : ''));
             var done = el('input', 'check');
-            var title = el('input', 'pg-input pg-input-sm ws-roadmap-title');
-            var day = el('input', 'pg-input pg-input-sm ws-roadmap-day');
+            var title = part.input('text', step.title, true);
+            var day = part.input('date', step.day || '', true);
             var tools = el('div', 'ws-roadmap-tools');
             var meta = el('div', 'ws-roadmap-meta');
 
@@ -323,9 +322,8 @@
             });
             row.appendChild(done);
 
-            title.type = 'text';
+            title.classList.add('ws-roadmap-title');
             title.maxLength = 255;
-            title.value = step.title;
             title.placeholder = s('step_title');
             title.disabled = !editable;
             title.setAttribute('aria-label', s('step_title'));
@@ -335,8 +333,7 @@
             });
             row.appendChild(title);
 
-            h.dateField(day, 'date');
-            day.value = step.day || '';
+            day.classList.add('ws-roadmap-day');
             day.disabled = !editable;
             // Named on the box people see, as the title box beside it is.
             day.placeholder = s('step_day');

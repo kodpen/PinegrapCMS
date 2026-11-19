@@ -1936,6 +1936,10 @@ var software = {
         var auto_dialogs = properties.auto_dialogs;
         var preview = properties.preview;
 
+        // Where a pop-up's events are counted (page_view.php); a preview
+        // prints none.
+        software.auto_dialog_count_url = properties.count_url || '';
+
         // If this page is in an iframe, then it is likely that we don't
         // want to open auto dialogs for it, so return false.
         // For example, we don't want auto dialogs to appear in other auto dialogs.
@@ -2128,10 +2132,91 @@ var software = {
         }
 
         memory.mark(auto_dialog.id, 's');
+        software.count_auto_dialog(auto_dialog, 'shown');
 
         opened.addEventListener('close', function() {
             memory.mark(auto_dialog.id, 'c');
+            software.count_auto_dialog(auto_dialog, 'closed');
         });
+    },
+
+    // Whether this visitor's answer leaves an anonymous count standing, the
+    // twin of pg_consent_statistics_not_refused() (includes/fn/consent.php):
+    // always with the cookie notice off; with it on unless statistics were
+    // refused (a0 in the pg_consent cookie, "1.a0.m0", which closing the
+    // notice writes too). Not answered yet, or a value it cannot read, is
+    // not a refusal. Counts that keep nothing about a visitor ask this; a
+    // cookie or a held script never does (that needs a yes).
+    statistics_not_refused: function() {
+        return software.statistics_not_refused_by(!!document.getElementById('pg-cc'), software.read_cookie('pg_consent'));
+    },
+
+    // The rule of statistics_not_refused() for the notice on or off and a
+    // pg_consent value, as pg_consent_statistics_not_refused_by() reads it
+    // through pg_consent_parse(): version 1 first, the last "a" part wins.
+    // Pure.
+    statistics_not_refused_by: function(enabled, raw) {
+        if (!enabled) {
+            return true;
+        }
+
+        var parts = String(raw || '').split('.');
+
+        if (parts.shift() !== '1') {
+            return true;
+        }
+
+        var refused = false;
+
+        for (var i = 0; i < parts.length; i++) {
+            var match = /^([a-z])([01])$/.exec(parts[i]);
+
+            if (match && (match[1] === 'a')) {
+                refused = (match[2] === '0');
+            }
+        }
+
+        return !refused;
+    },
+
+    // Counts one event of a pop-up (shown, closed, taken) with the day
+    // signature its page printed: once per pop-up, event and page load,
+    // unless the visitor refused statistics; none for a preview, which carries
+    // no signature. A press on a pop-up's marked action or a form sent inside
+    // it counts taken; an address pop-up knows shown and closed only.
+    count_auto_dialog: function(auto_dialog, event) {
+        var url = software.auto_dialog_count_url;
+
+        if (!url || !auto_dialog || !auto_dialog.sign || !software.statistics_not_refused()) {
+            return false;
+        }
+
+        var counted = software.auto_dialog_counted || (software.auto_dialog_counted = {});
+        var key = auto_dialog.id + ':' + event;
+
+        if (counted[key]) {
+            return false;
+        }
+
+        counted[key] = true;
+
+        var data = new FormData();
+
+        data.append('ad', String(auto_dialog.id));
+        data.append('ae', event);
+        data.append('as', auto_dialog.sign);
+
+        try {
+            if (navigator.sendBeacon && navigator.sendBeacon(url, data)) {
+                return true;
+            }
+        } catch (e) {}
+
+        try {
+            fetch(url, {method: 'POST', body: data, keepalive: true, credentials: 'same-origin'}).catch(function() {});
+        } catch (e) {}
+
+        return true;
     },
 
     // Whether the screen is touched rather than pointed at: no pointer

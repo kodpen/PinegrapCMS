@@ -44,7 +44,9 @@ function pg_recycle_page($page_id, $user)
         return array('status' => 'inside', 'message' => '', 'home' => false);
     }
 
-    if (check_edit_access($page['page_folder']) == false) {
+    // The access of the person given, not of whoever is signed in: the general
+    // job bins a published bundle's replacements with nobody signed in.
+    if (!pg_folder_edit_access($page['page_folder'], (int) $user['id'], (int) $user['role'])) {
         return array('status' => 'error', 'message' => lang(array('string' => 'Access denied for {var:1}.', 'vars' => $page['page_name'])), 'home' => false);
     }
 
@@ -290,6 +292,7 @@ function pg_recycle_style($style_id, $user, $page_ids = array())
     // design by id alone, and a later design may be given the same id.
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     pg_proto_links_revoke_design($style_id, (int) $user['id']);
+    pg_proto_comments_delete_design($style_id);
 
     log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => $style['style_name'])), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 

@@ -1,31 +1,35 @@
 ---
 name: canvas-closed-blocks-widgets
-description: CB0 list, the closed slots inside system widgets: section bindings and HTML values per widget kind, what each prints, template use, and what opening it takes
+description: Sections and HTML values inside system widgets on the canvas today, per widget kind: opened as a tree, drawn true (settings only) or kept, with the step and memory file of each
 ---
 
-## What is closed inside a widget?
-- A node bound to `section` (`_bindings.section`, options in `_sdSectionOptions()`): the server puts its own HTML inside; the canvas draws a label box ("filled by the backend"). Two keep the user's children: Recipient Picker and watcher list (`_SD_SECTION_KEEPS_CHILDREN`).
-- A value of `pg_sw_raw_token_keys()` that is markup built by the renderer: the canvas draws its preview (`_SD_HTML_PREVIEW_TOKENS`, `canvas-sample-overview.md`).
-- Change today: the node's place, classes and show conditions; never its inside.
+## How is a slot inside a widget closed or open?
+- A node bound to `section` (`_bindings.section`, `_sdSectionOptions()`): the server puts its own HTML inside. Unopened, the canvas draws a true sample or, for a slot no step took up, a label box. A section whose children print as designed is in `_SD_SECTION_KEEPS_CHILDREN` (recipient picker, watcher list, password rules, step buttons).
+- A `pg_sw_raw_token_keys()` value that is markup: the canvas draws its preview (`_SD_HTML_PREVIEW_TOKENS`, `canvas-sample-overview.md`).
+- Tree: "Convert to design elements" on the section's panel; a saved page keeps its section (rules: [[canvas-closed-blocks]]).
 
-## Which sections, per widget kind? (template use)
-- Comments: `comment_captcha`, `comment_rating_input`, `comment_publish` (staff), `comment_watchers`, `comment_pagination` (57).
-- Custom form: `captcha` (57), `form_step`; the step progress and step buttons are Custom HTML the server writes (`custom_form_steps.php`).
-- Search results: `pagination` (57).
-- Login: `google_signin`, `forgot_password_link`, `register_link` (56). Registration and membership: `captcha`, `password_rules`, `google_signup`, `login_link` (57). Change password: `password_rules`.
-- My Account: `order_history` (40), `subscriptions`, `bookings`, `store_credit`.
-- Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4). Catalog detail: `recipient_picker` (keeps children), `payment_methods` (drawn true since CB6a1, #9849).
-- Shopping cart: `applied_offers`, `quick_add`, `pending_offers`. Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
-- Checkout steps: shipping address `custom_shipping_form`, `verified_addresses`; shipping method `recipient_items`; billing `custom_billing_form`; order preview `order_recipients`, `applied_offers`, `applied_gift_cards`, `recurring_payments`, `billing_form`, `card_installments`, `installment_table`. Order form: `recurring_schedule`.
-- Booking: twelve `booking_*` steps and parts (16).
-- Calendar view: `calendar_picker`, `month_grid`; calendar event: `reserve_form` (no template).
+## Comments, search, custom form?
+- Comments (CB2, #9716, [[comments-widget-open-slots]]): pagination a tree, shared with Search results; CAPTCHA, star rating input, publish options drawn true; watchers keep their children. The CAPTCHA sample is the sum question even where a provider replaces it.
+- Custom form (CB4, #9806, [[custom-form-open-slots]]): step buttons a tree (`form_step_nav`), the steps' progress and CAPTCHA drawn true.
 
-## Which HTML values are blocks?
-- Catalog: `__group_tree_html`, `__attribute_filters_html`, `__filters_button`, `__filters_offcanvas`, `__clear_filters_button`, `__variant_picker`, `__price_block_html`.
-- Order view: `__return_actions_html` (the return forms), `__return_reason_options_html`. Cart: `__field_options_html`, `__schedule_period_options_html`.
-- Ad Region: `__ad_content_html`, `__ad_caption_html`, the ad's own markup. Operator rich text (`__description`, `__comment_message_html`) is content, not a block.
+## Sign-in and sign-up?
+- CB7 (#9895, [[member-widgets-open-slots]]): password rules and the sign-in, sign-up and forgotten password links as elements; the social sign-in and sign-up buttons drawn true (settings only).
 
-## What does opening take?
-- Tree: pagination (one shared family for comments and search), order history, subscriptions, bookings list, group tree, filter offcanvas, quick add, campaign gifts, applied offers, order preview parts, return actions, password rules, the sign-in and sign-up links, calendar month grid.
-- Settings only (the output depends on the request or a site setting): CAPTCHA, social sign-in buttons, publish options, installments, payment methods, the step progress; a true sample on the canvas.
-- Keep: the ad's own markup (made in the ad screen); option lists of a select (one `<option>` per row, drawn as one control).
+## Shop?
+- Catalog detail (CB6a, #9849, #9871): payment methods drawn true; price block and variant picker drawn true ([[catalog-detail-variant-price-blocks]]); recipient picker keeps children.
+- Catalog (CB6b, #9890, [[catalog-listing-open-blocks]]): `group_tree`, `filters_offcanvas`, legacy `attribute_filters` drawn true.
+- Cart (CB6c, #9901, [[cart-open-blocks]]): `applied_offers`, `quick_add`, `pending_offers` drawn true.
+- Order preview (CB6d, #9920, #9966): offers, gift cards, recurring payments and recipients trees; installments drawn true ([[checkout-open-blocks]], [[checkout-open-recipients]]).
+- My Account (CB6e, #10002, #10163): order history, bookings, subscriptions, store credit trees ([[account-order-open-blocks]], [[account-subscription-credit-open-blocks]]). Order view: return actions are the return moves part (W16).
+
+## Booking and calendar?
+- Booking (CB8, #9918, [[booking-widget-open-parts]]): the five steps and the details form are element trees; the six parts `pg_booking.js` fills drawn true.
+- Calendar (CB9, #9932; CB9b, #9981, [[calendar-widgets-open-slots]]): `month_grid` converts to the grid lists; `calendar_picker` and the event's `reserve_form` drawn true.
+
+## What stays closed, and why?
+- A form's own answers: `billing_form`, `custom_shipping_form`, `custom_billing_form`, `__ship_to_form_html`, `__line_forms_html`, drawn as their form draws them.
+- A section's forms with their token: `__subscription_actions_html`, `store_credit_convert` (the points form).
+- A select's option list (`__return_reason_options_html`, `__field_options_html`, `__schedule_period_options_html`): one control.
+- The ad's own markup (`__ad_content_html`, `__ad_caption_html`, made in the ad screen); operator rich text is content.
+- Drawn per visitor by other code: the booking calendar's date control, the deposit payment box.
+- No step took up: `verified_addresses`, `recipient_items`, `recurring_schedule` (own memory files), the express order's legacy `eo_*` blocks (the starter uses `eo_field` controls).

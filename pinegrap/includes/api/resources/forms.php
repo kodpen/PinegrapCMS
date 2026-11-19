@@ -44,6 +44,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 // The condition that keeps a query to the forms an owner may open, on the
 // column that holds the form's page id; empty from the manager role up, which
 // opens every form. Below that the submitted-form screens open a form only
@@ -420,6 +422,14 @@ function api_form_field_present($row, $options = array()) {
 	$field['html_allowed'] = $rich ? api_form_html_allowed(defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '') : null;
 	$field['max_length']   = $rich ? api_form_html_max_length() : null;
 
+	// A collection field's kind (pg_coll_kinds(): number, image, reference,
+	// product, page, slug, rows), null on a plain field; a rows field names
+	// the collection its rows are records of.
+	$kind = isset($row['kind']) ? (string)$row['kind'] : '';
+
+	$field['kind']          = ($kind !== '') ? $kind : null;
+	$field['child_form_id'] = (($kind === 'rows') && !empty($row['child_form_id'])) ? (int)$row['child_form_id'] : null;
+
 	return $field;
 
 }
@@ -689,11 +699,20 @@ function api_form_fields_present($id) {
 
 	}
 
+	$kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds($id) : array();
+
 	$fields = array();
 
 	foreach ($field_rows as $field_row) {
 
 		$key = (int)$field_row['id'];
+
+		if (isset($kinds[$key])) {
+
+			$field_row['kind']          = $kinds[$key]['kind'];
+			$field_row['child_form_id'] = $kinds[$key]['reference_page_id'];
+
+		}
 
 		$fields[] = api_form_field_present($field_row, isset($options[$key]) ? $options[$key] : array());
 
@@ -744,6 +763,179 @@ function api_form_submission_values($ids) {
 	}
 
 	return $values;
+
+}
+
+// The values of one record with what a rows field keeps (pure): every item
+// gets codes, the reference codes of a rows field's rows in order (null on
+// any other field), and rows, the rows themselves as api_form_row_present()
+// gives them where $rows (field id => rows) carries the field, else an empty
+// list. A list read gives the codes; a single record's read the rows too.
+//
+// $kinds  pg_coll_field_kinds() of the record's form
+function api_form_values_rows($values, $kinds, $rows = null) {
+
+	foreach ($values as $i => $value) {
+
+		$field_id = (int)$value['field_id'];
+
+		$is_rows = pg_coll_is_rows_field($field_id, $kinds);
+
+		$values[$i]['codes'] = $is_rows ? pg_coll_rows_codes($value['value']) : null;
+
+		$values[$i]['rows'] = ($is_rows && is_array($rows) && isset($rows[$field_id])) ? array_values($rows[$field_id]) : array();
+
+	}
+
+	return $values;
+
+}
+
+// One row of a rows field (pure): its record id, reference code and values
+// in the child form's field order, one item a value as a record's values
+// are read (a check box group gives one per choice). A file or a signature
+// is read on the row's own record (GET /forms/{child}/submissions/{id}).
+//
+// $row           pg_coll_rows_of(): id, reference_code, values (field id => value or list)
+// $child_fields  pg_coll_rows_child()'s fields: id, name, label, type
+function api_form_row_present($row, $child_fields) {
+
+	$values = array();
+
+	foreach ((array)$child_fields as $field) {
+
+		$field_id = (int)$field['id'];
+
+		if (!array_key_exists($field_id, $row['values']) || in_array((string)$field['type'], api_form_unsendable_field_types(), true)) {
+
+			continue;
+
+		}
+
+		foreach ((array)$row['values'][$field_id] as $one) {
+
+			$values[] = array(
+				'field_id' => $field_id,
+				'name'     => (string)$field['name'],
+				'label'    => (string)$field['label'],
+				'type'     => (string)$field['type'],
+				'value'    => api_form_value_out($one)
+			);
+
+		}
+
+	}
+
+	return array(
+		'id'             => (int)$row['id'],
+		'reference_code' => (string)$row['reference_code'],
+		'values'         => $values
+	);
+
+}
+
+// Whether the owner may open the child form of a rows field: $reach is
+// api_form_owner_filter() on page.page_id, '' from the manager role up and
+// '0' for an owner with no folder (neither reads the database).
+function api_form_child_in_reach($child_page_id, $reach) {
+
+	$child_page_id = (int)$child_page_id;
+
+	if ($child_page_id <= 0 || $reach === '0') {
+
+		return false;
+
+	}
+
+	if ($reach === '') {
+
+		return true;
+
+	}
+
+	return api_row("SELECT page.page_id FROM page WHERE page.page_id = '" . $child_page_id . "' AND " . $reach . " LIMIT 1") !== null;
+
+}
+
+// A record's values as the API gives them: with the codes of its rows
+// fields, and on a single record's read ($single) their rows in order. A
+// rows field whose child form is outside the owner's folders keeps its codes
+// and gives no rows, as a direct read of those records is answered 404.
+function api_form_submission_values_out($row, $values, $single, $owner) {
+
+	$kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds((int)$row['page_id']) : array();
+
+	$reach = api_form_owner_filter($owner, 'page.page_id');
+
+	$rows = array();
+
+	foreach ($kinds as $field_id => $kind) {
+
+		if (!$single || ($kind['kind'] !== 'rows') || !api_form_child_in_reach($kind['reference_page_id'], $reach)) {
+
+			continue;
+
+		}
+
+		$child = pg_coll_rows_child($kind['reference_page_id']);
+
+		$rows[$field_id] = array();
+
+		foreach (pg_coll_rows_of((int)$row['id'], $field_id, $kind['reference_page_id']) as $one) {
+
+			$rows[$field_id][] = api_form_row_present($one, is_array($child) ? $child['fields'] : array());
+
+		}
+
+	}
+
+	return api_form_values_rows($values, $kinds, $rows);
+
+}
+
+// Why a written value of a rows field cannot be kept, '' when every one can
+// (pg_coll_rows_outside_refusal()): only codes of the child collection's
+// records that stand in no other record's list.
+//
+// $answers  field id => the value to write
+// $names    field id => the field's name
+// $form_id  the record written, 0 for a new one
+// $owner    the key's owner: a rows field whose child form is outside its
+//           folders is refused before any code is looked up, so the answer
+//           says nothing about the records of a form it cannot open
+function api_form_rows_refusal($answers, $names, $page_id, $form_id, $owner) {
+
+	$kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds((int)$page_id) : array();
+
+	$reach = api_form_owner_filter($owner, 'page.page_id');
+
+	foreach ($answers as $field_id => $value) {
+
+		if (!pg_coll_is_rows_field($field_id, $kinds)) {
+
+			continue;
+
+		}
+
+		$name = isset($names[$field_id]) ? $names[$field_id] : '';
+
+		if (!api_form_child_in_reach($kinds[(int)$field_id]['reference_page_id'], $reach)) {
+
+			return lang(array('string' => 'The field {var:1} keeps rows of a form you cannot open, so it cannot be changed through the API.', 'vars' => (string)$name));
+
+		}
+
+		$refusal = pg_coll_rows_outside_refusal($value, $kinds[(int)$field_id]['reference_page_id'], $form_id, $field_id, $name);
+
+		if ($refusal !== '') {
+
+			return $refusal;
+
+		}
+
+	}
+
+	return '';
 
 }
 
@@ -798,17 +990,14 @@ function api_form_submissions($params) {
 
 	}
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// Oldest first by the submission's id; sort=newest walks it the other way.
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "forms.id > '" . $cursor['i'] . "'";
+		$where[] = api_list_keyset_sql('', 'forms.id', $cursor, $descending);
 
 	}
 
@@ -816,7 +1005,7 @@ function api_form_submissions($params) {
 
 	$rows = api_rows(api_form_submission_select() . "
 		WHERE " . implode(' AND ', $where) . "
-		ORDER BY forms.id ASC
+		ORDER BY " . api_list_order_sql('', 'forms.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -851,7 +1040,7 @@ function api_form_submissions($params) {
 
 		$row['record_url'] = api_form_submission_url($row);
 
-		$out[] = api_form_submission_present($row, isset($values[$key]) ? $values[$key] : array());
+		$out[] = api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$key]) ? $values[$key] : array(), false, $app['owner']));
 
 	}
 
@@ -861,7 +1050,7 @@ function api_form_submissions($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode((int)$last['id'], (int)$last['id']);
+		$next_cursor = api_list_cursor_encode((int)$last['id'], (int)$last['id'], $descending);
 
 	}
 
@@ -932,11 +1121,13 @@ function api_form_submission_owned($form_id, $submission_id) {
 
 function api_form_submission_get($params) {
 
+	$app = api_current_app();
+
 	$row = api_form_submission_owned($params['id'], $params['submission_id']);
 
 	$values = api_form_submission_values(array($row['id']));
 
-	api_ok(api_form_submission_present($row, isset($values[(int)$row['id']]) ? $values[(int)$row['id']] : array()));
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$row['id']]) ? $values[(int)$row['id']] : array(), true, $app['owner'])));
 
 }
 
@@ -1062,6 +1253,28 @@ function api_form_submission_update($params) {
 
 	}
 
+	// A rows field takes only codes of its child collection's records that
+	// stand in no other record's list (its own list may stay).
+	$rows_answers = array();
+
+	$rows_names = array();
+
+	foreach ($writes as $field_id => $write) {
+
+		$rows_answers[$field_id] = $write['value'];
+
+		$rows_names[$field_id] = $write['name'];
+
+	}
+
+	$refusal = api_form_rows_refusal($rows_answers, $rows_names, (int)$row['page_id'], $id, $app['owner']);
+
+	if ($refusal !== '') {
+
+		api_fail_validation($refusal, 'values');
+
+	}
+
 	api_dry_run_stop('updated', 'form_submission', array('id' => $id, 'values' => count($writes)));
 
 	// The item as it was, for its revision (collection items only;
@@ -1128,7 +1341,7 @@ function api_form_submission_update($params) {
 
 	$values = api_form_submission_values(array($id));
 
-	api_ok(api_form_submission_present($row, isset($values[$id]) ? $values[$id] : array()));
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$id]) ? $values[$id] : array(), true, $app['owner'])));
 
 }
 
@@ -1193,7 +1406,7 @@ function api_form_revision_schema() {
 		'address_name'    => 'string?',
 		'complete'        => 'boolean',
 		'current'         => 'boolean',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer'
 	);
 
@@ -1499,7 +1712,7 @@ function api_form_submission_revision_restore($params) {
 	$current = api_form_submission_values(array($id));
 
 	api_ok(array(
-		'submission'    => api_form_submission_present($row, isset($current[$id]) ? $current[$id] : array()),
+		'submission'    => api_form_submission_present($row, api_form_submission_values_out($row, isset($current[$id]) ? $current[$id] : array(), true, $app['owner'])),
 		'restored_from' => (int)$revision['revision_no'],
 		'revision_no'   => ($revision_no > 0) ? (int)$revision_no : null,
 		'changed'       => $changed,
@@ -1789,6 +2002,24 @@ function api_form_submission_create($params) {
 
 	}
 
+	// A rows field takes only codes of its child collection's records that
+	// stand in no record's list: a new record takes over no record's rows.
+	$field_names = array();
+
+	foreach ($fields as $field) {
+
+		$field_names[(int)$field['id']] = (string)$field['name'];
+
+	}
+
+	$refusal = api_form_rows_refusal($answers, $field_names, $id, 0, $app['owner']);
+
+	if ($refusal !== '') {
+
+		api_fail_validation($refusal, 'values');
+
+	}
+
 	$complete = array_key_exists('complete', $params) ? (bool)$params['complete'] : true;
 
 	// The record's author: the owner of the key, or a member of staff named
@@ -1902,7 +2133,7 @@ function api_form_submission_create($params) {
 
 	$values = api_form_submission_values(array($created['id']));
 
-	api_ok(api_form_submission_present($row, isset($values[(int)$created['id']]) ? $values[(int)$created['id']] : array()), 201);
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$created['id']]) ? $values[(int)$created['id']] : array(), true, $app['owner'])), 201);
 
 }
 
@@ -1949,7 +2180,7 @@ function api_form_schema() {
 		'title'              => 'string',
 		'field_count'        => 'integer',
 		'submission_count'   => 'integer',
-		'last_submission_at' => 'string?',
+		'last_submission_at' => 'datetime?',
 		'fields'             => 'FormField[]',
 		'framework'          => 'string',
 		'is_collection'      => 'boolean',
@@ -1980,7 +2211,9 @@ function api_form_field_schema() {
 		)),
 		'rich_text'       => 'boolean',
 		'html_allowed'    => 'FormHtmlAllowed?',
-		'max_length'      => 'integer?'
+		'max_length'      => 'integer?',
+		'kind'            => 'string?',
+		'child_form_id'   => 'integer?'
 	);
 
 }
@@ -2013,9 +2246,9 @@ function api_form_submission_schema() {
 		'complete'          => 'boolean',
 		'contact_id'        => 'integer?',
 		'quiz_score'        => 'integer?',
-		'submitted_at'      => 'string?',
+		'submitted_at'      => 'datetime?',
 		'submitted_at_unix' => 'integer',
-		'updated_at'        => 'string?',
+		'updated_at'        => 'datetime?',
 		'order_number'      => 'string?',
 		'paid'              => 'boolean?',
 		'url'               => 'string?',
@@ -2025,7 +2258,19 @@ function api_form_submission_schema() {
 			'label'    => 'string?',
 			'type'     => 'string?',
 			'value'    => 'string',
-			'file_id'  => 'integer?'
+			'file_id'  => 'integer?',
+			'codes'    => 'string[]?',
+			'rows'     => array(array(
+				'id'             => 'integer',
+				'reference_code' => 'string',
+				'values'         => array(array(
+					'field_id' => 'integer',
+					'name'     => 'string',
+					'label'    => 'string',
+					'type'     => 'string',
+					'value'    => 'string'
+				))
+			))
 		))
 	);
 

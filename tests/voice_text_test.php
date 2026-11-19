@@ -200,7 +200,7 @@ function test_voice_text_sits_in_the_players_row_when_placed()
 		pg_assert_true($result['open'], 'the box shows from the click on');
 	}
 
-	pg_assert_contains('window.PGVoiceText.control(file.url, t, locale, { into: box, before: save })', voice_text_test_source('assets/js/workspace_voice.js'), 'the Workspace player places it before its download link');
+	pg_assert_contains('window.PGVoiceText.control(file.url, t, locale, { into: tools, before: save })', voice_text_test_source('assets/js/workspace_voice.js'), 'the Workspace player places it in its button group, before its download link');
 }
 
 // The Workspace player offers it only without a server transcript; the

@@ -174,6 +174,6 @@ function test_api_price_history_object_is_declared()
 
 	$schema = api_price_history_entry_schema();
 
-	pg_assert_same('string?', $schema['changed_at'], 'null only for a stamp of zero, which api_time() answers null');
+	pg_assert_same('datetime?', $schema['changed_at'], 'null only for a stamp of zero, which api_time() answers null');
 	pg_assert_same('integer', $schema['price']);
 }

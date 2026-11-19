@@ -12,4 +12,5 @@ description: Plan collection-rows, features R13 to R19: the API, the other write
 - (R15) A rows control draws nothing on a site form until RW5 and three sample lines on the canvas (PHP and JS twins).
 - (R16) From RW5 a form a visitor or member fills in draws the same editor in the site's markup; the rows are written by the same writer after the record is saved, within a bound on the request's size.
 - (R17) A list's dynamic value "Rows of the shown record" (with the rows field picked) lists the child records whose code the shown record's field holds, in the field's order; server and editor offer the same values (the twin test).
+  - Architect (2026-11-16, agent channel message 6023): "picked" is met by a typed name, as a URL parameter's is; R18's button writes it, and a name that names no Rows field leaves the list empty. A choice among the shown record's Rows fields is not RW6's work.
 - (R18) On a record page the designer's "Rows of this record" adds a list already set up that way.
