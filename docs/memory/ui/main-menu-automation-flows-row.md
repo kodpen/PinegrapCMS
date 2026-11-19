@@ -4,7 +4,7 @@ description: Main menu row 26, Automation flows (#9169): its place at the top, i
 ---
 
 ## Where does the row sit?
-- Slot 26, the next free one, in the untitled block of `pg_menu_categories()`: Dashboard 0, Automation flows 26, Workspace 23, My Notes 24. Owner (2026-11-12, #8961, `workflow/decisions-made-workspace-20.md`): at the top between the Dashboard and the Workspace, named "Otomasyon akışları" (key `Automation flows`).
+- Slot 26, the next free one, in the untitled block of `pg_menu_categories()`: Dashboard 0, Automation flows 26, Workspace 23, My Notes 24, pinned Incoming e-mail 27. Owner (2026-11-12, #8961, `workflow/decisions-made-workspace-20.md`): at the top between the Dashboard and the Workspace, named "Otomasyon akışları" (key `Automation flows`).
 - One screen, `workspace_flows.php`, so no panel. The Workspace list keeps its link to it, labelled Automation flows, the tile's short name Flows.
 
 ## Who gets it?

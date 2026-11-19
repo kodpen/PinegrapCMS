@@ -7488,6 +7488,22 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    the drawn one goes at full strength to the pointer. */
 .sd-proto .pgc-edges.sd-proto-drawing .pgc-edge { opacity: .2; }
 .sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp { stroke: var(--sd-accent); stroke-width: 3; stroke-dasharray: none; opacity: 1; }
+/* An arrow's leg inside its frame (_sdProtoLegs()): from the middle of its
+   link's mark to where the arrow leaves the frame's edge, a dot on the
+   mark; in the arrow's colour, lifted and faded with it. */
+.sd-proto-legs { position: absolute; z-index: 1; overflow: visible; pointer-events: none; }
+.sd-proto-leg-line { stroke: var(--pgc-line); stroke-width: 2; }
+.sd-proto-leg-dot { fill: var(--pgc-line); }
+.sd-proto-leg-out .sd-proto-leg-line { stroke: var(--pgc-accent); }
+.sd-proto-leg-out .sd-proto-leg-dot { fill: var(--pgc-accent); }
+.sd-proto-leg-in .sd-proto-leg-line { stroke: var(--pgc-in); stroke-dasharray: 6 4; }
+.sd-proto-leg-in .sd-proto-leg-dot { fill: var(--pgc-in); }
+.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-line { stroke: #ff6b6b; stroke-dasharray: 6 4; }
+.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-dot { fill: #ff6b6b; }
+.sd-proto-leg-faint { opacity: var(--pgc-faint, .3); }
+.sd-proto .pgc-boxes.sd-proto-lifting .sd-proto-leg:not(.sd-proto-leg-lift) { opacity: .25; }
+.sd-proto .sd-proto-leg.sd-proto-leg-lift .sd-proto-leg-line { stroke-width: 3; }
+.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-leg { opacity: .2; }
 .sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
 .sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Section headings (groups()), read at the zoom a large design fits at. */

@@ -1402,6 +1402,24 @@
         return { x: round2(x), y: side === 'bottom' ? h : 0, side: side };
     }
 
+    // The leg of an arrow inside its frame: from the middle of its link's
+    // mark (`rect`, picRects()) to its port on the frame's edge (`port`,
+    // markPort()), in frame units from the frame's top left. The core
+    // routes from the edge only, so the view draws this part itself. null
+    // when the link has no mark on the picture (the foot, no picture yet).
+    function markLeg(rect, port) {
+        if (!isObject(rect) || !isObject(port)) {
+            return null;
+        }
+
+        return {
+            x1: round2(FRAME.pic.x + (Number(rect.x) || 0) + (Number(rect.w) || 0) / 2),
+            y1: round2(FRAME.head + FRAME.pic.y + (Number(rect.y) || 0) + (Number(rect.h) || 0) / 2),
+            x2: round2(Number(port.x) || 0),
+            y2: round2(Number(port.y) || 0)
+        };
+    }
+
     // The attributes of a picture's frame: only `allow-same-origin`, so the
     // view reads its document and no script of it runs; it takes no focus
     // and no pointer and says nothing to a screen reader (the rows list the
@@ -2305,6 +2323,7 @@
         picRects: picRects,
         picPartBox: picPartBox,
         markPort: markPort,
+        markLeg: markLeg,
         markState: markState,
         picOrder: picOrder,
         picRefill: picRefill,

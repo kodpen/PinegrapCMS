@@ -84,7 +84,7 @@ function test_automation_flows_menu_row_has_its_own_slot_at_the_top()
 {
 	$categories = pg_menu_categories();
 
-	pg_assert_same(array(0, 26, 23, 24), $categories['']['slots'], 'between the Dashboard and the Workspace, under no heading');
+	pg_assert_same(array(0, 26, 23, 24, 27), $categories['']['slots'], 'between the Dashboard and the Workspace, under no heading; a pinned Incoming e-mail last');
 
 	$layout = pg_menu_layout(array(25, 23, 0, 26, 2), $categories);
 

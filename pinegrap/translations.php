@@ -639,8 +639,8 @@ if ($total_pages > 1) {
 }
 
 // Recent jobs, each with what it covered: the whole site, a group of the
-// list (the catalog, the forms, the cookie window), one page by its name, or
-// the records of a form a record save opened a job for.
+// list (the catalog, the forms, the cookie window), one page by its name, the
+// records of a form a record save opened a job for, or a picture's texts.
 $output_jobs = '';
 $job_groups = pg_tr_owner_groups();
 $job_page_names = array();
@@ -661,6 +661,10 @@ foreach ($jobs as $job) {
     } elseif (preg_match('/^records:\d+$/', (string) $job['scope'])) {
         // Opened by a record save (pg_tr_records_saved()).
         $job_scope = $job_groups['forms']['label'];
+    } elseif (preg_match('/^file:\d+$/', (string) $job['scope']) && isset($job_groups['pictures'])) {
+        // A picture's texts, opened by its save or a page save
+        // (pg_picture_tr_texts_jobs()).
+        $job_scope = $job_groups['pictures']['label'];
     }
 
     $output_jobs .= '<div class="d-flex align-items-center gap-3 py-3 border-top small" data-job-id="' . (int) $job['id'] . '">'

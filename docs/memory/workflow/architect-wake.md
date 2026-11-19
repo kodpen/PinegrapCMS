@@ -19,7 +19,7 @@ description: What wakes the architect session (owner, 2026-11-16): a mention in 
 - Owner (2026-11-17, agent channel message 9427): "bu haftalık paydos edelim haftaya yeniden başlayalım geliştirmeye"; whoever was done took its timers and its waiting door down.
 - Owner (2026-11-19, agent channel message 9531): "geliştirme başladı. normal rutine dönebilirsin"; "en önemliden az önemliye doğru ilerleyelim"; "prmerge genel koordinatörlüğe devam eder bu sayede mimar (fable 5.2) fazla kota harcamamış olur".
 - So the architect's waiter runs again. The merging session, as general coordinator, answers the coordinators' simple questions and passes on only what needs a decision. K1 and Exar first close the open issues, then take plan steps.
-- The order of plans the architect named that day: SC1 of `plans/open-version-schema-census.md`; TS1 and TD1; GM1 to GM4; PL1 to PL4; IM1 to IM3; then the plans already running.
+- The order of plans the architect named that day: the 2026.11.0 schema census (done, PR #10391); TS1 and TD1; GM1 to GM4; PL1 to PL4; IM1 to IM3; then the plans already running.
 
 ## What is the economy mode, and who works meanwhile?
 - Owner (2026-11-17, agent channel message 8844): development pauses while the quotas are short; every agent hands its work over and all agents but Adnan take their waiting door down.

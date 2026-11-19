@@ -176,7 +176,9 @@ function ws_memory_entry_fault($entry, $now)
  * pinned first and then the newest, each as "- #id title [tags]" on one
  * line (no texts: the agent reads the entries it needs with
  * workspace.memory.get), then the newest WS_MEMORY_BRIEF_DECISIONS decision
- * lines and a line counting the older ones. A line that
+ * lines and a line counting the older ones. In an agent channel the
+ * general memory's index comes first, each line naming the record's
+ * project, inside the same size. A line that
  * no longer fits is left out whole, never cut, with every line after it,
  * and the count left out closes the digest so the agent knows to read the
  * rest. Pure.
@@ -187,34 +189,39 @@ function ws_memory_entry_fault($entry, $now)
  * @param int      $max       characters
  * @param int|null $decisions_total the channel's decisions, when $decisions
  *                                  holds only the newest; null counts $decisions
+ * @param array[]  $general   the general memory's records, as $entries plus project
  * @return string '' when there is nothing to tell
  */
-function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null)
+function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null, $general = array())
 {
     $given = count((array) $decisions);
     $decisions = array_slice(array_values((array) $decisions), 0, WS_MEMORY_BRIEF_DECISIONS);
     $older = max(0, (($decisions_total === null) ? $given : (int) $decisions_total) - count($decisions));
-    $live = array();
+    $live = function ($rows) use ($now) {
+        $out = array();
 
-    foreach ((array) $entries as $entry) {
-        $expires_at = (int) ($entry['expires_at'] ?? 0);
+        foreach ((array) $rows as $entry) {
+            $expires_at = (int) ($entry['expires_at'] ?? 0);
 
-        if (($expires_at === 0) || ($expires_at > (int) $now)) {
-            $live[] = $entry;
-        }
-    }
-
-    usort($live, function ($a, $b) {
-        $pinned = (int) !empty($b['pinned']) - (int) !empty($a['pinned']);
-
-        if ($pinned !== 0) {
-            return $pinned;
+            if (($expires_at === 0) || ($expires_at > (int) $now)) {
+                $out[] = $entry;
+            }
         }
 
-        $newer = (int) ($b['updated_at'] ?? 0) - (int) ($a['updated_at'] ?? 0);
+        usort($out, function ($a, $b) {
+            $pinned = (int) !empty($b['pinned']) - (int) !empty($a['pinned']);
 
-        return ($newer !== 0) ? $newer : ((int) ($b['id'] ?? 0) - (int) ($a['id'] ?? 0));
-    });
+            if ($pinned !== 0) {
+                return $pinned;
+            }
+
+            $newer = (int) ($b['updated_at'] ?? 0) - (int) ($a['updated_at'] ?? 0);
+
+            return ($newer !== 0) ? $newer : ((int) ($b['id'] ?? 0) - (int) ($a['id'] ?? 0));
+        });
+
+        return $out;
+    };
 
     $one_line = function ($text) {
         return trim(preg_replace('/\s+/u', ' ', (string) $text));
@@ -222,15 +229,18 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
 
     $sections = array();
 
-    foreach ($live as $entry) {
-        $tags = ws_memory_tags($entry['tags'] ?? array());
-        $line = '- #' . (int) ($entry['id'] ?? 0) . ' ' . $one_line($entry['title'] ?? '');
+    foreach (array('general' => $general, 'memory' => $entries) as $key => $rows) {
+        foreach ($live($rows) as $entry) {
+            $tags = ws_memory_tags($entry['tags'] ?? array());
+            $project = ws_memory_project($entry['project'] ?? '');
+            $line = '- #' . (int) ($entry['id'] ?? 0) . ' ' . (($key === 'general') && ($project !== '') ? $one_line($project) . ': ' : '') . $one_line($entry['title'] ?? '');
 
-        if ($tags) {
-            $line .= ' [' . implode(', ', $tags) . ']';
+            if ($tags) {
+                $line .= ' [' . implode(', ', $tags) . ']';
+            }
+
+            $sections[$key][] = $line;
         }
-
-        $sections['memory'][] = $line;
     }
 
     foreach ($decisions as $decision) {
@@ -246,12 +256,14 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
     }
 
     $headings = array(
+        'general'   => 'General memory, shared by the agent channels (read an entry with workspace.memory.get, its id without the #):',
         'memory'    => 'Channel memory (read an entry with workspace.memory.get, its id without the #):',
         'decisions' => 'Decisions in this channel:',
     );
     $out = array();
     $used = 0;
     $left = 0;
+    $left_general = false;
     $full = false;
 
     foreach ($headings as $key => $heading) {
@@ -269,6 +281,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
             if ($full || ($used + $cost > $max)) {
                 $full = true;
                 $left++;
+                $left_general = $left_general || ($key === 'general');
                 continue;
             }
 
@@ -284,7 +297,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
     // One count closes the digest: the lines the size left out and the
     // older decisions together, or the older decisions alone.
     if ($left > 0) {
-        $out[] = '(' . ($left + $older) . ' more not shown: list them with workspace.memory.list and workspace.decisions.list.)';
+        $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and workspace.decisions.list.)';
     } elseif ($older > 0) {
         $out[] = '(' . $older . ' older decisions not shown: list them with workspace.decisions.list.)';
     }
@@ -730,6 +743,76 @@ function ws_memory_delete($viewer, $row)
 }
 
 /**
+ * Why a channel's record may not move to the general memory, '' when it
+ * may: a record of an agent channel, moved by whoever may post in that
+ * channel and keeps the general memory. Pure.
+ *
+ * @param array|null $row         ws_channel_memory
+ * @param array|null $channel     the record's channel
+ * @param bool       $can_post    the mover may post in the channel
+ * @param bool       $can_general the mover keeps the general memory
+ * @return array|null error, forbidden; null when the move may go
+ */
+function ws_memory_move_fault($row, $channel, $can_post, $can_general)
+{
+    if (!is_array($row) || ws_memory_is_general($row)) {
+        return array('error' => lang('This entry is in the general memory already.'), 'forbidden' => false);
+    }
+
+    if (!$can_post) {
+        return array('error' => lang('You cannot post in that channel.'), 'forbidden' => true);
+    }
+
+    if (!ws_agent_channel_is($channel)) {
+        return array('error' => lang('Only an agent channel\'s entries move to the general memory.'), 'forbidden' => false);
+    }
+
+    if (!$can_general) {
+        return array('error' => lang('The general memory is kept by whoever may post in an agent channel.'), 'forbidden' => true);
+    }
+
+    return null;
+}
+
+/**
+ * Checks moving a channel's record to the general memory.
+ *
+ * @param array $viewer
+ * @param array $row ws_channel_memory
+ * @return array ok, error, forbidden, unavailable (the database not updated yet)
+ */
+function ws_memory_move_check($viewer, $row)
+{
+    if (!ws_memory_project_ready() || !function_exists('ws_agent_channel_ready') || !ws_agent_channel_ready()) {
+        return array('ok' => false, 'error' => lang('The database has to be updated first.'), 'forbidden' => false, 'unavailable' => true);
+    }
+
+    $channel = is_array($row) && !ws_memory_is_general($row) ? ws_channel($row['channel_id']) : null;
+    $fault = ws_memory_move_fault($row, $channel, is_array($channel) && ws_can_post_channel($viewer, $channel), ws_memory_general_can($viewer));
+
+    return $fault ? array('ok' => false, 'unavailable' => false) + $fault : array('ok' => true, 'error' => '', 'forbidden' => false, 'unavailable' => false);
+}
+
+/**
+ * Moves a record checked by ws_memory_move_check() to the general memory:
+ * the same id, project, tags and text, in no channel.
+ *
+ * @param array  $row  ws_channel_memory
+ * @param string $kind user | app: who moves it
+ * @param int    $id   their user or application id
+ * @return void
+ */
+function ws_memory_move_general($row, $kind, $id)
+{
+    db("UPDATE ws_channel_memory SET
+        channel_id = 0,
+        updated_by_kind = '" . (($kind === 'app') ? 'app' : 'user') . "',
+        updated_by_id = '" . (int) $id . "',
+        updated_at = '" . time() . "'
+        WHERE id = '" . (int) $row['id'] . "'");
+}
+
+/**
  * Deletes the entries expired more than 30 days ago and those of channels
  * that are gone (a discussion deleted with what was said in it). A general
  * record (channel_id 0) has no channel to lose: only its expiry ends it.
@@ -756,9 +839,10 @@ function ws_memory_sweep($limit = 500)
 }
 
 /**
- * The memory part of an agent's brief for a channel: the index of its live
- * entries and its decision lines (ws_memory_digest()), the text as the
- * asker reads it.
+ * The memory part of an agent's brief for a channel: in an agent channel the
+ * index of the general memory first (for an asker who keeps it), then the
+ * index of its live entries and its decision lines (ws_memory_digest()),
+ * the text as the asker reads it.
  *
  * @param array $viewer
  * @param array $channel
@@ -790,7 +874,22 @@ function ws_memory_brief($viewer, $channel)
         $total += $answered['total'];
     }
 
-    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total);
+    $general = ws_memory_brief_general($viewer, $channel) ? ws_memory_rows(0, false) : array();
+
+    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total, $general);
+}
+
+/**
+ * Whether a brief asked in this channel carries the general memory's index:
+ * an agent channel, asked by someone who keeps the general memory.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return bool
+ */
+function ws_memory_brief_general($viewer, $channel)
+{
+    return function_exists('ws_agent_channel_is') && ws_agent_channel_is($channel) && ws_memory_general_can($viewer);
 }
 
 /**

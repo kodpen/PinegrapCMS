@@ -746,6 +746,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - commerce/back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
+- commerce/booking-deposit-late-payment.md: A booking deposit paid after its hold ran out (#10378): booked again under the staff lock while free, else an open request, deposit awaiting refund, honest widget text
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - commerce/cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
@@ -789,7 +790,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions
 - core/passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one
 - core/php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
-- core/picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, built in #10028 to #10269): what it does, the decisions that bind it, what the first version leaves out and why, which file holds each part
+- core/picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, built in #10028 to #10269): what it does, its binding decisions, what the first version leaves out and why, where each part is
 - core/picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw and the 70% fit floor
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
 - core/picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
@@ -926,7 +927,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - release/released-vs-open-version.md: Released versions are closed, the unreleased one open: where the status is, how the upgrade loop compares, no new number while one is open, schema the open version gave up is taken out
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
-- ui/area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab whatever the screen's width (owner 2026-11-19, poll 153); Communication since TS1; how, and the notices under it
+- ui/area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - ui/bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn
 - ui/bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees
@@ -983,6 +984,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 - ui/main-menu-communication-icon.md: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced
+- ui/main-menu-mail-row.md: Incoming e-mail pinned to a person's own main menu (IM1, #10408): the tab's Pin to main menu, ws_profiles.mail_pinned, row 27 under the Workspace, its gate, badge and icon
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
 - ui/messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add
@@ -1159,7 +1161,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace/workspace-channel-decision-fold.md: A decision longer than about eight lines on a channel's Decisions tab is folded behind Show more / Show less (foldLong() in workspace.js, TD1)
 - workspace/workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
-- workspace/workspace-channel-files-tab.md: A channel's Files tab (drawFiles() in workspace.js): the groups it draws, the gallery drawn 60 pictures a page, the files count on the tab, and the one-line file row
+- workspace/workspace-channel-files-tab.md: A channel's Files tab (drawFiles() in workspace.js): its groups, the gallery of 320 px copies 60 at a time, the server's pages of 200 files, the count on the tab, the file row
 - workspace/workspace-channel-head.md: The channel header in one line (C1 of workspace-channel-screen.md, tour #6281): name and tags, people, search, info, task, tour, menu; a phone keeps back, name, ⋯; the purpose in the info panel
 - workspace/workspace-channel-identity-motion.md: Workspace channel shell as one card in the channel colour (wash, pill tabs), day chip, writing box card (CL1 #8678); group colour chips; send pop, bounce, slide-in (#2094)
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text

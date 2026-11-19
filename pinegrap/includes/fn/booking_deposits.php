@@ -9,8 +9,10 @@
  * points at the order (bookings.order_id); the order carries nothing.
  * bookings.paid_at is written once, when the order itself is paid, from
  * pg_order_complete() and pg_order_mark_paid(), and the booking confirms
- * then. An offline payment ("paid on arrival") completes the order with
- * paid_at 0, so it marks nothing.
+ * then. A payment that arrives after the hold ran out books the time again
+ * while it is free; when it is gone the booking waits as a request and its
+ * deposit awaits a refund, made by hand. An offline payment ("paid on
+ * arrival") completes the order with paid_at 0, so it marks nothing.
  *
  * Everything reads behind pg_booking_deposit_ready(): files land before the
  * 2026.11.0 upgrade (11.0.169) adds the columns.
@@ -194,25 +196,85 @@ function pg_booking_deposit_order_write($booking_id)
 }
 
 /**
- * The statement that marks the booking of a paid deposit order paid and
- * confirms it. Pure. paid_at is written once and only when the order itself
- * is paid (orders.paid_at > 0, as pg_form_payment_mark_paid_query()).
+ * Whether a booking's hold ran out before its deposit was paid. Pure. Either
+ * a held row past its hold_until, or a hold cancelled to give its time back
+ * (pg_booking_clear_expired_hold() when another visitor books the start,
+ * pg_booking_release_session_hold() on Back): those keep their hold_until,
+ * while a booking cancelled by staff, the customer or an erasure has 0 there.
  *
- * A booking still waiting (held, or requested) is confirmed when its hold
- * has not run out (hold_until 0 or not past): its slot is still its own. A
- * hold that ran out before the payment arrived may have lost its time to
- * another booking, so it becomes requested and staff decide. A cancelled,
- * no-show or done booking keeps its status and only records the payment.
- *
- * @param int $order_id
- * @param int $now
- * @return array|null sql, params; null for no order
+ * @param array $row bookings row: status, hold_until
+ * @param int   $now
+ * @return bool
  */
-function pg_booking_deposit_mark_paid_query($order_id, $now)
+function pg_booking_deposit_lapsed($row, $now)
+{
+    $row = is_array($row) ? $row : array();
+    $status = (string) ($row['status'] ?? '');
+    $until = (int) ($row['hold_until'] ?? 0);
+
+    if ($status === 'held') {
+        return ($until > 0) && ($until < (int) $now);
+    }
+
+    return ($status === 'cancelled') && ($until > 0);
+}
+
+/**
+ * What a deposit's payment does to its booking. Pure.
+ *
+ * - confirm: a hold that still lives, or a request (paid on arrival), is
+ *   confirmed: its slot is still its own.
+ * - rebook: a hold that ran out (pg_booking_deposit_lapsed()) while its time
+ *   is still free is booked again, confirmed.
+ * - lost: a hold that ran out whose time is gone becomes an open request
+ *   without a slot; its deposit awaits a refund, made by hand.
+ * - record: a confirmed, cancelled, no-show or done booking only records
+ *   the payment.
+ *
+ * @param array $row  bookings row: status, hold_until
+ * @param int   $now
+ * @param bool  $free whether the time is still free; read for a lapsed hold
+ * @return string confirm, rebook, lost or record
+ */
+function pg_booking_deposit_outcome($row, $now, $free)
+{
+    if (pg_booking_deposit_lapsed($row, $now)) {
+        return $free ? 'rebook' : 'lost';
+    }
+
+    $status = is_array($row) ? (string) ($row['status'] ?? '') : '';
+
+    return in_array($status, array('held', 'requested'), true) ? 'confirm' : 'record';
+}
+
+/**
+ * The statement that marks the booking of a paid deposit order paid, with
+ * what pg_booking_deposit_outcome() decided. Pure. paid_at is written once
+ * and only when the order itself is paid (orders.paid_at > 0, as
+ * pg_form_payment_mark_paid_query()); the row must still have the status it
+ * was read with.
+ *
+ * A booking booked again takes its slot back (slot_at = start_at, refused
+ * by the unique key when another row sits on the start); a lost one stays
+ * off the slot as a request.
+ *
+ * @param int    $order_id
+ * @param string $from     the booking's status when it was read
+ * @param string $outcome  confirm, rebook, lost or record
+ * @param int    $now
+ * @return array|null sql, params; null for no order or an unknown outcome
+ */
+function pg_booking_deposit_mark_paid_query($order_id, $from, $outcome, $now)
 {
     $order_id = (int) $order_id;
+    $sets = array(
+        'confirm' => "bookings.status = 'confirmed', ",
+        'rebook'  => "bookings.status = 'confirmed', bookings.slot_at = bookings.start_at, ",
+        'lost'    => "bookings.status = 'requested', bookings.slot_at = NULL, ",
+        'record'  => '',
+    );
 
-    if ($order_id <= 0) {
+    if (($order_id <= 0) || !isset($sets[(string) $outcome])) {
         return null;
     }
 
@@ -220,20 +282,17 @@ function pg_booking_deposit_mark_paid_query($order_id, $now)
 
     return array(
         'sql'    => 'UPDATE bookings INNER JOIN orders ON orders.id = bookings.order_id'
-            . ' SET bookings.status = CASE'
-            . " WHEN bookings.status IN ('held', 'requested') AND (bookings.hold_until = 0 OR bookings.hold_until >= ?) THEN 'confirmed'"
-            . " WHEN bookings.status = 'held' THEN 'requested'"
-            . ' ELSE bookings.status END,'
-            . ' bookings.hold_until = 0, bookings.paid_at = ?, bookings.updated_at = ?'
-            . ' WHERE bookings.order_id = ? AND bookings.paid_at = 0 AND orders.paid_at > 0',
-        'params' => array($now, $now, $now, $order_id),
+            . ' SET ' . $sets[(string) $outcome] . 'bookings.hold_until = 0, bookings.paid_at = ?, bookings.updated_at = ?'
+            . ' WHERE bookings.order_id = ? AND bookings.status = ? AND bookings.paid_at = 0 AND orders.paid_at > 0',
+        'params' => array($now, $now, $order_id, (string) $from),
     );
 }
 
 /**
  * The event a deposit's payment announces for the booking (pure): a held
- * row was never announced, so it is created now (and confirmed with it); a
- * requested one that became confirmed is confirmed. '' for nothing.
+ * row, or a hold cancelled before the payment arrived, was never announced,
+ * so it is created now (and confirmed with it when confirmed); a requested
+ * one that became confirmed is confirmed. '' for nothing.
  *
  * @param string $from status before the payment
  * @param string $to   status after it
@@ -241,11 +300,31 @@ function pg_booking_deposit_mark_paid_query($order_id, $now)
  */
 function pg_booking_deposit_event($from, $to)
 {
-    if ($from === 'held') {
+    if (($from === 'held') || (($from === 'cancelled') && in_array($to, array('requested', 'confirmed'), true))) {
         return 'created';
     }
 
     return (($from === 'requested') && ($to === 'confirmed')) ? 'confirmed' : '';
+}
+
+/**
+ * Whether the time of a hold that ran out is still free: the day still
+ * offers its start for its service and staff member (hours, other bookings,
+ * the Workspace calendar), as pg_booking_pay_keep_hold() asks, without the
+ * lead time: the visitor picked it while it was offered. A time already
+ * begun is not free. Asked under the staff member's lock.
+ *
+ * @param array $row bookings row: service_id, staff_id, start_at
+ * @param int   $now
+ * @return bool
+ */
+function pg_booking_deposit_time_free($row, $now)
+{
+    $policy = pg_booking_widget_policy();
+    $policy['lead_minutes'] = 0;
+
+    return ((int) $row['start_at'] > (int) $now)
+        && pg_booking_widget_still_offered((int) $row['service_id'], (int) $row['staff_id'], (int) $row['start_at'], (int) $now, $policy);
 }
 
 /**
@@ -254,8 +333,15 @@ function pg_booking_deposit_event($from, $to)
  * when staff record one. An order no booking points at, or one not yet
  * paid, changes nothing; a repeat changes nothing.
  *
- * A held booking gets its manage link here, as pg_booking_confirm() gives
- * it, and is announced with its mails (pg_booking_created()).
+ * It runs under the staff member's lock, as pg_booking_insert() does: a
+ * hold that ran out is booked again only when its time is free, and no
+ * other booking can take the time between that check and the write. Without
+ * the lock the time is not checked and the booking becomes a request.
+ *
+ * A booking that was never announced (a hold) gets its manage link here, as
+ * pg_booking_confirm() gives it, and is announced with its mails
+ * (pg_booking_created()): a lost one as a new request, the way staff learn
+ * of every request, and in the Site Log.
  *
  * @param int      $order_id
  * @param int|null $now
@@ -263,26 +349,51 @@ function pg_booking_deposit_event($from, $to)
  */
 function pg_booking_deposit_mark_paid($order_id, $now = null)
 {
-    if (!pg_booking_deposit_ready()) {
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !pg_booking_deposit_ready()) {
         return false;
     }
 
     $now = ($now === null) ? time() : (int) $now;
-    $query = pg_booking_deposit_mark_paid_query($order_id, $now);
+    $staff_id = (int) db_value("SELECT staff_id FROM bookings WHERE order_id = '$order_id' AND paid_at = 0 LIMIT 1");
 
-    if ($query === null) {
+    if ($staff_id <= 0) {
         return false;
     }
 
-    $before = db_item("SELECT id, status FROM bookings WHERE order_id = '" . (int) $order_id . "' AND paid_at = 0 LIMIT 1");
+    $lock = pg_booking_lock_name($staff_id);
+    $locked = ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") === 1);
+    $before = db_item("SELECT id, service_id, staff_id, start_at, status, hold_until FROM bookings WHERE order_id = '$order_id' AND paid_at = 0 LIMIT 1");
+    $outcome = '';
+    $result = false;
 
-    if (!$before) {
-        return false;
+    if ($before) {
+        $free = $locked && pg_booking_deposit_lapsed($before, $now) && pg_booking_deposit_time_free($before, $now);
+        $outcome = pg_booking_deposit_outcome($before, $now, $free);
+        $query = pg_booking_deposit_mark_paid_query($order_id, (string) $before['status'], $outcome, $now);
+        $result = db_q($query['sql'], $query['params']);
+
+        // The start was taken by a write that does not take the lock: the
+        // unique key refused the slot, so the time is gone after all.
+        if (!$result && ($outcome === 'rebook') && ((int) mysqli_errno(db::$con) === 1062)) {
+            $outcome = 'lost';
+            $query = pg_booking_deposit_mark_paid_query($order_id, (string) $before['status'], $outcome, $now);
+            $result = db_q($query['sql'], $query['params']);
+        }
     }
 
-    db_q($query['sql'], $query['params']) or output_error('Query failed.');
+    $changed = $result ? mysqli_affected_rows(db::$con) : 0;
 
-    if (mysqli_affected_rows(db::$con) <= 0) {
+    if ($locked) {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+    }
+
+    if ($before && !$result) {
+        output_error('Query failed.');
+    }
+
+    if ($changed <= 0) {
         return false;
     }
 
@@ -290,6 +401,13 @@ function pg_booking_deposit_mark_paid($order_id, $now = null)
     $after = db_item("SELECT status, end_at FROM bookings WHERE id = '$id' LIMIT 1");
     $status = $after ? (string) $after['status'] : '';
     $event = pg_booking_deposit_event((string) $before['status'], $status);
+
+    if ($outcome === 'lost') {
+        log_activity(pg_log_lang(array(
+            'string' => 'The deposit of booking #{var:1} was paid after its hold ran out and its time was taken: the booking waits as a request and the deposit awaits a refund.',
+            'vars'   => $id,
+        )), 'SYSTEM');
+    }
 
     if ($event === 'created') {
         $token = pg_booking_manage_token($id, (int) $after['end_at'], pg_booking_key());

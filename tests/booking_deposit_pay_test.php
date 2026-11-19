@@ -39,15 +39,52 @@ function test_booking_deposit_pay_view()
 
 	pg_assert_same('', pg_booking_deposit_label(array('state' => 'none')));
 	pg_assert_true(pg_booking_deposit_label($paid) !== pg_booking_deposit_label($owed));
+
+	// Only a payment that found its time taken leaves a request paid.
+	$refund = pg_booking_deposit_view(array('order_id' => '31', 'paid_at' => '1793440000', 'status' => 'requested'));
+	pg_assert_same('refund', $refund['state']);
+	pg_assert_same('Deposit awaiting refund', pg_booking_deposit_label($refund));
+	pg_assert_same('paid', pg_booking_deposit_view(array('order_id' => '31', 'paid_at' => '1793440000', 'status' => 'confirmed'))['state']);
+	pg_assert_same('paid', pg_booking_deposit_view(array('order_id' => '31', 'paid_at' => '1793440000', 'status' => 'cancelled'))['state']);
+	pg_assert_same('unpaid', pg_booking_deposit_view(array('order_id' => '31', 'paid_at' => '0', 'status' => 'requested'))['state'], 'paid on arrival');
 }
 
-// The agenda's mark: none without an order, green when paid.
+// The agenda's mark: none without an order, green when paid, red while it awaits a refund.
 function test_booking_deposit_pay_badge()
 {
 	pg_assert_same('', pg_booking_deposit_badge(array('status' => 'confirmed')));
 	pg_assert_contains('theme-success', pg_booking_deposit_badge(array('order_id' => 3, 'paid_at' => 5)));
 	pg_assert_contains('theme-warning', pg_booking_deposit_badge(array('order_id' => 3, 'paid_at' => 0)));
+	pg_assert_contains('theme-danger', pg_booking_deposit_badge(array('order_id' => 3, 'paid_at' => 5, 'status' => 'requested')));
+	pg_assert_contains('Deposit awaiting refund', pg_booking_deposit_badge(array('order_id' => 3, 'paid_at' => 5, 'status' => 'requested')));
 	pg_assert_contains('visually-hidden', pg_booking_deposit_badge(array('order_id' => 3, 'paid_at' => 0)), 'read out, not only an icon');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_booking.php');
+	pg_assert_contains('pg_booking_deposit_tone($deposit)', $screen, 'the booking screen colours it the same way');
+}
+
+// The widget's closing words after the payment: confirmed within the hold,
+// booked again, or honest about a time that was taken.
+function test_booking_deposit_pay_done_text()
+{
+	$texts = array();
+	$confirmed = pg_booking_widget_done_text('confirmed', $texts);
+	$request = pg_booking_widget_done_text('requested', $texts);
+
+	pg_assert_same($confirmed, pg_booking_pay_done_text(array('status' => 'confirmed', 'order_id' => 31, 'paid_at' => 5), $texts), 'paid within the hold, or booked again');
+	pg_assert_same($request, pg_booking_pay_done_text(array('status' => 'requested', 'order_id' => 31, 'paid_at' => 0), $texts), 'paid on arrival');
+	pg_assert_same($request, pg_booking_pay_done_text(array('status' => 'held', 'order_id' => 31, 'paid_at' => 0), $texts), 'a card payment still being confirmed');
+
+	$lost = pg_booking_pay_done_text(array('status' => 'requested', 'order_id' => 31, 'paid_at' => 5), $texts);
+	pg_assert_true($lost !== $request, 'no request is said to wait');
+	pg_assert_contains('no longer held for you', $lost);
+	pg_assert_contains('get in touch with you about your deposit', $lost);
+	pg_assert_same($lost, pg_booking_pay_done_text(array('status' => 'cancelled', 'order_id' => 31, 'paid_at' => 5), $texts));
+	pg_assert_same($lost, pg_booking_pay_done_text(array('status' => 'requested', 'order_id' => 31, 'paid_at' => 5), array('done' => 'See you soon!')), 'the site\'s own closing words are not used for a lost time');
+	pg_assert_same($request, pg_booking_pay_done_text(null, $texts), 'a booking no longer there');
+
+	$pay = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/booking_deposit_pay.php');
+	pg_assert_contains("'message' => pg_booking_pay_done_text(\$row, pg_booking_texts())", $pay);
 }
 
 // The payment comes back to a page of this site only.

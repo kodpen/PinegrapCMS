@@ -998,6 +998,7 @@
     "Only an administrator can connect Claude.": "Claude'u yalnız bir yönetici bağlayabilir.",
     "Only an administrator can connect Pinegrap AI.": "Pinegrap AI'ı yalnız bir yönetici bağlayabilir.",
     "Only an administrator can connect a transcription service.": "Yazıya dökme hizmetini yalnızca bir yönetici bağlayabilir.",
+    "Only an agent channel's entries move to the general memory.": "Genel belleğe yalnızca bir ajan kanalının kayıtları taşınır.",
     "Only an agent's answer can be marked right or wrong.": "Yalnızca bir ajanın yanıtı doğru ya da yanlış diye işaretlenebilir.",
     "Only an application registers commands; a devices session cannot.": "Komutları yalnızca bir uygulama kaydedebilir; cihaz oturumu kaydedemez.",
     "Only an application whose owner is an administrator writes accounts.": "Hesapları yalnızca sahibi yönetici olan bir uygulama yazabilir.",

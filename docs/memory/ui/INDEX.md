@@ -20,7 +20,7 @@
 - api-console-try-fields.md: API documentation Try it fields (fieldsFor() in includes/api/console_view.php): each field gets an id from a page-wide counter and its caption is a <label for>
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens [decision: decisions-made-panel-2.md]
 - approve-affiliate-shared-form.md: approve_affiliate.php draws its request card, Summary and save bar through includes/forms/approve_affiliate_form.php (wide layout, step B11); what the screen keeps, the website link rule
-- area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab whatever the screen's width (owner 2026-11-19, poll 153); Communication since TS1; how, and the notices under it [decision: here]
+- area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips [decision: here]
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 - audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -442,6 +442,7 @@
 - main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712)
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
 - main-menu-icons.md: Main menu icons in two colours: row drawings (pg_menu_icon()), grid, module and accent colours, hover motion, the System tools toolbox, the panel entries' coloured tiles [decision: decisions-made-panel-2.md]
+- main-menu-mail-row.md: Incoming e-mail pinned to a person's own main menu (IM1, #10408): the tab's Pin to main menu, ws_profiles.mail_pinned, row 27 under the Workspace, its gate, badge and icon [decision: here]
 - main-menu-navigator-screens.md: Screens whose own navigation is a main menu panel (workspace, File Manager, Catalog Manager): the menu open or narrowed, never hidden, softwaremenunav, pg_menu_navigator() [decision: decisions-made-panel.md]
 - main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part [decision: decisions-made-panel-6.md, decisions-made-panel.md]
 - main-menu-panel-scripts.md: A main menu panel a script fills (the Workspace list, the explorer tree): panel flag, pg:menu-panel-open, opening by itself, window.pgMenu, layers that keep the widened rail open, labels, icon size

@@ -4032,6 +4032,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
+    // The Design Canvas pictures the page's own code shows wait to be drawn
+    // in the other languages, and their texts go to the same engines
+    // (includes/fn/picture_translation.php).
+    if (function_exists('pg_picture_tr_page_saved') && $multi_ready && $page_id > 0 && $tree_code !== '') {
+        pg_picture_tr_page_saved(pg_designer_resolve_output_placeholders($tree_code, (string)PATH), (int)($user['id'] ?? 0));
+    }
+
     // Contrast and target size measured on the editor's canvas (only a
     // browser resolves the colours and sizes) are kept with the accessibility
     // report and replaced on each save; a save that changed the page without
