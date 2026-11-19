@@ -97,6 +97,7 @@
     "E-mail queue": "E-posta kuyruğu",
     "E-mail sender": "E-posta gönderici",
     "E-mail sending": "E-posta gönderimi",
+    "E-mail sending is the way out: the service and the accounts the site sends its e-mail through, and the records that let mailbox providers trust it.": "E-posta gönderimi dışarı giden yoldur: sitenin e-postasını gönderdiği servis ve hesaplar ile posta sağlayıcılarının ona güvenmesini sağlayan kayıtlar.",
     "E-mail sent from the Workspace to {var:1}": "Workspace'ten {var:1} adresine e-posta gönderildi",
     "E-mail subject": "E-posta konusu",
     "E-mail summary": "E-posta özeti",

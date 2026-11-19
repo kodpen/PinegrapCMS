@@ -96,7 +96,7 @@ function pg_mail_settings_connection_field($name, $current, array $accounts)
     }
 
     return '
-                                            <label for="setting_' . h($name) . '" class="form-label">' . h(lang('Send through')) . '</label>
+                                            <label for="setting_' . h($name) . '" class="form-label pg-field-label">' . h(lang('Send through')) . '</label>
                                             <select name="' . h($name) . '" id="setting_' . h($name) . '" class="form-control">' . $options . '</select>';
 }
 
@@ -115,8 +115,8 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
 
     foreach ($providers as $key => $provider) {
         $buttons .= '
-                                                <button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm me-1 mt-1">
-                                                    <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</span></button>';
+                                                <button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm">
+                                                    <i class="bi ' . h($provider['icon']) . '" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</span></button>';
     }
 
     $text = $accounts
@@ -127,7 +127,7 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
         ? ''
         : ' <a href="connections.php">' . h(lang('Set up the application on Connections first.')) . '</a>';
 
-    return '<div class="form-text">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div>' . $buttons . '</div>' : '');
+    return '<div class="pg-field-help mt-0">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-2 mt-2">' . $buttons . '</div>' : '');
 }
 
 /**

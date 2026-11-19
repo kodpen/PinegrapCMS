@@ -92,3 +92,60 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 	pg_assert_same(array('mail_sending', 'pgset-mail-campaign'), $anchors['pgset-campaigns'], 'an old Campaigns link');
 	pg_assert_same(array('mail_sending', 'pgset-mailchimp'), $anchors['pgset-mailchimp'], 'an old MailChimp link');
 }
+
+// The category speaks only of sending: its first card says so and links
+// Mailboxes for incoming e-mail, the mirror of the Mailboxes card's line.
+// The cards are look A: the settings rows, look buttons and fields, no
+// Bootstrap button, input group or badge.
+function test_mail_sending_in_the_panel_look()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
+	$transport = strpos($source, 'id="pgset-mail-transport"');
+	$system = strpos($source, 'id="pgset-mail-system"');
+	$line = strpos($source, "'For incoming e-mail: {var:1}'");
+
+	pg_assert_true(($line > $transport) && ($line < $system), 'the purpose line opens the first card');
+	pg_assert_contains("pg_settings_url('mailboxes')", $source, 'it links Mailboxes');
+
+	$parts = array(
+		$source,
+		(string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_transport.php'),
+		(string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php'),
+		(string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php'),
+		(string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_webhook.php'),
+	);
+
+	foreach ($parts as $part) {
+		foreach (array('btn btn-', 'nav-tabs', 'input-group', 'class="badge', 'list-group', 'style="', 'class="form-label">', ' me-1" aria-hidden') as $old) {
+			pg_assert_false(strpos($part, $old) !== false, $old . ' left the category');
+		}
+	}
+
+	foreach (array('id="mail_transport_card"', "pg_settings_tile('megaphone', 'team')", "pg_settings_tile('envelope-paper', 'team')", 'class="pg-input font-monospace"', 'class="pg-checkbox"') as $kept) {
+		pg_assert_contains($kept, $source, $kept);
+	}
+}
+
+function test_mail_domain_health_rows_and_pills()
+{
+	pg_assert_same('<span class="pg-pill pg-tone-teal">Good</span>', pg_mail_health_badge('ok'), 'a good record');
+	pg_assert_same('<span class="pg-pill pg-tone-rose">Over the limit</span>', pg_mail_health_badge('error', 'Over the limit'), 'an error with its own label');
+	pg_assert_contains('pg-tone-gray', pg_mail_health_badge('nonsense'), 'an unknown state');
+
+	$health = array(
+		'domain' => 'example.com',
+		'selector' => 'pg',
+		'rates' => array('judged' => false, 'sent' => 0, 'state' => 'ok'),
+	);
+
+	foreach (array('spf', 'dkim', 'dmarc') as $record) {
+		$health[$record] = array('state' => 'error', 'found' => '', 'copy' => 'v=spf1 -all', 'reason' => '');
+	}
+
+	$card = pg_mail_domain_health_card($health, false);
+
+	pg_assert_same(4, substr_count($card, '<div class="pg-list-row">'), 'three records and the rates, each a list row');
+	pg_assert_contains('class="card-header bg-reset border-0 pg-title-section"', $card, 'the settings card title');
+	pg_assert_contains('class="pg-input pg-input-sm font-monospace" value="v=spf1 -all" readonly', $card, 'the record to publish');
+	pg_assert_contains('data-pg-copy-record="mail_domain_spf"', $card, 'its Copy button');
+}

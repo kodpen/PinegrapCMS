@@ -59,7 +59,7 @@ $mail_campaign_on = (defined('EMAIL_CAMPAIGN_JOB') && ((EMAIL_CAMPAIGN_JOB === t
 // (includes/settings/mail_sending.save.php).
 $mail_test_button = '
                                             <button type="submit" name="send_system_email" value="Send System Test Email" class="pg-button pg-button-quiet pg-button-sm">
-                                                <i class="bi bi-send me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and send a test') . '</span>
+                                                <i class="bi bi-send" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and send a test') . '</span>
                                             </button>';
 
 // ── Sending service ──
@@ -69,8 +69,10 @@ $pg_settings_cards[] = '
                                 <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Sending service') . '
                                 </div>
-                                <div class="card-body">' . pg_mail_transport_settings_fields() . '
-                                    <div class="mt-5">' . $mail_test_button . '</div>
+                                <div class="card-body">
+                                    <p class="pg-card-sub mb-3">' . h(lang('E-mail sending is the way out: the service and the accounts the site sends its e-mail through, and the records that let mailbox providers trust it.'))
+                                        . ' ' . lang(array('string' => 'For incoming e-mail: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mailboxes')) . '">' . h(lang('Mailboxes')) . '</a>')) . '</p>' . pg_mail_transport_settings_fields() . '
+                                    <div class="d-flex flex-wrap gap-2 mt-5">' . $mail_test_button . '</div>
                                 </div>
                             </div>
                         </div>';
@@ -83,29 +85,31 @@ $pg_settings_cards[] = '
                                     ' . lang('System') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="my-3">
-                                        ' . pg_mail_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts) . '
-                                        ' . pg_mail_settings_connect_buttons($mail_providers, $mail_accounts) . '
-                                    </div>
-                                    <div class="row gy-5">
-                                        <div class="col-12 md:col-8">
-                                            <label for="system_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            ' . pg_mail_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts) . '
+                                        </div>
+                                        <div class="col-12">
+                                            ' . pg_mail_settings_connect_buttons($mail_providers, $mail_accounts) . '
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="system_smtp_hostname" class="form-label pg-field-label">' . lang('Hostname') . '</label>
                                             <input type="text" name="system_smtp_hostname" id="system_smtp_hostname" class="form-control" value="' . $mail_value('SYSTEM_SMTP_HOSTNAME') . '" inputmode="url" spellcheck="false" autocapitalize="off">
                                         </div>
-                                        <div class="col-12 md:col-4">
-                                            <label for="system_smtp_port" class="form-label">' . lang('Port') . '</label>
+                                        <div class="col-12">
+                                            <label for="system_smtp_port" class="form-label pg-field-label">' . lang('Port') . '</label>
                                             <input type="number" name="system_smtp_port" id="system_smtp_port" class="form-control" value="' . $mail_value('SYSTEM_SMTP_PORT') . '" placeholder="587">
                                         </div>
-                                        <div class="col-12 lg:col-6">
-                                            <label for="system_smtp_username" class="form-label">' . lang('Username') . '</label>
+                                        <div class="col-12">
+                                            <label for="system_smtp_username" class="form-label pg-field-label">' . lang('Username') . '</label>
                                             <input type="text" name="system_smtp_username" id="system_smtp_username" class="form-control" value="' . $mail_value('SYSTEM_SMTP_USERNAME') . '" autocomplete="new-password" spellcheck="false" autocapitalize="off">
                                         </div>
-                                        <div class="col-12 lg:col-6">
-                                            <label for="system_smtp_password" class="form-label">' . lang('Password') . '</label>
+                                        <div class="col-12">
+                                            <label for="system_smtp_password" class="form-label pg-field-label">' . lang('Password') . '</label>
                                             <input type="password" name="system_smtp_password" id="system_smtp_password" class="form-control" value="" autocomplete="new-password"' . $mail_system_kept . '>
                                         </div>
                                     </div>
-                                    ' . ($mail_ready ? '<div class="mt-5">' . $mail_test_button . '</div>' : '') . '
+                                    ' . ($mail_ready ? '<div class="d-flex flex-wrap gap-2 mt-5">' . $mail_test_button . '</div>' : '') . '
                                 </div>
                             </div>
                         </div>';
@@ -118,45 +122,49 @@ $pg_settings_cards[] = '
                                     ' . lang('Campaign') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="form-field">
-                                        <div class="switch"><input type="checkbox" name="email_campaign_job" id="email_campaign_job" value="true"' . ($mail_campaign_on ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#email_campaign_job_row"></div>
-                                        <label for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-field">' . pg_settings_tile('megaphone', 'team') . '
+                                                <div class="switch"><input type="checkbox" name="email_campaign_job" id="email_campaign_job" value="true"' . ($mail_campaign_on ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#email_campaign_job_row"></div>
+                                                <label for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="collapse" id="email_campaign_job_row">
-                                        <div class="my-3">
-                                            ' . pg_mail_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts) . '
-                                        </div>
-                                        <div class="row gy-5">
-                                            <div class="col-12 lg:col-6">
-                                                <label for="campaign_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                ' . pg_mail_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts) . '
+                                            </div>
+                                            <div class="col-12">
+                                                <label for="campaign_smtp_hostname" class="form-label pg-field-label">' . lang('Hostname') . '</label>
                                                 <input type="text" name="campaign_smtp_hostname" id="campaign_smtp_hostname" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_HOSTNAME') . '" inputmode="url" spellcheck="false" autocapitalize="off">
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-3">
-                                                <label for="email_campaign_job_number_of_emails" class="form-label">' . lang('Max.') . '</label>
+                                            <div class="col-12">
+                                                <label for="email_campaign_job_number_of_emails" class="form-label pg-field-label">' . lang('Max.') . '</label>
                                                 <input type="number" name="email_campaign_job_number_of_emails" id="email_campaign_job_number_of_emails" class="form-control" value="' . $mail_value('EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') . '" placeholder="25">
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-3">
-                                                <label for="campaign_smtp_port" class="form-label">' . lang('Port') . '</label>
+                                            <div class="col-12">
+                                                <label for="campaign_smtp_port" class="form-label pg-field-label">' . lang('Port') . '</label>
                                                 <input type="number" name="campaign_smtp_port" id="campaign_smtp_port" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_PORT') . '" placeholder="587">
                                             </div>
-                                            <div class="col-12 lg:col-6">
-                                                <label for="campaign_smtp_username" class="form-label">' . lang('Username') . '</label>
+                                            <div class="col-12">
+                                                <label for="campaign_smtp_username" class="form-label pg-field-label">' . lang('Username') . '</label>
                                                 <input type="text" name="campaign_smtp_username" id="campaign_smtp_username" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_USERNAME') . '" autocomplete="new-password" spellcheck="false" autocapitalize="off">
                                             </div>
-                                            <div class="col-12 lg:col-6">
-                                                <label for="campaign_smtp_password" class="form-label">' . lang('Password') . '</label>
+                                            <div class="col-12">
+                                                <label for="campaign_smtp_password" class="form-label pg-field-label">' . lang('Password') . '</label>
                                                 <input type="password" name="campaign_smtp_password" id="campaign_smtp_password" class="form-control" value="" autocomplete="new-password"' . $mail_campaign_kept . '>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="row gy-5 mt-3">
-                                        <div class="col-12 lg:col-6">
-                                            <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <label for="opt_in_label" class="form-label pg-field-label">' . lang('Opt-In Label') . '</label>
                                             <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255">
                                         </div>
                                         <div class="col-12">
-                                            <label for="plain_text_email_campaign_footer" class="form-label">' . lang('Plain Text Footer') . '</label>
-                                            <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="form-control">' . h($plain_text_email_campaign_footer) . '</textarea>
+                                            <label for="plain_text_email_campaign_footer" class="pg-field-label">' . lang('Plain Text Footer') . '</label>
+                                            <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="pg-input">' . h($plain_text_email_campaign_footer) . '</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -168,17 +176,17 @@ $mail_txt_record = db_value("SELECT description FROM files WHERE name = 'dkim.ke
 
 $mail_dkim_buttons = '
                                             <button type="submit" name="generate_dkim_key" value="true" class="pg-button pg-button-quiet pg-button-sm">
-                                                <i class="bi bi-key me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and generate a DKIM key') . '</span>
+                                                <i class="bi bi-key" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and generate a DKIM key') . '</span>
                                             </button>'
     . ($mail_ready ? '
                                             <button type="submit" name="test_dkim" value="true" class="pg-button pg-button-quiet pg-button-sm">
-                                                <i class="bi bi-patch-check me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and test') . '</span>
+                                                <i class="bi bi-patch-check" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and test') . '</span>
                                             </button>' : '');
 
 $mail_dkim_record = $mail_txt_record
-    ? '<label for="textrecord" class="form-label">' . lang('Add this TXT record to your DNS:') . '</label>
-                                            <textarea id="textrecord" class="form-control" rows="4" readonly>' . h($mail_txt_record) . '</textarea>'
-    : '<p class="fg-secondary">' . lang('No DKIM key generated yet.') . '</p>';
+    ? '<label for="textrecord" class="pg-field-label">' . lang('Add this TXT record to your DNS:') . '</label>
+                                            <textarea id="textrecord" class="pg-input font-monospace" rows="4" readonly>' . h($mail_txt_record) . '</textarea>'
+    : '<p class="pg-field-help mt-0">' . lang('No DKIM key generated yet.') . '</p>';
 
 $pg_settings_cards[] = '
                         <div id="pgset-mail-dkim" class="pg-set-card">
@@ -187,14 +195,14 @@ $pg_settings_cards[] = '
                                     ' . lang('DKIM TXT Record') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="row gy-5">
-                                        <div class="col-12 md:col-8 lg:col-6">
+                                    <div class="row">
+                                        <div class="col-12 pg-field-span-6">
                                             <label class="visually-hidden" for="dkim_selector">' . h(lang('Selector')) . '</label>
                                             <label class="visually-hidden" for="dkim_domain">' . h(lang('Domain')) . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="dkim_selector" id="dkim_selector" class="form-control text-end" value="' . $mail_value('DKIM_SELECTOR') . '" placeholder="' . h(lang('Selector')) . '" spellcheck="false" autocapitalize="off">
-                                                <span class="input-group-text">._domainkey.</span>
-                                                <input type="text" name="dkim_domain" id="dkim_domain" class="form-control" value="' . $mail_value('DKIM_DOMAIN') . '" placeholder="example.com" inputmode="url" spellcheck="false" autocapitalize="off">
+                                            <div class="pg-input font-monospace">
+                                                <input type="text" name="dkim_selector" id="dkim_selector" class="text-end" value="' . $mail_value('DKIM_SELECTOR') . '" placeholder="' . h(lang('Selector')) . '" spellcheck="false" autocapitalize="off">
+                                                <span class="pg-text-meta" aria-hidden="true">._domainkey.</span>
+                                                <input type="text" name="dkim_domain" id="dkim_domain" value="' . $mail_value('DKIM_DOMAIN') . '" placeholder="example.com" inputmode="url" spellcheck="false" autocapitalize="off">
                                             </div>
                                         </div>
                                         <div class="col-12">
@@ -224,39 +232,43 @@ $pg_settings_cards[] = '
                                     <span lang="en">' . lang('MailChimp') . '</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
-                                        <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"></div>
-                                        <label for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
+                                                <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"></div>
+                                                <label for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="collapse" id="mailchimp_row">
-                                        <div class="row gy-5 mt-0">
-                                            <div class="col-12 lg:col-8">
-                                                <label for="mailchimp_key" class="form-label">' . lang('API Key') . '</label>
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <label for="mailchimp_key" class="form-label pg-field-label">' . lang('API Key') . '</label>
                                                 <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="" maxlength="100" autocomplete="off" spellcheck="false" placeholder="' . ($mailchimp_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '">' . ($mailchimp_key_stored ? '
                                                 <div class="form-text">' . lang('A secret is saved (never shown here). Type a new value only to replace it.') . '</div>
-                                                <div class="form-field mt-2">
-                                                    <input value="1" class="check" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear">
+                                                <div class="d-flex align-items-center gap-3 mt-2">
+                                                    <input value="1" class="pg-checkbox" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear">
                                                     <label for="mailchimp_key_clear">' . lang('Remove the stored key') . '</label>
                                                 </div>' : '') . '
                                             </div>
-                                            <div class="col-12 lg:col-6">
-                                                <label for="mailchimp_list_id" class="form-label">' . lang('List ID') . '</label>
+                                            <div class="col-12">
+                                                <label for="mailchimp_list_id" class="form-label pg-field-label">' . lang('List ID') . '</label>
                                                 <input type="text" name="mailchimp_list_id" id="mailchimp_list_id" class="form-control" value="' . h($mailchimp_list_id) . '" maxlength="100">
                                             </div>
-                                            <div class="col-12 lg:col-6">
-                                                <label for="mailchimp_store_id" class="form-label">' . lang('Store ID') . '</label>
+                                            <div class="col-12">
+                                                <label for="mailchimp_store_id" class="form-label pg-field-label">' . lang('Store ID') . '</label>
                                                 <input type="text" name="mailchimp_store_id" id="mailchimp_store_id" class="form-control" value="' . h($mailchimp_store_id) . '" maxlength="100">
                                             </div>
-                                            <div class="col-12 md:col-6">
-                                                <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
+                                            <div class="col-12">
+                                                <label for="mailchimp_sync_days" class="form-label pg-field-label">' . lang('Historical Sync') . '</label>
                                                 <label class="form-control form-adorn form-adorn-end">
                                                     <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
                                                     <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
                                                 </label>
                                                 <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
                                             </div>
-                                            <div class="col-12 md:col-6">
-                                                <label for="mailchimp_sync_limit" class="form-label">' . lang('Limit Sync') . '</label>
+                                            <div class="col-12">
+                                                <label for="mailchimp_sync_limit" class="form-label pg-field-label">' . lang('Limit Sync') . '</label>
                                                 <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
                                                 <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
                                             </div>

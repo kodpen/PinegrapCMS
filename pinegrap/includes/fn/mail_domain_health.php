@@ -643,27 +643,27 @@ function pg_mail_dns_line_text($record, array $line)
 }
 
 /**
- * A state as a badge.
+ * A state as a pill.
  *
  * @param string $state        ok, warning, error, unknown
- * @param string $error_label  the error badge's text instead of "Missing or wrong"
+ * @param string $error_label  the error pill's text instead of "Missing or wrong"
  * @return string HTML
  */
 function pg_mail_health_badge($state, $error_label = '')
 {
     $badges = array(
-        'ok'      => array('theme-success', 'bi-check-circle', lang('Good')),
-        'warning' => array('theme-warning', 'bi-exclamation-triangle', lang('Check')),
-        'error'   => array('theme-danger', 'bi-x-circle', lang('Missing or wrong')),
-        'unknown' => array('theme-secondary', 'bi-question-circle', lang('Could not check')),
+        'ok'      => array('pg-tone-teal', lang('Good')),
+        'warning' => array('pg-tone-amber', lang('Check')),
+        'error'   => array('pg-tone-rose', lang('Missing or wrong')),
+        'unknown' => array('pg-tone-gray', lang('Could not check')),
     );
     $badge = isset($badges[$state]) ? $badges[$state] : $badges['unknown'];
 
     if (($state === 'error') && ($error_label !== '')) {
-        $badge[2] = $error_label;
+        $badge[1] = $error_label;
     }
 
-    return '<span class="badge ' . $badge[0] . '"><i class="bi ' . $badge[1] . ' me-1" aria-hidden="true"></i>' . h($badge[2]) . '</span>';
+    return '<span class="pg-pill ' . $badge[0] . '">' . h($badge[1]) . '</span>';
 }
 
 /**
@@ -676,34 +676,35 @@ function pg_mail_health_badge($state, $error_label = '')
 function pg_mail_domain_health_card(array $health, $wrap_column = true)
 {
     $names = array(
-        'spf'   => array('SPF', $health['domain']),
-        'dkim'  => array('DKIM', $health['selector'] . '._domainkey.' . $health['domain']),
-        'dmarc' => array('DMARC', '_dmarc.' . $health['domain']),
+        'spf'   => array('SPF', $health['domain'], 'shield-check'),
+        'dkim'  => array('DKIM', $health['selector'] . '._domainkey.' . $health['domain'], 'key'),
+        'dmarc' => array('DMARC', '_dmarc.' . $health['domain'], 'shield-lock'),
     );
 
     $rows = '';
 
+    // Each record is a list row: its icon tile, the name and the pill, the
+    // DNS name, what the check found and the record to publish under it.
     foreach ($names as $record => $name) {
         $line = $health[$record];
         $id = 'mail_domain_' . $record;
 
         $rows .= '
-            <li class="list-group-item py-4">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <strong>' . h($name[0]) . '</strong>
-                    ' . pg_mail_health_badge($line['state']) . '
-                    <code class="fg-secondary">' . h($name[1]) . '</code>
-                </div>
-                <div class="mt-2">' . h(pg_mail_dns_line_text($record, $line)) . '</div>'
+            <div class="pg-list-row"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-' . $name[2] . '"></span></span>
+                <div class="pg-list-row-main">
+                    <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h($name[0]) . '</span>' . pg_mail_health_badge($line['state']) . '</div>
+                    <div class="pg-text-meta text-break"><code>' . h($name[1]) . '</code></div>
+                    <div class="pg-text-2 mt-1">' . h(pg_mail_dns_line_text($record, $line)) . '</div>'
             . (($line['found'] !== '') ? '
-                <div class="mt-2 small fg-secondary text-break"><span class="me-1">' . h(lang('Found:')) . '</span><code>' . h($line['found']) . '</code></div>' : '')
+                    <div class="pg-text-meta text-break mt-1"><span class="me-1">' . h(lang('Found:')) . '</span><code>' . h($line['found']) . '</code></div>' : '')
             . (($line['copy'] !== '') ? '
-                <label for="' . $id . '" class="form-label mt-3 mb-1 small">' . h(lang('Publish this TXT record:')) . '</label>
-                <div class="input-group">
-                    <input type="text" id="' . $id . '" class="form-control font-monospace" value="' . h($line['copy']) . '" readonly>
-                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-copy-record="' . $id . '" data-pg-copied="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Copy')) . '</span></button>
-                </div>' : '') . '
-            </li>';
+                    <label for="' . $id . '" class="pg-field-label mt-3">' . h(lang('Publish this TXT record:')) . '</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="text" id="' . $id . '" class="pg-input pg-input-sm font-monospace" value="' . h($line['copy']) . '" readonly>
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-copy-record="' . $id . '" data-pg-copied="' . h(lang('Copied')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Copy')) . '</span></button>
+                    </div>' : '') . '
+                </div>
+            </div>';
     }
 
     $rates = $health['rates'];
@@ -727,24 +728,23 @@ function pg_mail_domain_health_card(array $health, $wrap_column = true)
     }
 
     $rows .= '
-            <li class="list-group-item py-4">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <strong>' . h(lang('Bounces and complaints')) . '</strong>
-                    ' . pg_mail_health_badge($rates['state'], lang('Over the limit')) . '
+            <div class="pg-list-row"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-arrow-return-left"></span></span>
+                <div class="pg-list-row-main">
+                    <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h(lang('Bounces and complaints')) . '</span>' . pg_mail_health_badge($rates['state'], lang('Over the limit')) . '</div>
+                    <div class="pg-text-2 mt-1">' . h($rate_text) . '</div>
                 </div>
-                <div class="mt-2">' . h($rate_text) . '</div>
-            </li>';
+            </div>';
 
     $card = '
-            <div class="card mb-7" id="mail_domain_card">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending domain') . '</h2>
+            <div class="card" id="mail_domain_card">
+                <div class="card-header bg-reset border-0 pg-title-section">' . lang('Sending domain') . '</div>
                 <div class="card-body">
-                    <p class="fg-secondary">' . h(lang(array(
+                    <p class="pg-card-sub mb-3">' . h(lang(array(
                         'string' => 'The DNS records of {var:1} that tell mailbox providers the site may send for it. Changes to DNS can take hours to be seen.',
                         'vars'   => array(($health['domain'] !== '') ? $health['domain'] : '-'),
                     ))) . '</p>
-                    <ul class="list-group">' . $rows . '
-                    </ul>
+                    <div class="d-flex flex-column gap-1">' . $rows . '
+                    </div>
                 </div>
             </div>';
 
