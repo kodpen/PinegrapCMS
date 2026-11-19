@@ -32,8 +32,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 
 - RB6 (S) after RB5: the share link. A bundle named on `prototype_links` (its place the architect's, in the PR). Features: B15.
 
-- RB7 (S) after RB3: the API. The API schema's rows and their resource file; `php tools/check_api_schema.php`. Features: B16.
-  - The page delete answers a bundled draft with 409 `experiment_variant_held` today; RB7 gives it its own code, the experiment's stays (architect, message 6621).
+- RB7 Done (#10482): the API, `/design/bundles` (`api/api-design-bundles.md`). The page delete answers a bundled draft with 409 `release_bundle_held`, the experiment's code stays (architect, message 6621). Features: B16.
 
 - RB8 (S) close-out: every B number checked against the code with its PR; `designer/release-bundle.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 
