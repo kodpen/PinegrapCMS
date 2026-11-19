@@ -200,6 +200,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_send.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_compose.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_signature.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_menu.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_away.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_forward.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_route.php');

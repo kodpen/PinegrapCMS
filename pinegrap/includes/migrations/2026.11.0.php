@@ -224,6 +224,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
+	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 
 }
 
@@ -7496,5 +7497,25 @@ function upgrade_2026_11_0_file_translation() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
+
+}
+
+// Incoming e-mail pinned to a person's own main menu (Pin to main menu on
+// the tab, includes/workspace/mail_menu.php), as My Notes is with
+// notes_pinned: 0 is not pinned, so nobody's menu changes until they pin it.
+// The person's ws_profiles row is made on the first pin when they have none.
+function upgrade_2026_11_0_ws_mail_menu_pin() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_pinned', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Communication: a person can pin Incoming e-mail to their own main menu.');
 
 }

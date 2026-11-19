@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a
 - One PR each; IM1 holds the schema step.
 
 ## Where does each step stand?
-- IM1: being built on branch `erdal/im1-mail-pin`.
+- IM1 done, #10408 (`ui/main-menu-mail-row.md`): step 11.0.239, slot 27, the icon `mail`.
 - IM2, IM3: wait for IM1's merge.
 
 ## What is decided?

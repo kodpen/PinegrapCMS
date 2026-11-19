@@ -407,7 +407,7 @@ function ws_mail_actions_without_workspace()
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel', 'ws_mail_undo_send',
-        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind',
+        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind', 'ws_mail_menu_pin',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
 }
@@ -3045,6 +3045,30 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('state' => $result['state']));
+
+        // Incoming e-mail pinned to the person's own main menu, or taken
+        // off it (mail_menu.php): only whoever may open the tab, which the
+        // menu row follows. The answer carries the row's drawing and its
+        // unread count, for the screen to add the row without a reload; the
+        // next page draws it on the server (output_menu()).
+        case 'ws_mail_menu_pin':
+            if (!function_exists('ws_mail_menu_ready') || !ws_mail_menu_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (!ws_mail_list_visible($viewer)) {
+                return ws_action_error(lang('Access denied'));
+            }
+
+            ws_mail_menu_pin($viewer, !empty($request['pinned']));
+
+            $unread = !empty($request['pinned']) ? ws_mail_unread_count($viewer) : 0;
+
+            return ws_action_ok(array(
+                'pinned' => !empty($request['pinned']),
+                'icon'   => pg_menu_icon('mail', 'campaigns-color'),
+                'badge'  => pg_menu_count_badge($unread, lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $unread))),
+            ));
 
         // My e-mail settings: the person's own signature, which stands in
         // place of their name in every mail they send (mail_signature.php).

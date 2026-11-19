@@ -1911,6 +1911,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-contacts { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-users { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-communication { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-mail { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-erp { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-orders { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-products { --pg-mi-a: var(--pg-mi-amber); }
@@ -2128,6 +2129,11 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-users .pg-mi-front {
     animation: pg-mi-bob 0.55s 0.1s ease-out;
+  }
+
+  /* Incoming e-mail (pinned): the letter comes up out of the envelope. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-mail .pg-mi-sheet {
+    transform: translateY(-3px);
   }
 
   /* Communication: the outgoing arrow slides out, the incoming one slides in
