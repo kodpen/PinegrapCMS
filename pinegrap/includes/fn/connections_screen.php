@@ -478,6 +478,47 @@ function pg_connections_screen_fold_at($states)
 }
 
 /**
+ * The one action a row of the list offers: Connect while nothing is set
+ * up, Manage for every other state. Pure.
+ *
+ * @param string $state a row's state (pg_connections_screen_state())
+ * @return string connect or manage
+ */
+function pg_connections_screen_action($state)
+{
+    return ($state === 'not_connected') ? 'connect' : 'manage';
+}
+
+/**
+ * The address of a service's own page on the Connections screen. Pure.
+ *
+ * @param string $id the service's registry key
+ * @return string
+ */
+function pg_connections_screen_page_url($id)
+{
+    return 'connections.php?service=' . rawurlencode((string) $id);
+}
+
+/**
+ * The service a page address asks for: its registry key when it is one of
+ * the rows the user may see and a service of the registry (an account
+ * provider keeps its drawer), else ''. Pure.
+ *
+ * @param mixed $asked the service parameter as it came
+ * @param array $rows  the screen's rows, id => row with 'kind'
+ * @return string
+ */
+function pg_connections_screen_page_id($asked, $rows)
+{
+    if (!is_string($asked) || !preg_match('/^[a-z0-9_]{1,60}$/', $asked)) {
+        return '';
+    }
+
+    return (isset($rows[$asked]['kind']) && ($rows[$asked]['kind'] === 'service')) ? $asked : '';
+}
+
+/**
  * What the site has stored that the states are read from, read once. No
  * outside service is called: every reader answers from the database, the
  * config or the sealed entries.

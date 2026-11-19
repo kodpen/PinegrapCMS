@@ -172,3 +172,27 @@ function test_connections_screen_an_address_breaks_after_its_at()
 	pg_assert_same('Backup account', pg_connections_screen_address_html('Backup account'), 'a name without an @ is only escaped');
 	pg_assert_same('very.long.name@example.com', strip_tags(pg_connections_screen_address_html('very.long.name@example.com')), 'copy and a screen reader get the one address');
 }
+
+function test_connections_screen_a_row_has_one_action()
+{
+	pg_assert_same('connect', pg_connections_screen_action('not_connected'), 'nothing set up: Connect');
+
+	foreach (array('attention', 'connected', 'off', 'none') as $state) {
+		pg_assert_same('manage', pg_connections_screen_action($state), $state . ': Manage');
+	}
+}
+
+function test_connections_screen_a_services_page()
+{
+	$rows = array(
+		'stripe'          => array('kind' => 'service'),
+		'provider_google' => array('kind' => 'provider'),
+	);
+
+	pg_assert_same('connections.php?service=stripe', pg_connections_screen_page_url('stripe'), 'the page\'s address');
+	pg_assert_same('stripe', pg_connections_screen_page_id('stripe', $rows), 'a service the user sees has a page');
+	pg_assert_same('', pg_connections_screen_page_id('provider_google', $rows), 'an account provider keeps its drawer');
+	pg_assert_same('', pg_connections_screen_page_id('paypal', $rows), 'a service the user may not see has none');
+	pg_assert_same('', pg_connections_screen_page_id(array('stripe'), $rows), 'a non-string parameter is refused');
+	pg_assert_same('', pg_connections_screen_page_id('Stripe<', $rows), 'so is anything but a registry key');
+}
