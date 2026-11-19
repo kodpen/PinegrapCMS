@@ -110,7 +110,6 @@
 - panel-old-screens-census-site-content.md: Census LM1b, content screens against look A: pages, comments, short links, pop-ups, 404 log, accessibility, page tests (S1); menus, regions, ads, styles, themes, design files (S4)
 - panel-old-screens-census-site-forms.md: Census LM1b against look A (S3): submitted forms, form fields, the form list and item views, files (Create File, Edit File, Import Zip), calendars, events, locations, bookings
 - panel-old-screens-census-site-people.md: Census LM1b, people screens against look A (S2): users, sessions, contacts, contact groups, privacy export and erase, email and SMS campaigns, Messages, WhatsApp templates
-- panel-old-screens-census-site-settings.md: Census LM1b against look A (S5): the Site Settings categories in includes/settings/ (dialog and settings_<key>.php pages): inline styles, old classes, rows without icon tiles
 - panel-old-screens-census-site-system.md: Census LM1b against look A: visitors and logs (S4: Site Log, Audit Trail, Firewall log, Performance, Search Console), System tools, Translations, settings pages outside the dialog (S6)
 - panel-old-screens-census-site.md: Census LM1b of old panel screens (pages, files, forms, comments, users, visitors, tools, Site Settings) against look A: what each draws its own way, sizes, six step groups
 - panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
