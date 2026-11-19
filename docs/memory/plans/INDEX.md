@@ -23,6 +23,7 @@
 - api-clean-modern-steps-manners.md: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 401 challenge, every wrong field, If-Match, delete twins, Accept-Language held, the documentation pages, close-out
 - api-clean-modern-steps.md: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, a fault as JSON, time formats in the document, the answer check tool, generated descriptions and example bodies
 - api-clean-modern.md: Plan (owner 2026-11-17): the external API made clean and modern after its test: failing routes, faults as JSON, a truthful document, HTTP manners, the documentation pages; steps AM1 to AM13
+- area-tab-strip-place.md: Plan (owner 2026-11-19, poll 153): an area's tab strip sits centred in the window on every tab screen whatever the screen's width; Communication first, then the other areas; TS1, TS2
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
 - auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
 - auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
@@ -92,6 +93,7 @@
 - event-tickets-steps.md: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the holder's page, the check-in screen, places given back and the waiting list, the API and the product's mark, close-out
 - event-tickets.md: Plan (owner 2026-11-16, agent channel poll 82): a ticket with a QR code per place of an order, check-in at the door from a phone, and a waiting list when an event is full; steps TK1 to TK6
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- incoming-mail-menu-card.md: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a card of it on the new dashboard for whoever may read it, the channel named in an open mail's head; IM1-IM3
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
@@ -117,6 +119,7 @@
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
 - more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
+- open-version-schema-census.md: Plan (owner 2026-11-19): find the tables, columns and indexes 2026.11.0 added that no code uses any more and take them out where they were added; SC1 the census, SC2 the removals
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -154,6 +157,7 @@
 - prototype-comments-features.md: Plan prototype-comments, features P1 to P16: the link's "Allow comments", the viewer's comment mode, the guest's door, what a comment keeps, the designer's pins and list, the task
 - prototype-comments-steps.md: Plan prototype-comments, steps PN1 to PN5: the table and the guest's door, the viewer's comment mode, the designer's pins and list, the task, close-out
 - prototype-comments.md: Plan (owner 2026-11-16, agent channel message 5667): a customer pins comments on a prototype opened by its share link; the designer answers and resolves them; steps PN1 to PN5
+- prototype-link-editing.md: Plan (owner 2026-11-19): the Prototype view as a place to edit links: a target picker on the links panel's rows, arrows starting on the link, the selected page at full height; PL1-PL4
 - publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
 - publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
 - publish-approval-census-places.md: Plan publish-approval PA1 census: where a design proposal is listed or drawn, an editor's save today, holding a shared component change

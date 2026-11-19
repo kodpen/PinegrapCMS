@@ -27,6 +27,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-messages.md: What is the member's SMS sign-in code?
 - decisions-made-panel-10.md: Where are the rules and the earlier parts?
 - decisions-made-panel-10.md: Is every newly drawn screen built in the design language? (owner, 2026-11-17, agent channel message 8553)
+- decisions-made-panel-10.md: Where does an area's tab strip sit? (owner, 2026-11-19, agent channel poll 153, message 9494)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -417,6 +418,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-77.md: Where are the rules and the earlier parts?
 - decisions-made-product-77.md: Is the Connections management screen's look accepted? (owner, 2026-11-17, agent channel poll 149, message 9423)
 - decisions-made-product-77.md: How is it cut into steps? (the architect's cut, not his words)
+- decisions-made-product-78.md: Where are the rules and the earlier parts?
+- decisions-made-product-78.md: Can a page's links be changed from the Prototype view with ease? (owner, 2026-11-19, in the architect's window, agent channel message 9492)
+- decisions-made-product-78.md: Is Incoming e-mail pinned to the main menu, and does the dashboard get a card of it? (owner, 2026-11-19, in the architect's window, agent channel message 9493; poll 154, message 9495)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
@@ -494,6 +498,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-26.md: Which column keeps an application command's arguments? (architect, 2026-11-17, on CC10's draft PR #10322)
 - decisions-made-schema-27.md: Where are the rules and the earlier parts?
 - decisions-made-schema-27.md: Where is the general memory kept? (owner, 2026-11-19, agent channel poll 150, message 9479)
+- decisions-made-schema-28.md: Where are the rules and the earlier parts?
+- decisions-made-schema-28.md: Is schema the open version added and then gave up kept? (owner, 2026-11-19, in the architect's window, agent channel message 9493)
+- decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -915,6 +922,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/visitor-push-sender.md: Visitor notifications' sender (#9957): message writer, queue batches, the pass under one lock, held services, retries, refused subscriptions removed, a day's limit, tidy-up, counts
 - platform/visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
+- release/released-vs-open-version.md: Released versions are closed, the unreleased one open: where the status is, how the upgrade loop compares, no new number while one is open, schema the open version gave up is taken out
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
@@ -1013,6 +1021,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
 - workflow/architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends
+- workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
