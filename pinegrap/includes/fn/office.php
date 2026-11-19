@@ -482,13 +482,16 @@ function pg_office_reader_text($reader, $limit, &$over = null)
  * declares a kilobyte to whatever it holds. A table that unpacks past its
  * declared size is damaged; one past PG_OFFICE_MAX_STRINGS strings or
  * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show. Each string is read
- * node by node (pg_office_reader_text()).
+ * node by node (pg_office_reader_text()). Unlimited, as the sheet reader of
+ * the importers asks (includes/fn/sheet_read.php), the table has no count or
+ * byte limit, only the declared size.
  *
- * @param string $path the package on disk
- * @param string $part '' when the workbook has none
+ * @param string $path    the package on disk
+ * @param string $part    '' when the workbook has none
+ * @param bool   $limited held to the preview's limits
  * @return string[]|false|null false when damaged, null when too large
  */
-function pg_office_xlsx_strings($path, $part)
+function pg_office_xlsx_strings($path, $part, $limited = true)
 {
     $strings = array();
 
@@ -518,6 +521,11 @@ function pg_office_xlsx_strings($path, $part)
         // By the local name: a workbook written with a namespace prefix
         // (Open XML SDK writes x:si, x:row, x:c) is the same workbook.
         if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->localName === 'si')) {
+            if (!$limited) {
+                $strings[] = pg_office_reader_text($reader, PHP_INT_MAX);
+                continue;
+            }
+
             $string = pg_office_reader_text($reader, PG_OFFICE_MAX_STRING_BYTES - $bytes + 1, $over);
             $bytes += strlen($string);
 
