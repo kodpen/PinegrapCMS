@@ -578,6 +578,20 @@ function pg_whatsapp_design_editable($design)
 }
 
 /**
+ * Whether a design may be deleted here: only a saved draft that was never
+ * sent, which exists on this site alone. A template WhatsApp holds (in
+ * review, approved, rejected) has a Meta id and is left to the refresh,
+ * which removes it once WhatsApp no longer lists it.
+ *
+ * @param array $design
+ * @return bool
+ */
+function pg_whatsapp_design_deletable($design)
+{
+    return ((int) $design['id'] > 0) && ($design['meta_id'] === '') && ($design['status'] === 'DRAFT');
+}
+
+/**
  * The files a header of a format may take: their extensions, MIME types and
  * the largest size. Meta takes a document of up to 100 MB; a sample is read
  * into memory to be sent, so the designer stops at 16 MB.
@@ -1019,6 +1033,25 @@ function pg_whatsapp_design_save($design, $user_id)
     }
 
     return array('ok' => true, 'id' => (int) mysqli_insert_id(db::$con), 'field' => '', 'error' => '');
+}
+
+/**
+ * Deletes a draft that was never sent, as pg_whatsapp_design_deletable()
+ * allows; a row that a refresh or "Send for approval" moved on since the
+ * screen read it is left alone.
+ *
+ * @param int $id
+ * @return bool true when the draft was deleted
+ */
+function pg_whatsapp_design_delete($id)
+{
+    if ((int) $id <= 0) {
+        return false;
+    }
+
+    $deleted = db("DELETE FROM whatsapp_templates WHERE (id = '" . (int) $id . "') AND (meta_id IS NULL) AND (status = 'DRAFT')");
+
+    return ($deleted !== false) && (mysqli_affected_rows(db::$con) > 0);
 }
 
 /**

@@ -328,3 +328,19 @@ function test_whatsapp_design_submission_and_test_send()
 	pg_assert_same('K7', pg_whatsapp_design_url_sample(array('url' => 'https://a.com/c?k={{1}}', 'example' => array('https://a.com/c?k=K7'))), 'sample read from Meta\'s example');
 	pg_assert_same('', pg_whatsapp_design_url_sample(array('url' => 'https://a.com/{{1}}', 'example' => array('https://b.com/K7'))), 'an example of another address');
 }
+
+function test_whatsapp_design_deletable()
+{
+	$design = pg_whatsapp_design_new();
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a template not saved yet has nothing to delete');
+
+	$design['id'] = 7;
+	pg_assert_true(pg_whatsapp_design_deletable($design), 'a saved draft is deleted');
+
+	$design['meta_id'] = '991';
+	$design['status'] = 'REJECTED';
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a template WhatsApp holds is not deleted here, rejected or not');
+
+	$design['status'] = 'DRAFT';
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a row with a Meta id is never deleted as a draft');
+}

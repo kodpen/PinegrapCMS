@@ -74,6 +74,19 @@ if ($_POST) {
         go($self);
     }
 
+    // A draft never sent exists on this site alone, so it is deleted here;
+    // its name and language become free for another draft.
+    if (isset($_POST['submit_delete']) && pg_whatsapp_design_deletable($design)) {
+        if (pg_whatsapp_design_delete($id)) {
+            log_activity(lang(array('string' => 'WhatsApp template draft deleted: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The draft was deleted.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
+        }
+
+        $liveform->add_error(lang('The draft was not deleted: it is no longer a draft.'));
+        go($self);
+    }
+
     // The offer code of a template WhatsApp holds: the site's own setting,
     // kept apart from the template, which cannot change.
     if (isset($_POST['submit_offer']) && !$editable && $id) {
@@ -521,6 +534,10 @@ $output_actions = '';
 if ($editable) {
     $output_actions .= '<button type="submit" name="submit_save" value="1" class="pg-button pg-button-quiet"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save draft')) . '</button>'
         . '<button type="submit" name="submit_approval" value="1" class="pg-button pg-button-fill" data-confirm-content="' . h(lang('The template is saved and sent to WhatsApp for review. While WhatsApp reviews it, it cannot be changed.')) . '"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Send for approval')) . '</button>';
+}
+
+if (pg_whatsapp_design_deletable($design)) {
+    $output_actions .= '<button type="submit" name="submit_delete" value="1" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The draft is deleted from this site. WhatsApp never saw it, so nothing is deleted there.')) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete draft')) . '</button>';
 }
 
 if ($design['status'] === 'APPROVED') {
