@@ -919,7 +919,13 @@
                 var title = p.short_description || p.name;
                 var out = (p.inventory === 1) && (p.inventory_quantity <= 0);
                 var sub = (p.name !== title) ? '<span class="font-monospace">' + esc(p.name) + '</span>' : '';
-                if (p.inventory === 1) {
+                if (p.refusal) {
+                    // A product the counter cannot sell (a gift card): the
+                    // reason replaces the stock, and a pick still reaches the
+                    // server, which says the same.
+                    out = true;
+                    sub += (sub ? ' · ' : '') + '<span class="fg-emphasis-danger">' + esc(p.refusal) + '</span>';
+                } else if (p.inventory === 1) {
                     sub += (sub ? ' · ' : '') + (out ? '<span class="fg-emphasis-danger">' + esc(t.outOfStock) + '</span>' : esc(fill(t.inStock, [p.inventory_quantity])));
                 }
                 return '<div class="pg-sale-res" role="option" id="pg_sale_opt_' + index + '" data-index="' + index + '" aria-selected="false"' + (out ? ' aria-disabled="true"' : '') + '>'

@@ -20,8 +20,4 @@ description: Counter sale (add_order.php): cart in its own session key, born a l
 ## What does a line show once its product is deleted?
 - The code the order line was written with: `local_sale_lines()` and `local_sale_set_qty()` read `order_items.product_name` and `local_sale_product_label()` falls back to it (short description, product code, then that). Before PR #10384 the row, its Remove and Quantity labels and the removal message had no name. Test: `tests/local_sale_cart_test.php`.
 
-## What is still open?
-- Issue #10376: the completion skips the site's per-line work (gift cards, memberships, folder access, event spots, reward points).
-- Issue #10377: with tax switched off the counter still adds the zone's tax.
-
-Related: docs/memory/commerce/cart-order-creation.md, docs/memory/commerce/counter-sale-keyboard-focus.md
+Related: docs/memory/commerce/cart-order-creation.md, docs/memory/commerce/counter-sale-keyboard-focus.md, docs/memory/commerce/counter-sale-site-line-stages.md (the lines' stages, gift cards refused), docs/memory/commerce/counter-sale-tax-switched-off.md

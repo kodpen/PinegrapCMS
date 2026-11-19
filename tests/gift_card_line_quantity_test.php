@@ -62,7 +62,13 @@ function test_gift_card_line_limit_is_checked_at_every_door()
 		pg_assert_true(strpos((string) file_get_contents($root . $file), $call) !== false, $file . ' checks the gift card line limit');
 	}
 
-	foreach (array('shopping_cart.php', 'express_order.php', 'cart_action.php', 'add_to_cart.php', 'catalog_detail.php', 'order_form.php', 'includes/local_sale.php') as $file) {
+	foreach (array('shopping_cart.php', 'express_order.php', 'cart_action.php', 'add_to_cart.php', 'catalog_detail.php', 'order_form.php') as $file) {
 		pg_assert_true(strpos((string) file_get_contents($root . $file), 'pg_gift_card_quantity_refusal_take()') !== false, $file . ' shows a refused gift card add');
 	}
+
+	// The counter adds no gift card at all (local_sale_product_refusal()),
+	// so it has no refused add to show; a line a cart already held is still
+	// held to the limit by the quantity door above.
+	$counter = (string) file_get_contents($root . 'includes/local_sale.php');
+	pg_assert_true(strpos($counter, 'local_sale_product_refusal($product)') !== false, 'the counter refuses a gift card before adding it');
 }

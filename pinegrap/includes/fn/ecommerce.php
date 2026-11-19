@@ -3351,6 +3351,40 @@ function get_effective_tax_rate($product_rate, $zone_rate)
     return (float) $product_rate;
 }
 
+/**
+ * Whether the site charges tax (the Commerce setting ECOMMERCE_TAX). With it
+ * off the checkout takes no tax at all: the stored price is what the buyer
+ * pays.
+ *
+ * @return bool
+ */
+function pg_tax_switched_on()
+{
+    return defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true);
+}
+
+/**
+ * The VAT rate an order line is taxed at, the checkout's rule
+ * (update_order_item_taxes()) and the counter sale's (local_sale_line_rate()):
+ * none while the site charges no tax, for a product that is not taxable, or
+ * on an address in no tax zone (a zone rate of false, or 0); otherwise the
+ * product's own rate, the zone's when it has none. Pure.
+ *
+ * @param bool        $tax_on       pg_tax_switched_on()
+ * @param mixed       $taxable      products.taxable
+ * @param mixed       $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param float|false $zone_rate    the address's zone rate, false in no zone
+ * @return float
+ */
+function pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate)
+{
+    if (!$tax_on || !$taxable || !$zone_rate) {
+        return 0.0;
+    }
+
+    return (float) get_effective_tax_rate($product_rate, $zone_rate);
+}
+
 
 /**
  * The price a buyer pays for one unit, in minor units: the stored price plus
@@ -4861,42 +4895,19 @@ function update_order_item_taxes($ship_to_addresses = array())
             while ($row = mysqli_fetch_assoc($result)) {
                 $order_items[] = $row;
             }
-            // foreach order item
+            // A line with a recipient is taxed on the recipient's address,
+            // one without on the billing address.
+            $zone_rate = ($ship_to['ship_to_id'] > 0) ? $shipping_address_tax_rate : $billing_address_tax_rate;
+
             foreach ($order_items as $order_item) {
-                // if order item is taxable
-                if ($order_item['taxable']) {
-                    // if this order item has a recipient
-                    if ($ship_to['ship_to_id'] > 0) {
-                        // if shipping address is in a tax zone, apply tax
-                        if ($shipping_address_tax_rate) {
-                            $apply_tax = true;
-                            $tax_rate = $shipping_address_tax_rate;
-                            // else shipping address is not in a tax zone, so don't apply tax
-                        } else {
-                            $apply_tax = false;
-                        }
-                        // else this order item does not have a recipient
-                    } else {
-                        // if billing address is in a tax zone, apply tax
-                        if ($billing_address_tax_rate) {
-                            $apply_tax = true;
-                            $tax_rate = $billing_address_tax_rate;
-                            // else billing address is not in a tax zone, so don't apply tax
-                        } else {
-                            $apply_tax = false;
-                        }
-                    }
-                    // else order item is not taxable
-                } else {
-                    $apply_tax = false;
-                }
-                // The zone said tax is due; the product says at what rate. The
+                // The zone says whether tax is due, the product at what rate
+                // (pg_order_line_tax_rate(), the counter sale's rule too). The
                 // base is the whole line, not one unit: rounding a unit and then
                 // multiplying gives a different answer above quantity one.
                 $line_quantity = max(1, (int) $order_item['quantity']);
                 $lines[(int) $order_item['id']] = array(
                     'amount' => (int) $order_item['price'] * $line_quantity,
-                    'rate' => ($apply_tax == true) ? (float) get_effective_tax_rate($order_item['tax_rate'], $tax_rate) : 0.0,
+                    'rate' => pg_order_line_tax_rate(pg_tax_switched_on(), $order_item['taxable'], $order_item['tax_rate'], $zone_rate),
                     // A line saved for later is no part of the sale.
                     'alone' => !empty($order_item['saved_for_later'])
                         || !pg_order_line_charged_today($order_item['recurring'], $order_item['recurring_start_date'], $order_item['start'], $today, $clearcommerce),
