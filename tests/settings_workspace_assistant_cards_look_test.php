@@ -111,3 +111,15 @@ function test_settings_workspace_assistant_cards_look_no_old_buttons()
 		pg_assert_false(strpos(settings_workspace_assistant_cards_look_test_source($file), 'btn btn-') !== false, $file . ' draws no old button');
 	}
 }
+
+function test_settings_workspace_assistant_cards_look_alias_fields()
+{
+	// The @ before the alias is the look's field wrapper around a bare input.
+	foreach (array('includes/workspace/mcp.php', 'includes/workspace/mcp_catalogue.php') as $file) {
+		$source = settings_workspace_assistant_cards_look_test_source($file);
+
+		pg_assert_contains('<label class="pg-input pg-input-sm', $source, $file . ': the wrapper');
+		pg_assert_contains('<span class="pg-text-meta" aria-hidden="true">@</span>', $source, $file . ': the @');
+		pg_assert_false(strpos($source, 'form-adorn') !== false, $file . ': no Bootstrap adorn left');
+	}
+}
