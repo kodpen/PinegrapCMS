@@ -13,9 +13,9 @@
  *
  * Two families ship: plain CSV in the conventions the import screen reads
  * back (UTF-8 with a byte order mark, semicolons, ISO dates, a dot decimal),
- * and the Excel templates Paraşüt hands out for its own import, filled from
- * their fourth row so the help text and the header rows stay exactly as that
- * program expects them.
+ * and the Excel sheets Paraşüt hands out for its own import: their help
+ * text and heading rows are written from code (includes/fn/parasut_sheet.php)
+ * and the data from the fourth row, as that program expects them.
  *
  * Nothing here reads the request or prints HTML, so the profiles can be run
  * against fixture rows from the command line.
@@ -48,8 +48,9 @@ if (!defined('ERP_EXPORT_MAX_ROWS')) {
  * decimal   the decimal separator for CSV text (spreadsheet cells are numeric)
  * date      the PHP date format the profile writes
  * currency_map  ISO code => the code the target program uses
- * template  spreadsheet template under includes/phpexcel/templates, or ''
- * first_row the first data row of that template
+ * sheet     the Paraşüt import sheet whose head is written above the rows
+ *           (pg_parasut_sheet_layout(): invoices | contacts), or ''
+ * first_row the first data row under that head
  * directions  the invoice directions the profile writes, the first one the
  *           default; a profile without the key has no direction
  *
@@ -63,8 +64,8 @@ function erp_export_profiles()
         return $profiles;
     }
 
-    $csv = array('format' => 'csv', 'group' => 'generic', 'decimal' => '.', 'date' => 'Y-m-d', 'currency_map' => array(), 'template' => '', 'first_row' => 2);
-    $parasut = array('format' => 'xlsx', 'group' => 'parasut', 'decimal' => '.', 'date' => 'd.m.Y', 'currency_map' => array('TRY' => 'TRL'), 'first_row' => 4);
+    $csv = array('format' => 'csv', 'group' => 'generic', 'decimal' => '.', 'date' => 'Y-m-d', 'currency_map' => array(), 'sheet' => '', 'first_row' => 2);
+    $parasut = array('format' => 'xlsx', 'group' => 'parasut', 'decimal' => '.', 'date' => 'd.m.Y', 'currency_map' => array('TRY' => 'TRL'), 'first_row' => PG_PARASUT_SHEET_FIRST_ROW);
 
     $profiles = array(
         'csv_invoices' => $csv + array('entity' => 'invoices', 'label' => lang('Invoices (CSV, one row per line)'), 'file' => 'invoices', 'directions' => array('sales', 'purchase')),
@@ -75,8 +76,8 @@ function erp_export_profiles()
     // Paraşüt is Turkish software; its import sheets are offered to a store
     // that could use them.
     if (erp_turkish_features()) {
-        $profiles['parasut_invoices'] = $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'directions' => array('sales'), 'template' => 'parasut_satis_faturalari.xlsx');
-        $profiles['parasut_contacts'] = $parasut + array('entity' => 'accounts', 'label' => lang('Paraşüt - customers and suppliers (Excel)'), 'file' => 'parasut_musteri_ve_tedarikciler', 'template' => 'parasut_musteri_ve_tedarikciler.xlsx');
+        $profiles['parasut_invoices'] = $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'directions' => array('sales'), 'sheet' => 'invoices');
+        $profiles['parasut_contacts'] = $parasut + array('entity' => 'accounts', 'label' => lang('Paraşüt - customers and suppliers (Excel)'), 'file' => 'parasut_musteri_ve_tedarikciler', 'sheet' => 'contacts');
     }
 
     return $profiles;
@@ -105,9 +106,8 @@ function erp_export_profile($id)
 /**
  * The column headings a profile writes.
  *
- * For a spreadsheet template these are the template's own headings and are
- * only used when the template file is missing and a plain sheet is built
- * instead.
+ * For a Paraşüt profile these are the headings of its sheet, written in the
+ * sheet's head (erp_export_write_xlsx()).
  *
  * @param array $profile
  * @return array
@@ -142,15 +142,11 @@ function erp_export_columns($profile)
                 lang('Description'), lang('Receipt ID'), lang('Cancelled receipt ID'));
 
         case 'parasut_contacts':
-            return array('FİRMA ADI *', 'KISA ADI', 'MÜŞTERİ/TEDARİKÇİ *', 'E-POSTA', 'KATEGORİ', 'ADRES', 'İLÇE', 'İL', 'TELEFON', 'FAKS',
-                'VERGİ DAİRESİ', 'VERGİ NUMARASI', 'TC KİMLİK NO', 'AÇILIŞ BAKİYESİ TARİHİ', 'AÇILIŞ BAKİYESİ DÖVİZ CİNSİ',
-                'AÇILIŞ BAKİYESİ TUTARI', 'AÇILIŞ BAKİYESİ TÜRÜ');
-
         case 'parasut_invoices':
-            return array('MÜŞTERİ ÜNVANI *', 'FATURA İSMİ', 'FATURA TARİHİ', 'DÖVİZ CİNSİ', 'DÖVİZ KURU', 'VADE TARİHİ',
-                'TAHSİLAT TL KARŞILIĞI', 'FATURA TÜRÜ', 'FATURA SERİ', 'FATURA SIRA NO', 'KATEGORİ', 'HİZMET/ÜRÜN *',
-                'HİZMET/ÜRÜN AÇIKLAMASI', 'ÇIKIŞ DEPOSU *', 'MİKTAR *', 'BİRİM FİYATI *', 'İNDİRİM TUTARI', 'KDV ORANI *',
-                'ÖİV ORANI', 'KONAKLAMA VERGİSİ ORANI');
+            // Paraşüt's own heading row (includes/fn/parasut_sheet.php).
+            $layout = pg_parasut_sheet_layout(($profile['id'] === 'parasut_contacts') ? 'contacts' : 'invoices');
+
+            return array_map('trim', $layout['head'][3]['cells']);
     }
 
     return array();
@@ -897,45 +893,10 @@ function erp_export_xml($value)
 }
 
 /**
- * The <row> elements for a block of rows, numbers as numeric cells and
- * everything else as inline text (pg_xlsx_sheet_rows()).
- *
- * @param array $rows
- * @param int   $first_row  Row number of the first row
- * @param int   $style      Cell style index, 0 for the workbook default
- * @return string
- */
-function erp_export_sheet_rows($rows, $first_row, $style = 0)
-{
-    return pg_xlsx_sheet_rows($rows, $first_row, $style);
-}
-
-/**
- * Where a profile's spreadsheet template lives, or '' when it is not there.
- *
- * @param array $profile
- * @return string
- */
-function erp_export_template_path($profile)
-{
-    if (empty($profile['template'])) {
-        return '';
-    }
-
-    $path = PG_FUNCTIONS_DIR . '/includes/phpexcel/templates/' . $profile['template'];
-
-    return is_file($path) ? $path : '';
-}
-
-/**
- * A spreadsheet: the profile's template with our rows from its first data
- * row, or a plain sheet with a heading row when the template is missing.
- *
- * The template is opened as the zip it is and only its worksheet part is
- * rewritten: the help text, the heading rows, the column widths and the
- * shared strings stay untouched, which is what the receiving program checks.
- * Rows at or past the first data row are dropped before ours go in, so a
- * template that ships with sample rows does not hand them on.
+ * A spreadsheet: the profile's Paraşüt sheet - its help note, headings and
+ * column widths, kept as data in includes/fn/parasut_sheet.php - with our
+ * rows from its first data row, or a plain sheet with a heading row for a
+ * profile without one.
  *
  * @param array  $profile
  * @param array  $columns
@@ -945,54 +906,11 @@ function erp_export_template_path($profile)
  */
 function erp_export_write_xlsx($profile, $columns, $rows, $path)
 {
-    if (!class_exists('ZipArchive')) {
-        return false;
-    }
+    if (!empty($profile['sheet'])) {
+        $layout = pg_parasut_sheet_layout((string) $profile['sheet']);
+        $layout['first_row'] = max(1, (int) $profile['first_row']);
 
-    $template = erp_export_template_path($profile);
-
-    if ($template !== '') {
-        if (!@copy($template, $path)) {
-            return false;
-        }
-
-        $zip = new ZipArchive();
-
-        if ($zip->open($path) !== true) {
-            @unlink($path);
-            return false;
-        }
-
-        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
-
-        if (($sheet === false) || (strpos($sheet, '<sheetData') === false)) {
-            $zip->close();
-            @unlink($path);
-            return false;
-        }
-
-        $first_row = max(1, (int) $profile['first_row']);
-
-        // Keep the rows above the data area exactly as they are, drop the rest.
-        $kept = '';
-        if (preg_match_all('/<row\b[^>]*?(?:\/>|>.*?<\/row>)/s', $sheet, $matches)) {
-            foreach ($matches[0] as $row_xml) {
-                if (preg_match('/\br="(\d+)"/', $row_xml, $r) && ((int) $r[1] < $first_row)) {
-                    $kept .= $row_xml;
-                }
-            }
-        }
-
-        $sheet_data = '<sheetData>' . $kept . erp_export_sheet_rows($rows, $first_row) . '</sheetData>';
-        $sheet = preg_replace('/<sheetData\b[^>]*?(?:\/>|>.*?<\/sheetData>)/s', $sheet_data, $sheet, 1);
-
-        $last_row = $first_row + max(0, count($rows) - 1);
-        $last_column = erp_export_column_letter(max(0, count($columns) - 1));
-        $sheet = preg_replace('/<dimension ref="[^"]*"\/>/', '<dimension ref="A1:' . $last_column . $last_row . '"/>', $sheet, 1);
-
-        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
-
-        return $zip->close();
+        return pg_xlsx_write_layout($layout, $rows, $path);
     }
 
     return erp_export_write_plain_xlsx($columns, $rows, $path, $profile['label']);
