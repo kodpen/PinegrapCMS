@@ -7,7 +7,7 @@ module: stock_notify
 ## How does a request name a device?
 - `stock_notify.php` takes an optional `push_secret` (the secret the browser got from `site_push.php`). `pg_stock_notify_request()` passes it, with the row's id, to `pg_stock_notify_push_watch()` when the status is `added` or `already`: the browser waits in `site_push_watch` (kind 2 `PG_SITE_PUSH_KIND_STOCK`, `record_id` = `stock_notify.id`; `visitor-push-watch.md`). Pressing on a second device adds that device to the same row.
 - An unknown secret, or visitor notifications off, is ignored: no error, the request stands. The e-mail address stays required.
-- The page's side (the site script putting the secret into the request form) waits for VP3's script, like VP6b's button.
+- The page's side: the request form reads the secret from `window.pgSitePush.secret()` (VP3, `visitor-push-block.md`); putting it into the form is still to be done, like VP6b's button.
 
 ## How is the notice sent?
 - `pg_stock_notify_send()`, after it claims a row, calls `pg_stock_notify_push_send()` while `pg_site_push_enabled()` and the 11.0.229 table exist: per waiting browser (`pg_site_push_watchers()`, only subscriptions that still exist) the wait is taken with a DELETE (stock's only moment, `pg_site_push_watch_take(…, 0, true)`); one deleted row writes one message (`pg_site_push_message_to_one()`, kind 2). Two restocks at once push once.

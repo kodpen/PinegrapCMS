@@ -23,6 +23,7 @@
 - booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
 - booking-deposits.md: Booking deposits (BK9a): booking_services.deposit and deposit_product_id, bookings.order_id and paid_at (11.0.169), the deposit order, marked paid from the order's completion, confirm or requested
 - booking-link-code.md: A staff member's meeting link (SL1): the code from the staff row and site key, one 404 for a wrong code or a member out of booking, its services and free times, ws_profiles.meeting_url
+- booking-link-page.md: The meeting link's page book_with.php (SL2): checks before reading, hold and confirm with source link, the one 404, the done card; the meeting address in the mails and the .ics
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
 - booking-messages.md: Booking mails, SMS, .ics and reminders: booking.* events, four campaign profile actions (11.0.161), the .ics attachment, SMS kind booking, reminders by the general job without a column [decision: decisions-made-product-19.md]
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032) [decision: decisions-made-product-19.md]
@@ -264,6 +265,7 @@
 - product-compare-at-price.md: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
 - product-customs-fields.md: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API [decision: decisions-made-product-7.md]
 - product-duplicate.md: What a product copy (duplicate_product() and the bulk duplicate_products.php) keeps: later columns via pg_product_copy_extra_sql(), the gallery, a bundle's contents and refresh
+- product-edit-group-links.md: Edit Product save writes only the product groups added or taken off, so each group link keeps its sort order, featured mark and new date
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 - product-feed-google-xml.md: The fourth product feed format, google_xml (PR #10133): Google Merchant Center's RSS 2.0 file from the google_tsv rows, one XML escape helper, streamed like the others, content type, card switch
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile

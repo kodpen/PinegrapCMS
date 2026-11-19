@@ -29,7 +29,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K10 to K12.
 
 - CC5 (M) after CC2: flows.
-  - Existing: the registry, `assets/js/workspace.js` (the channel's flows are read once when it opens, never on each "/").
+  - CC5 done (#10301, `workspace/workspace-command-flow.md`); the flows are read once as the channel opens.
   - Tests: a flow not runnable here not listed; a pick starts through `ws_flow_run_start()` with its rights; a flow's name typed without a pick is an unknown command; none in a discussion or a mailbox room; a customer channel's contact step.
   - Pictures: the list with flows, /akış's argument list, a started flow's line.
   - Features: K13, K14.

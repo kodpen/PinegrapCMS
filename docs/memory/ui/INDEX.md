@@ -400,7 +400,7 @@
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
-- look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
+- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own
@@ -421,7 +421,7 @@
 - look-menus-regions-screens.md: Menus, regions, ads, styles, theme and design files, the visitor and log screens in look A (S4, #10316): field spans per field, section titles, card tables, what stayed
 - look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look [decision: decisions-made-panel-10.md]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
-- look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-10.md, decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-people-screens.md: Users, contacts, privacy and campaign screens in look A (S2, #9692): titles, group labels, field spans per field, campaign cards unwrapped, what stayed [decision: here]
 - look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done

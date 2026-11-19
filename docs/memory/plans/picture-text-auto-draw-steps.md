@@ -23,7 +23,7 @@ description: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs a
 - DA4 (S) after DA2 and DA3: the screens' words.
   - The Pictures group's note, the queue view's lead and the Languages list's note say that pictures are drawn by themselves, when, and that the buttons do it now.
   - Pictures to the architect: the three places at 1440 and 390, light and one dark, in Turkish.
-- DA5 (S) close-out: every line of the plan checked against the code with its PR; `core/picture-text-translation-overview.md` and its files corrected, with a file for the automatic draw; the changed `[NEW]` line named in the PR body; `workflow/user-docs-pages.md`; the plan's two files deleted.
+- DA5 (S) close-out: every line of the plan checked against the code with its PR; `core/picture-text-overview.md` and its files corrected, with a file for the automatic draw; the changed `[NEW]` line named in the PR body; `workflow/user-docs-pages.md`; the plan's two files deleted.
 
 ## Which steps run side by side?
 - DA2 and DA3, once DA1 has landed: DA2 changes scripts and the panel's footer, DA3 the job run and `includes/fn/`. Neither changes DA1's functions; a change one needs there is named in its PR body and waits for the other.

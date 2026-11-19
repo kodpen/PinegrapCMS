@@ -17795,6 +17795,22 @@ a.ws-chip-message:hover,
   white-space: nowrap;
   max-width: 45%;
 }
+/* A flow of the "/" list or of /flow's list: the name is what the row is
+   for, so "Start this flow" gives way first (it shrinks long before the
+   name is cut) and goes on a phone. */
+.ws-picker-flow-row .ws-picker-label {
+  flex-shrink: .001;
+}
+.ws-picker-flow-row .ws-picker-meta {
+  flex: 0 1000 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+@media (max-width: 575.98px) {
+  .ws-picker-flow-row .ws-picker-meta {
+    display: none;
+  }
+}
 /* A label with a second line under it (a slash command and its example). */
 .ws-picker-item .ws-picker-text {
   display: flex;
@@ -20694,14 +20710,62 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
 }
 /* Asking Claude: where a request stands, the tasks an answer proposes, and
-   the settings card. */
+   the settings card. An agent line is the icon and a wrapping body: a row
+   of the label, "since HH:MM" and Stop, then the progress note. The note
+   stays on that row only when the whole of it fits; otherwise it takes a
+   line of its own under the label. The same rule holds in every column
+   (the channel, a discussion panel, a phone). */
 .ws-claude-state {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: .35rem;
   margin-top: .3rem;
   font-size: .76rem;
   color: var(--pg-fg-2);
+}
+.ws-claude-state > .bi {
+  flex: none;
+}
+.ws-claude-state .ws-claude-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  column-gap: .35rem;
+  row-gap: .1rem;
+}
+/* The row shrinks to the column when it alone is wider. */
+.ws-claude-state .ws-claude-head {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+/* A label sharing its row with since and Stop (sent, running) stays on one
+   line and is cut with an ellipsis, the whole label in its title; when the
+   row is short, the word of "since" goes first (claudeStateFit() in
+   workspace.js). A label that is a sentence (waiting, failed, cancelled:
+   it says when it is tried again) wraps between words. */
+.ws-claude-state .ws-claude-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-claude-state.ws-claude-sent .ws-claude-label,
+.ws-claude-state.ws-claude-running .ws-claude-label {
+  white-space: nowrap;
+}
+.ws-claude-state .ws-claude-since,
+.ws-claude-state .ws-claude-stop {
+  flex: none;
+  white-space: nowrap;
+}
+.ws-claude-state.ws-claude-tight .ws-claude-since-word {
+  display: none;
 }
 .ws-claude-state.ws-claude-running > .bi,
 .ws-claude-state.ws-claude-sent > .bi {
@@ -20710,16 +20774,15 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-answered > .bi {
   color: var(--pg-success);
 }
-/* An agent's progress note and since when it holds the request: a long
-   note wraps inside the column instead of widening it. */
+/* An agent's progress note (up to 200 characters, never cut): its whole
+   width decides whether it fits on the row; on its own line it wraps
+   between words, and only a word longer than the line is split. */
 .ws-claude-state .ws-claude-note {
+  flex: 0 0 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow-wrap: break-word;
   font-style: italic;
-}
-.ws-claude-state .ws-claude-since {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {

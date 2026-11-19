@@ -53,7 +53,7 @@
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
 - docker-decisions.md: Owner's Docker decisions (2026-10-19/20): docker/ in the release tree, an addition only, no env in the product, nginx only, Software Update in the container left as it is
-- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
+- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml per published release (no pre-release), pinegrap-app/-web on amd64 and arm64, tags v<version> and latest, re-run by tag, PG_IMAGE_TAG, visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
@@ -193,6 +193,7 @@
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
 - sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: here]
 - sms-campaign-limit-and-labels.md: SMS campaign text limit and no maxlength, status labels, xref rows on group delete, save after the job claim, cancel confirm, read-only times, cut list name
+- sms-campaigns-module-load.md: functions.php does not load fn/sms_campaigns.php: a reader of SMS campaigns loads it itself, or a function_exists() check drops them silently (Sends lost them)
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens [decision: decisions-made-customers.md, decisions-made-product-8.md, decisions-made-schema-7.md]
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
 - sms-erp-overdue.md: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind reminder, off by default), one text per account per notice, which number, the reference, digest count, invoice screen line
@@ -225,8 +226,10 @@
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 - upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md]
+- vendor-api-release-keys.md: The two release keys a signed update is verified with (PR #10348, plan step P5c): ids kp-2026a and kp-2026b, where they live, their fingerprints, how one is retired, the test
 - vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
+- visitor-push-block.md: Visitor notifications on the site (VP3, #10288): the Features switch, the "Notify me" block, its script pg_site_push.js, the worker site_push_sw.php, where the secret is kept for other forms
 - visitor-push-order.md: Visitor notifications for an order (kind 3, VP6): the door's order action, who may follow an order, shipped and delivered sent once per address beside the SMS, the text, language and link
 - visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: decisions-made-schema-24.md]
 - visitor-push-sender.md: Visitor notifications' sender (#9957): message writer, queue batches, the pass under one lock, held services, retries, refused subscriptions removed, a day's limit, tidy-up, counts [decision: here]

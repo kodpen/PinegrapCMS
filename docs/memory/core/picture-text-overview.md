@@ -1,5 +1,5 @@
 ---
-name: picture-text-translation-overview
+name: picture-text-overview
 description: Picture text translation as a whole (owner 2026-11-16, built in #10028 to #10269): what it does, the decisions that bind it, what the first version leaves out and why, which file holds each part
 module: picture_translation
 ---
@@ -11,7 +11,7 @@ module: picture_translation
 - Owner (2026-11-17, poll 143, `workflow/decisions-made-product-75.md`): drawn by itself, by the server with nobody there; until `plans/picture-text-auto-draw.md` lands a person draws.
 - Owner (2026-11-16): Design Canvas pictures shown by a page in another language; the source picture shown while a language's is not drawn or out of date; a table of its own (`workflow/decisions-made-product-64.md`, columns `workflow/decisions-made-schema-25.md`).
 - Owner (2026-11-17): drawn only once every counted text is translated (`workflow/decisions-made-product-71.md`, poll 131). Looks accepted: the Pictures group (poll 118, `decisions-made-product-70.md`), the Languages list (poll 130), the queue (poll 140, `decisions-made-product-74.md`).
-- Architect (2026-11-16, agent channel message 6748): no right-to-left language in the first version; no box or size per language, a text shrinks to the source box down to 70% and is marked "Look by hand" below it; texts as owner type `file`, so a page's same words are one string; only a picture a page has shown is counted, sent and drawn.
+- Architect (2026-11-16, message 6748): no right-to-left language at first; no box or size per language, a text shrinks to the source box down to 70% and is marked "Look by hand" below it (`picture-text-translation-fit-letters.md`); texts as owner type `file`, so a page's same words are one string; only a picture a page has shown is counted, sent and drawn.
 - Architect (2026-11-16): a language's picture is a `files` row in the source's folder, found only through `file_translation`, never by its name, and shown in no file list.
 
 ## Why these ways?

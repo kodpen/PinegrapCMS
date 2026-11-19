@@ -377,8 +377,8 @@ function erp_manual_header_build($data)
 
     $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
 
-    if ($exchange_rate < 0) {
-        return $fail(lang('Enter an exchange rate greater than zero.'), 'exchange_rate');
+    if (($refusal = erp_exchange_rate_refusal($exchange_rate)) !== '') {
+        return $fail($refusal, 'exchange_rate');
     }
 
     $today = date('Y-m-d');
@@ -525,6 +525,11 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
 
     $totals = $built['totals'];
     $base = erp_base_currency();
+
+    if (($header['currency'] !== $base) && !erp_base_amount_fits($totals['grand_total'], $header['exchange_rate'])) {
+        return $fail(lang('The total is too large in the home currency.'), 'exchange_rate');
+    }
+
     $grand_total_base = ($header['currency'] === $base)
         ? $totals['grand_total']
         : (($header['exchange_rate'] > 0) ? erp_to_base($totals['grand_total'], $header['exchange_rate']) : 0);
@@ -834,6 +839,14 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
         $exchange_rate = (float) $recorded['rate'];
         $rate_date = (string) $recorded['rate_date'];
         $rate_source = (string) $recorded['source'];
+    }
+
+    // A draft stored before the rate was bounded, or a recorded rate, is
+    // checked again: the conversion below must stay an integer.
+    if (($currency !== $base) && ((erp_exchange_rate_refusal($exchange_rate) !== '')
+        || !erp_base_amount_fits($totals['grand_total'], $exchange_rate))) {
+        erp_tx_rollback();
+        return $fail(lang('The total is too large in the home currency.'));
     }
 
     $grand_total_base = ($currency === $base) ? $totals['grand_total'] : erp_to_base($totals['grand_total'], $exchange_rate);
