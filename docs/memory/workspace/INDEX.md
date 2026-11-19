@@ -462,6 +462,7 @@
 - workspace-flows-template-form-sort.md: Flow template form_sort (T14, PR #7505): a submitted form read, Pinegrap AI picks sales, support or spam, a task for each of the first two, spam ends, an unsorted form told
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
+- workspace-flows-template-post-digest.md: Flow template post_digest, "Digest of new posts" (post-digest DG4): its five boxes, when it is offered, what its setup asks, the setting types page, group, subject and day
 - workspace-flows-template-saved.md: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_templates, what a save keeps, settings, rights, panel actions, the editor's Save as template, the gallery's saved cards
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
 - workspace-flows-template-table.md: Saved flow templates ask the table of a row box (PR #3597): the table setting, the setup panel's picker, the reach refused at Use, the fields a changed table clears
