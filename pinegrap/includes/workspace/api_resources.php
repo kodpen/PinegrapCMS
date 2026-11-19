@@ -5548,8 +5548,47 @@ function ws_api_tasks_list($params)
 function ws_api_tasks_get($params)
 {
     $viewer = ws_api_viewer();
+    $task = ws_api_task_or_404($viewer, $params['id']);
+    $out = ws_api_task_present($viewer, $task);
 
-    api_ok(ws_api_task_present($viewer, ws_api_task_or_404($viewer, $params['id'])));
+    // The linked tasks as the panel's drawer draws them, so a client needs no
+    // read per linked task; null when the links table is not there.
+    $out['links'] = ws_task_links_detail($viewer, $task, ws_can_edit_task($viewer, $task, $out['assignees']));
+
+    api_ok($out);
+}
+
+// What GET /workspace/tasks/{id} returns: the task and its links.
+function ws_api_task_detail_schema()
+{
+    return ws_api_task_schema() + array('links' => 'WorkspaceTaskLinks?');
+}
+
+// The links of GET /workspace/tasks/{id}, as ws_task_links_detail() answers
+// them (task_links.php).
+function ws_api_task_links_schema()
+{
+    return array(
+        'blocked_by' => array('WorkspaceTaskLink'),
+        'blocks'     => array('WorkspaceTaskLink'),
+        'can_edit'   => 'boolean',
+        'max'        => 'integer',
+    );
+}
+
+// One linked task; title is empty for a task the reader cannot see, status
+// and status_label for one that no longer exists.
+function ws_api_task_link_schema()
+{
+    return array(
+        'id'           => 'integer',
+        'number'       => 'string',
+        'title'        => 'string',
+        'status'       => 'string',
+        'status_label' => 'string',
+        'open'         => 'boolean',
+        'visible'      => 'boolean',
+    );
 }
 
 /**
@@ -6305,14 +6344,18 @@ function ws_api_plan_present($row)
 function ws_api_plan_get($params)
 {
     $viewer = ws_api_viewer();
-    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0));
+    // Agent channels' tasks are left out unless asked for, as on the panel's
+    // board; agent_channels counts the ones the viewer may read, so a client
+    // knows whether to offer its toggle.
+    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0),
+        false, 0, ws_agent_channel_mode($params['agent_channels'] ?? ''));
     $out = array();
 
     foreach ($board['rows'] as $row) {
         $out[] = ws_api_plan_present($row);
     }
 
-    api_ok_list($out, count($out));
+    api_ok_list($out, count($out), null, null, array('agent_channels' => (int) ($board['agent_channels'] ?? 0)));
 }
 
 /* ---------------------------------------------------------------------------
