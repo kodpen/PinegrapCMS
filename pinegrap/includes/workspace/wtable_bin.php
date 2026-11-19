@@ -314,6 +314,26 @@ function ws_wtable_row_restore_check($viewer, $table, $bin)
  */
 function ws_wtable_row_restore($viewer, $table, $bin)
 {
+    // Checked and written under the table's key lock when it has a key, as
+    // a row add or change is, so a restore and a write at once cannot both
+    // find the key free.
+    $table_id = is_array($table) ? (int) $table['id'] : 0;
+    $taken = (($table_id > 0) && (ws_wtable_key_column(ws_wtable_columns($table_id)) !== null)) ? ws_wtable_key_lock($table_id) : false;
+
+    try {
+        return ws_wtable_row_restore_write($viewer, $table, $bin);
+    } finally {
+        ws_wtable_key_unlock($table_id, $taken);
+    }
+}
+
+/**
+ * The write of ws_wtable_row_restore(), under its lock.
+ *
+ * @return array
+ */
+function ws_wtable_row_restore_write($viewer, $table, $bin)
+{
     $none = array('row_id' => 0, 'revision' => 0, 'id_changed' => false);
     $check = ws_wtable_row_restore_check($viewer, $table, $bin);
 

@@ -123,8 +123,9 @@ function test_workspace_wtable_keys_clash()
 }
 
 // Where the key is checked and used: the row checks, the restore, the
-// column checks, the lock around the writes, the boxes, the API and the
-// import.
+// column checks, the lock around the writes (add, change and restore, so a
+// restore and a write at once cannot both find a key free), the boxes, the
+// API and the import.
 function test_workspace_wtable_keys_wiring()
 {
 	pg_assert_contains('ws_wtable_key_cells_refusal(', ws_wtable_keys_test_source('ws_wtable_row_create_check'));
@@ -134,7 +135,7 @@ function test_workspace_wtable_keys_wiring()
 	pg_assert_contains('ws_wtable_column_key_check(', ws_wtable_keys_test_source('ws_wtable_column_update_check'));
 	pg_assert_contains("'key_taken'", ws_wtable_keys_test_source('ws_wtable_column_key_check'));
 
-	foreach (array('ws_wtable_row_create', 'ws_wtable_row_update') as $writer) {
+	foreach (array('ws_wtable_row_create', 'ws_wtable_row_update', 'ws_wtable_row_restore') as $writer) {
 		$source = ws_wtable_keys_test_source($writer);
 		pg_assert_contains('ws_wtable_key_lock(', $source, $writer . ' takes the lock');
 		pg_assert_contains('ws_wtable_key_unlock(', $source, $writer . ' gives it back');
