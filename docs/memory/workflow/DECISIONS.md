@@ -510,6 +510,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
 - decisions-made-schema-29.md: Where are the rules and the earlier parts?
 - decisions-made-schema-29.md: Which tables do Workspace calls add? (owner, 2026-11-20, poll 158, channel message 9839)
+- decisions-made-schema-29.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-20, agent channel, answer to K2's request 1584)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
