@@ -88,6 +88,25 @@ function test_whatsapp_design_check()
 	pg_assert_true(isset($errors['footer']), 'a variable in the footer');
 }
 
+function test_whatsapp_design_check_keeps_a_rejected_template_language()
+{
+	// A template made in WhatsApp Manager in a language the designer does not
+	// offer, then rejected: its language field is locked, so the check may
+	// not refuse it, or the template can never be corrected.
+	$rejected = pg_whatsapp_design_from_row(array(
+		'id' => 9, 'meta_id' => '771', 'name' => 'order_ready', 'language' => 'ja', 'category' => 'UTILITY', 'status' => 'REJECTED',
+		'reason' => 'INVALID_FORMAT', 'parameter_format' => 'POSITIONAL', 'samples' => '',
+		'components' => json_encode(array(array('type' => 'BODY', 'text' => 'Hello there.'))),
+	));
+	$design = pg_whatsapp_design_posted(array('category' => 'UTILITY', 'body' => 'Hello {{1}}, it is ready.', 'sample_1' => 'Jo'), $rejected);
+
+	pg_assert_same('ja', $design['language'], 'the stored language is kept');
+	pg_assert_same(array(), pg_whatsapp_design_check($design), 'and accepted');
+
+	$errors = pg_whatsapp_design_check(whatsapp_design_test_posted(array('language' => 'ja')));
+	pg_assert_true(isset($errors['language']), 'a new draft still takes only an offered language');
+}
+
 function test_whatsapp_design_components_and_samples()
 {
 	$design = whatsapp_design_test_posted();
