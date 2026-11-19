@@ -847,7 +847,7 @@ function pg_coll_rows_editor_markup($field, $config, $posted)
 
 /**
  * The rows fields of a form a record screen draws or writes: field id =>
- * array('field' => form_fields row (id, name, label, office_use_only),
+ * array('field' => form_fields row (id, name, label, required, office_use_only),
  * 'spec' => pg_coll_rows_spec()).
  *
  * @param int $page_id
@@ -859,7 +859,7 @@ function pg_coll_rows_fields($page_id)
     $out = array();
     foreach (pg_coll_field_kinds($page_id) as $field_id => $kind) {
         if ($kind['kind'] !== 'rows') continue;
-        $row = db_item("SELECT id, name, label, office_use_only FROM form_fields WHERE id = '" . (int)$field_id . "' LIMIT 1");
+        $row = db_item("SELECT id, name, label, required, office_use_only FROM form_fields WHERE id = '" . (int)$field_id . "' LIMIT 1");
         if (!$row) continue;
         $out[(int)$field_id] = array(
             'field' => $row,
@@ -992,6 +992,205 @@ function pg_coll_rows_screen_write($liveform, $page_id, $form_id, $complete, $us
         }
     }
     return $failed;
+}
+
+/**
+ * The most bytes a site form's posted list of one rows field may hold: 100
+ * rows of a few short fields stay far below it, and a longer post is refused
+ * before it is decoded.
+ *
+ * @return int
+ */
+function pg_coll_rows_posted_max_bytes()
+{
+    return 262144;
+}
+
+/**
+ * What the rows editor draws on a site form (pure): the panel's config
+ * (pg_coll_rows_editor_config()) in the site's look. The labels are the
+ * visitor's language, a date or time is the browser's own input (no panel
+ * picker on a site), and no row opens on a record screen the visitor cannot
+ * see, so the fields the table does not take are not named either.
+ *
+ * @param array $spec   pg_coll_rows_spec(), ok
+ * @param array $rows   array('id', 'reference_code', 'values') each
+ * @param array $errors pg_coll_rows_check()'s errors
+ * @return array
+ */
+function pg_coll_rows_site_config($spec, $rows, $errors)
+{
+    $config = pg_coll_rows_editor_config($spec, $rows, $errors);
+    $label = function ($text) {
+        return function_exists('pg_tr_label') ? (string)pg_tr_label((string)$text) : (string)$text;
+    };
+    foreach ($config['columns'] as $i => $column) {
+        $config['columns'][$i]['label'] = $label($column['label']);
+        $config['columns'][$i]['hook'] = '';
+        foreach ($column['options'] as $j => $option) {
+            $config['columns'][$i]['options'][$j]['label'] = $label($option['label']);
+        }
+    }
+    foreach ($config['rows'] as $i => $row) $config['rows'][$i]['open'] = '';
+    $config['others'] = array();
+    $config['look'] = 'site';
+    return $config;
+}
+
+/**
+ * The rows editor on a site form, in Bootstrap 5.3.8 markup: the field's
+ * label, the box the script fills and the one hidden field the list travels
+ * in ("rows_<field id>"), as on the panel's record screens.
+ *
+ * @param array  $field  id, label (already in the visitor's language)
+ * @param array  $config pg_coll_rows_site_config()
+ * @param string $posted the list as posted before a refusal, else ''
+ * @return string HTML
+ */
+/* @pg-site-output */
+function pg_coll_rows_site_markup($field, $config, $posted)
+{
+    $id = (int)$field['id'];
+
+    static $scripts = false;
+    $tags = '';
+    if (!$scripts) {
+        $scripts = true;
+        $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+        $tags = '<script src="' . $base . '/assets/lib/sortablejs/Sortable.min.js" defer></script>'
+            . '<script src="' . $base . '/assets/js/pg_collection_rows.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_collection_rows.js') . '" defer></script>';
+    }
+
+    $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+    return '<div class="mb-3 pg-coll-rows-field">'
+        . '<span class="form-label d-block" id="rows_label_' . $id . '">' . h((string)$field['label']) . '</span>'
+        . '<div class="pg-coll-rows" role="group" aria-labelledby="rows_label_' . $id . '"'
+        . ' data-pg-rows="' . h((string)json_encode($config, $flags)) . '"'
+        . ' data-pg-rows-words="' . h((string)json_encode(pg_coll_rows_editor_words(), $flags)) . '"></div>'
+        . '<input type="hidden" name="rows_' . $id . '" value="' . h((string)$posted) . '" data-pg-rows-value>'
+        . $tags
+        . '</div>';
+}
+
+/**
+ * The rows editor of one rows field on a designed site form
+ * (pg_cf_apply_field_bindings()), or '' when it cannot draw: the field
+ * then shows nothing, as before. A site form makes a new record, so the
+ * editor starts empty, or with the list as posted when the submission came
+ * back refused, its refusals marked.
+ *
+ * @param array       $row form_fields row (pg_cf_field_map()): id, page_id,
+ *                         label, reference_page_id; a caller holding the
+ *                         spec passes it as 'rows_spec'
+ * @param object|null $lf  the form's liveform
+ * @return string HTML
+ */
+function pg_coll_rows_site_editor($row, $lf)
+{
+    $spec = (isset($row['rows_spec']) && is_array($row['rows_spec']))
+        ? $row['rows_spec']
+        : pg_coll_rows_spec_for(array(
+            'page_id' => isset($row['page_id']) ? (int)$row['page_id'] : 0,
+            'kind' => 'rows',
+            'reference_page_id' => isset($row['reference_page_id']) ? (int)$row['reference_page_id'] : 0,
+        ));
+    if (empty($spec['ok'])) return '';
+
+    $name = 'rows_' . (int)$row['id'];
+    $json = ($lf && $lf->field_in_session($name)) ? $lf->get_field_value($name) : '';
+    $json = (is_string($json) && strlen($json) <= pg_coll_rows_posted_max_bytes()) ? $json : '';
+    $posted = pg_coll_rows_posted($json);
+
+    $rows = array();
+    $errors = array();
+    if ($posted === null) {
+        $json = '';
+    } else {
+        foreach ($posted as $one) {
+            $rows[] = array(
+                'id' => 0,
+                'reference_code' => (is_array($one) && isset($one['code']) && is_scalar($one['code'])) ? (string)$one['code'] : '',
+                'values' => (is_array($one) && isset($one['values']) && is_array($one['values'])) ? $one['values'] : array(),
+            );
+        }
+        if ($lf->check_field_error($name)) {
+            $check = pg_coll_rows_check($spec, '', $posted, true);
+            $errors = $check['errors'];
+        }
+    }
+
+    $label = function_exists('pg_tr_label') ? pg_tr_label((string)$row['label']) : (string)$row['label'];
+    return pg_coll_rows_site_markup(array('id' => (int)$row['id'], 'label' => $label), pg_coll_rows_site_config($spec, $rows, $errors), $json);
+}
+
+/**
+ * Checks the rows a site form posted (custom_form.php) before the record is
+ * written. A rows field's own value is never taken from the post: the
+ * writer sets it from the list (pg_coll_rows_screen_write()), so a visitor
+ * cannot name rows of another record. A required rows field asks for one
+ * row when the form is submitted complete; a list over
+ * pg_coll_rows_posted_max_bytes() or a refused row marks the field.
+ *
+ * Returns the ids of the rows fields, which custom_form.php leaves out of
+ * its own checks of a field's posted value.
+ *
+ * @param object $liveform
+ * @param int    $page_id
+ * @param bool   $complete the form is submitted complete
+ * @param bool   $office_use_only_access
+ * @return array
+ */
+function pg_coll_rows_site_check($liveform, $page_id, $complete, $office_use_only_access)
+{
+    $ids = array();
+    foreach (pg_coll_rows_fields($page_id) as $field_id => $item) {
+        $ids[] = (int)$field_id;
+        $liveform->assign_field_value($field_id, '');
+        if (!empty($item['field']['office_use_only']) && !$office_use_only_access) continue;
+        if (!$item['spec']['ok']) continue;
+
+        $name = 'rows_' . $field_id;
+        $label = h(function_exists('pg_tr_label') ? pg_tr_label((string)$item['field']['label']) : (string)$item['field']['label']);
+        $json = $liveform->get_field_value($name);
+        if (is_string($json) && strlen($json) > pg_coll_rows_posted_max_bytes()) {
+            $liveform->mark_error($name, lang(array('string' => 'The rows of {var:1} are too long to be sent. Please shorten them.', 'vars' => $label)));
+            continue;
+        }
+        $posted = pg_coll_rows_posted($json);
+        $refusal = pg_coll_rows_site_refusal($posted, !empty($item['field']['required']), $complete, $label);
+        if ($refusal !== '') {
+            $liveform->mark_error($name, $refusal);
+            continue;
+        }
+        if ($posted === null) continue;
+
+        $check = pg_coll_rows_check($item['spec'], '', $posted, $complete);
+        if (!$check['ok']) {
+            $message = (count($check['errors']) === 1 && $check['errors'][0]['row'] === null)
+                ? $check['errors'][0]['message']
+                : lang(array('string' => 'Please correct the marked rows of {var:1}', 'vars' => $label));
+            $liveform->mark_error($name, $message);
+        }
+    }
+    return $ids;
+}
+
+/**
+ * Why a site form's rows field is refused before its rows are checked
+ * (pure): a required field submitted complete with no row. '' otherwise.
+ *
+ * @param array|null $posted   pg_coll_rows_posted()
+ * @param bool       $required
+ * @param bool       $complete
+ * @param string     $label    the field's label, HTML
+ * @return string
+ */
+function pg_coll_rows_site_refusal($posted, $required, $complete, $label)
+{
+    if ($required && $complete && !$posted) {
+        return lang(array('string' => 'Please add at least one row to {var:1}', 'vars' => $label));
+    }
+    return '';
 }
 
 /**
