@@ -13,11 +13,12 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - Before #3447 a prefix check failed on IIS.
 
 ## How is the file read?
-- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's most used separator, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read). The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
+- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's most used separator, BOM, blank lines dropped; `more` when longer than 5000 rows + header. The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
 - First row = column names (`ws_wtable_import_names()`: empty → "Column N", a repeat gets " 2"). Over 50 columns is refused before the confirmation.
 
 ## How is a new table's column type guessed?
-- `ws_wtable_import_guess()` over the non-empty values, in order: tick words only (yes/no/true/false/evet/hayır/x/✓; 1/0 alone stay numbers) → checkbox; all dates → date (`time` when one has a time other than 00:00); all amounts and one names a currency (₺ TL $ € £ or a code) → money, 2 decimals; all numbers → number (decimals = most written, ≤ 6); at least 4 values, ≤ 10 labels, each label at least twice on average → status (choices in the order met, keys `s1…`); else text. Person and link are never guessed; each column may be renamed, retyped (`ws_wtable_import_types()`) or left out.
+- `ws_wtable_import_guess()` over the non-empty values, in order: tick words only (yes/no/true/false/evet/hayır/x/✓; 1/0 alone stay numbers) → checkbox; all dates → date (`time` when one has a time other than 00:00); all amounts and one names a currency (₺ TL $ € £ or a code) → money, 2 decimals; all numbers, no code → number (decimals = most written, ≤ 6);
+- Then at least 4 values, ≤ 10 labels, each label at least twice on average → status (choices in the order met, keys `s1…`); else text. Person and link are never guessed; each column may be renamed, retyped (`ws_wtable_import_types()`) or left out.
 - Numbers (`workflow-tables-numbers.md`): with `.` and `,` the last is decimal; one mark twice is thousands; a lone one by the site's language. Dates: `Y-m-d`, `d.m.Y`, `d/m/Y` (day first), `Y/m/d`, optional time.
 
 ## How are rows written?
