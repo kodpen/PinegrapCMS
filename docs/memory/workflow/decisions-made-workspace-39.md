@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-39
-description: Decisions made, workspace part 39 (2026-11-19): a general memory for the agent channels, grouped by project; a new agent channel reads the other agent channels' decisions; the Decisions and Files tabs' new look
+description: Decisions made, workspace part 39 (2026-11-19): a general memory for the agent channels by project; a new agent channel reads the others' decisions; the Decisions and Files tabs' new look
 ---
 
 ## Where are the rules and the earlier parts?
