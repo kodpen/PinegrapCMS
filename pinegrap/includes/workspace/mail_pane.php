@@ -278,6 +278,10 @@ function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
  * names its mailbox only and has no "Open in channel": this screen is the
  * one place it opens. With the Workspace off ($channels false) no channel
  * opens either, so no conversation has the link, and none names a channel.
+ * The subject and the muted line break a run with no space in it (an order
+ * number, a link, a long address) with text-break, as each mail below does;
+ * without it such a run stayed on one line past the pane's edge, off a
+ * phone's screen. The pill and the tools keep their own one-line rules.
  *
  * @param array  $pane     ws_mail_pane()
  * @param string $base     the panel's address, ending in /
@@ -293,8 +297,8 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
     $room = ws_channel_is_mailbox($pane['channel']) || !$channels;
 
-    $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
-        . '<div class="small fg-secondary">' . h($customer)
+    $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1 text-break" tabindex="-1">' . h($subject) . '</h2>'
+        . '<div class="small fg-secondary text-break">' . h($customer)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
         . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')

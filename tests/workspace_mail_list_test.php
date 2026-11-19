@@ -210,8 +210,8 @@ function test_workspace_mail_pane_html()
 	);
 	$html = ws_mail_pane_html($pane, '/pg/');
 
-	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text');
-	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'customer and mailbox on the muted line, the channel left it');
+	pg_assert_contains('<h2 class="h5 mb-1 text-break" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text, a run with no space breaking inside the pane');
+	pg_assert_contains('<div class="small fg-secondary text-break">Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'customer and mailbox on the muted line, the channel left it; a long address breaks too');
 	pg_assert_contains('<div class="mt-1">' . ws_mail_pane_channel_pill('support', '/pg/workspace.php?channel=3&message=90') . '</div>', $html, 'the channel as a pill under it');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $html, 'the card in its channel');
 	pg_assert_contains('<article class="ws-mail-item ws-mail-in text-break">', $html);
@@ -230,7 +230,7 @@ function test_workspace_mail_pane_html()
 
 	// The pane the server draws for the screen's address (?conversation=).
 	$page = ws_mail_pane_page_html($pane, '/pg/', 'messages_mail.php?view=sent');
-	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
+	pg_assert_contains('<h2 class="h5 mb-1 text-break" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $page, 'Open in channel stays');
 	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="messages_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
 
