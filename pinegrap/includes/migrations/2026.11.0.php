@@ -224,6 +224,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
+	upgrade_2026_11_0_whatsapp_inbox_read_drop(); // 11.0.237
 
 }
 
@@ -6449,8 +6450,6 @@ function upgrade_2026_11_0_whatsapp_inbox() {
 		media_id          VARCHAR(64) NOT NULL DEFAULT '',
 		media_mime        VARCHAR(100) NOT NULL DEFAULT '',
 		context_wamid     VARCHAR(128) NOT NULL DEFAULT '',
-		read_user_id      INT UNSIGNED NOT NULL DEFAULT 0,
-		read_at           INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uq_wamid (wamid),
 		KEY idx_contact (contact_id, received_at),
@@ -7496,5 +7495,16 @@ function upgrade_2026_11_0_file_translation() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
+
+}
+
+// whatsapp_inbox.read_user_id and read_at were created by an earlier form of
+// 11.0.198 and never written or read; a read mark is added by the step that
+// builds one. 11.0.198 no longer creates them; this step drops them from
+// databases that ran the earlier form and does nothing where they are absent.
+function upgrade_2026_11_0_whatsapp_inbox_read_drop() {
+
+	install_drop_column('whatsapp_inbox', 'read_user_id');
+	install_drop_column('whatsapp_inbox', 'read_at');
 
 }
