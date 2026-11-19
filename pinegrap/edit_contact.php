@@ -184,7 +184,7 @@ if (!$_POST) {
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                 <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4; background: var(--pg-surface-inset);" title="' . h($row['image']) . '">
                     <input type="hidden" name="image_url" id="image_url" value="' . h($row['image']) . '">
-                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
+                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_contact_image_address($row['image'])) . '" />
                 </div>
             </div>
         </div>';
