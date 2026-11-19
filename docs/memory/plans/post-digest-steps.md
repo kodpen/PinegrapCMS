@@ -10,7 +10,7 @@ description: Plan post-digest, steps DG1 to DG5: the records box on the server, 
 
 - DG3 (M) after DG2: the canvas: done in #10176 (palette, records box form, e-mail box's contact group; beside #10077 by the architect's leave, agent channel 8001). Pictures to the owner before ready.
 
-- DG4 (S) after DG3: the ready flow. Existing files: `includes/workspace/flow_templates.php`. Tests: `tests/workspace_flow_templates_test.php`. Features: D10.
+- DG4 (S) after DG3: the ready flow: done in #10491 (template `post_digest`, setting types page, group, subject, day; `workspace/workspace-flows-template-post-digest.md`). Features: D10.
 
 - DG5 (S) close-out: every D number checked against the code with its PR; `workspace/workspace-flows-records-box.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 

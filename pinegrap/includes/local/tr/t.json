@@ -7221,6 +7221,7 @@
     "The subject and the body can use these fields; the expiring e-mail goes {var:1} days before a card ends, once.": "Konu ve gövde bu alanları kullanabilir; süre dolumu e-postası kart bitmeden {var:1} gün önce bir kez gider.",
     "The subject could not be found.": "Konu bulunamadı.",
     "The subject has": "Konuda şu geçiyorsa",
+    "The subject is longer than {var:1} characters.": "Konu {var:1} karakterden uzun.",
     "The subject is plain text: no data can be bound into it.": "Konu düz metindir: içine veri bağlanamaz.",
     "The subject of your message": "Mesajınızın konusu",
     "The subject: 600 is technology, 630 farming and 635 gardening.": "Konu: 600 teknoloji, 630 tarım, 635 bahçecilik.",
