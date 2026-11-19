@@ -974,8 +974,10 @@ function ws_wtable_screen_retype_choices($column)
         return $out;
     }
 
+    // Its own type is left out: a money column's decimals are changed in
+    // the column's form.
     foreach ($choices as $choice => $label) {
-        if (ws_wtable_retype_is_change($column, ws_wtable_screen_retype_input($choice, '', $column))) {
+        if (($choice !== (string) $column['type']) && ws_wtable_retype_is_change($column, ws_wtable_screen_retype_input($choice, '', $column))) {
             $out[$choice] = $label;
         }
     }

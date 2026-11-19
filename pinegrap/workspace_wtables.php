@@ -157,6 +157,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $result['ok'] ? $liveform->add_notice(h(ws_wtable_screen_column_saved_text($result))) : $refused($result);
+
+            // Fewer decimals for an amount a cell holds: the cells are
+            // listed under the column, as a type change lists them.
+            if (!$result['ok'] && $column && !empty($result['faults'])) {
+                $_SESSION['software']['ws_wtable_retype'] = array(
+                    'table'  => (int) $table['id'],
+                    'column' => (int) $column['id'],
+                    'count'  => count($result['faults']),
+                    'faults' => array_slice($result['faults'], 0, 100),
+                );
+            }
+
             $back .= '#ws-wt-columns';
             break;
 
