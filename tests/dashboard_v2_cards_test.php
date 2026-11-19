@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards.php');
 // change or go missing.
 function test_dashboard_v2_cards_has_the_thirty_ids()
 {
-	$ids = array('ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes',
+	$ids = array('ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes', 'mail',
 		'content', 'comments', 'files', 'visitors', 'visitmap', 'engagement', 'gsearch', 'ga',
 		'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars',
 		'shop', 'salesmap', 'ops', 'orders', 'offers', 'recovery', 'fx', 'perf', 'subs');
