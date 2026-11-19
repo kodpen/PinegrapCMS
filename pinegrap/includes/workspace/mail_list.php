@@ -368,17 +368,21 @@ function ws_mail_list_visible($viewer)
 /**
  * One page of the conversations, newest mail first, each with its box's
  * name and target, its channel's name, its holder's name and what its row
- * shows of its mails (ws_mail_list_mails()).
+ * shows of its mails (ws_mail_list_mails()). A shorter page reads the same
+ * rows in the same order, only fewer of them: the dashboard's Incoming
+ * e-mail card takes the first eight of the screen's first page.
  *
  * @param array $viewer
  * @param array $filters ws_mail_list_filters()
  * @param int   $now
+ * @param int   $page    rows on a page, WS_MAIL_LIST_PAGE on the screen
  * @return array rows (conversation rows with box_name, channel_name,
  *               assignee_name, first_reply_hours, overdue, support, transport,
  *               mails, snippet, unread, unsent), next (the next page's cursor, '' for none)
  */
-function ws_mail_list($viewer, $filters, $now)
+function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
 {
+    $page = max(1, min(WS_MAIL_LIST_PAGE, (int) $page));
     $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
     // Drafts lists kept drafts, not conversations (mail_drafts_screen.php).
     $where = (($filters['view'] ?? '') === 'drafts') ? ''
@@ -389,7 +393,7 @@ function ws_mail_list($viewer, $filters, $now)
     }
 
     // Overdue rows are found among more, since the target is per box.
-    $limit = $filters['overdue'] ? WS_MAIL_LIST_PAGE * 5 : WS_MAIL_LIST_PAGE + 1;
+    $limit = $filters['overdue'] ? $page * 5 : $page + 1;
     $rows = (array) db_items("SELECT * FROM ws_mail_conversations WHERE " . $where . "
         ORDER BY GREATEST(last_in_at, last_out_at) DESC, id DESC LIMIT " . $limit);
 
@@ -405,7 +409,7 @@ function ws_mail_list($viewer, $filters, $now)
     $more = false;
 
     foreach ($rows as $row) {
-        if (count($out) >= WS_MAIL_LIST_PAGE) {
+        if (count($out) >= $page) {
             $more = true;
             break;
         }
@@ -527,6 +531,30 @@ function ws_mail_list_page_url($filters, $conversation_id = 0)
 }
 
 /**
+ * How a row names its conversation, for the list and for the dashboard's
+ * Incoming e-mail card alike: who (the customer's name, else their
+ * address, else their number), the subject ("(no subject)" for an e-mail
+ * without one, none for a WhatsApp or SMS conversation), the transport and
+ * the time of its newest mail. Plain text, escaped where it is drawn. Pure.
+ *
+ * @param array $row a ws_mail_list() row
+ * @return array who, subject, transport (ws_mail_transport_kind()), last (time)
+ */
+function ws_mail_list_row_names($row)
+{
+    $transport = ws_mail_transport_kind($row['transport'] ?? '');
+    $phone = ($transport !== 'email');
+    $number = ((string) ($row['customer_phone'] ?? '') !== '') ? '+' . (string) $row['customer_phone'] : '';
+
+    return array(
+        'who'       => (trim((string) $row['customer_name']) !== '') ? (string) $row['customer_name'] : (((string) $row['customer_email'] !== '') ? (string) $row['customer_email'] : $number),
+        'subject'   => (trim((string) $row['subject']) !== '') ? (string) $row['subject'] : ($phone ? '' : lang('(no subject)')),
+        'transport' => $transport,
+        'last'      => max((int) $row['last_in_at'], (int) $row['last_out_at']),
+    );
+}
+
+/**
  * The rows of a page of the list. A row opens its conversation on this
  * screen (ws_mail_list_page_url()), never its channel; the screen's script
  * opens it in the pane in place. A WhatsApp or SMS conversation has no
@@ -545,12 +573,11 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
 
     foreach ($rows as $row) {
         $url = ws_mail_list_page_url($filters, (int) $row['id']);
-        $transport = ws_mail_transport_kind($row['transport'] ?? '');
-        $phone = ($transport !== 'email');
-        $subject = (trim((string) $row['subject']) !== '') ? (string) $row['subject'] : ($phone ? '' : lang('(no subject)'));
-        $number = ((string) ($row['customer_phone'] ?? '') !== '') ? '+' . (string) $row['customer_phone'] : '';
-        $who = (trim((string) $row['customer_name']) !== '') ? (string) $row['customer_name'] : (((string) $row['customer_email'] !== '') ? (string) $row['customer_email'] : $number);
-        $last = max((int) $row['last_in_at'], (int) $row['last_out_at']);
+        $names = ws_mail_list_row_names($row);
+        $transport = $names['transport'];
+        $subject = $names['subject'];
+        $who = $names['who'];
+        $last = $names['last'];
         $unsent = (string) ($row['unsent'] ?? '');
         $classes = 'ws-mail-row' . (!empty($row['unread']) ? ' ws-mail-unread' : '') . (!empty($row['overdue']) ? ' ws-mail-overdue' : '');
         $current = (((int) $open > 0) && ((int) $row['id'] === (int) $open)) ? ' aria-current="true"' : '';
