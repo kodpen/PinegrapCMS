@@ -10,6 +10,7 @@
 - api-campaign-create.md: POST /campaigns (plain-text draft) and POST /campaigns/{id}/schedule through the create screen's recipient pick and insert (fn/email_campaign_create.php); why HTML is not offered
 - api-campaign-profiles.md: /campaigns/profiles CRUD (PR #6353): write path shared with the profile screens, owner-based access checks, partial updates, schedule time, refusals, user-role rows
 - api-catalogue-writes.md: External API writes to products, groups, pages and key codes: the screen's create function, list fields that replace, barcode, SEO rescoring, Recycle Bin deletes, key code vs offer code
+- api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open [decision: here]
 - api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
 - api-connected-accounts-github.md: GitHub in connected accounts (model A, no OpenID): identity from /user, a token that does not end, comma scopes, revoke and Check, the channel_links purpose with admin:repo_hook only
 - api-connected-accounts-usage.md: Connected accounts at work: mail through Gmail or Microsoft 365, cloud backups to Drive, OneDrive or Dropbox, a Connect button inside a settings form, response headers, what api_http_request() refuses
@@ -54,7 +55,7 @@
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why [decision: here]
 - api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
-- api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
+- api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone()) [decision: here]
 - api-meta-workspace-values.md: The workspace object on GET /meta: default_task_minutes (WS_DEFAULT_TASK_MINUTES) and day_minutes (WS_DAY_MINUTES), for a team device's task form (issue #10345, PR #10388)
 - api-native-push.md: Native push for team devices (M7a #9703, M7b #9720): /push/devices routes, the broker call, push_subscriptions.provider (11.0.215), PG_PUSH_BROKER_URL, the badge body, 429 hold, forget on revoke
 - api-notifications-group-fold.md: GET /notifications group filter (site or workspace, applied in SQL before paging) and the fold key on every Notification row, the panel bell's chips and flow-run folding (#5085)
