@@ -1,6 +1,6 @@
 ---
 name: quiet-hours
-description: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only
+description: A person's quiet hours (#9844, #9862): set in a channel's Notifications or from a team devices session, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own only
 module: quiet_hours
 ---
 
@@ -12,7 +12,7 @@ module: quiet_hours
 - "From"/"To" are already "Kimden"/"Kime" in Turkish, so the labels are the existing keys "Start time" and "End time".
 
 ## Who sets it?
-- The person, for themselves, from their panel session only: action `ws_quiet_hours_save` (a `pg_panel_actions()` row) → `ws_quiet_hours_save()` (`includes/workspace/notify.php`). No manager, no API route, no MCP tool, no site-wide default.
+- The person, for themselves: from the panel, action `ws_quiet_hours_save` (a `pg_panel_actions()` row), and from their team devices session, `POST /workspace/quiet-hours` (`api-workspace-quiet-hours.md` in `api/`); both reach `ws_quiet_hours_save()` (`includes/workspace/notify.php`). No manager, no MCP tool, no site-wide default.
 - `pg_quiet_hours_save_check($viewer, $request)` (pure) refuses a viewer who is not a team member, a request naming another `user_id`, and a bad time (`pg_quiet_hours_input()`: HH:MM, 24-hour, error field `start` or `end`).
 
 ## What is kept?
@@ -23,7 +23,7 @@ module: quiet_hours
 - Counted in the person's zone (`user.timezone` through `pg_timezone_canonical()`, else the site's, as the person card's local time), so it keeps its clock times on the days the clock changes. Looks 8 days ahead at most.
 
 ## Tests?
-- `tests/quiet_hours_test.php`: the rule, the input, the writer's refusals, the action being panel-only. The save against a database was tried on a sandbox only.
+- `tests/quiet_hours_test.php`: the rule, the input, the writer's refusals, the panel action and the device route being the only writers. The save against a database was tried on a sandbox only.
 
 ## Which PRs?
 - #9844 (the column, the rule, the delay) and #9862 (the setting).
