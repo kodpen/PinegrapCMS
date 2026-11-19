@@ -936,6 +936,47 @@ function api_products_create_group_ids($params) {
 
 }
 
+// The statements that bring a product's group links from $stored to $wanted.
+//
+// A link row (products_groups_xref) also holds the product's sort order in the
+// group, its featured mark, featured sort order and new date, set on Edit
+// Product Group and Featured and New Items. Deleting every row and inserting
+// bare ones reset all of them in each group, so only the groups taken off are
+// deleted and only the new ones inserted. The difference walk is the product
+// screen's own (pg_pb_group_links_change()). Pure: runs no query.
+function api_products_group_link_statements($id, $stored, $wanted) {
+
+	if (!function_exists('pg_pb_group_links_change')) {
+
+		$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+		require_once($directory . '/product_builder.php');
+
+	}
+
+	$id = (int)$id;
+	$change = pg_pb_group_links_change($stored, $wanted);
+	$statements = array();
+
+	if ($change['remove']) {
+
+		$statements[] = "DELETE FROM products_groups_xref
+			WHERE product = '" . $id . "'
+			AND product_group IN (" . implode(', ', array_map('intval', $change['remove'])) . ")";
+
+	}
+
+	foreach ($change['add'] as $group_id) {
+
+		$statements[] = "INSERT INTO products_groups_xref (product, product_group)
+			VALUES ('" . $id . "', '" . (int)$group_id . "')";
+
+	}
+
+	return $statements;
+
+}
+
 // What makes the new row one variant rather than another.
 //
 // The pair is checked, not just the two halves: an option belongs to exactly
@@ -1363,14 +1404,21 @@ function api_products_update($params) {
 
 	}
 
+	// The list sent is still the whole answer (an empty one takes the product
+	// off every group), but a group it stays in keeps its row as it is.
 	if ($group_ids !== null) {
 
-		api_exec("DELETE FROM products_groups_xref WHERE product = '" . $id . "'");
+		$stored_groups = array();
 
-		foreach ($group_ids as $group_id) {
+		foreach (api_rows("SELECT product_group FROM products_groups_xref WHERE product = '" . $id . "'") as $row) {
 
-			api_exec("INSERT INTO products_groups_xref (product, product_group)
-				VALUES ('" . $id . "', '" . (int)$group_id . "')");
+			$stored_groups[] = (int)$row['product_group'];
+
+		}
+
+		foreach (api_products_group_link_statements($id, $stored_groups, $group_ids) as $statement) {
+
+			api_exec($statement);
 
 		}
 

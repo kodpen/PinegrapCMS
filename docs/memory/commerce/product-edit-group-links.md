@@ -1,6 +1,6 @@
 ---
 name: product-edit-group-links
-description: Edit Product save writes only the product groups added or taken off, so each group link keeps its sort order, featured mark and new date
+description: Edit Product save and PATCH /products write only the product groups added or taken off, so each group link keeps its sort order, featured mark and new date
 ---
 
 ## What does an Edit Product save write to products_groups_xref?
@@ -20,6 +20,9 @@ and dropped out of Featured and New Items (#10368).
 
 ## Does the API do the same?
 
-Not yet: `PATCH /products/{id}` with `group_ids`
-(`includes/api/resources/products.php`) still deletes and inserts every
-row (#10364).
+Yes: `PATCH /products/{id}` with `group_ids`
+(`includes/api/resources/products.php`) reads the stored groups and runs
+`api_products_group_link_statements()`, which walks the same
+`pg_pb_group_links_change()`. The list sent is still the whole answer (an
+empty one takes the product off every group); a group it stays in keeps its
+row. Before the fix it deleted and inserted every row (#10364).
