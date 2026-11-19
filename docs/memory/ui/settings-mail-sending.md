@@ -1,12 +1,12 @@
 ---
 name: settings-mail-sending
-description: Site Settings › E-mail sending (#10404, CX3c #PRNUM): SMTP Settings' five cards, the campaign texts and MailChimp from Communication, a save writing config.php then the config row, old anchors
+description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settings' five cards, the campaign texts and MailChimp from Communication, a save writing config.php then the config row, old anchors
 ---
 
 ## What is the category?
 - Owner (2026-11-17, poll 148, message 9374): SMTP Settings becomes the "E-posta gönderimi" (E-mail sending) category, between Communication and Mailboxes, for a manager as before (`workflow/decisions-made-product-76.md`). Key `mail_sending`, `includes/settings/mail_sending.php`, `.save.php`, `settings_mail_sending.php`.
 - Cards: Sending service `pgset-mail-transport`, System `pgset-mail-system`, Campaign `pgset-mail-campaign`, DKIM TXT Record `pgset-mail-dkim`, Sending domain `pgset-mail-domain` (read only), MailChimp `pgset-mailchimp`. Test: `tests/smtp_settings_layout_test.php`.
-- CX3c (#PRNUM) moved Communication's Opt-In Label and Plain Text Footer into the Campaign card, below the job's fold (they apply whether the job runs or not), and the MailChimp card to the end. Same field names, columns and texts; Communication keeps Chat, SMS, WhatsApp and İYS.
+- CX3c (#10434) moved Communication's Opt-In Label and Plain Text Footer into the Campaign card, below the job's fold (they apply whether the job runs or not), and the MailChimp card to the end. Same field names, columns and texts; Communication keeps Chat, SMS, WhatsApp and İYS.
 
 ## What does its save write?
 - First the MailChimp checks, at Mailchimp too (key, list, store; a missing store is created), as Communication did; a refusal marks its field and writes nothing.
