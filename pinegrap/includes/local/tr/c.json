@@ -39,6 +39,7 @@
     "CSV file": "CSV dosyası",
     "CSV import": "CSV içe aktarma",
     "CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.": "CSV içe aktarma: {var:1} çeviri yazıldı, {var:2} boş satır atlandı, {var:3} satırın metni değişmişti, {var:4} satır reddedildi.",
+    "CSV import: {var:1} translation(s) written, {var:2} unchanged, {var:3} empty row(s) skipped, {var:4} row(s) whose text has since changed, {var:5} row(s) rejected.": "CSV içe aktarma: {var:1} çeviri yazıldı, {var:2} çeviri aynı kaldı, {var:3} boş satır atlandı, {var:4} satırın metni değişmişti, {var:5} satır reddedildi.",
     "CTA (Banner)": "CTA (Afiş)",
     "CTA (Gradient)": "CTA (Gradyan)",
     "CTA (Inline)": "CTA (Satır İçi)",
