@@ -307,13 +307,13 @@ function ws_api_channel_schema()
         'archived'        => 'boolean',
         'agent_channel'   => 'boolean',
         'unread'          => 'integer',
-        'last_message_at' => 'string?',
+        'last_message_at' => 'datetime?',
         'watch'              => 'boolean?',
         'claude_allowed'     => 'boolean?',
         'ai_allowed'         => 'boolean?',
         'voice_allowed'      => 'boolean?',
         'summary'            => 'string?',
-        'summary_updated_at' => 'string?',
+        'summary_updated_at' => 'datetime?',
     );
 }
 
@@ -882,7 +882,7 @@ function ws_api_channel_member_schema()
         'name'      => 'string',
         'username'  => 'string',
         'role'      => 'string',
-        'joined_at' => 'string?',
+        'joined_at' => 'datetime?',
     );
 }
 
@@ -1345,7 +1345,7 @@ function ws_api_message_schema()
             'sender'              => 'WorkspaceMessageSender?',
             'text'                => 'string',
             'file_name'           => 'string',
-            'created_at'          => 'string?',
+            'created_at'          => 'datetime?',
         )),
         'via'         => 'WorkspaceMessageVia?',
         'link_preview'   => 'WorkspaceMessageLinkPreview?',
@@ -1353,7 +1353,7 @@ function ws_api_message_schema()
         'highlights'        => 'WorkspaceMessageHighlight[]',
         'highlight_text'    => 'string',
         'can_highlight_all' => 'boolean',
-        'created_at'  => 'string',
+        'created_at'  => 'datetime',
     );
 }
 
@@ -1430,19 +1430,19 @@ function ws_api_message_voice_schema()
         'language'       => 'string?',
         'provider'       => 'string?',
         'model'          => 'string?',
-        'transcribed_at' => 'string?',
+        'transcribed_at' => 'datetime?',
     );
 }
 
 function ws_api_message_thread_schema()
 {
-    return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
+    return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'datetime?', 'closed' => 'boolean');
 }
 
 // One item of a message's checklist (ws_api_message_checks()).
 function ws_api_message_check_schema()
 {
-    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?', 'app_id' => 'integer?');
+    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'datetime?', 'app_id' => 'integer?');
 }
 
 /**
@@ -1511,7 +1511,7 @@ function ws_api_message_note_group_card_schema()
         'name'     => 'string',
         'color'    => 'string',
         'owner'    => 'WorkspaceMessageSender?',
-        'notes'    => array(array('id' => 'integer', 'name' => 'string', 'updated_at' => 'string?')),
+        'notes'    => array(array('id' => 'integer', 'name' => 'string', 'updated_at' => 'datetime?')),
     );
 }
 
@@ -1765,8 +1765,8 @@ function ws_api_poll_schema()
         'multiple'          => 'boolean',
         'anonymous'         => 'boolean',
         'closed'            => 'boolean',
-        'closes_at'         => 'string?',
-        'closed_at'         => 'string?',
+        'closes_at'         => 'datetime?',
+        'closed_at'         => 'datetime?',
         'voters'            => 'integer',
         'voted'             => 'boolean',
         'can_vote'          => 'boolean',
@@ -1778,7 +1778,7 @@ function ws_api_poll_schema()
             'recommended' => 'boolean', 'other' => 'boolean', 'my_text' => 'string')),
         'result_message_id' => 'integer?',
         'withdrawn'         => 'boolean',
-        'withdrawn_at'      => 'string?',
+        'withdrawn_at'      => 'datetime?',
         'can_withdraw'      => 'boolean',
         'can_ask_again'     => 'boolean',
         'again_of'          => 'integer?',
@@ -1789,7 +1789,7 @@ function ws_api_poll_schema()
         'asked'             => array(array('user_id' => 'integer', 'name' => 'string')),
         'can_answer'        => 'boolean',
         'answered_by'       => 'object?',
-        'answered_at'       => 'string?',
+        'answered_at'       => 'datetime?',
         'answer'            => 'string',
     );
 }
@@ -3560,7 +3560,7 @@ function ws_api_channel_group_access_schema()
         'user_id'    => 'integer',
         'name'       => 'string',
         'granted_by' => 'string?',
-        'granted_at' => 'string?',
+        'granted_at' => 'datetime?',
         'group_id'   => 'integer',
         'group_path' => 'string',
     );
@@ -3915,7 +3915,7 @@ function ws_api_message_reader_agent_schema()
         'name'   => 'string',
         'handle' => 'string',
         'state'  => 'string',
-        'at'     => 'string?',
+        'at'     => 'datetime?',
     );
 }
 
@@ -3932,7 +3932,7 @@ function ws_api_message_read_receipts_schema()
 // One read receipt given.
 function ws_api_message_read_receipt_schema()
 {
-    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'string?');
+    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'datetime?');
 }
 
 // What ws_api_messages_mention_invite() answers.
@@ -5204,16 +5204,16 @@ function ws_api_approval_schema()
         'answer'            => 'string',
         'answer_label'      => 'string?',
         'record'            => 'WorkspaceApprovalRecord?',
-        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
-        'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
-        'agents'            => array(array('agent' => 'string', 'handle' => 'string?', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
+        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?')),
+        'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?', 'link_expires_at' => 'datetime?')),
+        'agents'            => array(array('agent' => 'string', 'handle' => 'string?', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?')),
         'outcome'           => 'string',
         'requested_by'      => 'WorkspacePerson?',
         'closed_by'         => 'WorkspacePerson?',
         'result_message_id' => 'integer?',
-        'closes_at'         => 'string?',
-        'closed_at'         => 'string?',
-        'created_at'        => 'string',
+        'closes_at'         => 'datetime?',
+        'closed_at'         => 'datetime?',
+        'created_at'        => 'datetime',
     );
 }
 
@@ -5553,8 +5553,8 @@ function ws_api_task_schema()
         'description'       => 'string',
         'status'            => 'string',
         'priority'          => 'string',
-        'start_date'        => 'string?',
-        'due_date'          => 'string?',
+        'start_date'        => 'date?',
+        'due_date'          => 'date?',
         'due_time'          => 'string?',
         'remind_minutes'    => 'integer?',
         'estimate_minutes'  => 'integer',
@@ -5564,7 +5564,7 @@ function ws_api_task_schema()
         'created_by_app'    => 'object?',
         'assignees'         => array('integer'),
         'refs'              => array(array('type' => 'string', 'id' => 'integer')),
-        'completed_at'      => 'string?',
+        'completed_at'      => 'datetime?',
         'recurrence_id'     => 'integer?',
         'checklist_done'    => 'integer',
         'checklist_total'   => 'integer',
@@ -5574,11 +5574,11 @@ function ws_api_task_schema()
         'time_minutes'      => 'integer',
         'delegate'          => 'string?',
         'delegated_by'      => 'integer?',
-        'delegated_at'      => 'string?',
+        'delegated_at'      => 'datetime?',
         'assistant_working' => 'string?',
         'waiting_changes'   => 'integer',
-        'created_at'        => 'string',
-        'updated_at'        => 'string',
+        'created_at'        => 'datetime',
+        'updated_at'        => 'datetime',
         'warnings'          => array('string'),
     );
 }
@@ -6014,7 +6014,7 @@ function ws_api_task_note_schema()
         'author'     => array('kind' => 'string', 'id' => 'integer', 'name' => 'string'),
         'text'       => 'string',
         'edited'     => 'boolean',
-        'created_at' => 'string',
+        'created_at' => 'datetime',
     );
 }
 
@@ -6092,9 +6092,9 @@ function ws_api_recurrence_schema()
         'frequency'     => 'string',
         'interval'      => 'integer',
         'weekdays'      => array('integer'),
-        'end_date'      => 'string?',
-        'next_date'     => 'string?',
-        'opens_date'    => 'string?',
+        'end_date'      => 'date?',
+        'next_date'     => 'date?',
+        'opens_date'    => 'date?',
         'occurrences'   => 'integer',
         'status'        => 'string',
         'ended_reason'  => 'string?',
@@ -6372,7 +6372,7 @@ function ws_api_plan_row_schema()
         'name'        => 'string',
         'unscheduled' => 'integer',
         'days'        => array(array(
-            'date'       => 'string',
+            'date'       => 'date',
             'workday'    => 'boolean',
             'leave'      => 'boolean',
             'holiday'    => 'boolean',
@@ -6579,8 +6579,8 @@ function ws_api_decision_schema()
         'locked'        => 'boolean',
         'claude_change' => 'WorkspaceDecisionChange?',
         'file'          => 'WorkspaceDecisionFile?',
-        'decided_at'    => 'string',
-        'created_at'    => 'string',
+        'decided_at'    => 'datetime',
+        'created_at'    => 'datetime',
     );
 }
 
@@ -6959,11 +6959,11 @@ function ws_api_change_schema()
         'error'               => 'string',
         'requested_by'        => 'WorkspacePerson?',
         'decided_by'          => 'WorkspacePerson?',
-        'decided_at'          => 'string?',
+        'decided_at'          => 'datetime?',
         'decision_message_id' => 'integer?',
         'can_apply'           => 'boolean',
         'can_dismiss'         => 'boolean',
-        'created_at'          => 'string?',
+        'created_at'          => 'datetime?',
     );
 }
 
@@ -7486,10 +7486,10 @@ function ws_api_assistant_request_schema()
         'requested_by'     => 'WorkspacePerson?',
         'reply_message_id' => 'integer?',
         'error'            => 'string',
-        'created_at'       => 'string?',
-        'sent_at'          => 'string?',
-        'claimed_at'       => 'string?',
-        'answered_at'      => 'string?',
+        'created_at'       => 'datetime?',
+        'sent_at'          => 'datetime?',
+        'claimed_at'       => 'datetime?',
+        'answered_at'      => 'datetime?',
         'prompt_version'   => 'string?',
     );
 }
@@ -8006,8 +8006,8 @@ function ws_api_note_schema()
         'channel_id'  => 'integer?',
         'text'        => 'string?',
         'body'        => 'string?',
-        'created_at'  => 'string?',
-        'updated_at'  => 'string?',
+        'created_at'  => 'datetime?',
+        'updated_at'  => 'datetime?',
         'revision'    => 'integer?',
         'group_id'    => 'integer?',
         'locked'      => 'boolean',
@@ -8252,13 +8252,13 @@ function ws_api_task_time_schema()
         'task_id'    => 'integer',
         'user_id'    => 'integer',
         'minutes'    => 'integer',
-        'worked_on'  => 'string',
+        'worked_on'  => 'date',
         'note'       => 'string',
         'billable'   => 'boolean',
         'invoice_id' => 'integer?',
         'running'    => 'boolean',
-        'started_at' => 'string?',
-        'created_at' => 'string',
+        'started_at' => 'datetime?',
+        'created_at' => 'datetime',
     );
 }
 

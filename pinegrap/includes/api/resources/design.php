@@ -158,9 +158,9 @@ function api_design_page_schema() {
 		'framework'         => 'string',
 		'pending_proposals' => 'integer',
 		'draft'             => 'boolean',
-		'publish_at'        => 'string?',
-		'unpublish_at'      => 'string?',
-		'updated_at'        => 'string?',
+		'publish_at'        => 'datetime?',
+		'unpublish_at'      => 'datetime?',
+		'updated_at'        => 'datetime?',
 		'updated_at_unix'   => 'integer'
 	);
 
@@ -299,7 +299,7 @@ function api_design_schema() {
 		'drafts'          => 'integer',
 		'home'            => 'boolean',
 		'state'           => 'string',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 
@@ -785,8 +785,8 @@ function api_design_view_schema() {
 		'design_id'    => 'integer',
 		'framework'    => 'string',
 		'draft'        => 'boolean',
-		'publish_at'   => 'string?',
-		'unpublish_at' => 'string?',
+		'publish_at'   => 'datetime?',
+		'unpublish_at' => 'datetime?',
 		'node_id'      => 'string',
 		'root_id'      => 'string',
 		'hash'         => 'string',
@@ -892,8 +892,8 @@ function api_design_proposal_schema() {
 		'dropped'    => 'string[]',
 		'removed'    => 'string[]',
 		'message_id' => 'integer?',
-		'created_at' => 'string?',
-		'decided_at' => 'string?'
+		'created_at' => 'datetime?',
+		'decided_at' => 'datetime?'
 	);
 
 }
@@ -1131,7 +1131,7 @@ function api_design_revision_schema() {
 		'user_id'         => 'integer?',
 		'user'            => 'string?',
 		'size'            => 'integer',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer'
 	);
 
@@ -1383,12 +1383,12 @@ function api_design_prototype_link_schema() {
 		'password_locked' => 'boolean',
 		'allow_comments'  => 'boolean',
 		'state'           => 'string',
-		'expires_at'      => 'string?',
+		'expires_at'      => 'datetime?',
 		'uses'            => 'integer',
-		'last_used_at'    => 'string?',
+		'last_used_at'    => 'datetime?',
 		'created_by'      => 'integer?',
-		'created_at'      => 'string?',
-		'revoked_at'      => 'string?'
+		'created_at'      => 'datetime?',
+		'revoked_at'      => 'datetime?'
 	);
 
 }
