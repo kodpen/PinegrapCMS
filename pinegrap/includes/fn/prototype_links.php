@@ -169,16 +169,20 @@ function pg_proto_link_whole_number($value)
  * stored. A link for anyone must run out, at one of the offered durations of
  * at most ninety days; a team link may run for good. The start page is 0
  * (the design's first draft) or one of the design's drafts. A password is
- * optional, 6 to 128 characters, not spaces alone.
+ * optional, 6 to 128 characters, not spaces alone. "Allow comments" is off
+ * unless asked for.
  *
  * @param array $input     audience, start_page_id, duration (seconds; 0 or
- *                         empty for none), password ('' for none)
+ *                         empty for none), password ('' for none),
+ *                         allow_comments (optional: true/false, 1/0, or the
+ *                         same as text)
  * @param int[] $draft_ids the design's drafts (pg_proto_design_pages())
  * @param int[] $durations the durations offered, in seconds
  * @param int   $now
  * @return array ok, error (audience, duration, start_page, no_drafts,
- *               password, password_blank), field, link (audience,
- *               start_page_id, expires_at, password)
+ *               password, password_blank, allow_comments), field, link
+ *               (audience, start_page_id, expires_at, password,
+ *               allow_comments 0/1)
  */
 function pg_proto_link_plan($input, $draft_ids, $durations, $now)
 {
@@ -239,12 +243,39 @@ function pg_proto_link_plan($input, $draft_ids, $durations, $now)
         return $fail('password_blank', 'password');
     }
 
+    $comments = pg_proto_link_flag(isset($input['allow_comments']) ? $input['allow_comments'] : null);
+
+    if ($comments === null) {
+        return $fail('allow_comments', 'allow_comments');
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'link' => array(
         'audience' => $audience,
         'start_page_id' => $start,
         'expires_at' => ($duration > 0) ? ((int) $now + $duration) : 0,
         'password' => $password,
+        'allow_comments' => $comments,
     ));
+}
+
+/**
+ * A switch as a form, a JSON body or the API router hands it: 1 or 0, null
+ * for anything else. Not sent (null, '') is off.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_proto_link_flag($value)
+{
+    if (($value === null) || ($value === '') || ($value === false) || ($value === 0) || ($value === '0') || ($value === 'false')) {
+        return 0;
+    }
+
+    if (($value === true) || ($value === 1) || ($value === '1') || ($value === 'true')) {
+        return 1;
+    }
+
+    return null;
 }
 
 /**
@@ -273,6 +304,9 @@ function pg_proto_link_error_message($code)
 
         case 'password_blank':
             return lang('A password cannot be made of spaces only.');
+
+        case 'allow_comments':
+            return lang('Allow comments must be on or off.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -495,6 +529,8 @@ function pg_proto_link_summary($row, $now)
         'uses' => (int) $row['uses'],
         'last_used_at' => (int) $row['last_used_at'],
         'state' => ($state === 'ok') ? 'open' : $state,
+        // A row read before the step that added the column has none.
+        'comments' => !empty($row['allow_comments']),
     );
 }
 
@@ -1099,8 +1135,12 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
 
     $token = pg_short_link_new_token();
 
+    // "Allow comments" is written only where the column is (the step that
+    // adds it may not have run yet).
+    $comments = (!empty($link['allow_comments']) && function_exists('pg_proto_comments_ready') && pg_proto_comments_ready());
+
     db("INSERT INTO prototype_links
-            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at)
+            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at" . ($comments ? ', allow_comments' : '') . ")
         VALUES (
             '" . (int) $style_id . "',
             '" . (int) $link['start_page_id'] . "',
@@ -1111,7 +1151,7 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
             " . (($hash === null) ? 'NULL' : "'" . e($hash) . "'") . ",
             '" . (int) $link['expires_at'] . "',
             '" . (int) $user_id . "',
-            '" . time() . "')");
+            '" . time() . "'" . ($comments ? ", '1'" : '') . ")");
 
     $row = pg_proto_link_get((int) mysqli_insert_id(db::$con));
 
@@ -1460,6 +1500,7 @@ function pg_proto_links_panel($sub, $request, $user)
             'start_page_id' => isset($request['start_page_id']) ? $request['start_page_id'] : 0,
             'duration' => isset($request['duration']) ? $request['duration'] : 0,
             'password' => isset($request['password']) ? $request['password'] : '',
+            'allow_comments' => (isset($request['allow_comments']) && pg_proto_comments_ready()) ? $request['allow_comments'] : 0,
         ), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
         if (!$plan['ok']) {
@@ -1496,5 +1537,7 @@ function pg_proto_links_panel($sub, $request, $user)
         'durations' => $durations,
         // Without a key the address is shown once, when the link is made.
         'can_show' => (pg_proto_link_seal('probe') !== ''),
+        // "Allow comments" is offered once the site keeps comments.
+        'comments_ready' => pg_proto_comments_ready(),
     );
 }
