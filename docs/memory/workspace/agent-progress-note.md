@@ -1,6 +1,6 @@
 ---
 name: agent-progress-note
-description: An app agent's progress note on a request it holds: the progress route, its refusals and 30 s brake, kept in ai_state, shown with "since HH:MM", cleared on close (AF2)
+description: An app agent's progress note on a request it holds: the progress route, its refusals and 30 s brake, kept in ai_state, shown with "since HH:MM", cleared on close (AF2 #9782)
 ---
 
 ## What is it for?
@@ -16,9 +16,14 @@ description: An app agent's progress note on a request it holds: the progress ro
 - Cleared when the request closes: the answer and fail routes call `ws_agent_progress_clear()`; the site's own closes (cancel, clear, edit hold's requeue, timeouts) already set `ai_state = NULL`.
 
 ## Where does it show?
-- `ws_agent_request_state()` adds `note` and `since` (`ws_agent_request_progress_line()`, only while `running` with a claim time): "since HH:MM" is the claim's time in the site's time zone, shown also without a note. `claudeStateLine()` (`workspace.js`) draws them after "@handle is working on it" as `· note` (italic, wraps) and `· since HH:MM`. Claude's, Pinegrap AI's and MCP lines carry neither.
+- `ws_agent_request_state()` adds `note` and `since` (`ws_agent_request_progress_line()`, only while `running` with a claim time): "since HH:MM" is the claim's time in the site's time zone, shown also without a note. `claudeStateLine()` (`workspace.js`) draws them after "@handle is working on it" as `· since HH:MM` and the note (italic, wraps). Claude's, Pinegrap AI's and MCP lines carry neither.
+- The line's shape is one rule in every column (#10029: in the discussion panel the label went one word a line and the note a few letters wide). The icon, then a wrapping row: label, since, Stop, and the note last (flex 0 0 auto, max-width 100%), so the note stays on the row only when all of it fits; otherwise it takes its own line under the label, wraps between words and is never cut. No width query.
+- A sent or running label stays on one line; a sentence label (waiting, failed, cancelled) wraps between words so the retry time shows. When the row is short, the word "since" goes first and the time stays (`claudeStateFit()`, ResizeObserver; the whole phrase in title and aria-label). Only a label too long by itself is cut with an ellipsis, the whole in its title. Architect (2026-11-16): channel message 7318.
 - The request's read (`WorkspaceClaudeRequest`) carries `progress: {text, at}` while running, empty otherwise.
 - The agent's instructions (`ws_agent_instructions_request_lines()`) name the route, so `instructions_version` changed.
+
+## Whose look is it?
+- Owner (2026-11-15, agent channel poll 53): "Evet, böyle çıksın" on the before and after picture of message 5300 (`workflow/decisions-made-workspace-34.md`).
 
 ## Tests?
 - `tests/workspace_agent_progress_test.php` (#9782): the refusals, the brake, the state kept and cleared, the line, the route row, the wiring.

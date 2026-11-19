@@ -141,11 +141,11 @@ function erp_api_cash_transfer_schema()
         'currency' => 'string',
         'exchange_rate' => 'number',
         'amount_base' => 'integer',
-        'date' => 'string?',
+        'date' => 'date?',
         'description' => 'string',
         'from_balance' => 'integer',
         'to_balance' => 'integer',
-        'created_at' => 'string?',
+        'created_at' => 'datetime?',
     );
 }
 

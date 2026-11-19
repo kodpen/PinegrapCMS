@@ -322,6 +322,7 @@ function pg_event_workspace_events()
         'campaign.sent',
         'page.created',
         'page.updated',
+        'content.review_due',
         'calendar_event.reserved',
         'credit.issued',
         'credit.expired',

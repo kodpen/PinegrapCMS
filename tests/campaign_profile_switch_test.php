@@ -167,15 +167,18 @@ function test_campaign_profile_switch_notice()
 {
 	pg_assert_same('', pg_profile_flow_switch_notice(null, ''));
 
+	// A reader of every profile who may open the flow made.
+	$every = array('profiles' => null, 'flows' => array(70));
+
 	$due = pg_profile_flow_switch_due(9, 1000);
-	pg_assert_contains('Profiles are being turned into flows', pg_profile_flow_switch_notice($due, ''));
+	pg_assert_contains('Profiles are being turned into flows', pg_profile_flow_switch_notice($due, '', array(), false, $every));
 
 	$done = array('status' => 'done', 'done_at' => 2000, 'switched' => array(1 => 70), 'failed' => array(), 'report' => array(
 		'plan' => array('flows' => array(), 'left' => array(4 => 'No start box covers its action yet.'), 'orphans' => array(), 'done' => array(1 => 70)),
 		'profiles' => array(1 => array('name' => 'Shipped <b>', 'action' => 'order_shipped', 'enabled' => 0, 'purpose' => 'transactional'),
 			4 => array('name' => 'Left cart', 'action' => 'order_abandoned', 'enabled' => 1, 'purpose' => 'commercial')),
 		'stats' => array()));
-	$html = pg_profile_flow_switch_notice($done, '14.11.2026', array('order_abandoned' => 'Order Abandoned'));
+	$html = pg_profile_flow_switch_notice($done, '14.11.2026', array('order_abandoned' => 'Order Abandoned'), false, $every);
 
 	pg_assert_contains('Profiles turned into flows on 14.11.2026', $html);
 	pg_assert_contains('id="profile-flows" class="alert theme-success', $html, 'the panel\'s notice');
@@ -184,6 +187,48 @@ function test_campaign_profile_switch_notice()
 	pg_assert_contains('Flows made: 1; profiles left: 1', $html);
 	pg_assert_contains('<a href="edit_email_campaign_profile.php?id=4">“Left cart”</a> (Order Abandoned, on)', $html, 'a profile left leads to the profile, its action by the screen\'s name');
 	pg_assert_true(strpos($html, 'Last 30 days') === false, 'no line of zeros');
+}
+
+// A user-role reader (role 3) reads only the profiles they made, as My
+// Campaign Profiles lists them; a flow made is linked only when the Flows
+// screen opens it to the reader.
+function test_campaign_profile_switch_notice_reader()
+{
+	$done = array('status' => 'done', 'done_at' => 2000, 'switched' => array(1 => 70, 2 => 71), 'failed' => array(), 'report' => array(
+		'plan' => array('flows' => array(), 'left' => array(4 => 'No start box covers its action yet.', 5 => 'No start box covers its action yet.'), 'orphans' => array(), 'done' => array(1 => 70, 2 => 71)),
+		'profiles' => array(1 => array('name' => 'Shipped', 'action' => 'order_shipped', 'enabled' => 0, 'purpose' => 'transactional'),
+			2 => array('name' => 'Delivered', 'action' => 'order_delivered', 'enabled' => 0, 'purpose' => 'transactional'),
+			4 => array('name' => 'Left cart', 'action' => 'order_abandoned', 'enabled' => 1, 'purpose' => 'commercial'),
+			5 => array('name' => 'Someone else', 'action' => 'order_abandoned', 'enabled' => 1, 'purpose' => 'commercial')),
+		'stats' => array()));
+
+	$html = pg_profile_flow_switch_notice($done, '14.11.2026', array(), false, array('profiles' => array(2, 4), 'flows' => array()));
+
+	pg_assert_contains('Flows made: 1; profiles left: 1', $html, 'counted for the reader');
+	pg_assert_true(strpos($html, 'Shipped') === false, 'another user\'s flow is not listed');
+	pg_assert_true(strpos($html, 'Someone else') === false, 'another user\'s profile is not listed');
+	pg_assert_contains('<li>Delivered</li>', $html, 'a flow the Flows screen does not open to the reader is plain text');
+	pg_assert_true(strpos($html, 'workspace_flows.php') === false, 'no link to the Flows screen');
+	pg_assert_contains('<a href="edit_email_campaign_profile.php?id=4">“Left cart”</a>', $html, 'their own profile left leads to it');
+
+	$html = pg_profile_flow_switch_notice($done, '14.11.2026', array(), false, array('profiles' => null, 'flows' => array(71)));
+
+	pg_assert_contains('Flows made: 2; profiles left: 2', $html, 'roles 0-2 read every profile');
+	pg_assert_contains('<li>Shipped</li>', $html, 'a flow they may not open is plain text');
+	pg_assert_contains('<a href="workspace_flows.php?flow=71">Delivered</a>', $html, 'a flow they may open is linked');
+
+	pg_assert_same('', pg_profile_flow_switch_notice($done, '14.11.2026', array(), false, array('profiles' => array(9), 'flows' => array())), 'nothing of the report is the reader\'s');
+	pg_assert_same('', pg_profile_flow_switch_notice($done, '14.11.2026', array(), true, array('profiles' => array(), 'flows' => array())), 'nor as the quiet line');
+
+	$running = array('status' => 'running', 'switched' => array(1 => 70, 2 => 71));
+
+	pg_assert_contains('Flows made so far: 1.', pg_profile_flow_switch_notice($running, '', array(), false, array('profiles' => array(2), 'flows' => array())), 'under way, their own counted');
+	pg_assert_contains('Flows made so far: 2.', pg_profile_flow_switch_notice($running, '', array(), false, array('profiles' => null, 'flows' => array())));
+
+	// With no profile id in the report a user-role reader needs no query,
+	// and no flow is asked about.
+	pg_assert_same(array('profiles' => array(), 'flows' => array()), pg_profile_flow_report_reader(array('status' => 'done', 'switched' => array(), 'report' => array()), array('id' => 5, 'role' => 3)));
+	pg_assert_same(array('profiles' => null, 'flows' => array()), pg_profile_flow_report_reader(null, array('id' => 1, 'role' => 0)));
 }
 
 // The bell line is the administrators' alone.
@@ -294,7 +339,7 @@ function test_campaign_profile_switch_quiet_after_thirty_days()
 	pg_assert_true(!pg_profile_flow_switch_quiet(array('status' => 'running', 'done_at' => 0) + $done, 1000000 + 90 * $day), 'a conversion under way is never quiet');
 	pg_assert_true(!pg_profile_flow_switch_quiet(null, 1000000), 'no conversion');
 
-	$quiet = pg_profile_flow_switch_notice($done, '14.11.2026', array(), true);
+	$quiet = pg_profile_flow_switch_notice($done, '14.11.2026', array(), true, array('profiles' => null, 'flows' => array(70)));
 
 	pg_assert_true(strpos($quiet, 'alert') === false, 'no alert');
 	pg_assert_contains('<details id="profile-flows" class="mt-3 small fg-secondary"><summary>Profiles turned into flows on 14.11.2026 · Flows made: 1; profiles left: 1</summary>', $quiet);

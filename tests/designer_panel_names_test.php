@@ -89,9 +89,11 @@ function test_designer_panel_names_section_headers_are_buttons()
 {
 	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 
-	foreach (array('sd-props-section-title sd-sect-hdr', 'sd-app-sect-hdr sd-sect-hdr', 'sd-bg-img-grp-hdr sd-sect-hdr') as $cls) {
-		pg_assert_true((bool) preg_match('/class="' . preg_quote($cls, '/') . '[^\n]*role="button" tabindex="0" aria-expanded="/', $source), $cls . ' is a keyboard button');
-	}
+	pg_assert_true((bool) preg_match('/class="sd-bg-img-grp-hdr sd-sect-hdr[^\n]*role="button" tabindex="0" aria-expanded="/', $source), 'sd-bg-img-grp-hdr sd-sect-hdr is a keyboard button');
+	// sect() and as() draw their head through _sdSectCard().
+	pg_assert_true((bool) preg_match("/o\\.hdrCls \\+ ' sd-sect-hdr'[^\\n]*role=\"button\" tabindex=\"0\" aria-expanded=\"/", $source), 'a section card\'s head is a keyboard button');
+	pg_assert_contains("_sdSectMake(sid, 'sd-props-section', 'sd-props-section-title',", $source, 'sect() draws a card');
+	pg_assert_contains("_sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr',", $source, 'as() draws a card');
 	pg_assert_same(3, substr_count($source, "hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');"), 'the three header click handlers keep aria-expanded');
 	pg_assert_same(2, substr_count($source, "this.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');"), 'the two toggle click handlers keep aria-expanded');
 }

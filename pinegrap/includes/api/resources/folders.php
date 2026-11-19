@@ -410,7 +410,7 @@ function api_folder_schema() {
 		'folders'          => 'integer',
 		'pages'            => 'integer',
 		'files'            => 'integer',
-		'updated_at'       => 'string?',
+		'updated_at'       => 'datetime?',
 		'updated_at_unix'  => 'integer'
 	);
 

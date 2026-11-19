@@ -1,6 +1,6 @@
 ---
 name: contact-form-checks
-description: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
+description: Create/Edit Contact save checks: date and rate refused, role 3 keeps a group, picture posted as file_id or image_url and drawn by pg_contact_image_address(), notes box, wording
 ---
 
 ## What does the save refuse?
@@ -11,6 +11,11 @@ description: Create/Edit Contact save checks: membership date and negative rate 
 ## Why was a picture picked on Create lost?
 - Create opened the picker without `file_input_name`, so it posted `selected_images[]`, which nothing reads. `pg_contact_form_picture_card()` now passes `file_input_name:'file_id'` on both screens (#5258); `$is_new` is no longer read there.
 - An Unsplash pick has `file_id` 0; `software_image_picker()` (`backend.src.js`) now adds a hidden `image_url` with its address when the field is `file_id`, which `pg_contact_form_columns()` stores as `image`.
+
+## How is a stored picture address drawn?
+- `pg_contact_image_address($image)` (`includes/fn/contacts.php`): an absolute, scheme-relative or root-relative address as it is, a bare file name (older rows) after PATH. Edit Contact and the Contacts list use it.
+- Before the Contacts screens bug hunt PR, Edit Contact put PATH before every address, so an Unsplash picture loaded `/https://…` and showed the failure mark; the list printed a bare name without PATH.
+- Edit Contact prints the address back into the hidden `image_url` with `h()`. It used the SQL escape `e()`, which leaves a double quote standing in HTML: a stored address with a quote broke out of the attribute and its markup ran on the screen.
 
 ## Smaller fixes
 - Notes box: `<textarea rows="6">`, the invalid `type="text"` gone (#5264).

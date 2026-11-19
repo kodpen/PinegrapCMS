@@ -220,12 +220,13 @@ function pg_local_order_discard($order_id)
 
 /**
  * Why a line cannot be sold as it stands, by line id: a product switched off,
- * or more units of a stock-tracked product than its stock holds. The units of
- * a product on several lines are counted together, and every one of those
- * lines is named.
+ * a product the counter cannot sell (local_sale_product_refusal(): a gift
+ * card), or more units of a stock-tracked product than its stock holds. The
+ * units of a product on several lines are counted together, and every one of
+ * those lines is named.
  *
  * @param array $lines  from local_sale_lines(): id, product_id, quantity,
- *                      enabled, inventory, inventory_quantity
+ *                      enabled, inventory, inventory_quantity, gift_card
  * @return array  line id => message
  */
 function pg_local_order_line_errors($lines)
@@ -234,8 +235,12 @@ function pg_local_order_line_errors($lines)
     $wanted = array();
 
     foreach ($lines as $line) {
+        $refusal = local_sale_product_refusal($line);
+
         if ((int) $line['enabled'] !== 1) {
             $line_errors[(int) $line['id']] = lang('This product has been switched off; remove it from the cart.');
+        } elseif ($refusal !== '') {
+            $line_errors[(int) $line['id']] = $refusal;
         } elseif ((int) $line['inventory'] === 1) {
             $wanted[(int) $line['product_id']] = ($wanted[(int) $line['product_id']] ?? 0) + (int) $line['quantity'];
         }
@@ -288,11 +293,16 @@ function pg_local_order_check($user, $order_id, $lines, $input)
         return local_sale_fail(lang('The cart is empty.'), array('level' => 'warning'));
     }
 
-    // 1. Stock, again.
+    // 1. Stock, again, and a product the counter cannot sell (a gift card
+    // line a cart held before it was refused), named as such.
     $line_errors = pg_local_order_line_errors($lines);
 
     if (!empty($line_errors)) {
-        return local_sale_fail(lang('Some lines no longer fit the stock. Correct them and complete the sale again.'), array('line_errors' => $line_errors));
+        $refusal = (string) current(array_filter(array_map('local_sale_product_refusal', $lines)));
+
+        return local_sale_fail(in_array($refusal, $line_errors, true)
+            ? $refusal
+            : lang('Some lines no longer fit the stock. Correct them and complete the sale again.'), array('line_errors' => $line_errors));
     }
 
     // Cash received short of the total is refused before the sale is
@@ -330,9 +340,10 @@ function pg_local_order_check($user, $order_id, $lines, $input)
  *
  * In order: pg_local_order_check(), the order is claimed with a conditional
  * update so a double click, a second tab or a retried API call cannot
- * complete it twice, it is numbered, the stock goes down, order.created is
- * announced, and - with the ERP on - the invoice is issued and the money
- * recorded.
+ * complete it twice, it is numbered, each line does what it does in the
+ * site's checkout (the stock, a membership, folder access, reward points, a
+ * contact group...), order.created is announced, and - with the ERP on - the
+ * invoice is issued and the money recorded.
  *
  * Once the order is claimed it stays completed: a failed invoice or receipt
  * comes back as a warning on a completed sale, never as a sale undone.
@@ -375,8 +386,11 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
 
     // 4. The figures. tax_total is the line's VAT; tax stays 0 (see
     // update_order_item_taxes()); tax_rate the rate it was taken at (11.0.59).
+    // With the Commerce tax off the checkout takes none and never writes a
+    // rate (it does not run update_order_item_taxes()): the lines' VAT is
+    // then 0 (pg_order_line_tax_rate()) and tax_rate stays NULL here too.
     $totals = local_sale_totals($lines);
-    $with_rate = pg_schema_has('order_items', 'tax_rate');
+    $with_rate = pg_tax_switched_on() && pg_schema_has('order_items', 'tax_rate');
 
     foreach ($lines as $line) {
         db("UPDATE order_items SET tax_total = '" . (int) $line['tax'] . "', tax = '0'"
@@ -424,75 +438,54 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
     db("UPDATE order_items SET ship_to_id = '0' WHERE order_id = '" . $order_id . "'");
     db("DELETE FROM ship_tos WHERE order_id = '" . $order_id . "'");
 
-    // 5. Stock goes down for tracked products. Each one then tells the
-    //    outside the same way a web sale does: the stamp for updated_since
-    //    listings, inventory.changed (stock.low on the crossing) and the
-    //    marketplace queue. The first line of a product reads its stock
-    //    again right before the decrement, so another till's sale since the
-    //    cart was read is not counted from the old level; later lines carry
-    //    on from what the line above left ($stock_left, only set for a
-    //    product that tracks stock).
-    $stock_left = array();
-    $bundle_ids = pg_bundle_ids_among(array_column($lines, 'product_id'));
+    // 5. What each line does, through the site checkout's own stages
+    //    (pg_order_complete_lines()): the stock (on the default location
+    //    when the site keeps stock per location, a till having no shipping
+    //    method; the moves name local_sale), an event's spots, a membership,
+    //    folder access, the reward points, the forms, comment and e-mailed
+    //    page a product makes, its product_ordered campaigns and contact
+    //    group. Then the store's private folder, the reward points and the
+    //    contact groups, as pg_order_complete() follows them up. The rights
+    //    go to the buyer, not the operator the order's user_id names: the
+    //    account linked to the picked contact (pg_order_rights_user_id()),
+    //    whose e-mail address stands for the billing one. A walk-in sale
+    //    has no buyer to give them to.
+    $order_row = db_item("SELECT * FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
+    $buyer_id = pg_order_rights_user_id(array('type' => 'local', 'contact_id' => $contact_id));
+    $buyer_email = ($contact_id > 0) ? (string) db_value("SELECT email_address FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1") : '';
+    $site_lines = array();
+    $read = db_q(pg_order_lines_sql(), array((string) $order_id));
 
-    // A till has no shipping method: the sale is stored on the default
-    // location when the site keeps stock per location.
-    pg_stock_order_location_save($order_id);
+    while ($read && ($row = mysqli_fetch_assoc($read))) {
+        $site_lines[] = $row;
+    }
 
-    foreach ($lines as $line) {
-        $product_id = (int) $line['product_id'];
+    $collected = pg_order_complete_lines($order_id, $site_lines, array_merge(is_array($order_row) ? $order_row : array(), array(
+        'billing_email_address' => $buyer_email,
+        'total' => (int) $totals['gross'],
+        'order_number' => $order_number,
+        'order_date' => $now,
+        'user_id' => ($buyer_id > 0) ? $buyer_id : '',
+        'contact_id' => $contact_id,
+        'reference_code' => (string) ($order_row['reference_code'] ?? ''),
+        'created_user_id' => (int) $user['id'],
+        'actor' => (string) ($user['username'] ?? ''),
+        'stock_source' => 'local_sale',
+    )));
+    $contact_groups = $collected['contact_groups'];
 
-        // A bundle takes its components' stock (includes/fn/bundles.php).
-        if (isset($bundle_ids[$product_id])) {
-            pg_bundle_take_stock($line['id'], $product_id, $line['quantity'], 'local_sale', $stock_left);
-            continue;
-        }
+    pg_order_complete_private_access($buyer_id);
 
-        $tracked = ((int) $line['inventory'] === 1);
-        $stock_before = (int) $line['inventory_quantity'];
+    if (
+        pg_order_complete_rewards(($buyer_id > 0) ? $buyer_id : '', $contact_id, $collected['reward_points'], $order_number, $buyer_email)
+        && (MEMBERSHIP_CONTACT_GROUP_ID != 0)
+        && !in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups)
+    ) {
+        $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
+    }
 
-        if (isset($stock_left[$product_id])) {
-            $tracked = true;
-            $stock_before = $stock_left[$product_id];
-        } else {
-            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
-
-            if ($stock_now) {
-                $tracked = ((int) $stock_now['inventory'] === 1);
-                $stock_before = (int) $stock_now['inventory_quantity'];
-            }
-        }
-
-        if ($tracked && ($stock_before > 0)) {
-            // With stock per location a till sells from the default location.
-            $sale = pg_stock_sale_take($product_id, $line['quantity'], 0, 'local_sale', (string) $order_number);
-
-            if ($sale === null) {
-                db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
-            } elseif ($sale['taken'] === 0) {
-                continue;
-            }
-
-            // The flag comes from the stock left, as in the checkout: one
-            // line's quantity against the stock read before the loop missed
-            // a product on two lines (2 + 3 of 5). The column is unsigned
-            // and the session sql_mode is not strict, so selling through
-            // the stock leaves 0; the out_of_stock guard raises the bell
-            // once per product.
-            db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . $product_id . "' AND inventory_quantity <= 0 AND out_of_stock != '1'");
-
-            if (mysqli_affected_rows(db::$con) > 0) {
-                create_notification(array(
-                    'action' => 'out_stock',
-                    'type' => 'warning',
-                    'title' => $line['name'] . ' - ' . $line['short_description'],
-                    'product_id' => $product_id));
-            }
-
-            $stock_left[$product_id] = pg_product_stock_changed($product_id, $stock_before, null, 'local_sale',
-                ($sale === null) ? null : $sale['location']);
-        }
+    if ($contact_id > 0) {
+        pg_order_complete_contact_groups($contact_id, $contact_groups);
     }
 
     // 6. Tell whoever is subscribed, the same event a web order raises.

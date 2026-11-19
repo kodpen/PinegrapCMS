@@ -942,9 +942,11 @@
     }
 
     // In a drawer the calendar is drawn open under the field: a popup there
-    // would hang off the drawer's scrolling body.
+    // would hang off the drawer's scrolling body. A field marked
+    // data-pg-calendar-inline asks for the same, in a dialog too short to
+    // hold the popup above or below it.
     function inlineIn(el) {
-        return !!(el.closest && el.closest('.drawer'));
+        return !!((el.hasAttribute && el.hasAttribute('data-pg-calendar-inline')) || (el.closest && el.closest('.drawer')));
     }
 
     // The calendar of pg_datetime.js over the typed input `box`: the posted

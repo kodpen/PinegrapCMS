@@ -320,7 +320,7 @@ if (!$_POST) {
                 '" . escape($_POST['label'] ?? '') . "',
                 '" . escape($_POST['type'] ?? '') . "',
                 '" . escape($required) . "',
-                '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'])) . "',
+                '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'] ?? '')) . "',
                 '" . escape($_POST['default_value'] ?? '') . "',
                 '" . escape($_POST['use_folder_name_for_default_value'] ?? '') . "',
                 '" . $numbers['size'] . "',

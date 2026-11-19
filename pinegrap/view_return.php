@@ -544,14 +544,15 @@ if ($refund_plan !== null) {
                         <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('The returned items come to')) . ':</span> <strong>' . $money($refund_plan['estimate']) . '</strong></div>
                         <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('Refunded on this order so far')) . ':</span> ' . $money($refund_plan['refunded']) . '</div>
                         <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('Left to refund on this order')) . ':</span> ' . $money($refund_plan['remaining']) . '</div>
-                    </div>
+                    </div>' . (((int) $refund_plan['gift_card_owed'] > 0) ? '
+                    <p class="small fg-secondary">' . h(lang(array('string' => 'Gift cards or store credit paid {var:1} of this order. That part comes back only as store credit or a refund recorded here, never through the payment service.', 'vars' => array($money($refund_plan['gift_card_owed']))))) . '</p>' : '') . '
                     <form method="post" action="view_return.php">
                         ' . $form_keys . '
                         ' . $output_methods . '
                         <div class="row g-5">
                             <div class="col-12 md:col-3">
                                 <label for="refund_amount" class="form-label">' . h(lang('Amount to refund')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'number', 'name' => 'refund_amount', 'id' => 'refund_amount', 'value' => number_format($refund_plan['suggested'] / 100, 2, '.', ''), 'min' => '0', 'max' => number_format($refund_plan['remaining'] / 100, 2, '.', ''), 'step' => '0.01', 'inputmode' => 'decimal', 'class' => 'form-control', 'required' => 'required')) . '
+                                ' . $liveform->output_field(array('type' => 'number', 'name' => 'refund_amount', 'id' => 'refund_amount', 'value' => number_format($refund_plan['suggested'] / 100, 2, '.', ''), 'min' => '0', 'max' => number_format($refund_plan['credit_remaining'] / 100, 2, '.', ''), 'step' => '0.01', 'inputmode' => 'decimal', 'class' => 'form-control', 'required' => 'required')) . '
                             </div>
                             <div class="col-12 md:col-4">
                                 <label for="refund_reference" class="form-label">' . h(lang('Refund reference')) . ' <span class="fg-secondary fw-normal">(' . h(lang('optional')) . ')</span></label>

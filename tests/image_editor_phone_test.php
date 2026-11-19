@@ -131,7 +131,7 @@ function test_image_editor_phone_part()
 	pg_assert_true(strpos($own['phoneSounds'], '{n}') !== false, 'the count in the line');
 
 	$acts = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
-	pg_assert_true(strpos($acts, "split: ['scissors', 'actSplit', function () { this.clipSplitAt(") !== false, 'Split calls the clip part');
+	pg_assert_true(strpos($acts, "split: ['scissors', 'actSplit', function () { this.clipSplitHere(") !== false, 'Split calls the clip part\'s one split');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_phone.js');
 	pg_assert_true(strpos($js, "var PHONE = '(max-width: 599.98px)';") !== false, 'a phone held upright, as the motion part');

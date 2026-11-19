@@ -178,7 +178,7 @@ function test_list_closed_every_path_uses_the_decision()
 	$clause = _list_closed_function_body($widgets, 'function pg_sw_record_filter_clause(');
 	pg_assert_contains('if (pg_sw_filter_sql_closed($filter_sql, $strict)) {', $clause);
 
-	$feed = _list_closed_function_body($widgets, 'function pg_sw_form_feed_parts(');
+	$feed = _list_closed_function_body($widgets, 'function pg_sw_form_feed_pick(');
 	pg_assert_contains('pg_sw_list_record_filter_clause($form_page_id, $cfg,', $feed);
 
 	pg_assert_contains('pg_sw_list_record_filter_clause($form_page_id, $cfg, $record_view[\'cfg\'], $detail_page_id)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_sitemap_info.php'));

@@ -11,6 +11,9 @@
 - experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
+- page-clicks-designer-layer.md: The designer's Clicks layer (part clicks, CM4a #10056): the canvas matched by the four folded parts, badges, tenth lines, device choice, side list, empty state; what CM4b wires in the core
+- page-clicks-script.md: The clicks and scroll depth script (pg_clicks.src.js, CM2 #9946): who gets it, how it names and folds an element, the depth, the one request it shares with the speed beacon, the consent check
+- page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where [decision: here]
 - page-clicks.md: Clicks and scroll depth counter (page_click_daily, 11.0.224, #9902): four row kinds, the beacon in page_view.php, the fold, the 200-element bound, figures, 400-day sweep [decision: decisions-made-schema-23.md]
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3). [decision: decisions-made-product.md]
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot

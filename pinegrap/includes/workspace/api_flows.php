@@ -58,7 +58,7 @@ function ws_api_flow_version_schema()
         'id'           => 'integer',
         'n'            => 'integer',
         'published_by' => 'integer',
-        'published_at' => 'string?',
+        'published_at' => 'datetime?',
     );
 }
 
@@ -160,8 +160,8 @@ function ws_api_flow_schema()
         'problems'   => 'WorkspaceFlowProblem[]?',
         'start'      => 'string?',
         'start_text' => 'string?',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -1247,9 +1247,9 @@ function ws_api_flow_run_step_schema()
         'outcome'     => 'string?',
         'task_id'     => 'integer?',
         'attempt'     => 'integer',
-        'ready_at'    => 'string?',
-        'started_at'  => 'string?',
-        'finished_at' => 'string?',
+        'ready_at'    => 'datetime?',
+        'started_at'  => 'datetime?',
+        'finished_at' => 'datetime?',
         'threads_in'  => array(array('from' => 'string', 'on' => 'string', 'taken' => 'boolean')),
         'outputs'     => 'object',
         'result'      => 'string',
@@ -1340,9 +1340,9 @@ function ws_api_flow_run_schema()
         'channel_id'  => 'integer?',
         'contact_id'  => 'integer?',
         'boxes_run'   => 'integer',
-        'started_at'  => 'string?',
-        'updated_at'  => 'string?',
-        'finished_at' => 'string?',
+        'started_at'  => 'datetime?',
+        'updated_at'  => 'datetime?',
+        'finished_at' => 'datetime?',
         'result'      => 'string',
         'steps'       => 'WorkspaceFlowRunStep[]?',
         'graph'       => 'WorkspaceFlowGraph?',
@@ -1670,7 +1670,7 @@ function ws_api_flow_share_schema()
         'effective_level' => 'string',
         'name'            => 'string',
         'created_by'      => 'integer',
-        'created_at'      => 'string?',
+        'created_at'      => 'datetime?',
     );
 }
 

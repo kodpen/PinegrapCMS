@@ -175,3 +175,30 @@ function test_workspace_wtable_rows_page_after()
 	pg_assert_same("(position > '40' OR (position = '40' AND id > '912'))", ws_wtable_rows_after_sql(40, 912));
 	pg_assert_same("position > '0'", ws_wtable_rows_after_sql(-3, -1));
 }
+
+// A person cell names someone on the team: a customer's account or an id no
+// account has is refused (not_person), as the row form offers only the
+// team. A person the row already holds is not checked again, so a row
+// whose person has left the team keeps its other cells editable.
+function test_workspace_wtable_rows_person_on_team()
+{
+	$columns = ws_wtable_rows_test_columns();
+	$team = array(12, 14);
+
+	pg_assert_same(null, ws_wtable_person_cells_refusal($columns, array('4' => 12, '1' => 500), array(), $team), 'a team member is written');
+	pg_assert_same(null, ws_wtable_person_cells_refusal($columns, array('4' => null), array(), $team), 'emptying is allowed');
+	pg_assert_same(null, ws_wtable_person_cells_refusal($columns, array('7' => 'x'), array(), $team), 'no person cell given');
+
+	$refused = ws_wtable_person_cells_refusal($columns, array('4' => 99), array(), $team);
+	pg_assert_same('cells_invalid', $refused['error'] ?? '', 'someone off the team is refused');
+	pg_assert_same(array('4' => 'not_person'), $refused['errors'] ?? array());
+
+	pg_assert_same(null, ws_wtable_person_cells_refusal($columns, array('4' => 99, '7' => 'x'), array('4' => 99), $team), 'a person the row holds is kept');
+	pg_assert_same(array('4' => 'not_person'), ws_wtable_person_cells_refusal($columns, array('4' => 99), array('4' => 12), $team)['errors'] ?? array(), 'a new one is checked');
+
+	// Every row write checks it: add and change, so the screen, the API,
+	// the import and the flow boxes, which all write through them.
+	foreach (array('ws_wtable_row_create_check', 'ws_wtable_row_update_check') as $function) {
+		pg_assert_contains('ws_wtable_person_cells_refusal(', pg_test_function_source($function), $function);
+	}
+}

@@ -98,6 +98,9 @@ function pg_panel_backend_search($request, $action)
     if ($gate['manage']) {
         $actions[] = array('label' => lang('Accessibility report'), 'icon' => 'bi-universal-access', 'url' => $base_url . '/view_accessibility.php', 'keys' => array('erisilebilirlik', 'erişilebilirlik', 'accessibility', 'a11y', 'wcag', 'engelli'));
     }
+    if ($gate['folders'] && function_exists('pg_content_review_ready') && pg_content_review_ready()) {
+        $actions[] = array('label' => lang('Content review'), 'icon' => 'bi-calendar-check', 'url' => $base_url . '/view_content_review.php', 'keys' => array('icerik', 'içerik', 'gozden gecir', 'gözden geçir', 'content review', 'review', 'eskimis', 'overdue', 'gecikmis'));
+    }
     if ($gate['folders']) {
         $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
     }
@@ -220,9 +223,11 @@ function pg_panel_backend_search($request, $action)
                     'label' => lang('Settings') . ' - ' . $settings_section_label,
                     'icon'  => $settings_category['icon'],
                     'url'   => $base_url . '/' . pg_settings_url($settings_key) . '#' . $settings_section_id,
-                    'keys'  => isset($settings_category['keywords'][$settings_section_id])
-                        ? $settings_category['keywords'][$settings_section_id]
-                        : array());
+                    'keys'  => pg_connections_place_words(
+                        '#settings/' . $settings_key . '/' . $settings_section_id,
+                        isset($settings_category['keywords'][$settings_section_id])
+                            ? $settings_category['keywords'][$settings_section_id]
+                            : array()));
             }
         }
         // The System tools screen and every tool on it, from the groups the
@@ -695,7 +700,8 @@ function pg_panel_search_score($name, $query, $secondary = '')
 }
 
 // Palette rows for the System tools screen and each of its tools, from
-// pg_settings_tool_groups(). A tool that asks first (a confirm) opens the
+// pg_settings_tool_groups(), found by the names of the outside services a
+// tool holds too (pg_connections_place_words()). A tool that asks first (a confirm) opens the
 // screen, where the question is asked: the palette follows its row without
 // one. A screen the palette already lists ($actions) is not repeated. No
 // tool, no row, not even the screen's.
@@ -729,9 +735,9 @@ function pg_panel_search_tool_actions($groups, $base_url, $actions)
                 'label' => $item['label'],
                 'icon'  => $item['icon'],
                 'url'   => $url,
-                'keys'  => array_merge(
+                'keys'  => pg_connections_place_words($script, array_merge(
                     array(mb_strtolower($item['label'], 'UTF-8')),
-                    isset($keys[$script]) ? $keys[$script] : array()),
+                    isset($keys[$script]) ? $keys[$script] : array())),
             );
         }
     }

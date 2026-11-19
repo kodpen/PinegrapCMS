@@ -768,7 +768,7 @@ function ws_github_links_settings_form($self_url, $names, $form = null)
 
 /**
  * The "GitHub repositories" card of the Workspace settings. In Site Settings
- * (Channels, mail and voice, with $form) Remove is a named submit button of
+ * (Channels, with $form) Remove is a named submit button of
  * the settings form (ws_github_link_remove, value the link's id) and Link a
  * repository opens the drawer ws_settings_github_link_drawer() draws.
  *

@@ -16,6 +16,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 // The rows an owner with the user role (3) reaches: the subscriptions of the
 // customers in its contact groups, the rule of the customers routes
 // (api_customer_owner_filter()); an account that is no contact is outside.
@@ -89,18 +91,14 @@ function api_subscriptions_list($params) {
 
 	$where = api_subscriptions_where($params, api_current_app()['owner']);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// The oldest change first; sort=newest walks the same pair the other way.
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "(s.updated_at > '" . (int)$cursor['v'] . "'
-			OR (s.updated_at = '" . (int)$cursor['v'] . "' AND s.id > '" . (int)$cursor['i'] . "'))";
+		$where[] = api_list_keyset_sql('s.updated_at', 's.id', $cursor, $descending);
 
 	}
 
@@ -109,7 +107,7 @@ function api_subscriptions_list($params) {
 	$rows = pg_subscriptions_ready()
 		? api_rows(api_customer_subscriptions_select_sql()
 			. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
-			ORDER BY s.updated_at ASC, s.id ASC
+			ORDER BY " . api_list_order_sql('s.updated_at', 's.id', $descending) . "
 			LIMIT " . ($limit + 1))
 		: array();
 
@@ -121,7 +119,7 @@ function api_subscriptions_list($params) {
 
 		$last = end($rows);
 
-		$next = api_cursor_encode((int)$last['updated_at'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['updated_at'], (int)$last['id'], $descending);
 
 	}
 

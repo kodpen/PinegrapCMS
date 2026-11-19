@@ -26,7 +26,7 @@ require_once(__DIR__ . '/helpers/designer_family_run.php');
 
 function test_designer_blocks_general_families_join_core_groups()
 {
-	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces', 'locations-floors', 'locations-zones')));
+	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces', 'locations-floors', 'locations-zones', 'locations-map')));
 	foreach ($expect as $name => $want) {
 		$got = pg_test_designer_family_run($name);
 		if ($got === null) {
@@ -119,7 +119,7 @@ function test_designer_blocks_general_rules_reach_the_stylesheet()
 	pg_assert_same(array('pg-hours-table'), array_keys($hours['rules']), 'the hours family\'s rule');
 	pg_assert_same(array('pg-hours-table'), $hours['needs']['hours-seasons'], 'seasonal hours need it');
 	$spaces = _pg_designer_block_css_parse(pg_test_designer_family_file('locations'));
-	pg_assert_same(array('pg-space-facts', 'pg-floor-level', 'pg-zone-map', 'pg-zone-key'), array_keys($spaces['rules']), 'the locations family\'s rules');
+	pg_assert_same(array('pg-space-facts', 'pg-floor-level', 'pg-zone-map', 'pg-zone-key', 'pg-map-list', 'pg-map-picture'), array_keys($spaces['rules']), 'the locations family\'s rules');
 	pg_assert_same(array('pg-zone-map', 'pg-zone-key'), $spaces['needs']['locations-zones'], 'the zones need their rings and keys');
 	// The dashed style is a custom property, inherited by the rings inside
 	// the outer zone, so only the outer line is dashed when they set it back.

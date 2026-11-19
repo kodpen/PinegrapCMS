@@ -44,7 +44,95 @@ function erp_price_lists_ready()
 }
 
 /**
- * The terms an account has for a product, or null when it has none.
+ * Whether the column "uses the prices of" is there (2026.11.0, step
+ * 11.0.235).
+ *
+ * @return bool
+ */
+function erp_shared_prices_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'price_account_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * Whose prices an account buys at: the account it points at, or its own.
+ * A pointer at itself is read as none. Pure.
+ *
+ * @param int $account_id
+ * @param int $pointer    erp_accounts.price_account_id, 0 for none
+ * @return int
+ */
+function erp_account_price_source_id($account_id, $pointer)
+{
+    $account_id = (int) $account_id;
+    $pointer = (int) $pointer;
+
+    if ($account_id <= 0) {
+        return 0;
+    }
+
+    return (($pointer > 0) && ($pointer !== $account_id)) ? $pointer : $account_id;
+}
+
+/**
+ * Whose prices an account buys at, read from its row. One hop only: the
+ * save refuses a pointer at an account that points on
+ * (erp_account_price_pointer_refusal()), so the pointer is followed once.
+ *
+ * @param int $account_id
+ * @return int
+ */
+function erp_account_price_source($account_id)
+{
+    static $sources = array();
+
+    $account_id = (int) $account_id;
+
+    if (($account_id <= 0) || !erp_shared_prices_ready()) {
+        return max(0, $account_id);
+    }
+
+    if (!isset($sources[$account_id])) {
+        $sources[$account_id] = erp_account_price_source_id($account_id, (int) db_value("SELECT price_account_id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"));
+    }
+
+    return $sources[$account_id];
+}
+
+/**
+ * The terms one account's rows and discount give a product. Pure.
+ *
+ * @param array $known      ['entries' => product_id => ['price', 'discount_rate'], 'discount_rate' => float]
+ * @param int   $product_id
+ * @return array|null as erp_account_price_terms()
+ */
+function erp_account_price_terms_pick(array $known, $product_id)
+{
+    $entries = $known['entries'] ?? array();
+
+    if (isset($entries[(int) $product_id])) {
+        return $entries[(int) $product_id] + array('source' => 'product');
+    }
+
+    $rate = (float) ($known['discount_rate'] ?? 0);
+
+    if ($rate > 0) {
+        return array('price' => 0, 'discount_rate' => $rate, 'source' => 'account');
+    }
+
+    return null;
+}
+
+/**
+ * The terms an account has for a product, or null when it has none. An
+ * account that uses another account's prices gets that account's rows and
+ * discount instead of its own.
  *
  * @param int $account_id
  * @param int $product_id
@@ -60,29 +148,158 @@ function erp_account_price_terms($account_id, $product_id)
         return null;
     }
 
-    if (!isset($accounts[$account_id])) {
+    $source_id = erp_account_price_source($account_id);
+
+    if (!isset($accounts[$source_id])) {
         $entries = array();
-        foreach ((array) db_items("SELECT product_id, price, discount_rate FROM erp_account_prices WHERE account_id = '" . $account_id . "'") as $row) {
+        foreach ((array) db_items("SELECT product_id, price, discount_rate FROM erp_account_prices WHERE account_id = '" . $source_id . "'") as $row) {
             $entries[(int) $row['product_id']] = array('price' => (int) $row['price'], 'discount_rate' => (float) $row['discount_rate']);
         }
 
-        $accounts[$account_id] = array(
+        $accounts[$source_id] = array(
             'entries' => $entries,
-            'discount_rate' => (float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"),
+            'discount_rate' => (float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . $source_id . "' LIMIT 1"),
         );
     }
 
-    $known = $accounts[$account_id];
+    return erp_account_price_terms_pick($accounts[$source_id], $product_id);
+}
 
-    if (isset($known['entries'][(int) $product_id])) {
-        return $known['entries'][(int) $product_id] + array('source' => 'product');
+/**
+ * What the store weighs for an account (pg_erp_member_prices()): the
+ * products the account whose prices it buys at has a row for, and whether
+ * that account has a discount for everything else.
+ *
+ * @param int $account_id
+ * @return array ['listed' => int[], 'account_wide' => bool]
+ */
+function erp_account_storefront_scope($account_id)
+{
+    $source_id = erp_account_price_source($account_id);
+    $listed = array();
+
+    if ($source_id <= 0) {
+        return array('listed' => $listed, 'account_wide' => false);
     }
 
-    if ($known['discount_rate'] > 0) {
-        return array('price' => 0, 'discount_rate' => $known['discount_rate'], 'source' => 'account');
+    foreach ((array) db_items("SELECT product_id FROM erp_account_prices WHERE account_id = '" . $source_id . "'") as $row) {
+        $listed[] = (int) $row['product_id'];
     }
 
-    return null;
+    return array(
+        'listed' => $listed,
+        'account_wide' => ((float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . $source_id . "' LIMIT 1") > 0),
+    );
+}
+
+/**
+ * Why an account may not point at another, or '' when it may. One hop
+ * only: the chosen account may not use another's prices itself, and an
+ * account whose prices others use may not use another's. Letting go (0) is
+ * always allowed. Pure.
+ *
+ * @param int  $account_id
+ * @param int  $target_id      the account chosen, 0 for none
+ * @param bool $target_exists
+ * @param int  $target_pointer the chosen account's own pointer
+ * @param int  $pointed_at_by  how many accounts use this account's prices
+ * @return string
+ */
+function erp_account_price_pointer_refusal($account_id, $target_id, $target_exists, $target_pointer, $pointed_at_by)
+{
+    $target_id = (int) $target_id;
+
+    if ($target_id <= 0) {
+        return '';
+    }
+
+    if ($target_id === (int) $account_id) {
+        return lang('An account cannot use its own prices.');
+    }
+
+    if (!$target_exists) {
+        return lang('Choose an existing account.');
+    }
+
+    if (((int) $target_pointer > 0) && ((int) $target_pointer !== $target_id)) {
+        return lang('That account uses another account\'s prices itself. Choose the account whose prices it uses.');
+    }
+
+    if ((int) $pointed_at_by > 0) {
+        return lang('Other accounts use this account\'s prices, so it cannot use another account\'s.');
+    }
+
+    return '';
+}
+
+/**
+ * The accounts that use an account's prices.
+ *
+ * @param int $account_id
+ * @return int[]
+ */
+function erp_account_price_users($account_id)
+{
+    if (((int) $account_id <= 0) || !erp_shared_prices_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT id FROM erp_accounts WHERE price_account_id = '" . (int) $account_id . "' AND id != '" . (int) $account_id . "' ORDER BY id"));
+}
+
+/**
+ * Why an account may not be deleted for its prices' sake, or '' when it
+ * may: accounts that use its prices must let go first. Accounts have no
+ * delete today (they are set to passive); a delete path asks this. Pure.
+ *
+ * @param int $pointed_at_by how many accounts use this account's prices
+ * @return string
+ */
+function erp_account_delete_refusal($pointed_at_by)
+{
+    return ((int) $pointed_at_by > 0)
+        ? lang('Other accounts use this account\'s prices. Let them use their own or another account\'s first.')
+        : '';
+}
+
+/**
+ * Sets whose prices an account buys at, or lets go with 0, after the
+ * one-hop check.
+ *
+ * @param int $account_id
+ * @param int $target_id 0 to use its own prices
+ * @return array ['success' => bool, 'error' => string]
+ */
+function erp_account_price_pointer_save($account_id, $target_id)
+{
+    $account_id = (int) $account_id;
+    $target_id = max(0, (int) $target_id);
+
+    if (($account_id <= 0) || !erp_shared_prices_ready()) {
+        return array('success' => false, 'error' => lang('The account was not found.'));
+    }
+
+    $target = ($target_id > 0) ? db_item("SELECT id, price_account_id FROM erp_accounts WHERE id = '" . $target_id . "' LIMIT 1") : null;
+
+    $error = erp_account_price_pointer_refusal(
+        $account_id,
+        $target_id,
+        is_array($target) && !empty($target),
+        is_array($target) ? (int) ($target['price_account_id'] ?? 0) : 0,
+        count(erp_account_price_users($account_id))
+    );
+
+    if ($error !== '') {
+        return array('success' => false, 'error' => $error);
+    }
+
+    if (erp_query("UPDATE erp_accounts SET price_account_id = '" . $target_id . "', updated_at = '" . time() . "' WHERE id = '" . $account_id . "'") === false) {
+        return array('success' => false, 'error' => erp_db_error());
+    }
+
+    erp_event_account($account_id);
+
+    return array('success' => true, 'error' => '');
 }
 
 /**

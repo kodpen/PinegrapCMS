@@ -1996,17 +1996,11 @@ function pg_payment_iyzico_installment_table($amount, $settings, &$cache)
         if (!is_array($entry) || ($entry['at'] ?? 0) < $now - 600) unset($cache[$key]);
     }
 
-    $steps = array_values(array_filter(array(2, 3, 6, 9, 12), function ($n) use ($limit) { return $n <= $limit; }));
+    $steps = pg_payment_iyzico_installment_steps($limit);
     $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : null;
-    $cell = function ($price) use ($symbol) {
-        if (!$price[0]) return '<td></td>';
-        return '<td><span class="installment_per_month">' . pg_format_money($price[0], $symbol) . ' / ' . h(lang('month'))
-            . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($price[1], $symbol) . '</span></td>';
-    };
 
     $options = null;
-    $body = '';
-    $rows = 0;
+    $table = array();
     foreach (pg_payment_iyzico_installment_cards() as $card_number) {
         $bin = substr($card_number, 0, 6);
         $key = md5($settings['base_url'] . '|' . $settings['api_key'] . '|' . $settings['locale'] . '|' . $amount . '|' . $bin);
@@ -2024,20 +2018,47 @@ function pg_payment_iyzico_installment_table($amount, $settings, &$cache)
         }
         if ($detail === null || empty($detail['prices'][1][0])) continue;
 
-        $rows++;
-        $body .= '<tr><td  scope="row">' . h($detail['family']) . '</td>';
-        foreach ($steps as $n) $body .= $cell($detail['prices'][$n] ?? array(null, null));
-        $body .= '</tr>';
+        $cells = array();
+        foreach ($steps as $n) {
+            $price = $detail['prices'][$n] ?? array(null, null);
+            $cells[$n] = $price[0] ? array(pg_format_money($price[0], $symbol), pg_format_money($price[1], $symbol)) : null;
+        }
+        $table[] = array('family' => (string)$detail['family'], 'cells' => $cells);
     }
-    if ($rows === 0) return $none;
+    if (!$table) return $none;
 
+    return array('html' => pg_payment_iyzico_installment_table_html($steps, $table), 'rows' => count($table));
+}
+
+// The plan counts the installment table has columns for, up to $limit.
+function pg_payment_iyzico_installment_steps($limit)
+{
+    return array_values(array_filter(array(2, 3, 6, 9, 12), function ($n) use ($limit) { return $n <= (int) $limit; }));
+}
+
+// The installment table's markup, pure (the designer canvas draws its twin,
+// _sdInstallmentTableHtml()): a column per plan count of $steps, a row per
+// card family of $rows, each array('family', 'cells' => plan count =>
+// array(per month, total) as formatted money, or null when the family has
+// no such plan).
+function pg_payment_iyzico_installment_table_html($steps, $rows)
+{
     $head = '<tr><th>' . h(lang('Card Type')) . '</th>';
     foreach ($steps as $n) $head .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => $n))) . '</th>';
     $head .= '</tr>';
 
-    return array(
-        'html' => '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >'
-            . '<thead class="thead-dark">' . $head . '</thead><tbody>' . $body . '</tbody></table></div>',
-        'rows' => $rows,
-    );
+    $body = '';
+    foreach ($rows as $row) {
+        $body .= '<tr><td  scope="row">' . h($row['family']) . '</td>';
+        foreach ($steps as $n) {
+            $cell = $row['cells'][$n] ?? null;
+            $body .= !$cell ? '<td></td>'
+                : '<td><span class="installment_per_month">' . $cell[0] . ' / ' . h(lang('month'))
+                    . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . $cell[1] . '</span></td>';
+        }
+        $body .= '</tr>';
+    }
+
+    return '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >'
+        . '<thead class="thead-dark">' . $head . '</thead><tbody>' . $body . '</tbody></table></div>';
 }

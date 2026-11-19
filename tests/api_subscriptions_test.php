@@ -170,7 +170,7 @@ function test_api_subscriptions_routes_reach_a_handler_under_the_customers_scope
 				}
 			}
 
-			pg_assert_same(array('status', 'customer_id', 'product_id', 'order_id', 'updated_since', 'limit', 'cursor'), $names);
+			pg_assert_same(array('status', 'customer_id', 'product_id', 'order_id', 'updated_since', 'limit', 'cursor', 'sort'), $names);
 		}
 	}
 

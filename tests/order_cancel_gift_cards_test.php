@@ -51,25 +51,25 @@ function test_order_log_number_and_money()
 }
 
 // What a cancelled order still owes: the payment money only when a payment
-// arrived, the gift card part always.
+// arrived, the gift card part the cards gave.
 function test_order_cancel_refund_owed()
 {
-	$offline_unpaid = array('payment_method' => 'Offline Payment', 'paid_at' => '0', 'total' => '1364830', 'refunded_amount' => '0', 'gift_card_discount' => '15050');
+	$offline_unpaid = array('payment_method' => 'Offline Payment', 'paid_at' => '0', 'total' => '1364830', 'refunded_amount' => '0', 'gift_card_owed' => '15050');
 	pg_assert_same(array('payment' => 0, 'gift_card' => 15050, 'total' => 15050), pg_order_cancel_refund_owed($offline_unpaid), 'a transfer that never arrived owes only the gift card part');
 
 	$offline_paid = array_merge($offline_unpaid, array('paid_at' => '1761900000'));
 	pg_assert_same(array('payment' => 1364830, 'gift_card' => 15050, 'total' => 1379880), pg_order_cancel_refund_owed($offline_paid), 'an arrived transfer is owed back');
 
-	$pending = array('payment_method' => 'PayPal Checkout', 'paid_at' => 0, 'total' => 5000, 'refunded_amount' => 0, 'gift_card_discount' => 0);
+	$pending = array('payment_method' => 'PayPal Checkout', 'paid_at' => 0, 'total' => 5000, 'refunded_amount' => 0, 'gift_card_owed' => 0);
 	pg_assert_same(0, pg_order_cancel_refund_owed($pending)['total'], 'a payment its service left pending is not owed');
 
-	$card = array('payment_method' => 'Credit/Debit Card', 'paid_at' => 0, 'total' => 10000, 'refunded_amount' => 2500, 'gift_card_discount' => 0);
+	$card = array('payment_method' => 'Credit/Debit Card', 'paid_at' => 0, 'total' => 10000, 'refunded_amount' => 2500, 'gift_card_owed' => 0);
 	pg_assert_same(7500, pg_order_cancel_refund_owed($card)['payment'], 'a card payment less what was refunded');
 
-	$old_schema = array('payment_method' => 'Offline Payment', 'total' => 10000, 'gift_card_discount' => 0);
+	$old_schema = array('payment_method' => 'Offline Payment', 'total' => 10000, 'gift_card_owed' => 0);
 	pg_assert_same(10000, pg_order_cancel_refund_owed($old_schema)['payment'], 'no paid_at column: the payment counts as arrived');
 
-	$over = array('payment_method' => 'Credit/Debit Card', 'paid_at' => 1, 'total' => 1000, 'refunded_amount' => 1500, 'gift_card_discount' => 0);
+	$over = array('payment_method' => 'Credit/Debit Card', 'paid_at' => 1, 'total' => 1000, 'refunded_amount' => 1500, 'gift_card_owed' => 0);
 	pg_assert_same(0, pg_order_cancel_refund_owed($over)['payment'], 'never below zero');
 }
 
@@ -80,7 +80,7 @@ function test_order_cancel_refund_owed_sql()
 	pg_assert_contains("'Offline Payment'", $sql, 'the offline method');
 	pg_assert_contains("'PayPal Checkout'", $sql, 'the pending method');
 	pg_assert_contains('orders.refunded_amount', $sql, 'what was refunded');
-	pg_assert_contains('orders.gift_card_discount', $sql, 'the gift card part');
+	pg_assert_contains('applied_gift_cards.amount', $sql, 'the gift card part the cards gave');
 
 	$bare = pg_order_cancel_refund_owed_sql(false, false);
 	pg_assert_false(strpos($bare, 'paid_at') !== false, 'no paid_at column, no test on it');

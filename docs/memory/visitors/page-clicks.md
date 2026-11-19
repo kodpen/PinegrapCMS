@@ -29,8 +29,11 @@ module: page_clicks
 ## How long are rows kept?
 - 400 days (`PG_PAGE_CLICKS_DAYS`): `job.php` runs `pg_page_clicks_sweep()` once a day (`data/temp/page_clicks_sweep.json`), `DELETE … WHERE kind = ? AND day < ? LIMIT 5000` kind by kind within 5 seconds.
 
-## What is not there yet?
-- The script and the Features switch (CM2), the Visitors section and report route (CM3), the designer layer (CM4). Until CM2 nothing sends a beacon.
+## What switches it on?
+- One setting with one reader and one saver: `visitors/page-clicks-switch.md`.
+
+## What else is there?
+- The script and its Features card (CM2 #9946): `page-clicks-script.md`. The Visitors section and `GET /reports/page-clicks` (#9913): `ui/visitors-clicks-section.md`. Designer layer: `page-clicks-designer-layer.md`.
 
 ## Tested?
-- `tests/page_clicks_test.php`. The step was run twice on MariaDB; record, bound, figures and sweep against it. No browser run (no script yet).
+- `tests/page_clicks_test.php`. The step was run twice on MariaDB; record, bound, figures and sweep against it. No browser run.

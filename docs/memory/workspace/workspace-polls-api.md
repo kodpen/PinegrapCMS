@@ -19,3 +19,6 @@ description: A poll over the Workspace API: closed_at, can_vote false past close
 - A dry run calls the same checks before `api_dry_run_stop()`, so it answers the same status, code and field; only the closing of an expired poll is skipped.
 
 **Why:** the API said `can_vote: true` on a poll past its time while the vote failed, and both refusals were a 422 without a field, told apart only by translated text (#2083).
+
+## Does a poll route take a picture?
+- Yes, the question's own (#9948): create, update and again take a form part named file or content_base64 with name; update and again also remove_picture. `poll-question-picture.md`.

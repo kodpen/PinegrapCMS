@@ -81,6 +81,57 @@ function pg_page_clicks_ready()
 }
 
 /**
+ * The settings text of the "Clicks and scrolling" switch: '1' on, missing
+ * off, so every site and a new install start off.
+ */
+define('PG_PAGE_CLICKS_SWITCH', 'page_clicks');
+
+/**
+ * The switch's stored value for on or off: '1', or '' (the row removed).
+ * Pure.
+ *
+ * @param bool $on
+ * @return string
+ */
+function pg_page_clicks_switch_value($on)
+{
+    return $on ? '1' : '';
+}
+
+/**
+ * Whether the "Clicks and scrolling" switch is on. The one reader: the
+ * Visitors section, the Features card, the beacon script and the
+ * designer's layer all ask here.
+ *
+ * @return bool
+ */
+function pg_page_clicks_switch_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text(PG_PAGE_CLICKS_SWITCH) === '1';
+}
+
+/**
+ * Turns the switch on or off. The one saver: the Visitors section's "Turn
+ * on" button and the Features card call it. Whoever calls it has checked
+ * the right to change Features and the form's token.
+ *
+ * @param bool $on
+ * @return bool written
+ */
+function pg_page_clicks_switch_save($on)
+{
+    if (!function_exists('pg_config_text_save')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return (bool) pg_config_text_save(PG_PAGE_CLICKS_SWITCH, pg_page_clicks_switch_value((bool) $on));
+}
+
+/**
  * The parts of the page an element can sit in, by its nearest landmark.
  *
  * @return array
@@ -590,6 +641,88 @@ function pg_page_clicks_beacon(array $post)
     $beacon = pg_page_clicks_parse($post['c'] ?? '', $host);
 
     return ($page_id > 0) && ($beacon !== null) && pg_page_clicks_record($page_id, $beacon);
+}
+
+// ── The script on the page ─────────────────────────────────────────────────
+
+/**
+ * Whether a drawn page carries the clicks script (C11): the switch on, an
+ * HTML page in a folder open to everyone, drawn for a visitor who is not
+ * signed in (a member's view can carry a name, C4), and none of the speed
+ * beacon's exclusions (the panel bar, the File Manager preview, a
+ * background render, staff). The designer and the prototype draw through
+ * other entry points and never reach this. Pure.
+ *
+ * @param array $draw      rendered_html_page, toolbar, panel_preview,
+ *                         background, staff, signed_in, public
+ * @param bool  $switch_on pg_page_clicks_switch_on()
+ * @return bool
+ */
+function pg_page_clicks_beacon_wanted(array $draw, $switch_on)
+{
+    return (bool) $switch_on
+        && !empty($draw['rendered_html_page'])
+        && !empty($draw['public'])
+        && empty($draw['signed_in'])
+        && empty($draw['toolbar'])
+        && empty($draw['panel_preview'])
+        && empty($draw['background'])
+        && empty($draw['staff']);
+}
+
+/**
+ * The script tag: pg_clicks.min.js deferred, with the endpoint, the page id
+ * and its day signature as data attributes. '' without a signature or a
+ * script address. Pure.
+ *
+ * @param string $script_url
+ * @param string $endpoint   page_view.php
+ * @param int    $page_id
+ * @param string $signature  pg_page_clicks_sign()
+ * @return string
+ */
+function pg_page_clicks_beacon_tag($script_url, $endpoint, $page_id, $signature)
+{
+    if (((string) $script_url === '') || ((string) $signature === '') || ((int) $page_id <= 0)) {
+        return '';
+    }
+
+    return '<script src="' . h($script_url) . '" defer data-u="' . h($endpoint) . '" data-p="' . (int) $page_id . '" data-s="' . h($signature) . '"></script>';
+}
+
+/**
+ * Splices the clicks script into a drawn page before its last </body>; the
+ * page unchanged when it is not wanted, the rollup is not there, the site
+ * has no key or the page is no HTML document. Before the page cache, so the
+ * stored copy counts its visits too.
+ *
+ * @param string $content
+ * @param int    $page_id
+ * @param array  $draw    pg_page_clicks_beacon_wanted()
+ * @return string
+ */
+function pg_clicks_beacon_inject($content, $page_id, array $draw)
+{
+    $content = (string) $content;
+    $position = strripos($content, '</body>');
+
+    if (($position === false) || !pg_page_clicks_beacon_wanted($draw, pg_page_clicks_switch_on()) || !pg_page_clicks_ready()) {
+        return $content;
+    }
+
+    $urls = pg_js_bundle_urls('assets/js/pg_clicks.min.js');
+
+    $tag = pg_page_clicks_beacon_tag(
+        $urls ? $urls[0] : '',
+        (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'pinegrap') . '/page_view.php',
+        $page_id,
+        pg_page_clicks_sign($page_id, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', date('Y-m-d')));
+
+    if ($tag === '') {
+        return $content;
+    }
+
+    return substr($content, 0, $position) . $tag . substr($content, $position);
 }
 
 // ── Sweep ──────────────────────────────────────────────────────────────────

@@ -73,7 +73,7 @@ function designer_widget_fork_test_run($body)
 		. 'function _sdIsContentLevel() { return contentLevel; }'
 		. 'function esc(s) { return String(s); }'
 		. 'function sdToast(m) { toasts.push(m); }'
-		. 'function gid() { return "n" + (++nextId); }'
+		. 'var nodeIdCounter = 0; function gid() { return "n" + (++nextId); }'
 		. 'function cloneTree(n) { return JSON.parse(JSON.stringify(n)); }'
 		. 'function saveState() { calls.saveState++; }'
 		. 'function render() { calls.render++; }'
@@ -100,6 +100,8 @@ function designer_widget_fork_test_run($body)
 		. "\n"
 		. designer_widget_fork_test_fn($source, '_sdT')
 		. designer_widget_fork_test_fn($source, '_sdNodeObjects')
+		. designer_widget_fork_test_fn($source, 'reindex')
+		. designer_widget_fork_test_fn($source, '_sdRaiseIdCounter')
 		. designer_widget_fork_test_fn($source, '_backfillIds')
 		. designer_widget_fork_test_fn($source, '_pgPageByKey')
 		. designer_widget_fork_test_fn($source, '_pgTreeOf')

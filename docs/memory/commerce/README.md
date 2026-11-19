@@ -24,7 +24,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 
 - `carrier-label-*`: 14 files; start at `carrier-label-overview.md`.
 - `express-order-*`: 8 files.
-- `gift-card-*`: 7 files.
+- `gift-card-*`: 9 files.
 - `order-completion-*`: 10 files; start at `order-completion.md`.
 - `order-returns-*`: 14 files; start at `order-returns.md`.
 - `payment-driver-*`: 9 files; start at `payment-drivers.md`.

@@ -63,8 +63,8 @@ function api_design_auto_dialog_schema() {
 		'open_scroll' => 'integer',
 		'audience'   => 'string',
 		'place'      => 'string',
-		'created_at' => 'string?',
-		'updated_at' => 'string?'
+		'created_at' => 'datetime?',
+		'updated_at' => 'datetime?'
 	);
 
 }
@@ -373,7 +373,7 @@ function api_design_common_region_schema() {
 		'tag'                 => 'string',
 		'content'             => 'string',
 		'shared_component_id' => 'integer?',
-		'updated_at'          => 'string?'
+		'updated_at'          => 'datetime?'
 	);
 
 }

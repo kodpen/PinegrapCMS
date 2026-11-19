@@ -166,21 +166,38 @@ function pg_order_report_charge_columns($grand)
 }
 
 /**
- * Whether a row opens a new group: always the first row ($previous null),
- * whatever its name, so an empty first value still gets its group; after
- * that a name that differs from the previous one, without case. Pure.
+ * The group keys a row is filed under, one per summarize-by level, level 1
+ * first. A name is matched without case within its parent group, also when
+ * rows of other names came in between: the query sorts by the database's
+ * collation, which reads Çorum and Corum as one value and leaves them in
+ * order number order, so opening a group on every change of name printed
+ * Çorum twice with its orders split. A name not seen before, an empty one
+ * included, gets the next key of its parent: level 1 counts from 1, the
+ * levels under it from 0, as the screen's arrays are keyed.
  *
- * @param string      $name     the row's group value
- * @param string|null $previous the previous row's value, null on the first row
- * @return bool
+ * @param array $index the keys given so far, updated: parent path => (name => key)
+ * @param array $names the row's group values, level 1 first
+ * @return array the key per level
  */
-function pg_order_report_new_group($name, $previous)
+function pg_order_report_group_keys(array &$index, array $names)
 {
-    if ($previous === null) {
-        return true;
+    $keys = array();
+    $parent = '';
+
+    foreach (array_values($names) as $level => $name) {
+        // The prefix keeps a numeric name ('10', '010') a string key.
+        $name = 'g' . mb_strtolower(trim((string) $name));
+
+        if (!isset($index[$parent][$name])) {
+            $index[$parent][$name] = (isset($index[$parent]) ? count($index[$parent]) : 0) + (($level === 0) ? 1 : 0);
+        }
+
+        $key = $index[$parent][$name];
+        $keys[] = $key;
+        $parent .= '/' . $key;
     }
 
-    return mb_strtolower((string) $name) !== mb_strtolower((string) $previous);
+    return $keys;
 }
 
 /**
@@ -195,6 +212,103 @@ function pg_order_report_default_filters()
         array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'incomplete'),
         array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'cancelled'),
     );
+}
+
+/**
+ * The SQL a filter field compares, or '' for an empty or unknown field: such
+ * a filter adds nothing to the report, so a report saved with one still
+ * opens. A field of the order's lines reads order_items, one of its
+ * recipients ship_tos. $from and $to bound the orders an order date is read
+ * over in the site's own time (pg_site_time_sql()).
+ *
+ * @param mixed    $field the filter's field
+ * @param int|null $from
+ * @param int|null $to
+ * @return string
+ */
+function pg_order_report_filter_column($field, $from = null, $to = null)
+{
+    if (!is_string($field) || ($field === '')) {
+        return '';
+    }
+
+    $columns = array(
+        'order_number', 'transaction_id', 'authorization_code', 'special_offer_code', 'referral_source_code',
+        'reference_code', 'tracking_code', 'http_referer', 'currency_code',
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'payment_method', 'card_type', 'cardholder', 'card_number', 'custom_field_1', 'custom_field_2',
+        'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code',
+        'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'po_number',
+    );
+
+    if (in_array($field, $columns, true)) {
+        return 'orders.' . $field;
+    }
+
+    $recipient_columns = array(
+        'shipping_salutation' => 'salutation', 'shipping_first_name' => 'first_name',
+        'shipping_last_name' => 'last_name', 'shipping_company' => 'company',
+        'shipping_address_1' => 'address_1', 'shipping_address_2' => 'address_2',
+        'shipping_city' => 'city', 'shipping_state' => 'state', 'shipping_zip_code' => 'zip_code',
+        'shipping_country' => 'country', 'shipping_address_type' => 'address_type',
+        'shipping_phone_number' => 'phone_number', 'ship_to_name' => 'ship_to_name',
+        'arrival_date_code' => 'arrival_date_code', 'shipping_method_code' => 'shipping_method_code',
+    );
+
+    if (isset($recipient_columns[$field])) {
+        return 'ship_tos.' . $recipient_columns[$field];
+    }
+
+    switch ($field) {
+        case 'order_date':
+            return pg_site_time_sql('orders.order_date', '%Y-%m-%d', $from, $to);
+
+        case 'order_status':
+            return 'orders.status';
+
+        case 'opt_in_status':
+            return 'orders.opt_in';
+
+        case 'tax_status':
+            return 'orders.tax_exempt';
+
+        case 'ip_address':
+            return 'CASE WHEN (INET_NTOA(orders.ip_address) = "0.0.0.0") THEN "" ELSE INET_NTOA(orders.ip_address) END';
+
+        case 'product_name':
+            return 'order_items.product_name';
+    }
+
+    return '';
+}
+
+/**
+ * A filter's condition on its column (pg_order_report_filter_column()). A
+ * column of the order's lines or recipients is read through the joined row,
+ * so a comparison keeps an order when one of its lines or recipients
+ * matches. "Does not contain" and "is not equal to" keep it only when none
+ * matches: row by row, the order's other product passed and an order
+ * holding the excluded product was listed. An order with no line or
+ * recipient is read as one empty row, as the join reads it.
+ *
+ * @param string $column    the filter's column
+ * @param string $operator  the filter's operator
+ * @param string $operand_2 the value it is compared with
+ * @return string
+ */
+function pg_order_report_filter_sql($column, $operator, $operand_2)
+{
+    $negations = array('does not contain' => 'contains', 'is not equal to' => 'is equal to');
+
+    foreach (array('order_items', 'ship_tos') as $table) {
+        if ((strpos($column, $table . '.') === 0) && isset($negations[$operator])) {
+            return "NOT EXISTS (SELECT 1 FROM orders AS filter_order LEFT JOIN " . $table . " ON " . $table . ".order_id = filter_order.id"
+                . " WHERE (filter_order.id = orders.id) AND (" . prepare_sql_operation($negations[$operator], $column, $operand_2) . "))";
+        }
+    }
+
+    return prepare_sql_operation($operator, $column, $operand_2);
 }
 
 /**

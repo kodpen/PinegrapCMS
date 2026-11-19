@@ -76,7 +76,7 @@ function get_shopping_cart($properties) {
             $form->mark_error('retrieve_order', h($response['message']));
         }
     }
-    
+
     // if there is a special offer code in the session and an order has been created, prepare to add special offer code to order
     if (!empty($_SESSION['ecommerce']['special_offer_code']) && !empty($_SESSION['ecommerce']['order_id'])) {
         // if an offer exists for special offer code, then add special offer code to order
@@ -109,6 +109,19 @@ function get_shopping_cart($properties) {
     
     $pending_offers = $result['pending_offers'];
     $upsell_offers = $result['upsell_offers'];
+
+    // A signed-in customer below their contact group's minimum order value is
+    // told before checkout, with the words the refusal at submit uses
+    // (includes/fn/minimum_order.php). It runs after the quantity, inventory,
+    // price and offer refresh above, so it reads the line prices the page shows.
+    $minimum_order_lines = (int) db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'" . pg_order_item_active_sql());
+    if ($minimum_order_lines > 0) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/minimum_order.php');
+        $minimum_order = pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, 'cart');
+        if (!$minimum_order['ok']) {
+            $form->add_warning($minimum_order['message']);
+        }
+    }
 
     // get various order data that we will use later
     $query = "SELECT
@@ -1708,6 +1721,7 @@ function get_shopping_cart($properties) {
         
         $output =
             $form->output_errors() .
+            $form->get_warnings() .
             $form->output_notices() . '
             ' . $output_special_offers . '
             ' . $output_quick_add . '

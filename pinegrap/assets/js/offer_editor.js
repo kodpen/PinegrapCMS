@@ -27,6 +27,7 @@
     var PRODUCTS = D.products;
     var METHODS = D.shipping_methods;
     var GROUPS = D.product_groups || [];
+    var CONTACT_GROUPS = D.contact_groups || [];
     var CONDITION_TYPES = D.condition_types;
     var ACTION_TYPES = D.action_types;
     var isNew = (S.offer.id <= 0);
@@ -131,6 +132,12 @@
     function groupLabel(id, full) {
         for (var i = 0; i < GROUPS.length; i++) {
             if (GROUPS[i].id == id) { return full ? GROUPS[i].label : GROUPS[i].name; }
+        }
+        return '';
+    }
+    function contactGroupLabel(id) {
+        for (var i = 0; i < CONTACT_GROUPS.length; i++) {
+            if (CONTACT_GROUPS[i].id == id) { return CONTACT_GROUPS[i].name; }
         }
         return '';
     }
@@ -246,6 +253,9 @@
                 if (c.days > 3650) { return L.maxDays; }
             }
         }
+        if (c.type === 'contact group') {
+            if (!(c.group_id > 0) || !contactGroupLabel(c.group_id)) { return L.selectContactGroup; }
+        }
         return '';
     }
     function conditionError(c, index) {
@@ -255,7 +265,7 @@
     // they can still reach; a condition about the customer gives it nothing to
     // count. edit_offer_f.php makes the same distinction on save.
     function cartConditions() {
-        return S.conditions.filter(function (c) { return (c.type !== 'new customer') && (c.type !== 'usage limit'); });
+        return S.conditions.filter(function (c) { return ['new customer', 'usage limit', 'contact group'].indexOf(c.type) < 0; });
     }
     function conditionText(c) {
         if (c.type === 'subtotal') {
@@ -278,6 +288,9 @@
             if (c.mode === 'no_orders') { return esc(L.newCustomerNever); }
             var days = '<b>' + esc(c.days || '?') + '</b>';
             return fmt(c.mode === 'both' ? L.newCustomerBoth : L.newCustomerDays, [days]);
+        }
+        if (c.type === 'contact group') {
+            return fmt(L.contactGroupText, ['<b>' + esc(contactGroupLabel(c.group_id) || '?') + '</b>']);
         }
         var names = c.product_ids.map(productLabel).filter(Boolean);
         return fmt(L.productsText, ['<b>' + esc(c.quantity || '?') + '</b>', '<b>' + esc(names.length ? names.join(' / ') : '?') + '</b>']);
@@ -368,6 +381,15 @@
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.days || '') + '" aria-label="' + esc(L.days) + '" data-on="cond-days" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-unit>' + esc(L.days) + '</div>';
+            } else if (c.type === 'contact group') {
+                var gs = '<select class="form-control form-control-sm" aria-label="' + esc(L.contactGroupLabel) + '" data-on="cond-contact-group" data-index="' + i + '">';
+                gs += '<option value="">' + esc(CONTACT_GROUPS.length ? L.contactGroupPlaceholder : L.noContactGroups) + '</option>';
+                CONTACT_GROUPS.forEach(function (g) {
+                    gs += '<option value="' + esc(g.id) + '"' + (c.group_id == g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>';
+                });
+                gs += '</select>';
+                cols = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + gs + '</div>' +
+                    '<div class="col-12 xl:col small fg-secondary">' + esc(L.contactGroupHint) + '</div>';
             }
             h += rowHtml('condition', i, t, cols, err, 'cond-remove', L.removeCondition);
         });
@@ -969,6 +991,8 @@
             case 'cond-group-add':
                 if (el.value) { S.conditions[i].group_ids.push(parseInt(el.value, 10)); touch(); render(same); }
                 break;
+            case 'cond-contact-group':
+                S.conditions[i].group_id = parseInt(el.value, 10) || 0; touch(); render(same); break;
             case 'cond-mode':
                 S.conditions[i].mode = el.value;
                 if (!(S.conditions[i].days >= 1)) { S.conditions[i].days = 30; }
@@ -1070,6 +1094,7 @@
         // One per customer is what this condition is nearly always for.
         if (type === 'usage limit') { S.conditions.push({ type: 'usage limit', total_limit: 0, customer_limit: 1 }); }
         if (type === 'new customer') { S.conditions.push({ type: 'new customer', mode: 'no_orders', days: 30 }); }
+        if (type === 'contact group') { S.conditions.push({ type: 'contact group', group_id: 0 }); }
         // The menu item that was pressed is rewritten, so focus goes to the
         // new row.
         touch(); render([firstField('condition', S.conditions.length - 1), addButton('condition')]);

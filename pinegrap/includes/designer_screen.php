@@ -290,6 +290,13 @@ function pg_designer_screen_render($ctx)
         // its kind and the settings carried from the page's type settings,
         // for the offer to put that widget beside the region.
         'layoutWidgets' => pg_layout_widget_offers($layout_pages),
+        // Every page of the design whose classic type has a system widget,
+        // custom layout or not, in the same shape: "Convert to design
+        // elements" on its own system region puts that widget in its place.
+        'classicWidgets' => ((int)$user['role'] <= 1) ? pg_classic_widget_offers($tab_page_ids) : array(),
+        // Of those, the pages whose classic type has no widget: a muted line
+        // in the System region's panel instead of a converter.
+        'classicNoWidget' => ((int)$user['role'] <= 1) ? pg_classic_no_widget_page_ids($tab_page_ids) : array(),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.
@@ -330,6 +337,10 @@ function pg_designer_screen_render($ctx)
             // Whether the product page's Checkout Options table has a row
             // to show; the site leaves the tab out otherwise.
             'payment_methods'      => function_exists('pg_civ_payment_method_rows') && pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) !== array(),
+            // The most installments the checkout offers (the iyzico
+            // gateway's setting, _eo_render_installment_box()), 0 when off.
+            'installments'         => (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay'
+                && defined('ECOMMERCE_IYZIPAY_INSTALLMENT') && (int)ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0,
         ),
         // The site's words the member widgets print, so the canvas draws
         // them as the page does: the site's name, the consent and member
@@ -348,6 +359,11 @@ function pg_designer_screen_render($ctx)
             // (_pg_civ_fill_payment_methods()).
             'payment_method_rows' => function_exists('pg_civ_payment_method_rows')
                 ? pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) : array(),
+            // The booking widget's words, closing words and sample times,
+            // drawn on the canvas in the parts its script fills
+            // (pg_booking_canvas_sample()).
+            'booking' => (function_exists('pg_booking_canvas_sample') && function_exists('pg_booking_texts'))
+                ? pg_booking_canvas_sample(pg_booking_widget_policy(), pg_booking_texts()) : null,
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the
@@ -358,7 +374,7 @@ function pg_designer_screen_render($ctx)
         'ai'            => $sd_ai,
         // The editor's parts not needed to open a page, run on first use
         // (pg_designer_parts()): their file addresses by name.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions'), !empty($sd_ai['enabled']) ? array('ai') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch'), !empty($sd_ai['enabled']) ? array('ai') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -550,6 +566,20 @@ function pg_designer_screen_render($ctx)
                              (data-pg-menu-drawer-toggle). -->
                         <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
+                            <!-- The menu of the design: its name opens
+                                 Settings and, under a divider, Delete (the
+                                 delete item comes ready from the caller). The
+                                 label follows the name field of Settings. -->
+                            <div class="pg-menu-wrap sd-design-menu">
+                                <button type="button" class="sd-design-menu-btn" id="sd-design-menu-btn" data-bs-toggle="menu" aria-expanded="false" aria-haspopup="menu" title="' . h(lang('Design menu')) . '" data-sd-untitled="' . h(lang('New design')) . '">
+                                    <span class="bi bi-palette2 sd-design-menu-icon" aria-hidden="true"></span><span class="sd-design-menu-name" id="sd-design-menu-name">' . h(isset($style['name']) && trim((string)$style['name']) !== '' ? (string)$style['name'] : lang('New design')) . '</span><span class="bi bi-chevron-down sd-design-menu-caret" aria-hidden="true"></span>
+                                </button>
+                                <ul data-bs-theme="dark" class="menu">
+                                    <li class="sd-design-menu-head" id="sd-design-menu-head" aria-hidden="true"></li>
+                                    <li><button type="button" class="menu-item" id="sd-design-settings" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal"><span class="bi bi-gear me-3" aria-hidden="true"></span>' . lang('Settings') . '</button></li>
+                                    ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
+                                </ul>
+                            </div>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
@@ -562,8 +592,6 @@ function pg_designer_screen_render($ctx)
                                     <li><button type="button" class="menu-item" id="sd-tab-paste-html"><span class="bi bi-clipboard-plus me-3"></span>' . lang('Paste HTML content') . '</button></li>
                                 </ul>
                             </div>
-                            <button type="button" class="sd-icon-btn" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal" title="' . lang('Settings') . '"><span class="bi bi-gear"></span></button>
-                            ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
                         <!-- Every page in one list, for when the strip cannot
@@ -587,6 +615,10 @@ function pg_designer_screen_render($ctx)
                             ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
                             <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
                             <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
+                            <!-- The Preview menu: the page outside the editor (a new
+                                 window, the site as saved, the prototype). Its rows
+                                 are drawn by _sdPreviewMenuBuild(). -->
+                            <button type="button" id="sd-preview-menu-btn" class="sd-icon-btn sd-preview-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-preview-menu" title="' . h(lang('Preview')) . '"><span class="bi bi-window" aria-hidden="true"></span><span class="sd-preview-txt">' . h(lang('Preview')) . '</span><span class="bi bi-chevron-down sd-preview-caret" aria-hidden="true"></span></button>
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
@@ -596,7 +628,6 @@ function pg_designer_screen_render($ctx)
                                  sheet. Hidden while the page on screen is on
                                  the site, where the main button opens it. -->
                             <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Choose the pages to put on the site.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>' : '') . '
-                            <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
 
@@ -3331,6 +3362,10 @@ function pg_designer_screen_post($ctx)
     $written = array();   // ids of the pages this save wrote
     $notes   = array();   // what a renamed page's short links became
     $cf_jobs = array();   // page_id => form settings, reconciled once every page has its id
+    // Only this save may be held for a designer's approval
+    // (includes/fn/content_proposals.php); the API and the assistant are not.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    pg_content_proposals_editor_save(true);
     foreach ($pages as $p) {
         $key = isset($p['key']) ? (string)$p['key'] : '';
         // Left as stored: the tab keeps its id and the state it is in.
@@ -3345,6 +3380,13 @@ function pg_designer_screen_post($ctx)
             continue;
         }
         $r = pg_designer_save_page($style_id, $p, $user, false);
+        // Kept as the editor's waiting change: nothing was written, so the
+        // page's form, short links and search entry stay as they are.
+        if ($r['ok'] && !empty($r['held'])) {
+            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => 0, 'held' => (string)$r['held']);
+            if ((string)$r['held_message'] !== '') $warnings[] = $r['held_message'];
+            continue;
+        }
         if ($r['ok']) {
             // `draft`: the state the page ended up in, which is not always
             // the one asked for (the home page stays on the site).

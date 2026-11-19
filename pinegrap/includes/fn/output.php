@@ -4076,6 +4076,16 @@ function output_menu($properties = false)
         if ((int) $user['role'] === 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
         }
+        // PAGES > Content review (view_content_review.php): every panel user,
+        // a user (role 3) sees only the items they are the person of.
+        if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_content_review.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Content review') . '</a>';
+        }
+        // PAGES > Courses (view_courses.php): managers and up, while the
+        // Courses switch is on.
+        if (($user['role'] < 3) && function_exists('pg_course_switch_on') && pg_course_ready() && pg_course_switch_on()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_courses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-mortarboard bi-me-2\'>' . lang('Courses') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
@@ -4192,6 +4202,7 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_customer_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Customers Report') . '</a>';
         }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
@@ -4857,6 +4868,9 @@ function output_menu($properties = false)
         case 'edit_short_link.php':
         case 'view_not_found_log.php':
         case 'view_accessibility.php':
+        case 'view_content_review.php':
+        case 'view_courses.php':
+        case 'edit_course.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
@@ -4925,6 +4939,7 @@ function output_menu($properties = false)
         case 'messages_templates.php':
         case 'messages_sends.php':
         case 'messages_channels.php':
+        case 'messages_notifications.php':
         case 'messages_mail.php':
             $active_menu = 9;
             break;
@@ -5190,7 +5205,6 @@ function output_menu($properties = false)
         case 'system_tools.php':
         case 'view_log.php':
         case 'view_audit_log.php':
-        case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':
@@ -7932,6 +7946,7 @@ function pg_js_bundles()
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
+            'assets/js/workspace_highlights.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),
@@ -7969,7 +7984,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
@@ -7977,9 +7992,13 @@ function pg_js_bundles()
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
         // Select subject's cut, started as a worker by pg_image_editor_area.js.
         'assets/js/pg_image_editor_subject.min.js' => array('assets/js/pg_image_editor_subject.js'),
+        // Follow's tracker, started as a worker by the Animate tool.
+        'assets/js/pg_image_editor_track.min.js'   => array('assets/js/pg_image_editor_track.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
         'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),
+        // Clicks and scroll depth of public pages (includes/fn/page_clicks.php).
+        'assets/js/pg_clicks.min.js'               => array('assets/js/pg_clicks.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
         'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),
@@ -8000,6 +8019,7 @@ function pg_js_bundles()
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
+        'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8073,6 +8093,9 @@ function pg_designer_parts()
         // The Interactions section's rows of the properties panel: the
         // effect, trigger and timing fields and the Play button.
         'interactions' => 'assets/js/style_designer_interactions.min.js',
+        // The Overview's tree search: the page's elements found by name,
+        // text, class and id, listed with their path.
+        'treesearch' => 'assets/js/style_designer_treesearch.min.js',
     );
 }
 

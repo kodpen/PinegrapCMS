@@ -206,6 +206,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // propose.
         'claude'     => function_exists('ws_claude_requests_map') ? ws_claude_requests_map($ids) : array(),
         'drafts'     => function_exists('ws_claude_drafts_map') ? ws_claude_drafts_map($viewer, $ids) : array(),
+        // Right or Wrong on an agent's reply, for the asker and the
+        // channel's managers only (agent_feedback.php).
+        'feedback'   => function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array(),
         'changes'    => function_exists('ws_changes_map') ? ws_changes_map($viewer, $ids) : array(),
         // Page changes the answers propose (includes/designer_ai.php).
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
@@ -246,6 +249,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'mail'       => function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array(),
         // The OAuth clients people's messages were written through.
         'via'        => ws_message_via_names($rows),
+        // The cards of the messages' first web addresses (link_preview.php).
+        'link_previews' => function_exists('ws_link_preview_cards_map') ? ws_link_preview_cards_map($ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -402,6 +407,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // A WhatsApp conversation is not answered by e-mail (mail_phone.php).
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer') && !(function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($extra['mail'][(int) $row['sender_id']] ?? null)))
             ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
+        // Why that box cannot send now, '' when it can: the offer is drawn disabled with it.
+        'mail_reply_off' => ($mail && !$deleted) ? (string) ($extra['mail'][(int) $row['sender_id']]['reply_off'] ?? '') : '',
         // The WhatsApp conversation the card answers by WhatsApp, and the
         // seconds left of the customer's 24 hours (mail_phone.php); 0 for none.
         'whatsapp_reply'  => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')) ? ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
@@ -442,6 +449,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             return ws_claude_request_state($viewer, $row);
         }, $extra['claude'][$id]) : null,
         'drafts'      => $deleted ? array() : ($extra['drafts'][$id] ?? array()),
+        // The mark on an agent's reply, null for a reader who may not mark it.
+        'feedback'    => $deleted ? null : ($extra['feedback'][$id] ?? null),
         'changes'     => $deleted ? array() : ($extra['changes'][$id] ?? array()),
         'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
@@ -468,6 +477,12 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         $payload['one_line'] = $line['one_line'];
         $payload['mentions_me'] = $line['mentions_me'];
     }
+
+    // The card of its first web address, and whether this reader, its
+    // writer, may take it away (link_preview.php); '' and false for none.
+    $payload['link_preview'] = (!$deleted && !$agent) ? (string) ($extra['link_previews'][$id] ?? '') : '';
+    $payload['can_remove_preview'] = !$past && function_exists('ws_link_preview_can_remove')
+        && ws_link_preview_can_remove($viewer, $row, $payload['link_preview'] !== '');
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
         $extension = strtolower((string) pathinfo((string) $row['file_name'], PATHINFO_EXTENSION));
@@ -825,7 +840,8 @@ function ws_message_send_check($viewer, $channel, $body, $options = array())
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    // A mention typed by hand becomes the tag a pick writes (refs.php).
+    $body = ws_mentions_typed_channel(ws_tokens_normalise(trim((string) $body)), $channel);
     $file_id = (int) ($options['file_id'] ?? 0);
 
     // A forward may carry the messages alone, without words of its own.
@@ -1281,7 +1297,9 @@ function ws_message_asked_none()
  */
 function ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_app = false)
 {
-    $added = ws_message_tags_added(ws_tokens_normalise((string) $old), ws_tokens_normalise((string) $new));
+    // Both texts with their typed mentions as tags, so a typed @handle the
+    // old text had asks nobody again as <@app:N>.
+    $added = ws_message_tags_added(ws_mentions_typed_channel(ws_tokens_normalise((string) $old), $channel), ws_mentions_typed_channel(ws_tokens_normalise((string) $new), $channel));
     $asked = ws_message_asked_none();
 
     if ($added === '') {
@@ -2255,7 +2273,7 @@ function ws_message_edit_check($viewer, $message, $body, $as_app = 0)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    $body = ws_mentions_typed_channel(ws_tokens_normalise(trim((string) $body)), $channel);
 
     if (($body === '') && ((int) $message['file_id'] <= 0)) {
         return array('ok' => false, 'error' => lang('The message is empty.'));
@@ -2290,7 +2308,9 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
     $channel = $checked['channel'];
     $before = array();
 
-    foreach (ws_tokens($message['body']) as $token) {
+    // The old text read as it would be written now: a person it named by a
+    // typed username is not told again.
+    foreach (ws_tokens(ws_mentions_typed_channel((string) $message['body'], $channel)) as $token) {
         $before[$token['type'] . ':' . $token['id']] = true;
     }
 

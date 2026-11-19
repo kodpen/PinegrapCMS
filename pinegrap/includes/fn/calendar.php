@@ -1918,6 +1918,10 @@ function get_calendar_event($event_id, $recurrence_number)
         $event_start_day = $event_start_date_parts[2];
         // Find the difference between the original start date and end date (So we do not need to calculate the end dates new date too)
         $event_start_end_difference = (strtotime($end_date_and_time) - strtotime($start_date_and_time));
+        // A recurrence type (or monthly kind) none of the cases below knows
+        // leaves the instance on the event's own date; unset, it was read as
+        // an empty date, which strtotime() took as today.
+        $event_start_date = $start_date;
         switch ($recurrence_type) {
             // Daily
             case 'day':

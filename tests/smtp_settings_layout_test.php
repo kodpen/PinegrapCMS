@@ -18,20 +18,23 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php';
 
+// SMTP Settings' five cards are Site Settings › E-mail sending's, in the
+// screen's order, each under its section id; the Sending domain card comes
+// unwrapped inside its section.
 function test_smtp_settings_wide_layout()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
+	$at = -1;
 
-	$form = strpos($source, 'col-12 lg:col-8 2xl:col-9 order-1');
-	$status = strpos($source, 'col-12 lg:col-4 2xl:col-3 order-2');
-	$bar = strpos($source, 'col-12 order-3 position-sticky');
+	foreach (array('pgset-mail-transport', 'pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain') as $section) {
+		$here = strpos($source, '<div id="' . $section . '" class="pg-set-card">');
+		pg_assert_true(($here !== false) && ($here > $at), $section . ' in its place');
+		$at = $here;
+	}
 
-	pg_assert_true($form !== false && $status !== false && $bar !== false, 'form column, status column and save bar column');
-	pg_assert_true($form < $status && $status < $bar, 'the status column follows the form column, the save bar follows both');
-	pg_assert_true(strpos($source, "'Sending service'") < $status && strpos($source, '$dkim_txt_preview . \'') < $status, 'the settings cards sit in the form column');
-	pg_assert_contains('pg_mail_domain_health_card(pg_mail_domain_health(), false)', $source, 'the Sending domain card goes into the status column unwrapped');
-	pg_assert_true(strpos($source, 'pg_mail_domain_health_card(') > $status, 'the Sending domain card sits in the status column');
-	pg_assert_same(1, substr_count($source, 'class="buttons navigation'), 'one save bar');
+	pg_assert_contains('pg_mail_domain_health_card(pg_mail_domain_health(), false)', $source, 'the Sending domain card comes unwrapped');
+	pg_assert_contains('id="mail_transport_card"', $source, 'the old anchor of the Sending service card stays');
+	pg_assert_false(strpos($source, 'class="buttons navigation') !== false, 'no save bar of its own: the dialog and the page have theirs');
 }
 
 function test_mail_domain_health_card_column_wrapper()

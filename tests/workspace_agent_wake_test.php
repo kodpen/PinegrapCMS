@@ -151,7 +151,7 @@ function test_workspace_agent_wake_wiring()
 {
 	pg_assert_same('wake', ws_command_names()['uyandır'] ?? '', '/uyandır is /wake');
 	pg_assert_same('wake', ws_command_names()['wake'] ?? '');
-	pg_assert_true(strpos(workspace_agent_wake_test_source('ws_command_run'), 'ws_command_wake(') !== false, 'the command runs');
+	pg_assert_true(strpos(workspace_agent_wake_test_source(ws_command_registry()['wake']['runner']), 'ws_command_wake(') !== false, 'the command runs');
 	pg_assert_true(in_array('wake', array_column(ws_commands(null), 'key'), true), 'listed for /help and the picker');
 
 	$run = workspace_agent_wake_test_source('ws_agent_wakes_run');

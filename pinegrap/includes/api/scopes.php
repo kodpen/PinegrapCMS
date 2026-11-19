@@ -115,6 +115,12 @@ function api_scope_groups() {
 		// short link (POST /short-links, pages:write).
 		'seo'       => array('label' => 'SEO',        'read' => 'seo:read',       'write' => ''),
 
+		// Who reads a page or collection record again, and by when (the
+		// Content review screen). The screen opens to every panel user; a user
+		// (role 3) reaches only the items they are the person of, which the
+		// endpoints filter for.
+		'content_review' => array('label' => 'Content review', 'read' => 'content_review:read', 'write' => 'content_review:write'),
+
 		'webhooks'  => array('label' => 'Webhooks',   'read' => '',               'write' => 'webhooks:manage'),
 
 		'meta'      => array('label' => 'Site info',  'read' => 'meta:read',      'write' => ''),
@@ -362,6 +368,16 @@ function api_owner_scopes($owner) {
 
 		// The event screens open to the same people.
 		$scopes[] = 'calendars:write';
+
+	}
+
+	// The Content review screen opens to every panel user; a user (role 3)
+	// reads and marks only the items they are the person of, which the
+	// endpoints filter for.
+	if (($role >= 0) && ($role <= 3)) {
+
+		$scopes[] = 'content_review:read';
+		$scopes[] = 'content_review:write';
 
 	}
 

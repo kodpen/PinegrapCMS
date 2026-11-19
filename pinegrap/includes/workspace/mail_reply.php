@@ -490,7 +490,8 @@ function ws_mail_reply_error_text($error, $detail = '')
 /**
  * The conversation a message offers to answer by e-mail: only the card of
  * a conversation (not its thread), for a reader who may write in the
- * channel. Whether the box can send is told when the answer is sent.
+ * channel. A box that cannot send keeps the offer, drawn disabled with
+ * its reason (ws_mail_reply_off(), the map's reply_off).
  *
  * @param array      $row      ws_messages row
  * @param array|null $item     ws_mail_items_map() entry
@@ -591,22 +592,57 @@ function ws_mail_reply_target($viewer, $conversation_id)
     }
 
     $box = ws_mail_box((int) $conversation['box_id']);
+    $blocked = ws_mail_reply_blocked($box, (string) $conversation['customer_email'], ws_mail_reply_site_domain());
 
-    if (!$box || ((int) $box['enabled'] !== 1)) {
-        return array_merge($out, array('error' => 'no_box'));
-    }
-
-    if (!filter_var((string) $conversation['customer_email'], FILTER_VALIDATE_EMAIL)) {
-        return array_merge($out, array('error' => 'no_customer'));
+    if ($blocked !== '') {
+        return array_merge($out, array('error' => $blocked));
     }
 
     $route = ws_mail_reply_route($box, ws_mail_reply_site_domain());
 
-    if (!$route['ok']) {
-        return array_merge($out, array('error' => $route['error']));
+    return array('ok' => true, 'error' => '', 'conversation' => $conversation, 'box' => $box, 'channel' => $channel, 'route' => $route);
+}
+
+/**
+ * Why no answer can leave a conversation's box, whoever writes it: the box
+ * gone or switched off, no customer address, or no way to send. The answer's
+ * own check (ws_mail_reply_target()) and the Reply by e-mail offer on the
+ * card and the E-mails pane read this one test, so they never disagree.
+ *
+ * @param array|null $box            ws_mail_boxes row, null when deleted
+ * @param string     $customer_email
+ * @param string     $site_domain    ws_mail_reply_site_domain()
+ * @return string '' when it can be answered, else no_box | no_customer | ws_mail_reply_route()'s error
+ */
+function ws_mail_reply_blocked($box, $customer_email, $site_domain)
+{
+    if (!is_array($box) || ((int) ($box['enabled'] ?? 0) !== 1)) {
+        return 'no_box';
     }
 
-    return array('ok' => true, 'error' => '', 'conversation' => $conversation, 'box' => $box, 'channel' => $channel, 'route' => $route);
+    if (!filter_var((string) $customer_email, FILTER_VALIDATE_EMAIL)) {
+        return 'no_customer';
+    }
+
+    $route = ws_mail_reply_route($box, $site_domain);
+
+    return $route['ok'] ? '' : (string) $route['error'];
+}
+
+/**
+ * The reason Reply by e-mail is drawn disabled with, '' when it can be
+ * answered (ws_mail_reply_blocked()).
+ *
+ * @param array|null $box
+ * @param string     $customer_email
+ * @param string     $site_domain
+ * @return string
+ */
+function ws_mail_reply_off($box, $customer_email, $site_domain)
+{
+    $blocked = ws_mail_reply_blocked($box, $customer_email, $site_domain);
+
+    return ($blocked === '') ? '' : ws_mail_reply_error_text($blocked);
 }
 
 /**
