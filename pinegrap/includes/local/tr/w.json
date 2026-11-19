@@ -1721,6 +1721,7 @@
     "WhatsApp takes a written answer for {var:1} min more.": "WhatsApp yazılı bir yanıtı {var:1} dk daha kabul eder.",
     "WhatsApp takes only templates it approved. A marketing template goes only to a number whose person agreed to marketing messages.": "WhatsApp yalnızca onayladığı şablonları kabul eder. Pazarlama şablonu yalnızca sahibi pazarlama mesajlarına izin vermiş bir numaraya gider.",
     "WhatsApp template": "WhatsApp şablonu",
+    "WhatsApp template draft deleted: {var:1}": "WhatsApp şablon taslağı silindi: {var:1}",
     "WhatsApp template draft saved: {var:1}": "WhatsApp şablonu taslağı kaydedildi: {var:1}",
     "WhatsApp template offer code saved: {var:1}": "WhatsApp şablonunun teklif kodu kaydedildi: {var:1}",
     "WhatsApp template sent for approval: {var:1}": "WhatsApp şablonu onaya gönderildi: {var:1}",
