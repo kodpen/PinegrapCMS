@@ -5,12 +5,13 @@
  * translations.php?group=pictures&draw=1 lists each language row of a
  * Design Canvas picture that is waiting or out of date and whose every text
  * is translated. This script draws them one after another in this browser
- * with the Design Canvas's own drawing (Editor.prototype.drawLanguage() of
- * the editor's bundle, as its Languages list does): the picture's live
- * document is read once per picture (action picture_languages), each
- * language drawn and posted (action picture_language_draw). The count left
- * is read out; Stop ends the run after the picture being drawn, Continue
- * takes it up again.
+ * with the queue's drawing in the Design Canvas's bundle
+ * (PgImageEditor.parts.drawWaiting(), shared with the panel's background
+ * draw and the Design Canvas after a Save): the picture's live document is
+ * read once per picture (action picture_languages), each language drawn as
+ * the Languages list draws it and posted (action picture_language_draw). The
+ * count left is read out; Stop ends the run after the picture being drawn,
+ * Continue takes it up again.
  *
  * Standalone, not bundled; tests/picture_translation_test.php runs its pure
  * part under Node.
@@ -29,20 +30,6 @@
         return (items || []).filter(function (it) {
             return (it.status === 'waiting') || (it.status === 'drawing');
         }).length;
-    }
-
-    // A row's state from a draw's answer: drawn, look (a text did not fit),
-    // skipped (not every text is translated any more) or failed.
-    function statusOf(r) {
-        if (r === 'skipped') {
-            return 'skipped';
-        }
-
-        if (r && (r.status === 'success')) {
-            return (r.state === 'look') ? 'look' : 'drawn';
-        }
-
-        return 'failed';
     }
 
     // Whether a row still says why it waits (Not drawn yet, Out of date):
@@ -80,7 +67,7 @@
         return look ? strings.doneLook.replace('{n}', String(look)) : strings.done;
     }
 
-    var api = { left: left, statusOf: statusOf, reasonShown: reasonShown, editShown: editShown, buttonTone: buttonTone, endText: endText };
+    var api = { left: left, reasonShown: reasonShown, editShown: editShown, buttonTone: buttonTone, endText: endText };
 
     if ((typeof module === 'object') && module.exports) {
         module.exports = api;
@@ -153,50 +140,16 @@
         }
     }
 
-    // A painter on the editor's prototype for one picture: what
-    // drawLanguage() reads from an open editor.
-    function drawer(fileId) {
-        var d = Object.create(root.PgImageEditor.parts.Editor.prototype);
-
-        d.langFileId = fileId;
-
-        return d;
-    }
-
-    function languages(fileId) {
-        if (!docs[fileId]) {
-            docs[fileId] = drawer(fileId).request({ action: 'picture_languages', file_id: fileId }).then(function (r) {
-                return (r && (r.status === 'success') && r.words) ? r : null;
-            });
-        }
-
-        return docs[fileId];
-    }
-
+    // One row with the queue's drawing; a picture's languages are read once
+    // in the page (docs).
     function one(i) {
-        var it = items[i], M = root.PgImageEditor.parts.M;
+        var it = items[i];
 
         show(i, 'drawing');
         count();
 
-        return languages(it.file_id).then(function (data) {
-            var lang = data ? data.languages.filter(function (l) { return l.code === it.language; })[0] : null;
-
-            if (!data || !lang) {
-                return null;
-            }
-
-            if (!M.languageDrawable(lang)) {
-                return 'skipped';
-            }
-
-            return drawer(it.file_id).drawLanguage(data, lang);
-        }).then(function (r) {
-            var status = statusOf(r);
-
-            show(i, status, (status === 'failed') ? ((r && r.message) || s.failed) : '');
-        }, function () {
-            show(i, 'failed', s.failed);
+        return root.PgImageEditor.parts.drawWaiting(it.file_id, it.language, docs).then(function (r) {
+            show(i, r.status, (r.status === 'failed') ? (r.message || s.failed) : '');
         });
     }
 
