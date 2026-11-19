@@ -296,33 +296,48 @@
         }
     });
 
+    // Stores a row's box as typed; a status of 'machine' keeps it a draft,
+    // anything else stores it reviewed.
+    function saveRow(row, button, status) {
+        var box = row.querySelector('.pg-tr-target');
+        button.disabled = true;
+        call({
+            action: 'save',
+            string_id: parseInt(row.getAttribute('data-string-id'), 10),
+            text: box.value,
+            status: status
+        }).then(function (data) {
+            box.value = data.text;
+            rowState(row, data.state, data.engine, data.suspicious === 1);
+            toast(text('saved'), 'success');
+        }).catch(function (error) {
+            toast(error.message, 'error');
+        }).then(function () {
+            button.disabled = false;
+        });
+    }
+
     app.addEventListener('click', function (event) {
         var save = event.target.closest('.pg-tr-save');
         var review = event.target.closest('.pg-tr-review');
 
         if (save) {
-            var row = save.closest('.pg-tr-row');
-            var box = row.querySelector('.pg-tr-target');
-            save.disabled = true;
-            call({
-                action: 'save',
-                string_id: parseInt(row.getAttribute('data-string-id'), 10),
-                text: box.value
-            }).then(function (data) {
-                box.value = data.text;
-                rowState(row, data.state, data.engine, data.suspicious === 1);
-                toast(text('saved'), 'success');
-            }).catch(function (error) {
-                toast(error.message, 'error');
-            }).then(function () {
-                save.disabled = false;
-            });
+            saveRow(save.closest('.pg-tr-row'), save, 'reviewed');
             return;
         }
 
         if (review) {
             var reviewRow = review.closest('.pg-tr-row');
             var next = (review.getAttribute('data-state') === 'reviewed') ? 'machine' : 'reviewed';
+
+            // Typed and not saved yet: the new status goes with the typed
+            // text, so the old text is not the one marked and the typed one
+            // is not lost.
+            if (reviewRow.classList.contains('pg-tr-dirty')) {
+                saveRow(reviewRow, review, next);
+                return;
+            }
+
             review.disabled = true;
             call({
                 action: 'status',

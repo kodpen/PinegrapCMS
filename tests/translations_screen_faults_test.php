@@ -70,3 +70,19 @@ function test_translations_screen_waits_while_the_job_is_busy()
 
 	pg_assert_true((bool) preg_match('/if \(data\.busy\) \{[^}]*window\.setTimeout\(resolve, 5000\)/', $js), 'a busy answer waits five seconds');
 }
+
+// A row's review button on a box with typed, unsaved text: the click marked
+// the stored text reviewed and cleared the row's unsaved mark, so the typed
+// wording was lost on the next load and the old one went out as reviewed.
+// An edited row is saved with the new status instead.
+function test_translations_review_on_an_edited_row_saves_the_typed_text()
+{
+	$js = translations_faults_test_js();
+	$start = strpos($js, "var reviewRow = review.closest('.pg-tr-row');");
+	pg_assert_true($start !== false, 'the review click exists');
+	$branch = substr($js, (int) $start, 600);
+
+	pg_assert_contains("classList.contains('pg-tr-dirty')", $branch, 'the review click looks for unsaved text first');
+	pg_assert_contains('saveRow(reviewRow, review, next)', $branch, 'and saves it with the new status');
+	pg_assert_true((bool) preg_match("/function saveRow\\(row, button, status\\) \\{[\\s\\S]*?action: 'save'[\\s\\S]*?status: status/", $js), 'the save sends the status it is given');
+}
