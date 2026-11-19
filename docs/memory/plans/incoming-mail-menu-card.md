@@ -23,7 +23,8 @@ description: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a
 
 ## Where does each step stand?
 - IM1 done, #10408 (`ui/main-menu-mail-row.md`): step 11.0.239, slot 27, the icon `mail`.
-- IM2, IM3: wait for IM1's merge.
+- IM2: PR #10429.
+- IM3: in progress.
 
 ## What is decided?
 - The owner's words: `workflow/decisions-made-product-78.md`. Architect (2026-11-19): the card goes to the new dashboard only, since the old one stays as it is by his decision of 2026-11-01; eight rows and the pill's wording are the reading of his words.
