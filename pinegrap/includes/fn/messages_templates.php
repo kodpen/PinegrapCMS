@@ -199,7 +199,8 @@ function pg_messages_template_whatsapp_reason($reason)
  * The WhatsApp templates as rows of the card. Pure.
  *
  * @param array $templates pg_whatsapp_templates_list() rows
- * @return array list of name, language, category, status, pill, tone, reason
+ * @return array list of id, name, language, category, status, pill, tone,
+ *               reason
  */
 function pg_messages_template_whatsapp_rows(array $templates)
 {
@@ -210,6 +211,7 @@ function pg_messages_template_whatsapp_rows(array $templates)
         $reason = (string) $template['reason'];
 
         $rows[] = array(
+            'id' => isset($template['id']) ? (int) $template['id'] : 0,
             'name' => (string) $template['name'],
             'language' => (string) $template['language'],
             'category' => pg_whatsapp_template_category_label((string) $template['category']),
@@ -235,21 +237,30 @@ function pg_messages_template_whatsapp_rows(array $templates)
  *                     read's failure, '' for none), refresh (the action
  *                     address, '' for no button), token (the CSRF field),
  *                     settings (the WhatsApp card's address, '' for none),
- *                     empty (the line when there is no template)
+ *                     empty (the line when there is no template), designer
+ *                     (the template designer's address: New template, and
+ *                     each row opened there; '' for none)
  * @return string
  */
 function pg_messages_template_whatsapp_card(array $rows, array $state)
 {
+    $designer = isset($state['designer']) ? (string) $state['designer'] : '';
     $button = '';
 
+    // New template opens the designer empty; a draft is kept there before
+    // WhatsApp is connected, so it does not wait for Refresh.
+    if ($designer !== '') {
+        $button .= '<a class="pg-button pg-button-sm" href="' . h($designer) . '"><span class="bi bi-plus-lg" aria-hidden="true"></span>' . h(lang('New template')) . '</a>';
+    }
+
     if ((string) $state['refresh'] !== '') {
-        $button = '<form method="post" action="' . h((string) $state['refresh']) . '" class="disable_shortcut">'
+        $button .= '<form method="post" action="' . h((string) $state['refresh']) . '" class="disable_shortcut">'
             . (string) $state['token']
             . '<input type="hidden" name="templates_action" value="whatsapp_refresh">'
             . '<button type="submit" class="pg-button pg-button-sm"><span class="bi bi-arrow-clockwise" aria-hidden="true"></span>' . h(lang('Refresh')) . '</button>'
             . '</form>';
     } elseif ((string) $state['settings'] !== '') {
-        $button = '<a class="pg-button pg-button-sm" href="' . h((string) $state['settings']) . '"><span class="bi bi-gear" aria-hidden="true"></span>' . h(lang('WhatsApp settings')) . '</a>';
+        $button .= '<a class="pg-button pg-button-sm" href="' . h((string) $state['settings']) . '"><span class="bi bi-gear" aria-hidden="true"></span>' . h(lang('WhatsApp settings')) . '</a>';
     }
 
     $html = '';
@@ -280,7 +291,9 @@ function pg_messages_template_whatsapp_card(array $rows, array $state)
             'icon' => 'bi-whatsapp',
             'tone' => 'teal',
             'title' => $row['name'],
-            'url' => '',
+            // A template opens in the designer: a draft or a rejected one to
+            // change, any other to read, test or give an offer code.
+            'url' => (($designer !== '') && !empty($row['id'])) ? $designer . '?id=' . (int) $row['id'] : '',
             'meta' => '',
             'text' => $text,
             'pill' => $row['pill'],

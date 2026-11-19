@@ -56,18 +56,24 @@ function pg_booking_link_screen_services($services, $member)
 
 /**
  * The site path a short address of the member's link points at, '' without
- * a key. A path, not a whole address, so a new host name keeps it. Pure.
+ * a key. A path, not a whole address, so a new host name keeps it. The page
+ * sits in the software folder, as pg_booking_link_url() writes it: the same
+ * file name at the site's root is no file, and the router answers it with a
+ * 404. An empty folder gives the path the screen's first version saved, so
+ * its row is still found and put right. Pure.
  *
  * @param array  $member
  * @param string $key
- * @param string $base_path PATH
+ * @param string $base_path          PATH
+ * @param string $software_directory SOFTWARE_DIRECTORY
  * @return string
  */
-function pg_booking_link_short_target($member, $key, $base_path)
+function pg_booking_link_short_target($member, $key, $base_path, $software_directory)
 {
     $code = pg_booking_link_code($member, $key);
+    $folder = ((string) $software_directory !== '') ? (string) $software_directory . '/' : '';
 
-    return ($code === '') ? '' : (string) $base_path . 'book_with.php?c=' . $code;
+    return ($code === '') ? '' : (string) $base_path . $folder . 'book_with.php?c=' . $code;
 }
 
 /**
@@ -91,15 +97,18 @@ function pg_booking_link_screen_member($user_id)
 }
 
 /**
- * The live short link that points at a target path, null when there is
- * none (the oldest when there are more).
+ * The live short link that points at one of the target paths, null when
+ * there is none (the oldest when there are more).
  *
- * @param string $target pg_booking_link_short_target()
- * @return array|null id, name, redirect_code (when the column is there)
+ * @param string[] $targets pg_booking_link_short_target(), the link's path
+ *                          and the one the screen's first version saved
+ * @return array|null id, name, url, redirect_code (when the column is there)
  */
-function pg_booking_link_short_link($target)
+function pg_booking_link_short_link($targets)
 {
-    if ((string) $target === '') {
+    $targets = array_values(array_unique(array_filter(array_map('strval', (array) $targets), 'strlen')));
+
+    if (!$targets) {
         return null;
     }
 
@@ -108,7 +117,7 @@ function pg_booking_link_short_link($target)
 
     $row = db_item(
         "SELECT * FROM short_links
-        WHERE destination_type = 'url' AND url = '" . e($target) . "'" . $live . $modes . "
+        WHERE destination_type = 'url' AND url IN ('" . implode("', '", array_map('e', $targets)) . "')" . $live . $modes . "
         ORDER BY id LIMIT 1");
 
     return is_array($row) ? $row : null;

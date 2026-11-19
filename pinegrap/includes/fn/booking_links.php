@@ -411,6 +411,18 @@ function pg_booking_link_busy_window($first, $step, $zone)
 }
 
 /**
+ * The sentence that names the zone the page's times are in: a meeting link
+ * reaches people in other zones, and the booking widget names it too.
+ *
+ * @param string $zone pg_booking_widget_policy() zone
+ * @return string
+ */
+function pg_booking_link_zone_note($zone)
+{
+    return lang(array('string' => "Times are in the site's time zone ({var:1}).", 'vars' => (string) $zone));
+}
+
+/**
  * The days of a month with a free time for the member alone, as the engine
  * works them out. Pure.
  *
@@ -457,6 +469,25 @@ function pg_booking_link_held($hold_id, $hold_slot, $member, $services)
     }
 
     return null;
+}
+
+/**
+ * Whether a Confirm that finds no hold is the form sent again for the
+ * booking this session just made with the member (a second click, or the
+ * form sent again from the browser's history): the page then shows that
+ * booking instead of saying the time ran out. Pure: the session's value
+ * comes in.
+ *
+ * @param mixed $done   $_SESSION['software']['booking_link_done']: id,
+ *                      token, status, staff id
+ * @param array $member
+ * @return bool
+ */
+function pg_booking_link_resent($done, $member)
+{
+    return is_array($done) && (count($done) === 4)
+        && ((int) $done[0] > 0)
+        && ((int) $done[3] === (int) $member['id']);
 }
 
 /**
