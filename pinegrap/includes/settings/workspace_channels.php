@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - Channels: the channel templates (archive and bring back
- * here, edited on the template screen), the GitHub repositories linked to
- * channels (Link a repository in a drawer) and the link previews switch.
+ * here, edited on the template screen), the GitHub repositories card (how
+ * many are linked; they are linked on GitHub's page of Connections) and the
+ * link previews switch.
  * The mailboxes have a category of their own (includes/settings/mailboxes.php);
  * the voice message transcripts are a card of Assistants and agents
  * (includes/settings/workspace_assistants.php).
@@ -36,11 +37,10 @@ if ($ws_card !== '') {
 }
 
 // ── GitHub repositories ──
-$ws_card = ws_github_links_settings_card('', $ws_viewer, $ws_form);
+$ws_card = ws_github_links_settings_card($ws_viewer);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
-    $pg_settings_modals[] = ws_settings_github_link_drawer($ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
 }
 
 // ── Link previews ──

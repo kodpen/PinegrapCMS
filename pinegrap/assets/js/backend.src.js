@@ -35,14 +35,14 @@ window.pgFoldTR = function (s) {
 // Whether a Site Settings card drawer opens again on the pane read back after
 // a save made from it. Not after a button that takes the record away (named
 // ..._delete, ..._remove, ..._archive): its drawer has nothing left to show.
-// Not from a drawer that adds a record (id ending in -0, -add, -new, or the
-// "Link a repository" drawer): once stored, the record has a drawer of its
-// own and the add form comes back empty. `button` is the named submit button
+// Not from a drawer that adds a record (id ending in -0, -add, -new): once
+// stored, the record has a drawer of its own and the add form comes back
+// empty. `button` is the named submit button
 // that started the save ({name, value}), null for the dialog's Save.
 window.pgSettingsKeepDrawer = function (drawer, button) {
     drawer = String(drawer || '');
 
-    if (!drawer || /-(0|add|new)$/.test(drawer) || (drawer === 'pgset-ws-github-link')) {
+    if (!drawer || /-(0|add|new)$/.test(drawer)) {
         return false;
     }
 

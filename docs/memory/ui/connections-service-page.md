@@ -11,7 +11,14 @@ module: connections_screen
 ## What does it show?
 - "Status" ("Durum"): the state pill, why no state is read, and for an account reader the accounts with Connect again (the service's purpose) and Disconnect for the site's own, the last error on file, a link to the provider's drawer. Then where its settings are and "Open its settings".
 - "Where it is used" ("Kullanıldığı yerler"): one row from the registry's `uses` and place, with the state, a link to the place.
-- No field of a setting yet: each service's step adds "Bağlantı bilgileri" and moves its fields here (`plans/connections-merges-panel-rules.md`).
+- A service whose settings are still elsewhere has only those two cards; each service's step adds "Bağlantı bilgileri" and moves its fields here (`plans/connections-merges-panel-rules.md`).
+
+## Which cards does GitHub's page have? (CX8, #10418)
+- `pg_connections_screen_page_cards()` gives the order and gates: Status, "Connection details" ("Bağlantı bilgileri", manager), Where it is used, "Repository links" ("Depo bağlantıları", only with `ws_github_links_can_manage()`, the Workspace settings right). A card the viewer may not open is not drawn.
+- Connection details: the GitHub application (`connections_app_form()`, shared with the drawers), "Save" the one filled button, "Save and try" quiet (saves, then `pg_connect_check()` on each of the site's GitHub accounts). Status has "Connect a GitHub account".
+- `pg_connections_screen_page_providers()` (github => github): the Account providers row of such a provider opens the page, not a drawer; a write for it returns to the page.
+- Repository links: `ws_github_links_page_card()`, its forms post `ws_action` to the page, `ws_github_links_settings_post()` writes. Under Where it is used a line names the GitHub MCP connector as a connection of its own, with its own token.
+- The Channels card `pgset-ws-github` keeps its address and anchors (`ws-github`, `pgset-ws-github`) and says how many repositories are linked, with "Manage in Connections".
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

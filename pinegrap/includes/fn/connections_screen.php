@@ -519,6 +519,47 @@ function pg_connections_screen_page_id($asked, $rows)
 }
 
 /**
+ * The services whose page holds their account provider's application
+ * ("Connection details"), by registry key: that provider's row on the list
+ * opens the page instead of its drawer. Pure.
+ *
+ * @return array service key => provider key
+ */
+function pg_connections_screen_page_providers()
+{
+    return array('github' => 'github');
+}
+
+/**
+ * The cards of a service's page, in their order: "status", "details" (its
+ * provider's application, for a manager), "uses", then "repositories" on
+ * GitHub's page for a holder of the Workspace settings right. Each card
+ * keeps the gate of the place it came from; a card the viewer may not open
+ * is left out. Pure.
+ *
+ * @param string $id  the service's registry key
+ * @param array  $can 'manager' (bool), 'repositories' (bool: may manage
+ *                    the GitHub repository links)
+ * @return array list of card keys
+ */
+function pg_connections_screen_page_cards($id, $can)
+{
+    $cards = array('status');
+
+    if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {
+        $cards[] = 'details';
+    }
+
+    $cards[] = 'uses';
+
+    if (($id === 'github') && !empty($can['repositories'])) {
+        $cards[] = 'repositories';
+    }
+
+    return $cards;
+}
+
+/**
  * What the site has stored that the states are read from, read once. No
  * outside service is called: every reader answers from the database, the
  * config or the sealed entries.

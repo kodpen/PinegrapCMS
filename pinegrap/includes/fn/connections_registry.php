@@ -588,7 +588,7 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_form_spam_enabled')),
 
         // Other.
-        'github' => array('name' => 'GitHub', 'group' => 'other', 'place' => '#settings/workspace_channels/pgset-ws-github', 'uses' => 'Repository events into a channel',
+        'github' => array('name' => 'GitHub', 'group' => 'other', 'place' => 'connections.php', 'uses' => 'Repository events into a channel',
             'state' => array('kind' => 'account', 'provider' => 'github', 'purpose' => 'channel_links', 'attention' => true),
             'covers' => array('connect' => array('github'), 'purpose' => array('channel_links'))),
         'activitypub' => array('name' => 'ActivityPub', 'group' => 'other', 'place' => '#settings/fediverse/pgset-fediverse', 'uses' => 'The site as an account of the fediverse',

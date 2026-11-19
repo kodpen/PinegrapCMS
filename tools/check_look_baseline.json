@@ -982,10 +982,6 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/workspace/github_links.php": {
-        "button": 5,
-        "tabs": 0
-    },
     "includes/workspace/mail_blocks.php": {
         "button": 1,
         "tabs": 0
