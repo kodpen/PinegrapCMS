@@ -5,8 +5,10 @@
  * Tests for the three tabs of the Visual Page Editor's Options panel
  * (assets/js/style_designer.src.js): the tab each section goes to, every
  * section of a heading, a row, a picture, a link and a form field reached
- * in a tab and none dropped, Content's order, a tab without a section not
- * drawn, the tab kept for the same kind of element and Content for
+ * in a tab and none dropped, each tab's order, the names of Style and
+ * Advanced and the card ids they keep, which of their sections open, a
+ * content-level user's hidden sections left out, a tab without a section
+ * not drawn, the tab kept for the same kind of element and Content for
  * another, Left and Right, the strip's badges, and the closed Translation
  * and Bind data summaries. The helpers are cut out of the source and run
  * under Node; without Node those cases are skipped.
@@ -140,15 +142,21 @@ JS
 		return;
 	}
 
+	$style = array('text', 'spacing', 'colors', 'border', 'display', 'styling');
+	$advanced = array('flexbox', 'visit', 'accessibility', 'tooltip', 'search', 'interactions');
+	$has_text = array('heading' => true, 'row' => false, 'picture' => false, 'link' => true, 'field' => false);
+	$has_visit = array('heading' => true, 'row' => false, 'picture' => true, 'link' => true, 'field' => false);
+
 	foreach (array('heading', 'row', 'picture', 'link', 'field') as $kind) {
 		pg_assert_true($answer[$kind]['each'], 'every section of a ' . $kind . ' is in its tab, once');
 		pg_assert_true($answer[$kind]['length'], 'nothing of a ' . $kind . ' is dropped or added');
-		pg_assert_same(array('flexbox', 'tooltip', 'accessibility'), array_values(array_intersect($answer[$kind]['advanced'], array('flexbox', 'tooltip', 'accessibility'))), 'Advanced keeps the order they are built in');
+		pg_assert_same(array_values(array_diff($style, $has_text[$kind] ? array() : array('text'))), $answer[$kind]['style'],
+			'a ' . $kind . ': Text, Spacing, Color and background, Border and corner, Size and display, Shadow and effect');
+		pg_assert_same(array_values(array_diff($advanced, $has_visit[$kind] ? array() : array('visit'))), $answer[$kind]['advanced'],
+			'a ' . $kind . ': Layout, Show by the visit, Accessibility, Tooltip, Search and SERP, Interactions');
 	}
 
 	pg_assert_same(array('own', 'tr'), $answer['heading']['content'], 'a heading: its own section, then Translation');
-	pg_assert_same(array('text', 'colors', 'display', 'border', 'styling', 'spacing'), $answer['heading']['style'], 'a heading: Text first in Style');
-	pg_assert_same(array('visit', 'search', 'interactions', 'flexbox', 'tooltip', 'accessibility'), $answer['heading']['advanced'], 'a heading: Show by the visit in Advanced');
 	pg_assert_same(array('shortcut', 'own', 'element', 'tr', 'bind'), $answer['row']['content'], 'a row: its own section, Quick Layouts, Translation, Bind data');
 	pg_assert_same(array('own', 'element', 'icon', 'context', 'tr'), $answer['picture']['content'], 'a picture: the parent\'s options after its own');
 	pg_assert_same(array('own', 'link', 'link', 'tr'), $answer['link']['content'], 'a link: Link and the links in its text in Content');
@@ -168,18 +176,18 @@ function test_designer_options_tabs_builders_keyed()
 		$vars[$call[2]] = $call[1];
 	}
 
-	$want = array('Display &amp; Sizing' => 'display', 'Flexbox' => 'flexbox', 'Spacing' => 'spacing', 'Border' => 'border',
-		'Colors' => 'colors', 'Tooltip' => 'tooltip', 'Styling' => 'styling', 'Accessibility' => 'accessibility');
+	$want = array('Size and display' => 'display', 'Layout' => 'flexbox', 'Spacing' => 'spacing', 'Border and corner' => 'border',
+		'Color and background' => 'colors', 'Tooltip' => 'tooltip', 'Shadow and effect' => 'styling', 'Accessibility' => 'accessibility');
 	pg_assert_same(array_keys($want), array_keys($vars), 'the eight Appearance sections are found in rowCss()');
-	pg_assert_true(strpos($source, 'var lHtml = dsHtml;') !== false, 'Display and size is drawn as lHtml');
-	$vars['Display &amp; Sizing'] = 'lHtml';
+	pg_assert_true(strpos($source, 'var lHtml = dsHtml;') !== false, 'Size and display is drawn as lHtml');
+	$vars['Size and display'] = 'lHtml';
 
 	foreach ($want as $title => $key) {
 		pg_assert_true(strpos($source, '_sdSectKey(' . $vars[$title] . ", '" . $key . "')") !== false, $title . ' is given its key');
 	}
 
 	foreach (array(
-		"return _sdSectKey(sect('bi-type', _sdT('Text Options'),",
+		"return _sdSectKey(sect('bi-type', _sdT('Text'),",
 		"return _sdSectKey(sect('bi-link-45deg', _sdT('Link Options'),",
 		"return _sdSectKey(sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>'), 'interactions');",
 		"_sdSectKey(_sdBiIconSection(selectedNode), 'icon')",
@@ -189,6 +197,136 @@ function test_designer_options_tabs_builders_keyed()
 	) as $needle) {
 		pg_assert_true(strpos($source, $needle) !== false, 'the source has: ' . $needle);
 	}
+}
+
+// Style's and Advanced's sections carry the plan's names; a renamed one
+// keeps the card id its former name gave it, so the open state a browser
+// kept under sd_cs_<sid> stays. The shadow moved from Color and background
+// to Shadow and effect.
+function test_designer_options_tabs_style_advanced_names()
+{
+	$source = designer_options_tabs_test_source();
+
+	pg_assert_contains("function sect(icon, title, body, idName) {\n        var sid = 'sdsc' + (icon + (idName || title))", $source, 'sect() makes the id from idName when given');
+	pg_assert_contains("function as(title, content, idName) {\n            var sid = 'sdsc-ap-' + (idName || title)", $source, 'as() makes the id from idName when given');
+
+	$calls = array(
+		'Text' => array("/return _sdSectKey\\(sect\\('bi-type', _sdT\\('Text'\\),.*?,\\s*_sdT\\('Text Options'\\)\\s*\\), 'text'\\);/s"),
+		'Size and display' => array("/var dsHtml = as\\(_sdT\\('Size and display'\\), _dsBody, _sdT\\('Display &amp; Sizing'\\)\\);/"),
+		'Layout' => array("/var fxHtml = as\\(_sdT\\('Layout'\\), _fxBody, _sdT\\('Flexbox'\\)\\);/"),
+		'Border and corner' => array("/var borderHtml = as\\(_sdT\\('Border and corner'\\),.*?,\\s*_sdT\\('Border'\\)\\s*\\);/s"),
+		'Color and background' => array("/var colorsHtml = as\\(_sdT\\('Color and background'\\),.*?,\\s*_sdT\\('Colors'\\)\\s*\\);/s"),
+		'Shadow and effect' => array("/var stylingHtml = as\\(_sdT\\('Shadow and effect'\\),.*?,\\s*_sdT\\('Styling'\\)\\s*\\);/s"),
+	);
+	$bodies = array();
+
+	foreach ($calls as $name => $pattern) {
+		pg_assert_same(1, preg_match($pattern[0], $source, $match), $name . ' is drawn under its name with its former card id');
+		$bodies[$name] = isset($match[0]) ? $match[0] : '';
+	}
+
+	pg_assert_true(strpos($bodies['Shadow and effect'], "row(_sdT('Shadow'),") !== false, 'the shadow is in Shadow and effect');
+	pg_assert_false(strpos($bodies['Color and background'], "row(_sdT('Shadow'),") !== false, 'and no longer in Color and background');
+	pg_assert_same(1, substr_count($source, "selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')"), 'rowCss() draws the shadow row once');
+
+	foreach (array('Spacing', 'Tooltip', 'Accessibility') as $kept) {
+		pg_assert_contains("as(_sdT('" . $kept . "'),", $source, $kept . ' keeps its name');
+	}
+}
+
+// Which Style and Advanced sections open while the browser kept nothing:
+// Text on a text element, Spacing always, Layout on a flex box or its
+// child, Show by the visit with a condition set; a kept state wins.
+function test_designer_options_tabs_open_rules()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+var keys = ['text', 'spacing', 'colors', 'border', 'display', 'styling', 'flexbox', 'visit', 'accessibility', 'tooltip', 'search', 'interactions'];
+var all = { text: true, flex: true, parentFlex: true, visit: true };
+out = {
+	none: keys.map(function (k) { return _sdOptOpenByDefault(k, {}); }),
+	all: keys.map(function (k) { return _sdOptOpenByDefault(k, all); }),
+	noCtx: _sdOptOpenByDefault('spacing'),
+	ownFlex: _sdOptOpenByDefault('flexbox', { flex: true }),
+	parentFlex: _sdOptOpenByDefault('flexbox', { parentFlex: true }),
+	keptClosed: _sdSectOpenRead('1', _sdOptOpenByDefault('spacing', {})),
+	keptOpen: _sdSectOpenRead('0', _sdOptOpenByDefault('border', {})),
+	nothingKept: [_sdSectOpenRead(null, _sdOptOpenByDefault('spacing', {})), _sdSectOpenRead(null, _sdOptOpenByDefault('border', all))],
+	text: [
+		_sdOptIsText('semantic', 'h2', ''), _sdOptIsText('semantic', 'p', ''), _sdOptIsText('semantic', 'span', ''),
+		_sdOptIsText('content', '', 'heading'), _sdOptIsText('content', '', 'paragraph'),
+		_sdOptIsText('semantic', 'a', ''), _sdOptIsText('semantic', 'button', ''), _sdOptIsText('content', '', 'link'),
+		_sdOptIsText('content', '', 'button'), _sdOptIsText('semantic', 'div', ''), _sdOptIsText('semantic', 'h7', ''), _sdOptIsText('row', 'h2', '')
+	],
+	flex: [
+		_sdOptIsFlex('row', ''), _sdOptIsFlex('semantic', 'row g-3'), _sdOptIsFlex('semantic', 'p-2 d-flex gap-2'),
+		_sdOptIsFlex('semantic', 'd-md-inline-flex'), _sdOptIsFlex('container', 'd-inline-flex'),
+		_sdOptIsFlex('container', 'd-block'), _sdOptIsFlex('semantic', 'flex-row'), _sdOptIsFlex('semantic', 'rowx row-cols-2'),
+		_sdOptIsFlex('col', 'col-md-6'), _sdOptIsFlex('semantic', 'd-flex-wrap'), _sdOptIsFlex('semantic', undefined)
+	]
+};
+JS
+	);
+
+	if ($answer !== null) {
+		pg_assert_same(array(false, true, false, false, false, false, false, false, false, false, false, false), $answer['none'], 'with no context only Spacing opens');
+		pg_assert_same(array(true, true, false, false, false, false, true, true, false, false, false, false), $answer['all'], 'Text, Spacing, Layout and Show by the visit open by their rule; the rest stay closed');
+		pg_assert_true($answer['noCtx']);
+		pg_assert_true($answer['ownFlex'], 'Layout opens on a flex container');
+		pg_assert_true($answer['parentFlex'], 'and on the child of one');
+		pg_assert_false($answer['keptClosed'], 'a section this browser closed stays closed');
+		pg_assert_true($answer['keptOpen'], 'a section this browser opened stays open');
+		pg_assert_same(array(true, false), $answer['nothingKept']);
+		pg_assert_same(array(true, true, true, true, true, false, false, false, false, false, false, false), $answer['text'], 'a heading, a paragraph and a span are text elements; a link, a button and a box are not');
+		pg_assert_same(array(true, true, true, true, true, false, false, false, false, false, false), $answer['flex'], 'a grid row and the d-flex classes make a flex box');
+	}
+
+	$source = designer_options_tabs_test_source();
+	pg_assert_contains('_sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };', $source, 'the single element\'s panel reads the context');
+	pg_assert_contains('o.open = _sdSectOpenRead(o.stored, _sdOptOpenByDefault(key, b.ctx));', $source, 'a keyed Style or Advanced section takes its rule');
+	pg_assert_contains("if (b.ctx && _sdOptTabOf(key) !== 'content') {", $source, 'Content keeps its own rules');
+}
+
+// A content-level user who may edit the element gets the panel with the
+// sections their level shows today: a section hidden from them is drawn
+// as nothing and is in no tab, and a tab left without a section is not
+// drawn. An element they may not edit keeps its read-only panel, without
+// tabs.
+function test_designer_options_tabs_content_level()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+var hidden = '';
+var plan = _sdOptPlan([
+	{ key: 'shortcut', html: hidden },
+	{ key: 'own', html: '<own0>' },
+	{ key: 'element', html: hidden },
+	{ key: 'text', html: '<text1>' },
+	{ key: 'spacing', html: '<spacing2>' },
+	{ key: 'flexbox', html: hidden },
+	{ key: 'search', html: hidden },
+	{ key: 'interactions', html: hidden }
+]);
+var noStyle = _sdOptPlan([{ key: 'own', html: '<own0>' }, { key: 'text', html: hidden }, { key: 'visit', html: '<visit1>' }]);
+out = {
+	plan: plan,
+	shown: _sdOptTabsShown(plan),
+	noStyle: _sdOptTabsShown(noStyle),
+	strip: _sdOptTabStrip(_sdOptTabsShown(noStyle), 'content', {})
+};
+JS
+	);
+
+	if ($answer !== null) {
+		pg_assert_same(array('content' => '<own0>', 'style' => '<text1><spacing2>', 'advanced' => ''), $answer['plan'], 'a hidden section is in no tab');
+		pg_assert_same(array('content', 'style'), $answer['shown'], 'Advanced, left without a section, is not drawn');
+		pg_assert_same(array('content', 'advanced'), $answer['noStyle'], 'nor is Style');
+		pg_assert_false(strpos($answer['strip'], 'data-otab="style"') !== false, 'the strip has no Style tab');
+	}
+
+	$source = designer_options_tabs_test_source();
+	pg_assert_contains("function _swPlacementSection(n, sid, cfg, orderOpts) {\n        if (_sdIsContentLevel()) return '';", $source, 'This placement stays hidden at content level');
+	$read_only = strpos($source, 'if (_sdIsContentLevel() && !_sdCanEditNode(selectedNode)) {');
+	$tabs = strpos($source, 'var _plan = _sdOptPlan([');
+	pg_assert_true($read_only !== false && $tabs !== false && $read_only < $tabs, 'an element the user may not edit gets the read-only panel before any tab is planned');
 }
 
 // A tab without a section is not drawn, and the tab asked for gives way

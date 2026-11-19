@@ -35207,6 +35207,21 @@ const StyleDesigner = (function () {
     var _sdOptTab = 'content';
     var _sdOptHeld = {};
 
+    // What the open rules of Style and Advanced read for node `n`
+    // (_sdOptOpenByDefault()): a text element, a flex box, a parent that is
+    // one, a Show by the visit condition set.
+    function _sdOptCtx(n) {
+        var p = n.props || {};
+        var up = _sdAnyParent(n);
+        var par = up ? up.parent : null;
+        return {
+            text: _sdOptIsText(n.type, p.tag, p.contentType),
+            flex: _sdOptIsFlex(n.type, p.cssClass),
+            parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            visit: _sdCondRowsOf(n).length > 0
+        };
+    }
+
     // The changed rows of a tab not drawn: its markup on a detached copy,
     // marked as the panel would be.
     function _sdOptHeldCount(html) {
@@ -35383,7 +35398,7 @@ const StyleDesigner = (function () {
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {} };
+        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -50324,7 +50339,7 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
-        return _sdSectKey(sect('bi-type', _sdT('Text Options'),
+        return _sdSectKey(sect('bi-type', _sdT('Text'),
             _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
@@ -50339,7 +50354,8 @@ const StyleDesigner = (function () {
             row(_sdT('Monospace'),    swAttr('data-util-toggle="font-monospace"', hasCls('font-monospace'))) +
             row(_sdT('No Wrap'),      swAttr('data-util-toggle="text-nowrap"', hasCls('text-nowrap'))) +
             row(_sdT('Truncate'),     swAttr('data-util-toggle="text-truncate"', hasCls('text-truncate'))) +
-            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break')))
+            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break'))),
+            _sdT('Text Options')
         ), 'text');
     }
 
@@ -54328,6 +54344,17 @@ const StyleDesigner = (function () {
         if (!o) return html;
         var was = o.html.length;
         o.key = key;
+        // A Style or Advanced section opens by its own rule while this
+        // browser kept nothing for it (_sdOptOpenByDefault()); its body is
+        // held back or drawn to match.
+        var b = _sdSectBuild;
+        if (b.ctx && _sdOptTabOf(key) !== 'content') {
+            o.open = _sdSectOpenRead(o.stored, _sdOptOpenByDefault(key, b.ctx));
+            if (b.lazy) {
+                if (o.open) delete b.lazy[o.sid];
+                else b.lazy[o.sid] = o.body;
+            }
+        }
         o.html = _sdSectCard(o);
         return o.html + String(html).slice(was);
     }
@@ -54374,9 +54401,11 @@ const StyleDesigner = (function () {
         return o ? _sdSectKey(html, o.head === _sdT('Show by the visit') ? 'visit' : 'bind') : html;
     }
 
-    // Property HTML helpers
-    function sect(icon, title, body) {
-        var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
+    // Property HTML helpers. `idName`: the name the card's id is made
+    // from when it is not `title` (a renamed section keeps its id, so the
+    // open state this browser kept under sd_cs_<sid> stays).
+    function sect(icon, title, body, idName) {
+        var sid = 'sdsc' + (icon + (idName || title)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
         // A card's head carries no icon: the arrow, the name, the count.
         return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
@@ -55067,8 +55096,9 @@ const StyleDesigner = (function () {
         }
 
         // ── Appearance collapsible sub-section wrapper ──
-        function as(title, content) {
-            var sid = 'sdsc-ap-' + title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        // `idName` as sect()'s: a renamed section keeps its id.
+        function as(title, content, idName) {
+            var sid = 'sdsc-ap-' + (idName || title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             return _sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr', title, content);
         }
 
@@ -55209,7 +55239,7 @@ const StyleDesigner = (function () {
             _overflowRow +
             _arHtml +
         '</div>';
-        var dsHtml = as(_sdT('Display &amp; Sizing'), _dsBody);
+        var dsHtml = as(_sdT('Size and display'), _dsBody, _sdT('Display &amp; Sizing'));
 
         // ── Flexbox ──
         // All flex utilities support responsive variants: flex-{bp}-row, justify-content-{bp}-center, etc.
@@ -55240,7 +55270,7 @@ const StyleDesigner = (function () {
             mkRespRow(_sdT('Flex Order'),      'order-',            orderValues,    _sdT('Default')) +
             mkRespRow(_sdT('Gap'),             'gap-',              gapValues,      _sdT('Default')) +
         '</div>';
-        var fxHtml = as(_sdT('Flexbox'), _fxBody);
+        var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
 
         // dsHtml and fxHtml live in separate slots of the final return — Colors + Border should sit
         // between Display&Sizing and Flexbox (those are the most-used properties after Display),
@@ -55346,7 +55376,7 @@ const StyleDesigner = (function () {
         function _radList(prefix) {
             return _radSizes.map(function (n) { return prefix + n; });
         }
-        var borderHtml = as(_sdT('Border'),
+        var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
             row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
@@ -55354,12 +55384,13 @@ const StyleDesigner = (function () {
             row(_sdT('Top Radius'),    selStyleGroup(n.props, _radList('rounded-top-'),    'Default')) +
             row(_sdT('Right Radius'),  selStyleGroup(n.props, _radList('rounded-end-'),    'Default')) +
             row(_sdT('Bottom Radius'), selStyleGroup(n.props, _radList('rounded-bottom-'), 'Default')) +
-            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default'))
+            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')),
+            _sdT('Border')
         );
 
-        // Colors — consolidates Text Col + Bg Col + Shadow under one appearance roof.
-        // Shadow moved here from its own section so all visual tweaks are in one place.
-        // Also includes custom background image/color/gradient inline-style customization.
+        // Color and background: text and background colours, opacities and
+        // the custom background image/color/gradient inline style. The
+        // shadow is in Shadow and effect.
         var _bgImgRaw = getAttrStyleProp(n, 'background-image');
         var _bgImgUrl = '', _bgGradType = 'none', _bgGradStr = '';
         if (/^linear-gradient/i.test(_bgImgRaw))      { _bgGradType = 'linear'; _bgGradStr = _bgImgRaw; }
@@ -55534,7 +55565,7 @@ const StyleDesigner = (function () {
                 '</div>' +
             '</div>';
 
-        var colorsHtml = as(_sdT('Colors'),
+        var colorsHtml = as(_sdT('Color and background'),
             row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
@@ -55543,9 +55574,8 @@ const StyleDesigner = (function () {
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Opacity'),      selStyleGroup(n.props, ['opacity-0','opacity-25','opacity-50','opacity-75','opacity-100'], 'Default')) +
-            '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Shadow'),       selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
-            bgSection
+            bgSection,
+            _sdT('Colors')
         );
 
         // ── Tooltip ──
@@ -55558,15 +55588,17 @@ const StyleDesigner = (function () {
             row(_sdT('Text'),      '<input type="text" class="form-control form-control-sm" data-prop="tooltipTitle" value="' + esc(_ttTitle) + '" placeholder="' + esc(_sdT('Tooltip text...')) + '">')
         );
 
-        // ── Styling (placeholder / focus-ring etc.) ──
-        // New consolidated section. Currently hosts Placeholder (loading skeleton) and Focus
-        // Ring switches. Future: migrate Border/Colors/Effects here for a single visual-tweak
-        // panel — deferred to keep this change scoped.
-        var stylingHtml = as(_sdT('Styling'),
+        // ── Shadow and effect ──
+        // The shadow, then the loading placeholder and the focus ring (the
+        // section once named Styling, whose card id it keeps).
+        var stylingHtml = as(_sdT('Shadow and effect'),
+            row(_sdT('Shadow'),      selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
+            '<div class="sd-sp-divider"></div>' +
             row(_sdT('Placeholder'), sw('placeholderMode', !!p.placeholderMode)) +
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing))
+            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)),
+            _sdT('Styling')
         );
 
         // ── Accessibility ──
@@ -55586,9 +55618,9 @@ const StyleDesigner = (function () {
             row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="' + esc(_sdT('id of describing element')) + '">')
         );
 
-        // Section order — Colors first (most visual), then layout:
-        //   Colors → Display&Sizing → Border → Styling → Spacing → Flexbox → Tooltip → Accessibility
-        // Each section with the key of its tab (_sdOptTabOf()).
+        // Each section with the key of its tab (_sdOptTabOf()); the single
+        // element's panel puts them in its tabs' order (_sdOptPlan()), the
+        // several-element panel draws them in this order.
         return _sdSectKey(colorsHtml, 'colors') + _sdSectKey(lHtml, 'display') + _sdSectKey(borderHtml, 'border') +
             _sdSectKey(stylingHtml, 'styling') + _sdSectKey(spacingHtml, 'spacing') + _sdSectKey(fxHtml, 'flexbox') +
             _sdSectKey(tooltipHtml, 'tooltip') + _sdSectKey(accessibilityHtml, 'accessibility');
@@ -61594,12 +61626,13 @@ const StyleDesigner = (function () {
 
     var _SD_OPT_TABS = ['content', 'style', 'advanced'];
 
-    // The tab of a section by the key its builder gives it: Text options,
-    // Spacing, Colours, Border, Display and size and Styling in Style;
-    // Flexbox, Show by the visit, Accessibility, Tooltip, Search and SERP
-    // and Interactions in Advanced. The element's own section and its other
-    // sections, Link, Bind data, Translation and a section without a key
-    // stay with the element, in Content.
+    // The tab of a section by the key its builder gives it: Text (text),
+    // Spacing, Color and background (colors), Border and corner (border),
+    // Size and display (display) and Shadow and effect (styling) in Style;
+    // Layout (flexbox), Show by the visit, Accessibility, Tooltip, Search
+    // and SERP and Interactions in Advanced. The element's own section and
+    // its other sections, Link, Bind data, Translation and a section
+    // without a key stay with the element, in Content.
     var _SD_OPT_TAB_OF = {
         text: 'style', spacing: 'style', colors: 'style', border: 'style', display: 'style', styling: 'style',
         flexbox: 'advanced', visit: 'advanced', accessibility: 'advanced', tooltip: 'advanced', search: 'advanced', interactions: 'advanced'
@@ -61608,27 +61641,66 @@ const StyleDesigner = (function () {
         return Object.prototype.hasOwnProperty.call(_SD_OPT_TAB_OF, key) ? _SD_OPT_TAB_OF[key] : 'content';
     }
 
-    // Content's order: the shortcut bars, the element's own section, its
-    // other sections (Quick Layouts), its icon, Link, the parent's options,
-    // Translation, Bind data. A key not listed ranks with the element's.
-    var _SD_OPT_CONTENT_RANK = { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 };
+    // Each tab's order. Content: the shortcut bars, the element's own
+    // section, its other sections (Quick Layouts), its icon, Link, the
+    // parent's options, Translation, Bind data; a key not listed ranks with
+    // the element's. Style: Text, Spacing, Color and background, Border and
+    // corner, Size and display, Shadow and effect. Advanced: Layout, Show by
+    // the visit, Accessibility, Tooltip, Search and SERP, Interactions.
+    var _SD_OPT_RANK = {
+        content: { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 },
+        style: { text: 0, spacing: 1, colors: 2, border: 3, display: 4, styling: 5 },
+        advanced: { flexbox: 0, visit: 1, accessibility: 2, tooltip: 3, search: 4, interactions: 5 }
+    };
 
     // The markup of each tab from the panel's pieces [{ key, html }] in the
-    // order they were built: Content's by the rank above, Style's and
-    // Advanced's as built. Nothing is dropped.
+    // order they were built, each tab in its order above; pieces of one
+    // rank keep the order they were built in. Nothing is dropped.
     function _sdOptPlan(pieces) {
-        var out = { content: '', style: '', advanced: '' };
-        var rank = function (k) { return Object.prototype.hasOwnProperty.call(_SD_OPT_CONTENT_RANK, k) ? _SD_OPT_CONTENT_RANK[k] : _SD_OPT_CONTENT_RANK.element; };
-        var content = [];
+        var by = { content: [], style: [], advanced: [] };
         (pieces || []).forEach(function (p, i) {
             if (!p || !p.html) return;
             var tab = _sdOptTabOf(p.key);
-            if (tab === 'content') content.push({ html: p.html, rank: rank(p.key), at: i });
-            else out[tab] += p.html;
+            var ranks = _SD_OPT_RANK[tab];
+            var r = Object.prototype.hasOwnProperty.call(ranks, p.key) ? ranks[p.key] : (tab === 'content' ? ranks.element : 99);
+            by[tab].push({ html: p.html, rank: r, at: i });
         });
-        content.sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
-        out.content = content.map(function (c) { return c.html; }).join('');
+        var out = {};
+        _SD_OPT_TABS.forEach(function (t) {
+            by[t].sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
+            out[t] = by[t].map(function (c) { return c.html; }).join('');
+        });
         return out;
+    }
+
+    // Whether a Style or Advanced section opens while this browser kept
+    // nothing for it (a kept state wins, _sdSectOpenRead()). `ctx`:
+    // { text, flex, parentFlex, visit } from _sdOptCtx(). Text opens on a
+    // text element, Spacing always, Layout on a flex box or the child of
+    // one, Show by the visit when a condition is set; the others stay
+    // closed.
+    function _sdOptOpenByDefault(key, ctx) {
+        ctx = ctx || {};
+        if (key === 'text') return !!ctx.text;
+        if (key === 'spacing') return true;
+        if (key === 'flexbox') return !!(ctx.flex || ctx.parentFlex);
+        if (key === 'visit') return !!ctx.visit;
+        return false;
+    }
+
+    // A text element: a heading, a paragraph or a span, the elements whose
+    // Text section offers the display sizes (propsTextOptions()). `type`,
+    // `tag` and `ct` (the content type) as the node has them.
+    function _sdOptIsText(type, tag, ct) {
+        if (type === 'semantic') return /^(h[1-6]|p|span)$/.test(String(tag || ''));
+        return type === 'content' && (ct === 'heading' || ct === 'paragraph');
+    }
+
+    // A flex box: a grid row, or an element whose classes make it one
+    // (Bootstrap's row, d-flex or d-inline-flex at any screen size).
+    function _sdOptIsFlex(type, cls) {
+        if (type === 'row') return true;
+        return /(^|\s)(row|d-((sm|md|lg|xl|xxl)-)?(inline-)?flex)(?=\s|$)/.test(String(cls || ''));
     }
 
     // The tabs drawn, in their order: a tab without a section is not.
