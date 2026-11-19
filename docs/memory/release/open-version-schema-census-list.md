@@ -17,9 +17,11 @@ description: Census of the schema 2026.11.0 adds (SC1): what no code reads or wr
 
 ## What is unused?
 - `whatsapp_inbox.read_user_id` and `whatsapp_inbox.read_at`, step 11.0.198 `upgrade_2026_11_0_whatsapp_inbox()`, PR #9351 (the rest). No code writes or reads them: the webhook inserts the row without them and the readers select other columns; the `read_at` hits are `whatsapp_outbox`'s. No index holds them.
+- REMOVED by the architect (agent channel message 9607): a read mark is added again by the step that builds it. Taken out of 11.0.198 and dropped by clean-up sub-step 11.0.237 `upgrade_2026_11_0_whatsapp_inbox_read_drop()`, PR #10402.
 
 ## What is written but never read?
 - `subscriptions.remote_id`, step 11.0.128 `upgrade_2026_11_0_subscriptions()`, PR #3236 (commerce): `pg_subscription_row_from_order_line()` in `includes/fn/subscriptions.php` writes `''` and nothing reads it. A driver of store mode may need it; no driver declares that mode yet.
+- KEPT by the architect: it is the subscription's id at the payment provider, part of the subscription model the store-mode driver is planned on, and already written on every row; removing it would only mean adding it back.
 
 ## What is replaced or redundant?
 - No column holding a value another column of this version holds, and no table whose rows a later step moved elsewhere, was found.
