@@ -25,7 +25,7 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
-- canvas-data-views.md: Plan (owner 2026-11-20): a Data table shown on a canvas as a chart or a table, a page the site writes from a short description and that reads the table itself, so it follows the data; DV1-DV5
+- canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - channel-commands-features-2.md: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek, /oluştur for a contact, row, ERP account and event, /kargo, application arguments, an agent's command
 - channel-commands-features.md: Plan channel-commands, features K1 to K14: the registry, the gate that knows the channel, grouped /help and / list, commands as a reply, /hatırlat, /özet, /onay, /güncelleme, /checkin, /akış
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
@@ -115,14 +115,7 @@
 - panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
-- php-error-log-clean-census-2.md: Error log census part 2 (plan php-error-log-clean): files that held open shapes, get_order_preview.php to includes/fn/forms.php, each with the PR that closed it
-- php-error-log-clean-census-3.md: Error log census part 3 (plan php-error-log-clean): files that held open shapes, init.php to the smallest, each closed by its PR or left with its reason
-- php-error-log-clean-census-4.md: Error log census part 4 (plan php-error-log-clean): the shapes already gone on development, by file with the PR that removed them, most frequent first; nothing here is left for EL5
-- php-error-log-clean-census.md: PHP error log census (plan php-error-log-clean, EL1): what was read, totals, how shapes were checked, the fatal errors' verdicts; shapes by file in parts 2 to 4
-- php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - phpexcel-own-code.md: Plan (2026-11-19): PHPExcel's four callers move to the product's own sheet reader and xlsx writer, then includes/phpexcel is removed; no format dropped; XL1-XL5
-- picture-text-auto-draw-steps.md: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs at save time, the waiting mark, the panel's background draw, the server's draw, the screens' words, close-out
-- picture-text-auto-draw.md: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps DA1 to DA5
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())
 - place-map-census-3.md: Census MP1 of place-map, part 3: how the cookie notice lists a service (pg_consent_page_services(), pg_consent_catalogue()), which class the map could go under, and the questions for the architect
 - place-map-census.md: Census MP1 of place-map, part 1: the three address providers' terms on keeping a looked-up coordinate and on showing it on another map (Google, Mapbox, Photon), read 2026-11-16

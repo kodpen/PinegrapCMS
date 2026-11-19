@@ -9,7 +9,7 @@ description: ERP amounts too large for an integer: the typed figure, the exchang
 - `ERP_MAX_BASE_AMOUNT` (1e18 kurus): `erp_base_amount_fits($grand_total, $rate)` before every `erp_to_base()` of a document total in `invoice_manual.php` (draft save and issue) and `quotes.php` (quote save). Refused with "The total is too large in the home currency."
 
 ## Why refuse at the entry point instead of clamping?
-- `erp_to_base()` is `(int) round(kurus × rate)`. Past PHP_INT_MAX the cast gave a random number on PHP 8.3 and logs "The float … is not representable as an int" from PHP 8.5 (census part 3, EL5 #10329). A clamp inside the arithmetic would store a wrong total silently; a refusal shows the operator which box to fix. Normal amounts convert exactly as before.
+- `erp_to_base()` is `(int) round(kurus × rate)`. Past PHP_INT_MAX the cast gave a random number on PHP 8.3 and logs "The float … is not representable as an int" from PHP 8.5 (the owner's PHP 8.5 error log, #10329). A clamp inside the arithmetic would store a wrong total silently; a refusal shows the operator which box to fix. Normal amounts convert exactly as before.
 - The issue path checks again (with a rollback, before a number is taken): a draft saved before the bound, or the recorded rate of the issue date, may still be too large.
 
 ## What does erp_kurus() return for a huge typed figure?
