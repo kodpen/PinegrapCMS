@@ -5445,7 +5445,8 @@ function pg_sw_item_text($html, $max = 0)
  * @param int    $page_id
  * @param string $page_name
  * @param bool   $home      the page is the site's home page
- * @return array|null type (product | product_group | record), path (from
+ * @return array|null type (product | product_group | record), id (a
+ *                    product's only), path (from
  *                    PATH, encoded), query ('' or '?…', encoded), title,
  *                    description (plain text, '' when the item has none),
  *                    image_name
@@ -5596,6 +5597,7 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
 
         return $cache[$cache_key] = array(
             'type'        => 'product',
+            'id'          => (int) $product['id'],
             'path'        => ($address !== '') ? $base . '/' . encode_url_path($address) : $base,
             'query'       => ($address !== '') ? '' : '?pid=' . (int) $product['id'],
             'title'       => $title,

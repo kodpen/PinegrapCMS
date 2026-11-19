@@ -581,6 +581,11 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
             read_at = '" . time() . "'
             WHERE message_id = '" . $id . "' AND state = 'waiting' AND url = '" . e($row['url']) . "'");
 
+        // The open screens of the channel redraw the message with its card.
+        if ($shown && function_exists('ws_message_touch')) {
+            ws_message_touch($id);
+        }
+
         $done++;
     }
 
@@ -742,7 +747,7 @@ function ws_link_preview_settings_allowed($viewer)
 }
 
 /**
- * The Link previews card of Site Settings (Channels, mail and voice): one
+ * The Link previews card of Site Settings (Channels): one
  * switch, posted with the pane's Save as ws_link_preview_on beside the
  * marker ws_link_preview_card (an unticked box posts nothing).
  *
@@ -801,4 +806,164 @@ function ws_link_preview_settings_save($viewer, $post)
     }
 
     return (bool) pg_config_text_save('ws_link_preview_off', $off);
+}
+
+/**
+ * The fields of a message's card, from its ws_link_previews row: the plain
+ * texts as stored, trimmed. null for a row not read into a card (waiting,
+ * none, refused, removed), with no title or with an address that is not a
+ * web address. The screen's card and the API both read these. Pure.
+ *
+ * @param array|null $row url, title, description, site_name, state
+ * @return array|null url, title, description, site_name
+ */
+function ws_link_preview_card_fields($row)
+{
+    if (!is_array($row) || (($row['state'] ?? '') !== 'shown')) {
+        return null;
+    }
+
+    $url = (string) ($row['url'] ?? '');
+    $title = trim((string) ($row['title'] ?? ''));
+
+    if (($title === '') || !preg_match('#^https?://#i', $url)) {
+        return null;
+    }
+
+    return array(
+        'url'         => $url,
+        'title'       => $title,
+        'description' => trim((string) ($row['description'] ?? '')),
+        'site_name'   => trim((string) ($row['site_name'] ?? '')),
+    );
+}
+
+/**
+ * The card under a message: the site name, the title and the description
+ * (cut at two lines by the stylesheet), the whole card a link opened in a
+ * new tab. '' when ws_link_preview_card_fields() gives none. Every text is
+ * escaped here.
+ *
+ * @param array|null $row url, title, description, site_name, state
+ * @return string HTML
+ */
+function ws_link_preview_card_html($row)
+{
+    $card = ws_link_preview_card_fields($row);
+
+    if ($card === null) {
+        return '';
+    }
+
+    return '<a class="ws-link-card" href="' . h($card['url']) . '" target="_blank" rel="noopener noreferrer">'
+        . (($card['site_name'] !== '') ? '<span class="ws-link-card-site">' . h($card['site_name']) . '</span>' : '')
+        . '<span class="ws-link-card-title">' . h($card['title']) . '</span>'
+        . (($card['description'] !== '') ? '<span class="ws-link-card-text">' . h($card['description']) . '</span>' : '')
+        . '</a>';
+}
+
+/**
+ * The card fields of these messages, one query for the page: message id =>
+ * ws_link_preview_card_fields(). Empty when previews are switched off (or on
+ * a demonstration site): no card anywhere then, whatever rows there are.
+ *
+ * @param int[] $ids
+ * @return array
+ */
+function ws_link_preview_card_rows_map($ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+
+    if (empty($ids) || !ws_link_preview_on()) {
+        return array();
+    }
+
+    $cards = array();
+
+    foreach ((array) db_items("SELECT message_id, url, title, description, site_name, state FROM ws_link_previews
+        WHERE state = 'shown' AND message_id IN (" . implode(',', $ids) . ")") as $row) {
+        $card = ws_link_preview_card_fields($row);
+
+        if ($card !== null) {
+            $cards[(int) $row['message_id']] = $card;
+        }
+    }
+
+    return $cards;
+}
+
+/**
+ * The cards of these messages as the screen draws them: message id => HTML
+ * (ws_link_preview_card_rows_map()).
+ *
+ * @param int[] $ids
+ * @return array
+ */
+function ws_link_preview_cards_map($ids)
+{
+    $cards = array();
+
+    foreach (ws_link_preview_card_rows_map($ids) as $id => $card) {
+        $cards[$id] = ws_link_preview_card_html($card + array('state' => 'shown'));
+    }
+
+    return $cards;
+}
+
+/**
+ * Whether the person may take a message's card away: only the person who
+ * wrote it, while it stands and its card is drawn. Pure.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param array $message the ws_messages row
+ * @param bool  $card    whether the message has a card now
+ * @return bool
+ */
+function ws_link_preview_can_remove($viewer, $message, $card)
+{
+    return $card
+        && is_array($message)
+        && (($message['sender_kind'] ?? '') === 'user')
+        && ((int) ($message['sender_id'] ?? 0) > 0)
+        && ((int) ($message['sender_id'] ?? 0) === (int) ($viewer['id'] ?? 0))
+        && ((int) ($message['deleted_at'] ?? 0) === 0);
+}
+
+/**
+ * "Remove preview": the writer takes the card away for everyone. The row is
+ * kept as removed, so the same address is not read again; an edit to another
+ * address reads that one. The message is touched, so open screens redraw it.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error
+ */
+function ws_link_preview_remove($viewer, $message)
+{
+    $cards = is_array($message) ? ws_link_preview_cards_map(array((int) $message['id'])) : array();
+
+    if (!ws_link_preview_can_remove($viewer, $message, !empty($cards))) {
+        return array('ok' => false, 'error' => lang('Only the person who wrote the message can remove its preview.'));
+    }
+
+    db("UPDATE ws_link_previews SET state = 'removed', title = '', description = '', site_name = ''
+        WHERE message_id = '" . (int) $message['id'] . "' AND state = 'shown'");
+
+    if (function_exists('ws_message_touch')) {
+        ws_message_touch((int) $message['id']);
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The texts of the card's menu entry.
+ *
+ * @return array key => text
+ */
+function ws_link_preview_js_strings()
+{
+    return array(
+        'link_preview_remove' => lang('Remove preview'),
+    );
 }

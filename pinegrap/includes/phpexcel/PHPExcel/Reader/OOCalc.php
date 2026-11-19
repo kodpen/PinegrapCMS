@@ -666,7 +666,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                             $type = PHPExcel_Cell_DataType::TYPE_NUMERIC;
                                             $dataValue = (float) $cellDataOfficeAttributes['value'];
                                             if (floor($dataValue) == $dataValue) {
-                                                $dataValue = (integer) $dataValue;
+                                                $dataValue = (int) $dataValue;
                                             }
                                             $formatting = PHPExcel_Style_NumberFormat::FORMAT_PERCENTAGE_00;
                                             break;
@@ -674,7 +674,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                             $type = PHPExcel_Cell_DataType::TYPE_NUMERIC;
                                             $dataValue = (float) $cellDataOfficeAttributes['value'];
                                             if (floor($dataValue) == $dataValue) {
-                                                $dataValue = (integer) $dataValue;
+                                                $dataValue = (int) $dataValue;
                                             }
                                             $formatting = PHPExcel_Style_NumberFormat::FORMAT_CURRENCY_USD_SIMPLE;
                                             break;
@@ -682,8 +682,8 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                             $type = PHPExcel_Cell_DataType::TYPE_NUMERIC;
                                             $dataValue = (float) $cellDataOfficeAttributes['value'];
                                             if (floor($dataValue) == $dataValue) {
-                                                if ($dataValue == (integer) $dataValue) {
-                                                    $dataValue = (integer) $dataValue;
+                                                if ($dataValue == (int) $dataValue) {
+                                                    $dataValue = (int) $dataValue;
                                                 } else {
                                                     $dataValue = (float) $dataValue;
                                                 }
@@ -748,7 +748,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                     $this->spendCells(max(0, $colRepeats) * max(0, $rowRepeats));
                                     for ($i = 0; $i < $colRepeats; ++$i) {
                                         if ($i > 0) {
-                                            ++$columnID;
+                                            $columnID = self::columnAfter($columnID, 1);
                                         }
                                         if ($type !== PHPExcel_Cell_DataType::TYPE_NULL) {
                                             for ($rowAdjust = 0; $rowAdjust < $rowRepeats; ++$rowAdjust) {
@@ -795,7 +795,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                     }
                                 }
 
-                                ++$columnID;
+                                $columnID = self::columnAfter($columnID, 1);
                             }
                             $rowID += $rowRepeats;
                             break;

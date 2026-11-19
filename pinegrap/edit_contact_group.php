@@ -60,7 +60,11 @@ if (validate_contact_group_access($user, $id) == false) {
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/minimum_order.php');
 $liveform = new liveform('edit_contact_group', $id);
+
+// The group's minimum order value: set by whoever has the shop's rights.
+$may_set_minimum_order = pg_minimum_order_may_set($user);
 
 // The rule state of the group, once the upgrade has added the columns.
 $audience_ready = pg_audience_ready();
@@ -99,6 +103,8 @@ if (!$_POST) {
         $liveform->assign_field_value('description', $row['description']);
         $liveform->assign_field_value('kind', $group_rules['kind']);
         $liveform->assign_field_value('rules', (string) $group_rules['rules']);
+        $minimum_order_stored = pg_minimum_order_of_group($id);
+        $liveform->assign_field_value('minimum_order', ($minimum_order_stored > 0) ? pg_format_number($minimum_order_stored / 100, 2) : '');
     }
     
     // Every member, the rule-added ones included, for the Summary.
@@ -143,7 +149,7 @@ if (!$_POST) {
                     ' . pg_contact_group_form_layout(
                         pg_contact_group_form_cards($liveform, array(
                             'required' => true,
-                            'cards' => ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : ''),
+                            'cards' => ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : '') . ($may_set_minimum_order ? pg_minimum_order_card($liveform) : ''),
                             'status' => pg_contact_group_form_members_status($member_count, $audience_ready ? (string) $group_rules['kind'] : null),
                         )),
                         '
@@ -231,6 +237,12 @@ if (!$_POST) {
         if ($posted_rules && ($posted_rules['kind'] === 'dynamic') && ($posted_rules['count'] === 0)) {
             $liveform->mark_error('kind', lang('Add at least one condition, or turn off Fill this group by rules.'));
         }
+
+        $minimum_order_posted = $may_set_minimum_order ? pg_minimum_order_posted($_POST['minimum_order'] ?? '') : 0;
+
+        if ($minimum_order_posted === null) {
+            $liveform->mark_error('minimum_order', lang('The minimum order value cannot be negative.'));
+        }
         
         // if there is an error, forward user back to edit contact group screen
         if ($liveform->check_form_errors() == true) {
@@ -271,6 +283,10 @@ if (!$_POST) {
                 pg_audience_switch_apply($id, pg_audience_switch_action($_POST)) or output_error('Query failed.');
             }
         }
+        if ($may_set_minimum_order) {
+            pg_minimum_order_save($id, $minimum_order_posted) or output_error('Query failed.');
+        }
+
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_contact_groups = new liveform('view_contact_groups');

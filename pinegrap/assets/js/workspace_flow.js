@@ -159,6 +159,7 @@
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
         rows_get: { name: 'fl_kind_rows_get', group: 'system', into: true, out: ['done', 'failed'] },
         record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
+        list_records: { name: 'fl_kind_list_records', group: 'system', into: true, out: ['done', 'failed'] },
         contact_group: { name: 'fl_kind_contact_group', group: 'system', into: true, out: ['done', 'failed'] },
         // A classifying Pinegrap AI box leaves on its named outcomes instead
         // (kindOf(), ws_step_ai_arrow_outcomes()).
@@ -238,6 +239,7 @@
         ['row_get', 'fl_kind_row_get'],
         ['rows_get', 'fl_kind_rows_get'],
         ['record_get', 'fl_kind_record_get'],
+        ['list_records', 'fl_kind_list_records'],
         ['contact_group', 'fl_kind_contact_group'],
         ['ai', 'fl_kind_ai'],
         ['agent', 'fl_kind_agent'],
@@ -285,7 +287,7 @@
 
     // The boxes listed under Records and tables in the palette; on the
     // canvas they keep the system group's colour (KINDS).
-    var PALETTE_RECORDS = ['change', 'contact_group', 'record_get', 'row_add', 'row_get', 'row_set', 'rows_get'];
+    var PALETTE_RECORDS = ['change', 'contact_group', 'record_get', 'list_records', 'row_add', 'row_get', 'row_set', 'rows_get'];
 
     // The palette's groups folded at first: the steps used less often and
     // the values.
@@ -589,6 +591,10 @@
             return t('tpl_assign_lead');
         }
 
+        if (rule === 'event_person') {
+            return t('fl_assign_event_person');
+        }
+
         if (match && (match[1] === 'department')) {
             var department = (BOOT.departments || []).filter(function (item) { return item.id === +match[2]; })[0];
 
@@ -675,6 +681,10 @@
         }
 
         if (node.kind === 'email') {
+            if (config.recipient === 'group') {
+                return mailGroupMeta(config);
+            }
+
             if (config.recipient === 'record_person') {
                 return t((config.purpose === 'marketing') ? 'fl_email_person_marketing' : 'fl_email_person_info');
             }
@@ -799,6 +809,10 @@
 
         if (node.kind === 'record_get') {
             return recordGetMeta(node);
+        }
+
+        if (node.kind === 'list_records') {
+            return recordsMeta(node);
         }
 
         if (node.kind === 'contact_group') {
@@ -4540,6 +4554,7 @@
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get') && (item[0] !== 'rows_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
+                && ((item[0] !== 'list_records') || (((FL.steps || {}).list_pages || []).length > 0))
                 && ((item[0] !== 'contact_group') || (stepLists().groups.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
                 && ((item[0] !== 'sms') || stepLists().sms)
@@ -5319,23 +5334,40 @@
 
     // ── Settings ───────────────────────────────────────────────────────
 
+    // A labelled control with an optional help line. A tick (a checkbox,
+    // .pg-checkbox) stands before its label on one line, the help under the
+    // label; any other control stands under its label.
     function field(label, control, help) {
         var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
-        var caption = el('label', 'form-label small fw-semibold mb-1', label);
+        var tick = control.tagName === 'INPUT' && control.type === 'checkbox';
+        var caption = el('label', tick ? 'small' : 'form-label small fw-semibold mb-1', label);
+        var words = wrap;
 
         caption.htmlFor = id;
         control.id = id;
         control.disabled = control.disabled || !state.edit;
-        wrap.appendChild(caption);
-        wrap.appendChild(control);
+
+        if (tick) {
+            var line = el('div', 'd-flex align-items-start gap-3');
+
+            words = el('div', 'flex-fill min-w-0');
+            control.classList.add('mt-1');
+            line.appendChild(control);
+            line.appendChild(words);
+            words.appendChild(caption);
+            wrap.appendChild(line);
+        } else {
+            wrap.appendChild(caption);
+            wrap.appendChild(control);
+        }
 
         if (help) {
             var note = el('div', 'form-text', help);
 
             note.id = id + '-help';
             control.setAttribute('aria-describedby', note.id);
-            wrap.appendChild(note);
+            words.appendChild(note);
         }
 
         return wrap;
@@ -7239,6 +7271,10 @@
             recordGetFields(box, node);
         }
 
+        if (node.kind === 'list_records') {
+            recordsFields(box, node);
+        }
+
         if (node.kind === 'contact_group') {
             contactGroupFields(box, node);
         }
@@ -7423,7 +7459,8 @@
 
     function taskFields(box, node) {
         var config = node.config;
-        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
+        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['event_person', t('fl_assign_event_person')],
+            ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
 
         (BOOT.departments || []).forEach(function (department) {
             options.push(['department:' + department.id, t('tpl_assign_dept', department.name)]);
@@ -7452,8 +7489,26 @@
             people.classList.add('d-none');
         }
 
+        // "The person the event names" asks who gets the task when the event
+        // names nobody on the team; the publish check requires one.
+        var fallback = el('div', 'wsf-people mt-3');
+        var showFallback = function () {
+            if (!fallback.firstChild) {
+                fallback.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_assign_fallback')));
+                peopleList(node, fallback, 'fallback', 20, t('fl_assign_fallback'));
+                fallback.appendChild(el('div', 'form-text', t('fl_assign_fallback_help')));
+            }
+        };
+
+        if (current === 'event_person') {
+            showFallback();
+        } else {
+            fallback.classList.add('d-none');
+        }
+
         who.addEventListener('change', function () {
             people.classList.toggle('d-none', who.value !== 'people');
+            fallback.classList.toggle('d-none', who.value !== 'event_person');
 
             if (who.value === 'people') {
                 config.assign = '';
@@ -7464,12 +7519,21 @@
                 Array.prototype.forEach.call(people.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
             }
 
+            if (who.value === 'event_person') {
+                config.fallback = config.fallback || [];
+                showFallback();
+            } else {
+                config.fallback = [];
+                Array.prototype.forEach.call(fallback.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
+            }
+
             refreshNode(node);
         });
 
         var whoField = field(t('fl_assign'), who, t('fl_assign_help'));
 
         whoField.appendChild(people);
+        whoField.appendChild(fallback);
         box.appendChild(whoField);
 
         var due = el('input', 'form-control form-control-sm wsf-number');
@@ -7564,7 +7628,16 @@
     function emailFields(box, node) {
         var config = node.config;
         var person = config.recipient === 'record_person';
-        var recipient = K.select([['typed', t('fl_email_typed')], ['record_person', t('fl_email_person')]], person ? 'record_person' : 'typed');
+        var group = config.recipient === 'group';
+        var ways = [['typed', t('fl_email_typed')], ['record_person', t('fl_email_person')]];
+
+        // A contact group while the person may send campaigns to one, or
+        // when the box writes to one already.
+        if (group || (mailGroups().length > 0)) {
+            ways.push(['group', t('fl_email_group')]);
+        }
+
+        var recipient = K.select(ways, group ? 'group' : (person ? 'record_person' : 'typed'));
 
         recipient.addEventListener('change', function () {
             config.recipient = recipient.value;
@@ -7573,7 +7646,9 @@
         });
         box.appendChild(field(t('fl_email_recipient'), recipient));
 
-        if (person) {
+        if (group) {
+            emailGroupFields(box, node);
+        } else if (person) {
             var purpose = K.select([['info', t('fl_email_purpose_info')], ['marketing', t('fl_email_purpose_marketing')]], (config.purpose === 'marketing') ? 'marketing' : 'info');
 
             purpose.addEventListener('change', function () {
@@ -7764,7 +7839,7 @@
             box.appendChild(vars);
         }
 
-        var fallback = el('input', 'check');
+        var fallback = el('input', 'pg-checkbox');
 
         fallback.type = 'checkbox';
         fallback.checked = !!config.fallback;
@@ -7904,7 +7979,7 @@
             })));
             more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
 
-            var redirect = el('input', 'check');
+            var redirect = el('input', 'pg-checkbox');
 
             redirect.type = 'checkbox';
             redirect.checked = !!config.redirect;
@@ -7964,7 +8039,7 @@
 
     // A tick whose state goes to config[key].
     function tickField(box, node, key, label, onChange) {
-        var tick = el('input', 'check');
+        var tick = el('input', 'pg-checkbox');
 
         tick.type = 'checkbox';
         tick.checked = !!node.config[key];
@@ -8094,7 +8169,7 @@
     // it opens is private, and who is put in it.
     function leadFields(box, node) {
         var config = node.config;
-        var closed = el('input', 'check');
+        var closed = el('input', 'pg-checkbox');
 
         closed.type = 'checkbox';
         closed.checked = !!config.private;
@@ -9850,6 +9925,118 @@
         }, false, t('fl_record_id_help')));
     }
 
+    // The list pages a records box may read (ws_flow_records_pages()).
+    function recordsPages() {
+        return (FL.steps || {}).list_pages || [];
+    }
+
+    // The contact groups an e-mail box may write to (ws_flow_mail_groups()).
+    function mailGroups() {
+        return (FL.steps || {}).mail_groups || [];
+    }
+
+    // A records box's page as offered, or null.
+    function recordsPage(config) {
+        return recordsPages().filter(function (item) { return item.id === (parseInt(config.page_id, 10) || 0); })[0] || null;
+    }
+
+    // Its page, by title, and whether it reads only the new records.
+    function recordsMeta(node) {
+        var config = node.config;
+        var id = parseInt(config.page_id, 10) || 0;
+        var page = recordsPage(config);
+
+        if (id <= 0) {
+            return t('fl_records_none');
+        }
+
+        var name = page ? (page.title || page.name) : '#' + id;
+
+        return config.only_new ? t('fl_records_meta_new', name) : name;
+    }
+
+    // A box that reads the records of a list page: a page everybody may
+    // open (ws_step_list_records_check()), and the option of only the
+    // records new since the last run, with what it leaves out
+    // (ws_flow_records_left_out_note()).
+    function recordsFields(box, node) {
+        var config = node.config;
+        var id = parseInt(config.page_id, 10) || 0;
+        var options = [['0', t('fl_records_page_pick')]].concat(recordsPages().map(function (item) {
+            return [String(item.id), item.title ? item.title + ' (' + item.name + ')' : item.name];
+        }));
+
+        if ((id > 0) && !recordsPage(config)) {
+            options.push([String(id), '#' + id]);
+        }
+
+        var pick = K.select(options, String(id));
+
+        pick.setAttribute('data-refocus', 'records-page-' + node.id);
+        pick.addEventListener('change', function () {
+            config.page_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_records_page'), pick, t('fl_records_page_help')));
+
+        var only = el('input', 'pg-checkbox');
+
+        only.type = 'checkbox';
+        only.checked = !!config.only_new;
+        only.addEventListener('change', function () {
+            config.only_new = only.checked ? 1 : 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_records_only_new'), only, t('fl_records_only_new_help')));
+    }
+
+    // Its contact group, by name.
+    function mailGroupMeta(config) {
+        var group = mailGroups().filter(function (item) { return item.id === (parseInt(config.group_id, 10) || 0); })[0];
+
+        return group ? t('fl_email_group_meta', group.name) : t('fl_email_group_pick');
+    }
+
+    // An e-mail box written to a contact group, sent as an e-mail campaign
+    // (ws_flow_mail_group_do()): the group, why, and the records box of the
+    // flow whose records are drawn after the text.
+    function emailGroupFields(box, node) {
+        var config = node.config;
+        var id = parseInt(config.group_id, 10) || 0;
+        var groups = [['0', t('fl_email_group_pick')]].concat(mailGroups().map(function (item) { return [String(item.id), item.name]; }));
+
+        if ((id > 0) && !mailGroups().some(function (item) { return item.id === id; })) {
+            groups.push([String(id), '#' + id]);
+        }
+
+        var pick = K.select(groups, String(id));
+
+        pick.addEventListener('change', function () {
+            config.group_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_email_group'), pick, t('fl_email_group_help')));
+
+        var purpose = K.select([['info', t('fl_email_purpose_info')], ['marketing', t('fl_email_purpose_marketing')]], (config.purpose === 'marketing') ? 'marketing' : 'info');
+
+        purpose.addEventListener('change', function () {
+            config.purpose = purpose.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_email_purpose'), purpose));
+
+        var boxes = [['', t('fl_email_records_none')]].concat(state.graph.nodes.filter(function (item) {
+            return item.kind === 'list_records';
+        }).map(function (item) { return [item.id, titleOf(item)]; }));
+        var records = K.select(boxes, config.records || '');
+
+        records.addEventListener('change', function () {
+            config.records = records.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_email_records'), records, t('fl_email_records_help')));
+    }
+
     // A contact group box's group as the person may change it
     // (ws_step_contact_group_choices()), or null.
     function contactGroup(config) {
@@ -10762,7 +10949,7 @@
     // The team as ticks, with a filter once it is long, drawn into wrap: the
     // ids go into the box's settings under key (assignees by default), at
     // most max of them.
-    function peopleList(node, wrap, key, max) {
+    function peopleList(node, wrap, key, max, label) {
         var config = node.config;
         var list = el('div', 'wsf-people-list');
 
@@ -10773,7 +10960,7 @@
         var team = BOOT.people || [];
 
         list.setAttribute('role', 'group');
-        list.setAttribute('aria-label', t('fl_assign_people'));
+        list.setAttribute('aria-label', label || t('fl_assign_people'));
 
         if (team.length > 8) {
             var filter = el('input', 'form-control form-control-sm mb-1');
@@ -10808,7 +10995,9 @@
 
                 config[key] = ids.slice(0, max);
 
-                if (node.kind === 'task') {
+                // Ticking the box's own people drops its rule; its fallback
+                // people belong to the rule and keep it.
+                if ((node.kind === 'task') && (key === 'assignees')) {
                     config.assign = '';
                 }
                 refreshNode(node);
@@ -11322,7 +11511,7 @@
         } else if (kind === 'post') {
             config = { channel_id: homeChannelId(), body: '' };
         } else if (kind === 'email') {
-            config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info', from_name: '', from_email: '', reply_to: '', bcc: '' };
+            config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info', group_id: 0, records: '', from_name: '', from_email: '', reply_to: '', bcc: '' };
         } else if (kind === 'sms') {
             config = { to: '', recipient: 'typed', purpose: 'info', text: '' };
         } else if (kind === 'whatsapp') {
@@ -11410,6 +11599,11 @@
             config = { table_id: (listed.length === 1) ? listed[0].id : 0, match: 'all', where: '', sort: 0, dir: 'asc', limit: stepLists().where.limit || 50 };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
+        } else if (kind === 'list_records') {
+            var pages = recordsPages();
+
+            // The one list page there is.
+            config = { page_id: (pages.length === 1) ? pages[0].id : 0, only_new: 0 };
         } else if (kind === 'contact_group') {
             var groups = stepLists().groups;
 

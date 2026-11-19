@@ -92,6 +92,8 @@ function ws_js_strings()
         'cmd_extra_estimate'     => lang('How long it takes, like ~2h'),
         'cmd_extra_people'       => lang('Who does it: a person or a department'),
         'cmd_extra_priority'     => lang('How urgent it is, like !urgent'),
+        'cmd_flow_meta'          => lang('Start this flow'),
+        'cmd_flows'              => lang('Flows'),
         'cmd_keys'               => lang('Tab: write · ↑↓: choose · Esc: close'),
         'commands'               => lang('Slash commands'),
         'completed_on'           => ws_js_template('Finished {var:1}', 1),
@@ -150,7 +152,7 @@ function ws_js_strings()
         'emoji_none'             => lang('No emoji matches that.'),
         'reaction_take_back'     => lang('Take back my reaction'),
         'end_date'               => lang('Last day'),
-        'end_time'               => lang('Ends'),
+        'end_time'               => lang('End time'),
         'error_generic'          => lang('Something went wrong. Please try again.'),
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
@@ -161,7 +163,11 @@ function ws_js_strings()
         'event_customer_hidden'  => lang('A customer you cannot open. It stays as it is.'),
         'event_customer_none'    => lang('No contact found.'),
         'event_title_help'       => lang('Left empty, the kind is used as the title.'),
+        'event_where_company'    => lang('Added to the team plan; it shows on everyone\'s row.'),
+        'event_where_dept'       => lang('Added to the team plan; it shows on the row of everyone in the department you choose.'),
+        'event_where_people'     => lang('Added to the team plan; it shows on the rows of the people you choose.'),
         'file_too_large'         => ws_js_template('The file is larger than {var:1} MB.', 1),
+        'first_day'              => lang('First day'),
         'go_to_message'          => lang('Go to the message'),
         'holiday'                => lang('Holiday'),
         'inbox'                  => lang('Inbox'),
@@ -351,6 +357,12 @@ function ws_js_strings()
         'poll_other_label'       => lang('Add an "Other" option'),
         'poll_other_placeholder' => lang('Write your own answer'),
         'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
+        'poll_question_picture_open' => lang('Open the question\'s picture'),
+        'poll_pictures_count'    => ws_js_template('{var:1} pictures', 1),
+        'poll_question_picture'  => lang('Question picture'),
+        'poll_question_picture_help' => lang('One picture shown large beside the options. It is sent with the question and needs no message of its own.'),
+        'poll_question_picture_upload' => lang('Upload a picture'),
+        'poll_question_picture_locked' => lang('Somebody has answered, so the question keeps the picture it was asked with.'),
         'poll_recommended'       => lang('Recommended'),
         'poll_take_back'         => lang('Take back the poll'),
         'poll_take_back_confirm' => lang('Take this poll back? It stays in the channel greyed out, takes no more votes and writes no result.'),
@@ -402,7 +414,7 @@ function ws_js_strings()
         'sound_off_done'         => lang('No sound plays any more when something comes for you.'),
         'start_date'             => lang('Starts'),
         'start_poll'             => lang('Start a poll'),
-        'start_time'             => lang('Starts at'),
+        'start_time'             => lang('Start time'),
         'summary_empty'          => lang('No summary yet. Write down what a newcomer to this channel should know first.'),
         'summary_help'           => lang('The plan, the people to call, the rules. @ and # tags work here too.'),
         'summary_saved'          => lang('The summary was saved.'),
@@ -411,6 +423,8 @@ function ws_js_strings()
         'tab_messages'           => lang('Messages'),
         'tab_summary'            => lang('Summary'),
         'tab_tasks'              => lang('Tasks'),
+        'task_agents'            => lang('Agent channels'),
+        'task_agents_help'       => lang('Only the tasks of agent channels; they are left out otherwise.'),
         'task_status_filter'     => lang('Task status'),
         'tab_decisions_count'    => ws_js_template('{var:1} decisions and notes', 1),
         'tab_tasks_count'        => ws_js_template('{var:1} open tasks', 1),
@@ -458,6 +472,32 @@ function ws_js_strings()
         'copy_link'              => lang('Copy the link'),
         'copy_number'            => lang('Copy the task number'),
         'copy_text'              => lang('Copy the text'),
+        // A reader's highlights (assets/js/workspace_highlights.js).
+        'hl_toolbar'             => lang('Highlight'),
+        'hl_for_everyone'        => lang('For everyone'),
+        'hl_for_me'              => lang('For me'),
+        'hl_only_you'            => lang('Only you'),
+        'hl_shorter'             => lang('Select a shorter part'),
+        'hl_card'                => lang('Highlights'),
+        'hl_add_note'            => lang('Add a note'),
+        'hl_edit_note'           => lang('Edit note'),
+        'hl_note'                => lang('Note'),
+        'hl_remove'              => lang('Remove'),
+        'hl_save'                => lang('Save'),
+        'hl_cancel'              => lang('Cancel'),
+        'hl_mine'                => lang('My highlights'),
+        'hl_mine_all'            => lang('All'),
+        'hl_mine_everyone'       => lang('Everyone'),
+        'hl_mine_only_me'        => lang('Only me'),
+        'hl_mine_more'           => lang('Show more'),
+        'hl_mine_select_all'     => lang('Select all'),
+        'hl_mine_pick'           => lang('Select this highlight'),
+        'hl_mine_remove'         => ws_js_template('Remove ({var:1})', 1),
+        'hl_mine_confirm'        => ws_js_template('Remove {var:1} highlights? The ones everyone sees disappear for everyone.', 1),
+        'hl_mine_removed'        => ws_js_template('{var:1} highlights removed.', 1),
+        'hl_mine_kept'           => ws_js_template('{var:1} could not be removed: you can no longer react in that conversation.', 1),
+        'hl_mine_empty'          => lang('No highlights yet. Select text in a message and press Highlight.'),
+        'hl_mine_none_here'      => lang('No highlights in this list.'),
         // Translate on a message (assets/js/workspace_translate.js).
         'tr_translate'           => lang('Translate'),
         'tr_mark'                => ws_js_template('Translated from {var:1}', 1),
@@ -905,7 +945,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
@@ -915,6 +955,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_signature_js_strings(), ws_mail_away_js_strings(), ws_mail_forward_js_strings(), ws_mail_phone_js_strings());
     // Send later's words (mail_later.php).
     $strings = array_merge($strings, ws_mail_later_js_strings());
+    // The link card's "Remove preview" (link_preview.php).
+    $strings = array_merge($strings, ws_link_preview_js_strings());
     // Remind me later's words (mail_remind.php).
     $strings = array_merge($strings, ws_mail_remind_js_strings());
     // Add to my calendar on a mail (personal_plan_mail.php).
@@ -993,6 +1035,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // the Flows screen prints them (ws_screen_scripts()).
         'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // My highlights in My Notes (highlights.php, workspace_highlights.js).
+        'highlights'   => function_exists('ws_highlights_ready') && ws_highlights_ready(),
         // Note groups as folders in My Notes (note_groups.php,
         // workspace_note_groups.js).
         'notes_groups' => function_exists('ws_note_groups_ready') && ws_note_groups_ready(),

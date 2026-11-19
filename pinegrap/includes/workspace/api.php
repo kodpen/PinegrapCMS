@@ -38,6 +38,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_highlights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
@@ -64,9 +65,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_page.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_quiet_hours.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_access.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_meeting_link.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -198,6 +201,9 @@ function ws_openapi_objects()
         'WorkspaceMessage'    => 'ws_api_message_schema',
         'WorkspaceDecision'   => 'ws_api_decision_schema',
         'WorkspaceTask'       => 'ws_api_task_schema',
+        'WorkspaceTaskDetail' => 'ws_api_task_detail_schema',
+        'WorkspaceTaskLinks'  => 'ws_api_task_links_schema',
+        'WorkspaceTaskLink'   => 'ws_api_task_link_schema',
         'WorkspaceRecurrence' => 'ws_api_recurrence_schema',
         'WorkspaceDepartment' => 'ws_api_department_schema',
         'WorkspaceRefs'       => 'ws_api_refs_schema',
@@ -233,6 +239,10 @@ function ws_openapi_objects()
         'WorkspacePersonCardWorkday'    => 'ws_api_person_card_workday_schema',
         'WorkspacePersonCardAway'       => 'ws_api_person_card_away_schema',
         'WorkspacePersonCardClock'      => 'ws_api_person_card_clock_schema',
+        'WorkspaceMeetingLink'          => 'ws_api_meeting_link_schema',
+        'WorkspaceMeetingLinkService'   => 'ws_api_meeting_link_service_schema',
+        'WorkspaceQuietHours'           => 'ws_api_quiet_hours_schema',
+        'WorkspaceQuietHoursRange'      => 'ws_api_quiet_hours_range_schema',
         'WorkspaceChannelKindChange'    => 'ws_api_channel_kind_change_schema',
         'WorkspaceChannelEraWrite'      => 'ws_api_channel_era_write_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',
@@ -279,7 +289,10 @@ function ws_openapi_objects()
         'WorkspaceChannelGroupMove' => 'ws_api_channel_group_move_schema',
         'WorkspacePerson'           => 'ws_api_person_schema',
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
+        'WorkspaceMessageFeedback'  => 'ws_api_message_feedback_schema',
+        'WorkspaceMessageHighlight' => 'ws_api_message_highlight_schema',
         'WorkspaceMessageVia'       => 'ws_api_message_via_schema',
+        'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageCanvas'    => 'ws_api_message_canvas_schema',
@@ -354,7 +367,7 @@ function ws_api_routes()
         array('name' => 'due_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Empty clears it.'),
         array('name' => 'due_time', 'in' => 'body', 'type' => 'string', 'max_length' => 8, 'nullable' => true, 'description' => 'HH:MM on the due date, 24-hour. null or empty clears it: the task is then due on its date, and its reminder counts from 09:00.'),
         array('name' => 'remind_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 86400, 'nullable' => true, 'description' => 'Minutes before the task is due that its people are reminded by e-mail, at most 86400 (60 days); 0 at the due time. Needs a due date. null or empty: no reminder.'),
-        array('name' => 'estimate_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'description' => 'Each person\'s share of the effort, in minutes. 0 counts the site default on the board.'),
+        array('name' => 'estimate_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'description' => 'Each person\'s share of the effort, in minutes. 0 counts the site default on the board (workspace.default_task_minutes on GET /meta).'),
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
         array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
         array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, cart_quote, contact, user_account, erp_account, invoice, waybill, receipt, edoc, erp_quote, form, calendar_event, booking, file or page.'),
@@ -382,7 +395,7 @@ function ws_api_routes()
     $flow_fields = array(
         array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'description' => 'What the flow is called. Runs of spaces are made one.'),
         array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'Its home: a public or private channel the owner of the application reads, whose readers may run the flow once it is live, and where its runs open their tasks. 0 for none, a flow only its owner sees. It is not part of the draft and changes at once: on a flow published once, only a team devices session may change it.'),
-        array('name' => 'nodes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object'), 'max_items' => 1000, 'description' => 'The boxes, as objects of {id, kind, label, x, y, config}. id: small letters, digits and _, starting with a letter, at most 32 characters, once in the flow. kind: manual, the box that starts the flow by hand (config {subject}: empty, or the kind of record a run is about, such as order or contact); task, which opens a task and waits for it (config {title, up to 200 characters; description; assignees, up to 20 user ids, or assign: creator, whoever starts the run, department_lead, department:ID, user:ID or none; due_in, days from when the box is reached, 0-3650, or empty for none; priority: low, normal, high or urgent}); post, which writes a message in a channel as the owner (config {channel_id; body}); email, which sends an e-mail from the site (config {to, addresses separated by commas; subject; body; or page_id, a page sent instead; recipient: typed, or record_person for the person of the record the run is about, to then left empty; purpose: info, or marketing, sent only with that person\'s consent and an unsubscribe link}); notify, a line in the inbox of team members (config {user_ids, up to 50; text}); task_open, a task opened without waiting for it (config {title; description; assignees, up to 20 user ids; channel_id, 0 for none; due_in; priority}); webhook, a POST to an https address with an Idempotency-Key per run and box (config {url; format: generic, text or discord; text}); web_check, a look at an https address (config {url; mode: status or ssl; redirect; contains; max_ms; days, the days a certificate must have left for ssl}); task_digest, each person their tasks by e-mail (config {mode: mine or channel; channel_id; user_ids; only: open, week, overdue or stale; subject; intro; missed; ai}); report, a summary of counts (config {title; metrics, up to 20 of {key, param}; channel_id; to}); checkin, a check-in asked in a channel (config {channel_id; question}); start_action, a scheduled action started (config {target_id; delay, 0-10080 minutes}); row_get, which reads one row of a workflow table the owner reads (config {table_id; by: id (the default), position, last or match, the first row that meets conditions; row, for id the row\'s id and for position its number as the table lists it, 1 for the first row, either typed or one value alone such as {{trigger.row_id}}; empty for last and match; match and where, for match, as rows_get takes them}) and gives row_id, found (1, or 0 for a row that is not there, its cells then empty) and cell_COLUMN_ID for each column of the table (a list column\'s a JSON list a For each box goes through); rows_get, which reads the rows of a workflow table the owner reads that meet its conditions (config {table_id; match: all (the default) or any; where, a JSON list of up to 10 conditions, each {column, op, value}: column a column id, op eq, neq, lt, gt, lte, gte, contains, not_contains (a list column\'s item), starts, empty or not_empty, value typed (money in minor units, a date as YYYY-MM-DD, a status by its key, a checkbox 1 or 0) or one value alone such as {{trigger.cell_3}}; none for every row; sort, a column id, 0 for the table\'s order; dir: asc or desc; limit, 1-50, the rows of its list}) and gives count (every row that met the conditions), sum_COLUMN_ID, avg_COLUMN_ID, min_COLUMN_ID and max_COLUMN_ID for each number, money and formula column, and rows, a JSON list of at most limit rows, each with row_id, position and cell_COLUMN_ID, that a For each box goes through; record_get, which reads one record the owner reaches (config {record: order, product, contact, booking, task or form; id, the record\'s id or one value alone such as {{trigger.record_id}}}) and gives record_id, found (1, or 0 for a record that is not there or out of reach, its fields then empty) and the fields of its kind, listed by GET /workspace/flow-kinds; ai, which asks Pinegrap AI on the site\'s quota and waits for its answer, sending only its prompt and text with their values (config {mode: write, summarize, extract or classify; prompt, what to write or find; text, the text it reads, sent as data; classes, up to 8 outcome names for classify; closes_in, the hours it waits, 1-720}) and gives answer (extract also number and found); or end. GET /workspace/flow-kinds lists every kind with its settings. The url of webhook and web_check is answered whole only to whoever may change the flow; others read https://host/…. The texts of these steps may hold {{node.ID.FIELD}}: the text, outcome or status of an earlier box of the run, or a value it kept (message_id of a post, task_id of a task_open), empty when the run has none; {{node.ID.FIELD|TEXT}} writes TEXT instead when the value is empty (a box that may be skipped), with \\, {, } and | in TEXT written as \\\\, \\{, \\} and \\|, on one line, at most 100 characters (not in a condition\'s value, a loop\'s list or an End box\'s gathered value). x and y place it on the canvas. Replaces every box of the draft; left out of a change, the boxes are kept.'),
+        array('name' => 'nodes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object'), 'max_items' => 1000, 'description' => 'The boxes, as objects of {id, kind, label, x, y, config}. id: small letters, digits and _, starting with a letter, at most 32 characters, once in the flow. kind: manual, the box that starts the flow by hand (config {subject}: empty, or the kind of record a run is about, such as order or contact); task, which opens a task and waits for it (config {title, up to 200 characters; description; assignees, up to 20 user ids, or assign: creator, whoever starts the run, event_person, the team member the event that started the run names (its user_id), with fallback, up to 20 user ids, required, who get it when the event names nobody on the team, department_lead, department:ID, user:ID or none; due_in, days from when the box is reached, 0-3650, or empty for none; priority: low, normal, high or urgent}); post, which writes a message in a channel as the owner (config {channel_id; body}); email, which sends an e-mail from the site (config {to, addresses separated by commas; subject; body; or page_id, a page sent instead; recipient: typed, or record_person for the person of the record the run is about, to then left empty; purpose: info, or marketing, sent only with that person\'s consent and an unsubscribe link}); notify, a line in the inbox of team members (config {user_ids, up to 50; text}); task_open, a task opened without waiting for it (config {title; description; assignees, up to 20 user ids; channel_id, 0 for none; due_in; priority}); webhook, a POST to an https address with an Idempotency-Key per run and box (config {url; format: generic, text or discord; text}); web_check, a look at an https address (config {url; mode: status or ssl; redirect; contains; max_ms; days, the days a certificate must have left for ssl}); task_digest, each person their tasks by e-mail (config {mode: mine or channel; channel_id; user_ids; only: open, week, overdue or stale; subject; intro; missed; ai}); report, a summary of counts (config {title; metrics, up to 20 of {key, param}; channel_id; to}); checkin, a check-in asked in a channel (config {channel_id; question}); start_action, a scheduled action started (config {target_id; delay, 0-10080 minutes}); row_get, which reads one row of a workflow table the owner reads (config {table_id; by: id (the default), position, last or match, the first row that meets conditions; row, for id the row\'s id and for position its number as the table lists it, 1 for the first row, either typed or one value alone such as {{trigger.row_id}}; empty for last and match; match and where, for match, as rows_get takes them}) and gives row_id, found (1, or 0 for a row that is not there, its cells then empty) and cell_COLUMN_ID for each column of the table (a list column\'s a JSON list a For each box goes through); rows_get, which reads the rows of a workflow table the owner reads that meet its conditions (config {table_id; match: all (the default) or any; where, a JSON list of up to 10 conditions, each {column, op, value}: column a column id, op eq, neq, lt, gt, lte, gte, contains, not_contains (a list column\'s item), starts, empty or not_empty, value typed (money in minor units, a date as YYYY-MM-DD, a status by its key, a checkbox 1 or 0) or one value alone such as {{trigger.cell_3}}; none for every row; sort, a column id, 0 for the table\'s order; dir: asc or desc; limit, 1-50, the rows of its list}) and gives count (every row that met the conditions), sum_COLUMN_ID, avg_COLUMN_ID, min_COLUMN_ID and max_COLUMN_ID for each number, money and formula column, and rows, a JSON list of at most limit rows, each with row_id, position and cell_COLUMN_ID, that a For each box goes through; record_get, which reads one record the owner reaches (config {record: order, product, contact, booking, task or form; id, the record\'s id or one value alone such as {{trigger.record_id}}}) and gives record_id, found (1, or 0 for a record that is not there or out of reach, its fields then empty) and the fields of its kind, listed by GET /workspace/flow-kinds; ai, which asks Pinegrap AI on the site\'s quota and waits for its answer, sending only its prompt and text with their values (config {mode: write, summarize, extract or classify; prompt, what to write or find; text, the text it reads, sent as data; classes, up to 8 outcome names for classify; closes_in, the hours it waits, 1-720}) and gives answer (extract also number and found); or end. GET /workspace/flow-kinds lists every kind with its settings. The url of webhook and web_check is answered whole only to whoever may change the flow; others read https://host/…. The texts of these steps may hold {{node.ID.FIELD}}: the text, outcome or status of an earlier box of the run, or a value it kept (message_id of a post, task_id of a task_open), empty when the run has none; {{node.ID.FIELD|TEXT}} writes TEXT instead when the value is empty (a box that may be skipped), with \\, {, } and | in TEXT written as \\\\, \\{, \\} and \\|, on one line, at most 100 characters (not in a condition\'s value, a loop\'s list or an End box\'s gathered value). x and y place it on the canvas. Replaces every box of the draft; left out of a change, the boxes are kept.'),
         array('name' => 'edges', 'in' => 'body', 'type' => 'list', 'of' => array('from' => 'string', 'to' => 'string', 'on' => 'string'), 'max_items' => 5000, 'description' => 'The arrows, as objects of {from, to, on}: from the box with the id from to the box with the id to, taken when from ends on the outcome on: next for a start box, done or cancelled for a task, done or failed for a step (post, email, notify, task_open, webhook, web_check, task_digest, report, checkin, start_action, row_get, rows_get, record_get; a failure no arrow leaves on fails the run), done or failed for an ai box, whose classify mode leaves instead on class_1, class_2… for its classes in order and on other when none fits; left out, the box\'s first. A box with several arrows in waits for all of them. Replaces every arrow of the draft; left out of a change, the arrows are kept.'),
         array('name' => 'notes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer'), 'max_items' => 1000, 'description' => 'Notes on the canvas, as objects of {id, text, x, y, w, h}, up to 2,000 characters each; they are never checked. Replaces every note of the draft; left out of a change, the notes are kept.'),
     );
@@ -578,7 +591,23 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'      => 'WorkspaceChannelMembers',
             'summary'      => 'Take somebody out of a channel',
-            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channels/{id}/members/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channels.members.remove_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channels/{id}/members/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_members_remove',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelMembers',
+            'summary'      => 'Take somebody out of a channel, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channels/{id}/members/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -629,7 +658,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_list',
             'returns'     => array('list' => 'WorkspaceMessage'),
             'summary'     => 'Read a channel',
-            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. changed_since reads instead the messages already written that changed at or after a moment: an edit, a deletion, a reaction, a tick, a vote, a read receipt or a canvas edited or drawn, each as it is now (deleted true, edited true and so on), and for the person alone a message they deleted for themselves since then, on this device or another (hidden true). Pass the moment of the previous read by the site\'s clock, the Date header of its answer; when as many messages as limit come back, ask again with since_id set to the last one. hidden is true on a message the person deleted for themselves (POST /workspace/messages/{id}/hide): leave it out of view, as the panel does. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from (POST /workspace/threads/{id}/join brings the person into it); from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there. poll is set on a message that asks a poll: its options with their counts, who chose them unless it is anonymous, and mine on the person\'s own choices; can_vote, can_edit and can_close say whether the person may vote (POST /workspace/polls/{id}/vote), change it (POST /workspace/polls/{id}) or close it (POST /workspace/polls/{id}/close), and POST /workspace/channels/{id}/polls asks one. file is set on a message that carries one: its name, kind (image, video, audio, pdf or file), size in bytes, url - the site\'s own address, which opens only in a browser signed in to the site - and api_url, which fetches it with the same token (GET /workspace/messages/{id}/file). file.canvas is set on a canvas\'s picture (null on any other file): version, the newest version of the canvas, and picture - pending while the file still holds a blank or the previous picture for a member\'s browser to draw, server once the server drew it (a member\'s browser that shows it draws it again, so the picture changes once more), drawn once a browser drew it; GET /workspace/messages/{id}/canvas reads the canvas itself. A copy of the picture kept on the device is good while version and picture stay the same.',
+            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. changed_since reads instead the messages already written that changed at or after a moment: an edit, a deletion, a reaction, a tick, a vote, a read receipt or a canvas edited or drawn, each as it is now (deleted true, edited true and so on), and for the person alone a message they deleted for themselves since then, on this device or another (hidden true). Pass the moment of the previous read by the site\'s clock, the Date header of its answer; when as many messages as limit come back, ask again with since_id set to the last one. hidden is true on a message the person deleted for themselves (POST /workspace/messages/{id}/hide): leave it out of view, as the panel does. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from (POST /workspace/threads/{id}/join brings the person into it); from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there. poll is set on a message that asks a poll: its options with their counts, who chose them unless it is anonymous, and mine on the person\'s own choices; can_vote, can_edit and can_close say whether the person may vote (POST /workspace/polls/{id}/vote), change it (POST /workspace/polls/{id}) or close it (POST /workspace/polls/{id}/close), and POST /workspace/channels/{id}/polls asks one. file is set on a message that carries one: its name, kind (image, video, audio, pdf or file), size in bytes, url - the site\'s own address, which opens only in a browser signed in to the site - and api_url, which fetches it with the same token (GET /workspace/messages/{id}/file). file.canvas is set on a canvas\'s picture (null on any other file): version, the newest version of the canvas, and picture - pending while the file still holds a blank or the previous picture for a member\'s browser to draw, server once the server drew it (a member\'s browser that shows it draws it again, so the picture changes once more), drawn once a browser drew it; GET /workspace/messages/{id}/canvas reads the canvas itself. A copy of the picture kept on the device is good while version and picture stay the same. link_preview is set on a message whose first web address the site read into a card, as the panel draws it under the message: url, title, description and site_name, plain texts as the page gave them (escape them where drawn); null while the address waits to be read, when the page gave no card, when the writer removed it and on every message while link previews are switched off in Workspace Settings. Once a card is read the message changes, so changed_since brings it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'since_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
@@ -884,6 +913,61 @@ function ws_api_routes()
             ),
         ),
 
+        // Readers' highlights on a message (api_highlights.php): the
+        // person's own, so no tool for a connection, which is refused.
+        array(
+            'id'          => 'workspace.messages.highlights.set',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/highlights',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_highlight',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => array('id' => 'integer', 'message' => 'WorkspaceMessage'),
+            'summary'     => 'Highlight a part of a message',
+            'description' => 'Highlights a part of a message, the way selecting text in it and choosing For everyone or For me does. quote is the part and occurrence which of its places it is (0 the first; every place it begins counts, overlapping ones too), both in highlight_text of the message (WorkspaceMessage), the body as the panel draws it for this reader with every run of white space folded to one space; that is neither text nor body, so draw and select in highlight_text. scope all is seen by everyone who can read the message and needs can_highlight_all true (false in an archived channel or where the person may not write); me is seen by the person alone. Highlighting the same place again changes the scope (and the note when one is sent) of the person\'s highlight there rather than adding one. Refusals: 404 for a message the person cannot read, a deleted one or a line the workspace wrote; 422 validation_failed with field scope, quote (empty, longer than 1,000 characters, or not at that place in highlight_text) or note (longer than 255); 422 limit_message_mine (10 on one message by the person), limit_message (30 on one message) or limit_person (2,000 kept by the person). The answer is the highlight\'s id and the message as every read now gives it. Nobody is told. A highlight for everyone changes the message, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it to every reader\'s devices; a For me one changes nothing there, so the person\'s other devices get it on their next full read of the channel. highlights on a message carries every For everyone highlight and, to the person\'s own team devices session alone, their For me ones; an application key and an OAuth connection never receive For me highlights. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'quote', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The part highlighted, as it reads in highlight_text, 1 to 1,000 characters once its white space is folded.'),
+                array('name' => 'occurrence', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'default' => 0, 'description' => 'Which place of quote in highlight_text: 0 the first.'),
+                array('name' => 'scope', 'in' => 'body', 'type' => 'enum', 'values' => array('all', 'me'), 'required' => true, 'description' => 'all: For everyone; me: For me.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'Plain text, up to 255 characters. Left out or null keeps the note of a highlight already at that place.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.highlights.note',
+            'method'      => 'POST',
+            'path'        => '/workspace/highlights/{id}/note',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_highlights_note',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Write the note of a highlight',
+            'description' => 'Writes, changes or clears the note of one of the person\'s highlights, the way Add note and Edit note on its card do: only its maker may, where can_note is true on it (a For everyone one not in an archived channel), 403 otherwise; a highlight the person cannot see is a 404. The answer is the message as every read now gives it. A note on a For everyone highlight changes the message for every reader\'s devices; on a For me one the person\'s other devices get it on their next full read. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'highlights[].id of a message.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Plain text, up to 255 characters; empty or left out clears it.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.highlights.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/highlights/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_highlights_delete',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Remove a highlight',
+            'description' => 'Removes a highlight, the way Remove on its card does, where can_remove is true on it: a For me one by its maker; a For everyone one by its maker, the message\'s writer or whoever may delete the message, not in an archived channel. Otherwise 403; a highlight the person cannot see is a 404. The answer is the message as every read now gives it. Removing a For everyone highlight changes the message for every reader\'s devices; a For me one goes from the person\'s other devices on their next full read. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Before the database is updated, highlights is empty on every message and the call answers 503.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'highlights[].id of a message.'),
+            ),
+        ),
+
         // The pin bar of the channel screen, for the person's own app; a
         // model has no pin bar to draw, and its connection is refused anyway.
         array(
@@ -1090,7 +1174,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelGroupAccessChange',
             'summary'      => 'Take back somebody\'s access on a group of channels',
-            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channel-groups/{id}/access/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channel_groups.access.revoke_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channel-groups/{id}/access/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_groups_access_revoke',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelGroupAccessChange',
+            'summary'      => 'Take back somebody\'s access on a group of channels, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channel-groups/{id}/access/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -1273,8 +1373,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceScheduledMessage',
             'summary'      => 'Delete a scheduled message',
-            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/scheduled-messages/{id}/delete, the way every other record is deleted. A plain POST to /workspace/scheduled-messages/{id} deletes it as well and keeps doing so.',
             'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Delete a scheduled message, addressed as a POST',
+            'description' => 'The same deletion as DELETE /workspace/scheduled-messages/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
@@ -1431,6 +1546,26 @@ function ws_api_routes()
             ),
         ),
 
+        // Right or Wrong under an agent's answer: a person's judgement, from
+        // their own team devices session only.
+        array(
+            'id'          => 'workspace.messages.agent_feedback',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/agent-feedback',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_agent_feedback',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => array('feedback' => 'WorkspaceMessageFeedback'),
+            'summary'     => 'Mark an agent\'s answer right or wrong',
+            'description' => 'Right or Wrong under an agent\'s answer, as the panel shows it: verdict right or wrong, with an optional reason (at most ' . WS_AGENT_FEEDBACK_REASON_MAX . ' characters, spaces folded) on a wrong one; null or an empty verdict takes the mark back. One mark per answer, the last one stands; the agent reads it with GET /workspace/agent-feedback. id is the answer, a message whose feedback is not null for the person (the person who asked, or a manager of the channel). 404 when it is no answered request\'s reply of an application or model agent, or the channel is not read; 403 for anybody but the asker and the channel\'s managers; 422 on verdict or reason; 503 while the site\'s update has not run. The answer is the mark as feedback on the message now gives it. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden, since a mark is a person\'s judgement of an agent.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'verdict', 'in' => 'body', 'type' => 'enum', 'values' => array('right', 'wrong'), 'nullable' => true, 'required' => true, 'description' => 'right or wrong; null or empty takes the mark back.'),
+                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_FEEDBACK_REASON_MAX, 'default' => '', 'description' => 'Why it was wrong, optional.'),
+            ),
+        ),
+
         array(
             'id'          => 'workspace.messages.mention_invite',
             'method'      => 'POST',
@@ -1474,8 +1609,9 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
+            'form_file'   => 'file',
             'summary'     => 'Ask a poll in a channel',
-            'description' => 'Asks the channel a question with options to choose from, the way Poll by the composer and the /poll command do. From a team devices session (POST /auth/login) the question is a message of the person\'s, written as from the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it) and joins them to a public channel they were not in. With an application key or an OAuth connection it is the application\'s (an agent asking the people): the people vote, the application closes it with POST /workspace/polls/{id}/close (an application key; or set closes_at), and a clear winner is written as a decision in the application\'s name, which goes into the brief of every agent asked in the channel. Put the option you recommend first. The people it mentions are told. Options are two to ten different texts (blank and repeated ones are left out). multiple lets a voter choose several options; anonymous keeps who chose what from everybody. closes_at closes it by itself and writes the result into the channel; left out, it stays open until it is closed with POST /workspace/polls/{id}/close. The answer is the message, with its poll (201). id may also be a discussion\'s the person is in. Send an Idempotency-Key so a retried call does not ask twice.',
+            'description' => 'Asks the channel a question with options to choose from, the way Poll by the composer and the /poll command do. From a team devices session (POST /auth/login) the question is a message of the person\'s, written as from the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it) and joins them to a public channel they were not in. With an application key or an OAuth connection it is the application\'s (an agent asking the people): the people vote, the application closes it with POST /workspace/polls/{id}/close (an application key; or set closes_at), and a clear winner is written as a decision in the application\'s name, which goes into the brief of every agent asked in the channel. Put the option you recommend first. The people it mentions are told. Options are two to ten different texts (blank and repeated ones are left out). multiple lets a voter choose several options; anonymous keeps who chose what from everybody. closes_at closes it by itself and writes the result into the channel; left out, it stays open until it is closed with POST /workspace/polls/{id}/close. The answer is the message, with its poll (201). id may also be a discussion\'s the person is in. The question may carry one picture of its own, sent with it in the same call the way workspace.files.create takes a file (a form part named file, or content_base64 with name): an image only, held to the same checks; the question\'s message carries it as its file, so the answer\'s file describes it and the channel\'s Files tab lists it. A refused question keeps no file, and a dry run checks the picture and stores nothing (detail.file). Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The question. Tags are written as tokens, as when writing; a question about a picture, a file or an earlier message points at it with <#message:N>, which the reader opens.'),
@@ -1483,6 +1619,8 @@ function ws_api_routes()
                 array('name' => 'multiple', 'in' => 'body', 'type' => 'bool', 'description' => 'A voter may choose several options. Left out, one.'),
                 array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool', 'description' => 'Nobody sees who chose what, only the counts.'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'When it closes by itself, at least a minute from now. Left out, it stays open until it is closed.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The picture\'s name with its extension. Required with content_base64; a form part\'s own file name is used when it is left out.'),
+                array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The question\'s own picture, base64 encoded, in a JSON body; or send it as a form part named file. One image (JPG, PNG, GIF, WebP, AVIF or BMP) held to the checks of workspace.files.create; the question\'s message carries it as its file.'),
             ),
         ),
 
@@ -1496,8 +1634,9 @@ function ws_api_routes()
             'dry_run'      => true,
             'mcp'          => false,
             'returns'      => 'WorkspaceMessage',
+            'form_file'   => 'file',
             'summary'      => 'Change a poll',
-            'description'  => 'Changes an open poll the person asked, the way Edit the poll on it does; poll.can_edit says whether they may. A field left out stays as it is. options, when sent, is the whole new list: an item with the id of one of poll.options keeps that option (and its votes) under the label sent, an item without an id adds an option, and an option left out is removed. Once somebody has voted, an option with votes has to stay with its words unchanged, and multiple and anonymous no longer change (422): a secret vote does not turn public, and a second answer is not taken away. New options can still be added, the question worded better and the closing moment moved; closes_at null leaves it open until it is closed. Somebody else\'s poll is refused with 403, a closed poll, one taken back and one of an earlier version of the conversation with 422. The answer is the message with its poll. A person\'s poll is changed only from their team devices session (a Bearer token from POST /auth/login): an application key and an OAuth connection are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. An application changes the polls it asked itself, the same way. PATCH is accepted beside POST.',
+            'description'  => 'Changes an open poll the person asked, the way Edit the poll on it does; poll.can_edit says whether they may. A field left out stays as it is. options, when sent, is the whole new list: an item with the id of one of poll.options keeps that option (and its votes) under the label sent, an item without an id adds an option, and an option left out is removed. Once somebody has voted, an option with votes has to stay with its words unchanged, and multiple and anonymous no longer change (422): a secret vote does not turn public, and a second answer is not taken away. New options can still be added, the question worded better and the closing moment moved; closes_at null leaves it open until it is closed. Somebody else\'s poll is refused with 403, a closed poll, one taken back and one of an earlier version of the conversation with 422. The answer is the message with its poll. A person\'s poll is changed only from their team devices session (a Bearer token from POST /auth/login): an application key and an OAuth connection are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. An application changes the polls it asked itself, the same way. A new picture (a form part named file, or content_base64 with name) replaces the question\'s own picture and remove_picture true takes it away, only while the poll is open and nobody has answered (422 after: an answered question keeps what was asked); the picture is held to the checks of workspace.polls.create. PATCH is accepted beside POST.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The whole new question. Tags are written as tokens, as when writing.'),
@@ -1505,6 +1644,9 @@ function ws_api_routes()
                 array('name' => 'multiple', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When it closes by itself, at least a minute from now. null leaves it open until it is closed.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The picture\'s name with its extension. Required with content_base64; a form part\'s own file name is used when it is left out.'),
+                array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'A new picture for the question, base64 encoded, in a JSON body; or send it as a form part named file. It replaces the one the question carries.'),
+                array('name' => 'remove_picture', 'in' => 'body', 'type' => 'bool', 'description' => 'true takes the question\'s picture away.'),
             ),
         ),
 
@@ -1550,8 +1692,9 @@ function ws_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
+            'form_file'   => 'file',
             'summary'     => 'Ask a poll again',
-            'description' => 'Asks a poll again as a new poll in the same channel, the way Ask again on it does: the new poll names the old one (poll.again_of), and the old one links to it (poll.asked_again). An old poll still open is taken back; an answered or closed one stays. The fields sent replace the old poll\'s and the rest are carried over, the options with their parts; closes_at is not carried over. Only its asker may (poll.can_ask_again), as for workspace.polls.withdraw. The new poll is held to the rules of workspace.polls.create (422). The answer is the new poll\'s message (201). Send an Idempotency-Key so a retried call does not ask twice.',
+            'description' => 'Asks a poll again as a new poll in the same channel, the way Ask again on it does: the new poll names the old one (poll.again_of), and the old one links to it (poll.asked_again). An old poll still open is taken back; an answered or closed one stays. The fields sent replace the old poll\'s and the rest are carried over, the options with their parts; closes_at is not carried over. Only its asker may (poll.can_ask_again), as for workspace.polls.withdraw. The new poll is held to the rules of workspace.polls.create (422). The old question\'s picture is carried over unless a new one is sent (a form part named file, or content_base64 with name) or remove_picture is true; taking a poll back keeps its picture. The answer is the new poll\'s message (201). Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The new question. Left out, the old one.'),
@@ -1559,6 +1702,9 @@ function ws_api_routes()
                 array('name' => 'multiple', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'When the new poll closes by itself, at least a minute from now. Left out, it stays open until it is closed.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The picture\'s name with its extension. Required with content_base64; a form part\'s own file name is used when it is left out.'),
+                array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'A new picture for the new question, base64 encoded, in a JSON body; or send it as a form part named file. Left out, the old question\'s picture is carried over.'),
+                array('name' => 'remove_picture', 'in' => 'body', 'type' => 'bool', 'description' => 'true asks the new question without the old one\'s picture.'),
             ),
         ),
 
@@ -1856,7 +2002,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_tasks_list',
             'returns'     => array('list' => 'WorkspaceTask'),
             'summary'     => 'List tasks',
-            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed, delegate to find the tasks handed to an assistant (any, or ai or claude) or to none.',
+            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed, delegate to find the tasks handed to an assistant (any, or ai or claude) or to none. Agent channels\' tasks (agent_channel on GET /workspace/channels) are left out unless agent_channels says include or only, or channel_id names the channel; scope mine keeps a task assigned to the owner whatever its channel.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('mine', 'created', 'department', 'channel', 'all'), 'default' => 'mine'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all', 'todo', 'doing', 'waiting', 'done', 'cancelled'), 'default' => 'open'),
@@ -1866,6 +2012,7 @@ function ws_api_routes()
                 array('name' => 'ref_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
                 array('name' => 'delegate', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Handed to an assistant: any, none, ai, claude, or mcp:<server id> for an MCP server\'s alias.'),
+                array('name' => 'agent_channels', 'in' => 'query', 'type' => 'enum', 'values' => array('include', 'only'), 'description' => 'include adds the tasks of agent channels; only lists theirs alone.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 100),
             ),
         ),
@@ -1876,9 +2023,9 @@ function ws_api_routes()
             'path'        => '/workspace/tasks/{id}',
             'scope'       => 'tasks:read',
             'handler'     => 'ws_api_tasks_get',
-            'returns'     => 'WorkspaceTask',
+            'returns'     => 'WorkspaceTaskDetail',
             'summary'     => 'One task',
-            'description' => 'delegate is the assistant the task was handed to (ai or claude; the people on it stay responsible), assistant_working the one on a run on it now, and waiting_changes how many changes the assistants proposed on it wait to be applied or set aside.',
+            'description' => 'delegate is the assistant the task was handed to (ai or claude; the people on it stay responsible), assistant_working the one on a run on it now, and waiting_changes how many changes the assistants proposed on it wait to be applied or set aside. links draws the tasks it waits for (blocked_by) and those waiting for it (blocks) with their number, status and open mark; title is empty for a task the owner cannot see, status for one that no longer exists. links is null on a site whose links table is not there yet.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -2057,7 +2204,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceTaskTime',
             'summary'      => 'Delete an entry of time',
-            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/tasks/{id}/time/{entry_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.tasks.time.delete_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/tasks/{id}/time/{entry_id}/delete',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_task_time_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceTaskTime',
+            'summary'      => 'Delete an entry of time, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/tasks/{id}/time/{entry_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -2183,13 +2346,14 @@ function ws_api_routes()
             'path'        => '/workspace/plan',
             'scope'       => 'tasks:read',
             'handler'     => 'ws_api_plan_get',
-            'returns'     => array('list' => 'WorkspacePlanRow'),
+            'returns'     => array('list' => 'WorkspacePlanRow', 'agent_channels' => 'integer'),
             'summary'     => 'The planning board',
-            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. A day lists its task ids (tasks) and the task entries the board draws (task_items: the day\'s share of minutes; due on the last day of the task\'s window; upcoming for a projected copy of a repeating task, under the series task\'s id, with its repeat label, the day it was moved from and the task number it waits for while the newest copy is overdue), and the plan items placed on it (events: meetings, leave, holidays and others with their minutes that day). A row counts the person\'s open tasks with neither a start nor a due date (unscheduled). Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise.',
+            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. A day lists its task ids (tasks) and the task entries the board draws (task_items: the day\'s share of minutes; due on the last day of the task\'s window; upcoming for a projected copy of a repeating task, under the series task\'s id, with its repeat label, the day it was moved from and the task number it waits for while the newest copy is overdue), and the plan items placed on it (events: meetings, leave, holidays and others with their minutes that day). A row counts the person\'s open tasks with neither a start nor a due date (unscheduled). Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise. Agent channels\' tasks (agent_channel on GET /workspace/channels) are left out unless agent_channels says include or only; agent_channels beside data counts the agent channels the owner may read.',
             'params'      => array(
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Monday of this week when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
                 array('name' => 'department_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+                array('name' => 'agent_channels', 'in' => 'query', 'type' => 'enum', 'values' => array('include', 'only'), 'description' => 'include counts the tasks of agent channels too; only counts theirs alone.'),
             ),
         ),
 
@@ -2336,7 +2500,7 @@ function ws_api_routes()
             'returns'     => array('list' => 'WorkspaceCommand'),
             'mcp'         => false,
             'summary'     => 'List the channel commands',
-            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, kinds, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock, /create and /product without the product rights, /claude and /ai until they are set up. After the built-in ones come the commands applications registered (POST /workspace/commands) whose key works and holds workspace:commands: their app_id and app name the application, their key is app:<name>, they take free text and have no live line; app_id is 0 and app null for a built-in command. Nothing is run here: what a command does has its own endpoint.',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, kinds, healths, notify, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock, /create and /product without the product rights, /claude and /ai until they are set up. After the built-in ones come the commands applications registered (POST /workspace/commands) whose key works and holds workspace:commands: their app_id and app name the application, their key is app:<name>, they take free text and have no live line; app_id is 0 and app null for a built-in command. shadowed true marks a command of an application whose name a built-in command took later: it is kept but never offered, and the built-in one runs. Nothing is run here: what a command does has its own endpoint.',
             'params'      => array(),
         ),
 
@@ -2401,7 +2565,7 @@ function ws_api_routes()
             'returns'     => array('command' => 'object'),
             'mcp'         => false,
             'summary'     => 'Run a channel command',
-            'description' => 'Runs a / command typed into a channel, as the panel\'s writing box runs it, for a chat client that offers the same commands. The contract is what the web composer accepts: the commands, their words and the shape of command may change between releases; an integration that wants a stable contract calls the typed endpoints (tasks, plan items, scheduled messages, changes). Only the person\'s own team devices session (POST /auth/login) runs one (403 otherwise), in a channel they may post in. /claude and /ai become the assistant\'s tag first, as in the panel, and so are messages: a text that is not a command is refused with 400 not_a_command and never posted. command is what the panel receives: type preview (a /task shown back: send it again with confirm true; force true hands it over despite a clash with somebody\'s leave; assignees replaces the people), record_preview (/price, /stock: send again with confirm true and from, the value the preview showed), create_preview (/product, /create: confirm true, on_sale true to put it on sale), poll_form (a question with fewer than two options), done (written; message_id, task_id or record when there is one), ephemeral (an answer only the person sees, as html) or error (nothing written; error says why). decision true keeps a record change in the channel as a decision; parent_id is the message a command answers. Each right is checked inside the run as in the chat. A dry run writes nothing: its detail names the command and, for the commands shown back before they write (/task, /price, /stock, /product, /create, a /poll without its options), preview is the answer the unconfirmed run gives; for the others preview is null.',
+            'description' => 'Runs a / command typed into a channel, as the panel\'s writing box runs it, for a chat client that offers the same commands. The contract is what the web composer accepts: the commands, their words and the shape of command may change between releases; an integration that wants a stable contract calls the typed endpoints (tasks, plan items, scheduled messages, changes). Only the person\'s own team devices session (POST /auth/login) runs one (403 otherwise), in a channel they may post in. /claude and /ai become the assistant\'s tag first, as in the panel, and so are messages: a text that is not a command is refused with 400 not_a_command and never posted. command is what the panel receives: type preview (a /task shown back: send it again with confirm true; force true hands it over despite a clash with somebody\'s leave; assignees replaces the people), record_preview (/price, /stock, /tracking: send again with confirm true and from, the value the preview showed), create_preview (/product, /create: confirm true, on_sale true to put it on sale), poll_form (a question with fewer than two options), plan_form (a /remind without a time: fill holds the values the New plan form opens with), done (written; message_id, task_id or record when there is one), ephemeral (an answer only the person sees, as html) or error (nothing written; error says why). decision true keeps a record change in the channel as a decision; parent_id is the message a command answers. Each right is checked inside the run as in the chat. A dry run writes nothing: its detail names the command and, for the commands shown back before they write (/task, /price, /stock, /tracking, /product, /create, a /poll without its options, a /remind without a time), preview is the answer the unconfirmed run gives; for the others preview is null.',
             'params'      => array(
                 array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The channel the command is typed into.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The line as typed, starting with its / command.'),
@@ -2983,6 +3147,10 @@ function ws_api_routes()
     // conversation and its export (api_channel_reads.php).
     $routes = array_merge($routes, ws_channel_read_api_routes());
 
+    // A person's own quiet hours, set from their team devices session
+    // (api_quiet_hours.php).
+    $routes = array_merge($routes, ws_quiet_hours_api_routes());
+
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
     // (api_wtables.php), e-mail conversations (api_mail.php) and drafts (api_mail_drafts.php), saved
@@ -2995,6 +3163,7 @@ function ws_api_routes()
     // parts (api_canvases.php), a person's card (api_person_card.php) and the
     // files in a message (api_message_files.php), concluding a discussion
     // and closing an approval request (api_thread_close.php), and who reads
-    // a channel and the versions of its conversation (api_channel_access.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes());
+    // a channel and the versions of its conversation (api_channel_access.php), and
+    // the caller's own meeting link (api_meeting_link.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes(), ws_meeting_link_api_routes());
 }

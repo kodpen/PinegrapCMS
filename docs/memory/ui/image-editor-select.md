@@ -1,6 +1,6 @@
 ---
 name: image-editor-select
-description: How the Design Canvas's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
+description: How the Design Canvas picks layers: Select's click, Shift, box, Select all, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 ---
 
 ## How are several layers selected?
@@ -11,5 +11,18 @@ description: How the Design Canvas's Select tool picks layers: a click, Shift, a
 ## Why does a press inside an outline shape take it?
 - A closed shape or path without a fill was hit only on its line, so shapes drawn with Draw (no fill by default) were hard to select, one by one or several. A press inside one takes it where no other layer lies: a second `M.hitLayer()` pass tests `M.insideRings()` on `M.layerRings()` (#6613).
 
+## How is a layer selected from another tool?
+- Ctrl held (Cmd on a Mac, where Ctrl and a click is the context menu) makes a press Select's press in every tool: it selects, Shift adds, a drag moves or draws the box; the tool and its panel stay (`M.pressSelects()`, `Editor.selectPresses`, `pressOn()` in `pg_image_editor.js`; #9965).
+- Refused, the press staying the tool's: cropping, typing a text, placing a path (Pen) or a polygon (Select area), editing a path's points, recording a move.
+- While the key is held a tool that does not show the selection draws its box and handles (`selectShown()`). The stage has no cursor per tool, so the pointer is already Select's arrow.
+- The Layers list selects in every tool and the tool stays; before, a tool outside `Editor.selectTools` became Select.
+
+## What does a plain click on a layer do in each tool?
+- Select, Sticker, Warp, Free deformation (off its pins and outline): Select's press. Draw and Redact: a click selects, a drag draws. Text: a text or any other layer is selected (the panel then has nothing to set for a non-text); an empty spot or the picture starts a new text (#9965).
+- Pen, Scissors, Shape builder, Select area: a click is the tool's own work (a point, a cut, a union, a shape); Ctrl or Cmd selects there. Crop, Adjust, Frame, Canvas, Export: a plain click does nothing.
+- Animate: a click on a layer where it shows at the playhead selects it (Shift adds) and keeps the playhead, so the panel shows its motion at that moment; a drag past 3 px drops the playhead and moves the layer at rest. A handle or an empty spot edits at rest; the keyframe press and Record keep their rules (`motionDown()`; `image-editor-keyframes.md`; #9965).
+- How it is checked: `tests/image_editor_select_press_test.php` (the pure rule per tool and state, and presses through `onDown` on an editor under Node).
+
 ## Where is the selection used?
-- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; on a small screen Duplicate and Delete in the selection bar: `image-editor-actions.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
+- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
+- The selection bar (`image-editor-actions.md`): over the selected object on the desktop wherever the box shows, so also while Ctrl or Cmd is held in another tool; at the stage's foot on a small screen.

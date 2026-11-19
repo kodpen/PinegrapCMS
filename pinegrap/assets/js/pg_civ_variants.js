@@ -346,6 +346,50 @@
             //    "ordered together" patterns), so a fresh lookup is needed.
             //    The server draws the widget's part for it.
             refreshCrossSell(p.id);
+
+            // 6. The "Quantity prices" box: each variant has breaks of its
+            //    own, worked out on its own price.
+            refreshQuantityPrices(p.id);
+        }
+
+        /**
+         * Redraw the "Quantity prices" box for a new product: the server
+         * draws the widget's box (its design's own elements) with the
+         * variant's breaks, and it takes the place of the FIRST
+         * `[data-pg-civ-qty-prices]` element in the form scope. No break
+         * for the variant: the box is hidden until a variant has one.
+         */
+        function refreshQuantityPrices(productId) {
+            if (!data.api_url || !data.widget_id || !productId || !form) return;
+            if (!form.querySelector('[data-pg-civ-qty-prices]')) return;
+            fetch(apiUrl(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'get_quantity_prices_for_product',
+                    product: { id: parseInt(productId, 10) },
+                    widget_id: parseInt(data.widget_id, 10)
+                }),
+                credentials: 'same-origin'
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (json) {
+                    // A newer variant was picked while this was in flight.
+                    if (String(productId) !== currentPid) return;
+                    if (!json || json.status !== 'success' || typeof json.html !== 'string') return;
+                    var box = form.querySelector('[data-pg-civ-qty-prices]');
+                    if (!box) return;
+                    var holder = document.createElement('div');
+                    holder.innerHTML = json.html;
+                    var part = holder.querySelector('[data-pg-civ-qty-prices]');
+                    if (part && box.parentNode) {
+                        box.parentNode.replaceChild(part, box);
+                    } else if (json.html === '') {
+                        box.hidden = true;
+                        box.setAttribute('data-pg-empty-wait', '');
+                    }
+                })
+                .catch(function () { /* leave the box as it is */ });
         }
 
         /**
@@ -580,13 +624,16 @@
      * (pg_sw_hide_empty_fields()): the value is the first .pg-field-value
      * inside, else the whole inside. The innermost first, so a box whose
      * rows all emptied goes with them. One a variant flag shows or hides
-     * stays the flag's.
+     * stays the flag's, the "Quantity prices" box refreshQuantityPrices()'s.
      */
     function settleEmptyBoxes(scope) {
         var boxes = scope.querySelectorAll('.pg-hide-if-empty');
         for (var i = boxes.length - 1; i >= 0; i--) {
             var el = boxes[i];
             if (el.hasAttribute('data-pg-variant-flag')) continue;
+            // The "Quantity prices" box is refreshQuantityPrices()'s: it
+            // still holds the breaks of the variant before.
+            if (el.hasAttribute('data-pg-civ-qty-prices')) continue;
             if (!el.hasAttribute('data-pg-empty-wait') && !el.hasAttribute('data-pg-bind') && !el.querySelector('[data-pg-bind]')) continue;
             var value = (el.tagName === 'IMG') ? el : (el.querySelector('.pg-field-value') || el);
             el.hidden = !showsSomething(value);

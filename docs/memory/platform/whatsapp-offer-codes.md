@@ -10,7 +10,7 @@ module: whatsapp_offer
 
 ## Where does the code go in a design?
 - Where the chip "Offer code" (`pg_whatsapp_offer_label()`, a preset of Add variable) sits; `pg_whatsapp_design_posted()` takes its number, so moving chips keeps it right.
-- A copy-code button (kind Copy code: no text, a sample code of at most 20 letters and digits, one per template) carries it too. The check refuses a copy-code button without an offer, an offer with nowhere to go, a variable the body lost, and an offer on a type other than Marketing.
+- A copy-code button (kind Copy code: no text, a sample code of at most 20 letters and digits, one per template) carries it too. The check refuses a copy-code button without an offer, an offer with nowhere to go, a variable the body lost, and an offer on a type other than Marketing. The designer marks "nowhere to go" under the offer's choice.
 
 ## How is the code filled at the send?
 - The senders never choose it: `pg_whatsapp_message_slots($components, $offer)` leaves the offer's places out (so the flow box's v1… and the cards' lists are unchanged) and `pg_whatsapp_message_components()` puts `PG_WHATSAPP_OFFER_PLACEHOLDER` there (body text, or a button of sub_type `COPY_CODE` with a `coupon_code` parameter, as Meta's send reads it). A copy-code button without an offer stays unsupported.

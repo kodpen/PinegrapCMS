@@ -40,7 +40,7 @@ var PgDesignerPublish = (function () {
     // The keys checked when the sheet opens: every draft (a page waiting
     // for its publish time keeps waiting unless checked by hand) and every
     // page on the site that changed. A row is
-    // { key, name, state: 'draft'|'scheduled'|'live'|'held', changed,
+    // { key, name, state: 'draft'|'scheduled'|'live'|'held', label, note, changed,
     //   locked, home, active }.
     function defaults(rows) {
         return (rows || []).filter(function (r) {
@@ -121,7 +121,10 @@ var PgDesignerPublish = (function () {
         if (r.active) name.classList.add('fw-semibold');
         var state = document.createElement('span');
         state.className = 'badge sd-publish-state sd-publish-state-' + r.state;
-        state.textContent = text('state-' + r.state);
+        // A held row may bring its own words (a release bundle's draft names
+        // the bundle); otherwise the state's text from the markup.
+        state.textContent = r.label || text('state-' + r.state);
+        if (r.note) { state.title = r.note; item.title = r.note; }
         item.appendChild(box);
         item.appendChild(name);
         if (r.changed) {

@@ -9,6 +9,7 @@
  *
  * Usage:  php tools/ws_poll.php ask [--channel=ID] [--idempotency-key=K]
  *                               [--recommend] [--other[=LABEL]] [--multiple]
+ *                               [--file=PATH]
  *                               "question" "option 1" "option 2" [...]
  *         php tools/ws_poll.php again POLL_ID [--recommend] [--other[=LABEL]]
  *                               [--multiple] "question" "option 1" [...]
@@ -25,13 +26,18 @@
  *         a message that is not a picture there stops it (exit 1).
  *         A question about a picture, a file or an earlier message names
  *         it with <#message:N> in its text, which the person opens.
+ *         --file=PATH sends one picture of the question's own with it
+ *         (content_base64 and name): an image (JPG, PNG, GIF, WebP, AVIF or
+ *         BMP) the question's message carries. A file that is missing or
+ *         cannot be read stops the tool with exit 1 before any call.
  *         --recommend marks the first option Recommended; --other adds the
  *         "Other" row the person answers in their own words (LABEL, else
  *         "Other"); --multiple takes several answers. Voters are named.
  *         Prints "<message id> <poll id>".
  *         again: the same body for a poll asked again
  *         (POST /workspace/polls/{id}/again); an open one is taken back by
- *         it. A picture needs the poll's channel (PG_WS_CHANNEL or
+ *         it. The old question's picture goes with it unless --file sends
+ *         a new one. A picture needs the poll's channel (PG_WS_CHANNEL or
  *         --channel). Prints "<message id> <poll id>" of the new poll.
  *         withdraw: takes back a poll this application asked
  *         (POST /workspace/polls/{id}/withdraw). Prints the poll's message id.
@@ -99,13 +105,16 @@ function ws_poll_command($rest)
 function ws_poll_usage()
 {
 	return "Usage: php tools/ws_poll.php ask [--channel=ID] [--idempotency-key=K] [--recommend]\n"
-		. "                                [--other[=LABEL]] [--multiple] \"question\" \"option\" \"option\" [...]\n"
+		. "                                [--other[=LABEL]] [--multiple] [--file=PATH] \"question\" \"option\" \"option\" [...]\n"
 		. "       php tools/ws_poll.php again POLL_ID [same flags] \"question\" \"option\" \"option\" [...]\n"
 		. "       php tools/ws_poll.php withdraw POLL_ID\n"
 		. "       php tools/ws_poll.php close POLL_ID\n"
 		. "An option: \"label\", \"label :: description\", \"label :: #N\" or \"label :: description :: #N\",\n"
 		. "where N is the message number of a picture posted in the poll's channel; it shows in the\n"
 		. "option's own box (again with a picture needs PG_WS_CHANNEL or --channel).\n"
+		. "--file=PATH sends a picture of the question's own with it (JPG, PNG, GIF, WebP, AVIF or BMP);\n"
+		. "a missing or unreadable file stops with exit 1 before any call. Asked again, the old\n"
+		. "question's picture goes with it unless --file sends a new one.\n"
 		. "A question about a picture, a file or an earlier message names it with <#message:N> in its\n"
 		. "text; the person opens that message from the tag.\n";
 }
@@ -235,6 +244,31 @@ function ws_poll_picture_file_id($json, $message_id)
 }
 
 /**
+ * The question's own picture --file=PATH names, read for the request: its
+ * name and its bytes base64 encoded, or an error line when the file is
+ * missing, is no file or cannot be read.
+ *
+ * @param string $path
+ * @return array{name: string, content_base64: string, error: string}
+ */
+function ws_poll_file_read($path)
+{
+	$path = (string) $path;
+
+	if ($path === '' || !is_file($path)) {
+		return array('name' => '', 'content_base64' => '', 'error' => 'no file at ' . ($path === '' ? '(empty --file)' : $path));
+	}
+
+	$bytes = is_readable($path) ? @file_get_contents($path) : false;
+
+	if ($bytes === false) {
+		return array('name' => '', 'content_base64' => '', 'error' => 'cannot read ' . $path);
+	}
+
+	return array('name' => basename($path), 'content_base64' => base64_encode($bytes), 'error' => '');
+}
+
+/**
  * The request body of an ask (and of an ask-again), or an error line.
  * Options are trimmed, blank and repeated labels left out, the order kept.
  * An option stays a plain text unless it carries a description or the
@@ -244,7 +278,8 @@ function ws_poll_picture_file_id($json, $message_id)
  * @param string $question
  * @param string[] $options
  * @param array<string,mixed> $flags recommend, other (true or a label),
- *        multiple, pictures (message number => file id)
+ *        multiple, pictures (message number => file id), file (the
+ *        question's own picture: name and content_base64)
  * @return array{body: array|null, error: string}
  */
 function ws_poll_ask_body($question, $options, $flags = array())
@@ -337,6 +372,11 @@ function ws_poll_ask_body($question, $options, $flags = array())
 		$body['multiple'] = true;
 	}
 
+	if (isset($flags['file']['content_base64']) && $flags['file']['content_base64'] !== '') {
+		$body['name'] = (string) $flags['file']['name'];
+		$body['content_base64'] = (string) $flags['file']['content_base64'];
+	}
+
 	return array('body' => $body, 'error' => '');
 }
 
@@ -389,6 +429,19 @@ function ws_poll_main($argv)
 	$pictures = ws_poll_picture_messages($choices);
 	$flags = ws_poll_flags($options);
 	$flags['pictures'] = $pictures ? array_combine($pictures, $pictures) : array();
+
+	// The question's own picture is read before any call: a file that is
+	// missing or cannot be read stops here (exit 1), nothing asked.
+	if (isset($options['file']) && ($command === 'ask' || $command === 'again')) {
+		$file = ws_poll_file_read(is_string($options['file']) ? $options['file'] : '');
+
+		if ($file['error'] !== '') {
+			fwrite(STDERR, 'ws_poll: ' . $file['error'] . "\n");
+			return WS_CLIENT_EXIT_HTTP;
+		}
+
+		$flags['file'] = $file;
+	}
 
 	if ($command === 'ask') {
 		$built = ws_poll_ask_body($question, $choices, $flags);

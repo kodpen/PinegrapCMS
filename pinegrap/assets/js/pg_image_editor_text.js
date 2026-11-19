@@ -494,8 +494,10 @@
 
     // ---- the tool ----
 
-    // A press with the Text tool: a handle or a text moves and sizes it as
-    // Select does; elsewhere a new text starts. A press while typing only
+    // A press with the Text tool: a handle or a layer selects, moves and
+    // sizes it as Select does (a layer that is not a text leaves the panel
+    // with nothing to set); an empty spot or the picture (its erased and
+    // adjusted areas included) starts a new text. A press while typing only
     // ends the typing.
     Editor.prototype.textDown = function (e) {
         if (this.textEdit) {
@@ -504,9 +506,13 @@
         }
 
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
-        var hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k);
+        var hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q, slack) {
+            var type = Editor.layerTypes[l.type] || {};
 
-        if (h || (hit && (hit.type === 'text'))) {
+            return !type.fixed && ((l.type === 'text') || !type.hit || type.hit(l, q, slack));
+        });
+
+        if (h || hit) {
             this.startDrag(e);
             return;
         }

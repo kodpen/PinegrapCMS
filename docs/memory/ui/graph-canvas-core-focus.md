@@ -5,7 +5,7 @@ module: graph_canvas
 ---
 
 ## What is it?
-- Optional parts of `create()` in `assets/js/pg_graph_canvas.js` for a canvas where one box at a time shows its arrows, added for the Prototype view (`plans/prototype-canvas.md`, F10-F12). Nothing in them means page or link.
+- Optional parts of `create()` in `assets/js/pg_graph_canvas.js` for a canvas where one box at a time shows its arrows, added for the Prototype view (designer/prototype-focus.md). Nothing in them means page or link.
 - Without `adapter.focus` every arrow is drawn as before and `focus()` does nothing: Flows passes none (its harness 40 of 40, with and without `--min`).
 
 ## Which classes does a focus give?
@@ -21,5 +21,6 @@ module: graph_canvas
 
 ## How does a press focus, and what is announced?
 - A press on a box the adapter leaves to the core selects it as before and puts it in focus; a click on the empty canvas (a pan that did not move, ending in pointerup) takes the focus away; a pan keeps it. An adapter that takes the press itself (`press()` sets a kind) decides on its own.
+- `adapter.focusChanged(id)` (optional) is told each change of focus (null for none), from `focus()` or a press; the same id again tells nothing. The Prototype view redraws its row marks and notes from it.
 - A box put in focus is announced through `announce()`: `pgc_focus` "{var:1}: {var:2} arrows out, {var:3} in", the name from `adapter.label(item)`, else the box's `aria-label`, else its id.
 - Tests: `test_graph_canvas_focus` (class sets for a fixture of four boxes, a target and five arrows; faint order; a press; a click on the empty canvas; headings), `test_graph_canvas_css_on_pgc_tokens` (14 class names, each with a rule).

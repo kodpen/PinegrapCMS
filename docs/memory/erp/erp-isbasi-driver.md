@@ -22,7 +22,9 @@ description: Logo İşbaşı e-document driver (edoc/isbasi.php): source documen
 - Every call goes through `erp_edoc_isbasi_request($method, $path, $body, $context)`; `context`: doc_type/doc_id for the log, and `content_type` / `accept` overrides (e-document endpoints want `application/json-patch+json` + `text/plain`).
 - Success envelope `erp_edoc_isbasi_ok`: 2xx + `isError` false + `code` ∈ {0, 200}. The one exception is the hand-over to GİB (erp-isbasi-invoice-payload.md).
 
-## What can the test environment not show?
-- Its GİB simulation lists every real VKN as an e-Invoice user, so a VKN buyer always gets an e-Fatura. e-Arşiv is reached only with the final-consumer number, and the test tenant never processes it ("HENÜZ İŞLENMEDİ"), so e-Arşiv cancel cannot be tried there. The tenant is shared with other integrators, whose later-dated documents can trip the date order.
+## What can the test environment show?
+- Since 2026-11-17 it tells a taxpayer from a non-taxpayer: `gibUser` answers 200 with `pkList` `null` for a number that is no e-Invoice user, and that buyer gets an e-Arşiv (series SBX; internet sale INX) that is signed and can be cancelled on the panel. Before, every VKN was listed as an e-Invoice user and e-Arşiv stayed "HENÜZ İŞLENMEDİ".
+- The tenant is shared with other integrators: their later-dated documents can trip the date order, and an e-Fatura may come back "Hatalı (Sistemdeki kesinti s…)" when the test GİB side is down (seen on other integrators' documents too, 2026-11-17).
+- A sales return cannot be saved there (erp-isbasi-sales-return.md). Findings per date: `docs/_isbasi_api_notlari.md`.
 
 Related: docs/memory/erp/erp-isbasi-invoice-payload.md

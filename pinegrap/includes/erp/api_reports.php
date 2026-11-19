@@ -164,8 +164,8 @@ function erp_api_profit_report_present($report, $limit)
 function erp_api_profit_report_schema()
 {
     return array(
-        'from' => 'string',
-        'to' => 'string',
+        'from' => 'date',
+        'to' => 'date',
         'currency' => 'string',
         'totals' => erp_api_profit_figures_schema(),
         'months' => array(array_merge(array('month' => 'string'), erp_api_profit_figures_schema())),
@@ -306,8 +306,8 @@ function erp_api_cashflow_report_present($options, $report, $tills, $methods)
 function erp_api_cashflow_report_schema()
 {
     return array(
-        'from' => 'string',
-        'to' => 'string',
+        'from' => 'date',
+        'to' => 'date',
         'group' => 'string',
         'cash_account_id' => 'integer?',
         'currency' => 'string',
@@ -320,8 +320,8 @@ function erp_api_cashflow_report_schema()
         'foreign_tills' => 'integer',
         'rows' => array(array(
             'key' => 'string',
-            'start' => 'string',
-            'end' => 'string',
+            'start' => 'date',
+            'end' => 'date',
             'in' => 'integer',
             'out' => 'integer',
             'net' => 'integer',
@@ -491,7 +491,7 @@ function erp_api_cash_forecast_present($forecast, $limit)
 function erp_api_cash_forecast_schema()
 {
     return array(
-        'as_of' => 'string',
+        'as_of' => 'date',
         'horizon' => 'integer',
         'currency' => 'string',
         'cash' => 'integer',
@@ -501,8 +501,8 @@ function erp_api_cash_forecast_schema()
         'position' => 'integer',
         'columns' => array(array(
             'key' => 'string',
-            'start' => 'string?',
-            'end' => 'string',
+            'start' => 'date?',
+            'end' => 'date',
             'in' => 'integer',
             'out' => 'integer',
             'net' => 'integer',
@@ -517,7 +517,7 @@ function erp_api_cash_forecast_schema()
         'items' => array(array(
             'kind' => 'string',
             'direction' => 'string',
-            'date' => 'string',
+            'date' => 'date',
             'column' => 'string',
             'amount' => 'integer',
             'title' => 'string',
@@ -591,14 +591,14 @@ function erp_api_late_fee_schema()
         'currency' => 'string',
         'rate' => 'number',
         'tax_rate' => 'number?',
-        'from' => 'string',
-        'to' => 'string',
-        'charged_through' => 'string?',
+        'from' => 'date',
+        'to' => 'date',
+        'charged_through' => 'date?',
         'total' => 'integer',
         'lines' => array(array(
             'invoice_id' => 'integer',
             'number' => 'string',
-            'due_date' => 'string',
+            'due_date' => 'date',
             'days' => 'integer',
             'average' => 'integer',
             'fee' => 'integer',
@@ -871,13 +871,13 @@ function erp_api_dashboard_present($data)
 function erp_api_dashboard_schema()
 {
     return array(
-        'as_of' => 'string',
+        'as_of' => 'date',
         'currency' => 'string',
         'receivables' => erp_api_dashboard_side_schema(),
         'payables' => erp_api_dashboard_side_schema(),
         'month' => array(
-            'from' => 'string',
-            'to' => 'string',
+            'from' => 'date',
+            'to' => 'date',
             'revenue' => 'integer',
             'gross' => 'integer',
             'net' => 'integer',

@@ -37,6 +37,43 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Clicks and scrolling: through the switch's one saver
+    // (includes/fn/page_clicks.php), only when its card was on the form.
+    if (array_key_exists('page_clicks_card', $_POST) && function_exists('pg_page_clicks_switch_save')) {
+        pg_page_clicks_switch_save((bool) post_value('page_clicks_on'));
+    }
+
+    // Courses: one config_text row, '1' on, removed when off, only when its
+    // card was on the form.
+    if (array_key_exists('courses_card', $_POST) && function_exists('pg_course_switch_save')) {
+        pg_course_switch_save((bool) post_value('courses_on'));
+    }
+
+    // Visitor notifications: through the switch's one saver
+    // (includes/fn/site_push.php), only when its card was on the form.
+    if (array_key_exists('site_push_card', $_POST) && function_exists('pg_site_push_switch_save')) {
+        pg_site_push_switch_save((bool) post_value('site_push_on'));
+    }
+
+    // Content changes that wait for approval: one config_text row. A form
+    // without the channel field (the Workspace off) keeps the stored channel.
+    // Only a designer or an administrator sets it (pg_content_proposals_may_set()).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    if (array_key_exists('content_approval_card', $_POST) && pg_content_proposals_may_set($user)) {
+
+        if (pg_content_proposals_ready()) {
+            $content_approval_was = pg_content_proposals_settings(true);
+            // A channel the card does not offer keeps the stored one.
+            $content_approval_channel = (array_key_exists('content_approval_channel', $_POST)
+                    && pg_content_proposals_channel_offered((int) post_value('content_approval_channel')))
+                ? (int) post_value('content_approval_channel')
+                : $content_approval_was['channel_id'];
+            pg_config_text_save(PG_CONTENT_PROPOSALS_SETTING,
+                pg_content_proposals_settings_encode((bool) post_value('content_approval_on'), $content_approval_channel));
+            pg_content_proposals_settings(true);
+        }
+    }
+
     // ── Performance monitoring ───────────────────────────────────────────
     //
     // Switching it off discards what was collected. Keeping the rows would

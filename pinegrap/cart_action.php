@@ -500,9 +500,11 @@ if (isset($_POST['submit_special_offer_code']) && $oid > 0) {
 // creating the ship_to, inserting the order_item at the discounted price)
 // already lives in add_pending_offers(); we only need to route to it. Errors
 // land on $lf via mark_error and surface in the widget's message area after
-// the redirect below.
+// the redirect below. Without its own redirect: the function would otherwise
+// send the visitor to the page named by page_id, which this form does not
+// post, so the site root, and skip the offer refresh below.
 if (!empty($_POST['pending_offers']) && $oid > 0 && function_exists('add_pending_offers')) {
-    add_pending_offers($lf);
+    add_pending_offers($lf, false);
     $did_mutate = true;
 }
 

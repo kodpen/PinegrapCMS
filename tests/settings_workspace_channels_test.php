@@ -43,11 +43,12 @@ function test_settings_workspace_channels_sections_and_anchors()
 	$entry = substr($source, (int) $from, 2500);
 
 	pg_assert_contains("'pgset-ws-templates'       => lang('Channel templates'),", $entry, 'templates are a section');
-	pg_assert_contains("'pgset-ws-voice'           => lang('Voice message transcripts'),", $entry, 'voice is a section');
+	pg_assert_contains("'label' => lang('Channels'),", $entry, 'the category is named Channels');
+	pg_assert_false(strpos($entry, "'pgset-ws-voice'") !== false, 'voice is a card of Assistants and agents');
 	pg_assert_contains("'pgset-ws-github'          => lang('GitHub repositories'),", $entry, 'GitHub is a section');
 	pg_assert_contains("'ws_github' => 2,", $entry, 'the events are ws_github[events][]');
 
-	foreach (array('templates', 'voice', 'github') as $card) {
+	foreach (array('templates', 'github') as $card) {
 		pg_assert_same(array('workspace_channels', 'pgset-ws-' . $card), pg_settings_legacy_anchors()['ws-' . $card] ?? null, 'the old #ws-' . $card . ' lands on the card');
 	}
 
@@ -61,6 +62,8 @@ function test_settings_workspace_channels_sections_and_anchors()
 	pg_assert_contains("'ws_mail' => 3,", $mail, 'a route is ws_mail[id][route_match][]');
 
 	$cards = settings_workspace_channels_test_source('includes/settings/workspace_channels.php');
+	pg_assert_false(strpos($cards, 'ws_voice_settings_card(') !== false, 'the voice card is not drawn here');
+	pg_assert_false(strpos(settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php'), 'ws_voice_') !== false, 'nor saved here');
 	pg_assert_false(strpos($cards, 'ws_settings_screen_links_card(') !== false, 'no card linking the old screen');
 	pg_assert_false(function_exists('ws_settings_screen_links_card'), 'the link card is gone');
 }
@@ -133,8 +136,7 @@ function test_settings_workspace_channels_save_runs_the_buttons_after_the_save()
 {
 	$save = settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php');
 
-	pg_assert_true(strpos($save, "mark_error('ws_voice_'") < strpos($save, 'ws_voice_settings_write('), 'the voice card is checked before it is written');
-	pg_assert_true(strpos($save, 'ws_voice_settings_write(') < strpos($save, "'ws_template_archive'"), 'the buttons run after the save');
+	pg_assert_true(strpos($save, 'ws_link_preview_settings_save(') < strpos($save, "'ws_template_archive'"), 'the buttons run after the save');
 	pg_assert_contains("ws_templates_settings_post(\$ws_viewer, \$liveform, (int) \$ws_value, \$ws_archive, \$ws_warn)", $save, 'a template\'s refusal is a warning');
 	pg_assert_contains("ws_github_links_settings_post(\$ws_viewer, 'github_link_save', \$liveform, ws_github_links_settings_dialog_input(\$_POST), \$ws_warn)", $save, 'the drawer\'s fields');
 

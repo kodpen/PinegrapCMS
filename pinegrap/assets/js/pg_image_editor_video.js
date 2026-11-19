@@ -5,8 +5,10 @@
  * own MP4 and WebM readers (M.videoDemux(), the VIDEO section); its video
  * track feeds the browser's VideoDecoder (WebCodecs). A source answers
  * frameAt(ms) with the frame shown at that time: from the cache when it
- * was decoded, else decoded on from the frames already fed when it lies
- * ahead, else from the nearest key frame before it. A browser without
+ * was decoded, else decoded on from the decoder's place when it lies
+ * ahead, else from the nearest key frame before it; the decoder is kept
+ * fed past the asked frame so playing forward decodes each sample once
+ * (the model's videoFeedPlan()). A browser without
  * WebCodecs, or without a decoder for the codec (H.265 in some), gets a
  * message instead.
  *
@@ -30,14 +32,8 @@
 
     var Editor = X.Editor, M = X.M, t = X.t;
 
-    // Samples fed past the one asked for, so a decoder that reorders
-    // (B-frames) gives it out without a flush.
-    var LOOKAHEAD = 4;
-    // Decoding on from where the decoder stands is chosen over a seek
-    // while it is at most this many samples before the key frame.
-    var NEAR = 30;
-    // How long a frame fed with its lookahead may take before the decoder
-    // is flushed for it.
+    // How long a wait for a frame lasts before the source looks again at
+    // the decoder (M.videoOnWait()).
     var WAIT_MS = 250;
 
     var MESSAGES = {
@@ -59,6 +55,10 @@
 
     function supported() {
         return (typeof window.VideoDecoder === 'function') && (typeof window.EncodedVideoChunk === 'function');
+    }
+
+    function now() {
+        return (window.performance && window.performance.now) ? window.performance.now() : Date.now();
     }
 
     function bytesOf(data) {
@@ -89,9 +89,14 @@
         this.sound = !!M.videoTrack(d, 'audio');
         this.config = M.videoConfig(tr);
         this.cache = M.videoCache(M.videoCacheSize(tr.width, tr.height));
+        // The decoder's place for M.videoFeedPlan(): the sample fed next
+        // and the ones fed that have not come out yet.
+        this.ahead = M.videoFeedAhead(M.videoCacheSize(tr.width, tr.height));
+        this.next = -1;
+        this.pending = {};
+        this.lastOut = 0;
         this.byTs = {};
         this.waiters = {};
-        this.next = -1;
         this.ticket = 0;
         this.queue = Promise.resolve();
         this.closed = false;
@@ -108,12 +113,18 @@
         this.dec = new window.VideoDecoder({
             output: function (f) { self.got(f); },
             error: function () {
-                self.next = -1;
+                self.lost();
                 self.wake();
             }
         });
         this.dec.configure(this.config);
+        this.lost();
+    };
+
+    // The decoder holds nothing fed and takes a key frame next.
+    Source.prototype.lost = function () {
         this.next = -1;
+        this.pending = {};
     };
 
     // A copy of a decoded frame that holds none of the decoder's buffers:
@@ -148,6 +159,8 @@
             return;
         }
 
+        delete this.pending[i];
+        this.lastOut = now();
         this.cache.put(i, own(f));
         this.wake(i);
     };
@@ -187,49 +200,86 @@
                 duration: s[i].dur,
                 data: this.bytes.subarray(s[i].at, s[i].at + s[i].size)
             }));
+            this.pending[i] = true;
         }
 
-        this.next = to + 1;
+        if (from <= to) {
+            this.next = to + 1;
+        }
     };
 
-    // Decodes the seek point's frame unless it is cached: on from the
-    // decoder's place when that is near enough before it, else from its
-    // key frame after a reset; a flush when the lookahead was not enough.
-    Source.prototype.load = function (p) {
-        var self = this, last = this.track.samples.length - 1, start = p.from;
+    // Gives out every frame fed; the decoder takes a key frame next.
+    Source.prototype.flush = function () {
+        var self = this;
 
-        if (this.cache.has(p.frame)) {
-            return Promise.resolve();
-        }
+        this.next = -1;
+
+        return this.dec.flush().then(function () {
+            self.lost();
+        }, function () {
+            self.lost();
+        });
+    };
+
+    // Decodes the seek point's frame unless it is cached, keeping the
+    // decoder fed past it (M.videoFeedPlan()): on from the decoder's place,
+    // or from the key frame after a reset. A wait that runs out feeds on
+    // or waits again while the decoder has work (M.videoOnWait()); a flush
+    // only at the end of the stream or when the decoder gives nothing.
+    Source.prototype.load = function (p) {
+        var self = this, n = this.track.samples.length, plan, since;
 
         if (this.dec.state === 'closed') {
             this.make();
         }
 
-        if ((this.next > p.frame) && (this.next <= p.frame + LOOKAHEAD + 1)) {
-            // Fed already, still inside the decoder: wait for it.
-            start = -1;
-        } else if ((this.next >= 0) && (this.next <= p.frame) && (this.next >= p.from - NEAR)) {
-            start = this.next;
-        } else {
+        plan = M.videoFeedPlan(this, p, n, this.cache.has(p.frame));
+
+        if (plan.reset) {
             this.dec.reset();
             this.dec.configure(this.config);
+            this.lost();
         }
 
-        if (start >= 0) {
-            this.feed(start, Math.min(last, p.frame + LOOKAHEAD));
+        this.feed(plan.from, plan.to);
+
+        if (!plan.wait) {
+            return Promise.resolve();
         }
 
-        return this.wait(p.frame, WAIT_MS).then(function () {
-            if (self.cache.has(p.frame) || (self.dec.state !== 'configured')) {
-                return null;
-            }
+        if (plan.flush) {
+            return this.flush();
+        }
 
-            // After a flush the decoder takes a key frame first.
-            self.next = -1;
+        since = now();
 
-            return self.dec.flush();
-        });
+        function round() {
+            return self.wait(p.frame, WAIT_MS).then(function () {
+                var what;
+
+                if (self.cache.has(p.frame) || (self.dec.state !== 'configured') || self.closed) {
+                    return null;
+                }
+
+                what = M.videoOnWait(self, n, self.dec.decodeQueueSize || 0, now() - Math.max(self.lastOut, since));
+
+                if (what === 'flush') {
+                    return self.flush();
+                }
+
+                if (what === 'feed') {
+                    self.feed(self.next, Math.min(n - 1, self.next + self.ahead - 1));
+
+                    if (self.next >= n) {
+                        return self.flush();
+                    }
+                }
+
+                return round();
+            });
+        }
+
+        return round();
     };
 
     // The frame shown at ms, as a copy the caller closes; a request
@@ -245,7 +295,7 @@
         var job = this.queue.then(function () {
             return ((ticket === self.ticket) && !self.closed) ? self.load(p) : null;
         }).then(null, function () {
-            self.next = -1;
+            self.lost();
         }).then(function () {
             var f = self.closed ? null : self.cache.get(p.frame);
 

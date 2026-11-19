@@ -158,10 +158,11 @@ function pg_auto_dialog_count_rate_exceeded()
 
 /**
  * Whether this request may count a pop-up event: not a crawler or a script,
- * not staff (the site search rule, pg_site_search_user_countable()), and,
- * with the cookie notice on, only with statistics allowed. The dialog script
- * asks the same of the browser (software.statistics_allowed()) and does not
- * send otherwise; this is the server's own check of the same answer.
+ * not staff (the site search rule, pg_site_search_user_countable()), and
+ * not a visitor who refused statistics in the cookie notice (the one check
+ * of the anonymous counts, pg_consent_statistics_not_refused()). The dialog
+ * script asks the browser's twin (software.statistics_not_refused()) first;
+ * this is the server's own check of the same answer.
  *
  * @return bool
  */
@@ -175,7 +176,7 @@ function pg_auto_dialog_count_allowed()
         return false;
     }
 
-    return !function_exists('pg_consent_allows') || pg_consent_allows('analytics');
+    return !function_exists('pg_consent_statistics_not_refused') || pg_consent_statistics_not_refused();
 }
 
 /**

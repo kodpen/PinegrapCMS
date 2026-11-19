@@ -50,7 +50,7 @@ function pg_test_panel_exempt_names()
 		'generate_product_barcode', 'get_cross_sell_for_product',
 		'get_cross_sell_items', 'get_dashboard_brief', 'get_delivery_date',
 		'get_installment_options', 'get_notifications', 'get_product',
-		'get_product_barcodes', 'get_shipping_methods',
+		'get_product_barcodes', 'get_quantity_prices_for_product', 'get_shipping_methods',
 		'get_unselected_products', 'get_widget_data', 'get_widgets_data',
 		'offer_editor', 'product_name_check',
 		'purge_cache', 'push_config', 'push_pending', 'push_subscribe',

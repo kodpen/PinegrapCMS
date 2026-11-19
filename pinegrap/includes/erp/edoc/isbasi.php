@@ -51,6 +51,9 @@ define('ERP_EDOC_ISBASI_TEST_PANEL_URL', 'https://soho-isbasi-uiv2-test.logo-paa
 // One day per the documentation; renewed an hour early.
 define('ERP_EDOC_ISBASI_TOKEN_LIFETIME', 23 * 3600);
 
+// productDetail.itemCode is at most 50 characters (SimpleInv).
+define('ERP_EDOC_ISBASI_ITEM_CODE_LENGTH', 50);
+
 function erp_edoc_isbasi_info()
 {
     return array(
@@ -993,6 +996,48 @@ function erp_edoc_isbasi_line_discount($line)
 }
 
 /**
+ * The item code a line goes to İşbaşı with: the product's SKU, else
+ * PG-<product id>, else none (İşbaşı then opens a card under a code of its
+ * own); a line with VAT withholding adds -T<code>-<rate>.
+ *
+ * @param string $sku               products.code, '' when none
+ * @param int    $product_id        0 for a line without a product
+ * @param string $withholding_code  GİB code, '' when the line has none
+ * @param float  $withholding_rate  percentage of the VAT (4/10 = 40)
+ * @return string  At most ERP_EDOC_ISBASI_ITEM_CODE_LENGTH characters
+ */
+function erp_edoc_isbasi_item_code($sku, $product_id, $withholding_code = '', $withholding_rate = 0)
+{
+    $code = trim((string) $sku);
+
+    if (($code === '') && ((int) $product_id > 0)) {
+        $code = 'PG-' . (int) $product_id;
+    }
+
+    $withholding_code = trim((string) $withholding_code);
+
+    if (($withholding_code === '') || ((float) $withholding_rate <= 0)) {
+        return mb_substr($code, 0, ERP_EDOC_ISBASI_ITEM_CODE_LENGTH);
+    }
+
+    // İşbaşı takes a line's VAT withholding from its product card, and the
+    // card keeps what the first line that named it carried: a card opened
+    // without withholding refuses a TEVKIFAT invoice ("Tevkifat
+    // uygulanmayan faturada ... Tevkifat olamaz"), a card opened with one
+    // refuses a plain sale, and a card opened with code 624 turns a later
+    // 616 into 624 (test environment, 2026-11-17). So a line with
+    // withholding gets a card of its own, named by the code and the rate.
+    // VAT rate and exemption are read from the line and need no such card.
+    $suffix = '-T' . preg_replace('/[^0-9A-Za-z]/', '', $withholding_code) . '-' . rtrim(rtrim(number_format((float) $withholding_rate, 2, '.', ''), '0'), '.');
+
+    if ($code === '') {
+        $code = 'PG';
+    }
+
+    return mb_substr($code, 0, ERP_EDOC_ISBASI_ITEM_CODE_LENGTH - strlen($suffix)) . $suffix;
+}
+
+/**
  * The SimpleInv body for an invoice, field for field from the documentation.
  *
  * @param array $invoice  An erp_invoices row; an order's invoice also carries
@@ -1073,7 +1118,9 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
         // products.code is the SKU field (free text); İşbaşı matches its
         // own product card by itemCode, so the SKU when there is one.
         $item_code = ((int) ($line['product_id'] ?? 0) > 0) ? trim((string) db_value("SELECT code FROM products WHERE id = '" . (int) $line['product_id'] . "'")) : '';
-        $item_code = mb_substr($item_code, 0, 50);
+        $has_withholding = ((float) $line['withholding_rate'] > 0) && ((string) $line['withholding_code'] !== '');
+        $item_code = erp_edoc_isbasi_item_code($item_code, (int) ($line['product_id'] ?? 0),
+            $has_withholding ? (string) $line['withholding_code'] : '', $has_withholding ? (float) $line['withholding_rate'] : 0);
 
         $detail = array(
             'quantity' => $quantity,
@@ -1084,7 +1131,7 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
             'discountValue' => $discount['value'],
             'description' => '',
             'productDetail' => array(
-                'itemCode' => ($item_code !== '') ? $item_code : ((int) ($line['product_id'] ?? 0) > 0 ? 'PG-' . (int) $line['product_id'] : ''),
+                'itemCode' => $item_code,
                 'itemType' => ((int) ($line['product_id'] ?? 0) > 0) ? 1 : 2,
                 'name' => (string) $line['description'],
                 'vat' => (int) round((float) $line['tax_rate']),
@@ -1096,7 +1143,9 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
             $detail['vatExemptionCode'] = (string) $line['vat_exemption_code'];
         }
 
-        if (((float) $line['withholding_rate'] > 0) && ((string) $line['withholding_code'] !== '')) {
+        // Read by İşbaşı only when the item code opens a new product card:
+        // the card keeps it, so the code above names the withholding.
+        if ($has_withholding) {
             $detail['productDetail']['withholding'] = array(
                 'code' => (string) $line['withholding_code'],
                 'rateText' => erp_edoc_isbasi_rate_text((float) $line['withholding_rate']),
@@ -1143,12 +1192,12 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
 
         $egov = array(
             'invoiceTypeForEinvoice' => 3,
-            // ISO 8601, the documentation's example. Open question to Logo:
-            // İşbaşı answers "Ödeme tarihi ... zorunludur" to this field in
-            // every form tried (Y-m-d H:i:s, ISO 8601, ISO 8601 UTC with
-            // milliseconds, d.m.Y; also with the date repeated on the invoice
-            // itself), 2026-09-23.
-            'eArchivePaymentDate' => date('Y-m-d\TH:i:s', strtotime($payment_date . ' 12:00:00')),
+            // The date alone. İşbaşı reads this field only as Y-m-d and
+            // answers "Ödeme tarihi ... zorunludur" to every form with a time
+            // (Y-m-d H:i:s, ISO 8601 with or without an offset or
+            // milliseconds) and to d.m.Y (test environment, 2026-09-23 and
+            // 2026-11-17).
+            'eArchivePaymentDate' => date('Y-m-d', strtotime($payment_date . ' 12:00:00')),
             'eArchivePaymentAgent' => erp_edoc_isbasi_payment_label((string) $invoice['payment_method']),
             'website' => (string) $invoice['web_address'],
         );
@@ -1172,6 +1221,13 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
             'identifier' => $carrier_vkn,
             'firmType' => (strlen($carrier_vkn) === 11) ? 0 : 1,
         );
+
+        // A company carrier is read by its title: without one İşbaşı answers
+        // "Kurumsal firma için ünvan gereklidir." (test environment,
+        // 2026-11-17). A person goes by first name and surname.
+        if (strlen($carrier_vkn) !== 11) {
+            $payload['shipmentAgentItem']['title'] = (string) $invoice['carrier_title'];
+        }
     }
 
     // A type other than a plain sale travels as its İşbaşı number; a plain

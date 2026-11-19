@@ -23,7 +23,8 @@ module: campaign_profile_switch
 - `ws_events_start()` asks `pg_profile_flow_event_starts()`: the event's `ws_events_in.created_at`; inside ±60 s whether the profile mailed the event's person (`pg_profile_flow_event_email()`) from that second less 60 s. The pure rule is `pg_profile_flow_switch_starts()`.
 
 ## Where is the report?
-- E-mail Campaign Profiles screen: `pg_profile_flow_switch_notice()`, the panel's alert (`id="profile-flows"`); due or running: under way; done: "Profiles turned into flows on <date>" opening to two lists: the flows made, each linked to its flow, and the profiles left, each linked to its profile, as `pg_profile_flow_report_lines()` words them in the reader's language, actions by the screen's names (architect, 2026-11-14).
+- E-mail Campaign Profiles screen: `pg_profile_flow_switch_notice()`, the panel's alert (`id="profile-flows"`); due or running: under way; done: "Profiles turned into flows on <date>" opening to two lists: the flows made, each linked to its flow where the reader may open it, and the profiles left, each linked to its profile, as `pg_profile_flow_report_lines()` words them in the reader's language, actions by the screen's names (architect, 2026-11-14).
+- A user role reads only its own profiles in it: [[campaign-profile-screens-left]].
 - Also on the Automatic sends tab, where it stays once the profiles screen leaves; the screens after the switch and the reasons kept as lang() specs: [[campaign-profile-screens-left]] (MA9f).
 
 ## When do the followers go off?

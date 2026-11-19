@@ -300,6 +300,37 @@ function pg_consent_allows($category)
 }
 
 /**
+ * Whether a set of answers leaves an anonymous count of statistics standing:
+ * with the notice off always; with it on unless statistics were refused
+ * (a0, which closing the notice writes too). A visitor who has not answered
+ * yet, or whose cookie cannot be read, has refused nothing. This is no
+ * permission: a cookie or a held script asks pg_consent_allows(). Pure.
+ *
+ * @param bool  $enabled pg_consent_enabled()
+ * @param array $choices category => bool (pg_consent_parse())
+ * @return bool
+ */
+function pg_consent_statistics_not_refused_by($enabled, array $choices)
+{
+    if (!$enabled) {
+        return true;
+    }
+
+    return !(array_key_exists('analytics', $choices) && ($choices['analytics'] === false));
+}
+
+/**
+ * The one check of the anonymous counts (clicks and scroll depth, a pop-up's
+ * events): true unless this visitor refused statistics in the cookie notice.
+ *
+ * @return bool
+ */
+function pg_consent_statistics_not_refused()
+{
+    return pg_consent_statistics_not_refused_by(pg_consent_enabled(), pg_consent_choices());
+}
+
+/**
  * The Google Consent Mode v2 states for a set of answers: statistics decides
  * analytics_storage, marketing the three advertising types. A category not
  * answered yet, or refused, is denied. pg_consent.js maps an answer the same

@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(14, count($names), 'fourteen class names');
+	pg_assert_same(15, count($names), 'fifteen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -164,6 +164,16 @@ out.fitEmpty = copy(state.view);
 state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 view.fit();
 out.fit = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+var cornered = G.viewport({ ui: ui, view: function (next) { if (next) { state.view = next; } return state.view; }, items: function () { return state.nodes; }, start: function () { return state.start; } });
+state.start = { x: 100, y: 200 };
+cornered.fit();
+out.fitStartFits = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+state.nodes = [{ x: 0, y: 0 }, { x: 3000, y: 2800 }, { x: 100, y: 200 }];
+cornered.fit();
+out.fitStart = copy(state.view);
+view.fit();
+out.fitNoStart = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, state.view.k];
+state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 state.view = { x: 0, y: 0, k: 1 };
 view.reveal({ x: 100, y: 100 });
 out.revealInSight = copy(state.view);
@@ -197,6 +207,9 @@ JS
 	pg_assert_same(array(0.25, '16px 16px', '25%'), $result['zoomMin'], 'at least 25%, every fourth grid dot');
 	pg_assert_same(array('x' => 40, 'y' => 40, 'k' => 1), $result['fitEmpty'], 'an empty canvas fits at 40, 40, 100%');
 	pg_assert_same(array(48, 160.13, 0.583), $result['fit'], 'fit brings every box into sight');
+	pg_assert_same(array(48, 160.13, 0.583), $result['fitStartFits'], 'a start corner changes nothing while the whole fits');
+	pg_assert_same(array('x' => 23, 'y' => -2, 'k' => 0.25), $result['fitStart'], 'too large for the smallest zoom: the start corner 48 px in');
+	pg_assert_same(array(-1, -60, 0.25), $result['fitNoStart'], 'without a start corner the middle of the bounds');
 	pg_assert_same(array('x' => 0, 'y' => 0, 'k' => 1), $result['revealInSight'], 'a box in sight is left where it is');
 	pg_assert_same(array('x' => -1704, 'y' => 160, 'k' => 1), $result['revealOut'], 'a box out of sight comes to the middle');
 	pg_assert_same(array('x' => -150, 'y' => -100, 'k' => 2), $result['pinch'], 'a pinch zooms about its middle');
@@ -672,6 +685,7 @@ function setup(focusField) {
         target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
         groups: function () { return [{ id: 'g1', label: 'Shop', x: 0, y: -40, w: 900, kind: 'group' }, { id: 'side', label: 'Outside', x: 1200, y: -40, w: 160, kind: 'side' }]; },
         press: function () { return true; },
+        focusChanged: function (id) { heard.push(id); },
         move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
     };
     if (focusField) { adapter.focus = true; }
@@ -690,6 +704,7 @@ function setup(focusField) {
 function classesOf(map) { var o = {}; Object.keys(map).forEach(function (k) { o[k] = map[k].className; }); return o; }
 function order() { return ui.svg.children.filter(function (g) { return g.attrs['data-edge']; }).map(function (g) { return g.attrs['data-edge']; }); }
 
+var heard = [];
 var plain = setup(false);
 plain.canvas.focus('a');
 out.plain = [classesOf(plain.edges), plain.canvas.focused(), classesOf(plain.els)];
@@ -724,6 +739,7 @@ out.panned = f.canvas.focused();
 f.listeners.pointerdown({ type: 'pointerdown', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
 f.listeners.pointerup({ type: 'pointerup', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
 out.cleared = [f.canvas.focused(), classesOf(f.edges), f.els.d.className];
+out.heard = heard;
 f.canvas.groups();
 var holder = f.canvas.groups();
 out.groups = [ui.layer.children[0] === holder, ui.layer.children.filter(function (c) { return c.className === 'pgc-groups'; }).length, ui.layer.children[0].children.map(function (h) { return [h.className, h.attrs['data-group'], h.style.left, h.style.top, h.style.width, h.children[0].className, h.children[0].textContent, h.children[1].className]; }), ui.layer.children[0].attrs['aria-hidden']];
@@ -758,6 +774,7 @@ JS
 	pg_assert_same(array(array(), 'kept'), $result['same'], 'the same focus again touches no arrow and announces nothing');
 	pg_assert_same(array('pgc-edge pgc-edge-faint', true), $result['late'], 'an arrow drawn later takes its state, a faint one under the rest');
 	pg_assert_same('pgc-node pgc-dim', $result['newBox'], 'a box drawn later at neither end is dimmed');
+	pg_assert_same(array('a', 'c', 'b', null), $result['heard'], 'focusChanged() hears each change of focus once, by a call or a press, and none without the field');
 	pg_assert_same(array('b', 'pgc_focus|Box B|1|2'), $result['pressed'], 'a press on a box puts it in focus, counted with the arrow drawn later');
 	pg_assert_same('b', $result['panned'], 'a pan keeps the focus');
 	pg_assert_same(array(null, array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), 'pgc-node'), $result['cleared'], 'a click on the empty canvas takes the focus away: no arrow, nothing dimmed');
@@ -765,6 +782,51 @@ JS
 		array('pgc-group pgc-group-group', 'g1', '0px', '-40px', '900px', 'pgc-group-label', 'Shop', 'pgc-group-rule'),
 		array('pgc-group pgc-group-side', 'side', '1200px', '-40px', '160px', 'pgc-group-label', 'Outside', 'pgc-group-rule'),
 	), 'true'), $result['groups'], 'groups(): headings with a label and a rule behind the boxes, drawn again in place');
+}
+
+// A set of proposed arrows (dashed()): drawn dashed with the class and a
+// dash of their own, in place of the set drawn before; an empty list takes
+// them all away; the other arrows are left as they were.
+function test_graph_canvas_dashed_edges()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+var layer = new El('div');
+ui.layer = layer;
+ui.boxes = layer.appendChild(new El('div'));
+ui.svg = layer.appendChild(new El('svg'));
+ui.temp = ui.svg.appendChild(new El('path'));
+ui.live = new El('div');
+ui.viewport.addEventListener = function () {};
+var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 300, y: 0 }, c: { id: 'c', x: 600, y: 0 } };
+var canvas = G.create({
+    ui: ui, focus: true,
+    view: function (next) { if (next) { state.view = next; } return state.view; },
+    items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+    text: function (key) { return key; },
+    item: function (id) { return items[id] || null; },
+    editable: function () { return false; },
+    select: function () {}, press: function () { return true; },
+    move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
+});
+Object.keys(items).forEach(function (k) { ui.boxes.appendChild(canvas.box(items[k], {})); });
+canvas.edge('ab', items.a, items.b);
+canvas.focus('a');
+function drawn() { return ui.svg.children.filter(function (g) { return g.attrs && g.attrs['data-edge']; }).map(function (g) { return [g.attrs['data-edge'], g.className, g.children[0].attrs['stroke-dasharray'] || '']; }); }
+out.first = [canvas.dashed([{ id: 'x1', from: items.a, to: items.c, port: null }, { id: 'x2', from: items.a, to: null }]), drawn()];
+out.again = [canvas.dashed([{ id: 'x3', from: items.a, to: items.b }]), drawn()];
+out.none = [canvas.dashed([]), drawn()];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, array(array('ab', 'pgc-edge pgc-edge-out', ''), array('x1', 'pgc-edge pgc-edge-dashed pgc-edge-out', '6 4'))), $result['first'], 'a proposed arrow drawn dashed beside the others; one without a target left out');
+	pg_assert_same(array(1, array(array('ab', 'pgc-edge pgc-edge-out', ''), array('x3', 'pgc-edge pgc-edge-dashed pgc-edge-out', '6 4'))), $result['again'], 'a new set takes the place of the one before');
+	pg_assert_same(array(0, array(array('ab', 'pgc-edge pgc-edge-out', ''))), $result['none'], 'an empty list takes them away; the drawn arrows stay');
 }
 
 // The autosave (autosave()): a change is sent once the changes pause; a
@@ -1024,6 +1086,59 @@ JS
 	pg_assert_true($result['again'], 'the same answer for the same input');
 }
 
+// arrange() with a side column's greatest height: fifty boxes beside a grid
+// of five rows go on in further columns beside each other, each at least
+// four boxes, the column's heading over all of them and the grid right of
+// the last; a short column stays one; a number caps a column without a
+// grid; a sub-heading moves on with its first box.
+function test_graph_canvas_arrange_wraps_a_tall_side_column()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function range(prefix, n) { var list = []; for (var i = 1; i <= n; i++) { list.push(prefix + i); } return list; }
+function columns(laid, ids) { var xs = {}; ids.forEach(function (id) { xs[laid.places[id].x] = (xs[laid.places[id].x] || 0) + 1; }); return Object.keys(xs).map(Number).sort(function (a, b) { return a - b; }).map(function (x) { return [x, xs[x]]; }); }
+var pages = [{ id: 'g', items: range('p', 40) }];
+var wide = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', label: 'Shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 50) } });
+out.wide = [columns(wide, range('s', 50)), wide.places.s1, wide.places.s9, wide.places.s10, wide.places.p1, wide.headings[0], wide.bounds.h];
+var boxes = Object.keys(wide.places).map(function (id) { return wide.places[id]; });
+out.overlap = boxes.some(function (a, i) { return boxes.some(function (b, j) { return i < j && a.x === b.x && a.y === b.y; }); });
+var short = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 9) } });
+out.short = [columns(short, range('s', 9)), short.places.p1];
+var few = G.arrange([{ id: 'g', items: ['p1'] }], { w: 100, h: 100, gapX: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 10) } });
+out.few = columns(few, range('s', 10));
+var plain = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, items: range('s', 50) } });
+out.plain = columns(plain, range('s', 50));
+var capped = G.arrange([], { w: 100, gapX: 20, after: { id: 'out', h: 50, gap: 10, maxH: 230, groups: [{ id: 'a', label: 'A', items: range('a', 4) }, { id: 'b', label: 'B', items: range('b', 4) }] } });
+out.capped = [capped.places.a1, capped.places.b1, capped.headings];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$p = function ($x, $y) {
+		return array('x' => $x, 'y' => $y);
+	};
+	// Five rows of 100 with gaps of 20: the grid is 580 high; a column of
+	// boxes 50 high with gaps of 10 holds nine under its heading.
+	pg_assert_same(array(array(0, 9), array(120, 9), array(240, 9), array(360, 9), array(480, 9), array(600, 5)), $result['wide'][0], 'fifty boxes beside five rows wrap into six columns');
+	pg_assert_same(array($p(0, 40), $p(0, 520), $p(120, 40)), array_slice($result['wide'], 1, 3), 'each column starts under the heading');
+	pg_assert_same($p(740, 0), $result['wide'][4], 'the grid right of the last column');
+	pg_assert_same(array('id' => 'shared', 'label' => 'Shared', 'x' => 0, 'y' => 0, 'w' => 700, 'kind' => 'side'), $result['wide'][5], 'the heading over every column');
+	pg_assert_same(580, $result['wide'][6], 'no column below the grid');
+	pg_assert_false($result['overlap'], 'no two boxes on one place');
+	pg_assert_same(array(array(array(0, 9)), $p(140, 0)), $result['short'], 'a short column stays one');
+	pg_assert_same(array(array(0, 5), array(120, 5)), $result['few'], 'at least four boxes a column');
+	pg_assert_same(array(array(0, 50)), $result['plain'], 'without a greatest height one column');
+	pg_assert_same(array($p(0, 40), $p(120, 40)), array_slice($result['capped'], 0, 2), 'a number caps a column without a grid');
+	pg_assert_same(array(
+		array('id' => 'a', 'label' => 'A', 'x' => 0, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+		array('id' => 'b', 'label' => 'B', 'x' => 120, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+	), $result['capped'][2], 'a sub-heading moves on with its first box');
+}
+
 // check(): arrows whose end is no box, boxes no other box reaches (never
 // the start, a self-arrow not counted), boxes with no way out; an empty
 // graph has none.
@@ -1047,4 +1162,223 @@ JS
 	pg_assert_same(array('c', 'd'), $result['check']['unreached'], 'boxes no other box reaches');
 	pg_assert_same(array('c'), $result['check']['stuck'], 'a box with no way out but itself');
 	pg_assert_same(array('dangling' => array(), 'unreached' => array(), 'stuck' => array('a')), $result['alone'], 'the start is never unreached');
+}
+
+// route(): a right-angle way from a port to the nearest edge of a box,
+// through the gaps, across no box but its two ends: neighbours in a row
+// one straight line; far apart in a row under the row; to another row; out
+// of a side column, also a wrapped one (arrange() maxH) from its farthest
+// column; round a box in the way; null with no way; path() rounds the
+// turns; lanes() spreads legs sharing a gap, closer when the room is
+// short; 300 routes of a redraw in
+// under 100 ms.
+function test_graph_canvas_route()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function B(id, x, y, w, h) { return { id: id, x: x, y: y, w: w || 200, h: h || 100 }; }
+function port(b) { return { x: b.x + b.w, y: b.y + b.h / 2 }; }
+// Whether a way keeps right angles, starts at the port, ends on the
+// target's edge and enters no box but its ends past their margins.
+function clean(points, from, to, boxes) {
+    if (!points) { return 'none'; }
+    var first = points[0], last = points[points.length - 1];
+    if (first.x !== from.x || first.y !== from.y) { return 'start'; }
+    var onEdge = (last.x === to.x || last.x === to.x + to.w) && last.y >= to.y && last.y <= to.y + to.h
+        || (last.y === to.y || last.y === to.y + to.h) && last.x >= to.x && last.x <= to.x + to.w;
+    if (!onEdge) { return 'end'; }
+    for (var i = 1; i < points.length; i++) {
+        var a = points[i - 1], b = points[i];
+        if (a.x !== b.x && a.y !== b.y) { return 'angle ' + i; }
+        var lx = Math.min(a.x, b.x), hx = Math.max(a.x, b.x), ly = Math.min(a.y, b.y), hy = Math.max(a.y, b.y);
+        for (var k = 0; k < boxes.length; k++) {
+            var r = boxes[k];
+            var end = (r === to && i === points.length - 1) || (r.id === from.id && i === 1);
+            if (end) { continue; }
+            var x = (lx < hx) ? (hx > r.x && lx < r.x + r.w) : (lx > r.x && lx < r.x + r.w);
+            var y = (ly < hy) ? (hy > r.y && ly < r.y + r.h) : (ly > r.y && ly < r.y + r.h);
+            if (x && y) { return 'crosses ' + r.id; }
+        }
+    }
+    return 'ok';
+}
+function from(b) { var p = port(b); p.id = b.id; return p; }
+var row = [B('a', 0, 0), B('b', 296, 0), B('c', 592, 0), B('d', 888, 0)];
+out.neighbours = G.route(port(row[0]), row[1], row);
+var far = G.route(port(row[0]), row[3], row);
+out.far = [clean(far, from(row[0]), row[3], row), far.slice(1, -1).every(function (p) { return p.x === 200 + 16 || p.x === 888 - 16 || p.y === 116 || p.y === 50; }), far.some(function (p) { return p.y === 116; })];
+var two = row.concat([B('e', 0, 250), B('f', 296, 250)]);
+var down = G.route(port(row[2]), two[4], two);
+out.down = [clean(down, from(row[2]), two[4], two), down[down.length - 1]];
+var wall = [B('s', 0, 0), B('w', 260, -40, 80, 300), B('t', 400, 0)];
+var round = G.route(port(wall[0]), wall[2], wall);
+out.round = [clean(round, from(wall[0]), wall[2], wall), round.length > 2];
+var ring = [B('t', 500, 500, 100, 100), B('n', 480, 460, 140, 30), B('s', 480, 610, 140, 30), B('w', 460, 460, 30, 180), B('e', 610, 460, 30, 180), B('src', 0, 50, 100, 100)];
+out.noWay = G.route(port(ring[5]), ring[0], ring);
+out.budget = G.route(port(row[0]), row[3], row, { budget: 2 });
+
+// The arrangement: forty pages beside fifty shared parts, wrapped.
+function range(prefix, n) { var list = []; for (var i = 1; i <= n; i++) { list.push(prefix + i); } return list; }
+function sideTest(maxH) {
+    var laid = G.arrange([{ id: 'g', label: 'Pages', items: range('p', 40) }], { w: 248, h: 300, gapX: 96, gapY: 96, before: { id: 'shared', label: 'Shared', h: 114, gap: 96, maxH: maxH, items: range('s', 50) } });
+    var boxes = Object.keys(laid.places).map(function (id) { return { id: id, x: laid.places[id].x, y: laid.places[id].y, w: 248, h: id.charAt(0) === 's' ? 114 : 300 }; });
+    var byId = {}; boxes.forEach(function (b) { byId[b.id] = b; });
+    var parts = boxes.filter(function (b) { return b.id.charAt(0) === 's'; });
+    var farX = Math.min.apply(null, parts.map(function (b) { return b.x; }));
+    var farthest = parts.filter(function (b) { return b.x === farX; });
+    var results = [];
+    farthest.slice(0, 6).forEach(function (s, i) {
+        var to = byId['p' + (1 + i * 7)];
+        results.push(clean(G.route(from(s), to, boxes), from(s), to, boxes));
+    });
+    return [parts.filter(function (b, i, all) { return all.map(function (o) { return o.x; }).indexOf(b.x) === i; }).length, results];
+}
+out.side = sideTest(0);
+out.wrapped = sideTest('grid');
+
+// Turns rounded; the middle half-way along.
+out.path = G.path([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 103, y: 50 }], 8);
+out.straight = G.path([{ x: 0, y: 0 }, { x: 40, y: 0 }]);
+// Two ways down one gap, a third elsewhere, one with no way.
+var laneIn = [
+    [{ x: 0, y: 0 }, { x: 16, y: 0 }, { x: 16, y: 200 }, { x: 40, y: 200 }],
+    [{ x: 0, y: 50 }, { x: 16, y: 50 }, { x: 16, y: 300 }, { x: 40, y: 300 }],
+    [{ x: 0, y: 900 }, { x: 16, y: 900 }, { x: 16, y: 1000 }, { x: 40, y: 1000 }],
+    null
+];
+out.lanes = G.lanes(laneIn);
+out.lanesKept = laneIn[0][1].x;
+// Eleven ways down one gap with 12 units of room: closer than 6, none past 12.
+var many = [];
+for (var n = 0; n < 11; n++) { many.push([{ x: 0, y: n }, { x: 16, y: n }, { x: 16, y: 200 + n }, { x: 40, y: 200 + n }]); }
+out.room = G.lanes(many, 6, 12).map(function (points) { return points[1].x; });
+
+// Time: 300 routes over the arrangement of forty pages and fifty parts,
+// as a redraw routes them in a session (a first drawing of 300 others
+// before, untimed: the script engine has compiled the router by then;
+// the fastest of three batches).
+var laid = G.arrange([{ id: 'g', items: range('p', 40) }], { w: 248, h: 300, gapX: 96, gapY: 96, before: { id: 'shared', h: 114, gap: 96, maxH: 'grid', items: range('s', 50) } });
+function batch(shift) {
+    var all = Object.keys(laid.places).map(function (id) { return { id: id, x: laid.places[id].x, y: laid.places[id].y, w: 248, h: id.charAt(0) === 's' ? 114 : 300 }; });
+    var found = 0;
+    for (var k = 0; k < 300; k++) {
+        var a = all[(k * 7 + shift) % all.length];
+        var b = all[(k * 13 + 5) % all.length];
+        if (a === b) { b = all[(k + 1) % all.length]; }
+        if (G.route(port(a), b, all)) { found++; }
+    }
+    return found;
+}
+batch(3);
+var best = Infinity;
+var found = 0;
+// The best of three, so that another process on the machine does not
+// decide it.
+for (var run = 0; run < 3; run++) {
+    var started = Date.now();
+    found = batch(run);
+    best = Math.min(best, Date.now() - started);
+}
+out.time = [best, found];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('x' => 200, 'y' => 50), array('x' => 296, 'y' => 50)), $result['neighbours'], 'neighbours in a row: one straight line');
+	pg_assert_same(array('ok', true, true), $result['far'], 'far apart in a row: under the row, 16 below it');
+	pg_assert_same('ok', $result['down'][0], 'to another row: clear of every box');
+	pg_assert_same(array('x' => 200, 'y' => 300), $result['down'][1], 'it ends on the nearest edge (the right one, at its middle)');
+	pg_assert_same(array('ok', true), $result['round'], 'round a box in the way');
+	pg_assert_same(null, $result['noWay'], 'no way: null');
+	pg_assert_same(null, $result['budget'], 'no way within the budget: null');
+	pg_assert_same(array(1, array('ok', 'ok', 'ok', 'ok', 'ok', 'ok')), $result['side'], 'out of a side column: clear of every box');
+	pg_assert_true($result['wrapped'][0] > 1, 'the shared column is wrapped');
+	pg_assert_same(array('ok', 'ok', 'ok', 'ok', 'ok', 'ok'), $result['wrapped'][1], 'out of its farthest column: through the gaps, over no box of the columns between');
+	pg_assert_same(array('d' => 'M0 0 L92 0 Q100 0 100 8 L100 48.5 Q100 50 101.5 50 L103 50', 'mx' => 76.5, 'my' => 0), $result['path'], 'turns rounded, at most half of the shorter leg; the middle half-way along');
+	pg_assert_same(array('d' => 'M0 0 L40 0', 'mx' => 20, 'my' => 0), $result['straight'], 'a straight way');
+	pg_assert_same(13, $result['lanes'][0][1]['x'], 'the first of two ways down one gap moves 3 left');
+	pg_assert_same(19, $result['lanes'][1][2]['x'], 'the second 3 right');
+	pg_assert_same(array(array('x' => 0, 'y' => 0), array('x' => 40, 'y' => 200)), array($result['lanes'][0][0], $result['lanes'][0][3]), 'the legs at the ports stay');
+	pg_assert_same(16, $result['lanes'][2][1]['x'], 'a way alone in its gap stays');
+	pg_assert_same(null, $result['lanes'][3], 'no way stays none');
+	pg_assert_same(16, $result['lanesKept'], 'the ways given are not changed');
+	pg_assert_same(array(4.0, 6.4, 8.8, 11.2, 13.6, 16.0, 18.4, 20.8, 23.2, 25.6, 28.0), array_map(function ($x) { return round((float) $x, 1); }, $result['room']), 'more ways than fit 6 apart in the room are drawn closer, none past it');
+	pg_assert_same(300, $result['time'][1], 'every one of 300 routes found');
+	pg_assert_true($result['time'][0] < 100, '300 routes in under 100 ms: ' . $result['time'][0] . ' ms');
+}
+
+// create() with route 'elbow': the arrows drawn run in right angles with
+// rounded turns, a hidden one keeps the curve until it is drawn; a moved
+// box routes its arrows again; portAt() { x, y, side } starts an arrow
+// there; without route every arrow is a curve as before.
+function test_graph_canvas_elbow_arrows()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+function setup(extra) {
+    var layer = new El('div');
+    ui.layer = layer;
+    ui.boxes = layer.appendChild(new El('div'));
+    ui.svg = layer.appendChild(new El('svg'));
+    ui.temp = ui.svg.appendChild(new El('path'));
+    ui.live = new El('div');
+    ui.viewport.addEventListener = function () {};
+    ui.viewport.removeEventListener = function () {};
+    document.removeEventListener = function () {};
+    var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 304, y: 0 }, c: { id: 'c', x: 608, y: 0 }, d: { id: 'd', x: 912, y: 0 } };
+    var adapter = {
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+        text: function (key) { return key; },
+        item: function (id) { return items[id] || null; },
+        editable: function () { return false; },
+        select: function () {}
+    };
+    Object.keys(extra).forEach(function (k) { adapter[k] = extra[k]; });
+    var canvas = G.create(adapter);
+    Object.keys(items).forEach(function (k) { ui.boxes.appendChild(canvas.box(items[k], {})); });
+    var edges = {};
+    [['ad', 'a', 'd', 'p'], ['ab', 'a', 'b'], ['cb', 'c', 'b']].forEach(function (e) {
+        edges[e[0]] = canvas.edge(e[0], items[e[1]], items[e[2]], { port: e[3] }).group;
+    });
+    return { canvas: canvas, edges: edges, items: items };
+}
+function d(group) { return group.children[0].getAttribute('d'); }
+var plain = setup({});
+var elbow = setup({ route: 'elbow', focus: true, portAt: function (item, name) { return name === 'p' ? { x: 100, y: 80, side: 'bottom' } : null; } });
+out.atOnce = d(elbow.edges.ab).indexOf(' C') > 0;
+Promise.resolve().then(function () {
+    out.plain = [d(plain.edges.ad).indexOf(' C') > 0, d(plain.edges.ab).indexOf(' C') > 0];
+    out.hidden = d(elbow.edges.ab).indexOf(' C') > 0;
+    elbow.canvas.focus('a');
+    out.ad = d(elbow.edges.ad);
+    out.ab = d(elbow.edges.ab);
+    out.cb = d(elbow.edges.cb).indexOf(' C') > 0;
+    elbow.items.d.y = 400;
+    elbow.canvas.reroute(['d']);
+    out.moved = d(elbow.edges.ad);
+    elbow.canvas.focus(null);
+    out.unfocused = d(elbow.edges.ad).indexOf(' C') > 0;
+    console.log(JSON.stringify(out));
+});
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true), $result['plain'], 'without route every arrow is a curve');
+	pg_assert_true($result['atOnce'], 'a curve until the drawing is done');
+	pg_assert_true($result['hidden'], 'a hidden arrow keeps the curve');
+	pg_assert_same('M100 80 L100 88 Q100 96 108 96 L888 96 Q896 96 896 88 L896 48 Q896 40 904 40 L912 40', $result['ad'], 'from portAt()\'s point down, 16 under the row, into the nearest edge with rounded turns');
+	pg_assert_same('M208 40 L304 40', $result['ab'], 'to the neighbour one straight line');
+	pg_assert_true($result['cb'], 'an arrow out of focus stays a curve');
+	pg_assert_contains('L912 440', $result['moved'], 'a moved box routes its arrow again');
+	pg_assert_true($result['unfocused'], 'hidden again: the curve');
 }

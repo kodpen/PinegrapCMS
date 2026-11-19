@@ -277,9 +277,11 @@ function ws_task_window($task)
  * @param int    $exclude_task_id leave this task out (it is being changed)
  * @param bool   $upcoming also the coming copies of repeating tasks, which
  *                         weigh on the days they will run (the planning board)
+ * @param array|null $agent_rule ws_tasks_agent_rule(): the planning board
+ *                         leaves agent channels' tasks out; null weighs all
  * @return array user id => [days => [date => cell], unscheduled => int]
  */
-function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0, $upcoming = false)
+function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0, $upcoming = false, $agent_rule = null)
 {
     $user_ids = array_values(array_unique(array_map('intval', (array) $user_ids)));
     $days = ws_days($from, $to);
@@ -297,6 +299,8 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
         $departments[(int) $row['user_id']][] = (int) $row['department_id'];
     }
 
+    $agent_sql = ws_tasks_agent_sql($agent_rule);
+
     // Open tasks of these people whose window touches the range: a task that
     // started before the range and is due inside it still weighs on the days
     // in view.
@@ -308,7 +312,8 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
         AND t.id <> '" . (int) $exclude_task_id . "'
         AND (t.due_date IS NOT NULL OR t.start_date IS NOT NULL)
         AND COALESCE(t.start_date, t.due_date) <= '" . e($to) . "'
-        AND COALESCE(t.due_date, t.start_date) >= '" . e($from) . "'");
+        AND COALESCE(t.due_date, t.start_date) >= '" . e($from) . "'"
+        . (($agent_sql !== '') ? ' AND ' . $agent_sql : ''));
 
     $tasks_by_person = array();
 
@@ -342,6 +347,10 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
     // for that copy, and says so.
     if ($upcoming && function_exists('ws_recurrence_projections')) {
         foreach (ws_recurrence_projections($from, $to) as $item) {
+            if (!ws_tasks_agent_keeps($agent_rule, (int) ($item['task']['channel_id'] ?? 0))) {
+                continue;
+            }
+
             foreach (array_intersect($item['people'], $user_ids) as $user_id) {
                 foreach ($item['copies'] as $copy) {
                     $tasks_by_person[(int) $user_id][] = array(
@@ -371,7 +380,8 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
         FROM ws_tasks t INNER JOIN ws_task_assignees a ON a.task_id = t.id
         WHERE a.user_id IN (" . implode(',', $user_ids) . ")
         AND t.status IN ('todo', 'doing', 'waiting')
-        AND t.due_date IS NULL AND t.start_date IS NULL
+        AND t.due_date IS NULL AND t.start_date IS NULL"
+        . (($agent_sql !== '') ? ' AND ' . $agent_sql : '') . "
         GROUP BY a.user_id") as $row) {
         $unscheduled[(int) $row['user_id']] = (int) $row['n'];
     }
@@ -1113,9 +1123,13 @@ function ws_event_kinds()
  * @param int    $department_id
  * @param bool   $only_me
  * @param int    $person_id one person's row (someone the viewer may see)
- * @return array days, people, rows
+ * @param string|null $agent_channels '' leaves agent channels' tasks out,
+ *                    include takes them too, only takes them alone; null
+ *                    weighs every task
+ * @return array days, people, rows, agent_channels (how many agent channels
+ *               the viewer may read; with a filter only)
  */
-function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = false, $person_id = 0)
+function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = false, $person_id = 0, $agent_channels = null)
 {
     $days = max(1, min(31, (int) $days));
     $from = ws_date_or_null($from) ?: date('Y-m-d', strtotime('monday this week'));
@@ -1132,7 +1146,8 @@ function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = fals
         $user_ids = array_values(array_intersect($user_ids, ws_department_member_ids($department_id)));
     }
 
-    $grid = ws_plan_grid($user_ids, $from, $to, null, 0, true);
+    $agent_rule = ($agent_channels === null) ? null : ws_tasks_agent_rule(ws_tasks_agent_channels(), $agent_channels);
+    $grid = ws_plan_grid($user_ids, $from, $to, null, 0, true, $agent_rule);
     $people = ws_people($user_ids);
     $day_list = array();
 
@@ -1183,11 +1198,17 @@ function ws_board($viewer, $from, $days = 7, $department_id = 0, $only_me = fals
         );
     }
 
-    return array(
+    $out = array(
         'from'  => $from,
         'to'    => $to,
         'days'  => $day_list,
         'rows'  => $rows,
         'scope' => ($scope === true) ? 'all' : 'limited',
     );
+
+    if ($agent_channels !== null) {
+        $out['agent_channels'] = ws_tasks_agent_count(ws_tasks_agent_readable($viewer));
+    }
+
+    return $out;
 }

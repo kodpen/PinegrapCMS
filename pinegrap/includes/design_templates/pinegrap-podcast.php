@@ -228,7 +228,7 @@ $podcast_css = implode("\n", array(
 
 return array(
     'name'        => lang('Podcast Network'),
-    'version'     => '2.0.2',
+    'version'     => '2.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 141,
     'icon'        => 'bi-mic',

@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The sending-domain health card of SMTP Settings: the SPF, DKIM and DMARC
+ * The sending-domain health card of E-mail sending: the SPF, DKIM and DMARC
  * records the domain publishes, judged against what the site sends through,
  * with the record text to copy when one is missing or wrong; and the bounce
  * and complaint rates of the last 30 days, which the operations alerts warn
@@ -667,7 +667,7 @@ function pg_mail_health_badge($state, $error_label = '')
 }
 
 /**
- * The "Sending domain" card of SMTP Settings.
+ * The "Sending domain" card of Site Settings › E-mail sending.
  *
  * @param array $health pg_mail_domain_health()
  * @param bool $wrap_column true: wrapped in a .col-12 for a .row; false: the card alone
@@ -701,7 +701,7 @@ function pg_mail_domain_health_card(array $health, $wrap_column = true)
                 <label for="' . $id . '" class="form-label mt-3 mb-1 small">' . h(lang('Publish this TXT record:')) . '</label>
                 <div class="input-group">
                     <input type="text" id="' . $id . '" class="form-control font-monospace" value="' . h($line['copy']) . '" readonly>
-                    <button type="button" class="btn btn-outline theme-secondary" data-pg-copy-record="' . $id . '" data-pg-copied="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Copy')) . '</span></button>
+                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-copy-record="' . $id . '" data-pg-copied="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Copy')) . '</span></button>
                 </div>' : '') . '
             </li>';
     }
@@ -762,8 +762,12 @@ function pg_mail_domain_health_card(array $health, $wrap_column = true)
  */
 function pg_mail_domain_health_script()
 {
+    // The Site Settings dialog runs a pane's scripts on every opening: the
+    // listener is bound once.
     return '
     <script>
+        if (!window.pgMailCopyRecordBound) {
+        window.pgMailCopyRecordBound = true;
         document.addEventListener("click", function (event) {
             var button = event.target.closest("[data-pg-copy-record]");
 
@@ -780,5 +784,6 @@ function pg_mail_domain_health_script()
                 setTimeout(function () { label.textContent = before; }, 1500);
             });
         });
+        }
     </script>';
 }

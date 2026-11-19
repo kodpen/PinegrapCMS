@@ -19,6 +19,9 @@ module: order_view
 ## What do the form, recurring and gift card rows print?
 - The product form heading closes with `</div>` (it was `</legend>` on an order without a shipping recipient: the answers rendered inside the heading and each form card left a div open); an unlimited recurring line reads `lang('No limit')`; the applied gift card rows start from `''` and show "Givex Auth #" only for a Givex card (`givex != 0`) (#3764, test `tests/order_view_form_gift_cards_test.php`).
 
+## Where are the Restore Order button and the order's columns taken?
+- `pg_order_view_restore_button($status)` builds Restore Order for every cancelled order, after both shipping branches: it sat inside the branch with a shipping address, so a cancelled download, gift card or counter sale had no way back. `view_order.php` reuses `$row` for later result sets: an order column the cards print (e.g. `vat_id` for the EU VAT ID row) is taken next to the main query (tests `tests/view_order_restore_button_test.php`, `tests/view_order_vat_id_row_test.php`).
+
 ## What is left?
 - The "Withdrawal deadline" date on the legal documents card still prints in the US order (#2040 names it with the other date displays).
 

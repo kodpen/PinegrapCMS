@@ -695,6 +695,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
 
+    // A signed-in customer below their contact group's minimum order value is
+    // told before checkout, with the words the refusal at submit uses
+    // (includes/fn/minimum_order.php); added before the messages are drawn.
+    if ($_pg_cart_form_lf && !$_pg_cart_empty) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/minimum_order.php');
+        $_pg_cart_minimum = pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, 'cart');
+        if (!$_pg_cart_minimum['ok']) {
+            $_pg_cart_form_lf->add_warning($_pg_cart_minimum['message']);
+        }
+    }
+
     // Per-widget messages safety net — same pattern as the other system widgets.
     if (function_exists('_pg_inject_messages_node')) {
         _pg_inject_messages_node($tree_decoded, 'shopping_cart');
@@ -1115,24 +1126,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     }
                 }
             }
-            $_pg_offer_items = '';
-            $_pg_offer_shown = 0;
+            $_pg_offer_labels = array();
             foreach ($_pg_all_ids as $_pg_oid_each => $_unused) {
                 $_pg_desc = isset($_pg_lookup_labels[$_pg_oid_each]) ? $_pg_lookup_labels[$_pg_oid_each] : '';
                 if ($_pg_desc === '') continue;
-                $_pg_offer_items .= '<li>' . h($_pg_desc) . '</li>';
-                $_pg_offer_shown++;
+                $_pg_offer_labels[] = $_pg_desc;
             }
             // The token counts what the visitor can actually see, so a
             // designer binding on it does not announce offers the list does
             // not name.
-            $applied_offers_count = $_pg_offer_shown;
-            if ($_pg_offer_shown > 0) {
-                $applied_offers_html  = '<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2">';
-                $applied_offers_html .= '<div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>'
-                                      . h(($_pg_offer_shown > 1) ? lang('Applied Offers') : lang('Applied Offer')) . '</div>';
-                $applied_offers_html .= '<ul class="mb-0 ps-3 small">' . $_pg_offer_items . '</ul></div>';
-            }
+            $applied_offers_count = count($_pg_offer_labels);
+            $applied_offers_html  = pg_cart_applied_offers_html($_pg_offer_labels);
         }
 
         // Build the items list — join products to get address_name + image_name
@@ -2188,11 +2192,9 @@ function pg_express_order_live_totals($order_id, $lines, $needs_shipping)
 {
     // A gift card is not taken on an order of gift cards alone; submit_order()
     // removes the applied ones then.
-    $gift_card_balance = 0;
+    $gift_card_balance = array('credit' => 0, 'cards' => 0);
     if ((int) $order_id > 0 && defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true) {
-        $gift_card_balance = (int) db_value(
-            "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int) $order_id . "'"
-        );
+        $gift_card_balance = pg_gift_card_applied_balances($order_id);
     }
     $shipping_drawn = ((int) $order_id > 0 && $needs_shipping)
         ? (int) db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int) $order_id . "'")
@@ -2397,7 +2399,8 @@ function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today
  * @param string $today           Y-m-d
  * @param bool   $clearcommerce   the gateway charges recurring lines itself
  * @return array subtotal, discount, tax (of the lines charged today), charged (those lines as
- *               pg_order_charged_tax() reads them), later_tax (the lines charged later, as given)
+ *               pg_order_charged_tax() reads them, each with its gift_card flag), later_tax (the
+ *               lines charged later, as given)
  */
 function pg_order_charged_today_totals($lines, $order_discount, $today, $clearcommerce)
 {
@@ -2419,6 +2422,7 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
             'amount' => (int) $line['price'] * max(1, (int) $line['quantity']),
             'rate' => isset($line['tax_rate']) ? $line['tax_rate'] : null,
             'tax' => (int) $line['tax_total'],
+            'gift_card' => !empty($line['gift_card']),
         );
     }
 
@@ -2439,12 +2443,151 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
 }
 
 /**
+ * What the gift card product lines charged today come to in an order's
+ * total, in minor units: their amounts, less their share of the order
+ * discount (pg_tax_spread() over the amounts, the share the order's invoice
+ * gives each line), plus their tax once that discount is off
+ * (pg_order_line_charged_taxes()). Applied store credit may pay only the
+ * rest of the total (pg_gift_card_applied_discount()): a gift card product
+ * is paid by another method, never by credit.
+ *
+ * @param array $charged   key => ['amount' => int, 'rate' => float|string|null, 'tax' => int,
+ *                         'gift_card' => bool], the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @return int  never below zero
+ */
+function pg_gift_card_lines_part($charged, $discount)
+{
+    $amounts = array();
+    $subtotal = 0;
+    $any = false;
+
+    foreach ((array) $charged as $key => $line) {
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+        if (!empty($line['gift_card'])) {
+            $any = true;
+        }
+    }
+
+    if (!$any) {
+        return 0;
+    }
+
+    $discount = min(max(0, (int) $discount), max(0, $subtotal));
+    $shares = (($discount > 0) && ($subtotal > 0)) ? pg_tax_spread($discount, $amounts) : array();
+    $taxes = pg_order_line_charged_taxes($charged, $discount);
+    $part = 0;
+
+    foreach ((array) $charged as $key => $line) {
+        if (!empty($line['gift_card'])) {
+            $part += $amounts[$key] - (int) ($shares[$key] ?? 0) + max(0, (int) ($taxes[$key] ?? 0));
+        }
+    }
+
+    return max(0, $part);
+}
+
+/**
+ * How much of an order's total the applied cards pay, in minor units. Store
+ * credit (a card with a user_id) and plain gift cards together pay at most
+ * the part of the total that is not gift card product lines
+ * (pg_gift_card_lines_part()), so no applied card ever buys a new gift card;
+ * credit is taken first, the plain cards then pay what is left of that part,
+ * each at most its balance. Never below zero, never more than the total.
+ *
+ * @param int $total            the order's total before the cards: lines less discount, tax, shipping
+ * @param int $gift_lines_part  pg_gift_card_lines_part()
+ * @param int $credit_balance   the applied store credit rows' balance
+ * @param int $card_balance     the applied plain gift cards' balance
+ * @return array  credit, cards (the part each pays), discount (their sum)
+ */
+function pg_gift_card_applied_discount($total, $gift_lines_part, $credit_balance, $card_balance)
+{
+    $total = max(0, (int) $total);
+    $room = max(0, $total - max(0, (int) $gift_lines_part));
+    $credit = min(max(0, (int) $credit_balance), $room);
+    $cards = min(max(0, (int) $card_balance), $room - $credit);
+
+    return array('credit' => $credit, 'cards' => $cards, 'discount' => $credit + $cards);
+}
+
+/**
+ * The applied cards' balances of an order, store credit apart from plain
+ * gift cards: an applied_gift_cards row whose card has a user_id is credit;
+ * a Givex card or a card of no account is plain. Each row counts its
+ * old_balance, as the checkout totals read it.
+ *
+ * @param int $order_id
+ * @return array  credit, cards: minor units
+ */
+function pg_gift_card_applied_balances($order_id)
+{
+    $balances = array('credit' => 0, 'cards' => 0);
+
+    if ((int) $order_id <= 0) {
+        return $balances;
+    }
+
+    $owner = (function_exists('pg_credit_ready') && pg_credit_ready()) ? 'gift_cards.user_id' : '0';
+
+    foreach ((array) db_items(
+        "SELECT applied_gift_cards.old_balance, applied_gift_cards.givex, " . $owner . " AS user_id
+        FROM applied_gift_cards
+        LEFT JOIN gift_cards ON gift_cards.id = applied_gift_cards.gift_card_id
+        WHERE applied_gift_cards.order_id = '" . (int) $order_id . "'") as $row) {
+        $credit = empty($row['givex']) && ((int) $row['user_id'] > 0);
+        $balances[$credit ? 'credit' : 'cards'] += (int) $row['old_balance'];
+    }
+
+    return $balances;
+}
+
+/**
+ * pg_gift_card_lines_part() for order lines given by id, read from the order:
+ * for the classic express order and order preview pages, which hold the ids
+ * of the lines charged today.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  minor units
+ * @return int
+ */
+function pg_order_items_gift_card_lines_part($item_ids, $discount)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $with_rate = pg_schema_has('order_items', 'tax_rate');
+    $lines = array();
+
+    foreach ((array) db_items("SELECT order_items.id, order_items.price, order_items.quantity, order_items.tax_total"
+        . ($with_rate ? ", order_items.tax_rate" : "") . ", products.gift_card
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.id IN (" . implode(', ', $ids) . ")
+        ORDER BY order_items.id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $with_rate ? $item['tax_rate'] : null,
+            'tax' => (int) $item['tax_total'],
+            'gift_card' => !empty($item['gift_card']),
+        );
+    }
+
+    return pg_gift_card_lines_part($lines, $discount);
+}
+
+/**
  * The totals of the cart as submit_order() charges them when the order is
  * placed, in minor units: the lines charged today, their tax and the cart's
  * order discount as pg_order_charged_today_totals() takes them (the step
  * the cart widget's tax goes through too), the
  * shipping, the applied gift cards at most the total (none on an order of
- * gift cards alone), and the card surcharge on what is left (pg_percent_of(),
+ * gift cards alone; store credit never on the gift card lines,
+ * pg_gift_card_applied_discount()), and the card surcharge on what is left (pg_percent_of(),
  * the same figure on every PHP version). Where the shipping and the
  * surcharge hold tax on the order's invoice, each is a minor unit lower when
  * it would leave a rate's total no amount reaches
@@ -2457,7 +2600,8 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
  *                                        start), gift_card
  * @param int          $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
  * @param int          $shipping
- * @param int          $gift_card_balance the applied gift cards' balance
+ * @param int|array    $gift_card_balance the applied cards' balance: ['credit' => int, 'cards' => int]
+ *                                        (pg_gift_card_applied_balances()), or one int counted as credit
  * @param float|string $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE, the decimal string the database gives
  * @param string       $today             Y-m-d
  * @param bool         $clearcommerce     the gateway charges recurring lines itself
@@ -2491,7 +2635,11 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     $gift_card_discount = 0;
 
     if (($total > 0) && !$only_gift_cards) {
-        $gift_card_discount = min(max(0, (int) $gift_card_balance), $total);
+        $balances = is_array($gift_card_balance)
+            ? $gift_card_balance + array('credit' => 0, 'cards' => 0)
+            : array('credit' => $gift_card_balance, 'cards' => 0);
+        $gift_card_discount = pg_gift_card_applied_discount($total, pg_gift_card_lines_part($charged, $discount),
+            $balances['credit'], $balances['cards'])['discount'];
     }
 
     $total = max(0, $total - $gift_card_discount);
@@ -4140,7 +4288,7 @@ function _pg_render_pending_offers($pending_offers, $post_url, $send_to)
             if ($decided_ship_to_id) {
                 $decided_name = (string) db_value("SELECT ship_to_name FROM ship_tos WHERE id = '" . (int) $decided_ship_to_id . "' LIMIT 1");
                 if ($decided_name !== '') {
-                    $recipient_html = '<span class="small text-body-secondary">' . h(lang('Ship to')) . ' <span class="fw-semibold">' . h($decided_name) . '</span></span>';
+                    $recipient_html = pg_cart_pending_offer_recipient_html($field_base, $decided_name, array(), false);
                 }
             } elseif ($shippable && $recipient_mode_multi) {
                 $options = array('' => '');
@@ -4169,42 +4317,114 @@ function _pg_render_pending_offers($pending_offers, $post_url, $send_to)
                     $allow_new_name = true;
                 }
 
-                $recipient_html = '<label class="form-label small mb-1" for="' . h($field_base) . '_ship_to">'
-                                . h(lang('Ship to')) . '</label>'
-                                . '<select class="form-select form-select-sm" id="' . h($field_base) . '_ship_to"'
-                                . ' name="' . h($field_base) . '_ship_to">';
-                foreach ($options as $value => $text) {
-                    $recipient_html .= '<option value="' . h($value) . '">' . h($text) . '</option>';
-                }
-                $recipient_html .= '</select>';
-                if ($allow_new_name) {
-                    // placeholder rather than legacy's "or add name" default
-                    // VALUE + onfocus-clear hack — a real value would be
-                    // submitted verbatim if the visitor never focused the field.
-                    $recipient_html .= '<input type="text" class="form-control form-control-sm mt-1"'
-                                     . ' name="' . h($field_base) . '_add_name" maxlength="50"'
-                                     . ' placeholder="' . h(lang('or add name')) . '">';
-                }
+                $recipient_html = pg_cart_pending_offer_recipient_html($field_base, '', $options, $allow_new_name);
             }
 
-            $rows .= '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">'
-                   . '<div class="flex-grow-1 min-width-0">'
-                   .   '<span class="fw-semibold">' . h($label) . '</span>'
-                   . '</div>'
-                   . ($recipient_html !== '' ? '<div class="pg-cart-pending-offer-recipient">' . $recipient_html . '</div>' : '')
-                   . '<div>'
-                   .   '<button type="submit" class="btn btn-primary btn-sm"'
-                   .          ' name="add_pending_offer_' . $offer_id . '_' . $action_id . '" value="1">'
-                   .     h(lang('Add')) . '</button>'
-                   . '</div>'
-                   . '</div>';
+            $rows .= pg_cart_pending_offer_row_html($offer_id, $action_id, $label, $recipient_html);
         }
     }
 
     if ($rows === '') return '';
 
-    $token = function_exists('get_token_field') ? get_token_field() : '';
+    return pg_cart_pending_offers_html($rows, $post_url, $send_to, function_exists('get_token_field') ? get_token_field() : '');
+}
 
+/**
+ * The applied offers box of the cart: one line per offer the visitor can
+ * see, '' when there is none. Pure; the canvas twin is
+ * _sdCartAppliedOffersHtml() in style_designer.src.js.
+ *
+ * @param array $labels the offers' public labels, in the order shown
+ * @return string
+ */
+function pg_cart_applied_offers_html($labels)
+{
+    $items = '';
+    foreach ((array)$labels as $label) {
+        $items .= '<li>' . h((string)$label) . '</li>';
+    }
+    if ($items === '') return '';
+
+    return '<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2">'
+         . '<div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>'
+         . h((count($labels) > 1) ? lang('Applied Offers') : lang('Applied Offer')) . '</div>'
+         . '<ul class="mb-0 ps-3 small">' . $items . '</ul></div>';
+}
+
+/**
+ * Where a campaign gift goes: the recipient the cart already decided
+ * ($decided_name), else a picker of $options (value => text) and, with
+ * $allow_new_name, a field for a new name. Pure; canvas twin
+ * _sdCartPendingRecipientHtml().
+ *
+ * @param string $field_base     pending_offer_<offer id>_<action id>
+ * @param string $decided_name   the decided recipient's name, '' for none
+ * @param array  $options        the picker's options, value => text
+ * @param bool   $allow_new_name whether a new name may be typed
+ * @return string
+ */
+function pg_cart_pending_offer_recipient_html($field_base, $decided_name, $options, $allow_new_name)
+{
+    if ((string)$decided_name !== '') {
+        return '<span class="small text-body-secondary">' . h(lang('Ship to')) . ' <span class="fw-semibold">' . h($decided_name) . '</span></span>';
+    }
+
+    $html = '<label class="form-label small mb-1" for="' . h($field_base) . '_ship_to">'
+          . h(lang('Ship to')) . '</label>'
+          . '<select class="form-select form-select-sm" id="' . h($field_base) . '_ship_to"'
+          . ' name="' . h($field_base) . '_ship_to">';
+    foreach ((array)$options as $value => $text) {
+        $html .= '<option value="' . h($value) . '">' . h($text) . '</option>';
+    }
+    $html .= '</select>';
+    if ($allow_new_name) {
+        // A placeholder rather than a default value: a value would be
+        // submitted as a name when the visitor never touched the field.
+        $html .= '<input type="text" class="form-control form-control-sm mt-1"'
+               . ' name="' . h($field_base) . '_add_name" maxlength="50"'
+               . ' placeholder="' . h(lang('or add name')) . '">';
+    }
+
+    return $html;
+}
+
+/**
+ * One campaign gift row: its label, where it goes, its Add button. Pure;
+ * canvas twin _sdCartPendingRowHtml().
+ *
+ * @param int    $offer_id
+ * @param int    $action_id
+ * @param string $label          the offer's description (and action name)
+ * @param string $recipient_html pg_cart_pending_offer_recipient_html(), or ''
+ * @return string
+ */
+function pg_cart_pending_offer_row_html($offer_id, $action_id, $label, $recipient_html)
+{
+    return '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">'
+         . '<div class="flex-grow-1 min-width-0">'
+         .   '<span class="fw-semibold">' . h($label) . '</span>'
+         . '</div>'
+         . ($recipient_html !== '' ? '<div class="pg-cart-pending-offer-recipient">' . $recipient_html . '</div>' : '')
+         . '<div>'
+         .   '<button type="submit" class="btn btn-primary btn-sm"'
+         .          ' name="add_pending_offer_' . (int)$offer_id . '_' . (int)$action_id . '" value="1">'
+         .     h(lang('Add')) . '</button>'
+         . '</div>'
+         . '</div>';
+}
+
+/**
+ * The campaign gifts box around its rows: its own form posting to the cart
+ * action. Pure; canvas twin _sdCartPendingOffersHtml().
+ *
+ * @param string $rows     pg_cart_pending_offer_row_html() rows, joined
+ * @param string $post_url the cart action address
+ * @param string $send_to  where the visitor comes back to
+ * @param string $token    the CSRF field (get_token_field()), '' on the canvas
+ * @return string
+ */
+function pg_cart_pending_offers_html($rows, $post_url, $send_to, $token)
+{
     return '<form class="pg-cart-pending-offers card card-body mb-3" method="post" action="' . h($post_url) . '">'
          . $token
          . '<input type="hidden" name="pending_offers" value="true">'
@@ -4293,26 +4513,86 @@ function _pg_render_quick_add($group_id, $label, $post_url, $send_to)
         // "&#8378;299.95" literally.
         $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
 
-        $options .= '<option value="' . $id . '"'
-                  . ' data-qty="' . (($selection_type == 'quantity') ? '1' : '0') . '"'
-                  . ' data-amount="' . (($selection_type == 'donation') ? '1' : '0') . '"'
-                  . ' data-recipient="' . $recipient . '"'
-                  . ' data-default-qty="' . (int)$r['default_quantity'] . '"'
-                  . ($in_stock ? '' : ' disabled')
-                  . '>' . h($text) . '</option>';
+        $options .= pg_cart_quick_add_option_html($id, $text, $selection_type, $recipient, (int)$r['default_quantity'], $in_stock);
     }
     if (!$any) return '';
 
     // Recipient picker: "myself" plus whoever is already on the order, and a
     // free-text field for a new name — the same three-way choice legacy gave.
-    $ship_to_html = '';
+    $recipients = null;
     if ($needs_to) {
         if (function_exists('initialize_recipients')) initialize_recipients();
-        $opts = '<option value=""></option><option value="' . h(lang('myself')) . '">' . h(lang('myself')) . '</option>';
+        $recipients = array();
         if (!empty($_SESSION['ecommerce']['recipients']) && is_array($_SESSION['ecommerce']['recipients'])) {
             foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
-                $opts .= '<option value="' . h((string)$recipient) . '">' . h((string)$recipient) . '</option>';
+                $recipients[] = (string)$recipient;
             }
+        }
+    }
+
+    return pg_cart_quick_add_html($label, $options, $needs_qty, $needs_amt, $recipients,
+            defined('VISITOR_CURRENCY_SYMBOL') ? html_entity_decode(VISITOR_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8') : '',
+            $post_url, $send_to, function_exists('get_token_field') ? get_token_field() : '')
+      . '<script>(function(){'
+      .   'var f=document.currentScript.previousElementSibling;if(!f)return;'
+      .   'var s=f.querySelector("#pg-qa-product");if(!s)return;'
+      .   'function show(sel,on){var e=f.querySelector(sel);if(e)e.style.display=on?"":"none";}'
+      .   'function sync(){var o=s.options[s.selectedIndex],q=f.querySelector("#pg-qa-qty");'
+      .     'var qty=o&&o.dataset.qty==="1",amt=o&&o.dataset.amount==="1",rec=o&&o.dataset.recipient==="1";'
+      .     'show(".pg-qa-qty",qty);show(".pg-qa-amount",amt);show(".pg-qa-ship-to",rec);'
+      .     'if(qty&&q&&o.dataset.defaultQty&&o.dataset.defaultQty!=="0")q.value=o.dataset.defaultQty;}'
+      .   's.addEventListener("change",sync);sync();'
+      . '})();</script>';
+}
+
+/**
+ * One product of the quick add picker. $text is the plain label (name,
+ * description, price); the data attributes tell the box's script which rows
+ * the product needs. Pure; canvas twin _sdCartQuickAddOptionHtml().
+ *
+ * @param int    $id
+ * @param string $text           the label, plain text
+ * @param string $selection_type products.selection_type
+ * @param int    $recipient      1 when the product asks where it goes
+ * @param int    $default_qty    products.default_quantity
+ * @param bool   $in_stock       false: drawn, but cannot be picked
+ * @return string
+ */
+function pg_cart_quick_add_option_html($id, $text, $selection_type, $recipient, $default_qty, $in_stock)
+{
+    return '<option value="' . (int)$id . '"'
+         . ' data-qty="' . (($selection_type == 'quantity') ? '1' : '0') . '"'
+         . ' data-amount="' . (($selection_type == 'donation') ? '1' : '0') . '"'
+         . ' data-recipient="' . ($recipient ? 1 : 0) . '"'
+         . ' data-default-qty="' . (int)$default_qty . '"'
+         . ($in_stock ? '' : ' disabled')
+         . '>' . h($text) . '</option>';
+}
+
+/**
+ * The quick add box: its own form posting to the cart action, the product
+ * picker, the rows a product may need (quantity, amount, recipient; hidden
+ * until a product asks for them) and the Add button. Pure; canvas twin
+ * _sdCartQuickAddHtml().
+ *
+ * @param string     $label      the box's heading, '' for none
+ * @param string     $options    pg_cart_quick_add_option_html() options, joined
+ * @param bool       $needs_qty  a product may ask for a quantity
+ * @param bool       $needs_amt  a product may ask for an amount (donation)
+ * @param array|null $recipients the names already on the order; null: no recipient row
+ * @param string     $symbol     the visitor's currency symbol as text
+ * @param string     $post_url   the cart action address
+ * @param string     $send_to    where the visitor comes back to
+ * @param string     $token      the CSRF field (get_token_field()), '' on the canvas
+ * @return string
+ */
+function pg_cart_quick_add_html($label, $options, $needs_qty, $needs_amt, $recipients, $symbol, $post_url, $send_to, $token)
+{
+    $ship_to_html = '';
+    if (is_array($recipients)) {
+        $opts = '<option value=""></option><option value="' . h(lang('myself')) . '">' . h(lang('myself')) . '</option>';
+        foreach ($recipients as $recipient) {
+            $opts .= '<option value="' . h((string)$recipient) . '">' . h((string)$recipient) . '</option>';
         }
         $ship_to_html =
             '<div class="col-12 col-sm-4 pg-qa-row pg-qa-ship-to" style="display:none">'
@@ -4333,13 +4613,11 @@ function _pg_render_quick_add($group_id, $label, $post_url, $send_to)
         ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-amount" style="display:none">'
         .    '<label class="form-label small mb-1" for="pg-qa-amount">' . h(lang('Amount')) . '</label>'
         .    '<div class="input-group input-group-sm">'
-        .      '<span class="input-group-text">' . (defined('VISITOR_CURRENCY_SYMBOL') ? html_entity_decode(VISITOR_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8') : '') . '</span>'
+        .      '<span class="input-group-text">' . $symbol . '</span>'
         .      '<input type="text" inputmode="decimal" class="form-control" id="pg-qa-amount" name="quick_add_amount" size="6">'
         .    '</div>'
         .  '</div>'
         : '';
-
-    $token = function_exists('get_token_field') ? get_token_field() : '';
 
     return
         '<form class="pg-cart-quick-add card card-body mb-3" method="post" action="' . h($post_url) . '">'
@@ -4357,17 +4635,7 @@ function _pg_render_quick_add($group_id, $label, $post_url, $send_to)
       .     $qty_html . $amount_html . $ship_to_html
       .     '<div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">' . h(lang('Add')) . '</button></div>'
       .   '</div>'
-      . '</form>'
-      . '<script>(function(){'
-      .   'var f=document.currentScript.previousElementSibling;if(!f)return;'
-      .   'var s=f.querySelector("#pg-qa-product");if(!s)return;'
-      .   'function show(sel,on){var e=f.querySelector(sel);if(e)e.style.display=on?"":"none";}'
-      .   'function sync(){var o=s.options[s.selectedIndex],q=f.querySelector("#pg-qa-qty");'
-      .     'var qty=o&&o.dataset.qty==="1",amt=o&&o.dataset.amount==="1",rec=o&&o.dataset.recipient==="1";'
-      .     'show(".pg-qa-qty",qty);show(".pg-qa-amount",amt);show(".pg-qa-ship-to",rec);'
-      .     'if(qty&&q&&o.dataset.defaultQty&&o.dataset.defaultQty!=="0")q.value=o.dataset.defaultQty;}'
-      .   's.addEventListener("change",sync);sync();'
-      . '})();</script>';
+      . '</form>';
 }
 
 // ── Inline JS: remove-from-cart click handler (universal action binding) ──

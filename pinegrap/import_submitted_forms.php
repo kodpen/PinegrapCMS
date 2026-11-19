@@ -72,7 +72,7 @@ if (!$_POST) {
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('Import CSV') . '
                             </h2>
                             <div class="card-body pt-0">
@@ -90,7 +90,7 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('File Format') . '
                             </h2>
                             <div class="card-body pt-0">
@@ -103,7 +103,7 @@ if (!$_POST) {
                         <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                         <div class="position-sticky" style="top:3.3rem;">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Summary') . '
                                 </h2>
                                 <div class="card-body pt-0">
@@ -211,6 +211,10 @@ if (!$_POST) {
         $unknown_headings = array();
         // Headings of a field an earlier column already fills, left out.
         $repeated_headings = array();
+        // Headings of a rows field: its codes would make the record take
+        // over another record's rows, so the column is left out.
+        $rows_headings = array();
+        $rows_kinds = pg_coll_field_kinds((int) $custom_form_page_id);
         $mapped_field_ids = array();
 
         // A file the export wrote starts with the record's own columns
@@ -251,7 +255,10 @@ if (!$_POST) {
 
             // One column fills a field: a second column of the same field
             // would add its value next to the first one's.
-            if ($row && isset($mapped_field_ids[$row['id']])) {
+            if ($row && pg_coll_is_rows_field($row['id'], $rows_kinds)) {
+                $rows_headings[] = $field_name;
+
+            } elseif ($row && isset($mapped_field_ids[$row['id']])) {
                 $repeated_headings[] = $field_name;
 
             // if a field was found, then add to fields array
@@ -503,6 +510,10 @@ if (!$_POST) {
 
         if (pg_csv_headings_text($repeated_headings) !== '') {
             $liveform->add_warning(h(lang(array('string' => 'These columns name a field an earlier column already fills and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($repeated_headings))))));
+        }
+
+        if (pg_csv_headings_text($rows_headings) !== '') {
+            $liveform->add_warning(h(lang(array('string' => 'These columns fill a rows field and were left out, so no record takes over another record\'s rows: {var:1}', 'vars' => array(pg_csv_headings_text($rows_headings))))));
         }
 
         if ($file_problems) {

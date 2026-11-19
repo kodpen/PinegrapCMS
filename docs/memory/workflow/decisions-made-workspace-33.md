@@ -19,7 +19,7 @@ description: Decisions made, workspace part 33 (2026-11-15): what a guest sees o
 
 ## Which of the R&D agent's four proposals are built? (owner, 2026-11-15, agent channel poll 49)
 - Asked in channel message 5089 as a poll with several answers; he chose all four: "1 Görev metni", "2 İlerleme notu", "3 Ajana görev verme", "4 Doğru / Yanlış". Why (the proposals, messages 5084 to 5087): a site with several agents must say who does what, show where a long request stands, give work as tasks and know which agent answers well.
-- Built by `plans/agent-work-features.md` in the order he was told: the duty text and the progress note, the task hand-over, Right or Wrong last.
+- Built in the order he was told: the duty text and the progress note, the task hand-over, Right or Wrong last: `workspace/agent-duty.md`, `agent-progress-note.md`, `agent-tasks.md`, `agent-feedback.md`.
 - The architect's readings, not his words: the card shows the duty to whoever may read the channel; only a person hands a task to an agent; the asker and the channel's managers mark an answer; a Wrong only counts and wakes nobody.
 
 ## What stands above a channel's conversation for its open items? (owner, 2026-11-15, agent channel message 5143)

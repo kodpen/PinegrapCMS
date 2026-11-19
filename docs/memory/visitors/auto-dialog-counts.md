@@ -15,8 +15,8 @@ module: auto_dialog_counts
 - `taken` (a press on the marked action or a form sent inside) has no sender yet: an address pop-up knows shown and closed only; designed content (PU6) calls `software.count_auto_dialog(row, 'taken')`.
 
 ## Who is not counted?
-- `software.statistics_allowed()` is the one named check of the browser side: true with the cookie notice off, else only when the `pg_consent` cookie allows statistics (`a1`). The click map uses it too.
-- `page_view.php` (a small branch before the other payloads): `pg_auto_dialog_count_rate_exceeded()` (30 a minute an address, waf bucket `popup`), `pg_auto_dialog_count_allowed()` (no crawler, `pg_site_search_user_countable()` for staff, `pg_consent_allows('analytics')`), `pg_auto_dialog_count_parse()` (id digits, one of three events, today's or yesterday's signature; else the post is dropped), `pg_auto_dialog_count()` (silent without the table or for an id with no pop-up).
+- The rule is the one check of the anonymous counts: sent unless the visitor refused statistics (`platform/consent-anonymous-counts.md`): the server asks `pg_consent_statistics_not_refused()` (#9902), the browser `software.statistics_not_refused()` (#9946).
+- `page_view.php` (a small branch before the other payloads): `pg_auto_dialog_count_rate_exceeded()` (30 a minute an address, waf bucket `popup`), `pg_auto_dialog_count_allowed()` (no crawler, `pg_site_search_user_countable()` for staff, `pg_consent_statistics_not_refused()`), `pg_auto_dialog_count_parse()` (id digits, one of three events, today's or yesterday's signature; else the post is dropped), `pg_auto_dialog_count()` (silent without the table or for an id with no pop-up).
 
 ## How long are rows kept?
 - 400 days (`PG_AUTO_DIALOG_COUNT_DAYS`): `job.php` runs `pg_auto_dialog_count_sweep()` once a day (`data/temp/auto_dialog_count_sweep.json`), `DELETE … LIMIT 5000` within 5 seconds.

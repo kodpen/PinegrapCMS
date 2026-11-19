@@ -137,7 +137,7 @@ function test_auto_dialog_count_page_view_branch_is_small_and_guarded()
 	$allowed = substr($module, strpos($module, 'function pg_auto_dialog_count_allowed('), 900);
 	pg_assert_contains('pg_request_is_automated()', $allowed, 'no crawler or script');
 	pg_assert_contains('pg_site_search_user_countable(', $allowed, 'staff by the site search rule, no second copy');
-	pg_assert_contains("pg_consent_allows('analytics')", $allowed, 'statistics allowed, or the notice off');
+	pg_assert_contains('pg_consent_statistics_not_refused()', $allowed, 'the one check of the anonymous counts: statistics not refused');
 	pg_assert_contains("waf_rate_exceeded(\$ip, 'popup', PG_AUTO_DIALOG_COUNT_RATE_LIMIT, 60)", $module, 'the vitals beacon\'s rate limit, its own bucket');
 
 	$count = substr($module, strpos($module, 'function pg_auto_dialog_count('), 700);
@@ -181,16 +181,15 @@ function test_auto_dialog_count_beacon_in_both_scripts()
 	$count = substr($src, strpos($src, 'count_auto_dialog: function('), 2000);
 	$count = substr($count, 0, strpos($count, "\n    },\n"));
 
-	pg_assert_contains("if (!document.getElementById('pg-cc')) {", $src, 'the notice off: statistics allowed');
-	pg_assert_contains("/(^|\\.)a1(\\.|$)/.test(software.read_cookie('pg_consent'))", $src, 'the notice on: only with statistics allowed');
-	pg_assert_contains('!software.statistics_allowed()', $count, 'the beacon asks the named check');
+	pg_assert_contains("software.statistics_not_refused_by(!!document.getElementById('pg-cc'), software.read_cookie('pg_consent'))", $src, 'the notice on or off and its answer');
+	pg_assert_contains('!software.statistics_not_refused()', $count, 'the beacon asks the one check of the anonymous counts');
 	pg_assert_contains("var key = auto_dialog.id + ':' + event;", $count, 'once per pop-up, event and page load');
 	pg_assert_contains('!auto_dialog.sign', $count, 'no signature (a preview): no beacon');
 	pg_assert_contains("software.count_auto_dialog(auto_dialog, 'shown');", $src, 'shown when it opens');
 	pg_assert_contains("software.count_auto_dialog(auto_dialog, 'closed');", $src, 'closed when it is closed');
 
 	$min = auto_dialog_counts_test_source('frontend.min.js');
-	foreach (array('statistics_allowed:function(){return!document.getElementById("pg-cc")||/(^|\\.)a1(\\.|$)/.test(software.read_cookie("pg_consent"))}', 'count_auto_dialog:function(', 'software.count_auto_dialog(a,"shown")', 'software.count_auto_dialog(a,"closed")', 'software.auto_dialog_count_url=t.count_url||""', 'i.append("as",e.sign)') as $needle) {
+	foreach (array('statistics_not_refused:function(){return software.statistics_not_refused_by(!!document.getElementById("pg-cc"),software.read_cookie("pg_consent"))}', '!software.statistics_not_refused()', 'count_auto_dialog:function(', 'software.count_auto_dialog(a,"shown")', 'software.count_auto_dialog(a,"closed")', 'software.auto_dialog_count_url=t.count_url||""', 'i.append("as",e.sign)') as $needle) {
 		pg_assert_contains($needle, $min, 'the served script: ' . $needle);
 	}
 }

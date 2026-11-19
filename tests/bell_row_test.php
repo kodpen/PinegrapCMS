@@ -65,11 +65,16 @@ function test_bell_row_module_of_every_known_action()
 		'erp_auto_invoice' => 'erp',
 		'form_submited'    => 'content',
 		'new_comment'      => 'content',
+		'content_change'    => 'content',
+		'content_applied'   => 'content',
+		'content_dismissed' => 'content',
+		'content_stale'     => 'content',
 		'workspace'        => 'team',
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',
 		'ops'              => 'system',
 		'profile_flows'    => 'system',
+		'bundle_held'      => 'content',
 	);
 	$known = bell_row_known_actions();
 
@@ -182,6 +187,14 @@ function test_bell_row_short_titles_say_what_happened()
 	pg_assert_same('Reference Code <b>AB12</b>', $form['brief']);
 
 	pg_assert_same('Order #1172 not invoiced', pg_notification_display(array('action' => 'erp_auto_invoice', 'title' => 'x', 'order_id' => '17', 'order_total' => '1172'))['short']);
+
+	// A waiting content change and what became of it: a short title without a
+	// colon, the page under it.
+	foreach (array('content_change', 'content_applied', 'content_dismissed', 'content_stale') as $content_action) {
+		$content = pg_notification_display(array('action' => $content_action, 'title' => 'about-us', 'reference_id' => 0));
+		pg_assert_true(($content['short'] !== '') && (strpos($content['short'], ':') === false), $content_action . ' has a short title');
+		pg_assert_contains('about-us', $content['brief'], $content_action . ': the page');
+	}
 
 	// No short title is a label with a colon or a greeting.
 	foreach (array('new_order', 'order_return', 'out_stock', 'form_submited', 'erp_auto_invoice') as $action) {

@@ -165,6 +165,7 @@ function test_workspace_flow_outputs_answered()
 		'rows_get'    => array('ws_step_rows_get_data'),
 		'record_get'  => array('ws_step_record_get_data'),
 		'contact_group' => array('ws_step_contact_group_do'),
+		'list_records' => array('ws_flow_records_data'),
 		'ai'          => array('ws_step_ai_parse'),
 		'sms'         => array('ws_step_sms_do'),
 		'whatsapp'    => array('ws_step_whatsapp_do', 'ws_step_whatsapp_fallback'),

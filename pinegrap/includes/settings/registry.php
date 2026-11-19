@@ -135,6 +135,9 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
                 'pgset-search-tuning' => lang('Search Tuning'),
+                'pgset-content-approval' => lang('Content Approval'),
+                'pgset-page-clicks' => lang('Clicks and scrolling'),
+                'pgset-site-push' => lang('Visitor notifications'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
                 'pgset-page-cache' => lang('Page Cache'),
@@ -143,6 +146,9 @@ function pg_settings_categories()
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
                 'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
+                'pgset-content-approval' => pg_settings_keywords(lang('approval, approve, content, editor, manager, review, waiting, publish')),
+                'pgset-page-clicks' => pg_settings_keywords(lang('clicks, scrolling, scroll depth, links, buttons, visitors, statistics, privacy')),
+                'pgset-site-push' => pg_settings_keywords(lang('notifications, push, notify me, subscribe, browser, visitors, news')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),
@@ -234,6 +240,30 @@ function pg_settings_categories()
                 'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
                 'pgset-whatsapp-messages' => pg_settings_keywords(lang('whatsapp, order received, order shipped, order delivered, back in stock, template, variable')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
+            ),
+        ),
+
+        // What the site's e-mail is sent through: SMTP Settings' cards, which
+        // write config.php defines (includes/fn/mail_settings.php), not the
+        // config row.
+        'mail_sending' => array(
+            'label' => lang('E-mail sending'),
+            'group' => 'site',
+            'icon'  => 'bi-envelope-at',
+            'description' => lang('The service or server the site\'s e-mail is sent through, the campaign job, DKIM and the sending domain.'),
+            'sections' => array(
+                'pgset-mail-transport' => lang('Sending service'),
+                'pgset-mail-system'    => lang('System'),
+                'pgset-mail-campaign'  => lang('Campaign'),
+                'pgset-mail-dkim'      => lang('DKIM TXT Record'),
+                'pgset-mail-domain'    => lang('Sending domain'),
+            ),
+            'keywords' => array(
+                'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
+                'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
+                'pgset-mail-campaign'  => pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')),
+                'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+                'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
             ),
         ),
 
@@ -333,7 +363,7 @@ function pg_settings_categories()
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
-                'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv')),
+                'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv, xml, rss')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
             'lists' => array(
@@ -506,11 +536,12 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-robot',
-            'description' => lang('Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.'),
+            'description' => lang('Claude, the agents, Pinegrap AI, voice transcripts, the MCP servers and bulk changes.'),
             'sections' => array(
                 'pgset-ws-claude'            => lang('Claude in the channels'),
                 'pgset-ws-agents'            => lang('Workspace agents'),
                 'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
+                'pgset-ws-voice'             => lang('Voice message transcripts'),
                 'pgset-ws-mcp'               => lang('MCP servers'),
                 'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
                 'pgset-ws-canvas-templates'  => lang('Canvas templates'),
@@ -519,6 +550,7 @@ function pg_settings_categories()
                 'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
                 'pgset-ws-agents'            => pg_settings_keywords(lang('workspace, agent, agents, handle, push door, poll door, model, provider, token limit')),
                 'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
+                'pgset-ws-voice'             => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
                 'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
                 'pgset-ws-canvas-templates'  => pg_settings_keywords(lang('workspace, canvas, template, design, agent, named layers')),
@@ -530,20 +562,18 @@ function pg_settings_categories()
         ),
 
         'workspace_channels' => array(
-            'label' => lang('Channels, mail and voice'),
+            'label' => lang('Channels'),
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, voice transcripts, GitHub links and link previews.'),
+            'description' => lang('Channel templates, GitHub links and link previews.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
-                'pgset-ws-voice'           => lang('Voice message transcripts'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-link-preview'    => lang('Link previews'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
-                'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
             ),
@@ -580,6 +610,13 @@ function pg_settings_categories()
         unset($categories['appearance']['sections']['pgset-private-label'], $categories['appearance']['keywords']['pgset-private-label']);
     } else {
         $categories['appearance']['description'] = lang('The panel theme, the dashboard, the rich-text editor and private label branding.');
+    }
+
+    // Content Approval is drawn and saved for designers and administrators
+    // only (pg_content_proposals_may_set()): a Manager's own saves are the
+    // ones it holds, so no chip or search result points a Manager at it.
+    if (!defined('USER_ROLE') || ((int) USER_ROLE > 1)) {
+        unset($categories['features']['sections']['pgset-content-approval'], $categories['features']['keywords']['pgset-content-approval']);
     }
 
     return $categories;
@@ -998,9 +1035,15 @@ function pg_settings_legacy_anchors()
         'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
         'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
+        // Voice message transcripts moved from Channels into Assistants and agents.
+        'ws-voice'         => array('workspace_assistants', 'pgset-ws-voice'),
+        'pgset-ws-voice'   => array('workspace_assistants', 'pgset-ws-voice'),
         'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
         'ws-mail'          => array('mailboxes', 'pgset-ws-mail'),
-        'ws-voice'         => array('workspace_channels', 'pgset-ws-voice'),
+        // SMTP Settings became the E-mail sending category; its screen's
+        // card anchors (smtp_settings.php#mail_domain_card).
+        'mail_transport_card' => array('mail_sending', 'pgset-mail-transport'),
+        'mail_domain_card' => array('mail_sending', 'pgset-mail-domain'),
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
 }
@@ -1009,14 +1052,18 @@ function pg_settings_legacy_anchors()
 /**
  * The screens the Integrations category links, each under its own gate.
  *
- * Application Access, Connected accounts and Marketplaces open for a manager
- * (validate_area_access($user, 'manager')), Marketplaces only while the store
- * is on; Workspace Settings for a member holding the workspace settings right
- * (ws_screen_gate()). The facts that need the database are passed in, or read
- * here when they are not, so the list can be tested without one.
+ * Application Access, the other side (what connects to the site), and every
+ * System tools screen the registry of outside services names as a place
+ * (pg_connections_registry()), in the order and under the gates of
+ * pg_settings_tool_groups(): a screen the user may not open there is not
+ * linked here. Workspace Settings follows for a member holding the
+ * workspace settings right (ws_screen_gate()). The facts that need the
+ * database are passed in, or read here when they are not, so the list can
+ * be tested without one.
  *
  * @param array $user  the row validate_user() returned
- * @param array $facts optional: 'ecommerce' and 'workspace_settings' (bool)
+ * @param array $facts optional: 'tools' (pg_settings_tool_groups($user)) and
+ *                     'workspace_settings' (bool)
  * @return array of array(label, icon, url)
  */
 function pg_settings_integration_links($user, $facts = null)
@@ -1028,20 +1075,32 @@ function pg_settings_integration_links($user, $facts = null)
         return array();
     }
 
-    if (!is_array($facts)) {
-        $facts = array(
-            'ecommerce'          => (defined('ECOMMERCE') && ECOMMERCE === true),
-            'workspace_settings' => pg_settings_workspace_settings_allowed($user),
-        );
+    $facts = is_array($facts) ? $facts : array();
+
+    if (!isset($facts['tools'])) {
+        $facts['tools'] = pg_settings_tool_groups($user);
     }
 
-    $links = array(
-        array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
-        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
-    );
+    if (!isset($facts['workspace_settings'])) {
+        $facts['workspace_settings'] = pg_settings_workspace_settings_allowed($user);
+    }
 
-    if (!empty($facts['ecommerce'])) {
-        $links[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php');
+    $screens = array('api_settings.php' => true);
+
+    foreach (pg_connections_registry() as $row) {
+        if (substr($row['place'], 0, 1) !== '#') {
+            $screens[$row['place']] = true;
+        }
+    }
+
+    $links = array();
+
+    foreach ((array) $facts['tools'] as $group) {
+        foreach ((isset($group['items']) ? $group['items'] : array()) as $item) {
+            if (isset($screens[(string) strtok((string) $item['url'], '?')]) && !isset($item['confirm'])) {
+                $links[] = array('label' => $item['label'], 'icon' => $item['icon'], 'url' => $item['url']);
+            }
+        }
     }
 
     if (!empty($facts['workspace_settings'])) {
@@ -1134,11 +1193,11 @@ function pg_settings_tool_groups($user)
         ),
     );
 
-    // Connections: mail, lists, apps.
+    // Connections: apps and marketplaces. Mail sending is the E-mail
+    // sending category of the dialog.
     $connections = array(
-        array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
-        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
+        array('label' => lang('Connections'),        'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
     );
 
     if ($ecommerce) {
@@ -1237,7 +1296,8 @@ function pg_settings_tool_groups($user)
 /**
  * Search words of each system tool, by its script, in Turkish and English.
  * A tool missing here is still found by its own label. The command palette
- * and the Site Settings search both read them.
+ * and the Site Settings search both read them; each adds the names of the
+ * outside services a tool holds in its own way.
  *
  * @return array script => list of words
  */
@@ -1248,9 +1308,8 @@ function pg_settings_tool_keys()
         'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
         'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
         'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
-        'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
         'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
-        'connections.php'           => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
+        'connections.php'           => array('baglanti', 'connections', 'bagli hesap', 'connected account', 'entegrasyon', 'integration', 'dis hizmet', 'service', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
         'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),
         'view_referral_sources.php' => array('yonlendiren', 'yönlendiren', 'referans kaynak', 'referral', 'referral source', 'yon'),
         'view_currencies.php'       => array('para', 'doviz', 'döviz', 'currency', 'cur'),

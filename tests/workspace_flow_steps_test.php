@@ -89,7 +89,7 @@ function test_workspace_flow_steps_config_normalize()
 	pg_assert_same('a@example.com, b@example.com', $email['to']);
 	pg_assert_same('One line', $email['subject']);
 	pg_assert_same(12, $email['page_id']);
-	pg_assert_same(array('to', 'subject', 'body', 'page_id', 'recipient', 'purpose', 'from_name', 'from_email', 'reply_to', 'bcc'), array_keys($email));
+	pg_assert_same(array('to', 'subject', 'body', 'page_id', 'recipient', 'purpose', 'group_id', 'records', 'from_name', 'from_email', 'reply_to', 'bcc'), array_keys($email));
 	pg_assert_same(array('typed', 'info'), array($email['recipient'], $email['purpose']), 'typed addresses for info by default');
 	pg_assert_same(array(), ws_step_config_normalize('nothing', array('a' => 1)));
 }
@@ -200,7 +200,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent', 'sms', 'whatsapp'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'list_records', 'contact_group', 'ai', 'agent', 'sms', 'whatsapp'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 

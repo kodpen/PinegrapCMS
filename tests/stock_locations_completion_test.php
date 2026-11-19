@@ -95,12 +95,15 @@ function test_stock_completion_events_carry_the_location()
 function test_stock_completion_site_without_locations_keeps_its_statements()
 {
 	$completion = stock_completion_test_source('includes/fn/order_completion.php');
-	pg_assert_contains('$sale = pg_stock_sale_take($product_id, $line[\'quantity\'], $location_id, \'checkout\', $ref);', $completion);
+	pg_assert_contains('$sale = pg_stock_sale_take($product_id, $line[\'quantity\'], $location_id, $source, $ref);', $completion);
 	pg_assert_contains("if (\$sale === null) {\n        db_q(\"UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?\"", $completion, 'the checkout keeps its decrement without locations');
 	pg_assert_contains('$stock_location_id = pg_stock_order_location_save($order_id);', $completion);
 
+	// The local sale takes its stock through the same stage, with source
+	// local_sale.
 	$local = stock_completion_test_source('includes/fn/local_order.php');
-	pg_assert_contains("if (\$sale === null) {\n                db(\"UPDATE products SET inventory_quantity = (inventory_quantity - '\"", $local, 'the local sale keeps its decrement');
+	pg_assert_contains('$collected = pg_order_complete_lines($order_id, $site_lines,', $local, 'the local sale runs the checkout stage');
+	pg_assert_contains("'stock_source' => 'local_sale',", $local, 'with its own source');
 
 	$bundles = stock_completion_test_source('includes/fn/bundles.php');
 	pg_assert_contains("if (\$sale === null) {\n            db(\"UPDATE products SET inventory_quantity = (inventory_quantity - '\"", $bundles, 'a bundle keeps its decrement');

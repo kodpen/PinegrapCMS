@@ -14,6 +14,8 @@ module: cart_recovery_figures
 - Message names: an e-mail campaign's subject, else "E-mail campaign / Message template / Pop-up #id".
 
 ## Where is it shown?
-- Section `cart_recovery` ("Recovered carts") of the Visitors overview (`includes/visitors/cart_recovery.php`), after Conversions: five tiles with the change against the earlier period, the funnel as bars, the channel table, the message table (most recovered revenue first, 5 rows then Show all), the rule line. Drawn only with commerce on and the table there; the Visitors menu anchor follows the same check. Where it finally sits is the owner's call.
+- Section `cart_recovery` ("Recovered carts") of the Visitors overview (`includes/visitors/cart_recovery.php`), after Conversions: five tiles with the change against the earlier period, the funnel as bars, the channel table, the message table (most recovered revenue first, 5 rows then Show all), the rule line. Drawn only with commerce on and the table there; the Visitors menu anchor follows the same check.
+- Owner (2026-11-15, poll 55): the look as drawn, and the section between Conversions and Sources (`workflow/decisions-made-product-57.md`). The Left carts tile shows a rise as worse.
 - Dashboard card `recovery` (`includes/dashboard/v2/cards/recovery.php`, renderer in `pg_dash_cards_shop.js`): gate `shop_summary`, default Last 30 days, revenue as the headline with the change, a row per channel, See all to `visitors.php#cart_recovery` for those who may open the Visitors overview.
 - `GET /reports/cart-recovery` (scope `orders:read`, `api_reports_cart_recovery()` in `includes/api/resources/reports.php`, type `CartRecoveryReport`): whole site days, 30 by default, at most 400; 503 before the table exists.
+- Until #10089 the handler returned its answer instead of sending it with `api_ok()`, so every call answered 500 `server_error`. `tests/api_handler_sends_test.php` now fails any core handler in `includes/api/resources/` that returns a value.

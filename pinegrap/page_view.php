@@ -4,8 +4,8 @@
  *
  * The visitor beacon of the page cache: a page the router answered from a
  * stored copy posts here once it is shown, so the view is counted as if the
- * page had been drawn. A click on a site search result and the page speed
- * beacon and a pop-up's events post here too.
+ * page had been drawn. A click on a site search result, the page speed and
+ * click beacon and a pop-up's events post here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -52,16 +52,32 @@ if (isset($_POST['sc'])) {
 // A pop-up's event (software.count_auto_dialog()): shown, closed or taken,
 // with the day signature its page printed; counted in the pop-up's day row
 // for a visitor who allows statistics, never for staff or crawlers, at most
-// PG_AUTO_DIALOG_COUNT_RATE_LIMIT a minute from one address.
+// PG_AUTO_DIALOG_COUNT_RATE_LIMIT a minute from one address. A take-up behind
+// the same gates is a touch of the visitor's cart (cart_recovery.php).
 if (isset($_POST['ad'])) {
     if (!pg_auto_dialog_count_rate_exceeded() && pg_auto_dialog_count_allowed()) {
         $auto_dialog_event = pg_auto_dialog_count_parse($_POST, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
 
         if ($auto_dialog_event !== null) {
             pg_auto_dialog_count($auto_dialog_event[0], $auto_dialog_event[1]);
+
+            // A take-up by a visitor with a cart is a recovered-carts touch.
+            pg_cart_recovery_popup_taken($auto_dialog_event[0], $auto_dialog_event[1]);
         }
     }
     exit();
+}
+
+// Clicks and scroll depth (includes/fn/page_clicks.php): a page this site
+// signed today or yesterday, counted in the day's rollup unless the visitor
+// is signed in or refused statistics. It travels with the speed figures of
+// the same beacon, which are then counted below.
+if (isset($_POST['c'])) {
+    pg_page_clicks_beacon($_POST);
+
+    if (!isset($_POST['vp'])) {
+        exit();
+    }
 }
 
 // The page speed beacon (pg_vitals.min.js): the figures of a page this site

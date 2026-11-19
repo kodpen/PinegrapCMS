@@ -14,7 +14,7 @@ description: Workspace Flows ("Akışlar") as a whole: what it is, the decisions
 - Messages: Post a message `post`, Send an e-mail `email`, Send an SMS `sms`, Send a WhatsApp message `whatsapp`, Let people know `notify`, Send a summary of counts `report`.
 - People: Task `task` (waits for it), Open a task without waiting `task_open`, E-mail people their tasks `task_digest`, Ask for a check-in `checkin`, Bring a customer into a channel `lead`, Ask for approval `approval`.
 - Logic: Condition `condition`, Wait `delay` (90 days at most), For each `for_each` with End for each `for_each_end` (also Repeat N times), End `end`.
-- System: Call a webhook `webhook`, Check a web address `web_check`, Start a flow `start_flow`, Change a record `change`, Run a tool of an MCP server `mcp`, Add / Change / Read a row of a table `row_add` / `row_set` / `row_get`, Read rows of a table `rows_get`, Read a record `record_get`, Add to or take out of a contact group `contact_group`, Ask Pinegrap AI `ai`, Ask an agent `agent`.
+- System: Call a webhook `webhook`, Check a web address `web_check`, Start a flow `start_flow`, Change a record `change`, Run a tool of an MCP server `mcp`, Add / Change / Read a row of a table `row_add` / `row_set` / `row_get`, Read rows of a table `rows_get`, Read a record `record_get`, Read the records of a list `list_records`, Add to or take out of a contact group `contact_group`, Ask Pinegrap AI `ai`, Ask an agent `agent`.
 - Values, no arrows: Constants `constants`, Derived value `value`.
 - Never offered: Start a scheduled action `start_action` (`ws_flow_kinds_not_offered()`).
 

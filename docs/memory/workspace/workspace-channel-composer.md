@@ -15,3 +15,8 @@ description: The channel's writing box in one row (C5 of workspace-channel-scree
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): on a phone the box has to ride on the keyboard and the messages keep the screen.
+
+## Why does a menu of the box stay open when the phone's keyboard goes down?
+- A tool of the box (attach, emoji, insert and its table picker, send later) calls `ctxFollow(button)` before `ctxMenu()` / `floatBox()`; the menu then stands at the same offset from that button. Opening it takes the focus from the field, the keyboard goes down and the window grows (#10256; the owner met it on a phone, 2026-11-17: the menu flashed and closed).
+- A resize that keeps the width, a visual viewport change or a scroll re-places such a menu (`ctxAfterChange()` says place or close, `ctxPlace()` reads the button's new place a moment later, after `bindFit()`); a new width (a turn of the phone) closes it. A choice, a tap outside or Esc closes it, and the focus goes back as before.
+- Every other menu (a message's row, a header) still closes on a resize or a scroll of its list. Test: `tests/workspace_composer_menu_test.php`.

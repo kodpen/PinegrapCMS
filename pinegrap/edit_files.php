@@ -145,6 +145,11 @@ if (!$_POST) {
 
                             pg_audit_record('update', 'files', $file_id, $audit_before);
 
+                            // A moved file takes its languages' pictures along.
+                            if ($sql_folder) {
+                                pg_picture_tr_follow(array($file_id));
+                            }
+
                             $number_of_files++;
 
                         }

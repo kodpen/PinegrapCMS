@@ -15,7 +15,7 @@ description: Plan prototype-comments, features P1 to P16: the link's "Allow comm
 
 ## What does the door check?
 - (P7) New root file `prototype_comment.php` takes a POST only from the session that opened that link (after its password, when it has one), with the viewer's form token and from the same origin; the page must be one the link shows.
-- (P8) Limits: 10 comments in 10 minutes per address, 200 open comments a link; a burst counts a WAF offence. The text is kept plain, the place's numbers are bounded.
+- (P8) Limits: 30 comments in 10 minutes per address, 200 open comments a link; a burst counts a WAF offence. The text is kept plain, the place's numbers are bounded.
 - (P9) The link's token never enters the frame, a log or a comment. A message from the frame only proposes a place: nothing is written without the viewer's request.
 
 ## What does a comment keep?

@@ -28,7 +28,7 @@ function api_meta_read($params) {
 
 	$currency_code = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : 'USD';
 
-	api_ok(array(
+	$meta = array(
 		'api_version'    => api_version(),
 		'software'       => 'Pinegrap',
 		'language'       => api_text_language(),
@@ -68,7 +68,47 @@ function api_meta_read($params) {
 		'uploads'        => api_meta_uploads(),
 		'scopes'         => api_current_scopes(),
 		'server_time'    => api_time(time())
-	));
+	);
+
+	$workspace = api_meta_workspace();
+
+	if ($workspace !== null) {
+
+		$meta['workspace'] = $workspace;
+
+	}
+
+	api_ok($meta);
+
+}
+
+// The Workspace values a team device shows before it opens a form: the
+// minutes the planning board counts for a task with no estimate, and the
+// working day a person's profile falls back to (both read in init.php).
+// Null, and so left out, while the Workspace is off.
+function api_meta_workspace() {
+
+	if (!defined('WORKSPACE_ENABLED') || WORKSPACE_ENABLED != true) {
+
+		return null;
+
+	}
+
+	return api_meta_workspace_values(
+		defined('WS_DEFAULT_TASK_MINUTES') ? WS_DEFAULT_TASK_MINUTES : null,
+		defined('WS_DAY_MINUTES') ? WS_DAY_MINUTES : null
+	);
+
+}
+
+// The values as GET /meta gives them, with init.php's own fallbacks (60 and
+// 480) when a constant is missing. Pure.
+function api_meta_workspace_values($task_minutes, $day_minutes) {
+
+	return array(
+		'default_task_minutes' => ($task_minutes === null) ? 60 : (int)$task_minutes,
+		'day_minutes'          => ($day_minutes === null) ? 480 : (int)$day_minutes
+	);
 
 }
 
@@ -159,8 +199,19 @@ function api_meta_features() {
 		'mobile'              => (defined('MOBILE') && MOBILE == true),
 		'captcha'             => (defined('CAPTCHA') && CAPTCHA == true),
 		'performance_monitor' => (defined('PERF_MONITOR_ENABLED') && PERF_MONITOR_ENABLED == true),
-		'native_push'         => api_meta_native_push()
+		'native_push'         => api_meta_native_push(),
+		'quiet_hours'         => api_meta_quiet_hours()
 	);
+
+}
+
+// Whether a person can read and set their own quiet hours over the API
+// (quiet_hours on GET /auth/me, POST /workspace/quiet-hours): the Workspace
+// is on and its database step has run.
+function api_meta_quiet_hours() {
+
+	return defined('WORKSPACE_ENABLED') && (WORKSPACE_ENABLED == true)
+		&& function_exists('ws_quiet_hours_ready') && ws_quiet_hours_ready();
 
 }
 
@@ -369,7 +420,8 @@ function api_meta_schema() {
 			'mobile'              => 'boolean',
 			'captcha'             => 'boolean',
 			'performance_monitor' => 'boolean',
-			'native_push'         => 'boolean'
+			'native_push'         => 'boolean',
+			'quiet_hours'         => 'boolean'
 		),
 		'security' => array(
 			'firewall'          => 'string',
@@ -380,7 +432,7 @@ function api_meta_schema() {
 			'name'        => 'string',
 			'label'       => 'string',
 			'enabled'     => 'boolean?',
-			'last_run_at' => 'string?',
+			'last_run_at' => 'datetime?',
 			'stale'       => 'boolean'
 		)),
 		'uploads' => array(
@@ -394,7 +446,18 @@ function api_meta_schema() {
 			)
 		),
 		'scopes'      => 'string[]',
-		'server_time' => 'string'
+		// Left out while the Workspace is off.
+		'workspace'   => 'MetaWorkspace?',
+		'server_time' => 'datetime'
+	);
+
+}
+
+function api_meta_workspace_schema() {
+
+	return array(
+		'default_task_minutes' => 'integer',
+		'day_minutes'          => 'integer'
 	);
 
 }

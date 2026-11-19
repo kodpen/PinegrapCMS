@@ -97,7 +97,7 @@ function test_api_screens_contrast_docs_pages()
 	$console = api_screens_contrast_source('includes/api/console.php');
 
 	pg_assert_true(strpos($docs, 'opacity-50') === false, 'API Documentation has no half-faded text');
-	pg_assert_true(strpos($docs, '<p class="small fg-2 mb-0 mt-3">') !== false, 'the console link line is secondary text, not faded');
+	pg_assert_true(strpos($docs, '<p class="small fg-2 mb-0 mt-5">') !== false, 'the console link line is secondary text, not faded');
 	pg_assert_true(strpos($console, 'opacity-50') === false, 'the console has no half-faded text');
 
 	foreach (array('.con-head .con-sub', '#doc_empty') as $selector) {

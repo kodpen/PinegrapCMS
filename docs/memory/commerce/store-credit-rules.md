@@ -9,14 +9,14 @@ description: What binds store credit (owner, 2026-11-02, #5039, #6306): a custom
 
 ## What is it not?
 - Not a payment method: no driver, no charge, no refund to a payment service. A refund to credit is a refund with `refund_method = credit` and the card id as its reference (`store-credit-refunds.md`).
-- It never pays for a gift card product: the rule `submit_order.php` already keeps for gift cards.
+- It never pays for a gift card product: not on an order of gift cards alone, and on a mixed cart at most the part of the total that is not gift card lines (`gift-card-line-credit-cap.md`, #10258). Plain gift cards take the same cap, shared with credit (#10267).
 
 ## Which owner decisions bind it?
 - The reward goal (membership, reward mail) keeps working beside the conversion (`store-credit-points.md`).
 - Money in integer minor units rounded with `round()`; the conversion rate is read as `pg_parse_amount()` reads amounts.
 - An order's points are taken back on cancellation and refund; a shortfall after a conversion reduces or expires the newest points card, never below zero; not retroactive (#6306, `workflow/decisions-made-product-25.md`, `store-credit-points-take-back.md`).
 - Mails `credit_issued` and `credit_expiring` are campaign profile actions; the expiring notice goes 14 days ahead (`store-credit-mails.md`).
-- Erasing a customer voids their credit and clears `user_id` (`api/api-customer-credit.md`).
+- Erasing a customer voids their credit and clears `user_id` on the cards brought to 0; a card whose void lost a race with an order keeps its owner (#10261, `api/api-customer-credit.md`).
 - Deleting a user account voids their open credit the same way (owner, 2026-11-14, #9016, `user-delete-store-credit.md`; his words: `workflow/decisions-made-product-52.md`).
 
 ## Where is the rest?

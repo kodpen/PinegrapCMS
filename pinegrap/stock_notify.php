@@ -5,11 +5,13 @@
  * A request to be told when an out-of-stock product is back
  * (includes/fn/stock_notify.php).
  *
- *   POST product_id, email_address, phone, token, send_to
+ *   POST product_id, email_address, phone, push_secret, token, send_to
  *
  * email_address may be left empty by a signed-in visitor: the account's
  * address is used then. phone, a mobile number, is optional and kept only
  * while the notice can go out as a text message (pg_stock_notify_sms_on()).
+ * push_secret, the visitor notification secret this browser holds, is
+ * optional: that device is then told too (pg_stock_notify_push_watch()).
  * A POST sent with X-Requested-With: XMLHttpRequest is answered in JSON, {"status": <code>, "ok": bool, "message": <sentence>};
  * any other POST is sent back to its send_to field (a path on the site, the
  * home page without one), with the sentence among the product page's
@@ -79,7 +81,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     stock_notify_refuse('method', lang('Method not allowed.'), 405);
 }
 
-pg_request_single_values(array('product_id', 'email_address', 'phone', 'token', 'send_to'));
+pg_request_single_values(array('product_id', 'email_address', 'phone', 'push_secret', 'token', 'send_to'));
 
 // The token check of validate_token_field(), answered the way the request
 // was asked: that function always prints an HTML page. Without it a page on
@@ -107,7 +109,7 @@ $user_id = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ?
 
 try {
     $phone = (string) ($_POST['phone'] ?? '');
-    $status = pg_stock_notify_request($product_id, (string) ($_POST['email_address'] ?? ''), $user_id, $phone);
+    $status = pg_stock_notify_request($product_id, (string) ($_POST['email_address'] ?? ''), $user_id, $phone, (string) ($_POST['push_secret'] ?? ''));
 } catch (Throwable $error) {
     stock_notify_refuse('failed', lang('Something went wrong. Please try again.'), 500);
 }

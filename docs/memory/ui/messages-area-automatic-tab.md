@@ -20,5 +20,6 @@ module: messages_automatic
 
 ## What about the campaign profiles?
 - For who passes the e-mail rule: a note "N campaign profile(s) still send as before, beside the flows." (enabled profiles left, not those a flow was made of; a role 3 user's own) leading to My Campaign Profiles, and the conversion's report (`pg_profile_flow_switch_notice()`, [[core/campaign-profile-screens-left]]).
+- The report is a notice above the list for 30 days after it ended, then a quiet `<details>` line (`pg_profile_flow_switch_quiet()`) under the list, or under the note for who lacks the flows gate. Before PR #10375 the note branch left the quiet line out, and a campaign manager outside the team lost the report once the profiles' list had left.
 
 Test: `tests/messages_automatic_test.php`.

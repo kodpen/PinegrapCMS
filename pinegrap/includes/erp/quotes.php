@@ -286,6 +286,11 @@ function erp_quote_save($data, $quote_id, $user_id)
 
     $totals = $built['totals'];
     $base = erp_base_currency();
+
+    if (($header['currency'] !== $base) && !erp_base_amount_fits($totals['grand_total'], $header['exchange_rate'])) {
+        return $fail(lang('The total is too large in the home currency.'), 'exchange_rate');
+    }
+
     $grand_total_base = ($header['currency'] === $base)
         ? $totals['grand_total']
         : (($header['exchange_rate'] > 0) ? erp_to_base($totals['grand_total'], $header['exchange_rate']) : 0);

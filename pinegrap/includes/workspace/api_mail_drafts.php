@@ -187,7 +187,7 @@ function ws_api_mail_draft_schema()
         'html'            => 'string?',
         'file_ids'        => array('integer'),
         'user_id'         => 'integer?',
-        'updated_at'      => 'string?',
+        'updated_at'      => 'datetime?',
     );
 }
 
