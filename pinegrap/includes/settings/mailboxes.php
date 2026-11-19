@@ -60,9 +60,12 @@ if ($ws_card !== '') {
     // application is not set up gets no form: its button is not drawn.
     if (function_exists('pg_connect_start_fields') && function_exists('pg_connect_purpose') && pg_connect_purpose('mail_read') && ((int) $ws_viewer['role'] <= 2)) {
         foreach (array('microsoft', 'google') as $ws_provider) {
+            // The id is ws_mail_connect_form_id()'s.
+            $ws_suffix = ($ws_provider === 'google') ? '_google' : '';
+
             if (ws_mail_connect_ready($ws_provider)) {
                 $pg_settings_modals[] = '
-            <form method="post" action="connect.php" id="' . ws_mail_connect_form_id($ws_provider) . '" class="disable_shortcut d-none">
+            <form method="post" action="connect.php" id="pgset_mail_connect' . $ws_suffix . '" class="disable_shortcut d-none">
                 ' . pg_connect_start_fields($ws_provider, 'mail_read', pg_settings_url('mailboxes') . '#pgset-ws-mail') . '
             </form>';
             }
