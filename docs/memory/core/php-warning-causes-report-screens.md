@@ -4,7 +4,7 @@ description: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit F
 ---
 
 ## Why these four files?
-- The owner's PHP 8.5 log (1 to 13 November 2026, not in the repository) counted `view_visitor_report.php`, `includes/fn/order_report.php`, `edit_form_list_view.php` and `includes/workspace/access.php` among the files that logged the most warnings (`plans/php-error-log-clean.md`, step EL4).
+- The owner's PHP 8.5 log (1 to 13 November 2026, not in the repository) counted `view_visitor_report.php`, `includes/fn/order_report.php`, `edit_form_list_view.php` and `includes/workspace/access.php` among the files that logged the most warnings (`error-reporting.md`).
 - The log's line numbers are those of the owner's checkout on the day, so a cause may be gone since; read the file's history from 1 November before hunting.
 
 ## Visitor Report (`view_visitor_report.php`)?
@@ -19,7 +19,7 @@ description: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit F
 - The row is now taken as `?: array()` and each field `?? ''`: the four editors open empty as before, without the warnings. `edit_form_item_view.php` has the same read for its layout.
 
 ## Workspace rights (`includes/workspace/access.php`)?
-- No cause found from the code: every check takes the full `ws_rights()` array and a channel or task row read with `SELECT *`. Left for the census (EL1).
+- The logged shape, key "archived_at", is gone since #8446: the GitHub link card (`ws_github_link_channels()`) passed the sidebar's short channel row, which has no `archived_at`, to `ws_can_post_channel()`; it now passes the channel's own row. Every other check takes the full `ws_rights()` array and a channel or task row read with `SELECT *`.
 
 ## How were they looked for without the log?
 - PHPStan at level 2 with `checkMaybeUndefinedVariables` on the four files only (a scratch config beside `tools/phpstan.neon`); its two hits in the Visitor Report were false alarms (the range and the id are set on every path that reads them).

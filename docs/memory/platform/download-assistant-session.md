@@ -8,7 +8,7 @@ description: Who starts the session in the root download_assistant.php: pinegrap
 - Before an install, or with a config that names no database, the assistant starts its own plain session with `da_session_start()` before it reads `$_SESSION`.
 
 ## Why not at the top of the file any more?
-- The assistant called `session_start()` on its first line and included `init.php` later. PHP refuses session ini settings while a session is active, so the panel's cookie settings were never applied there and every visit logged "Session ini settings cannot be changed when a session is active" (seen in the PHP 8.5 error log, plan php-error-log-clean).
+- The assistant called `session_start()` on its first line and included `init.php` later. PHP refuses session ini settings while a session is active, so the panel's cookie settings were never applied there and every visit logged "Session ini settings cannot be changed when a session is active" (seen in the owner's PHP 8.5 error log, `core/error-reporting.md`).
 - Nothing before the "Check if Pinegrap exists" block reads the session, so the start moved into its three branches.
 
 ## What keeps it?

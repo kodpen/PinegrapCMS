@@ -23,9 +23,9 @@ description: How PHP errors are reported (SET_ERROR_REPORTING, php_errors.log on
 - A bundled library: its newer release that is quiet on PHP 8.5 and still runs on 7.1, or the smallest guarded patch written in its `*-embedding.md`; a release that changes behaviour is asked first. Own code: `deprecated-resource-free-calls.md`.
 
 ## What did the 2026 log clean-up fix?
-- The owner's PHP 8.5 dev log, 10 October to 17 November 2026: 14,782 Pinegrap lines, 125 files, 339 shapes (14,656 warnings, 93 fatals, 33 deprecations); its other 142,000 deprecations were other projects'.
+- The owner's PHP 8.5 dev log, 10 October to 17 November 2026: 14,782 Pinegrap lines, 125 files, 339 shapes (14,656 warnings, 93 fatals, 33 deprecations); nearly all its 142,000 deprecation lines were other projects'.
 - Fixes by area: `php85-log-warnings-already-fixed.md`, `php-warning-causes-report-screens.md`, `log-warnings-forms-default-screens.md`, `commerce/order-preview-receipt-warnings.md`, `erp/erp-money-overflow.md`, `platform/download-assistant-session.md`; fatals: `view_folder_and_files_f.php` (#10112), the System Status walk (#10113). Most shapes were gone before a fix reached them.
-- The census, file by file with the PR of each shape: `git show 42ff0a990b:docs/memory/plans/php-error-log-clean-census.md`, parts `-census-2` to `-census-4`.
+- The census, file by file with the PR of each shape, is in git history: `git show 42ff0a990b:docs/memory/plans/<file>` for the four `php-error-log-clean-census*.md`.
 
 ## What was left, and why?
 - Not code: the Workspace notes import's own "creating the stage folder failed"; PHPMailer's `openssl_sign()` with a DKIM key that is not private (a setting); `session_start()` permission denied (the server's folder); dompdf's float to int cast (unpatched, `dompdf-embedding.md`).

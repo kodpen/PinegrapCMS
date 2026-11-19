@@ -5,7 +5,7 @@ description: Why the built-in Order Preview and Order Receipt layouts write no P
 
 ## Which values does the built-in Order Preview start before the cart is read?
 - In `get_order_preview.php`, at the top of the `layout_type == 'system'` branch, before `if ($ship_tos)`: `$recurring_products_exist` and `$recurring_transaction` `false`, `$applied_offers` and `$charged_item_ids` `array()`, `$output_grand_tax`, `$output_grand_shipping` and `$output_recurring_products` `''`.
-- Why: an empty cart skips the item loop, an order with no shipping recipient never builds the shipping row, and tax may be off, yet the totals, the applied offers and the payment part read all of them. The owner's PHP 8.5 log had them as "Undefined variable" up to 2 November 2026 (plan php-error-log-clean, EL5).
+- Why: an empty cart skips the item loop, an order with no shipping recipient never builds the shipping row, and tax may be off, yet the totals, the applied offers and the payment part read all of them. The owner's PHP 8.5 log had them as "Undefined variable" up to 2 November 2026 (#10293, `core/error-reporting.md`).
 - The same names were set inside `if ($ship_tos)` before; they are set only once now, so nothing the loop sets is reset.
 
 ## Why does each recipient start an empty shipping row?
