@@ -10,7 +10,7 @@ description: A channel's Files tab (drawFiles() in workspace.js): its groups, th
 ## How is the gallery drawn?
 - `FILE_PAGE` (60) tiles at a time: `drawPage()` adds the next slice and a quiet `pg-button` Show {n} more pictures (`files_more_pictures`) under the grid while pictures are left (TD1).
 - The viewer (`viewImages(gallery, index)`) still steps through every picture, drawn or not. A tile keeps its 4 / 3 box before its picture arrives; the `img` is `loading="lazy"` and `decoding="async"`.
-- A tile draws `file.thumb`, the picture's 320 px copy (`ws_file_thumb_url()` in `includes/workspace/files.php`: `?w=320` on JPEG, PNG and WebP; GIF and SVG keep their address); the viewer, Open in new tab and Download keep the original (TD2, #PR).
+- A tile draws `file.thumb`, the picture's 320 px copy (`ws_file_thumb_url()` in `includes/workspace/files.php`: `?w=320` on JPEG, PNG and WebP; GIF and SVG keep their address); the viewer, Open in new tab and Download keep the original (TD2, #10415).
 - `get_file.php` makes that copy for a workspace file after its Workspace checks: only 320 px in the picture's own format, whatever `w`/`f` ask, sent `private`. It is the derivative-cache copy `ws_file_preview()` already kept for the API (`api/api-file-endpoints.md`).
 - Owner (2026-11-19): 298 pictures in the agent channel made the tab stutter.
 
