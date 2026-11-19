@@ -8,6 +8,19 @@ namespace DVDoug\BoxPacker;
 
 class TestBox implements Box
 {
+    // Pinegrap: declared (PHP 8.2 deprecates dynamic properties), public and
+    // in the order the constructor sets them, so print_r() of a packer logged
+    // by shipping.php reads as before.
+    public $reference;
+    public $outerWidth;
+    public $outerLength;
+    public $outerDepth;
+    public $emptyWeight;
+    public $innerWidth;
+    public $innerLength;
+    public $innerDepth;
+    public $maxWeight;
+    public $innerVolume;
 
     public function __construct(
         $reference,
