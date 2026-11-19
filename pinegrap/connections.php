@@ -190,6 +190,15 @@ if ($_POST) {
 
 	}
 
+	// A write from a service's page goes back to that page.
+	$return_service = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])
+		&& preg_match('/^[a-z0-9_]{1,60}$/', $_POST['connections_return'])) ? $_POST['connections_return'] : '';
+
+	if ($return_service !== '') {
+		header('Location: ' . $screen_url . '?service=' . $return_service);
+		exit();
+	}
+
 	header('Location: ' . $screen_url . (($return_provider !== '') ? '#connections-' . rawurlencode($return_provider) : ''));
 
 	exit();
@@ -431,6 +440,15 @@ foreach ($providers as $provider_key => $provider) {
 
 }
 
+// A service's own page (connections.php?service=<key>); a key the user may
+// not see, or an account provider's, leads back to the list.
+$page_id = pg_connections_screen_page_id(isset($_GET['service']) ? $_GET['service'] : null, $rows);
+
+if (isset($_GET['service']) && ($page_id === '')) {
+	header('Location: ' . $screen_url);
+	exit();
+}
+
 $counts = pg_connections_screen_counts(pg_connections_screen_search($rows, $query));
 $shown = pg_connections_screen_filter(pg_connections_screen_search($rows, $query), $filter);
 $order = pg_connections_screen_order($shown, array_keys($group_labels));
@@ -647,16 +665,17 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 
 }
 
-/* A service's drawer, drawn into a template the one service drawer takes
-   its content from: the state, the accounts it stands on and their last
-   error where one is stored, what uses it, and the one place of its
-   settings. No field of a setting is repeated here. */
+/* A service's own page: "Status" with its state, the accounts it stands on
+   and their last error where one is stored, Connect again and Disconnect
+   for the site's accounts, and the one place of its settings; then "Where
+   it is used", read from the registry. No field of a setting is repeated
+   until the service's own step moves its fields here. */
 
-function connections_service_detail($id, $service, $row, $group_label, $tile, $facts) {
+function connections_service_page($id, $service, $row, $tile, $facts, $providers, $provider_apps, $can_seal) {
 
 	$state = isset($service['state']) ? $service['state'] : null;
 	$accounts = pg_connections_screen_accounts_for($state, $facts['accounts']);
-	$error_html = '';
+	$extra = '';
 
 	$facts_html = '<dt>' . h(lang('Status')) . '</dt><dd>' . connections_state_pill($row['state']) . '</dd>';
 
@@ -666,57 +685,98 @@ function connections_service_detail($id, $service, $row, $group_label, $tile, $f
 
 	if (pg_connections_screen_keeps_errors($state)) {
 
-		$labels = array();
+		$provider_key = (string) $state['provider'];
+		$ready = isset($provider_apps[$provider_key]) && pg_connect_app_ready($provider_apps[$provider_key]);
+		$account_rows = '';
 
 		foreach ($accounts as $account) {
-			$labels[] = '<span class="d-block text-break">' . pg_connections_screen_address_html($account['label']) . '</span>';
+
+			$buttons = '';
+
+			// Only the site's own accounts are reconnected or ended here; a
+			// person's own account is theirs.
+			if ($account['user_id'] === 0) {
+				$buttons = '
+					<div class="d-flex flex-wrap gap-3 mt-3">
+						' . (($account['status'] === 'reauth')
+							? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect" data-provider="' . h($provider_key) . '"
+								data-purpose="' . h($state['purpose']) . '" data-connection="' . $account['id'] . '"' . (($ready && $can_seal) ? '' : ' disabled') . '>
+								<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Connect again')) . '</button>'
+							: '') . '
+						<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action"
+							data-action="disconnect" data-id="' . $account['id'] . '"
+							data-confirm="' . h(lang(array('string' => 'The site will no longer use {var:1}, and every feature that does stops until an account is connected again.', 'vars' => $account['label']))) . '">
+							<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+					</div>';
+			} else {
+				$buttons = '<div class="pg-text-meta">' . h(lang('A person\'s own account: they connect it again.')) . '</div>';
+			}
+
+			$account_rows .= '
+				<div class="pg-card-inner-row d-block">
+					<div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1">
+						<span class="fw-semibold text-break">' . pg_connections_screen_address_html($account['label']) . '</span>
+						' . connections_status_badge($account['status']) . '
+					</div>
+					' . $buttons . '
+				</div>';
+
 		}
 
 		$error = pg_connections_screen_last_error($accounts);
 
-		$facts_html .= '<dt>' . h(lang('Account')) . '</dt><dd>' . ($labels ? implode('', $labels) : h(lang('None connected'))) . '</dd>';
+		$extra = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Account')) . '</div>
+				' . (($account_rows !== '')
+					? '<div class="pg-card-inner connections-list">' . $account_rows . '</div>'
+					: '<div class="pg-text-2">' . h(lang('None connected')) . '</div>') . '
+			</div>
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Last error')) . '</div>
+				' . (($error !== '')
+					? '<div class="alert theme-warning small py-3 mb-0 text-break">' . h($error) . '</div>'
+					: '<div class="pg-text-2">' . h(lang('No error on file')) . '</div>') . '
+			</div>';
 
-		// A stored error is free text: its own line across the column under
-		// its label, as the provider drawer shows an account's.
-		$error_html = '<div class="mt-4"><div class="pg-field-label">' . h(lang('Last error')) . '</div>'
-			. (($error !== '')
-				? '<div class="alert theme-warning small py-3 mb-0 text-break">' . h($error) . '</div>'
-				: '<div class="pg-text-2">' . h(lang('No error on file')) . '</div>') . '</div>';
+		if (isset($providers[$provider_key])) {
+			$extra .= '
+			<p class="pg-text-meta mt-4 mb-0">' . h(lang(array('string' => 'Accounts are connected in the {var:1} panel of the Connections list.', 'vars' => $providers[$provider_key]['label']))) . '
+				<a href="connections.php#connections-' . h($provider_key) . '">' . h(lang('Connections')) . ' › ' . h($providers[$provider_key]['label']) . '</a></p>';
+		}
 
 	}
 
 	$on_card = (substr($service['place'], 0, 1) === '#');
 
 	return '
-		<template id="connections-detail-' . h($id) . '">
-			<div class="drawer-header">
+		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-status">
+			<div class="d-flex align-items-center gap-3 mb-4">
 				' . $tile . '
-				<div class="connections-drawer-head">
-					<h2 class="pg-title-status mb-0" id="connections-detail-title">' . h($row['name']) . '</h2>
-					<div class="pg-text-meta">' . h($group_label) . '</div>
-				</div>
-				<button type="button" class="pg-icon-button" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+				<h2 class="pg-title-section mb-0" id="connections-page-status">' . h(lang('Status')) . '</h2>
 			</div>
-			<div class="drawer-body">
-				<section class="pg-report-section">
-					<dl class="pg-kv mb-0">' . $facts_html . '</dl>' . $error_html . '
-				</section>
-				<section class="pg-report-section">
-					<h3 class="pg-report-section-title">' . h(lang('Used by')) . '</h3>
-					<p class="pg-text-2 mb-0">' . h($row['uses']) . '</p>
-				</section>
-				<section class="pg-report-section">
-					<p class="pg-text-2 mb-1">' . h($on_card
-						? lang('This service\'s settings are on its card in Site Settings; here only its state is shown.')
-						: lang('This service\'s settings are on a screen of their own; here only its state is shown.')) . '</p>
-					<p class="pg-text-meta mb-0">' . h($row['line']) . '</p>
-				</section>
+			<dl class="pg-kv mb-0">' . $facts_html . '</dl>' . $extra . '
+			<div class="mt-5">
+				<p class="pg-text-2 mb-1">' . h($on_card
+					? lang('This service\'s settings are on its card in Site Settings; here only its state is shown.')
+					: lang('This service\'s settings are on a screen of their own; here only its state is shown.')) . '</p>
+				<p class="pg-text-meta mb-3">' . h($row['line']) . '</p>
+				<a class="pg-button pg-button-sm pg-button-quiet" href="' . h($row['url']) . '">' . h(lang('Open its settings')) . ' <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>
 			</div>
-			<div class="drawer-footer">
-				<a class="pg-button pg-button-fill" href="' . h($row['url']) . '">' . h(lang('Open its settings')) . ' <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>
-				<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Close')) . '</button>
+		</section>
+		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-uses">
+			<h2 class="pg-title-section mb-4" id="connections-page-uses">' . h(lang('Where it is used')) . '</h2>
+			<div class="pg-card-inner connections-list">
+				<a class="pg-card-inner-row connections-row" href="' . h($row['url']) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($row['uses']) . '</span>
+						<span class="pg-text-meta d-block">' . h($row['line']) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($row['state']) . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>
 			</div>
-		</template>';
+		</section>';
 
 }
 
@@ -801,7 +861,9 @@ foreach ($order as $group_key => $ids) {
 					<span class="pg-text-meta d-block">' . h($row['line']) . '</span>
 					' . (($row['uses'] !== '') ? '<span class="pg-text-2 d-block">' . h($row['uses']) . '</span>' : '') . '
 				</span>
-				<span class="connections-row-side">' . connections_state_pill($row['state']) . '</span>';
+				<span class="connections-row-side">' . connections_state_pill($row['state']) . '
+					<span class="pg-button pg-button-sm pg-button-quiet">' . h((pg_connections_screen_action($row['state']) === 'connect') ? lang('Connect') : lang('Manage')) . '</span>
+				</span>';
 
 		if ($row['kind'] === 'provider') {
 
@@ -810,7 +872,7 @@ foreach ($order as $group_key => $ids) {
 
 			$group_rows .= '
 			<button type="button" class="pg-card-inner-row connections-row connections-open" data-drawer="connections-' . h($provider_key) . '" aria-haspopup="dialog"' . $hidden . '>'
-				. $inner . '<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				. $inner . '
 			</button>';
 
 			$drawers .= connections_provider_drawer($provider_key, $providers[$provider_key], $provider_apps[$provider_key],
@@ -818,14 +880,11 @@ foreach ($order as $group_key => $ids) {
 
 		} else {
 
-			// A link to the place for a browser without the script; the
-			// script opens the drawer instead.
+			// A service opens its own page.
 			$group_rows .= '
-			<a class="pg-card-inner-row connections-row connections-open" href="' . h($row['url']) . '" data-drawer="connections-detail" data-detail="' . h($id) . '" aria-haspopup="dialog"' . $hidden . '>'
-				. $inner . '<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+			<a class="pg-card-inner-row connections-row" href="' . h(pg_connections_screen_page_url($id)) . '"' . $hidden . '>'
+				. $inner . '
 			</a>';
-
-			$drawers .= connections_service_detail($id, $registry[$id], $row, $group_labels[$group_key], $tile, $facts);
 
 		}
 
@@ -918,60 +977,103 @@ $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 
 $liveform->remove_form();
 
-// No save bar: each provider saves its own application through its own form.
-echo pg_page_shell(array(
-	'title'               => lang('Connections'),
-	'extra classes'       => 'pg-measure-edit',
-	'icon'                => 'settings',
-	'heading'             => lang('Connections'),
-	'heading_description' => lang('The outside services the site works with: what is connected, what stopped, and the one place of each one\'s settings.'),
-	'breadcrumb'          => array(
-		array('label' => lang('System tools'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php'),
-		array('label' => lang('Connections')),
-	),
-)) . '
-
-<main id="content" class="container-fluid">
-	' . pg_screen_toolbar(array(
-		'grow' => '<div class="connections-find">' . $search_form
-			. '<div class="pg-seg pg-list-seg" role="group" aria-label="' . h(lang('Filter by state')) . '">' . $segments . '</div></div>',
-	), array('label' => lang('Connections'))) . '
-	' . (($counts['none'] > 0)
-		? '<p class="pg-text-meta mb-5">' . h(lang(array('string' => '{var:1} services whose state cannot be read are listed only under All.', 'vars' => pg_format_number($counts['none'], 0)))) . '</p>'
-		: '') . '
-
+$messages = '
 	<div class="row"><div class="col-12">
 		' . $liveform_messages . '
 		' . ($can_seal
 			? ''
 			: '<div class="alert theme-danger">' . h(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.')) . '</div>') . '
-	</div></div>
+	</div></div>';
 
+if ($page_id !== '') {
+
+	$page_row = $rows[$page_id];
+	$page_group = $page_row['group'];
+
+	$shell = pg_page_shell(array(
+		'title'               => $page_row['name'] . ' - ' . lang('Connections'),
+		'extra classes'       => 'pg-measure-edit',
+		'icon'                => 'settings',
+		'heading'             => $page_row['name'],
+		'heading_description' => $group_labels[$page_group] . ' · ' . $page_row['uses'],
+		'breadcrumb'          => array(
+			array('label' => lang('System tools'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php'),
+			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
+			array('label' => $page_row['name']),
+		),
+	));
+
+	$main = $messages . '
 	<div class="row g-5">
-		<div class="col-12 lg:col-8 2xl:col-9 order-1">
-			' . ((($attention_rows !== '') && ($query === '') && ($filter !== 'connected') && ($filter !== 'not_connected'))
-				? '<section class="pg-card connections-attention p-5 mb-6" aria-labelledby="connections-attention-title">
-					<h2 class="pg-title-section mb-1" id="connections-attention-title">' . h(lang('Needs attention')) . '</h2>
-					<p class="pg-card-sub mb-4">' . h(lang('These connections stopped working; the features that use them wait until they are connected again.')) . '</p>
-					<div class="pg-card-inner">' . $attention_rows . '</div>
-				</section>'
-				: '') . '
-			' . $groups_html . '
+		<div class="col-12 lg:col-8 2xl:col-9">
+			' . connections_service_page($page_id, $registry[$page_id], $page_row,
+				'<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . $group_icons[$page_group][1] . '" aria-hidden="true"><i class="bi bi-' . $group_icons[$page_group][0] . '"></i></span>',
+				$facts, $providers, $provider_apps, $can_seal) . '
 		</div>
-		<div class="col-12 lg:col-4 2xl:col-3 order-2">' . $other_side . '</div>
-	</div>
+	</div>';
+
+	$drawers = '';
+	$connect_return = pg_connections_screen_page_url($page_id);
+
+} else {
+
+	// No save bar: each provider saves its own application through its own form.
+	$shell = pg_page_shell(array(
+		'title'               => lang('Connections'),
+		'extra classes'       => 'pg-measure-edit',
+		'icon'                => 'settings',
+		'heading'             => lang('Connections'),
+		'heading_description' => lang('The outside services the site works with: what is connected, what stopped, and the one place of each one\'s settings.'),
+		'breadcrumb'          => array(
+			array('label' => lang('System tools'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php'),
+			array('label' => lang('Connections')),
+		),
+	));
+
+	$main = pg_screen_toolbar(array(
+			'grow' => '<div class="connections-find">' . $search_form
+				. '<div class="pg-seg pg-list-seg" role="group" aria-label="' . h(lang('Filter by state')) . '">' . $segments . '</div></div>',
+		), array('label' => lang('Connections'))) . '
+		' . (($counts['none'] > 0)
+			? '<p class="pg-text-meta mb-5">' . h(lang(array('string' => '{var:1} services whose state cannot be read are listed only under All.', 'vars' => pg_format_number($counts['none'], 0)))) . '</p>'
+			: '') . '
+
+		' . $messages . '
+
+		<div class="row g-5">
+			<div class="col-12 lg:col-8 2xl:col-9 order-1">
+				' . ((($attention_rows !== '') && ($query === '') && ($filter !== 'connected') && ($filter !== 'not_connected'))
+					? '<section class="pg-card connections-attention p-5 mb-6" aria-labelledby="connections-attention-title">
+						<h2 class="pg-title-section mb-1" id="connections-attention-title">' . h(lang('Needs attention')) . '</h2>
+						<p class="pg-card-sub mb-4">' . h(lang('These connections stopped working; the features that use them wait until they are connected again.')) . '</p>
+						<div class="pg-card-inner">' . $attention_rows . '</div>
+					</section>'
+					: '') . '
+				' . $groups_html . '
+			</div>
+			<div class="col-12 lg:col-4 2xl:col-3 order-2">' . $other_side . '</div>
+		</div>';
+
+	$connect_return = 'connections.php';
+
+}
+
+echo $shell . '
+
+<main id="content" class="container-fluid">
+	' . $main . '
 
 	' . $drawers . '
-	<dialog class="drawer drawer-end connections-drawer" id="connections-detail" aria-labelledby="connections-detail-title"></dialog>
 
 	<form method="post" action="connections.php" id="connections_form" class="disable_shortcut d-none">
 		' . get_token_field() . '
 		<input type="hidden" name="connections_action" value="" id="connections_action">
 		<input type="hidden" name="connection_id" value="" id="connections_id">
+		' . (($page_id !== '') ? '<input type="hidden" name="connections_return" value="' . h($page_id) . '">' : '') . '
 	</form>
 
 	<form method="post" action="connect.php" id="connections_connect_form" class="disable_shortcut d-none">
-		' . pg_connect_start_fields('', 'account', 'connections.php') . '
+		' . pg_connect_start_fields('', 'account', $connect_return) . '
 	</form>
 </main>
 
@@ -980,16 +1082,11 @@ echo pg_page_shell(array(
 
 	var phone = window.matchMedia("(max-width: 575.98px)");
 
-	// A row opens its drawer; on a phone the drawer is a sheet from the
-	// bottom. The service drawer takes the content drawn for its row.
-	var openDrawer = function (id, detail) {
+	// A provider row opens its drawer; on a phone the drawer is a sheet
+	// from the bottom.
+	var openDrawer = function (id) {
 		var drawer = document.getElementById(id);
 		if (!drawer || !window.pgUI) { return false; }
-		if (detail) {
-			var template = document.getElementById("connections-detail-" + detail);
-			if (!template) { return false; }
-			drawer.replaceChildren(template.content.cloneNode(true));
-		}
 		drawer.classList.toggle("drawer-end", !phone.matches);
 		drawer.classList.toggle("drawer-bottom", phone.matches);
 		pgUI.drawer.show(drawer);
@@ -1017,7 +1114,7 @@ echo pg_page_shell(array(
 	// Site Settings window behind the drawer.
 	document.addEventListener("click", function (e) {
 		var open = e.target.closest(".connections-open");
-		if (open && openDrawer(open.dataset.drawer, open.dataset.detail)) {
+		if (open && openDrawer(open.dataset.drawer)) {
 			e.preventDefault();
 			e.stopPropagation();
 		}

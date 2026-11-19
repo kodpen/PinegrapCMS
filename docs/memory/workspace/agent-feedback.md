@@ -11,10 +11,10 @@ description: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws
 - A site whose update has not run: `ws_agent_feedback_ready()` is false, the writer answers 503 and the route lists nothing; everything else works as before.
 
 ## Who may mark, and how?
-- `ws_agent_feedback_mark($viewer, $message_id, $verdict, $reason)` in `includes/workspace/agent_feedback.php`, the one writer; `$verdict` null takes the mark back (deletes the row). The check is `ws_agent_feedback_check()` (pure).
+- `ws_agent_feedback_mark()` in `includes/workspace/agent_feedback.php`, the one writer; `$verdict` null takes the mark back (deletes the row). The check is `ws_agent_feedback_check()` (pure).
 - Only an answered request of an application or model agent whose `reply_message_id` is the message, the reply not deleted, else 404; the person must read the channel (404 otherwise). The person who asked (`requested_by`) or a manager of the channel (`ws_can_manage_channel()`), else 403.
 - A new mark by either replaces verdict, reason, `marked_by` and `marked_at`: the last mark stands. The reason folds spaces and is at most 300 characters (422).
-- The panel action `ws_agent_feedback` (`actions.php`, listed in `panel/actions.php`): `message_id`, `verdict` right / wrong / '' (takes it back), `reason`; it calls this writer and answers its refusal. No person's API route.
+- The panel action `ws_agent_feedback` (`actions.php`, listed in `panel/actions.php`): `message_id`, `verdict` right / wrong / '' (takes it back), `reason`; it calls this writer and answers its refusal. A team devices session: `api/workspace-api-message-sender-feedback.md`.
 
 ## What does the panel show? (AF5b)
 - Under an agent's reply, after its reactions: "Was this answer right?" with Correct and Wrong (thumbs up / down), only for the asker and the channel's managers: the message payload's `feedback` (`ws_agent_feedback_map()`, `ws_agent_feedback_offer()`) is null for anybody else. `feedbackNode()` in `workspace.js`.

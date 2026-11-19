@@ -2658,6 +2658,9 @@
     var DRAFT_DAYS = 14;
     var DRAFT_KEEP = 50;
 
+    // The pictures the Files tab's gallery draws at a time (drawFiles()).
+    var FILE_PAGE = 60;
+
     function draftKey(site, viewer, channelId, threadId) {
         var thread = parseInt(threadId, 10) || 0;
 
@@ -5530,7 +5533,7 @@
     // the screen's language. A discussion's box leaves out what runs only
     // in the channel itself (where: channel, ws_command_runs_here()). Each
     // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread, recapHere) {
+    function commandPickerRows(commands, query, inThread, recapHere, flowsHere) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
@@ -5543,6 +5546,12 @@
             // /recap only where the catch-up line offers "Sum up what I
             // missed" (recapHere false); left as it was when not told.
             if ((recapHere === false) && (item.key === 'recap')) {
+                return;
+            }
+
+            // /flow only where Add › Start a flow lists a flow (flowsHere
+            // false); left as it was when not told.
+            if ((flowsHere === false) && (item.key === 'flow')) {
                 return;
             }
 
@@ -5601,6 +5610,32 @@
         });
 
         return out;
+    }
+
+    // The channel's flows as rows of the "/" list and of /flow's argument
+    // list: every flow with nothing typed, else those whose name, or a word
+    // of it, starts with what is typed (Turkish letters folded). A row
+    // carries its flow: picking it starts the flow, it writes nothing.
+    function flowPickerRows(flows, query, meta) {
+        var typed = foldText(String(query || '').trim());
+
+        return (flows || []).filter(function (flow) {
+            var name = foldText(String(flow.name || ''));
+
+            return !typed || (name.indexOf(typed) === 0) || (name.indexOf(' ' + typed) !== -1);
+        }).map(function (flow) {
+            return { label: flow.name, meta: meta, icon: 'bi-play-circle', flow: flow };
+        });
+    }
+
+    // The "/" list with the channel's flows after the commands, under a
+    // header of their own whatever is typed: a flow is no command.
+    function commandPickerAddFlows(rows, flowRows, header) {
+        if (!flowRows.length) {
+            return rows;
+        }
+
+        return rows.concat([{ header: true, label: header }], flowRows);
     }
 
     // Where a list of people or records opens at the caret (placePicker()):
@@ -10997,8 +11032,11 @@
 
                 self.channel = data.channel;
                 self.era = data.era || null;
-                // Whether Add › Start a flow has a flow to offer here.
+                // Whether Add › Start a flow has a flow to offer here, and
+                // which: the "/" list and /flow offer the same, read once
+                // as the channel opens.
                 self.flowsHere = !!data.flows_here;
+                self.flowsList = data.flows || [];
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
                 self.openItems = data.open_items || [];
@@ -11579,9 +11617,9 @@
             }
         },
 
-        // The marks on the tabs: how many decisions and open tasks there are,
-        // and whether the summary is written, so a tab says it holds
-        // something before it is opened.
+        // The marks on the tabs: how many decisions, open tasks and files
+        // there are, and whether the summary is written, so a tab says it
+        // holds something before it is opened.
         drawTabMarks: function () {
             var self = this;
             var counts = (self.channel && self.channel.tab_counts) || null;
@@ -11590,7 +11628,7 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -14586,31 +14624,82 @@
                 box.appendChild(self.claudeStateLine(state));
             });
 
+            // The column's width decides whether "since" keeps its word:
+            // measured again whenever the box is resized, and once the
+            // panel's font has loaded (it changes the label's width).
+            var fit = function () {
+                Array.prototype.forEach.call(box.children, function (line) {
+                    self.claudeStateFit(line);
+                });
+            };
+
+            if (typeof window.ResizeObserver === 'function') {
+                new window.ResizeObserver(fit).observe(box);
+            }
+
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(fit);
+            }
+
             return box;
         },
 
+        // When the first line cannot hold everything, the word of "since
+        // HH:MM" goes before the label is cut: the time stays, the whole
+        // phrase in its title. A label is then cut only when it is too long
+        // by itself.
+        claudeStateFit: function (line) {
+            var label = line.querySelector('.ws-claude-label');
+
+            if (!label || !line.querySelector('.ws-claude-since-word')) {
+                return;
+            }
+
+            line.classList.remove('ws-claude-tight');
+
+            if (label.scrollWidth > label.clientWidth) {
+                line.classList.add('ws-claude-tight');
+            }
+        },
+
+        // Icon, then the label, since and Stop on one row, and the progress
+        // note last: on that row when the whole of it fits, on a line of
+        // its own under the label when it does not (backend.src.css).
         claudeStateLine: function (state) {
             var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
+            var body = el('div', 'ws-claude-body');
+            var head = el('div', 'ws-claude-head');
+            var label = el('span', 'ws-claude-label', state.label);
 
+            // A label too long for the column is cut with an ellipsis; the
+            // title keeps the whole of it.
+            label.title = state.label || '';
             line.appendChild(icon(state.icon));
-            line.appendChild(el('span', '', state.label));
+            line.appendChild(body);
+            body.appendChild(head);
+            head.appendChild(label);
 
-            // While an agent holds the request: its last progress note and
-            // since when it holds it (agent_shown.php). The answer's line
+            // While an agent holds the request: since when it holds it and
+            // its last progress note (agent_shown.php). The answer's line
             // takes their place.
-            if (state.note) {
-                line.appendChild(el('span', 'ws-claude-note', '· ' + state.note));
-            }
-
             if (state.since) {
-                line.appendChild(el('span', 'ws-claude-since', '· ' + state.since));
+                var since = el('span', 'ws-claude-since');
+                var at = /\d{1,2}:\d{2}\s*$/.exec(state.since);
+                var time = at ? at[0].trim() : state.since;
+                var word = at ? state.since.slice(0, at.index) : '';
+
+                since.title = state.since;
+                since.setAttribute('aria-label', state.since);
+                since.appendChild(el('span', 'ws-claude-since-word', '· ' + word));
+                since.appendChild(el('span', '', time));
+                head.appendChild(since);
             }
 
             // A request to an MCP agent can be stopped while it waits or
             // runs, by the one who asked or an administrator (mcp_agent.php).
             if (state.cancel) {
-                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+                var stop = el('a', 'ws-claude-stop ms-1', t('mcp_agent_stop'));
 
                 stop.href = '#';
                 stop.addEventListener('click', function (event) {
@@ -14627,7 +14716,11 @@
                     });
                 });
 
-                line.appendChild(stop);
+                head.appendChild(stop);
+            }
+
+            if (state.note) {
+                body.appendChild(el('span', 'ws-claude-note', state.note));
             }
 
             return line;
@@ -15812,6 +15905,15 @@
 
         // ── Polls ──
 
+        // Whether this box offers the channel's flows (the "/" list, /flow):
+        // where Add › Start a flow is offered.
+        flowsOffered: function () {
+            var self = this;
+
+            return !!(CFG.flows && CFG.flows.nav && self.flowsHere && (self.flowsList || []).length && !self.isThread && !self.era
+                && self.channel && ((self.channel.kind === 'public') || (self.channel.kind === 'private')));
+        },
+
         // Add › Start a flow: the flows the person may start in this
         // channel (ws_flows_runnable_in()), each with its last run's flag.
         flowStarter: function () {
@@ -15862,19 +15964,22 @@
         // Starts a flow from the drawer, asked first as the canvas asks. The
         // token stays with the flow until the server answers, so a start sent
         // again after a lost answer gets the run the first one started.
+        // From the "/" list or /flow there is no button: the flow itself
+        // keeps a second pick away while it is asked or sent.
         startFlowHere: function (flow, control, node) {
             var self = this;
             var channelId = self.channel.id;
+            var hold = control || flow;
 
-            if (control.disabled) {
+            if (hold.disabled) {
                 return;
             }
 
-            control.disabled = true;
+            hold.disabled = true;
 
             ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
                 if (!yes) {
-                    control.disabled = false;
+                    hold.disabled = false;
                     return null;
                 }
 
@@ -15883,7 +15988,11 @@
                 // start_token, not token: api() sends the CSRF token as token.
                 return api('ws_flow_run_start', { flow_id: flow.id, channel_id: channelId, start_token: flow.startToken }).then(function (data) {
                     flow.startToken = null;
-                    hideOffcanvas(node);
+                    hold.disabled = false;
+
+                    if (node) {
+                        hideOffcanvas(node);
+                    }
                     toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
 
                     if (self.channel && (self.channel.id === channelId)) {
@@ -15895,7 +16004,7 @@
                     flow.startToken = null;
                 }
 
-                control.disabled = false;
+                hold.disabled = false;
                 fail(error);
             });
         },
@@ -19453,6 +19562,24 @@
                     return;
                 }
 
+                // /flow with a flow of the channel named: asked and started as
+                // Start a flow does; without one, Start a flow's list opens.
+                if (result.command && ((result.command.type === 'flow_start') || (result.command.type === 'flow_form'))) {
+                    self.clearInput();
+
+                    if (result.command.type === 'flow_form') {
+                        self.flowStarter();
+                        return;
+                    }
+
+                    var named = (self.flowsList || []).filter(function (flow) {
+                        return flow.id === result.command.flow.id;
+                    })[0] || result.command.flow;
+
+                    self.startFlowHere(named, null, null);
+                    return;
+                }
+
                 // /memory without a text: the Memory tab's New entry form,
                 // filled with what the line carried (an answered message's
                 // link); the box empties, its text is in the form.
@@ -20653,6 +20780,12 @@
                 return;
             }
 
+            // /flow: the channel's flows; a pick starts one.
+            if (source === 'flows') {
+                show(self.flowsOffered() ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : []);
+                return;
+            }
+
             // What /create makes: a product, a group.
             if (source === 'kinds') {
                 show(fixed(values.kinds, 'bi-plus-square'));
@@ -20930,14 +21063,17 @@
             // again under the headers of their groups.
             if (mode === 'command') {
                 var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
-                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap));
+                var flowsHere = !inThread && self.flowsOffered();
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere);
+                // The channel's flows by name, after the commands.
+                var flowRows = flowsHere ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : [];
                 var shown;
 
-                self.drawPicker(commands);
+                self.drawPicker(commandPickerAddFlows(commands, flowRows, t('cmd_flows')));
                 shown = self.picker.querySelector('.ws-picker-list');
 
                 if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {
-                    self.drawPicker(commandPickerGroups(commands, BOOT.command_groups));
+                    self.drawPicker(commandPickerAddFlows(commandPickerGroups(commands, BOOT.command_groups), flowRows, t('cmd_flows')));
                 }
 
                 return;
@@ -21207,7 +21343,7 @@
                 }
 
                 var index = rows.indexOf(item);
-                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : '') + (item.flow ? ' ws-picker-flow-row' : ''));
                 row.type = 'button';
 
                 if (item.glyph) {
@@ -21446,6 +21582,25 @@
                 return;
             }
 
+            // A flow of the "/" list or of /flow's list: the command line goes,
+            // and the flow is asked and started as Start a flow does.
+            if (item.flow) {
+                if (this.rich) {
+                    this.rich.replaceTyped(this.beforeCaret().length, { text: '' });
+                } else {
+                    var line = this.input;
+
+                    line.value = line.value.slice(line.selectionStart);
+                    line.selectionStart = line.selectionEnd = 0;
+                }
+
+                this.closePicker();
+                this.drawCommandStrip(null);
+                this.autosize();
+                this.startFlowHere(item.flow, null, null);
+                return;
+            }
+
             // A titled block: what was typed goes, the block comes in its place.
             if (item.block) {
                 var self = this;
@@ -21573,14 +21728,57 @@
                     return;
                 }
 
+                var bodies = [];
+
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
                     var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
                     jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                     node.querySelector('.ws-msg-meta').appendChild(jump);
                     pane.appendChild(node);
+
+                    var body = node.querySelector('.ws-msg-main > .ws-msg-body');
+
+                    if (body) {
+                        body.classList.add('ws-folded');
+                        bodies.push(body);
+                    }
                 });
+
+                self.foldLong(bodies);
             }).catch(fail);
+        },
+
+        // A decision longer than about eight lines stays folded (.ws-folded
+        // caps its height) behind Show more / Show less; its head line with
+        // Show in conversation stays above it. All heights are read first,
+        // then the classes and buttons changed, so the pane is laid out
+        // once, not once per card.
+        foldLong: function (bodies) {
+            var long = bodies.filter(function (body) {
+                return body.scrollHeight > body.clientHeight + 2;
+            });
+
+            bodies.forEach(function (body) {
+                if (long.indexOf(body) < 0) {
+                    body.classList.remove('ws-folded');
+                }
+            });
+
+            long.forEach(function (body) {
+                var toggle = lookButton('pg-button pg-button-ghost pg-button-sm ws-fold-toggle', t('pane_show_more'), 'bi-chevron-down');
+
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function () {
+                    var open = body.classList.toggle('ws-folded') === false;
+
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    clear(toggle);
+                    toggle.appendChild(icon(open ? 'bi-chevron-up' : 'bi-chevron-down', ''));
+                    toggle.appendChild(document.createTextNode(t(open ? 'pane_show_less' : 'pane_show_more')));
+                });
+                body.insertAdjacentElement('afterend', toggle);
+            });
         },
 
         // The channel's files: the pictures as a gallery that opens in the
@@ -21656,16 +21854,20 @@
                     var pictures = el('section', 'ws-file-group');
                     pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
+                    var shown = 0;
+                    var more = null;
 
-                    images.forEach(function (message, index) {
+                    // One tile; the viewer still steps through every picture.
+                    var drawTile = function (message, index) {
                         var tile = el('button', 'ws-gallery-tile');
                         tile.type = 'button';
                         tile.title = message.file.name;
 
                         var img = el('img');
-                        img.src = message.file.url;
                         img.alt = message.file.name;
                         img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.src = message.file.url;
                         tile.appendChild(img);
 
                         var caption = el('span', 'ws-gallery-caption');
@@ -21676,9 +21878,31 @@
                         tile.addEventListener('click', function () { viewImages(gallery, index); });
                         onContext(tile, function () { return fileMenu(message, index); });
                         grid.appendChild(tile);
-                    });
+                    };
+
+                    // The gallery is drawn FILE_PAGE tiles at a time: a
+                    // channel with hundreds of pictures builds and loads only
+                    // the first page until Show more asks for the next.
+                    var drawPage = function () {
+                        images.slice(shown, shown + FILE_PAGE).forEach(function (message, offset) {
+                            drawTile(message, shown + offset);
+                        });
+                        shown = Math.min(images.length, shown + FILE_PAGE);
+
+                        if (more) {
+                            more.remove();
+                            more = null;
+                        }
+
+                        if (shown < images.length) {
+                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)), 'bi-chevron-down');
+                            more.addEventListener('click', drawPage);
+                            pictures.appendChild(more);
+                        }
+                    };
 
                     pictures.appendChild(grid);
+                    drawPage();
                     pane.appendChild(pictures);
                 }
 

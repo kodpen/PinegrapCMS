@@ -20,3 +20,8 @@ description: How workflow tables read and show amounts and numbers (#3391, PR #3
 - `ws_wtable_import_number()` (`workflow-table-import.md`, PR #3524) reads a lone mark before three digits by the site's language, as `ws_calc_number()` does: Turkish `1.250` = 1250, `1,250` = 1.25; English `1,250` = 1250, `1.250` = 1.25. A lone mark not before three digits stays the decimal (`1,25`, `1.25`); both marks and a repeated mark read as before. A head of four digits or a lone `0` is no thousands group (`1234.567`, `0.250` keep decimals). The type guess is unchanged; amounts with a currency go through the same reader.
 - Before, a lone mark was always the decimal: a Turkish file's `1.250` came in as 1.25.
 - The API row writer takes machine form only and is right as it is.
+
+## What happens to the amounts when a money column's decimals change?
+- They keep their value: the column form's Decimals (or `options.decimals` over the API) runs the type change first (`ws_wtable_money_decimals_changed()` in `ws_wtable_column_update()`, `ws_wtable_column_retype()`), rescaling each cell in whole numbers: 12,50 at 2 decimals is 1250 → 12500 at 3; at 0 it is refused `decimals_lost` and the cells are listed under the column.
+- Options sent without decimals or currency keep the column's own (they reset to 2 and none before).
+- Symptom before PR #10370: the options alone changed, so 1.250,50 TRY read 125.050 TRY after decimals 2 became 0.

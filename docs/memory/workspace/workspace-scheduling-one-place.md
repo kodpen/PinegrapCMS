@@ -13,7 +13,7 @@ description: Scheduled work set up only on the flow canvas (no Scheduled flow wi
 - In the Flows table; its start column says, for the template's default, "Every working day 09:00". with its next run ("· Next: Tomorrow 09:00") while live. Run now is on the canvas of a flow that starts at a time (#8443, `workspace-flows-run-now.md`); converted flows are rows for every staff member and have no group of their own (PR #8573, `workspace-flows-one-list.md`).
 
 ## Which entries does a channel's Add list keep?
-- Start a flow: only where `ws_channel_open` answers `flows_here`. `ws_flows_startable_in()` asks the drawer's own list (`ws_flows_runnable_in()`), only for whoever the Workspace shows Flows to, in a public or private channel, never for a discussion. A run started there opens its tasks in the channel and leaves its card there; the Flows screen's Run uses the flow's home (`workspace-flows-channel-run-card.md`).
+- Start a flow: only where `ws_channel_open` answers `flows_here`. `ws_flows_here()` asks the drawer's own list (`ws_flows_runnable_in()`), only for whoever the Workspace shows Flows to, in a public or private channel, never for a discussion. A run started there opens its tasks in the channel and leaves its card there; the Flows screen's Run uses the flow's home (`workspace-flows-channel-run-card.md`).
 - New flow: the layer on a new flow homed in the channel, for staff who build flows.
 
 ## Which box starts other work?

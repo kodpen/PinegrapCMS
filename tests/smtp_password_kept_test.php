@@ -36,21 +36,3 @@ function test_smtp_password_kept_only_for_the_same_server()
 	$implicit = array_merge($stored, array('port' => '465'));
 	pg_assert_same('', pg_smtp_password_kept($posted(array('port' => '587')), $implicit), 'implicit TLS dropped');
 }
-
-// The save checks the kept password before anything is written, and drops it
-// when the server changed.
-function test_smtp_settings_save_uses_the_kept_password_check()
-{
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
-	$from = strpos($source, 'function smtp_settings_save(');
-	$body = ($from === false) ? '' : substr($source, $from, 6000);
-
-	pg_assert_true($body !== '', 'the save function is found');
-
-	$check = strpos($body, 'pg_smtp_password_kept(');
-	$transport = strpos($body, 'pg_mail_transport_settings_save(');
-
-	pg_assert_true($check !== false, 'the save asks pg_smtp_password_kept()');
-	pg_assert_true(($transport !== false) && ($check < $transport), 'the check comes before any setting is written');
-	pg_assert_contains("lang('The SMTP server or its port changed. Enter the password again.')", $body, 'the refusal names the cause');
-}

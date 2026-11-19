@@ -1,33 +1,36 @@
 ---
 name: connections-merges
-description: Plan: an outside service set up in several places, merged into one only after the owner's answer each: GitHub, AI keys, mail, a provider's client, the names; steps CX1 to CX5
-priority: 4
+description: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
+priority: 10
 ---
 
 ## What is asked?
-- The owner wants connections made in one tidy place (2026-11-17, agent channel message 7359; `workflow/decisions-made-product-69.md`). The registry and the Connections screen are built (`api/connections-registry.md`, `ui/connections-screen-layout.md`); they moved no setting.
-- What is still split, with every place named: `integrations-census-screens.md`.
+- Built so far: the registry and the Connections screen (`api/connections-registry.md`, `ui/connections-screen-layout.md`); first asked in message 7359 (`workflow/decisions-made-product-69.md`).
+- Owner (2026-11-17, poll 146, message 9372): "If we do not put these adapters in order they become a mess; it must not wait until after the launch. We should make a modern management screen where the adapters are managed in one place. This one and the others."
+- The architect's reading (message 9372), the plan's rule: no more piece-by-piece merges. Connections is the one management place: everything typed to connect to an outside service (key, secret, token, account, address) sits in that service's own panel on Connections: connect, test, disconnect, where it is used.
+- Feature cards (GitHub repositories, Voice message transcripts…) hold no key: they show the connection they use and lead to it.
+- Narrowed by poll 148 (message 9374): the sending service's key and the SMTP server stay in Site Settings › E-mail sending; Connections shows e-mail sending as a row whose Manage opens it. Google's and Microsoft's application and accounts are managed on Connections.
+- Scope: every service, first GitHub, the AI keys and mail, then the other groups. Before the launch (priority 10). Every split place: `integrations-census-screens.md`.
 
 ## What binds every step?
-- Each merge is asked of the owner one by one, with its own sheet, through the architect (`workflow/architect-asking.md`): no step starts before the owner's answer, and the answer decides what moves.
-- One place per setting: no field is shown or saved in a second place; a card that moves keeps its address and its old anchors, a `pg_settings_legacy_anchors()` row and its place texts (owner 2026-10-30, `workflow/decisions-made-product-14.md`, `ui/settings-modal-overview.md`).
-- A moved place is changed in the registry row's `place` in the same step, so the screen's button, the searches and Integrations › Related screens follow (`api/connections-registry.md`).
-- No table and no column; a need for one comes back as a question to the architect. The connected accounts' rules stay (`api/api-connected-accounts.md`).
-- A step with a screen change is drawn at 1440, 1024 and 390 beside its sheet; look A's recipes; texts through `lang()`, the Turkish with `php tools/tr_add.php`.
+- The owner's yes to the management screen's sheet (poll 149) is given; a page beyond the sheet is drawn and asked first.
+- Connection fields live on Connections, replacing the 2026-10-30 reading "no setting field on Connections"; a feature's own settings stay on its card.
+- A moved card keeps its address and old anchors: a `pg_settings_legacy_anchors()` row (owner 2026-10-30, `workflow/decisions-made-product-14.md`).
+- A moved place changes the registry row's `place` in the same step (`api/connections-registry.md`).
+- No table and no column without the architect: a panel that would need one (one provider key shared by several features) is named beside its drawing. The connected accounts' rules stay (`api/api-connected-accounts.md`).
+- Drawn at 1440, 1024 and 390 in look A; texts through `lang()`.
 
 ## Which steps are there?
-- CX1 (M, the owner's answer first) GitHub: today five places (the provider on Connections, the "GitHub repositories" card, the GitHub MCP connector's token, the application on Application Access, the developer route). Plan `github-channel-connection.md` is separate and is not merged here.
-- CX2 (M, the owner's answer first) The AI keys: today six places (the subscription key, Claude in the channels, each assistant on Workspace agents, Voice message transcripts, Translation Engines, AI programs on Application Access).
-- CX3 (M, the owner's answer first) Mail: today four places (SMTP Settings, the Google or Microsoft application on Connections, Mailboxes, Communication with MailChimp).
-- CX4 (M, the owner's answer first) A provider's client typed in one place: Google's client in Accounts and sign-in reused by Connections, Microsoft's the other way round, Apple's in Accounts and sign-in.
-- CX5 (S, the owner's answer first) The names: one meaning each for "Connections", "Connected accounts" and "Connected applications"; help texts that say "Settings › Connections" for the Connections screen. The screen is called Connections and its provider section keeps "Connected accounts" (owner 2026-11-17, `workflow/decisions-made-product-70.md`).
-
-## What waits for what?
-- Every step waits for its own answer, nothing else; the steps are independent and may come in any order, one open at a time where two would edit the same card or screen.
+- CX1 GitHub: closed by the build steps CX7 to CX11 (sheet: messages 9308 to 9320).
+- CX2 Voice message transcripts: to Assistants and agents, the category named "Kanallar" (poll 147, message 9350); the key moves in CX9. Built: #10332.
+- CX3 Mail. Drawn: messages 9351 to 9365. Poll 148 (message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools; the campaign's two texts and MailChimp join it. Three steps: CX3a the logic into `includes/fn/mail_settings.php` (#10334); CX3b the category `mail_sending` with SMTP Settings' five cards, the old addresses opening it (#10404); CX3c Communication's Opt-In Label, Plain Text Footer and MailChimp card.
+- CX6 The management screen's sheet. Drawn: messages 9405 to 9422; the owner's yes: poll 149 (message 9425).
+- CX7 to CX11, the build (poll 149's yes, messages 9423 and 9425): `connections-merges-build.md`.
+- CX4 A provider's client typed in one place: answered by CX10. CX5 the names ("Connections", "Connected accounts", "Connected applications"): waits for the pages.
 
 ## What else is still the owner's?
-- The wording of the public figure, the registry's count (`pg_connections_count()`), when it is first shown outside the code (`workflow/decisions-made-product-69.md`).
-- Connect with one click through a broker is not this plan: it waits for the owner's decision on Google's verification (`reverse-oauth-leftovers.md`).
+- The public figure's wording and when it is first shown (`workflow/decisions-made-product-69.md`).
+- Connect with one click through a broker is not this plan: it waits for the owner's decision on Google's verification (`reverse-oauth-leftovers.md`). Plan `github-channel-connection.md` stays separate.
 
 ## How is it closed?
 - When the last step lands: its lasting rules into `ui/` and `api/`, this file deleted.

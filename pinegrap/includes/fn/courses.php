@@ -512,6 +512,26 @@ function pg_course_lesson_delete($lesson_id)
 }
 
 /**
+ * Removes every progress row of an account that is being deleted: its
+ * lessons done, its first opens and its completions. Called by
+ * pg_user_delete(): a new account given the same id must not inherit them,
+ * and the Courses screen must not count a deleted member.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_course_forget_user($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !pg_course_ready()) {
+        return false;
+    }
+
+    return (bool) db_q("DELETE FROM course_progress WHERE user_id = ?", array((string) $user_id));
+}
+
+/**
  * Base 36 of a positive whole number, in capitals. Pure.
  *
  * @param int $number

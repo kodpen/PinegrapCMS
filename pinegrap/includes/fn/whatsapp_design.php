@@ -100,17 +100,41 @@ function pg_whatsapp_design_languages()
 }
 
 /**
- * The template types in the order the designer offers them.
+ * The template types in the order the designer offers them. Authentication
+ * is not offered: Meta takes a code template only in its fixed shape (its
+ * own text, an OTP button), not the free message the designer writes.
  *
- * @return array MARKETING, UTILITY, AUTHENTICATION => label
+ * @return array UTILITY, MARKETING => label
  */
 function pg_whatsapp_design_categories()
 {
     return array(
-        'UTILITY'        => pg_whatsapp_template_category_label('UTILITY'),
-        'MARKETING'      => pg_whatsapp_template_category_label('MARKETING'),
-        'AUTHENTICATION' => pg_whatsapp_template_category_label('AUTHENTICATION'),
+        'UTILITY'   => pg_whatsapp_template_category_label('UTILITY'),
+        'MARKETING' => pg_whatsapp_template_category_label('MARKETING'),
     );
+}
+
+/**
+ * The type buttons the designer draws for a template of a type: the offered
+ * types, and a saved template's own type when it is one Meta knows but the
+ * designer does not offer (Authentication), shown but not to be chosen.
+ *
+ * @param string $category the template's type
+ * @return array type => label, offered (bool)
+ */
+function pg_whatsapp_design_category_choices($category)
+{
+    $choices = array();
+
+    foreach (pg_whatsapp_design_categories() as $value => $label) {
+        $choices[$value] = array('label' => $label, 'offered' => true);
+    }
+
+    if (!isset($choices[$category]) && in_array($category, explode(',', PG_WHATSAPP_CATEGORIES), true)) {
+        $choices[$category] = array('label' => pg_whatsapp_template_category_label($category), 'offered' => false);
+    }
+
+    return $choices;
 }
 
 /**
@@ -398,7 +422,9 @@ function pg_whatsapp_design_check($design)
         $errors['category'] = lang('Choose the template type.');
     }
 
-    if (!isset(pg_whatsapp_design_languages()[$design['language']])) {
+    // A template WhatsApp holds keeps the language it has there (its field is
+    // locked), which may be one the designer does not offer.
+    if (($design['meta_id'] === '') && !isset(pg_whatsapp_design_languages()[$design['language']])) {
         $errors['language'] = lang('Choose the template language.');
     }
 
@@ -455,6 +481,10 @@ function pg_whatsapp_design_check($design)
                         $errors['button_' . $row] = $message;
                     }
                 }
+            } elseif ($field === 'offer_variable') {
+                // The designer draws no "The code goes in" field (the chip
+                // decides it), so the message goes under the offer's choice.
+                $errors['offer_mode'] = $message;
             } else {
                 $errors[$field] = $message;
             }
@@ -569,6 +599,20 @@ function pg_whatsapp_design_editable($design)
 {
     return (($design['meta_id'] === '') && ($design['status'] === 'DRAFT'))
         || (($design['meta_id'] !== '') && ($design['status'] === 'REJECTED'));
+}
+
+/**
+ * Whether a design may be deleted here: only a saved draft that was never
+ * sent, which exists on this site alone. A template WhatsApp holds (in
+ * review, approved, rejected) has a Meta id and is left to the refresh,
+ * which removes it once WhatsApp no longer lists it.
+ *
+ * @param array $design
+ * @return bool
+ */
+function pg_whatsapp_design_deletable($design)
+{
+    return ((int) $design['id'] > 0) && ($design['meta_id'] === '') && ($design['status'] === 'DRAFT');
 }
 
 /**
@@ -1013,6 +1057,25 @@ function pg_whatsapp_design_save($design, $user_id)
     }
 
     return array('ok' => true, 'id' => (int) mysqli_insert_id(db::$con), 'field' => '', 'error' => '');
+}
+
+/**
+ * Deletes a draft that was never sent, as pg_whatsapp_design_deletable()
+ * allows; a row that a refresh or "Send for approval" moved on since the
+ * screen read it is left alone.
+ *
+ * @param int $id
+ * @return bool true when the draft was deleted
+ */
+function pg_whatsapp_design_delete($id)
+{
+    if ((int) $id <= 0) {
+        return false;
+    }
+
+    $deleted = db("DELETE FROM whatsapp_templates WHERE (id = '" . (int) $id . "') AND (meta_id IS NULL) AND (status = 'DRAFT')");
+
+    return ($deleted !== false) && (mysqli_affected_rows(db::$con) > 0);
 }
 
 /**

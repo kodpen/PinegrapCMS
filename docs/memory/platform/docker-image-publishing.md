@@ -1,10 +1,10 @@
 ---
 name: docker-image-publishing
-description: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
+description: Docker images on GHCR (PR #737): docker-publish.yml per published release (no pre-release), pinegrap-app/-web on amd64 and arm64, tags v<version> and latest, re-run by tag, PG_IMAGE_TAG, visibility
 ---
 
 ## When are the images published?
-- `.github/workflows/docker-publish.yml` runs when a GitHub release is published (the owner's release step, release-status.md). The tag must be `v<year>.<month>.<patch>` with a published release behind it, and the job builds that tag's commit. A draft never runs it; a pre-release gets its version tag but not `latest`.
+- `.github/workflows/docker-publish.yml` runs when a GitHub release is published (the owner's release step, release-status.md). The tag must be `v<year>.<month>.<patch>` with a published release behind it, and the job builds that tag's commit. A draft never runs it; a pre-release (a beta build) publishes no image: `prepare` is skipped with its jobs, and Run workflow refuses one (P2).
 - A `release` event runs the workflow file of the tagged commit; `.github/` is in the release tree, `tools/` is not, so the workflow uses nothing from `tools/`.
 - Actions › Docker publish › Run workflow with a release tag publishes it again (a failed run). GitHub shows that button only for a workflow on the default branch (`main`), so after the first release that carries the file.
 

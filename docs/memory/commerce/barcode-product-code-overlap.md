@@ -15,7 +15,8 @@ description: A barcode, typed or generated, may not be another product's code, n
 
 ## What does a scan of a code that is both do?
 - `pg_barcode_scan_product($code)` (`includes/fn/ecommerce.php`), used by `barcode_increase_inventory.php` and `barcode_decrease_inventory.php`, looks up the barcode holder and another product whose code it is; `pg_barcode_scan_choice()` (pure) picks the barcode's product, else the code's, and null when they are two products. The screen then answers "X is a barcode of Y and the product code of another product. Change one of them, then scan again." and writes nothing.
+- The counter sale (Create Order, `local_sale_find_product()` in `includes/local_sale.php`) asks the same lookup when barcodes are on and shows the refusal on the scan box (PR #10384). Before, it added the barcode's product and said so; an exact code of a switched-off product now answers "Product not found or is disabled." instead of falling through to the name search.
 - Overlaps written before the checks stay in the data until someone changes one side; the scan refuses them instead of guessing.
 
 ## Tests?
-- `tests/barcode_stock_checks_test.php`, `tests/product_barcode_typed_test.php`, `tests/product_name_unique_test.php`. Not scanned on a live instance.
+- `tests/barcode_stock_checks_test.php`, `tests/product_barcode_typed_test.php`, `tests/product_name_unique_test.php`, `tests/local_sale_cart_test.php` (the counter). Not scanned on a live instance.

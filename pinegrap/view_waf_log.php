@@ -549,7 +549,7 @@ if ($suspects) {
 
     echo '<div class="card mb-7 border-subtle-warning">
         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-            <span class="text-uppercase h6 fg-emphasis-warning fw-bold mb-0"><i class="bi bi-person-exclamation me-1"></i>' . lang('Possible False Positives') . '</span>
+            <h2 class="pg-title-section">' . lang('Possible False Positives') . '</h2>
             <span class="badge bg-subtle-warning fg-emphasis-warning border border-subtle-warning">' . pg_format_number($suspect_count, 0) . '</span>
         </div>
         <div class="card-body">
@@ -599,8 +599,8 @@ if ($suspects) {
 // Active automatic bans.
 if ($auto_bans) {
     echo '<div class="card mb-7">
-        <div class="card-header bg-reset border-0 text-uppercase h6 fg-primary fw-bold">'
-        . lang('Active Automatic Bans') . '</div>
+        <h2 class="card-header bg-reset border-0 pg-title-section">'
+        . lang('Active Automatic Bans') . '</h2>
         <div class="card-body">
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
                 <thead><tr>
@@ -649,7 +649,7 @@ if ($csp_entries || $csp_mode !== 'off') {
     echo '<div class="card mb-7">
         <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
             <span class="d-flex align-items-center gap-3">
-                <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Content Security Policy Reports') . '</span>
+                <h2 class="pg-title-section">' . lang('Content Security Policy Reports') . '</h2>
                 <span class="badge border fw-normal ' . h($csp_mode_badge[0]) . '">' . h($csp_mode_badge[1]) . '</span>
             </span>
             <span class="d-flex flex-wrap align-items-center gap-3 row-gap-2">
@@ -697,7 +697,7 @@ if ($csp_entries || $csp_mode !== 'off') {
 // Event table.
 echo '<div class="card mb-7">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-        <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Recent Events') . '</span>
+        <h2 class="pg-title-section">' . lang('Recent Events') . '</h2>
     </div>
     <div class="card-body">';
 

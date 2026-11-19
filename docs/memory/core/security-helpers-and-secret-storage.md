@@ -14,7 +14,7 @@ description: CSRF helpers; secret config fields (one encrypted blob, never a con
 - The external API's key secrets (made on `api_settings.php`) are not encrypted but hashed: `api_secret_hash()` (`includes/api/keys.php`, `hash_hmac`), right for a secret that is only compared. Never copy that pattern for a credential that must be read back: a hash cannot be recovered.
 
 ## May a settings screen show a stored secret?
-- No. A new secret field is drawn empty; an empty box keeps the saved value (the Paraşüt card, the marketplace connectors and SMTP Settings do this).
+- No. A new secret field is drawn empty; an empty box keeps the saved value (the Paraşüt card, the marketplace connectors and E-mail sending do this).
 - The legacy gateways' secrets are sealed and drawn as a mask: `commerce/payment-gateway-secrets.md`.
 - TSA password: drawn empty ("Saved"), an empty box keeps it, a tick removes it (`pg_signature_tsa_password_to_store()`, #5022); still plain text in `config`.
 - E-document provider passwords: drawn empty ("Saved"), a blank box keeps them, a tick removes them (`includes/settings/prep.php`, `accounting.save.php`).

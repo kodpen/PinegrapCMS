@@ -48,7 +48,7 @@ function ws_flow_templates_test_fill($overrides = array())
 		'join'     => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
 			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
-			'erp.invoice.overdue', 'product.review.created', 'subscription.failed', 'cart_quote.created'),
+			'erp.invoice.overdue', 'product.review.created', 'subscription.failed', 'cart_quote.created', 'content.review_due'),
 	);
 }
 
@@ -938,6 +938,34 @@ function test_workspace_flow_templates_answer_a_number()
 	// The difference as the run works it out: 1250 counted, 1200 expected.
 	pg_assert_same('50', ws_flow_derived_calculate('{{node.ask.answer_number}} - {{node.expected.expected}}',
 		array('ask' => array('answer_number' => '1250'), 'expected' => array('expected' => '1200')), 2));
+}
+
+// A page or record due for review: offered with its event, one task box
+// given to the person the event names, the setup's person its fallback.
+function test_workspace_flow_templates_content_review_due()
+{
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	$template = $by_key['content_review_due'];
+	$nodes = array_column($template['graph']['nodes'], null, 'id');
+
+	pg_assert_same('site', $template['category']);
+	pg_assert_same('content.review_due', $nodes['start']['config']['event']);
+	pg_assert_same('task', $nodes['review']['kind']);
+	pg_assert_same('event_person', $nodes['review']['config']['assign']);
+	pg_assert_same(array(5), $nodes['review']['config']['fallback'], 'the person using it, until the setup says otherwise');
+	pg_assert_same(array(), $nodes['review']['config']['assignees']);
+	pg_assert_same(array(array('type' => 'person', 'targets' => array(array('review', 'fallback')))), $template['settings']);
+	pg_assert_same(array(array('from' => 'start', 'to' => 'review', 'on' => 'next')), $template['graph']['edges']);
+
+	$filled = ws_flow_templates_test_filled($template);
+	pg_assert_same(array(), array_column(ws_flow_graph_check($filled), 'text'), 'publishes');
+	pg_assert_same(array(9), array_column($filled['nodes'], null, 'id')['review']['config']['fallback']);
+
+	$applied = ws_flow_template_apply($template, $template['graph'], array('person' => array(9, 4)));
+	pg_assert_same(array(9, 4), array_column($applied['nodes'], null, 'id')['review']['config']['fallback'], 'the setup panel writes its people');
+
+	$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array('order.created')))), null, 'key');
+	pg_assert_false(isset($left['content_review_due']), 'needs its event');
 }
 
 // A low review and a failed subscription payment: offered with their

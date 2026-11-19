@@ -93,7 +93,7 @@ function pg_ops_alert_codes()
         'mail_reputation' => array(
             'label' => lang('Too many e-mails bounce or are marked as spam'),
             'type'  => 'warning',
-            'url'   => 'smtp_settings.php#mail_domain_card',
+            'url'   => 'settings_mail_sending.php#pgset-mail-domain',
         ),
         'webhook_failing' => array(
             'label' => lang('An event address stopped answering'),
