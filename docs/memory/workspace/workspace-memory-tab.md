@@ -4,7 +4,7 @@ description: The Memory tab as rows under folding project headings (GM3a): the g
 ---
 
 ## Why does it look like this?
-- Owner (2026-11-19, with a picture of the Claude app's memory list): project headings that fold, under each a row per record. Plan workspace-memory-general, GM3a (#GM3A); the cards' grid of CL3 (#8703) is gone.
+- Owner (2026-11-19, with a picture of the Claude app's memory list): project headings that fold, under each a row per record. Plan workspace-memory-general, GM3a (#10425); the cards' grid of CL3 (#8703) is gone.
 
 ## What does ws_memory_list answer?
 - `parts`, each `ws_memory_panel_part()`: `key` (`general` | `channel`), `can_post`, `can_move`, `count`, `groups` (`ws_memory_groups()`: projects A–Z with case aside, No project last, each group's records pinned first then newest). Every record carries `first_line` (`ws_memory_first_line()`: the first non-blank line, spaces folded, cut at 160 characters with "…").
