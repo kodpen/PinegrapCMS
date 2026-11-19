@@ -28,6 +28,6 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 - The 34 px icon tile only where every row of a card can carry one (`look-list-title-settings-tile.md`); mixed cards keep none.
 - The foot's amber pill counting unsaved changes and "Undo" (a new behaviour, not only a look).
 - The page draws one look card per settings card, not one surface for all.
-- The categories' own moves: S5a `look-commerce-settings-screens.md`, S5b `look-settings-maintenance-security.md`, S5c (the rest and the page toolbar) `look-settings-other-categories.md`, Mailboxes `look-settings-mailboxes.md`.
+- Each category's own move (step S5): `look-settings-categories.md`.
 
 Related: docs/memory/ui/settings-modal-overview.md

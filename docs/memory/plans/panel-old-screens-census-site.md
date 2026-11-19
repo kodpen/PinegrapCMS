@@ -7,7 +7,6 @@ description: Census LM1b of old panel screens (pages, files, forms, comments, us
 - LM1b, the content, people and system half of the old panel screens (owner, 2026-11-15: old screens move to the modern look). LM1a holds commerce and ERP (`panel-old-screens-census-commerce.md`).
 - In: pages, comments, short links, pop-ups (auto dialogs), menus, regions, ads, the style, theme and design file lists, files, forms, calendars and bookings, users, contacts, campaigns and Messages, visitors and logs, System tools, Site Settings and the settings pages outside the dialog.
 - Out: Workspace (PF, AQ), the File Manager, the visual designer and code editors, the form designer `view_fields` (`ui/look-screen-widths.md`), the dashboard (#8938), `visitors.php` (own look, `ui/visitors-screen-look.md`), site endpoints without a panel shell (`seo*.php`, `add_comment.php`).
-- It says what is, not a design: the architect makes the plan from it.
 
 ## How was it counted? (2026-11-15, development e9ccbec751)
 - Per root screen and its `includes/forms/` or `includes/settings/` file: lines; marker lines (`style=`, `<style`, `text-uppercase`, `fg-primary`, `fw-bold`, `btn btn-`, `<table`, `h5`, `small`, `text-muted`); fields (`'type' => 'text'` and the like, `<select>`, `<textarea>`); cards (`card`, `card-header`).
@@ -21,7 +20,7 @@ description: Census LM1b of old panel screens (pages, files, forms, comments, us
 - Toolbar buttons keep the slot recipes (`btn btn-sm btn-solid theme-primary rounded-pill px-5`, `btn-text theme-secondary`), not `.pg-button`; 44 files write the primary pill, `pg_screen_toolbar()` in `includes/fn/output.php` two more.
 - No list prints the sheet's title with its count or a segmented filter: filters are `pg_filter_select()` or `<select>`s (Contacts 10, Submitted Forms 9, Site Log 6).
 - The save bar's buttons keep Bootstrap colours; no field sits on the 12-column grid; no card has its line under the title (`ui/look-edit-screens.md`, "not done").
-- Settings rows have no icon tile (`ui/look-settings-screens.md`).
+- Settings rows: icon tiles on some cards only (`ui/look-settings-screens.md`).
 
 ## Which steps, in which order?
 - One group a step, most used first; estimate in brackets, lines of the files in the group after it. Screens and files per group in the part files.
@@ -29,5 +28,5 @@ description: Census LM1b of old panel screens (pages, files, forms, comments, us
 - S2 Users, sessions, contacts, contact groups, privacy, campaigns, Messages (720; 13,880): `-people.md`. Done in #9692 (`ui/look-people-screens.md`).
 - S3 Submitted forms, form fields and views, files, calendars, bookings (650; 15,170): `-forms.md`. Done in #10314 (`ui/look-forms-files-screens.md`, which lists the held files).
 - S4 Menus, regions, ads, styles, themes, design files, visitors and logs (750; 12,930): `-content.md`, `-system.md`. Done in #10316 (`ui/look-menus-regions-screens.md`).
-- S5 Site Settings categories (565 without fields, which the dialog CSS already sizes; 10,270): `-settings.md`.
+- S5 Site Settings categories (565; 10,270): Done in #10426, #10423, #10431, #10456, #10458 (`ui/look-settings-categories.md`).
 - S6 System tools, Translations, settings pages outside the dialog (825; 14,400): `-system.md`.
