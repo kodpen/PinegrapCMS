@@ -120,7 +120,6 @@ function test_settings_integrations_log_retention_refused_not_clamped()
 function settings_integrations_test_tools($store, $cloudflare)
 {
 	$connections = array(
-		array('label' => 'SMTP Settings', 'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
 		array('label' => 'Application Access', 'icon' => 'bi-key', 'url' => 'api_settings.php'),
 		array('label' => 'Connected accounts', 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
 	);
@@ -149,13 +148,13 @@ function settings_integrations_test_tools($store, $cloudflare)
 function test_settings_integrations_links_follow_each_screen_gate()
 {
 	$manager = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('tools' => settings_integrations_test_tools(true, false), 'workspace_settings' => false)));
-	pg_assert_same(array('smtp_settings.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php'), $manager, 'a manager, store on, no workspace right');
+	pg_assert_same(array('api_settings.php', 'connections.php', 'marketplace_settings.php'), $manager, 'a manager, store on, no workspace right');
 
 	$no_store = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('tools' => settings_integrations_test_tools(false, false), 'workspace_settings' => true)));
-	pg_assert_same(array('smtp_settings.php', 'api_settings.php', 'connections.php', 'settings_workspace_team.php'), $no_store, 'store off, workspace settings right');
+	pg_assert_same(array('api_settings.php', 'connections.php', 'settings_workspace_team.php'), $no_store, 'store off, workspace settings right');
 
 	$administrator = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 0), array('tools' => settings_integrations_test_tools(true, true), 'workspace_settings' => false)));
-	pg_assert_same(array('smtp_settings.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php', 'cloudflare.php'), $administrator, 'Cloudflare Tools where System tools shows it');
+	pg_assert_same(array('api_settings.php', 'connections.php', 'marketplace_settings.php', 'cloudflare.php'), $administrator, 'Cloudflare Tools where System tools shows it');
 
 	pg_assert_same(array(), pg_settings_integration_links(array('id' => 1, 'role' => 3), array('tools' => settings_integrations_test_tools(true, true), 'workspace_settings' => true)), 'nothing for a role the settings do not admit');
 }

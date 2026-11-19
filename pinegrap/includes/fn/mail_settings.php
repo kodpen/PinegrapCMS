@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * What SMTP Settings (smtp_settings.php) saves and runs: what the site's
+ * What Site Settings › E-mail sending (includes/settings/mail_sending.php)
+ * saves and runs: what the site's
  * mail is sent through, the campaign job, DKIM and the test e-mail. The settings are define() lines of
  * config.php; a sending service's account is a connect_apps row
  * (includes/fn/mail_transport.php) and a connected account is chosen by its
@@ -19,7 +20,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The config.php defines SMTP Settings writes, in the order they are saved.
+ * The config.php defines E-mail sending writes, in the order they are saved.
  *
  * @return string[]
  */
@@ -102,7 +103,7 @@ function pg_mail_settings_connection_field($name, $current, array $accounts)
 /**
  * The Connect buttons under the system mail's account, and the line above
  * them. Each button submits a hidden form outside the settings form
- * (smtp_settings.php).
+ * (includes/settings/mail_sending.php).
  *
  * @param array $providers pg_mail_settings_providers()
  * @param array $accounts pg_connect_accounts() of purpose mail
@@ -114,8 +115,8 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
 
     foreach ($providers as $key => $provider) {
         $buttons .= '
-                                                <button type="submit" form="pgset_mail_connect_' . h($key) . '" class="btn btn-sm btn-outline theme-primary rounded-pill me-1 mt-1">
-                                                    <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>';
+                                                <button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm me-1 mt-1">
+                                                    <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</span></button>';
     }
 
     $text = $accounts

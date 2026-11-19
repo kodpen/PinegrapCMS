@@ -22,27 +22,20 @@ function system_screens_names_source($path)
 	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/' . $path);
 }
 
+// The E-mail sending buttons' icons are decorative.
 function test_system_screens_smtp_ligatures_hidden()
 {
-	$source = system_screens_names_source('smtp_settings.php');
+	$source = system_screens_names_source('includes/settings/mail_sending.php');
 
-	foreach (array('forward_to_inbox', 'vpn_key', 'verified', 'save') as $ligature) {
-		pg_assert_true(
-			(bool) preg_match('/<span class="material-icons[^"]*" aria-hidden="true">' . $ligature . '<\/span>/', $source),
-			$ligature . ' ligature aria-hidden'
-		);
-		pg_assert_true(
-			!preg_match('/<span class="material-icons[^"]*">' . $ligature . '<\/span>/', $source),
-			$ligature . ' ligature without aria-hidden'
-		);
-	}
+	pg_assert_same(3, preg_match_all('/<i class="bi bi-[a-z-]+ me-1" aria-hidden="true"><\/i><span class="pg-btn-label">/', $source), 'each button icon is aria-hidden');
+	pg_assert_false(strpos($source, 'material-icons') !== false, 'no ligature icon left');
 }
 
 // The DKIM record to publish is a named, read-only box on its card; the
 // notice after generating says where it is instead of repeating it.
 function test_system_screens_dkim_record_named()
 {
-	$source = system_screens_names_source('smtp_settings.php');
+	$source = system_screens_names_source('includes/settings/mail_sending.php');
 
 	pg_assert_contains('<label for="textrecord" class="form-label">', $source, 'record label for');
 	pg_assert_contains('<textarea id="textrecord" class="form-control" rows="4" readonly>', $source, 'record textarea id');

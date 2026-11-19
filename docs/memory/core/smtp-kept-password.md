@@ -1,6 +1,6 @@
 ---
 name: smtp-kept-password
-description: SMTP Settings: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
+description: E-mail sending: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
 module: mail_transport
 ---
 
@@ -9,6 +9,6 @@ module: mail_transport
 - Otherwise the saved password is removed from `config.php`. When the posted server still has a host and a username (it would sign in), the whole save is refused with "The SMTP server or its port changed. Enter the password again."; nothing is written, the sending service card included.
 
 ## Why?
-- The password is never drawn back into the form, so a manager who can open SMTP Settings cannot read it. Before this, changing the host and pressing "Save and send a test" sent the saved password to the new server in SMTP AUTH. A port change counts because 465 is the only port with TLS before the greeting.
+- The password is never drawn back into the form, so a manager who can open E-mail sending cannot read it. Before this, changing the host and pressing "Save and send a test" sent the saved password to the new server in SMTP AUTH. A port change counts because 465 is the only port with TLS before the greeting.
 
 Related: docs/memory/platform/backup-remote-stored-secret.md (the same rule for the FTP backup), docs/memory/core/mail-transports.md

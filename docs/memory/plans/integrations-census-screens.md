@@ -4,9 +4,9 @@ description: Census (2026-11-17) of where an administrator connects an outside s
 ---
 
 ## Where is a connection made today?
-- System tools › Connections: "Application Access" (`api_settings.php`: keys, scopes, devices, webhook subscriptions, OAuth clients, the MCP guide), "Connections" (`connections.php`, called "Connected accounts" until 2026-11-17: every registry service with its state, and for each provider a drawer with its OAuth application and the accounts), "SMTP Settings", "Marketplaces". Infrastructure: "Cloudflare Tools".
+- System tools › Connections: "Application Access" (`api_settings.php`: keys, scopes, devices, webhook subscriptions, OAuth clients, the MCP guide), "Connections" (`connections.php`, "Connected accounts" until 2026-11-17: each registry service with its state, a provider's drawer with its OAuth application and accounts), "Marketplaces"; "SMTP Settings" became Site Settings › E-mail sending (#10404). Infrastructure: "Cloudflare Tools".
 - The account menu: "Connected applications", "Pair a device", "Calendar subscription". The Workspace: "My MCP connections". Visitors: "Google Search Console".
-- Site Settings (19 categories, 99 cards): keys and Connect buttons sit on cards of SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories.
+- Site Settings (20 categories, 104 cards since #10404): keys and Connect buttons sit on cards of SEO, Visitors and privacy, Languages and Translation, Communication, E-mail sending, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories.
 
 ## What is split or named twice?
 - A Connect button for an outside account is on at least ten screens; the application it needs is set up on another one, Connected accounts.
@@ -21,7 +21,7 @@ description: Census (2026-11-17) of where an administrator connects an outside s
 
 ## AI and mail?
 - AI keys in six places: the subscription key on General › Software (the licence, also read by update checks and the push broker; "Pinegrap AI in the channels" has no key of its own and uses it), "Claude in the channels", a key for each assistant on "Workspace agents", "Voice message transcripts" (two keys: transcripts and spoken answers), "Translation Engines" (the Google Cloud Translation key), and AI programs that come in on Application Access, which holds no AI key of the site's.
-- Mail in four: SMTP Settings outside Site Settings, the Google or Microsoft application on Connected accounts, Mailboxes, and Communication for campaigns and MailChimp.
+- Mail in four: E-mail sending (SMTP Settings until #10404), the Google or Microsoft application on Connections, Mailboxes, and Communication for the campaign texts and MailChimp (CX3c).
 
 ## What binds a change?
 - Owner (2026-10-30): one place per setting; one dialog and one Save per pane; the tools that leave the dialog live on System tools; card addresses and old anchors stay (`workflow/decisions-made-product-14.md`, `ui/settings-modal-overview.md`).

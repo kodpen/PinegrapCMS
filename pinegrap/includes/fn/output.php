@@ -5205,7 +5205,6 @@ function output_menu($properties = false)
         case 'system_tools.php':
         case 'view_log.php':
         case 'view_audit_log.php':
-        case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':

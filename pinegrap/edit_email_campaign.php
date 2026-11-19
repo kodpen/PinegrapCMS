@@ -259,7 +259,7 @@ if (!$_POST) {
             $output_failed_email_recipients .= '<p class="small fg-danger mb-0 text-break">' . h($problem_line) . '</p>';
 
             if ($user['role'] <= 2) {
-                $output_failed_email_recipients .= '<p class="small mb-0"><a href="smtp_settings.php">' . lang('SMTP Settings') . '</a></p>';
+                $output_failed_email_recipients .= '<p class="small mb-0"><a href="' . h(pg_settings_link('mail_sending', 'pgset-mail-campaign')) . '">' . lang('E-mail sending') . '</a></p>';
             }
         }
     }
