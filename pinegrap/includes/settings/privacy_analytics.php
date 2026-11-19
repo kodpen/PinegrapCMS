@@ -48,7 +48,7 @@ if (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) {
         if (pg_ga_ready() && pg_connect_app_ready(pg_connect_app('google'))) {
             $ga_body = '
                                         <div class="col-12">
-                                            <button type="submit" form="pgset_ga_connect" class="btn btn-sm btn-outline theme-primary rounded-pill"><i class="bi bi-google me-1" aria-hidden="true"></i>' . lang('Connect a Google account') . '</button>
+                                            <button type="submit" form="pgset_ga_connect" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-google" aria-hidden="true"></i>' . lang('Connect a Google account') . '</button>
                                         </div>';
 
             // Forms cannot be nested, so the button above submits this one
@@ -104,15 +104,15 @@ if (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) {
                                             <div class="form-text">' . h(lang('Google Analytics property')) . ': ' . h($ga_state['property_name']) . '</div>
                                             <div class="form-text">' . $ga_read . '</div>
                                         </div>
-                                        <div class="col-12">
-                                            <button type="submit" name="ga_refresh" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the figures now') . '</button>
-                                            <button type="submit" name="ga_unlink" value="1" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('Stop showing the figures of this Google Analytics property?'))) . ')"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Stop using this property') . '</button>
+                                        <div class="col-12 d-flex flex-wrap gap-2">
+                                            <button type="submit" name="ga_refresh" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Read the figures now') . '</button>
+                                            <button type="submit" name="ga_unlink" value="1" class="pg-button pg-button-danger pg-button-sm" onclick="return confirm(' . h(json_encode(lang('Stop showing the figures of this Google Analytics property?'))) . ')"><i class="bi bi-x-circle" aria-hidden="true"></i>' . lang('Stop using this property') . '</button>
                                         </div>';
     }
 
     $google_analytics_figures = '
                                         <div class="col-12">
-                                            <h6 class="mb-1">' . lang('Google Analytics figures') . '</h6>
+                                            <h3 class="pg-group-label mb-1">' . lang('Google Analytics figures') . '</h3>
                                             <div class="form-text">' . lang('Shows the visitors, sessions and views Google Analytics counted on the dashboard.') . '</div>
                                         </div>' . $ga_body . '
                                         <input type="hidden" name="ga_card" value="1"/>';

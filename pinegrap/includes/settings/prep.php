@@ -487,7 +487,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             foreach ($erp_edoc_info['capabilities'] as $erp_edoc_capability) {
                 if (isset($erp_edoc_capability_labels[$erp_edoc_capability])) {
-                    $erp_edoc_badges .= ' <span class="badge badge-subtle theme-secondary border fw-normal">' . h($erp_edoc_capability_labels[$erp_edoc_capability]) . '</span>';
+                    $erp_edoc_badges .= ' <span class="pg-pill pg-tone-gray">' . h($erp_edoc_capability_labels[$erp_edoc_capability]) . '</span>';
                 }
             }
 
@@ -549,7 +549,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $erp_edoc_environment = erp_edoc_environment($erp_edoc_code);
 
             if (!empty($erp_edoc_environment['is_test'])) {
-                $erp_edoc_badges .= ' <span class="badge theme-warning">' . h((string) $erp_edoc_environment['label']) . '</span>';
+                $erp_edoc_badges .= ' <span class="pg-pill pg-tone-amber">' . h((string) $erp_edoc_environment['label']) . '</span>';
             }
 
             $output_erp_edoc_options .= '
@@ -789,7 +789,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // picture whole rather than cropping it.
         if (waf_table_has_column('config', 'app_icon')) {
             $output_app_icon_picker = '
-                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary">' . lang('Installed Application') . '</h6></div>
+                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="pg-group-label">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
                                             ' . pg_picker_field('public_image', 'app_icon', $app_icon, array('title' => $picture_title, 'describedby' => 'app_icon_help')) . '
@@ -906,7 +906,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                         <div class="form-text">' . lang('Added to every page as structured data. Must be valid JSON. Use this for blocks you would otherwise paste into a template by hand, such as an Organization or SoftwareApplication description.') . '</div>
                                                     </div>
                                                     <div class="col-12 ">
-                                                        <h6 class="fg-secondary">' . lang('Structured Data (Google Merchant)') . '</h6>
+                                                        <h6 class="pg-group-label">' . lang('Structured Data (Google Merchant)') . '</h6>
                                                         <div class="form-text">' . lang('These facts appear on every physical product as Google Merchant shipping and return details. Digital products are left out automatically.') . '</div>
                                                     </div>
                                                     <div class="pg-f-xs">
@@ -1330,10 +1330,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $output_auto_bans .= '
                                                         <tr>
                                                             <td class="font-monospace"><a href="' . h(pg_waf_ban_log_url($auto_row['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '">' . h($auto_row['ip_address']) . '</a></td>
-                                                            <td class="small fg-secondary">' . h($auto_row['note']) . '</td>
-                                                            <td class="small text-nowrap">' . $auto_expires . '</td>
+                                                            <td class="pg-text-meta">' . h($auto_row['note']) . '</td>
+                                                            <td class="pg-text-meta text-nowrap">' . $auto_expires . '</td>
                                                             <td class="text-end">
-                                                                <button type="submit" form="pgset_waf_release" name="release_ip" value="' . h($auto_row['ip_address']) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-unlock me-1" aria-hidden="true"></i>' . lang('Release') . '</button>
+                                                                <button type="submit" form="pgset_waf_release" name="release_ip" value="' . h($auto_row['ip_address']) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-unlock" aria-hidden="true"></i>' . lang('Release') . '</button>
                                                             </td>
                                                         </tr>';
             }
@@ -2055,27 +2055,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                    <div class="row gy-5">
                                                         <div class="pg-f-xs">
                                                             <label for="login_throttle_attempts" class="form-label">' . lang('Failed Attempts') . '</label>
-                                                            <input type="text" name="login_throttle_attempts" id="login_throttle_attempts" class="form-control" value="' . (int) $login_throttle_attempts . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                            <input type="text" name="login_throttle_attempts" id="login_throttle_attempts" class="form-control text-end" value="' . (int) $login_throttle_attempts . '" size="5" maxlength="4" inputmode="numeric"/>
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="login_throttle_minutes" class="form-label">' . lang('Counted Over') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
-                                                                <input type="text" name="login_throttle_minutes" id="login_throttle_minutes" class="form-ghost" value="' . (int) $login_throttle_minutes . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="login_throttle_minutes" id="login_throttle_minutes" class="form-ghost text-end" value="' . (int) $login_throttle_minutes . '" size="5" maxlength="4" inputmode="numeric"/>
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="login_throttle_lockout" class="form-label">' . lang('Locked Out For') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
-                                                                <input type="text" name="login_throttle_lockout" id="login_throttle_lockout" class="form-ghost" value="' . (int) $login_throttle_lockout . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="login_throttle_lockout" id="login_throttle_lockout" class="form-ghost text-end" value="' . (int) $login_throttle_lockout . '" size="5" maxlength="5" inputmode="numeric"/>
                                                             </label>
                                                         </div>
                                                         ' . ($security_ready ? '<div class="pg-f-xs">
                                                             <label for="login_throttle_captcha_after" class="form-label">' . lang('Ask a Question After') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('failures') . '</span>
-                                                                <input type="text" name="login_throttle_captcha_after" id="login_throttle_captcha_after" class="form-ghost" value="' . (int) $login_throttle_captcha_after . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="login_throttle_captcha_after" id="login_throttle_captcha_after" class="form-ghost text-end" value="' . (int) $login_throttle_captcha_after . '" size="4" maxlength="3" inputmode="numeric"/>
                                                             </label>
                                                             <div class="form-text">' . lang('From this many failures on, a sign-in attempt must also answer a simple arithmetic question before the password is checked. A person answers it in a second; a password list cannot. 0 turns it off.') . '</div>
                                                         </div>' : '') . '
@@ -2145,7 +2145,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <button type="submit" name="waf_refresh_ranges" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Update Bot IP Lists') . '</button>
+                                                            <button type="submit" name="waf_refresh_ranges" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Update Bot IP Lists') . '</button>
                                                             <div class="form-text">' . h(implode(' · ', $waf_ai_freshness_parts)) . '</div>
                                                             <div class="form-text">' . lang('The lists refresh on their own: with panel visits, and daily when the Bot IP lists job is enabled under Cron jobs. This button fetches them right now and also saves the settings above.') . '</div>
                                                         </div>';

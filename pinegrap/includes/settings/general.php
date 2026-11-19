@@ -166,25 +166,17 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="col-12 ">
                                             <fieldset><legend class="form-label pg-field-label">'. lang('Date Format') . '</legend>
-                                            <div class="form-field">
-                                                <input value="month_day" class="radio" type="radio" id="date_format_month_day" name="date_format" ' . $date_format_month_day_checked . '>
-                                                <label class="" for="date_format_month_day">'. lang('month') . '/'. lang('day') . '/'. lang('year') . ' (2/14/' . date('Y') . ')</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input value="day_month" class="radio" type="radio" id="date_format_day_month" name="date_format" ' . $date_format_day_month_checked . '>
-                                                <label class="" for="date_format_day_month">'. lang('day') . '/'. lang('month') . '/'. lang('year') . ' (14/2/' . date('Y') . ')</label>
+                                            <div class="pg-seg flex-wrap">
+                                                <label class="pg-seg-item" for="date_format_month_day"><input value="month_day" class="visually-hidden" type="radio" id="date_format_month_day" name="date_format" ' . $date_format_month_day_checked . '>'. lang('month') . '/'. lang('day') . '/'. lang('year') . ' (2/14/' . date('Y') . ')</label>
+                                                <label class="pg-seg-item" for="date_format_day_month"><input value="day_month" class="visually-hidden" type="radio" id="date_format_day_month" name="date_format" ' . $date_format_day_month_checked . '>'. lang('day') . '/'. lang('month') . '/'. lang('year') . ' (14/2/' . date('Y') . ')</label>
                                             </div>
                                             </fieldset>
                                         </div>
                                         <div class="col-12 ">
                                             <fieldset><legend class="form-label pg-field-label">'. lang('Time Format') . '</legend>
-                                            <div class="form-field">
-                                                <input value="twelve_hours" class="radio" type="radio" id="time_format_twelve_hours" name="time_format" ' . $time_format_twelve_hours_checked . '>
-                                                <label class="" for="time_format_twelve_hours">'. lang('hour') . ':'. lang('minute') . ' am/pm (11:30 pm)</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input value="twenty_four_hours" class="radio" type="radio" id="time_format_twenty_four_hours" name="time_format" ' . $time_format_twenty_four_hours_checked . '>
-                                                <label class="" for="time_format_twenty_four_hours">'. lang('hour') . ':'. lang('minute') . ' (23:30)</label>
+                                            <div class="pg-seg flex-wrap">
+                                                <label class="pg-seg-item" for="time_format_twelve_hours"><input value="twelve_hours" class="visually-hidden" type="radio" id="time_format_twelve_hours" name="time_format" ' . $time_format_twelve_hours_checked . '>'. lang('hour') . ':'. lang('minute') . ' am/pm (11:30 pm)</label>
+                                                <label class="pg-seg-item" for="time_format_twenty_four_hours"><input value="twenty_four_hours" class="visually-hidden" type="radio" id="time_format_twenty_four_hours" name="time_format" ' . $time_format_twenty_four_hours_checked . '>'. lang('hour') . ':'. lang('minute') . ' (23:30)</label>
                                             </div>
                                             </fieldset>
                                         </div>

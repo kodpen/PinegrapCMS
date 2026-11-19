@@ -28683,6 +28683,10 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
   backdrop-filter: blur(16px);
   box-shadow: var(--pg-shadow-float);
 }
+/* The settings page's bar sticks half a line above the window's edge. */
+#pg_settings_page_form > nav.buttons.navigation {
+  bottom: .5rem;
+}
 /* pg_save_bar()'s sticky column holds the bar's bottom margin: outside a
    flex row (straight in a form, after a card) the margin would collapse out
    of the column and the bar would sit on the window's bottom edge. */
@@ -28994,7 +28998,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 }
 .pg-button:focus-visible,
 .pg-icon-button:focus-visible,
-.pg-seg-item:focus-visible {
+.pg-seg-item:focus-visible,
+.pg-seg-item:has(> input:focus-visible) {
   outline: 2px solid var(--pg-accent);
   outline-offset: 2px;
 }
@@ -29029,7 +29034,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 .pg-seg-item.is-active,
 .pg-seg-item[aria-pressed="true"],
 .pg-seg-item[aria-selected="true"],
-.pg-seg-item[aria-current="true"] {
+.pg-seg-item[aria-current="true"],
+.pg-seg-item:has(> input:checked) {
   background: var(--pg-thumb);
   color: var(--pg-fg-body);
   box-shadow: var(--pg-thumb-shadow);

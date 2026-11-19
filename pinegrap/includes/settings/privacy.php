@@ -44,7 +44,7 @@ $pg_settings_cards[] = '
                                                             <label for="tracking_code_duration" class="form-label">' . lang('Tracking Code Duration') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" />
+                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost text-end" value="' . h($tracking_code_duration) . '" size="7" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" />
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-md">
@@ -80,7 +80,7 @@ $pg_settings_cards[] = '
                                             <label for="visitor_retention_days" class="form-label">' . lang('Keep visitor records for') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                <input type="text" name="visitor_retention_days" id="visitor_retention_days" class="form-ghost" value="' . h($visitor_retention_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                                <input type="text" name="visitor_retention_days" id="visitor_retention_days" class="form-ghost text-end" value="' . h($visitor_retention_days) . '" size="5" maxlength="4" inputmode="numeric" />
                                             </label>
                                         </div>
                                         <div class="col-12">
@@ -90,7 +90,7 @@ $pg_settings_cards[] = '
                                             <label for="visitor_ip_days" class="form-label">' . lang('Remove IP addresses after') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-ghost" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-ghost text-end" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" />
                                             </label>
                                         </div>
                                         <div class="col-12">
@@ -205,7 +205,7 @@ if ($legal_documents_ready) {
                                         <details>
                                             <summary class="form-text">' . lang('Fields you can use in a template') . '</summary>
                                             <div class="form-text">' . lang('[[text ^^field^^ text]] shows the text only when the field has a value.') . '</div>
-                                            <table class="table table-sm mt-3 mb-0"><tbody>' . $legal_placeholder_rows . '</tbody></table>
+                                            <table class="table table-hover mt-3 mb-0 pg-embedded-table"><tbody>' . $legal_placeholder_rows . '</tbody></table>
                                         </details>
                                     </div>
                                 </div>

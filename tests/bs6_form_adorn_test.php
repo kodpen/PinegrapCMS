@@ -246,10 +246,10 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
 
 	// The groups left are the ones form-adorn cannot hold: two add-ons
-	// (language address prefix), a hint on the add-on (membership warning) and
-	// a button (SEO). The feed address and the Paraşüt connect code set their
-	// button beside the field as a small look A button, in no group.
-	$left = array('languages.php' => 1, 'security.php' => 1, 'seo.php' => 1);
+	// (language address prefix) and a hint on the add-on (membership warning).
+	// The feed address, the Paraşüt connect code and the IndexNow key set
+	// their button beside the field as a small look A button, in no group.
+	$left = array('languages.php' => 1, 'security.php' => 1);
 
 	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'privacy.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);
