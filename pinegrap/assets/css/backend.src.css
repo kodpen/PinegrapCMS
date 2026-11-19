@@ -17779,6 +17779,24 @@ a.ws-chip-message:hover,
   padding-bottom: .5rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
+/* The conversation's channel in the head (ws_mail_pane_channel_pill()): a
+   status pill that is a link, so the link's underline shows only on hover
+   and focus; a long name is cut inside the pane's width, never widening it,
+   the whole words in its title. */
+.ws-mail-pane-channel {
+  max-width: 100%;
+  min-width: 0;
+  text-decoration: none;
+}
+.ws-mail-pane-channel-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-pane-channel:is(:hover, :focus-visible) .ws-mail-pane-channel-text {
+  text-decoration: underline;
+}
 .ws-mail-pane-tools {
   display: flex;
   flex-wrap: wrap;

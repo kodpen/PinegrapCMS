@@ -271,7 +271,10 @@ function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
- * words and the time labels. A conversation of a mailbox kept in no channel
+ * words and the time labels. The heading names the customer and the mailbox
+ * on its muted line and the channel as a pill under it, a link to the
+ * conversation's card there (ws_mail_pane_channel_pill()), as its tools'
+ * "Open in channel" does. A conversation of a mailbox kept in no channel
  * names its mailbox only and has no "Open in channel": this screen is the
  * one place it opens. With the Workspace off ($channels false) no channel
  * opens either, so no conversation has the link, and none names a channel.
@@ -292,7 +295,8 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
 
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
-        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ($room ? '' : ' · ' . h('#' . (string) $pane['channel']['name'])) . '</div>'
+        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
+        . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
         . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
@@ -308,6 +312,24 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     }
 
     return $html;
+}
+
+/**
+ * The channel a conversation is written into, in the pane's head: a pill
+ * reading "In #name" that leads to the conversation's card in the channel.
+ * A long name is cut with an ellipsis inside the pane's width; the whole
+ * words are in its title. Pure but for the words.
+ *
+ * @param string $name the channel's name, without the #
+ * @param string $url  the card's address in its channel, not escaped
+ * @return string HTML
+ */
+function ws_mail_pane_channel_pill($name, $url)
+{
+    $text = lang(array('string' => 'In #{var:1}', 'vars' => (string) $name));
+
+    return '<a class="pg-pill pg-tone-blue ws-mail-pane-channel" href="' . h($url) . '" title="' . h($text) . '">'
+        . '<span class="ws-mail-pane-channel-text">' . h($text) . '</span></a>';
 }
 
 /**
