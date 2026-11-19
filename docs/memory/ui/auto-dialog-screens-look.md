@@ -18,7 +18,7 @@ description: The Auto Dialogs list, Create and Edit screens in look A (PU5, #990
 - Turkish: Centre is its own key "In the centre" (Ortada); Scrolled reads Kaydırma oranı, Shown To Kime gösterilir.
 
 ## Who looked?
-- The owner's look, asked through the architect with before/after pairs at 1440 and 390, light and dark, from a sandbox with three sample pop-ups.
+- The architect's three fixes (channel 25 message 6091) are in. The owner's picture look was asked, then screenshot approval ended for all PRs (agent channel 9540/9541, #10380), so the screens landed without it.
 
 ## Tested?
 - `tests/auto_dialog_form_test.php` (`test_auto_dialog_screens_in_look_a`), `tests/auto_dialog_counts_test.php`.
