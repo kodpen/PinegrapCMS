@@ -1271,6 +1271,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .sd-sect-hdr.sd-sect-open .sd-sect-sum,
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }
+/* Several elements: the kind's own section keeps "shared options" in its
+   head while open (data-sd-sum, _sdSectHeadsFill()). */
+.sd-sect-hdr.sd-sect-open .sd-sect-sum.sd-sect-sum-keep { display: block; }
 /* A section the search shows rows of has its arrow open. */
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-chev { transform: rotate(90deg); }
 
@@ -1320,6 +1323,34 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-id-step:not(:last-child),
 .sd-rcol-narrow .sd-id-sep { display: none; }
 .sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
+/* Several elements selected: the count on the icon's lower right corner
+   (18, the accent ground, a 2 px ring of the panel's ground); the path's
+   place holds one line, the shared parent or the kinds, cut at its end. */
+.sd-id-icon-mc { position: relative; }
+.sd-id-count {
+    position: absolute; right: -6px; bottom: -6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent);
+    box-shadow: 0 0 0 2px var(--sd-panel-bg);
+    font-size: 11px; font-weight: 650; line-height: 1;
+}
+.sd-id-path-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-rcol-narrow .sd-id-path-mc::before { content: none; }
+/* The strip under the tabs: a change goes to every selected element. */
+.sd-mc-strip {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 12px 8px; padding: 6px 10px; border-radius: 8px;
+    background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+    color: var(--sd-text); font-size: 12px; line-height: 1.35;
+}
+.sd-mc-strip .bi { flex-shrink: 0; color: var(--sd-accent); }
+/* The line in the kind's own section: what belongs to one element. */
+.sd-mc-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 4px 0 6px 14px; color: var(--sd-text-muted); font-size: 12px; line-height: 1.4;
+}
+.sd-mc-note .bi { flex-shrink: 0; margin-top: 1px; }
 /* The head over the Options search: the identity row, then the tabs. */
 .sd-props-head { flex-shrink: 0; background: var(--sd-panel-bg); }
 .sd-props-head[hidden] { display: none; }
@@ -1702,6 +1733,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     -webkit-user-select: none; user-select: none;
 }
 .sd-bm-v:hover { background: color-mix(in srgb, var(--sd-text) 25%, transparent); }
+/* A side whose value differs across the selected elements ("~"). */
+.sd-bm-v.sd-bm-mixed { color: var(--sd-accent); box-shadow: inset 0 0 0 1px var(--sd-accent-line); }
 .sd-bm-v.mt { top: 2px; left: 50%; transform: translateX(-50%); }
 .sd-bm-v.mb { bottom: 2px; left: 50%; transform: translateX(-50%); }
 .sd-bm-v.ml { left: 4px; top: 50%; transform: translateY(-50%); }
@@ -3300,6 +3333,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background: var(--sd-accent-strong); color: var(--sd-on-accent); box-shadow: var(--sd-segment-shadow);
 }
 .sd-seg:focus-visible, .sd-align-btn:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+/* Several elements whose values differ: no segment selected, each value
+   present framed with a 1 px accent line. */
+.sd-seg.sd-seg-has, .sd-align-btn.sd-seg-has { color: var(--sd-text); box-shadow: inset 0 0 0 1px var(--sd-accent); }
 .sd-seg:disabled, .sd-align-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 /* Ensure button group fits inside both sd-sp-row (3rd col) and sd-sp-bp-item (2nd col) */
 .sd-sp-row .sd-align-grp,
@@ -3448,6 +3484,25 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-chg-reset:not(:disabled):hover { background: var(--sd-accent-soft); }
 .sd-chg-reset:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
 .sd-chg-reset:disabled { cursor: default; }
+/* Several elements: a row changed in only some of them has a hollow ring
+   (2 px accent) in the dot's place (_sdMcMark()). */
+.sd-chg-reset.sd-chg-ring::before { width: 8px; height: 8px; background: transparent; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+
+/* ── A value that differs across the selected elements ──
+   "— Multiple —" in grey italics in a field, a dropdown or a colour's
+   name; a colour's swatch split in two; a button group's values spelled
+   on a muted line under the row. */
+select.sd-mixed, .sd-cp-label.sd-mixed { font-style: italic; color: var(--sd-text-muted); }
+select.sd-mixed option { font-style: normal; color: var(--sd-text); }
+input.sd-mixed::placeholder { font-style: italic; color: var(--sd-text-muted); }
+.sd-color-preview.sd-color-split { display: inline-flex; overflow: hidden; }
+.sd-color-split > span { flex: 1 1 50%; min-width: 0; height: 100%; }
+.sd-mc-spell {
+    flex: 1 1 100%; padding-left: 102px; margin-top: -2px;
+    color: var(--sd-text-muted); font-size: 11px; line-height: 1.35;
+}
+.sd-prop-row.sd-row-stack > .sd-mc-spell,
+.sd-rcol-narrow .sd-prop-row > .sd-mc-spell { padding-left: 0; }
 
 /* ── A row that stands its control under its label ──
    Always (.sd-row-stack: the group does not fit beside the label) or

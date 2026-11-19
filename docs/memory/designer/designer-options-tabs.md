@@ -4,7 +4,7 @@ description: The Options panel's three tabs Content, Style and Advanced (D4, D5,
 ---
 
 ## What stands above the Options panel's scroll?
-- `#sd-props-head` (made by `initRightPanel()`, filled by `_sdPropsHead()`): the identity row and the tab strip `_sdOptTabStrip()`; the Search... box stands under it. It is hidden for every other panel: nothing selected, several elements, the content level's read-only panel (K4), an element inside a text.
+- `#sd-props-head` (made by `initRightPanel()`, filled by `_sdPropsHead()`): the identity row and the tab strip `_sdOptTabStrip()`; the Search... box stands under it. Several elements fill it too (`designer-options-multiple.md`). It is hidden for every other panel: nothing selected, the content level's read-only panel (K4), an element inside a text.
 - A tab is named Content, Style or Advanced with its icon and the count of changed rows; the open tab's count is filled with the accent and written in the panel's ground (white on the accent is under 3:1). Under 300 px the icons go and the count sits on the tab's top-right corner with a ring of the strip's ground.
 - Left and Right arrows move between the tabs and wrap round (`_sdOptTabNext()`); a tab with no section is not drawn (`_sdOptTabsShown()`).
 

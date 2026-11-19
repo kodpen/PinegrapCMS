@@ -6,7 +6,7 @@ description: Options panel controls of the Visual Page Editor: button groups, th
 ## When is a value list a button group?
 - While the single element's panel is built (`_sdSectBuild`), `row()`, `mkRespRow()` and `mkNonRespRow()` read a lone select (`_sdSelParse()`); `_sdSegPlan()` decides: up to six values a group, seven or more a select.
 - A group wider than the control beside its label (162 at 336 px) stands under it (`.sd-row-stack`); one wider than the row (262) stays a select, so no segment text is cut. Estimate: a capital 8.4, other characters 6.8, 14 a segment; segments grow from their text.
-- The several-element panel and the per-size boxes keep their selects.
+- The per-size boxes keep their selects. Several elements get groups too (`data-mc-*` read alike).
 
 ## When does a row stand under its label at 240 px?
 - Under 300 px (`.sd-rcol-narrow`) `.sd-row-stack-n` stacks a row: a group of four or more written segments or wider than 104 (`_sdSegPlan()`; four icons stay beside); a size row, whose chevron or badge leaves the control under 104; a label that needs over two lines (`_sdNarrowStack()` measures it). No label ends in an ellipsis.

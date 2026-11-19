@@ -33423,7 +33423,7 @@ const StyleDesigner = (function () {
         });
     }
 
-    // ── Multi-select: shared helpers ─────────────────────────────────────────
+    // ── Several elements selected (the Options panel) ─────────────────────────
     // Returns the uniform class within a mutex group across all nodes, or null if mixed.
     function _mcUniformGroup(nodes, groupArr) {
         var vals = nodes.map(function(n) {
@@ -33435,22 +33435,13 @@ const StyleDesigner = (function () {
         return vals.every(function(v) { return v === vals[0]; }) ? vals[0] : null;
     }
 
-    // ── Tag-specific intersection options for multi-select ────────────────────
-    function renderMcOptions(nodes) {
-        function _role(n) {
-            if (n.type === 'content') return 'c:' + (n.props.contentType || '');
-            if (n.type === 'semantic') {
-                var tag = (n.props.tag || '').toLowerCase();
-                var cls = (n.props.cssClass || '').split(/\s+/);
-                if (tag === 'div' && cls.indexOf('alert') !== -1 && cls.indexOf('alert-heading') === -1) return 's:alert';
-                return 's:' + tag;
-            }
-            return n.type;
-        }
-        var roles = nodes.map(_role);
-        if (!roles.every(function(r) { return r === roles[0]; })) return ''; // mixed roles → no tag-options
-
-        var role = roles[0];
+    // The own section of several elements of one kind, named after the kind
+    // (`title`): the options they share by role (_sdMcRole()), and a line
+    // saying what stays with each element. A text, a link and a picture
+    // address are never offered: they belong to one element.
+    function renderMcOptions(nodes, title) {
+        var roles = nodes.map(_sdMcRole);
+        var role = roles.every(function(r) { return r === roles[0]; }) ? roles[0] : '';
 
         // Uniform prop helpers
         function _unifProp(prop) {
@@ -33471,36 +33462,33 @@ const StyleDesigner = (function () {
         }
         function _unifGroup(groupArr) { return _mcUniformGroup(nodes, groupArr); }
 
-        // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup (cssClass mutation)
+        // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup
+        // (cssClass mutation). A select holds the choices it is given; one
+        // whose values differ gets "— Multiple —" from _sdMcMark().
         function _mcSel(prop, opts, uVal) {
-            var isMixed = uVal === null;
             var h = '<select class="form-control form-control-sm" data-mc-prop="' + prop + '">';
-            h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
-                h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                h += '<option value="' + esc(o[0]) + '"' + (uVal !== null && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
             return h + '</select>';
         }
         function _mcGroupSel(groupArr, opts, uVal) {
-            var isMixed = uVal === null;
             var h = '<select class="form-control form-control-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
-            h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
+            h += '<option value="">' + _sdT('Default') + '</option>';
             opts.forEach(function(o) {
-                h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                h += '<option value="' + esc(o[0]) + '"' + (uVal !== null && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
             return h + '</select>';
         }
         // Boolean switch — data-mc-prop (n.props boolean) or data-mc-cls-toggle (cssClass toggle)
         function _mcSwProp(prop, uVal) {
-            var isMixed = uVal === null;
-            return '<label class="sd-prop-switch"' + (isMixed ? ' data-mc-mixed="1"' : '') + '>' +
-                '<input type="checkbox" class="sd-sw-inp" data-mc-prop="' + prop + '"' + (!isMixed && uVal ? ' checked' : '') + '>' +
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-mc-prop="' + prop + '"' + (uVal ? ' checked' : '') + '>' +
                 '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span></label>';
         }
         function _mcSwCls(cls, uVal) {
-            var isMixed = uVal === null;
-            return '<label class="sd-prop-switch"' + (isMixed ? ' data-mc-mixed="1"' : '') + '>' +
-                '<input type="checkbox" class="sd-sw-inp" data-mc-cls-toggle="' + esc(cls) + '"' + (!isMixed && uVal ? ' checked' : '') + '>' +
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-mc-cls-toggle="' + esc(cls) + '"' + (uVal ? ' checked' : '') + '>' +
                 '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span></label>';
         }
 
@@ -33509,25 +33497,22 @@ const StyleDesigner = (function () {
         var relOpts    = [['',_sdT('Default')],['nofollow','nofollow'],['noopener','noopener'],['noreferrer','noreferrer'],['noopener noreferrer','noopener noreferrer']];
 
         if (role === 'c:button') {
-            // href / text intentionally omitted (unique-per-element rule)
             h += row(_sdT('Disabled'), _mcSwProp('disabled', _unifBool('disabled')));
             h += row(_sdT('Active'),   _mcSwProp('active',   _unifBool('active')));
             h += row(_sdT('Size'),    _mcSel('size', [['',_sdT('Default')],['sm',_sdT('Small')],['lg',_sdT('Large')]], _unifProp('size')));
         } else if (role === 'c:link') {
-            // href intentionally hidden (unique-per-element rule)
             h += row(_sdT('Target'),   _mcSel('target', targetOpts, _unifProp('target')));
             h += row(_sdT('Relationship'),   _mcSel('rel',    relOpts,    _unifProp('rel')));
         } else if (role === 'c:image') {
-            // alt / src intentionally hidden (unique-per-element rule).
             // Loading reads and writes the loading attribute, as on a single
             // image (_sdImgLoading()).
             var _ldVals = nodes.map(_sdImgLoading);
             var _ldUnif = _ldVals.every(function(v) { return v === _ldVals[0]; }) ? _ldVals[0] : null;
             h += row(_sdT('Loading attribute'), _mcSel('loading', [['',_sdT('Default')],['lazy',_sdT('Lazy')],['eager',_sdT('Eager')]], _ldUnif));
         } else if (role === 'c:heading') {
+            // No empty choice: a heading always has a level.
             h += row(_sdT('Level'), _mcSel('tag', [['h1','H1'],['h2','H2'],['h3','H3'],['h4','H4'],['h5','H5'],['h6','H6']], _unifProp('tag')));
         } else if (role === 's:a') {
-            // href intentionally hidden (unique-per-element rule)
             h += row(_sdT('Target'), _mcSel('target', targetOpts, _unifProp('target')));
         } else if (role === 's:button') {
             h += row(_sdT('Disabled'), _mcSwCls('disabled', _unifClsTgl('disabled')));
@@ -33539,116 +33524,119 @@ const StyleDesigner = (function () {
             h += row(_sdT('Type'), _mcGroupSel(alertGroups, variantOpts, uVariant));
         }
 
-        if (!h) return '';
-        return sect('bi-sliders', _sdT('Options'), h);
+        h += '<div class="sd-mc-note"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
+            esc(_sdT('Text, link, image address, translation and data binding belong to each element; they show when one element is selected.')) + '</span></div>';
+        // The card keeps the id of the section once named Options.
+        return sect('bi-sliders', esc(title), h, _sdT('Options'));
     }
 
-    // ── Multi-select bulk editor (Properties panel) ───────────────────────────
-    // Uses the SAME rendering pipeline as single-node mode (rowCss + renderMcOptions),
-    // then post-processes the DOM to show "— Multiple —" for controls where values differ.
+    // A copy of `base` holding only the classes every one of `nodes` has:
+    // the builders draw the selection's shared values from it.
+    function _sdMcProxy(nodes, base) {
+        var proxy = JSON.parse(JSON.stringify(base));
+        var counts = {};
+        nodes.forEach(function (n) {
+            (n.props.cssClass || '').split(/\s+/).filter(function (c, i, a) { return c && a.indexOf(c) === i; }).forEach(function (c) {
+                counts[c] = (counts[c] || 0) + 1;
+            });
+        });
+        proxy.props.cssClass = Object.keys(counts).filter(function (c) { return counts[c] === nodes.length; }).join(' ');
+        return proxy;
+    }
+
+    // The name of an element's kind ("Heading"), not the name given to it.
+    function _sdMcKindName(n) {
+        var props = {};
+        Object.keys(n.props || {}).forEach(function (k) { if (k !== 'customName') props[k] = n.props[k]; });
+        return getNodeLabel({ type: n.type, props: props, children: n.children });
+    }
+
+    // The panel of several elements selected (Shift or Ctrl), drawn as the
+    // single element's (renderProperties()): the identity row, the tabs,
+    // only the sections every element shares. Content is drawn only for
+    // elements of one kind. A control reads "— Multiple —" where the
+    // values differ (_sdMcMark()); a change is written to every element as
+    // one undo step (_sdMcCommit()).
     function renderMultiProperties() {
         var nodes = selectedNodes.length > 1 ? selectedNodes.slice() : [];
         var panel = document.getElementById('sd-properties');
         if (!panel || nodes.length < 2) return;
-
-        // Build a proxy node: cssClass = intersection of ALL nodes' classes.
-        // rowCss() reads n.props.cssClass → proxy ensures only common classes are pre-selected.
-        var proxy = JSON.parse(JSON.stringify(nodes[0]));
-        var clsCounts = {};
-        nodes.forEach(function(n) {
-            (n.props.cssClass || '').split(/\s+/).filter(Boolean).forEach(function(c) {
-                clsCounts[c] = (clsCounts[c] || 0) + 1;
-            });
-        });
-        proxy.props.cssClass = Object.keys(clsCounts).filter(function(c) {
-            return clsCounts[c] === nodes.length;
-        }).join(' ');
-
-        // Tag-specific options — same function as single-node mode (handles mixed-type guard internally)
-        var optHtml = renderMcOptions(nodes);
-
-        // Universal CSS controls — temporarily point selectedNode to proxy so that
-        // colorSelectGroup() (which reads selectedNode directly) reflects intersection classes.
-        var _prevSelected = selectedNode;
-        selectedNode = proxy;
-        var cssHtml = rowCss(proxy);
-        selectedNode = _prevSelected;
-
-        panel.innerHTML = '<div class="sd-tab-content">' + (optHtml || '') + cssHtml + '</div>';
-        _sdHideBootstrapControls(panel);
-
-        // Post-process: inject "— Multiple —" where values differ across selected nodes
-        _postProcessMultiPanel(nodes, panel);
-
-        // Bind multi-aware events
-        bindMultiPropEvents(nodes);
-
+        var kinds = nodes.map(_sdPanelKind);
+        var alike = kinds.every(function (k) { return k === kinds[0]; });
         var srch = document.getElementById('sd-props-search');
+        var all = _sdSectAllOnce || !!(srch && srch.value.trim());
+        _sdSectAllOnce = false;
+        // A Style or Advanced section opens by its rule when it holds for
+        // every element (_sdOptOpenByDefault()).
+        var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+        });
+        _sdSectBuild = { cards: {}, lazy: null, ctx: ctx };
+        // colorSelectGroup() reads selectedNode: the copy stands in for it.
+        var prev = selectedNode;
+        var proxy = selectedNode = _sdMcProxy(nodes, nodes[0]);
+        var own = _sdSectTakeOwn(alike ? renderMcOptions(nodes, _sdMcKindName(nodes[0])) : '');
+        // Text when every element has it; without the display sizes when
+        // one of them is not a text element.
+        var textHtml = '';
+        var ofText = function (n) { var p = n.props || {}; return _sdOptIsText(n.type, p.tag, p.contentType); };
+        if (nodes.every(function (n) { var p = n.props || {}; return _sdMcHasText(n.type, p.tag, p.contentType); })) {
+            var plain = nodes.filter(function (n) { return !ofText(n); })[0];
+            textHtml = propsTextOptions(plain ? _sdMcProxy(nodes, plain) : proxy);
+        }
+        var keyed = _sdSectTakeKeyed(textHtml + rowCss(proxy));
+        selectedNode = prev;
+        _sdSectBuild = null;
+        var plan = _sdOptPlan(_sdMcPieces(alike, [
+            { key: 'own', html: own.own + own.rest },
+            { key: 'element', html: keyed.rest }
+        ].concat(keyed.keyed)));
+        var shown = _sdOptTabsShown(plan);
+        _sdOptTab = _sdOptTabPick(_sdOptTab, shown);
+        var drawn = '';
+        shown.forEach(function (t) {
+            if (all || t === _sdOptTab) drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + plan[t] + '</div>';
+            else _sdOptHeld[t] = plan[t];
+        });
+        panel.innerHTML = '<div class="sd-tab-content"' + (all ? ' data-sd-otab-all="1"' : '') +
+            (Object.keys(_sdOptHeld).length ? ' data-sd-held="1"' : '') + '>' + drawn + '</div>';
+        var ownSid = /data-sd-card="([^"]+)"/.exec(own.own);
+        var ownCard = ownSid ? panel.querySelector('[data-sd-card="' + ownSid[1] + '"]') : null;
+        if (ownCard) ownCard.setAttribute('data-sd-sum', _sdT('shared options'));
+        _sdHideBootstrapControls(panel);
+        _postProcessMultiPanel(nodes, panel);
+        var counts = {};
+        panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { counts[pane.getAttribute('data-sd-otab')] = _sdMcMark(pane, nodes, true); });
+        Object.keys(_sdOptHeld).forEach(function (t) {
+            var tpl = document.createElement('template');
+            tpl.innerHTML = _sdOptHeld[t];
+            _sdHideBootstrapControls(tpl.content);
+            _postProcessMultiPanel(nodes, tpl.content);
+            counts[t] = _sdMcMark(tpl.content, nodes, false);
+        });
+        bindMultiPropEvents(nodes);
+        _sdMcHead(nodes, alike, shown, counts);
+        // Content level: the panel edits only when every element may be edited.
+        _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
     }
 
-    // Post-processes the multi-select panel DOM to mark controls with mixed values.
+    // The head over the search: the identity row of the selection, the
+    // tabs and the strip saying a change goes to all.
+    function _sdMcHead(nodes, alike, shown, counts) {
+        var names = [];
+        nodes.forEach(function (n) { var k = _sdMcKindName(n); if (names.indexOf(k) === -1) names.push(k); });
+        var ups = nodes.map(function (n) { var r = _sdAnyParent(n); return r ? r.parent : null; });
+        var same = !!ups[0] && ups.every(function (p) { return p === ups[0]; });
+        _sdPropsHead(nodes[0], shown, counts, {
+            id: _sdMcIdRow({ count: nodes.length, icon: _sdIdIcon(nodes[0]), kindName: alike ? names[0] : '', parent: same ? getNodeLabel(ups[0]) : '', kinds: names }),
+            tail: _sdMcStrip(nodes.length)
+        });
+    }
+
+    // The per-element background controls (inline styles) are not offered
+    // for several elements.
     function _postProcessMultiPanel(nodes, panel) {
-        var MIXED = _sdT('— Multiple —');
-
-        function prependMixed(selEl) {
-            // Deselect all existing options, then insert the mixed sentinel at the top.
-            Array.prototype.forEach.call(selEl.options, function(o) { o.selected = false; });
-            var opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = MIXED;
-            opt.selected = true;
-            selEl.insertBefore(opt, selEl.firstChild);
-        }
-
-        // 1. data-stylegroup selects (rowCss: display, typography, colors, border, flex, etc.)
-        panel.querySelectorAll('select[data-stylegroup]').forEach(function(selEl) {
-            var groupArr = selEl.getAttribute('data-stylegroup').split(',').filter(Boolean);
-            if (_mcUniformGroup(nodes, groupArr) === null) prependMixed(selEl);
-        });
-
-        // Update color picker trigger buttons that correspond to mixed hidden selects
-        panel.querySelectorAll('.sd-cp').forEach(function(cpWrap) {
-            var hiddenSel = cpWrap.querySelector('select[data-stylegroup]');
-            if (!hiddenSel) return;
-            var groupArr = hiddenSel.getAttribute('data-stylegroup').split(',').filter(Boolean);
-            if (_mcUniformGroup(nodes, groupArr) === null) {
-                var trigger = cpWrap.querySelector('.sd-cp-trigger');
-                if (trigger) {
-                    var swatch = trigger.querySelector('.sd-color-preview');
-                    if (swatch) swatch.className = 'sd-color-preview sd-color-preview-none';
-                    var lbl = trigger.querySelector('.sd-cp-label');
-                    if (lbl) lbl.textContent = MIXED;
-                }
-            }
-        });
-
-        // 2. data-util selects (spacing — prefix-based: mt-, p-, etc.)
-        panel.querySelectorAll('select[data-util]').forEach(function(selEl) {
-            var prefix = selEl.getAttribute('data-util');
-            var vals = nodes.map(function(n) {
-                var found = '';
-                (n.props.cssClass || '').split(/\s+/).forEach(function(c) {
-                    if (c.indexOf(prefix) === 0) found = c;
-                });
-                return found;
-            });
-            if (!vals.every(function(v) { return v === vals[0]; })) prependMixed(selEl);
-        });
-
-        // 3. data-util-toggle checkboxes (e.g. bg-gradient)
-        panel.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(inp) {
-            var cls = inp.getAttribute('data-util-toggle');
-            var onVals = nodes.map(function(n) {
-                return (' ' + (n.props.cssClass || '') + ' ').indexOf(' ' + cls + ' ') !== -1;
-            });
-            var allOn  = onVals.every(Boolean);
-            var allOff = onVals.every(function(v) { return !v; });
-            inp.checked = allOn;
-            inp.indeterminate = !allOn && !allOff;
-        });
-
-        // 4. Hide the complex per-node background controls (inline styles — not shared in multi-mode)
         var bcpRow = panel.querySelector('#sd-bcp-row');
         if (bcpRow) {
             var prev = bcpRow.previousElementSibling;
@@ -33659,16 +33647,197 @@ const StyleDesigner = (function () {
         if (bgImgGrp) bgImgGrp.style.display = 'none';
     }
 
+    // The controls of the several-element panel that write, and what each
+    // writes (_sdMcSpec()).
+    var _SD_MC_CTRL = 'select[data-stylegroup], select[data-util], input[data-util-toggle], select[data-prop], input[data-prop], textarea[data-prop], ' +
+        '[data-mc-prop], [data-mc-stylegroup], [data-mc-cls-toggle], input[data-nodeattr], select[data-nodeattr]';
+    // The props whose classes _syncSizingClassesToCssClass() writes.
+    var _SD_SIZING_PROPS = ['aspectRatioEnabled', 'aspectRatio', 'srOnly', 'placeholderMode', 'placeholderAnim', 'focusRing'];
+
+    function _sdMcSpecOf(el) {
+        var a = function (n) { return el.getAttribute(n); };
+        return _sdMcSpec({
+            stylegroup: a('data-stylegroup') || a('data-mc-stylegroup'),
+            util: el.tagName === 'SELECT' ? a('data-util') : '',
+            toggle: a('data-util-toggle') || a('data-mc-cls-toggle'),
+            prop: a('data-prop') || a('data-mc-prop'),
+            mc: el.hasAttribute('data-mc-prop'),
+            bool: el.type === 'checkbox',
+            attr: a('data-nodeattr')
+        });
+    }
+
+    // A row's controls: its own and those of its per-size box (or of the
+    // box its arrow opens: Min and Max, Top to Left).
+    function _sdMcCtrls(row) {
+        var list = Array.prototype.slice.call(row.querySelectorAll(_SD_MC_CTRL));
+        var t = row.querySelector(':scope > .sd-sp-toggle[data-sp-target]');
+        var box = row.nextElementSibling;
+        if (t && box && box.id === t.getAttribute('data-sp-target')) list = list.concat(Array.prototype.slice.call(box.querySelectorAll(_SD_MC_CTRL)));
+        return list;
+    }
+
+    // An element's value of a control; an image's loading is its attribute.
+    function _sdMcRead(n, s) {
+        return (s.mc && s.prop === 'loading') ? String(_sdImgLoading(n) || '') : _sdMcValOf(n.props, s);
+    }
+
+    // The default of a prop for element `n`, as the changed dot reads it
+    // (markModifiedProps()); '' for a class, a toggle or an attribute.
+    function _sdMcDefault(n, s) {
+        if (!s.prop || (s.mc && s.prop === 'loading')) return '';
+        if (_SD_CHG_SKIP_PROPS[s.prop]) return undefined;
+        var d = _sdPropDefaults(n);
+        if (d && Object.prototype.hasOwnProperty.call(d, s.prop)) return d[s.prop];
+        return Object.prototype.hasOwnProperty.call(_SD_DS_DEFAULTS, s.prop) ? _SD_DS_DEFAULTS[s.prop] : undefined;
+    }
+
+    // Draws control `c` of `row` mixed: a select gets "— Multiple —", its
+    // button group no segment selected and each value present framed, with
+    // a muted line spelling them; a colour its swatch split in two; a field
+    // "— Multiple —" for a placeholder; a switch half set.
+    function _sdMcDrawMixed(c, info, row) {
+        var MIXED = _sdT('— Multiple —');
+        if (c.type === 'checkbox') { c.checked = false; c.indeterminate = true; return; }
+        if (c.tagName !== 'SELECT') { c.value = ''; c.placeholder = MIXED; c.classList.add('sd-mixed'); return; }
+        Array.prototype.forEach.call(c.options, function (o) { o.selected = false; });
+        var opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = MIXED;
+        opt.setAttribute('data-mc-mixed', '1');
+        c.insertBefore(opt, c.firstChild);
+        opt.selected = true;
+        c.classList.add('sd-mixed');
+        var labelOf = function (v) {
+            var o = Array.prototype.filter.call(c.options, function (x) { return x.value === v && !x.hasAttribute('data-mc-mixed'); })[0];
+            return o ? o.textContent : _sdT('Default');
+        };
+        var grp = c.parentNode;
+        if (grp && grp.classList.contains('sd-seg-grp')) {
+            grp.querySelectorAll('.sd-seg').forEach(function (b) { b.classList.toggle('sd-seg-has', info.present.indexOf(b.getAttribute('data-seg-val')) !== -1); });
+            if (row.classList.contains('sd-prop-row')) {
+                var line = document.createElement('div');
+                line.className = 'sd-mc-spell';
+                line.textContent = _sdMcSpell(info, labelOf);
+                row.appendChild(line);
+            }
+        } else if (grp && grp.classList.contains('sd-align-grp')) {
+            grp.querySelectorAll('.sd-align-btn').forEach(function (b) {
+                b.classList.remove('sd-align-active');
+                b.classList.toggle('sd-seg-has', info.present.indexOf(b.getAttribute('data-cls')) !== -1);
+            });
+        }
+        var cp = c.closest('.sd-cp');
+        if (!cp) return;
+        var dots = info.present.slice(0, 2).map(function (v) {
+            var b = Array.prototype.filter.call(cp.querySelectorAll('.sd-cp-option'), function (x) { return x.getAttribute('data-val') === v; })[0];
+            var d = b ? b.querySelector('.sd-color-preview') : null;
+            return d ? Array.prototype.filter.call(d.classList, function (k) { return k !== 'sd-color-preview'; }).join(' ') : 'sd-color-preview-none';
+        });
+        var sw = cp.querySelector('.sd-cp-trigger .sd-color-preview');
+        if (sw) {
+            sw.className = 'sd-color-preview sd-color-split';
+            sw.innerHTML = dots.map(function (d) { return '<span class="' + esc(d) + '"></span>'; }).join('');
+        }
+        var lab = cp.querySelector('.sd-cp-label');
+        if (lab) { lab.textContent = MIXED; lab.classList.add('sd-mixed'); }
+    }
+
+    // Marks the rows under `root` for `nodes`: a control whose values
+    // differ is drawn mixed; a row changed in every element gets the dot, in
+    // some of them a ring, with a tip saying in how many; the spacing box
+    // shows "~" for a side that differs and the count in its core. On the
+    // panel (`live`) the dots get their reset button. Returns the count of
+    // the cards at the top (_sdSectHeadsFill()), a tab's badge.
+    function _sdMcMark(root, nodes, live) {
+        root.querySelectorAll('.sd-prop-row, .sd-sp-row').forEach(function (row) {
+            var lbl = row.querySelector(':scope > .sd-prop-label, :scope > .sd-sp-label');
+            if (!lbl) return;
+            var flags = nodes.map(function () { return false; });
+            var mixed = false;
+            _sdMcCtrls(row).forEach(function (c) {
+                var s = _sdMcSpecOf(c);
+                if (!s) return;
+                var vals = nodes.map(function (n) { return _sdMcRead(n, s); });
+                vals.forEach(function (v, i) { if (_sdMcChanged(s, v, _sdMcDefault(nodes[i], s))) flags[i] = true; });
+                var info = _sdMcVals(vals);
+                if (info.mixed) { mixed = true; _sdMcDrawMixed(c, info, row); }
+            });
+            var dot = _sdMcDot(flags);
+            lbl.classList.toggle('sd-prop-modified', !!dot.kind);
+            lbl.classList.toggle('sd-chg-some', dot.kind === 'ring');
+            if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); }
+            if (mixed) row.setAttribute('data-sd-mixed', '1');
+        });
+        root.querySelectorAll('.sd-bm-v').forEach(function (cell) {
+            var pre = cell.getAttribute('data-bm');
+            if (_sdMcVals(nodes.map(function (n) { return _sdMcValOf(n.props, { prefix: pre }); })).mixed) {
+                cell.textContent = '~';
+                cell.classList.add('sd-bm-mixed');
+            }
+        });
+        root.querySelectorAll('.sd-bm-center').forEach(function (core) { core.textContent = _sdT('{var} elements', nodes.length); });
+        if (live) {
+            _sdNarrowStack(root);
+            _sdSegSync(root);
+            _sdChgResetButtons(root);
+            root.querySelectorAll('.sd-chg-reset').forEach(function (b) {
+                var l = b.nextElementSibling;
+                if (!l || !l.dataset.mcTip) return;
+                b.title = l.dataset.mcTip;
+                b.classList.toggle('sd-chg-ring', l.classList.contains('sd-chg-some'));
+            });
+        }
+        return _sdSectHeadsFill(root);
+    }
+
+    // Writes value `val` of a control (`s`) into element `n`.
+    function _sdMcWrite(n, s, val) {
+        if (s.group || s.prefix || s.toggle) { n.props.cssClass = _sdMcClassWrite(n.props.cssClass, s, val); return; }
+        if (s.attr) { setNodeAttr(n, s.attr, val); return; }
+        if (s.mc && s.prop === 'loading') { _sdSetImgLoading(n, val); return; }
+        n.props[s.prop] = s.bool ? (val === true || val === '1' || val === 'true') : val;
+        // A style-backed prop lives in its prop alone (_sdInlineStyleProps()).
+        _sdInlineStyleProps(n).forEach(function (m) { if (m.prop === s.prop) setAttrStyleProp(n, m.css, ''); });
+        // The preset the switch shows is written with it.
+        if (s.prop === 'aspectRatioEnabled' && n.props[s.prop] && !n.props.aspectRatio) n.props.aspectRatio = '16x9';
+        if (_SD_SIZING_PROPS.indexOf(s.prop) !== -1) _syncSizingClassesToCssClass(n);
+    }
+
+    // Runs `fn` on every element of `nodes` as one undo step, marks the
+    // shared components they live in to be saved, and draws again.
+    function _sdMcCommit(nodes, fn) {
+        _sdUndoAsOne(_saveStateRun, function () {
+            _sdMcApply(nodes, function () { saveState(); }, function (n) {
+                fn(n);
+                var sid = _resolveSharedSid(n);
+                if (sid) _sharedDirty[sid] = true;
+            });
+        });
+        renderCanvas();
+        renderProperties();
+        renderAttrsPanel();
+        renderHtmlTree();
+    }
+
+    // The reset arrow of a row of the several-element panel: every control
+    // of the row back to its default in every element, one undo step.
+    function _sdMcRowReset(lbl) {
+        var row = lbl.closest('.sd-prop-row, .sd-sp-row');
+        var nodes = selectedNodes.slice();
+        if (!row || nodes.length < 2) return;
+        var specs = _sdMcCtrls(row).map(_sdMcSpecOf).filter(Boolean);
+        _sdMcCommit(nodes, function (n) {
+            specs.forEach(function (s) {
+                var def = _sdMcDefault(n, s);
+                _sdMcWrite(n, s, def === undefined ? '' : def);
+            });
+        });
+    }
+
     function bindMultiPropEvents(nodes) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
-
-        function _refresh() {
-            renderCanvas();
-            renderProperties(); // re-enters renderMultiProperties since selectedNodes.length > 1
-            renderAttrsPanel();
-            renderHtmlTree();
-        }
 
         // ── Collapsible section headers ──
         panel.querySelectorAll('.sd-sect-hdr').forEach(function(hdr) {
@@ -33679,6 +33848,7 @@ const StyleDesigner = (function () {
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
+                if (isOpen) _sdNarrowStack(body);
                 var sid = hdr.dataset.sid;
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
@@ -33695,34 +33865,6 @@ const StyleDesigner = (function () {
                 bpsEl.style.display = isOpen ? 'none' : '';
                 this.classList.toggle('sd-sp-open', !isOpen);
                 this.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
-            });
-        });
-
-        // ── data-stylegroup selects (rowCss: display, typography, colors, border, flex, etc.) ──
-        panel.querySelectorAll('select[data-stylegroup]').forEach(function(selEl) {
-            selEl.addEventListener('change', function() {
-                var groupArr = this.getAttribute('data-stylegroup').split(',').filter(Boolean);
-                var allGroupWords = {};
-                groupArr.forEach(function(g) {
-                    g.trim().split(/\s+/).forEach(function(w) { if (w) allGroupWords[w] = true; });
-                });
-                var val = this.value;
-                var valWords = val ? val.trim().split(/\s+/).filter(Boolean) : [];
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && !allGroupWords[c];
-                    });
-                    valWords.forEach(function(w) { arr.push(w); });
-                    n.props.cssClass = arr.join(' ').trim();
-                    // Mark the containing widget cache dirty so the edit is
-                    // flushed to the server on save. Without this, prop panel
-                    // changes inside a widget mutate the cached tree object
-                    // but never get pushed back to shared_components.tree_json.
-                    var _sid = _resolveSharedSid(n);
-                    if (_sid) _sharedDirty[_sid] = true;
-                });
-                _refresh();
             });
         });
 
@@ -33753,102 +33895,43 @@ const StyleDesigner = (function () {
             });
         });
 
-        // ── data-util selects (spacing — rowCss: mt-, p-, etc.) ──
-        panel.querySelectorAll('select[data-util]').forEach(function(selEl) {
-            selEl.addEventListener('change', function() {
-                var prefix = this.getAttribute('data-util');
-                var val    = this.value; // e.g. 'mt-3' or '' for default
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && c.indexOf(prefix) !== 0;
-                    });
-                    if (val) arr.push(val);
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
+        // ── Every control that writes: its value goes to every element. A
+        //    length that is not valid is not written (_sdLenCheck()). ──
+        panel.querySelectorAll(_SD_MC_CTRL).forEach(function (el) {
+            var s = _sdMcSpecOf(el);
+            if (!s) return;
+            el.addEventListener('change', function () {
+                if (el.getAttribute('data-sd-len')) {
+                    var why = _sdLenCheck('len', el.value);
+                    _sdFieldInvalid(el, why);
+                    if (why) return;
+                }
+                var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
+                _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
             });
         });
 
-        // ── data-util-toggle checkboxes (e.g. bg-gradient — rowCss) ──
-        panel.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(inp) {
-            inp.addEventListener('change', function() {
-                var cls     = this.getAttribute('data-util-toggle');
-                var checked = this.checked;
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) { return c && c !== cls; });
-                    if (checked) arr.push(cls);
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
+        // ── Alignment icons: set the hidden select, which writes ──
+        panel.querySelectorAll('.sd-align-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var grp = btn.closest('.sd-align-grp');
+                var sel = grp ? grp.querySelector('select[data-stylegroup]') : null;
+                if (!sel) return;
+                sel.value = _sdSegNext(sel.value, btn.getAttribute('data-cls') || '', true);
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
 
-        // ── data-mc-stylegroup selects (renderMcOptions: alert variant, etc.) ──
-        panel.querySelectorAll('select[data-mc-stylegroup]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                var group = this.getAttribute('data-mc-stylegroup').split(',');
-                var allGroupWords = {};
-                group.forEach(function(g) {
-                    g.trim().split(/\s+/).forEach(function(w) { if (w) allGroupWords[w] = true; });
+        // ── The spacing box: a click steps a side's value for every element ──
+        panel.querySelectorAll('.sd-bm-v').forEach(function (cell) {
+            cell.addEventListener('click', function () {
+                var pre = cell.getAttribute('data-bm');
+                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
+                var cycle = pre.charAt(0) === 'm' ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
+                var next = cycle[(cycle.indexOf(cell.textContent) + 1) % cycle.length];
+                _sdMcCommit(nodes, function (n) {
+                    n.props.cssClass = _sdMcClassWrite(n.props.cssClass, { prefix: pre }, next === '-' ? '' : pre + next);
                 });
-                var val      = this.value;
-                var valWords = val ? val.trim().split(/\s+/).filter(Boolean) : [];
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && !allGroupWords[c];
-                    });
-                    valWords.forEach(function(w) { arr.push(w); });
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-prop selects (renderMcOptions: target, rel, loading, tag-level) ──
-        // An image's loading choice is its loading attribute (_sdSetImgLoading()).
-        panel.querySelectorAll('select[data-mc-prop]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                var prop = this.getAttribute('data-mc-prop');
-                var val  = this.value;
-                saveState();
-                nodes.forEach(function(n) {
-                    if (prop === 'loading') _sdSetImgLoading(n, val);
-                    else n.props[prop] = val;
-                });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-prop checkboxes (renderMcOptions: disabled, active — boolean props) ──
-        panel.querySelectorAll('input[type="checkbox"][data-mc-prop]').forEach(function(el) {
-            if (el.closest('[data-mc-mixed]')) el.indeterminate = true;
-            el.addEventListener('change', function() {
-                var prop    = this.getAttribute('data-mc-prop');
-                var checked = this.checked;
-                saveState();
-                nodes.forEach(function(n) { n.props[prop] = checked; });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-cls-toggle checkboxes (renderMcOptions: s:button disabled cssClass toggle) ──
-        panel.querySelectorAll('input[type="checkbox"][data-mc-cls-toggle]').forEach(function(el) {
-            if (el.closest('[data-mc-mixed]')) el.indeterminate = true;
-            el.addEventListener('change', function() {
-                var cls    = this.getAttribute('data-mc-cls-toggle');
-                var newVal = this.checked;
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
-                    var idx = arr.indexOf(cls);
-                    if (newVal  && idx === -1) arr.push(cls);
-                    if (!newVal && idx !== -1) arr.splice(idx, 1);
-                    n.props.cssClass = arr.join(' ');
-                });
-                _refresh();
             });
         });
     }
@@ -35105,11 +35188,13 @@ const StyleDesigner = (function () {
     }
 
     // A changed row's value for a summary: a colour's name and dot class,
-    // a select's chosen option, a field's text, a switch's own label.
+    // a select's chosen option, a field's text, a switch's own label;
+    // `mixed` when its values differ across several elements (_sdMcMark()).
     function _sdChgRowOf(lbl) {
         var row = lbl.closest('.sd-prop-row, .sd-sp-row');
         var out = { changed: true, text: '', swatch: '' };
         if (!row) return out;
+        if (row.hasAttribute('data-sd-mixed')) out.mixed = true;
         var cp = row.querySelector('.sd-cp');
         if (cp) {
             var dot = cp.querySelector('.sd-cp-trigger .sd-color-preview');
@@ -35161,6 +35246,9 @@ const StyleDesigner = (function () {
                 bound.count = sum.count;
                 sum = bound;
             }
+            // A card whose head keeps a word while open ("shared options").
+            var keep = card.getAttribute('data-sd-sum');
+            if (keep) sum = { count: sum.count, kind: 'keep', text: keep, swatch: '' };
             var outer = card.parentElement ? card.parentElement.closest('[data-sd-card]') : null;
             if (!outer || !root.contains(outer)) total += sum.count;
             hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
@@ -35233,14 +35321,16 @@ const StyleDesigner = (function () {
     }
 
     // The head over the Options search: the identity row and the tab strip
-    // of the single element's panel; hidden for every other panel.
-    function _sdPropsHead(node, shown, counts) {
+    // of the single element's panel, or of several elements (`mc`: { id,
+    // the identity row's markup; tail, the strip under the tabs }); hidden
+    // for every other panel.
+    function _sdPropsHead(node, shown, counts, mc) {
         var head = document.getElementById('sd-props-head');
         if (!head) return;
         head.hidden = !node;
-        head.innerHTML = node ? _sdIdentityRow(node) + _sdOptTabStrip(shown, _sdOptTab, counts) : '';
+        head.innerHTML = node ? (mc ? mc.id : _sdIdentityRow(node)) + _sdOptTabStrip(shown, _sdOptTab, counts) + (mc ? mc.tail : '') : '';
         if (!node) return;
-        _sdIdentityBind(head, node);
+        if (!mc) _sdIdentityBind(head, node);
         var strip = head.querySelector('.sd-otabs');
         if (!strip) return;
         strip.addEventListener('click', function (e) {
@@ -35278,7 +35368,9 @@ const StyleDesigner = (function () {
         _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
         _sdControlsInit(panel);
-        var _kind = _sdPanelKind(selectedNode);
+        // Several elements: a kind of its own, so their tab is kept for
+        // the same kinds selected again (_sdMcKind()).
+        var _kind = selectedNodes.length > 1 ? _sdMcKind(selectedNodes.map(_sdPanelKind)) : _sdPanelKind(selectedNode);
         var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
         _sdOptTab = _sdOptTabKeep(_kind, _sdPanelLastKind, _sdOptTab);
         _sdPanelLastKind = '';
@@ -35373,7 +35465,9 @@ const StyleDesigner = (function () {
                 if (_mBtn) _mBtn.addEventListener('click', function() { mergeCells(_cellsForMerge.slice()); });
                 return;
             }
+            _sdPanelLastKind = _kind;
             renderMultiProperties();
+            panel.scrollTop = _keepScroll;
             return;
         }
 
@@ -55618,9 +55712,8 @@ const StyleDesigner = (function () {
             row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="' + esc(_sdT('id of describing element')) + '">')
         );
 
-        // Each section with the key of its tab (_sdOptTabOf()); the single
-        // element's panel puts them in its tabs' order (_sdOptPlan()), the
-        // several-element panel draws them in this order.
+        // Each section with the key of its tab (_sdOptTabOf()); the panel of
+        // one element or of several puts them in its tabs' order (_sdOptPlan()).
         return _sdSectKey(colorsHtml, 'colors') + _sdSectKey(lHtml, 'display') + _sdSectKey(borderHtml, 'border') +
             _sdSectKey(stylingHtml, 'styling') + _sdSectKey(spacingHtml, 'spacing') + _sdSectKey(fxHtml, 'flexbox') +
             _sdSectKey(tooltipHtml, 'tooltip') + _sdSectKey(accessibilityHtml, 'accessibility');
@@ -57092,8 +57185,7 @@ const StyleDesigner = (function () {
                 // Sync sizing-managed CSS classes into node.props.cssClass when any of the
                 // related props change. This keeps the Attrs panel + cssClass field in sync
                 // with the Display & Sizing toggles. See _syncSizingClassesToCssClass().
-                var _SIZING_PROPS = ['aspectRatioEnabled', 'aspectRatio', 'srOnly', 'placeholderMode', 'placeholderAnim', 'focusRing'];
-                if (_SIZING_PROPS.indexOf(prop) !== -1) {
+                if (_SD_SIZING_PROPS.indexOf(prop) !== -1) {
                     _syncSizingClassesToCssClass(selectedNode);
                 }
                 // Class-based row/col on a `semantic` div: re-serialize the
@@ -61526,16 +61618,18 @@ const StyleDesigner = (function () {
         return String(cur) !== String(def);
     }
 
-    // A section's head from its rows, each { changed, text, swatch } (the
-    // swatch is a colour dot's class, '' for none): `count` its changed
-    // rows; the summary is the first changed row's colour with its name
-    // ('color'), else its value ('value'), 'none' when that value is
-    // empty, and 'default' when no row is changed.
+    // A section's head from its rows, each { changed, text, swatch, mixed }
+    // (the swatch is a colour dot's class, '' for none; mixed when the
+    // selected elements hold different values): `count` its changed rows;
+    // the summary is the first changed row's 'mixed', else its colour with
+    // its name ('color'), else its value ('value'), 'none' when that value
+    // is empty, and 'default' when no row is changed.
     function _sdChgSummary(rows) {
         var changed = (rows || []).filter(function (r) { return r && r.changed; });
         var out = { count: changed.length, kind: 'default', text: '', swatch: '' };
         if (!changed.length) return out;
         var first = changed[0];
+        if (first.mixed) { out.kind = 'mixed'; return out; }
         var text = String(first.text == null ? '' : first.text).replace(/\s+/g, ' ').trim();
         if (first.swatch) { out.kind = 'color'; out.swatch = String(first.swatch); out.text = text; }
         else if (text) { out.kind = 'value'; out.text = text; }
@@ -61584,9 +61678,13 @@ const StyleDesigner = (function () {
             // something is missing.
             return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line"><span class="sd-sect-state' + (sum.warn ? ' is-warn' : '') + '">' + esc(sum.text) + '</span></span></span>';
         }
-        if (sum.kind === 'word') {
-            // A word of the panel given whole ("not bound").
-            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.text) + '</span>';
+        if (sum.kind === 'keep') {
+            // A word that stays while the section is open ("shared options").
+            return badge + '<span class="sd-sect-sum sd-sect-sum-keep"><span class="sd-sect-sum-line"><span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.text) + '</span></span></span>';
+        }
+        if (sum.kind === 'word' || sum.kind === 'mixed') {
+            // A word of the panel given whole ("not bound", "multiple").
+            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.kind === 'mixed' ? _sdT('multiple') : sum.text) + '</span>';
         } else if (sum.kind === 'color') {
             inner = '<span class="sd-color-preview ' + esc(sum.swatch) + '" aria-hidden="true"></span>' +
                 '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
@@ -61845,7 +61943,8 @@ const StyleDesigner = (function () {
 
     // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:
     // `attrs` its attributes but the class (one of them data-stylegroup,
-    // data-prop or data-util, which writes it), the labels kept as written.
+    // data-prop or data-util, or the several-element panel's data-mc-prop
+    // or data-mc-stylegroup, which writes it), the labels kept as written.
     // Null for anything else: other markup around it, an id other code may
     // hold, several choices, a group, an option with attributes of its own.
     function _sdSelParse(html) {
@@ -61853,7 +61952,7 @@ const StyleDesigner = (function () {
         if (!m || /<select|<optgroup/i.test(m[2])) return null;
         var head = m[1];
         if (/\s(id|multiple)(=|\s|$)/i.test(head)) return null;
-        if (!/\sdata-(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
+        if (!/\sdata-(?:mc-)?(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
         var opts = [];
         var re = /<option\b([^>]*)>([\s\S]*?)<\/option>/g;
         var o;
@@ -61919,6 +62018,186 @@ const StyleDesigner = (function () {
     }
     // ── end of the Options panel controls
 
+    // ── Several elements selected: pure helpers ──
+    // No DOM and no editor state: what the Options panel shows and writes
+    // with several elements selected (renderMultiProperties()), run under
+    // Node by tests/designer_options_multiple_test.php.
+
+    // The kind of shared options a node offers: 'c:' + a content's type,
+    // 's:' + a semantic tag ('s:alert' for an alert box), else its type.
+    function _sdMcRole(n) {
+        var p = (n && n.props) || {};
+        if (n.type === 'content') return 'c:' + (p.contentType || '');
+        if (n.type === 'semantic') {
+            var tag = String(p.tag || '').toLowerCase();
+            var cls = String(p.cssClass || '').split(/\s+/);
+            if (tag === 'div' && cls.indexOf('alert') !== -1 && cls.indexOf('alert-heading') === -1) return 's:alert';
+            return 's:' + tag;
+        }
+        return n.type;
+    }
+
+    // The panel's kind for elements of `kinds` (_sdPanelKind() each): the
+    // tab is kept for the same kind selected again, never shared with the
+    // single element's panel.
+    function _sdMcKind(kinds) {
+        kinds = kinds || [];
+        var alike = kinds.length && kinds.every(function (k) { return k === kinds[0]; });
+        return 'several:' + (alike ? kinds[0] : 'mixed');
+    }
+
+    // The panel's pieces: elements of different kinds draw no Content
+    // (their own options are not shared), so Style opens.
+    function _sdMcPieces(alike, pieces) {
+        return alike ? pieces : (pieces || []).filter(function (p) { return p && _sdOptTabOf(p.key) !== 'content'; });
+    }
+
+    // Whether an element has the Text section (propsTextOptions()).
+    function _sdMcHasText(type, tag, ct) {
+        if (type === 'semantic') return /^(h[1-6]|p|span|a|button)$/.test(String(tag || ''));
+        return type === 'content' && /^(heading|paragraph|link|button)$/.test(String(ct || ''));
+    }
+
+    // What a control writes, from its attributes: { group } for a class
+    // group, { prefix } for a spacing value, { toggle } for a class switch,
+    // { prop, bool, mc } for a prop, { attr } for an attribute; null for
+    // anything else.
+    function _sdMcSpec(o) {
+        o = o || {};
+        if (o.stylegroup) return { group: String(o.stylegroup).split(',').filter(function (g) { return g.trim(); }) };
+        if (o.util) return { prefix: String(o.util) };
+        if (o.toggle) return { toggle: String(o.toggle) };
+        if (o.prop) return { prop: String(o.prop), bool: !!o.bool, mc: !!o.mc };
+        if (o.attr) return { attr: String(o.attr) };
+        return null;
+    }
+
+    // Whether class `c` is a spacing prefix's own value ('p-3', 'm-auto'),
+    // not a screen size's ('p-sm-3') or another side's ('pt-3').
+    function _sdMcOfPrefix(c, prefix) {
+        return c.indexOf(prefix) === 0 && /^(\d+|auto)$/.test(c.slice(prefix.length));
+    }
+
+    // An element's value of a control: a group's entry whose words it all
+    // has (the last), a prefix's class, '1' for a toggle or a switch on,
+    // a prop or an attribute as text; '' when unset.
+    function _sdMcValOf(props, spec) {
+        props = props || {};
+        var cls = String(props.cssClass || '').split(/\s+/).filter(Boolean);
+        var found = '';
+        if (spec.group) {
+            spec.group.forEach(function (g) {
+                var words = g.trim().split(/\s+/);
+                if (words.every(function (w) { return cls.indexOf(w) !== -1; })) found = g;
+            });
+            return found;
+        }
+        if (spec.prefix) {
+            cls.forEach(function (c) { if (_sdMcOfPrefix(c, spec.prefix)) found = c; });
+            return found;
+        }
+        if (spec.toggle) return cls.indexOf(spec.toggle) !== -1 ? '1' : '';
+        if (spec.attr) {
+            (props._attrs || []).forEach(function (a) { if (a && a.name === spec.attr) found = String(a.value || ''); });
+            return found;
+        }
+        var v = props[spec.prop];
+        if (spec.bool) return (v === true || v === 'true' || v === '1') ? '1' : '';
+        return v == null ? '' : String(v);
+    }
+
+    // Whether one element's value `v` of a control differs from the
+    // default `def`: a class, a toggle or an attribute when set; a prop as
+    // the panel compares it (_sdChgDiffers()), never while unset or
+    // without a default.
+    function _sdMcChanged(spec, v, def) {
+        if (!spec.prop) return v !== '';
+        if (def === undefined) return false;
+        if (spec.bool) return _sdChgDiffers('checkbox', v === '1', def);
+        return v !== '' && _sdChgDiffers('text', v, def);
+    }
+
+    // The values of one control across the elements: `mixed` when they
+    // differ, `value` the shared one, `present` each once in the order met,
+    // `counts` how many hold each.
+    function _sdMcVals(vals) {
+        var present = [], counts = {};
+        (vals || []).forEach(function (v) {
+            v = v == null ? '' : String(v);
+            if (!Object.prototype.hasOwnProperty.call(counts, v)) { counts[v] = 0; present.push(v); }
+            counts[v]++;
+        });
+        var mixed = present.length > 1;
+        return { mixed: mixed, value: mixed ? '' : (present[0] || ''), present: present, counts: counts };
+    }
+
+    // The muted line under a mixed button group: "— Multiple —: 2 × H2,
+    // 1 × H3", the values by `labelOf`, the most held first.
+    function _sdMcSpell(info, labelOf) {
+        var order = info.present.slice().sort(function (a, b) {
+            return (info.counts[b] - info.counts[a]) || (info.present.indexOf(a) - info.present.indexOf(b));
+        });
+        return _sdT('— Multiple —') + ': ' + order.map(function (v) { return _sdT('{var:1} × {var:2}', [info.counts[v], labelOf(v)]); }).join(', ');
+    }
+
+    // A row's changed dot from whether each element changed it: 'full'
+    // when all did, 'ring' when some did, '' when none; `n` of `of`.
+    function _sdMcDot(flags) {
+        flags = flags || [];
+        var n = flags.filter(Boolean).length;
+        return { kind: !n ? '' : (n === flags.length ? 'full' : 'ring'), n: n, of: flags.length };
+    }
+
+    // The dot's tip: in how many elements the row is changed.
+    function _sdMcDotTip(dot) {
+        if (!dot || !dot.kind) return '';
+        return dot.kind === 'full' ? _sdT('Changed in all {var} elements', dot.of) : _sdT('Changed in {var:1} of {var:2} elements', [dot.n, dot.of]);
+    }
+
+    // Classes `cls` with control `spec` set to `val`: the group's, the
+    // prefix's or the toggle's classes taken out, then the value's words
+    // put in ('' leaves the default; a toggle goes in for any value).
+    function _sdMcClassWrite(cls, spec, val) {
+        var drop = {};
+        (spec.group || []).forEach(function (g) { g.trim().split(/\s+/).forEach(function (w) { drop[w] = 1; }); });
+        if (spec.toggle) drop[spec.toggle] = 1;
+        var arr = String(cls || '').split(/\s+/).filter(function (c) {
+            return c && !drop[c] && !(spec.prefix && _sdMcOfPrefix(c, spec.prefix));
+        });
+        var add = spec.toggle ? (val ? [spec.toggle] : []) : String(val || '').split(/\s+/).filter(Boolean);
+        add.forEach(function (w) { if (arr.indexOf(w) === -1) arr.push(w); });
+        return arr.join(' ');
+    }
+
+    // Writes a change to every element as one undo step: one snapshot
+    // (`save`) first, then `write` for each element.
+    function _sdMcApply(nodes, save, write) {
+        save();
+        (nodes || []).forEach(function (n, i) { write(n, i); });
+    }
+
+    // The identity row of several elements. o: { count, icon (the kind's),
+    // kindName ('' for different kinds), parent (the shared parent's name,
+    // else ''), kinds (the names of the kinds) }.
+    function _sdMcIdRow(o) {
+        var path = o.parent ? _sdT('All in the same parent: {var}', o.parent) : (o.kinds || []).join(' · ');
+        return '<div class="sd-id-row">' +
+            '<span class="sd-id-icon sd-id-icon-mc bi ' + (o.kindName ? o.icon : 'bi-layers') + '" aria-hidden="true"><span class="sd-id-count">' + o.count + '</span></span>' +
+            '<div class="sd-id-main">' +
+                '<div class="sd-id-line"><span class="sd-id-name">' + esc(_sdT('{var} elements selected', o.count)) + '</span>' +
+                    '<span class="sd-id-tag">' + esc(o.kindName || _sdT('mixed')) + '</span></div>' +
+                (path ? '<div class="sd-id-path sd-id-path-mc" title="' + esc(path) + '"><span class="sd-id-path-txt">' + esc(path) + '</span></div>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    // The strip over the search: a change goes to every element.
+    function _sdMcStrip(count) {
+        return '<div class="sd-mc-strip" role="note"><span class="bi bi-layers" aria-hidden="true"></span><span>' +
+            esc(_sdT('A change is written to all {var} elements at once', count)) + '</span></div>';
+    }
+    // ── end of several elements selected
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
@@ -61935,6 +62214,32 @@ const StyleDesigner = (function () {
         type: 'dropdown', expanded: false, alignment: '', dark: false,
         show_arrow: true, auto_close: 'true'
     };
+
+    // Display & Sizing inline-style props default to '' (string) or false (toggle).
+    // They live outside the component/structural defaults tables, so they are
+    // listed here: their labels turn blue when set and click-to-reset works.
+    var _SD_DS_DEFAULTS = {
+        top: '', right: '', bottom: '', left: '',
+        zIndex: '',
+        width: '', minWidth: '', maxWidth: '',
+        height: '', minHeight: '', maxHeight: '',
+        overflow: '', overflowX: '', overflowY: '',
+        aspectRatioEnabled: false, aspectRatio: '16x9', aspectRatioCustom: ''
+    };
+    // Props that are intentionally free-form: never marked as changed.
+    var _SD_CHG_SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
+
+    // The factory defaults of node `n`'s props: its component's or its
+    // content's defaultProps, a structural type's table above; null without.
+    function _sdPropDefaults(n) {
+        if (!n) return null;
+        var p = n.props || {};
+        var def = null;
+        if (n.type === 'component') def = COMPONENTS[p.componentType];
+        else if (n.type === 'content') def = CONTENT[p.contentType];
+        else return STRUCTURAL_DEFAULTS[n.type] || null;
+        return def ? def.defaultProps || null : null;
+    }
 
     /**
      * Mark the label of each Options-panel row as "modified" (the changed dot) when its control's
@@ -61954,19 +62259,9 @@ const StyleDesigner = (function () {
         if (!root) return;
 
         // Resolve defaults for direct [data-prop] controls
-        var defaults = null;
-        if (selectedNode.type === 'component') {
-            var comp = COMPONENTS[selectedNode.props.componentType];
-            if (comp) defaults = comp.defaultProps || null;
-        } else if (selectedNode.type === 'content') {
-            var cnt = CONTENT[selectedNode.props.contentType];
-            if (cnt) defaults = cnt.defaultProps || null;
-        } else if (STRUCTURAL_DEFAULTS[selectedNode.type]) {
-            defaults = STRUCTURAL_DEFAULTS[selectedNode.type];
-        }
-
-        // Props that are intentionally free-form — don't mark as "modified"
-        var SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
+        var defaults = _sdPropDefaults(selectedNode);
+        var SKIP_PROPS = _SD_CHG_SKIP_PROPS;
+        var DS_DEFAULTS = _SD_DS_DEFAULTS;
 
         function markRow(el, defVal) {
             var isModified = el.type === 'checkbox'
@@ -61987,18 +62282,6 @@ const StyleDesigner = (function () {
                 lbl.title = '';
             }
         }
-
-        // Display & Sizing inline-style props default to '' (string) or false (toggle).
-        // They live outside the component/structural defaults tables, so rule #1 skips them —
-        // add them here so their labels turn blue when set and click-to-reset works.
-        var DS_DEFAULTS = {
-            top: '', right: '', bottom: '', left: '',
-            zIndex: '',
-            width: '', minWidth: '', maxWidth: '',
-            height: '', minHeight: '', maxHeight: '',
-            overflow: '', overflowX: '', overflowY: '',
-            aspectRatioEnabled: false, aspectRatio: '16x9', aspectRatioCustom: ''
-        };
 
         // 1. Direct [data-prop] controls (Container, Row, Col, Area, Semantic, Component/Content props
         //    + Display & Sizing inline-style props)
@@ -62361,6 +62644,8 @@ const StyleDesigner = (function () {
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
             if (!lbl || !lbl.classList.contains('sd-prop-modified')) return;
+            // Several elements: the row back to its default in all of them.
+            if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
         });
     }
