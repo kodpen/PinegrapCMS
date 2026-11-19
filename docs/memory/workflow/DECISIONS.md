@@ -421,6 +421,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-78.md: Where are the rules and the earlier parts?
 - decisions-made-product-78.md: Can a page's links be changed from the Prototype view with ease? (owner, 2026-11-19, in the architect's window, agent channel message 9492)
 - decisions-made-product-78.md: Is Incoming e-mail pinned to the main menu, and does the dashboard get a card of it? (owner, 2026-11-19, in the architect's window, agent channel message 9493; poll 154, message 9495)
+- decisions-made-product-78.md: Is a Gmail mailbox read through a connected Google account? (owner, 2026-11-19, poll 155, channel message 9698)
+- decisions-made-product-78.md: Do the settings guide a Google connection's set-up, and are the settings pages redrawn? (owner, 2026-11-19, in the architect's window, channel message 9750)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
