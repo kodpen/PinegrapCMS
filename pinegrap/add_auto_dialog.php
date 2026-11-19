@@ -35,7 +35,12 @@ if (!$_POST) {
             'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Auto Dialog'))),
+            'heading_description' => lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.'),
             'cancel'=>array('enable'=>'true','url'=>'view_auto_dialogs.php'),
+            'breadcrumb' => array(
+                array('label' => lang('All Auto Dialogs'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php'),
+                array('label' => lang('Create Auto Dialog')),
+            ),
         )
     );
 

@@ -30,9 +30,8 @@ $sort_columns = array(
     'name'          => lang('Name'),
     'enabled'       => lang('Enabled'),
     'url'           => lang('URL'),
-    'width'         => lang('Width'),
-    'height'        => lang('Height'),
-    'delay'         => lang('Delay'),
+    'delay'         => lang('Opens'),
+    'width'         => lang('Size'),
     'frequency'     => lang('Frequency'),
     'page'          => lang('Only on Page'),
     'created'       => lang('Created'),
@@ -51,7 +50,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'enabled'       => 'auto_dialogs.enabled',
     'url'           => 'auto_dialogs.url',
     'width'         => 'auto_dialogs.width',
-    'height'        => 'auto_dialogs.height',
     'delay'         => 'auto_dialogs.delay',
     'frequency'     => 'auto_dialogs.frequency',
     'page'          => 'auto_dialogs.page',
@@ -73,6 +71,7 @@ $auto_dialogs = db_items(
         auto_dialogs.delay,
         auto_dialogs.frequency,
         auto_dialogs.page,
+        auto_dialogs.*,
         created_user.user_username AS created_username,
         auto_dialogs.created_timestamp,
         last_modified_user.user_username AS last_modified_username,
@@ -89,7 +88,8 @@ $home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' O
 $list_rows = array();
 
 // The last 30 days' counts of every auto dialog, in one grouped query
-// (includes/fn/auto_dialog_counts.php).
+// (includes/fn/auto_dialog_counts.php): each row carries all three, closed
+// and taken hidden at first; the figure row over the list sums them.
 $auto_dialog_figures = pg_auto_dialog_count_figures();
 
 foreach ($auto_dialogs as $auto_dialog) {
@@ -104,11 +104,10 @@ foreach ($auto_dialogs as $auto_dialog) {
         'id' => $id,
         'cells' => array(
             'name' => pg_list_cell('<a href="edit_auto_dialog.php?id=' . $id . '" class="' . ($auto_dialog['enabled'] ? 'status_enabled' : 'status_disabled') . '" data-pg-open>' . h($auto_dialog['name']) . '</a>'),
-            'enabled' => pg_list_table_check_cell(!empty($auto_dialog['enabled'])),
+            'enabled' => pg_auto_dialog_list_enabled_cell(!empty($auto_dialog['enabled'])),
             'url' => pg_list_cell(h($auto_dialog['url'])),
-            'width' => pg_list_cell($width ? h(pg_format_number($width, 0)) . 'px' : '', 'align-middle', array('data-pg-sort-value' => $width)),
-            'height' => pg_list_cell($height ? h(pg_format_number($height, 0)) . 'px' : '', 'align-middle', array('data-pg-sort-value' => $height)),
-            'delay' => pg_list_cell($delay ? lang(array('string' => '{var:1} second{suffix:1}', 'vars' => pg_format_number($delay, 0), 'suffix' => array(($delay > 1) ? 's' : ''))) : '', 'align-middle', array('data-pg-sort-value' => $delay)),
+            'delay' => pg_list_cell(h(pg_auto_dialog_opens_label($auto_dialog)), 'align-middle', array('data-pg-sort-value' => $delay)),
+            'width' => pg_list_cell(pg_auto_dialog_size_label($width, $height), 'align-middle text-nowrap', array('data-pg-sort-value' => $width)),
             'frequency' => pg_list_cell($frequency ? lang(array('string' => '{var:1} hour{suffix:1}', 'vars' => pg_format_number($frequency, 0), 'suffix' => array(($frequency > 1) ? 's' : ''))) : '', 'align-middle', array('data-pg-sort-value' => $frequency)),
             'page' => pg_list_cell(h($auto_dialog['page'])),
             'created' => pg_list_table_when_cell($auto_dialog['created_timestamp'], (string) $auto_dialog['created_username']),
@@ -127,16 +126,17 @@ $list = pg_list_table_printed(array(
         'name' => array('heading' => lang('Name')),
         'enabled' => array('heading' => lang('Enabled'), 'kind' => 'check'),
         'url' => array('heading' => lang('URL')),
-        'width' => array('heading' => lang('Width'), 'kind' => 'number'),
-        'height' => array('heading' => lang('Height'), 'kind' => 'number'),
-        'delay' => array('heading' => lang('Delay'), 'kind' => 'number'),
+        'delay' => array('heading' => lang('Opens')),
+        'width' => array('heading' => lang('Size'), 'kind' => 'number'),
         'frequency' => array('heading' => lang('Frequency'), 'kind' => 'number'),
         'page' => array('heading' => lang('Only on Page')),
-        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        // Hidden at first so the list fits 1440 px; the column menu opens
+        // them and the Details panel shows them.
+        'created' => array('heading' => lang('Created'), 'kind' => 'date', 'hidden' => true),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
         'shown' => array('heading' => lang('Shown (30 days)'), 'kind' => 'number'),
-        'closed' => array('heading' => lang('Closed (30 days)'), 'kind' => 'number'),
-        'taken' => array('heading' => lang('Taken (30 days)'), 'kind' => 'number'),
+        'closed' => array('heading' => lang('Closed (30 days)'), 'kind' => 'number', 'hidden' => true),
+        'taken' => array('heading' => lang('Taken (30 days)'), 'kind' => 'number', 'hidden' => true),
         'preview' => array('heading' => lang('Preview'), 'kind' => 'actions'),
     ),
     'levels' => $sort_levels,
@@ -152,6 +152,17 @@ echo pg_page_shell(
         'heading_description' => lang('Pop-up dialogs shown to visitors'),
     )
 );
+
+// The figure row over the list: how many pop-ups are on and the last 30
+// days' counts of them all; the toolbar's filter shows all, the enabled or
+// the disabled ones.
+$enabled_count = count(array_filter($auto_dialogs, function ($row) { return !empty($row['enabled']); }));
+$figure_total = pg_auto_dialog_count_total($auto_dialog_figures);
+$output_filters = pg_list_seg_filters('view_auto_dialogs', 'enabled', array(
+    '' => array('label' => lang('All'), 'count' => count($auto_dialogs)),
+    'on' => array('label' => lang('Enabled'), 'count' => $enabled_count),
+    'off' => array('label' => lang('Disabled'), 'count' => count($auto_dialogs) - $enabled_count),
+), lang('Status'));
 
 require('includes/templates/view_auto_dialogs.php');
 

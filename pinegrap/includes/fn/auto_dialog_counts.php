@@ -302,6 +302,25 @@ function pg_auto_dialog_count_of($figures, $auto_dialog_id)
 }
 
 /**
+ * The sum of every pop-up's counts, for the list's figure row. Pure.
+ *
+ * @param array $figures pg_auto_dialog_count_figures()
+ * @return array shown, closed, taken
+ */
+function pg_auto_dialog_count_total($figures)
+{
+    $total = array('shown' => 0, 'closed' => 0, 'taken' => 0);
+
+    foreach ((array) $figures as $counts) {
+        foreach ($total as $event => $sum) {
+            $total[$event] = $sum + (int) ($counts[$event] ?? 0);
+        }
+    }
+
+    return $total;
+}
+
+/**
  * Removes a deleted pop-up's counts.
  *
  * @param int $auto_dialog_id
