@@ -1,6 +1,6 @@
 ---
 name: workspace-memory-general
-description: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows, so a new agent channel knows what the old one knew; polls 150, 151 open; GM1-GM4
+description: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows, so a new agent channel knows what the old one knew; poll 152 open; GM1-GM4
 ---
 
 ## What did the owner ask?
@@ -11,16 +11,16 @@ description: Plan (owner 2026-11-19): a general memory shared by the agent chann
 - `ws_channel_memory`: one memory per channel, drawn as a grid of cards on the Memory tab (`workspace/channel-memory.md`, `workspace/workspace-channel-summary-board-memory.md`). An agent's brief carries the index of its channel's records and the channel's ten newest decisions.
 - A decision is a mark on a channel's message: deleted with the channel, kept by an archived one.
 
-## What is open?
-- Poll 150 (agent channel message 9479), the schema: a `project` column (VARCHAR 80) on `ws_channel_memory` and the general record kept in the same table with no channel (`channel_id` 0), the channels' records staying where they are; or a table of its own.
-- Poll 151 (message 9480): whether a new agent channel also reads the decisions made in the other agent channels.
-- No step starts before both are answered and recorded in the decisions list.
+## What did the polls decide?
+- Poll 150 (owner 2026-11-19, `workflow/decisions-made-schema-27.md`): a `project` column (VARCHAR 80) on `ws_channel_memory`, the general record in the same table with `channel_id` 0, the channels' records staying where they are.
+- Poll 151 (`workflow/decisions-made-workspace-39.md`): yes, a new agent channel reads the decisions made in the other agent channels.
+- An agent channel is a channel whose `ws_channels.agent_channel` is 1, switched by `/ajan-kanalı aç` only (`workspace/agent-channel-flag.md`); the development channel read as off on 2026-11-19. Poll 152 (message 9481), open: whether the switch also shows in the channel settings and the New channel form.
 
 ## What is built?
 - GM1: the schema step and the functions: a record's project, the general record, `ws_memory_sweep()` leaving general records alone, `ws_memory_check()` and the routes taking both. Whoever may post in an agent channel, person or agent, reads and writes the general memory: the channel memory's rule carried over.
 - GM2: every agent channel's brief carries the general index before the channel's own, inside the same character limit; the API and MCP tools list, read and write general records; a channel's record can be moved to the general memory.
 - GM3: the Memory tab as the owner's picture shows it: project headings that fold, under each one row per record (pin, name, the first line of its text, tags, change date, Edit, Delete), the general memory and the channel's own as two parts; the same list reached outside a channel too.
-- GM4: decisions across agent channels, as poll 151 decides.
+- GM4: an agent channel's Decisions tab chooses between "This channel" and "All agent channels", and its brief's decisions block reads all of them; the switch on screen if poll 152 says so.
 - Each step: its unit tests, and for GM3 one composed picture to the architect before the label.
 
 ## How does the plan close?
