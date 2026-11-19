@@ -23,7 +23,7 @@ description: A step's new parts in the panel and Workspace are built from look A
 - The worker runs `git diff origin/development...HEAD -- pinegrap | grep -E '^\+' | grep -c -E 'btn btn-|nav-tabs|nav-pills|nav-underline'` and writes the count in the look's closing message; a line that stays is named with its reason (moved, not new).
 - A set with an unexplained count gets no look from the architect, and no sheet goes to the owner. Drawings use the same parts.
 - The count is of what the new part draws, not only of its added lines: old markup carried into a new drawer, dialog or card moves to the recipes with it. CN4 (#10237) carried the provider panel's application form into its drawer with the function, so the added-line count read 0 (Architect, 2026-11-17, agent channel message 8648).
-- Asked as a tools PR on 2026-11-17: `tools/check_look.php` counting these classes per file of the panel's PHP screens and script sources, in a baseline that may only fall (`look-check.md`). Until it lands, the count above is the check.
+- CI enforces it too: `tools/check_look.php` counts these classes per file of the panel's PHP screens and script sources, in a baseline that may only fall (`look-check.md`). The added-line count above still goes into the look's closing message.
 
 ## Where was it first applied?
 - AU9 (#10225): the buttons it adds move to `pg-button` before its `ready` label. The application drawer's old tab strip and its other buttons are the API screen's step of panel-old-screens, taken once AU9 has landed.

@@ -123,6 +123,37 @@ function pg_course_input(array $post)
 }
 
 /**
+ * One row of the course editor's lessons table. Every row posts one value to
+ * each of the five parallel lists pg_course_input() reads: a browser leaves a
+ * disabled field out of the post, so the score of a lesson without a quiz is
+ * read-only and empty, never disabled, or the scores after it would shift onto
+ * the wrong rows. Pure but for lang().
+ *
+ * @param array  $lesson       id, page_id, open_days, quiz_page_id, quiz_pass_score
+ * @param string $page_options the page select's options (markup)
+ * @param string $quiz_options the quiz select's options (markup)
+ * @return string
+ */
+function pg_course_lesson_row_html(array $lesson, $page_options, $quiz_options)
+{
+    $quiz = (int) $lesson['quiz_page_id'] > 0;
+
+    return '<tr data-pg-course-lesson>
+        <td class="pg-text-meta fg-secondary pg-tabular align-middle" data-pg-course-number></td>
+        <td class="pg-course-cell-page" data-label="' . h(lang('Lesson page')) . '"><input type="hidden" name="lesson_id[]" value="' . (int) $lesson['id'] . '" />
+            <select name="lesson_page[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Lesson page')) . '" data-pg-course-page>' . $page_options . '</select></td>
+        <td class="pg-course-cell-days" data-label="' . h(lang('Opens after')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_days[]" inputmode="numeric" maxlength="4" class="text-end" value="' . (int) $lesson['open_days'] . '" aria-label="' . h(lang('Opens after')) . '" /><span class="pg-input-end">' . h(lang('days')) . '</span></span></td>
+        <td class="pg-course-cell-quiz" data-label="' . h(lang('Quiz to pass')) . '"><select name="lesson_quiz[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Quiz to pass')) . '" data-pg-course-quiz>' . $quiz_options . '</select></td>
+        <td class="pg-course-cell-score" data-label="' . h(lang('Score needed')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_score[]" inputmode="numeric" maxlength="3" class="text-end" value="' . ($quiz ? (int) $lesson['quiz_pass_score'] : '') . '" aria-label="' . h(lang('Score needed')) . '"' . ($quiz ? '' : ' readonly tabindex="-1" aria-disabled="true"') . ' data-pg-course-score /><span class="pg-input-end">%</span></span></td>
+        <td class="pg-course-cell-actions text-end text-nowrap">
+            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="-1" aria-label="' . h(lang('Move up')) . '"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="1" aria-label="' . h(lang('Move down')) . '"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-remove aria-label="' . h(lang('Remove lesson')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </td>
+    </tr>';
+}
+
+/**
  * The problems a course is named with on the Courses screen. Pure.
  *
  * @param array  $course       a course row (folder_id, classroom_page_id)

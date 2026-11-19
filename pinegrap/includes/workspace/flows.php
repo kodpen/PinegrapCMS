@@ -511,12 +511,58 @@ function ws_flow_lines($value, $length)
 }
 
 /**
+ * Is this a rule a flow's task box may give its task by? A channel
+ * template's rule (ws_template_assign_valid()), or 'event_person': the team
+ * member the event that started the run names (its payload's user_id),
+ * which only a run has, so a channel template never takes it.
+ *
+ * @param string $rule
+ * @return bool
+ */
+function ws_flow_task_assign_valid($rule)
+{
+    return ((string) $rule === 'event_person') || ws_template_assign_valid($rule);
+}
+
+/**
+ * Who a task box with the rule 'event_person' gives its task to: the person
+ * the run's event names (its payload's user_id) when they may be given it,
+ * else those of the box's fallback people who may. An event that names
+ * nobody, a run not started by an event, or a person no longer on the team
+ * falls back. Pure but for $usable.
+ *
+ * @param array    $context  ws_flow_run_context()
+ * @param int[]    $fallback the box's fallback people
+ * @param callable $usable   function (int[] $user_ids): bool, whether the
+ *                           owner may give this team member a task
+ * @return array user_ids (empty when nobody may be given it), named (the
+ *               event's person was taken)
+ */
+function ws_flow_task_event_person($context, $fallback, $usable)
+{
+    $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+    $named = (((string) ($context['event'] ?? '') !== '') && is_numeric($payload['user_id'] ?? null)) ? (int) $payload['user_id'] : 0;
+
+    if (($named > 0) && call_user_func($usable, array($named))) {
+        return array('user_ids' => array($named), 'named' => true);
+    }
+
+    $kept = array_values(array_filter(array_unique(array_map('intval', (array) $fallback)), function ($id) use ($usable) {
+        return ($id > 0) && call_user_func($usable, array($id));
+    }));
+
+    return array('user_ids' => $kept, 'named' => false);
+}
+
+/**
  * The settings of one box, as its kind keeps them; unknown keys are dropped.
  *
  * manual: subject ('' or a kind of record a run is about)
  * task:   title, description, assignees (up to 20 user ids) or assign (a
- *         rule of ws_template_assign_valid(), 'creator' being whoever starts
- *         the run), due_in ('' or 0-3650 days), priority, timeout ('' for
+ *         rule of ws_flow_task_assign_valid(), 'creator' being whoever starts
+ *         the run), fallback (up to 20 user ids, kept only for the rule
+ *         'event_person': who gets the task when the event names nobody on
+ *         the team), due_in ('' or 0-3650 days), priority, timeout ('' for
  *         none, else 1 to WS_FLOW_TIMEOUT_MAX hours: the box leaves on
  *         timeout when its task is still open by then)
  * condition: ws_flow_condition_normalize()
@@ -541,14 +587,18 @@ function ws_flow_config_normalize($kind, $config)
             return array('subject' => substr((string) preg_replace('/[^a-z_]/', '', $subject), 0, 32));
 
         case 'task':
-            $assignees = array();
+            $people = function ($value) {
+                $ids = array();
 
-            foreach ((is_array($config['assignees'] ?? null) ? $config['assignees'] : array()) as $user_id) {
-                if (is_numeric($user_id) && ((int) $user_id > 0)) {
-                    $assignees[(int) $user_id] = (int) $user_id;
+                foreach ((is_array($value) ? $value : array()) as $user_id) {
+                    if (is_numeric($user_id) && ((int) $user_id > 0)) {
+                        $ids[(int) $user_id] = (int) $user_id;
+                    }
                 }
-            }
 
+                return array_slice(array_values($ids), 0, 20);
+            };
+            $assign = ws_flow_line($config['assign'] ?? '', 40);
             $due_in = $config['due_in'] ?? '';
             $priority = ws_flow_text($config['priority'] ?? '');
             $timeout = $config['timeout'] ?? '';
@@ -556,8 +606,9 @@ function ws_flow_config_normalize($kind, $config)
             return array(
                 'title'       => ws_flow_line($config['title'] ?? '', 200),
                 'description' => ws_flow_lines($config['description'] ?? '', 8000),
-                'assignees'   => array_slice(array_values($assignees), 0, 20),
-                'assign'      => ws_flow_line($config['assign'] ?? '', 40),
+                'assignees'   => $people($config['assignees'] ?? array()),
+                'assign'      => $assign,
+                'fallback'    => ($assign === 'event_person') ? $people($config['fallback'] ?? array()) : array(),
                 'due_in'      => (is_bool($due_in) || !is_numeric($due_in)) ? '' : max(0, min(3650, (int) $due_in)),
                 'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
                 'timeout'     => (is_bool($timeout) || !is_numeric($timeout)) ? '' : max(1, min(defined('WS_FLOW_TIMEOUT_MAX') ? WS_FLOW_TIMEOUT_MAX : 720, (int) $timeout)),
@@ -1255,8 +1306,10 @@ function ws_flow_graph_check($graph)
 
             if (($config['assign'] !== '') && !empty($config['assignees'])) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} names both people and a rule for whom it goes to; keep one of the two.', 'vars' => $name)));
-            } elseif (($config['assign'] !== '') && !ws_template_assign_valid($config['assign'])) {
+            } elseif (($config['assign'] !== '') && !ws_flow_task_assign_valid($config['assign'])) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} has a rule for whom it goes to that the flow does not know.', 'vars' => $name)));
+            } elseif (($config['assign'] === 'event_person') && empty($config['fallback'])) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} goes to the person the event names: choose who gets it when the event names nobody on the team.', 'vars' => $name)));
             }
 
             if (function_exists('ws_flow_timeout_problems')) {
@@ -3839,6 +3892,9 @@ function ws_flow_js_strings()
         'fl_assign_help'      => lang('The task opens for them once the boxes before it are done.'),
         'fl_assign_creator'   => lang('Whoever starts the run'),
         'fl_assign_people'    => lang('The people I pick'),
+        'fl_assign_event_person' => lang('The person the event names'),
+        'fl_assign_fallback'  => lang('When the event names nobody on the team'),
+        'fl_assign_fallback_help' => lang('The task goes to these people when the event that started the run names nobody, or a person who is no longer on the team.'),
         'fl_people_filter'    => lang('Search people'),
         'fl_due_in'           => lang('Due (days after it becomes ready)'),
         'fl_due_help'         => lang('Left empty, the task has no due date.'),

@@ -23,6 +23,7 @@
 - api-clean-modern-steps-manners.md: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 401 challenge, every wrong field, If-Match, delete twins, Accept-Language held, the documentation pages, close-out
 - api-clean-modern-steps.md: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, a fault as JSON, time formats in the document, the answer check tool, generated descriptions and example bodies
 - api-clean-modern.md: Plan (owner 2026-11-17): the external API made clean and modern after its test: failing routes, faults as JSON, a truthful document, HTTP manners, the documentation pages; steps AM1 to AM13
+- area-tab-strip-place.md: Plan (owner 2026-11-19, poll 153): an area's tab strip sits centred in the window on every tab screen whatever the screen's width; Communication first, then the other areas; TS1, TS2
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
 - auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
 - auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
@@ -37,6 +38,7 @@
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
 - channel-commands-steps.md: Plan channel-commands, steps CC1 to CC6: the registry with no change of behaviour, the gate and grouped /help, /hatırlat and /özet, /onay /güncelleme /checkin, flows in the / list, the channel's own
 - channel-commands.md: Plan (owner 2026-11-16): channel commands grown in steps CC1 to CC12: a registry entry per command, commands for what has a button, records, flows in the / list, application arguments, agents
+- channel-decisions-files-tabs.md: Plan (owner 2026-11-19): a channel's Decisions tab as one list of wide cards, long ones folded, no sideways scroll; its Files tab with a count and a gallery light with hundreds of pictures; TD1, TD2
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
@@ -47,8 +49,9 @@
 - collection-rows-features.md: Plan collection-rows, features R1 to R12: the kind and the field's value, the writer of a posted list, the editor on the panel's record screens, delete and History
 - collection-rows-steps.md: Plan collection-rows, steps RW1 to RW7: the kind and writer, the panel editor, delete and History, the API, the site form, the list on the record page, close-out
 - collection-rows.md: Plan (owner 2026-11-16, agent channel message 5667): a "Rows" field of a collection, a record's own rows added, removed and ordered on its form; steps RW1 to RW7
+- connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
-- connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX1 stopped at its sheet, CX2 the voice card, CX3 E-mail sending, the management screen drawn next
+- connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
 - content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
 - content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
 - content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
@@ -90,6 +93,7 @@
 - event-tickets-steps.md: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the holder's page, the check-in screen, places given back and the waiting list, the API and the product's mark, close-out
 - event-tickets.md: Plan (owner 2026-11-16, agent channel poll 82): a ticket with a QR code per place of an order, check-in at the door from a phone, and a waiting list when an event is full; steps TK1 to TK6
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- incoming-mail-menu-card.md: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a card of it on the new dashboard for whoever may read it, the channel named in an open mail's head; IM1-IM3
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
@@ -102,9 +106,8 @@
 - integrations-census-today-2.md: Census (2026-11-17) of the outside services the product connects to today, the rest: mail, SMS, chat, accounts, files, analytics, maps, AI, and what the market's lists hold that is absent here
 - integrations-census-today.md: Census (2026-11-17) of the outside services the product connects to today, the selling side: how they were counted, payments, shipping, marketplaces, e-documents, how a new one is added
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
-- kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
-- kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
-- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
+- kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
+- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 - listen-block-features.md: Plan listen-block, features L1 to L13: the block and its mark, where the script comes from, what is read and in which language, when the button shows, its controls, the canvas and the Preview
 - listen-block-steps.md: Plan listen-block, steps LS1 to LS3: the script and its two doors, the block, close-out
 - listen-block.md: Plan (owner 2026-11-16, agent channel message 5667): a "Listen" block of the visual designer that reads the page's article aloud with the browser's own voice; steps LS1 to LS3
@@ -116,6 +119,7 @@
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
 - more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
+- open-version-schema-census.md: Plan (owner 2026-11-19): find the tables, columns and indexes 2026.11.0 added that no code uses any more and take them out where they were added; SC1 the census, SC2 the removals
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -153,6 +157,7 @@
 - prototype-comments-features.md: Plan prototype-comments, features P1 to P16: the link's "Allow comments", the viewer's comment mode, the guest's door, what a comment keeps, the designer's pins and list, the task
 - prototype-comments-steps.md: Plan prototype-comments, steps PN1 to PN5: the table and the guest's door, the viewer's comment mode, the designer's pins and list, the task, close-out
 - prototype-comments.md: Plan (owner 2026-11-16, agent channel message 5667): a customer pins comments on a prototype opened by its share link; the designer answers and resolves them; steps PN1 to PN5
+- prototype-link-editing.md: Plan (owner 2026-11-19): the Prototype view as a place to edit links: a target picker on the links panel's rows, arrows starting on the link, the selected page at full height; PL1-PL4
 - publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
 - publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
 - publish-approval-census-places.md: Plan publish-approval PA1 census: where a design proposal is listed or drawn, an editor's save today, holding a shared component change
@@ -189,3 +194,4 @@
 - wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
 - wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
 - wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
+- workspace-memory-general.md: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows; decisions read across agent channels; polls 150-152 answered; GM1-GM4

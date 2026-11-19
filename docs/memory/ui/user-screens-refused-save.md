@@ -11,9 +11,9 @@ description: Create User / Edit User: a refused save goes back to the form with 
 - Symptom fixed (#6557): the errors drew the site's visitor error page, its "Go back" printed as text, and the role and rights were lost.
 
 ## Which fields are checked before writing?
-- `pg_user_form_field_problems($post)` (pure): Reward Points through `pg_user_form_reward_points()` ('invalid'), username and badge label through `pg_user_form_text_fits()` ('too_long'); then `pg_user_write_problem()` (blank username, invalid or taken address). Messages: `pg_user_form_field_problem_message()`.
+- `pg_user_form_field_problems($post)` (pure): Reward Points through `pg_user_form_reward_points()` ('invalid'), username, e-mail address, password hint and badge label through `pg_user_form_text_fits()` ('too_long', their varchar(100) columns); then `pg_user_write_problem()` (blank username, invalid or taken address). Messages: `pg_user_form_field_problem_message()`.
 - `pg_user_create()` writes `(int) pg_user_form_reward_points()`; the edit save writes points through `pg_credit_points_staff_sql()` only when changed.
-- Symptom fixed (#6556): -5, 12,50 and 99999999999 were clamped or cut by a lenient server, a 101-character username got around the uniqueness check.
+- Symptom fixed (#6556): -5, 12,50 and 99999999999 were clamped or cut by a lenient server, a 101-character username got around the uniqueness check. The same held for a 101-character e-mail address until the Edit User bug hunt: cut to 100, it could equal another account's address and both saved.
 
 ## Which contact may a new account be linked to?
 - One that exists and has no account: `pg_user_contact_holder()` (`includes/fn/user_write.php`) reads both, `pg_user_form_contact_problem()` (pure) answers '', 'contact_missing' or 'contact_taken'. The POST refuses with the linked username and goes back without `contact_id`, so the account can be made without it; the GET shows the same sentence as a warning and leaves the email and the hidden field empty.

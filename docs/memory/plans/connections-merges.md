@@ -1,6 +1,6 @@
 ---
 name: connections-merges
-description: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX1 stopped at its sheet, CX2 the voice card, CX3 E-mail sending, the management screen drawn next
+description: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
 priority: 10
 ---
 
@@ -13,7 +13,7 @@ priority: 10
 - Scope: every service, first GitHub, the AI keys and mail, then the other groups. Before the launch (priority 10). Every split place: `integrations-census-screens.md`.
 
 ## What binds every step?
-- A drawing first: nothing moves before the owner's yes to the management screen's sheet.
+- The owner's yes to the management screen's sheet (poll 149) is given; a page beyond the sheet is drawn and asked first.
 - Connection fields live on Connections, replacing the 2026-10-30 reading "no setting field on Connections"; a feature's own settings stay on its card.
 - A moved card keeps its address and old anchors: a `pg_settings_legacy_anchors()` row (owner 2026-10-30, `workflow/decisions-made-product-14.md`).
 - A moved place changes the registry row's `place` in the same step (`api/connections-registry.md`).
@@ -21,12 +21,12 @@ priority: 10
 - Drawn at 1440, 1024 and 390 in look A; texts through `lang()`.
 
 ## Which steps are there?
-- CX1 GitHub: stopped at its sheet. Drawn: messages 9308 to 9320; poll 146 (message 9334) answered by the rule above.
-- CX2 Voice message transcripts: the owner chose in poll 147 (message 9350) that the card moves to Assistants and agents and the category is named "Kanallar"; the key moves to Connections in a later step.
+- CX1 GitHub: closed by the build steps CX7 to CX11 (sheet: messages 9308 to 9320).
+- CX2 Voice message transcripts: the owner chose in poll 147 (message 9350) that the card moves to Assistants and agents and the category is named "Kanallar"; the key moves to Connections in CX9.
 - CX3 Mail, as its sheet (messages 9351 to 9365). Owner (2026-11-17, poll 148, message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools, its old addresses open it; the campaign's two texts and MailChimp join it. Two steps, CX3a and CX3b.
-- CX6 The management screen's sheet (mock, no product code): the Connections list as the one place, three service panels (GitHub, Google, OpenAI), e-mail sending as a list row, one feature card after the change. Drawn: agent channel message 9376 and replies; the owner's look: waiting.
-- The build steps come after the owner's yes to CX6 and are cut from its drawing.
-- CX4 A provider's client typed in one place and CX5 the names ("Connections", "Connected accounts", "Connected applications"): wait for the owner's look at CX6's mock.
+- CX6 The management screen's sheet. Drawn: messages 9405 to 9422; the owner's yes: poll 149 (message 9425).
+- CX7 to CX11, the build (poll 149's yes, messages 9423 and 9425): `connections-merges-build.md`.
+- CX4 A provider's client typed in one place: answered by CX10. CX5 the names ("Connections", "Connected accounts", "Connected applications"): waits for the pages.
 
 ## What else is still the owner's?
 - The public figure's wording and when it is first shown (`workflow/decisions-made-product-69.md`).

@@ -1,6 +1,6 @@
 ---
 name: architect-wake
-description: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names; economy mode (2026-11-17)
+description: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 ---
 
 ## What wakes the architect?
@@ -14,6 +14,11 @@ description: What wakes the architect session (owner, 2026-11-16): a mention in 
 ## How is a pause he names kept?
 - One `send_later` at the time he gave ("gece tr saatiyle 12:00 da devam edelim" was 21:00 UTC). Requests that arrive meanwhile wait and are answered at the return.
 - Owner (2026-11-16, agent channel message 7039): during such a pause the questions for the architect go to him; the architect takes over at the return.
+
+## How is the week's pause of 2026-11-17 kept?
+- Owner (2026-11-17, agent channel message 9427): "bu haftalık paydos edelim haftaya yeniden başlayalım geliştirmeye": coordinators hand over what they hold, the architect does the remaining checks, the merger lands what is ready and closes; whoever is done removes its timers and its waiting door, and coordinators archive finished workers.
+- So the architect's waiter and check-ins are taken down once its own PR has landed and no look is asked; nothing wakes it until he starts the work again. A draft still open then waits for next week.
+- Open at the pause, for the return: the Connections management screen's steps (`plans/connections-merges.md`; each step's pictures come to the architect); DA1 of `plans/picture-text-auto-draw-steps.md` is free for a worker; Ahmet's next work is named once SL2 #10073, CH3b #10077 and its check_look job have landed. This paragraph is deleted at the return.
 
 ## What is the economy mode, and who works meanwhile?
 - Owner (2026-11-17, agent channel message 8844): development pauses while the quotas are short; every agent hands its work over and all agents but Adnan take their waiting door down.

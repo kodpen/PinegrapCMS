@@ -606,7 +606,7 @@ function test_workspace_flows_canvas_run_actions_use_the_runner()
 {
 	$flow = "ws_flow_for(\$viewer, (int) (\$request['flow_id'] ?? 0), 'view')";
 	$expected = array(
-		'ws_flow_run_start'  => array($flow, 'ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request))', 'ws_action_flow_run_answer('),
+		'ws_flow_run_start'  => array($flow, '$fields = ws_action_flow_run_fields($request);', 'ws_flow_run_start($viewer, $flow, $fields)', 'ws_action_flow_run_answer('),
 		'ws_flow_runs_list'  => array($flow, 'ws_flow_runs_list($viewer, $flow,', 'ws_action_flow_run_present('),
 		'ws_flow_run_get'    => array('ws_action_flow_run_answer(', 'ws_scheduled_due()'),
 		'ws_flow_run_cancel' => array('ws_flow_run_for($viewer,', 'ws_flow_run_cancel($viewer, $run)', 'ws_action_flow_run_answer('),

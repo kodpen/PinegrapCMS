@@ -157,14 +157,14 @@ function pg_customer_value_month_label($month)
 function pg_customer_value_state_new($started)
 {
     return array(
-        'v' => 1,
+        'v' => 2,
         'started' => (int) $started,
         'date' => 0,
         'id' => 0,
         'done' => 0,
         'total' => 0,
         'unplaced' => 0,
-        // key => "first,last,orders,value,recent,number,m.m.m"
+        // key => "first,last,orders,value,recent value,number,m.m.m,recent orders"
         'customers' => array(),
         // month => array(first orders, first value, returning orders, returning value, gap seconds, gaps)
         'months' => array(),
@@ -218,7 +218,8 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $time = (int) $order['order_date'];
         $month = pg_customer_value_month($time);
-        $recent = ($time >= $recent_from) ? $amount : 0;
+        $is_recent = ($time >= $recent_from);
+        $recent = $is_recent ? $amount : 0;
         $number = (int) $order['order_number'];
 
         if (!isset($state['months'][$month])) {
@@ -226,7 +227,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
         }
 
         if (!isset($state['customers'][$key])) {
-            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month;
+            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month . ',' . ($is_recent ? 1 : 0);
             $state['months'][$month][0]++;
             $state['months'][$month][1] += $amount;
             continue;
@@ -234,7 +235,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $c = explode(',', $state['customers'][$key]);
         $gap = max(0, $time - (int) $c[1]);
-        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month;
+        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month . ',' . ((int) $c[7] + ($is_recent ? 1 : 0));
         $state['months'][$month][2]++;
         $state['months'][$month][3] += $amount;
         $state['months'][$month][4] += $gap;
@@ -254,7 +255,9 @@ function pg_customer_value_state_encode($state)
 }
 
 /**
- * The state read back, or null when the text is not one.
+ * The state read back, or null when the text is not one. A state of an
+ * earlier shape (v 1 kept no recent orders) is not one either, so its pass
+ * starts again.
  *
  * @param string $text
  * @return array|null
@@ -263,7 +266,7 @@ function pg_customer_value_state_decode($text)
 {
     $state = @unserialize((string) $text, array('allowed_classes' => false));
 
-    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 1)) {
+    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 2)) {
         return null;
     }
 
@@ -453,7 +456,7 @@ function pg_customer_value_finish($state, $base)
         $cells[$age][$band][1] += $value;
 
         $top_all = _pg_customer_value_top_add($top_all, array((int) $c[5], $value, $orders));
-        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], $orders));
+        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], (int) $c[7]));
     }
 
     $month_table = array();

@@ -11,7 +11,7 @@ description: Error log census part 3 (plan php-error-log-clean): the files with 
 - `get_page.php` 13: undefined `$output_grid_button` — set since.
 - `get_view_order_screen_content.php` 13 and `get_registration_entrance.php` 8: done, EL5 #10304.
 - `includes/fn/content.php` 10: `$page_type` set since; the missing include done, EL5 #10304 (View Order default screen).
-- `includes/erp/money.php` 8, `includes/erp/invoice_manual.php` 8, `includes/erp/quotes.php` 6: "The float … is not representable as an int" on very large amounts — still.
+- `includes/erp/money.php` 8, `includes/erp/invoice_manual.php` 8, `includes/erp/quotes.php` 6: "The float … is not representable as an int" on very large amounts: done, EL5 #10329 (the exchange rate and the home-currency total bounded, `erp/erp-money-overflow.md`).
 - `includes/workspace/notes_import.php` 6: its own warning "creating the stage folder failed" — still, written on purpose.
 - `includes/api/openapi.php` 5: gone, #4129.
 - `includes/dompdf/…/FontLib/BinaryStream.php` 4: float to int cast — still; the library stays unpatched (`core/dompdf-embedding.md`).

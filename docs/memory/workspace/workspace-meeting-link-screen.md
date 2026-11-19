@@ -15,7 +15,8 @@ module: booking_link_screen
 - Copy is the calendar subscription screen's inline pattern (clipboard API, `execCommand` fallback, a polite status line); `assets/js/workspace.js` is not touched.
 
 ## How is the short address kept?
-- One `short_links` row with `destination_type = 'url'` and `url` the site path `PATH . 'book_with.php?c=<code>'` (`pg_booking_link_short_target()`): a path, so a new host name keeps it. `pg_booking_link_short_link()` finds it (live, not one-time, oldest first).
+- One `short_links` row with `destination_type = 'url'` and `url` the site path `PATH . SOFTWARE_DIRECTORY . '/book_with.php?c=<code>'` (`pg_booking_link_short_target()`): a path, so a new host name keeps it. `pg_booking_link_short_link()` finds it (live, not one-time, oldest first).
+- The first version (#10147) saved `PATH . 'book_with.php?c=<code>'`, a root path the router answers with a 404. The screen also finds a row of that shape and writes the right path into it when the member opens it (bug hunt PR).
 - The site address stands on its own line above the name field at every width: a real host is long and would squeeze the field (architect, agent channel message 7881).
 - Saved through the short links' own checks: `pg_short_link_form_validate_name()` (name rule, pasted address, free name, binned name) and `pg_short_link_redirect_columns()` (loops). Save renames the row; Remove moves it to the Recycle Bin (`pg_short_link_to_bin()`) after a question. The link itself stays.
 

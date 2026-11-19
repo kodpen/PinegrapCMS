@@ -18,8 +18,9 @@ module: courses_admin
 - A page the course already uses stays on offer wherever it sits now (`pg_course_folder_pages()`), so a lesson whose page left the folder is not emptied and dropped by the next save.
 - The lessons table (`.pg-course-lessons`, `backend.src.css`): from 768 px fixed columns, the days and score columns as wide as their heading on one line (architect, 2026-11-17); below it each lesson stacks under its labels (page, quiz, days and score, buttons), nothing scrolled sideways at 390.
 - `pg_course_input()` (pure) reads the parallel lists `lesson_id[]`, `lesson_page[]`, `lesson_days[]`, `lesson_quiz[]`, `lesson_score[]`; a row without a page is skipped; a page twice, days outside 0–3650, a quiz without a score from 1 to 100 are refused.
+- Each row posts one value to every list (`pg_course_lesson_row_html()`): a no-quiz score is read-only, never disabled (a disabled field is not posted).
 - `pg_course_save()` refuses a page that is another course's lesson and names that course. A lesson left out, or whose page was changed, is deleted with its done rows first (the page key is unique), then kept lessons are updated and new ones inserted.
-- Delete removes the course, its lessons and every progress row; the folder, its pages and the members' access stay.
+- Delete removes the course, lessons and progress rows; folder, pages and access stay.
 
 ## Which problems are named? (Z17)
 - `pg_course_problems()` (pure): folder deleted, folder not private (these two close nothing), no lessons, no classroom page, classroom page outside the folder, a lesson whose page left the folder or was deleted.
