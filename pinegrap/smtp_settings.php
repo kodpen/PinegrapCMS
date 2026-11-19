@@ -23,226 +23,29 @@ validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
 
 $liveform = new liveform('smtp_settings');
 
-// SMTP credentials check
-$smtp_ready = (
-    defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&
-    defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '' &&
-    defined('SYSTEM_SMTP_PASSWORD') && SYSTEM_SMTP_PASSWORD !== ''
-) || (pg_mail_connection('system') !== null) || (pg_mail_transport() !== 'smtp');
+// The save, the DKIM jobs and the test e-mail are includes/fn/mail_settings.php.
+$smtp_ready = pg_mail_settings_ready();
 
-// The site's accounts connected for sending e-mail (Connected accounts), and
-// the providers one can be connected with from here.
+// The site's accounts connected for sending e-mail (Connections), and the
+// providers one can be connected with from here.
 $mail_accounts = pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail'));
-$mail_providers = array();
+$mail_providers = pg_mail_settings_providers();
 
-if (pg_connect_schema_ready() && pg_connect_can_seal()) {
-    foreach (pg_connect_providers() as $mail_provider_key => $mail_provider) {
-        if (pg_connect_purpose_allows(pg_connect_purpose('mail'), $mail_provider_key, 'site') && pg_connect_app_ready(pg_connect_app($mail_provider_key))) {
-            $mail_providers[$mail_provider_key] = $mail_provider;
-        }
-    }
-}
-
-// What a kind of mail is sent through: this server (SMTP or mail()) or one
-// of the connected accounts.
-function smtp_settings_connection_field($name, $current, $mail_accounts) {
-
-    $options = '<option value="">' . h(lang('This server: the SMTP account below, or PHP mail() without one')) . '</option>';
-
-    foreach ($mail_accounts as $mail_account) {
-        $provider = pg_connect_provider($mail_account['provider']);
-
-        $options .= '<option value="' . (int) $mail_account['id'] . '"' . (((int) $current === (int) $mail_account['id']) ? ' selected' : '') . '>'
-            . h($mail_account['label'] . ' (' . (is_array($provider) ? $provider['label'] : $mail_account['provider']) . ')'
-                . (($mail_account['status'] !== 'active') ? ' - ' . lang('Connect again') : ''))
-            . '</option>';
-    }
-
-    return '
-        <label for="' . h($name) . '" class="form-label">' . h(lang('Send through')) . '</label>
-        <select name="' . h($name) . '" id="' . h($name) . '" class="form-control">' . $options . '</select>';
-}
-
-function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
-
-    $buttons = '';
-
-    foreach ($mail_providers as $provider_key => $provider) {
-        $buttons .= '
-            <button type="submit" form="smtp_connect_' . h($provider_key) . '" class="btn btn-sm btn-outline theme-primary rounded-pill me-1 mt-1">
-                <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>';
-    }
-
-    $text = $mail_accounts
-        ? lang('A connected account sends without an SMTP password; the message is from that account and replies go to the address it was meant to come from.')
-        : lang('Or send from a Google or Microsoft account, without an SMTP password.');
-
-    $link = $mail_providers
-        ? ''
-        : ' <a href="connections.php">' . h(lang('Set up the application on Connected accounts first.')) . '</a>';
-
-    return '<div class="form-text">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div>' . $buttons . '</div>' : '');
-}
-
-// Writes the posted boxes to config.php and adds the notice or error to the
-// form. Returns the values as saved, by lower-case field name (a blank
-// password box keeps the stored one), or false when the file could not be
-// read or written. The constants of this request keep the values they were
-// loaded with; the saved ones apply from the next request.
+// Writes the posted boxes and says so; false when a box was refused or
+// config.php could not be read or written.
 function smtp_settings_save($liveform_settings) {
+    $saved = pg_mail_settings_save($_POST, $liveform_settings);
 
-    // An empty password box keeps the saved password only for the server it
-    // was typed for (pg_smtp_password_kept()). For a new server it is dropped,
-    // and a save that would still sign in there with it is refused before
-    // anything is written.
-    $smtp_kept_passwords = array();
-
-    foreach (array('system', 'campaign') as $kind) {
-        $prefix = strtoupper($kind) . '_SMTP_';
-        $posted = array();
-
-        foreach (array('hostname' => 'host', 'port' => 'port', 'password' => 'password', 'username' => 'user') as $field => $name) {
-            $posted[$name] = (isset($_POST[$kind . '_smtp_' . $field]) && is_string($_POST[$kind . '_smtp_' . $field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $_POST[$kind . '_smtp_' . $field])) : '';
-        }
-
-        $stored = array(
-            'host' => defined($prefix . 'HOSTNAME') ? (string) constant($prefix . 'HOSTNAME') : '',
-            'port' => defined($prefix . 'PORT') ? (string) constant($prefix . 'PORT') : '',
-            'password' => defined($prefix . 'PASSWORD') ? (string) constant($prefix . 'PASSWORD') : '',
-        );
-
-        $smtp_kept_passwords[$prefix . 'PASSWORD'] = pg_smtp_password_kept($posted, $stored);
-
-        if (($posted['password'] === '') && ($stored['password'] !== '') && ($smtp_kept_passwords[$prefix . 'PASSWORD'] === '')
-            && ($posted['host'] !== '') && ($posted['user'] !== '')) {
-            $liveform_settings->mark_error($kind . '_smtp_password', lang('The SMTP server or its port changed. Enter the password again.'));
-
-            return false;
-        }
+    if ($saved !== false) {
+        log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
+        $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
     }
 
-    // The sending service first: a field it marks leaves every setting as
-    // it was.
-    if (!pg_mail_transport_settings_save($_POST, USER_ID, $liveform_settings)) {
-        return false;
-    }
-
-    $config_file_content = '';
-    $fd = fopen(CONFIG_FILE_PATH, "r");
-    if ($fd) {
-        while (!feof($fd)) {
-            $config_file_content .= fgets($fd, 4096);
-        }
-        fclose($fd);
-    }
-
-    $config_keys = [
-        'SYSTEM_SMTP_HOSTNAME','SYSTEM_SMTP_USERNAME','SYSTEM_SMTP_PASSWORD','SYSTEM_SMTP_PORT',
-        'EMAIL_CAMPAIGN_JOB','EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
-        'CAMPAIGN_SMTP_HOSTNAME','CAMPAIGN_SMTP_USERNAME','CAMPAIGN_SMTP_PASSWORD','CAMPAIGN_SMTP_PORT',
-        'DKIM_DOMAIN','DKIM_SELECTOR',
-        'SYSTEM_MAIL_CONNECTION','CAMPAIGN_MAIL_CONNECTION'
-    ];
-
-    // The defines as this request loaded them and as they are written,
-    // for the audit trail.
-    $smtp_audit_before = array();
-    $smtp_audit_after = array();
-
-    foreach ($config_keys as $key) {
-        $field = strtolower($key);
-
-        // Saved as typed: update_config_define() escapes quotes and
-        // backslashes, so a password with a quote in it still works. A
-        // text box never sends a control character; one in a forged
-        // request would put a line break inside the define, where the
-        // next save could no longer find it.
-        $value = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $_POST[$field])) : '';
-
-        // A connected account is named by its number, and only one that
-        // was connected for sending e-mail can be chosen.
-        if (($key === 'SYSTEM_MAIL_CONNECTION') || ($key === 'CAMPAIGN_MAIL_CONNECTION')) {
-            $chosen = pg_connect_account((int) $value);
-            $value = (is_array($chosen) && ($chosen['user_id'] === 0) && in_array('mail', $chosen['purposes'], true)) ? (string) (int) $chosen['id'] : '';
-        }
-
-        $smtp_audit_was = defined($key) ? (string) constant($key) : '';
-
-        if ($key === 'EMAIL_CAMPAIGN_JOB') {
-            $smtp_audit_was = (defined($key) && ((constant($key) === true) || (constant($key) === 'true'))) ? 'true' : 'false';
-        }
-
-        $smtp_audit_before[$field] = $smtp_audit_was;
-
-        if ($key === 'EMAIL_CAMPAIGN_JOB') {
-            $smtp_audit_after[$field] = ($value === 'true') ? 'true' : 'false';
-        } elseif (($value === '') && (($key === 'SYSTEM_SMTP_PASSWORD') || ($key === 'CAMPAIGN_SMTP_PASSWORD'))) {
-            $smtp_audit_after[$field] = $smtp_kept_passwords[$key];
-        } else {
-            $smtp_audit_after[$field] = $value;
-        }
-
-        // The job switch is stored as a real boolean. The quoted forms
-        // 'true' / 'false' written by older versions are removed first,
-        // because the string 'false' is truthy and could never switch
-        // the job off.
-        if ($key === 'EMAIL_CAMPAIGN_JOB') {
-            $value = ($value === 'true') ? 'true' : 'false';
-            $config_file_content = preg_replace("/[ \t]*define\s*\(\s*'$key'\s*,\s*'[^']*'\s*\);\r?\n?/i", '', $config_file_content);
-
-            if (preg_match("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", $config_file_content)) {
-                $config_file_content = preg_replace("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", "define('$key', $value);", $config_file_content);
-            } else {
-                $config_file_content = pg_config_insert_line($config_file_content, "define('$key', $value);");
-            }
-
-            continue;
-        }
-
-        // A blank password box means "keep the saved value": the screen never
-        // renders a stored secret back, so an empty box is not a request to
-        // clear it -- unless the server changed, and then it is removed.
-        if ($value === '' && ($key === 'SYSTEM_SMTP_PASSWORD' || $key === 'CAMPAIGN_SMTP_PASSWORD')) {
-            if ($smtp_kept_passwords[$key] !== '') {
-                continue;
-            }
-        }
-
-        // The shared helpers confine every match to the key's own line. A
-        // hand-edited config.php mixes LF and CRLF endings, and a pattern
-        // anchored on "\r\n" ran past an LF line and deleted the defines
-        // that followed it.
-        if ($value === '') {
-            $config_file_content = remove_config_define($config_file_content, $key, 'string');
-        } else {
-            $config_file_content = update_config_define($config_file_content, $key, $value, 'string');
-        }
-    }
-
-    // Written only from a successful read: an empty result would replace
-    // config.php with an empty file and take the site down. The write
-    // goes through a temp file and a rename, so a failure leaves the old
-    // file as it was.
-    if (trim($config_file_content) === '') {
-        $liveform_settings->add_error(lang('Config file could not be opened.'));
-
-        return false;
-    }
-
-    if (!pg_write_config_file($config_file_content)) {
-        $liveform_settings->add_error(lang('The config file could not be written.'));
-
-        return false;
-    }
-
-    log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
-    pg_audit('update', 'settings', 0, $smtp_audit_before, $smtp_audit_after, 'smtp');
-    $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
-
-    return $smtp_audit_after;
+    return $saved;
 }
 
 // if the form has not been submitted
@@ -265,9 +68,9 @@ if (!$_POST) {
     $system_password_placeholder = (defined('SYSTEM_SMTP_PASSWORD') && ((string) SYSTEM_SMTP_PASSWORD !== '')) ? lang('Leave blank to keep the saved secret') : '';
     $campaign_password_placeholder = (defined('CAMPAIGN_SMTP_PASSWORD') && ((string) CAMPAIGN_SMTP_PASSWORD !== '')) ? lang('Leave blank to keep the saved secret') : '';
 
-    $system_connection_field = smtp_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts);
-    $campaign_connection_field = smtp_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts);
-    $connect_buttons = smtp_settings_connect_buttons($mail_providers, $mail_accounts);
+    $system_connection_field = pg_mail_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts);
+    $campaign_connection_field = pg_mail_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts);
+    $connect_buttons = pg_mail_settings_connect_buttons($mail_providers, $mail_accounts);
 
     // The buttons above sit inside the settings form and submit these forms
     // by their form attribute; forms cannot be nested.
@@ -275,47 +78,14 @@ if (!$_POST) {
 
     foreach ($mail_providers as $mail_provider_key => $mail_provider) {
         $connect_forms .= '
-            <form method="post" action="connect.php" id="smtp_connect_' . h($mail_provider_key) . '" class="disable_shortcut d-none">
+            <form method="post" action="connect.php" id="pgset_mail_connect_' . h($mail_provider_key) . '" class="disable_shortcut d-none">
                 ' . pg_connect_start_fields($mail_provider_key, 'mail', 'smtp_settings.php') . '
             </form>';
     }
 
     // Save and send a test: the post saved the boxes and redirected here, so
-    // this request's constants hold the saved settings. The flag goes first,
-    // so a reload does not send again.
-    if (!empty($_SESSION['smtp_settings_send_test'])) {
-        unset($_SESSION['smtp_settings_send_test']);
-
-        if ($smtp_ready) {
-            $result = email([
-                'to' => EMAIL_ADDRESS,
-                'to_name' => ORGANIZATION_NAME,
-                'from_name' => ORGANIZATION_NAME,
-                'from_email_address' => EMAIL_ADDRESS,
-                'reply_to' => EMAIL_ADDRESS,
-                'subject' => lang('System SMTP Settings Test'),
-                'body' => lang('Your System smtp settings work correctly.'),
-                'format' => 'plain_text',
-                'type' => 'system',
-                'notify_sender' => false
-            ]);
-
-            $test_transport = pg_mail_transport();
-            $test_transports = pg_mail_transports();
-
-            if ($result && ($test_transport !== 'smtp') && (pg_mail_connection('system') === null)) {
-                $liveform->add_notice(lang(['string'=>'Test email accepted by {var:1}. Please check mailbox: {var:2}', 'vars'=>[h($test_transports[$test_transport]['label']), h(EMAIL_ADDRESS)]]));
-                log_activity(lang(['string'=>'Test email accepted by {var:1}. Mailbox: {var:2}', 'vars'=>[$test_transports[$test_transport]['label'], EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
-            } elseif ($result) {
-                $liveform->add_notice(lang(['string'=>'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars'=>[h(EMAIL_ADDRESS)]]));
-                log_activity(lang(['string'=>'Test email accepted by SMTP server. Mailbox: {var:1}', 'vars'=>[EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
-            } else {
-                $liveform->add_warning(h(pg_mail_failure_sentence(lang('Test email could not be sent.'), true)));
-            }
-        } else {
-            $liveform->add_warning(h(lang('No test email was sent: the saved settings name no sending service, SMTP account or connected account.')));
-        }
-    }
+    // this request's constants hold the saved settings.
+    pg_mail_settings_send_test($liveform);
 
     $connect_flash = pg_connect_flash_take();
 
@@ -596,69 +366,7 @@ if (!$_POST) {
         $saved = smtp_settings_save($liveform_settings);
 
         if ($saved !== false) {
-            $selector = $saved['dkim_selector'];
-            $domain = $saved['dkim_domain'];
-
-            if ($selector === '' || $domain === '') {
-                $liveform_settings->add_warning(lang('DKIM domain and selector must be filled before generating key.'));
-            } else {
-                // The new pair is made before the old one is touched: when OpenSSL
-                // cannot make a key, the pair in use keeps signing. Each file is
-                // then written as a whole over the old one, dkim.pub first and
-                // dkim.key second, so a failed key write leaves the signing key
-                // as it was; dkim.pub is then put back (or removed when there was
-                // none) to keep the two files a pair. The records change only
-                // once both files are written.
-                $dkim_pair = pg_dkim_key_pair($selector, $domain);
-                $dkim_saved = false;
-
-                if (!$dkim_pair) {
-                    $liveform_settings->add_warning(lang('The DKIM key could not be generated on this server. Any existing DKIM key was left unchanged.'));
-                } else {
-                    $private_pem = $dkim_pair['private'];
-                    $public_pem = $dkim_pair['public'];
-                    $txt_record = $dkim_pair['txt_record'];
-
-                    $had_pub = is_file(FILE_DIRECTORY_PATH . '/dkim.pub');
-                    $old_pub = $had_pub ? @file_get_contents(FILE_DIRECTORY_PATH . '/dkim.pub') : false;
-
-                    if (pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', $public_pem)) {
-                        if (pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem)) {
-                            // Owner-only: the private key must not be readable by other accounts. Failure is ignored so Windows/IIS installs keep working.
-                            @chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600);
-                            $dkim_saved = true;
-                        } elseif ($old_pub !== false) {
-                            pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', $old_pub);
-                        } elseif (!$had_pub) {
-                            @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
-                        }
-                    }
-
-                    if (!$dkim_saved) {
-                        $liveform_settings->add_warning(lang('The DKIM key could not be saved. Any existing DKIM key was left unchanged.'));
-                    }
-                }
-
-                if ($dkim_saved) {
-                    // Replace the old records
-                    db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
-
-                    $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.key');
-                    db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
-                        VALUES ('dkim.key','" . escape(getPublicRootFolderId()) . "','" . escape($txt_record) . "','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
-
-                    $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.pub');
-                    db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
-                        VALUES ('dkim.pub','" . escape(getPublicRootFolderId()) . "','DKIM Public Key (PEM)','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
-
-                    $liveform_settings->add_notice(
-                        lang('DKIM key pair generated successfully.') .
-                        '<br><label for="dkim_notice_record" class="form-label mt-3">' . lang('Add this TXT record to your DNS:') . '</label>' .
-                        '<textarea id="dkim_notice_record" class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>'
-                    );
-                    log_activity(lang('DKIM key pair generated, files saved, TXT suggestion stored.'), $_SESSION['sessionusername']);
-                }
-            }
+            pg_mail_settings_dkim_generate($saved, $liveform_settings);
         }
 
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');
@@ -672,29 +380,7 @@ if (!$_POST) {
         $saved = smtp_settings_save($liveform_settings);
 
         if ($saved !== false) {
-            $selector = $saved['dkim_selector'];
-            $domain = $saved['dkim_domain'];
-            $txt_record = db_value("SELECT description FROM files WHERE name = 'dkim.key'");
-
-            if ($selector && $domain && $txt_record) {
-                $dns_records = dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
-                $dns_txt = '';
-                if ($dns_records) {
-                    foreach ($dns_records as $rec) {
-                        $dns_txt .= $rec['txt'] . ' ';
-                    }
-                    $dns_txt = trim($dns_txt);
-                }
-
-                if ($dns_txt && strpos($txt_record, $dns_txt) !== false) {
-                    $liveform_settings->add_notice(lang('DKIM test successful. DNS record matches generated key.'));
-                    log_activity(lang('DKIM test successful.'), $_SESSION['sessionusername']);
-                } else {
-                    $liveform_settings->add_warning(lang('DKIM test failed. DNS record not matching or not found.'));
-                }
-            } else {
-                $liveform_settings->add_warning(lang('DKIM domain/selector or key not set.'));
-            }
+            pg_mail_settings_dkim_test($saved, $liveform_settings);
         }
 
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');

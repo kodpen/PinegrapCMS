@@ -5,7 +5,7 @@ module: mail_transport
 ---
 
 ## When does an empty password box keep the saved SMTP password?
-- Only when the host (trimmed, without case) and the port are what the password was saved with; an empty port counts as 587. The username may change. `pg_smtp_password_kept()` in `includes/fn/mail_transport.php` decides, for the system and the campaign server alike; `smtp_settings_save()` in `smtp_settings.php` calls it before anything is written.
+- Only when the host (trimmed, without case) and the port are what the password was saved with; an empty port counts as 587. The username may change. `pg_smtp_password_kept()` in `includes/fn/mail_transport.php` decides, for the system and the campaign server alike; `pg_mail_settings_save()` in `includes/fn/mail_settings.php` calls it before anything is written.
 - Otherwise the saved password is removed from `config.php`. When the posted server still has a host and a username (it would sign in), the whole save is refused with "The SMTP server or its port changed. Enter the password again."; nothing is written, the sending service card included.
 
 ## Why?
