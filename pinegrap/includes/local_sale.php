@@ -258,9 +258,10 @@ function local_sale_percent($rate)
 
 /**
  * The VAT rate of one cart line, the way the checkout works it out for a
- * buyer standing in the store's own tax zone: the product's rate when it has
- * one, the zone's otherwise. 0 when the product is not taxable or the store
- * is in no tax zone.
+ * buyer standing in the store's own tax zone (pg_order_line_tax_rate()): the
+ * product's rate when it has one, the zone's otherwise. 0 while the site
+ * charges no tax (the price is then what the buyer pays, as on the site), for
+ * a product that is not taxable, or when the store is in no tax zone.
  *
  * @param array $item  keys: taxable, tax_rate
  * @return float
@@ -280,11 +281,7 @@ function local_sale_line_rate($item)
         }
     }
 
-    if (empty($item['taxable']) || ($zone_rate === false)) {
-        return 0;
-    }
-
-    return (float) get_effective_tax_rate($item['tax_rate'], $zone_rate);
+    return pg_order_line_tax_rate(pg_tax_switched_on(), $item['taxable'] ?? 0, $item['tax_rate'] ?? null, $zone_rate);
 }
 
 /**
@@ -321,7 +318,7 @@ function local_sale_lines($order_id)
     $rows = db_items(
         "SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, oi.added_by_offer,
                 p.name, p.short_description, p.image_name, p.enabled,
-                p.inventory, p.inventory_quantity, p.taxable, p.tax_rate
+                p.inventory, p.inventory_quantity, p.taxable, p.tax_rate, p.gift_card
          FROM order_items oi
          LEFT JOIN products p ON p.id = oi.product_id
          WHERE oi.order_id = '" . $order_id . "' AND oi.saved_for_later = '0'
@@ -421,6 +418,25 @@ function local_sale_stock_error($product, $wanted, $completing = false)
 }
 
 /**
+ * Why a product cannot be sold at the counter, or '' when it can. A gift
+ * card is issued from the recipient form of the site's checkout (one per
+ * unit, order_item_gift_cards), which the counter does not have: the scan,
+ * the search, the cart and the external API's POST /orders refuse it before
+ * any money is taken.
+ *
+ * @param array $product  keys: gift_card
+ * @return string
+ */
+function local_sale_product_refusal($product)
+{
+    if (!empty($product['gift_card'])) {
+        return lang('Gift cards cannot be sold at the counter: each card needs the recipient form of the site\'s checkout.');
+    }
+
+    return '';
+}
+
+/**
  * The product a scanned or typed code stands for.
  *
  * Tried in this order: the barcode table (when barcodes are on), the stock
@@ -439,7 +455,7 @@ function local_sale_stock_error($product, $wanted, $completing = false)
 function local_sale_find_product($code)
 {
     $code = trim((string) $code);
-    $columns = "id, name, short_description, enabled, inventory, inventory_quantity";
+    $columns = "id, name, short_description, enabled, inventory, inventory_quantity, gift_card";
 
     if ($code === '') {
         return array('product' => null, 'matches' => 0, 'refusal' => '');
@@ -525,7 +541,7 @@ function local_sale_add_item($code, $product_id, $quantity)
     $product = null;
 
     if ((int) $product_id > 0) {
-        $product = db_item("SELECT id, name, short_description, enabled, inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+        $product = db_item("SELECT id, name, short_description, enabled, inventory, inventory_quantity, gift_card FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
     } elseif ($code !== '') {
         $found = local_sale_find_product($code);
         $product = $found['product'];
@@ -547,6 +563,12 @@ function local_sale_add_item($code, $product_id, $quantity)
 
     if (!$product || ((int) $product['enabled'] !== 1)) {
         return local_sale_fail(lang('Product not found or is disabled.'), array('field' => 'product'));
+    }
+
+    $refusal = local_sale_product_refusal($product);
+
+    if ($refusal !== '') {
+        return local_sale_fail(local_sale_product_label($product) . ': ' . $refusal, array('field' => 'product'));
     }
 
     $order_id = local_sale_order_id();
@@ -572,11 +594,6 @@ function local_sale_add_item($code, $product_id, $quantity)
     });
 
     if ($added === false) {
-        // add_order_item() refuses a gift card line past its unit limit.
-        if (pg_gift_card_quantity_refusal_take()) {
-            return local_sale_fail(local_sale_product_label($product) . ': ' . pg_gift_card_line_quantity_error(), array('field' => 'product'));
-        }
-
         return local_sale_fail(lang('Product not found or is disabled.'), array('field' => 'product'));
     }
 
@@ -664,7 +681,9 @@ function local_sale_set_qty($item_id, $quantity)
         return local_sale_ok(lang(array('string' => '{var:1} removed from the cart.', 'vars' => array(local_sale_product_label($item)))), array('level' => 'info'));
     }
 
-    // A gift card line issues one card per unit, up to a limit.
+    // A gift card line issues one card per unit, up to a limit. The counter
+    // adds none (local_sale_product_refusal()); a line a cart held before
+    // that is still held to the limit while it is lowered or removed.
     if (!pg_order_item_quantity_allowed($item['id'], $quantity)) {
         $error = pg_gift_card_line_quantity_error();
 

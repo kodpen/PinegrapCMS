@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the counter sale's cart (includes/local_sale.php): which product
- * a scanned code adds, when a line's quantity change is refused (stock, a
- * gift card line's limit) and the name a line keeps once its product is
- * gone.
+ * a scanned code adds, a gift card refused, when a line's quantity change is
+ * refused (stock, a gift card line's limit) and the name a line keeps once
+ * its product is gone.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -98,7 +98,7 @@ $overlap = array(
 	array('value', "/FROM product_barcodes WHERE barcode = '8690001'/", 7),
 	array('value', "/FROM products\s+WHERE \(name = '8690001'\) AND \(id != '7'\)/", 9),
 	array('item', "/^SELECT id, short_description FROM products WHERE id = '7'/", array('id' => 7, 'short_description' => 'Blue mug')),
-	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity FROM products WHERE id = '7'/", $mug),
+	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity, gift_card FROM products WHERE id = '7'/", $mug),
 	array('item', "/FROM products WHERE name = '8690001'/", $cup),
 );
 
@@ -119,7 +119,7 @@ $out['overlap_add'] = array('ok' => $added['ok'], 'message' => $added['message']
 // 8690002 is the mug's barcode and nobody's product code.
 fake_case(array(
 	array('value', "/FROM product_barcodes WHERE barcode = '8690002'/", 7),
-	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity FROM products WHERE id = '7'/", $mug),
+	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity, gift_card FROM products WHERE id = '7'/", $mug),
 ));
 $found = local_sale_find_product('8690002');
 $out['barcode_find'] = array('product' => $found['product'] ? (int) $found['product']['id'] : 0, 'refusal' => (string) ($found['refusal'] ?? ''));
@@ -127,11 +127,25 @@ $out['barcode_find'] = array('product' => $found['product'] ? (int) $found['prod
 // MUG-7 is the mug's product code and no barcode.
 fake_case(array(
 	array('value', "/FROM products\s+WHERE \(name = 'MUG-7'\)/", 7),
-	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity FROM products WHERE id = '7'/", $mug),
+	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity, gift_card FROM products WHERE id = '7'/", $mug),
 	array('item', "/FROM products WHERE name = 'MUG-7'/", $mug),
 ));
 $found = local_sale_find_product('MUG-7');
 $out['code_find'] = array('product' => $found['product'] ? (int) $found['product']['id'] : 0, 'refusal' => (string) ($found['refusal'] ?? ''));
+
+// A gift card scanned, and picked from the search by id: the counter has no
+// recipient form, so neither reaches the cart.
+$card = array('id' => 40, 'name' => 'GIFT-40', 'short_description' => 'Gift card', 'enabled' => 1, 'inventory' => 0, 'inventory_quantity' => 0, 'gift_card' => 1);
+$gift_rules = array(
+	array('value', "/FROM product_barcodes WHERE barcode = '8690040'/", 40),
+	array('item', "/SELECT id, name, short_description, enabled, inventory, inventory_quantity, gift_card FROM products WHERE id = '40'/", $card),
+);
+
+foreach (array('gift_scan' => array('8690040', 0), 'gift_pick' => array('', 40)) as $key => $how) {
+	fake_case($gift_rules);
+	$added = local_sale_add_item($how[0], $how[1], '1');
+	$out[$key] = array('ok' => $added['ok'], 'message' => $added['message'], 'field' => $added['field'], 'writes' => $GLOBALS['fake_writes']);
+}
 
 // A cart line of 5 mugs while the shelf holds 3 (sold elsewhere since).
 $_SESSION['ecommerce']['local_sale_order_id'] = 50;
@@ -309,7 +323,37 @@ function test_local_sale_gift_card_line_limit()
 
 	$under = local_sale_cart_test_result('gift_99');
 	pg_assert_same(true, $under['ok'], '99 taken');
+}
 
-	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/local_sale.php');
-	pg_assert_contains('if (pg_gift_card_quantity_refusal_take()) {', $source, 'a refused add names the limit');
+// A gift card is issued from the recipient form of the site's checkout,
+// which the counter does not have: a scan and a pick from the search are
+// refused with the reason, before anything is written. It used to be sold
+// with no card issued.
+function test_local_sale_gift_card_is_refused()
+{
+	$reason = 'Gift cards cannot be sold at the counter: each card needs the recipient form of the site\'s checkout.';
+
+	pg_assert_same($reason, local_sale_product_refusal(array('gift_card' => '1')), 'a gift card');
+	pg_assert_same('', local_sale_product_refusal(array('gift_card' => '0')), 'any other product');
+	pg_assert_same('', local_sale_product_refusal(array()), 'a row without the column');
+
+	foreach (array('gift_scan' => 'scanned', 'gift_pick' => 'picked from the search') as $key => $label) {
+		$added = local_sale_cart_test_result($key);
+
+		if ($added === null) {
+			return;
+		}
+
+		pg_assert_same(false, $added['ok'], $label . ': refused');
+		pg_assert_same('Gift card: ' . $reason, $added['message'], $label . ': the reason, named');
+		pg_assert_same('product', $added['field'], $label . ': on the scan box');
+		pg_assert_same(array(), $added['writes'], $label . ': nothing written');
+	}
+
+	// The search list shows the reason in place of the stock.
+	$page = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/add_order.php');
+	$script = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/add_order.js');
+	pg_assert_contains("'refusal' => local_sale_product_refusal(\$row),", $page, 'the search sends the reason');
+	pg_assert_contains("price, taxable, tax_rate, gift_card", $page, 'and reads the column');
+	pg_assert_contains("if (p.refusal) {", $script, 'the list shows it');
 }
