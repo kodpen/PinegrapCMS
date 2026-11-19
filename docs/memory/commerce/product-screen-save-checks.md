@@ -37,8 +37,8 @@ attribute choice changed, every attribute must be one of the set's
 hold the same combination. Two members of one combination cannot be told
 apart by the picker and the replaced one could no longer be bought (#5272).
 An unchanged choice is not checked, so a set holding an old clash still saves.
-A member whose every option was unticked is refused: it would stay in the
-set with no combination.
+A member leaving out one set attribute (`missing`) or all of them is
+refused: the picker could no longer reach it (#10368).
 
 ## What does unticking every option on the edit screen save?
 
