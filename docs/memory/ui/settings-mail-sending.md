@@ -1,6 +1,6 @@
 ---
 name: settings-mail-sending
-description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settings' five cards, the campaign texts and MailChimp from Communication, a save writing config.php then the config row, old anchors
+description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors
 ---
 
 ## What is the category?
@@ -24,5 +24,4 @@ description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settin
 - SMTP Settings left System tools › Connections and its search words; the registry's mail rows name the Sending service card (API services) or the System card (Gmail, Microsoft 365 mail, where the account is chosen). The alert, Messages › Channels and Sends, the campaign screens and the Cron Jobs card link the category.
 - The Connect buttons' hidden forms return to `settings_mail_sending.php#pgset-mail-system`.
 
-## What did the move change in the markup?
-- The buttons are `pg-button pg-button-quiet pg-button-sm` with Bootstrap icons, the Connect buttons and the Sending domain card's Copy too (`ui/look-new-parts.md`); the copy listener binds once per page (`window.pgMailCopyRecordBound`).
+Related: docs/memory/ui/look-settings-mail-sending.md
