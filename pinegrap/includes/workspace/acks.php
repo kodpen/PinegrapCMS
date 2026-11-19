@@ -280,7 +280,7 @@ function ws_acks_map($rows, $viewer)
  *
  * @param array $viewer
  * @param array $message
- * @return array ok, error, read (id, name, avatar, time), unread (id, name, avatar)
+ * @return array ok, error, read (id, name, avatar, time, at), unread (id, name, avatar)
  */
 function ws_ack_people($viewer, $message)
 {
@@ -318,11 +318,9 @@ function ws_ack_people($viewer, $message)
         }
     }
 
+    // at, the moment of the receipt, stays: the readers route gives it as
+    // read_at, where time is only the panel's label.
     usort($read, function ($a, $b) { return $a['at'] - $b['at']; });
-
-    foreach ($read as $index => $entry) {
-        unset($read[$index]['at']);
-    }
 
     return array('ok' => true, 'error' => '', 'read' => array_values($read), 'unread' => $unread);
 }

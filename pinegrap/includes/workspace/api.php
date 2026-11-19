@@ -279,6 +279,7 @@ function ws_openapi_objects()
         'WorkspaceChannelGroupMove' => 'ws_api_channel_group_move_schema',
         'WorkspacePerson'           => 'ws_api_person_schema',
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
+        'WorkspaceMessageFeedback'  => 'ws_api_message_feedback_schema',
         'WorkspaceMessageVia'       => 'ws_api_message_via_schema',
         'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
@@ -1476,6 +1477,26 @@ function ws_api_routes()
             'description' => 'Who of the channel\'s members has seen as far as the message and who not yet, as Seen by in the message menu shows it: seen is a member whose screen had this message or a later one, the writer is left out, and in a public channel only its members count. agents are the channel\'s assistants and agents beside them, state saying what the message made each do (answered, reacted, claimed, running, failed, waiting for one woken that has not taken it, quiet for one not woken); none in a room with a guest. ack is null unless read receipts were asked on the message (POST /workspace/messages/{id}/ack-request); then read lists who said they read it, with when, and unread who has not - for the writer, whoever asked and staff only: anybody else gets listed false and empty lists. The message must be one of a channel the owner reads and not deleted (404 otherwise).',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Right or Wrong under an agent's answer: a person's judgement, from
+        // their own team devices session only.
+        array(
+            'id'          => 'workspace.messages.agent_feedback',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/agent-feedback',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_agent_feedback',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => array('feedback' => 'WorkspaceMessageFeedback'),
+            'summary'     => 'Mark an agent\'s answer right or wrong',
+            'description' => 'Right or Wrong under an agent\'s answer, as the panel shows it: verdict right or wrong, with an optional reason (at most ' . WS_AGENT_FEEDBACK_REASON_MAX . ' characters, spaces folded) on a wrong one; null or an empty verdict takes the mark back. One mark per answer, the last one stands; the agent reads it with GET /workspace/agent-feedback. id is the answer, a message whose feedback is not null for the person (the person who asked, or a manager of the channel). 404 when it is no answered request\'s reply of an application or model agent, or the channel is not read; 403 for anybody but the asker and the channel\'s managers; 422 on verdict or reason; 503 while the site\'s update has not run. The answer is the mark as feedback on the message now gives it. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden, since a mark is a person\'s judgement of an agent.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'verdict', 'in' => 'body', 'type' => 'enum', 'values' => array('right', 'wrong'), 'nullable' => true, 'required' => true, 'description' => 'right or wrong; null or empty takes the mark back.'),
+                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_FEEDBACK_REASON_MAX, 'default' => '', 'description' => 'Why it was wrong, optional.'),
             ),
         ),
 
