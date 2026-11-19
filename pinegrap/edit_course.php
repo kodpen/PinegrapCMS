@@ -113,7 +113,8 @@ $course_shell_properties = array(
     'title' => $course_title,
     'extra classes' => 'courses pg-measure-edit',
     'icon' => 'page',
-    'heading' => $course_title,
+    // output_header() prints the heading as markup; the name is staff text.
+    'heading' => h($course_title),
     'heading_description' => ($course_view === 'learners')
         ? lang('Every member with the course\'s folder: when they enrolled, how far they are and when they completed.')
         : lang('The private folder the course\'s product opens, and its pages as lessons in their order.'),

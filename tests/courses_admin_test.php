@@ -189,3 +189,14 @@ function test_courses_admin_lesson_row_posts_every_list()
 	pg_assert_same(array(), $input['errors'], 'the save is not refused');
 	pg_assert_same(70, $input['lessons'][1]['quiz_pass_score'], 'the quiz lesson keeps its own score');
 }
+
+// output_header() prints its heading as markup, so a course's name, typed by
+// staff, is escaped before it goes there; the title and the breadcrumb escape
+// their own text.
+function test_courses_admin_editor_heading_escapes_the_name()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_course.php');
+
+	pg_assert_contains('\'heading\' => h($course_title)', $source, 'the heading is the escaped name');
+	pg_assert_false((bool) preg_match('/\'heading\'\s*=>\s*\$course_title/', $source), 'never the raw name');
+}
