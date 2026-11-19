@@ -75029,6 +75029,12 @@ const StyleDesigner = (function () {
             Array.prototype.forEach.call(rules || [], function (rule) {
                 if (rule.style) fix(rule.style);
                 if (rule.cssRules) walk(rule.cssRules);
+                // An @import's sheet (another origin's cannot be read).
+                if (rule.styleSheet) {
+                    var imported = null;
+                    try { imported = rule.styleSheet.cssRules; } catch (e) { imported = null; }
+                    walk(imported);
+                }
             });
         };
         Array.prototype.forEach.call(doc.styleSheets, function (sheet) {

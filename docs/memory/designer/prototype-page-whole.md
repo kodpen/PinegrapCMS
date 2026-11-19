@@ -17,8 +17,8 @@ description: The Prototype view's selected page opened whole (PL3): the foot as 
 
 ## How is the taller frame drawn without stretching the page?
 - `_sdProtoPicLoaded()` always measures at the cut's height (the frame set back to 1600 first; `pics.pageH`), then for the open page pins the viewport heights and sets the frame's height to the shown pixels.
-- `_sdProtoPicPinVh(doc)` rewrites vh, svh, lvh, dvh and vmax in the document's readable style rules and style attributes as pixels of the 1600 frame (`picVh(value, 1600)`) and adds `.vh-100` and `.min-vh-100` at 1600 px for a Bootstrap sheet of another origin, whose rules cannot be read. Without it a `min-vh-100` hero grew to 6400.
-- Checked in headless Chromium on a test page: a `min-vh-100` section stayed 1600 high in a 6400 frame, a link under it kept its place.
+- `_sdProtoPicPinVh(doc)` rewrites vh, svh, lvh, dvh and vmax in the document's readable style rules (the page's own sheets, `@media` and `@import` rules included) and style attributes as pixels of the 1600 frame (`picVh(value, 1600)`) and adds `.vh-100` and `.min-vh-100` at 1600 px for a Bootstrap sheet of another origin, whose rules cannot be read. Without it a `min-vh-100` hero grew to 6400.
+- Checked in headless Chromium on a test page: `min-vh-100` in the page's own sheet, a vh rule under `@media`, one from an `@import` and a style attribute all kept their 1600-frame heights in a 6400 frame; a link under them kept its place.
 
 ## How is it checked?
 - `tests/proto_hotspots_test.php`: `test_proto_hotspots_page_opened_whole` (the cut, the box, the frames below, marks and foot past the cut, the foot's state, the units), `test_proto_hotspots_view_opens_the_page_whole` (the wiring).
