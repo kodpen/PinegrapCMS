@@ -335,3 +335,19 @@ function test_courses_gate_notice_names_the_lessons()
 	pg_assert_contains('Light &lt;b&gt;&amp;&lt;/b&gt; &quot;exposure&quot;', $html, 'the name is escaped on the page');
 	pg_assert_false(strpos($html, '<b>') !== false, 'no markup from the name');
 }
+
+// A deleted account's progress goes with it: a new account given the same
+// id (MySQL 5.7 hands the highest id out again after a restart) would
+// inherit its lessons done and its completion, and the Courses list would
+// keep counting it as a learner and a completion.
+function test_courses_progress_goes_with_a_deleted_account()
+{
+	pg_assert_true(function_exists('pg_course_forget_user'), 'the progress has a forget step');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+	$forget = strpos($source, 'pg_course_forget_user(');
+	$delete = strpos($source, 'DELETE FROM user WHERE');
+
+	pg_assert_true($forget !== false, 'pg_user_delete() removes the course progress');
+	pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), 'before the account row goes');
+}

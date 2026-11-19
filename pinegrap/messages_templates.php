@@ -7,7 +7,8 @@
  * listed with their state and text (includes/fn/messages_templates.php)
  * and still edited on the SMS Messages card. The WhatsApp templates are
  * listed as read from Meta, with their type, language, approval state and
- * a rejection's reason; Refresh reads them again. The E-mail designs card
+ * a rejection's reason; Refresh reads them again, New template and each
+ * row open the template designer (whatsapp_template.php). The E-mail designs card
  * shows the ready designs, the site's own and the pages to copy from. The settings' texts, Refresh and the
  * WhatsApp card are for role <= 2 only.
  *
@@ -125,6 +126,9 @@ $body .= pg_messages_template_whatsapp_card(
         'token' => get_token_field(),
         'settings' => $templates_settings,
         'empty' => ($templates_upgraded && $templates_set_up) ? lang('No templates on the account yet. Templates made in WhatsApp Manager show here once Meta lists them.') : '',
+        // The designer is a manager's, as the WhatsApp settings card is
+        // (whatsapp_template.php); it needs the templates' table only.
+        'designer' => ($templates_manager && $templates_upgraded) ? 'whatsapp_template.php' : '',
     )
 );
 
