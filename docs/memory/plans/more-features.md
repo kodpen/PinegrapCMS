@@ -26,7 +26,6 @@ priority: 6
 - `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.
 - `meeting-link.md`: a team member's own "book a time with me" page.
 - `place-map.md`: the places of a collection on a map, with "near me".
-- `customer-value.md`: repeat purchase, lifetime value, cohorts and customer groups.
 - `referral-programme.md`: a customer brings a friend and earns store credit.
 - `wholesale.md`: group offers, one account using another's prices, a minimum order.
 - `event-tickets.md`: a ticket with a QR code per place, check-in at the door, a waiting list.
