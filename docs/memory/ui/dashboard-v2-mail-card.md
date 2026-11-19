@@ -4,7 +4,7 @@ description: New dashboard Incoming e-mail card (cards/mail.php): who is offered
 ---
 
 ## What did the owner ask?
-- Owner (2026-11-19): a card of the inbox "yetki dahilinde", the message titles enough, a click leading to the inbox, matching the card looks (`workflow/decisions-made-product-78.md`). Architect: on the new dashboard only, the old one stays as it is (owner 2026-11-01, `dashboard-v2-overview.md`); eight rows. Plan `plans/incoming-mail-menu-card.md`, the menu pin `main-menu-mail-row.md`.
+- Owner (2026-11-19): a card of the inbox "yetki dahilinde", the message titles enough, a click leading to the inbox, matching the card looks (`workflow/decisions-made-product-78.md`). Architect: on the new dashboard only, the old one stays as it is (owner 2026-11-01, `dashboard-v2-overview.md`); eight rows. Built in #10429 (plan `plans/incoming-mail-menu-card.md`); the menu pin is `main-menu-mail-row.md`.
 
 ## Where is it?
 - Card id `mail`, title "Incoming e-mail", `bi-envelope` (the tab's icon), category General after My notes, width S, no period. Gallery line "The newest incoming e-mail, unread ones in bold, one click from the inbox", sketch `rows`, marked NEW. In no preset.
