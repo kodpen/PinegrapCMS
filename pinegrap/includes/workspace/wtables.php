@@ -381,7 +381,7 @@ function ws_wtable_is_whole($value)
  * is a whole number of minor units, refused when it has a fraction rather
  * than cut; a date is YYYY-MM-DD, with HH:MM after a space when the column
  * keeps a time; a person is a user id, whether they are on the team is
- * the store's check; a status is one of the column's keys; a record link
+ * the store's check (ws_wtable_person_cells_refusal()); a status is one of the column's keys; a record link
  * is a kind and an id, the kind among the column's kinds when it names any;
  * a list is a list of texts or numbers (ws_wtable_list_check()); a row
  * link is a row id (whether that row is there is the store's check,
