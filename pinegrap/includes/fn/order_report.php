@@ -198,6 +198,75 @@ function pg_order_report_default_filters()
 }
 
 /**
+ * The SQL a filter field compares, or '' for an empty or unknown field: such
+ * a filter adds nothing to the report, so a report saved with one still
+ * opens. A field of the order's lines reads order_items, one of its
+ * recipients ship_tos. $from and $to bound the orders an order date is read
+ * over in the site's own time (pg_site_time_sql()).
+ *
+ * @param mixed    $field the filter's field
+ * @param int|null $from
+ * @param int|null $to
+ * @return string
+ */
+function pg_order_report_filter_column($field, $from = null, $to = null)
+{
+    if (!is_string($field) || ($field === '')) {
+        return '';
+    }
+
+    $columns = array(
+        'order_number', 'transaction_id', 'authorization_code', 'special_offer_code', 'referral_source_code',
+        'reference_code', 'tracking_code', 'http_referer', 'currency_code',
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'payment_method', 'card_type', 'cardholder', 'card_number', 'custom_field_1', 'custom_field_2',
+        'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code',
+        'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'po_number',
+    );
+
+    if (in_array($field, $columns, true)) {
+        return 'orders.' . $field;
+    }
+
+    $recipient_columns = array(
+        'shipping_salutation' => 'salutation', 'shipping_first_name' => 'first_name',
+        'shipping_last_name' => 'last_name', 'shipping_company' => 'company',
+        'shipping_address_1' => 'address_1', 'shipping_address_2' => 'address_2',
+        'shipping_city' => 'city', 'shipping_state' => 'state', 'shipping_zip_code' => 'zip_code',
+        'shipping_country' => 'country', 'shipping_address_type' => 'address_type',
+        'shipping_phone_number' => 'phone_number', 'ship_to_name' => 'ship_to_name',
+        'arrival_date_code' => 'arrival_date_code', 'shipping_method_code' => 'shipping_method_code',
+    );
+
+    if (isset($recipient_columns[$field])) {
+        return 'ship_tos.' . $recipient_columns[$field];
+    }
+
+    switch ($field) {
+        case 'order_date':
+            return pg_site_time_sql('orders.order_date', '%Y-%m-%d', $from, $to);
+
+        case 'order_status':
+            return 'orders.status';
+
+        case 'opt_in_status':
+            return 'orders.opt_in';
+
+        case 'tax_status':
+            return 'orders.tax_exempt';
+
+        case 'ip_address':
+            return 'CASE WHEN (INET_NTOA(orders.ip_address) = "0.0.0.0") THEN "" ELSE INET_NTOA(orders.ip_address) END';
+
+        case 'product_name':
+            return 'order_items.product_name';
+    }
+
+    return '';
+}
+
+/**
  * Whether a "day(s) ago" count can be stored: a whole number from 0 up to
  * what the INT UNSIGNED column holds; empty means today. Pure.
  *

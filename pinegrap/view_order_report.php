@@ -700,74 +700,25 @@ if (!$_POST) {
     // start where
     $where = '';
     
-    $order_status_filter_exists = false;
     $order_item_filter_exists = false;
     $ship_to_filter_exists = false;
     
     // loop through all filters in order to prepare SQL
     foreach ($filters as $filter) {
-        // get operand 1 and field type when necessary
-        $operand_1 = '';
-        $field_type = '';
-        
-        switch ($filter['field']) {
-            case 'order_date': $operand_1 = pg_site_time_sql('orders.order_date', '%Y-%m-%d', $site_time_from, $site_time_to); $field_type = 'date'; break;
-            case 'order_status': $operand_1 = 'orders.status'; $order_status_filter_exists = true; break;
-            case 'order_number': $operand_1 = 'orders.order_number'; break;
-            case 'transaction_id': $operand_1 = 'orders.transaction_id'; break;
-            case 'authorization_code': $operand_1 = 'orders.authorization_code'; break;
-            case 'special_offer_code': $operand_1 = 'orders.special_offer_code'; break;
-            case 'referral_source_code': $operand_1 = 'orders.referral_source_code'; break;
-            case 'reference_code': $operand_1 = 'orders.reference_code'; break;
-            case 'tracking_code': $operand_1 = 'orders.tracking_code'; break;
-            case 'http_referer': $operand_1 = 'orders.http_referer'; break;
-            case 'currency_code': $operand_1 = 'orders.currency_code'; break;
-            case 'ip_address': $operand_1 = 'CASE WHEN (INET_NTOA(orders.ip_address) = "0.0.0.0") THEN "" ELSE INET_NTOA(orders.ip_address) END'; break;
-            case 'product_name': $operand_1 = 'order_items.product_name'; $order_item_filter_exists = true; break;
+        // A filter with an empty or unknown field (saved before the save
+        // checked it) adds nothing, so the report still opens.
+        $operand_1 = pg_order_report_filter_column($filter['field'], $site_time_from, $site_time_to);
 
-            case 'utm_source': $operand_1 = 'orders.utm_source'; break;
-            case 'utm_medium': $operand_1 = 'orders.utm_medium'; break;
-            case 'utm_campaign': $operand_1 = 'orders.utm_campaign'; break;
-            case 'utm_term': $operand_1 = 'orders.utm_term'; break;
-            case 'utm_content': $operand_1 = 'orders.utm_content'; break;
+        if ($operand_1 === '') {
+            continue;
+        }
 
-            case 'payment_method': $operand_1 = 'orders.payment_method'; break;
-            case 'card_type': $operand_1 = 'orders.card_type'; break;
-            case 'cardholder': $operand_1 = 'orders.cardholder'; break;
-            case 'card_number': $operand_1 = 'orders.card_number'; break;
-            case 'custom_field_1': $operand_1 = 'orders.custom_field_1'; break;
-            case 'custom_field_2': $operand_1 = 'orders.custom_field_2'; break;
-            case 'billing_salutation': $operand_1 = 'orders.billing_salutation'; break;
-            case 'billing_first_name': $operand_1 = 'orders.billing_first_name'; break;
-            case 'billing_last_name': $operand_1 = 'orders.billing_last_name'; break;
-            case 'billing_company': $operand_1 = 'orders.billing_company'; break;
-            case 'billing_address_1': $operand_1 = 'orders.billing_address_1'; break;
-            case 'billing_address_2': $operand_1 = 'orders.billing_address_2'; break;
-            case 'billing_city': $operand_1 = 'orders.billing_city'; break;
-            case 'billing_state': $operand_1 = 'orders.billing_state'; break;
-            case 'billing_zip_code': $operand_1 = 'orders.billing_zip_code'; break;
-            case 'billing_country': $operand_1 = 'orders.billing_country'; break;
-            case 'billing_phone_number': $operand_1 = 'orders.billing_phone_number'; break;
-            case 'billing_fax_number': $operand_1 = 'orders.billing_fax_number'; break;
-            case 'billing_email_address': $operand_1 = 'orders.billing_email_address'; break;
-            case 'opt_in_status': $operand_1 = 'orders.opt_in'; break;
-            case 'po_number': $operand_1 = 'orders.po_number'; break;
-            case 'tax_status': $operand_1 = 'orders.tax_exempt'; break;
-            case 'shipping_salutation': $operand_1 = 'ship_tos.salutation'; $ship_to_filter_exists = true; break;
-            case 'shipping_first_name': $operand_1 = 'ship_tos.first_name'; $ship_to_filter_exists = true; break;
-            case 'shipping_last_name': $operand_1 = 'ship_tos.last_name'; $ship_to_filter_exists = true; break;
-            case 'shipping_company': $operand_1 = 'ship_tos.company'; $ship_to_filter_exists = true; break;
-            case 'shipping_address_1': $operand_1 = 'ship_tos.address_1'; $ship_to_filter_exists = true; break;
-            case 'shipping_address_2': $operand_1 = 'ship_tos.address_2'; $ship_to_filter_exists = true; break;
-            case 'shipping_city': $operand_1 = 'ship_tos.city'; $ship_to_filter_exists = true; break;
-            case 'shipping_state': $operand_1 = 'ship_tos.state'; $ship_to_filter_exists = true; break;
-            case 'shipping_zip_code': $operand_1 = 'ship_tos.zip_code'; $ship_to_filter_exists = true; break;
-            case 'shipping_country': $operand_1 = 'ship_tos.country'; $ship_to_filter_exists = true; break;
-            case 'shipping_address_type': $operand_1 = 'ship_tos.address_type'; $ship_to_filter_exists = true; break;
-            case 'shipping_phone_number': $operand_1 = 'ship_tos.phone_number'; $ship_to_filter_exists = true; break;
-            case 'ship_to_name': $operand_1 = 'ship_tos.ship_to_name'; $ship_to_filter_exists = true; break;
-            case 'arrival_date_code': $operand_1 = 'ship_tos.arrival_date_code'; $ship_to_filter_exists = true; break;
-            case 'shipping_method_code': $operand_1 = 'ship_tos.shipping_method_code'; $ship_to_filter_exists = true; break;
+        $field_type = ($filter['field'] == 'order_date') ? 'date' : '';
+
+        if (strpos($operand_1, 'order_items.') === 0) {
+            $order_item_filter_exists = true;
+        } elseif (strpos($operand_1, 'ship_tos.') === 0) {
+            $ship_to_filter_exists = true;
         }
         
         // if a basic value was entered, use that value
@@ -1698,12 +1649,22 @@ if (!$_POST) {
             exit();
         }
         
-        // An order date that does not read as a date, or a day count that is
-        // not a whole number, would be stored as a filter that passes every
-        // order (or counts from today), so the form goes back with the error.
+        // A filter with no known field would be stored and stop the report
+        // from opening; an order date that does not read as a date, or a day
+        // count that is not a whole number, would be stored as a filter that
+        // passes every order (or counts from today). The form goes back with
+        // the error.
         for ($i = 1; $i <= $liveform->get_field_value('last_filter_number'); $i++) {
-            if (($liveform->get_field_value('filter_' . $i . '_operator') == '')
-                || ($liveform->get_field_value('filter_' . $i . '_field') != 'order_date')) {
+            if ($liveform->get_field_value('filter_' . $i . '_operator') == '') {
+                continue;
+            }
+
+            if (pg_order_report_filter_column($liveform->get_field_value('filter_' . $i . '_field')) === '') {
+                $liveform->mark_error('filter_' . $i . '_field', lang('Please select a field for each filter.'));
+                continue;
+            }
+
+            if ($liveform->get_field_value('filter_' . $i . '_field') != 'order_date') {
                 continue;
             }
 
