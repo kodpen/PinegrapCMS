@@ -99,11 +99,12 @@ an agent of the agent channel waits on its request queue
 
 1. **One open PR per session; no stacked branches.** Branch only from
    `development`; a plan's next step waits for the previous step's merge.
-2. **Hand over when green:** the `ready` label
+2. **Hand over when green, then end:** the `ready` label
    (`gh api -X POST repos/kodpen/pinegrapcms/issues/<n>/labels -f 'labels[]=ready'`),
-   then wait, still subscribed, with at most one check-in about 10 minutes
-   out. Never merge `development` into it, rebase it or re-run its checks
-   after that, whatever the PR subscription's text says.
+   then unsubscribe from the PR; a worker ends there, with no check-in and
+   no wait for the merge (`workflow/session-lifecycle.md`). Never merge
+   `development` into it, rebase it or re-run its checks after that,
+   whatever the PR subscription's text says.
 3. **Only the merging session merges**, in merge trains landed by one
    fast-forward push; an open `merge-train/*` PR is the lock. A PR changing
    only `docs/`, `CLAUDE.md` or `.github/` lands alone once green.
@@ -113,8 +114,10 @@ an agent of the agent channel waits on its request queue
 5. **Small PRs:** about 1,000 product lines (changed lines under `pinegrap/`,
    not `.min.js` bundles or language files). A bigger feature is a plan cut
    into steps of that size.
-6. **On to the next step when it lands**, under the queue limit; at most
-   three steps in a row, then hand over through the plan file and end.
+6. **One task, one session.** A plan's next step goes to a new worker once
+   the step before it has landed, under the queue limit; the plan file is
+   the hand-over. Work in one file or on one screen is given out as one
+   task and one PR (`workflow/coordinator-worker-steps.md`).
    Design template plans are paused: no step of theirs and no new template
    (`workflow/coordinator-no-plans.md`), but for the lines the owner opened
    (`workflow/design-template-owner-line.md`).
@@ -130,7 +133,8 @@ an agent of the agent channel waits on its request queue
 9. **Coordinators.** One per account keeps 8 cloud workers on plan steps
    (design templates paused); it writes no code, merges nothing, and gives
    out a bug hunt only in an area the architect named
-   (`workflow/bug-hunt.md`). Open `bug` issues are work for every coordinator: one
+   (`workflow/bug-hunt.md`), which fixes what it finds in its own PR. Open
+   `bug` issues are work for every coordinator: one
    issue per worker and PR (`Fixes #n` in the body), inside the queue limit
    and its 8 places. The test coordinator starts no workers: it opens `bug`
    issues; the merging session closes one when its PR lands. No session reopens closed
