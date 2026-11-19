@@ -122,6 +122,7 @@
 - mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-outcome.md: The mail queue's outcome hook (PR #8607): a queued row names a handler (on_outcome) and a reference (outcome_ref); after sent, given up or blocked the queue calls it; where it does not
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
+- mail-settings-module.md: includes/fn/mail_settings.php: what SMTP Settings saves and runs (config.php defines, kept password, DKIM, test e-mail), moved out of the screen (CX3a) [decision: here]
 - mail-transport-failure.md: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to SMTP Settings
 - mail-transport-webhooks.md: mail_webhook.php — bounce, complaint and delivery reports of the API mail transports into the bounce record; URL key, Mailgun/Resend signatures, replays, SES subscription
 - mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card

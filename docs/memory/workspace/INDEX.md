@@ -227,6 +227,7 @@
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-bin-flow-blocks-followup.md: Workspace API routes of CA16 (#9831): a binned table row deleted for good (person only, no MCP tool), a draft flow from a table, titled blocks searched and read, a customer channel's follow-up
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools [decision: here]
+- workspace-api-changes-reach.md: Which proposed changes GET /workspace/changes, apply and dismiss reach: readable channels, the discussions the owner is in, tasks they see; the assistant requests read channels only
 - workspace-api-channel-access.md: Channel kind, join, clear and version rename in the API (api_channel_access.php): person only, no MCP tool, the panel checks, who comes in and leaves
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
 - workspace-api-channel-settings.md: A channel's records watch, summary and Claude, Pinegrap AI and voice switches over the API (CA13, #9791): the routes, who may set them, the channel object's fields
@@ -237,8 +238,9 @@
 - workspace-api-message-canvas.md: file.canvas of an API message (#8649, PR #9161): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
 - workspace-api-overview.md: The Workspace part of the external API as a whole: who may call which write (key, OAuth, team devices), dry runs, sync and inbox, tasks, plan, time, forwards; which workspace-api-* file holds each
 - workspace-api-person-card.md: GET /workspace/channels/{id}/members/{user_id}, the person card of a channel in the API and MCP (api_person_card.php): what it returns, who may call it, seen only for a manager [decision: here]
-- workspace-api-plan.md: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count) and where they come from
+- workspace-api-plan.md: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count), where they come from, agent channels' tasks left out
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
+- workspace-api-task-links.md: A task's links over the Workspace API (#10343): links on GET /workspace/tasks/{id} in the task drawer's shape, bare ids on the lists, null without the table
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
 - workspace-api-task-time.md: Task time over the Workspace API (PR #2288): GET /workspace/time (own rows across tasks, range, hidden task, running timer, total) and POST /workspace/tasks/{id}/time/{entry_id}/update
 - workspace-api-tasks-scope.md: Which Workspace API reads need tasks:read for the tasks they carry (my-day, search, channel context, record refs, customer history), and what they answer without it
