@@ -29,7 +29,7 @@ module: store_credit_events
 
 ## What about personal data?
 - Export: the privacy export already takes cards by `user_id` (code cut to its end).
-- Erasure: entry `store_credit` (table `gift_cards`, found by `user_ids`, `user_id` → 0); `_pg_privacy_erase_apply_store_credit()` voids every card with a balance through `pg_credit_void()` ("Personal data erased", audit `revoke`) before clearing the account. Runs before the `user` row goes.
+- Erasure: entry `store_credit` voids the cards, then clears `user_id` on those at 0; the retry and the race: `commerce/privacy-erase-store-credit.md`.
 
 ## Tests?
 - `tests/api_customer_credit_test.php`: account pick, card presenter, last day, routes and stop order, events and payload, erasure order; `tests/privacy_erase_test.php` pins the entry.

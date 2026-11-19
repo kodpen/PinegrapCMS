@@ -105,3 +105,45 @@ function test_write_permission_walk_lists_a_closed_folder()
 	pg_assert_same(1, $folders['directories_count']);
 	pg_assert_same($full['directories'], $folders['directories'], 'the full walk lists the same folder');
 }
+
+function test_write_permission_time_budget_follows_max_execution_time()
+{
+	pg_assert_same(10.0, pg_write_permission_time_budget(0), 'no limit: the ten-second ceiling');
+	pg_assert_same(10.0, pg_write_permission_time_budget('0'), 'ini_get() answers a string');
+	pg_assert_same(10.0, pg_write_permission_time_budget(false), 'an unreadable setting: the ceiling');
+	pg_assert_same(10.0, pg_write_permission_time_budget('300'), 'a long limit: the ceiling');
+	pg_assert_same(7.5, pg_write_permission_time_budget(30), 'a quarter of a 30-second limit');
+	pg_assert_same(1.0, pg_write_permission_time_budget(2), 'never under one second');
+	pg_assert_same(10.0, pg_write_permission_time_budget(-5), 'a negative limit reads as none');
+}
+
+function test_write_permission_walk_stop_answers_by_entries_then_time()
+{
+	pg_assert_same('', pg_write_permission_walk_stop(10, 0.5, 10.0), 'within both ceilings');
+	pg_assert_same('entries', pg_write_permission_walk_stop(40001, 0.5, 10.0), 'past the entry ceiling');
+	pg_assert_same('', pg_write_permission_walk_stop(40000, 0.5, 10.0), 'the ceiling itself is still walked');
+	pg_assert_same('time', pg_write_permission_walk_stop(10, 10.0, 10.0), 'the budget spent');
+	pg_assert_same('time', pg_write_permission_walk_stop(10, 12.3, 10.0), 'the budget overrun');
+	pg_assert_same('', pg_write_permission_walk_stop(10, 999.0, 0.0), 'no budget: time never stops it');
+	pg_assert_same('entries', pg_write_permission_walk_stop(40001, 12.0, 10.0), 'both: the entry ceiling is named');
+}
+
+function test_write_permission_walk_stops_in_time_and_says_so()
+{
+	$tree = pg_test_write_permission_tree();
+
+	// A budget already spent stops the walk at its first entry; the root
+	// is still asked, as on a slow disk where the first answers came late.
+	$spent = pg_write_permission_walk($tree['root'], true, 0.000001);
+	$whole = pg_write_permission_walk($tree['root'], true, 60.0);
+
+	pg_test_write_permission_tree_remove($tree['root']);
+
+	pg_assert_true($spent['truncated'], 'a walk out of time is truncated');
+	pg_assert_true($spent['timed_out'], 'and says it ran out of time');
+	pg_assert_same(1, $spent['checked_directories'], 'only the root was asked');
+
+	pg_assert_false($whole['truncated'], 'a walk within its budget is whole');
+	pg_assert_false($whole['timed_out']);
+	pg_assert_same(8, $whole['checked_directories']);
+}

@@ -337,11 +337,10 @@ if (isset($_GET['export'])) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
+                ' . pg_messages_tab_strip_for('automatic', $user) . '
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-               
-                ' . pg_messages_tab_strip_for('automatic', $user) . '
                 ' . $profile_flows_notice . '
                 ' . pg_screen_toolbar(array(
                     'primary'   => array('label' => lang('Create'), 'url' => 'add_email_campaign_profile.php', 'icon' => 'bi-plus-circle'),

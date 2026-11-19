@@ -75,6 +75,7 @@ function get_help_url($properties = array())
         'settings_seo'        => 'site-settings#seo',
         'settings_languages'  => 'site-settings#languages',
         'settings_contact'    => 'site-settings#communication',
+        'settings_mail_sending' => 'site-settings#smtp-settings',
         'settings_mailboxes'  => 'workspace-cont#e-mails',
         'settings_security'   => 'site-settings#security',
         'settings_firewall'   => 'site-settings#firewall',
@@ -90,7 +91,6 @@ function get_help_url($properties = array())
         'settings_workspace_channels'   => 'workspace#workspace-settings',
         'system_tools'        => 'site-settings#system-tools',
         'design_examples'     => 'site-settings#system-tools',
-        'smtp_settings'       => 'site-settings#smtp-settings',
         'mail_queue'          => 'site-settings#mail-queue',
         'software_repair'     => 'site-settings#repair-software',
         'backups'             => 'site-settings#backups',
@@ -143,6 +143,8 @@ function get_help_url($properties = array())
         'view_comments'       => 'pages#edit-comment',
         'edit_comment'        => 'pages#edit-comment',
         'view_content_review' => 'pages#content-review',
+        'view_courses'        => 'pages#courses',
+        'edit_course'         => 'pages#courses',
         'add_page'            => 'pages#edit-page-properties',
         'edit_page'           => 'pages#edit-page-properties',
         'view_fields'         => 'pages#edit-custom-form',
@@ -486,6 +488,8 @@ function get_help_url($properties = array())
         'messages_mail'           => 'workspace-cont#e-mails',
         'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
         'workspace_mcp'           => 'api#mcp',
+        // The meeting link's page is written up with the bookings.
+        'workspace_meeting_link'  => 'site-settings#bookings',
 
         // API and integrations
         'api_settings'         => 'api#api-keys',

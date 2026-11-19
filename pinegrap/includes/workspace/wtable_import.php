@@ -220,9 +220,30 @@ function ws_wtable_import_checkbox($text, $digits = true)
 }
 
 /**
+ * Is a value written as a code rather than a quantity: a leading + or 0
+ * before a digit (a phone number, a postal code), or digits grouped by
+ * spaces other than in thousands (532 123 45 67)? Read as a number it
+ * would lose the zero and the spacing. Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_wtable_import_code_like($text)
+{
+    $text = trim(str_replace("\xC2\xA0", ' ', (string) $text));
+
+    if (preg_match('/^(?:\+|0[0-9])/', $text)) {
+        return true;
+    }
+
+    return (bool) preg_match('/[0-9] +[0-9]/', $text) && !preg_match('/^-?[0-9]{1,3}(?: [0-9]{3})+(?:[.,][0-9]+)?$/', $text);
+}
+
+/**
  * The type a column's values suggest, with the options it is made with.
  * Every non-empty value must read as the type: a tick word, a date, an
- * amount with a currency, a number; few labels repeated make a status;
+ * amount with a currency, a number not written as a code
+ * (ws_wtable_import_code_like()); few labels repeated make a status;
  * anything else is text. People and record links are never guessed.
  *
  * @param string[] $values
@@ -270,7 +291,7 @@ function ws_wtable_import_guess($values)
             }
         } elseif (($type === 'date') && !$all('ws_wtable_import_date')) {
             continue;
-        } elseif (($type === 'number') && !$all('ws_wtable_import_number')) {
+        } elseif (($type === 'number') && (!$all('ws_wtable_import_number') || array_filter($filled, 'ws_wtable_import_code_like'))) {
             continue;
         } elseif ($type === 'status') {
             $labels = array_unique(array_map('ws_fold', $filled));
@@ -530,10 +551,69 @@ function ws_wtable_import_row_cells($row, $map, $columns, $people = array())
 }
 
 /**
+ * The cells a file row fills, of ws_wtable_import_row_cells(): a value,
+ * or an unticked box whose field the file wrote (no, 0), so that a keyed
+ * import lays it over the row and unticks it; an empty field fills
+ * nothing. Pure.
+ *
+ * @param array $row   the file row's values
+ * @param array $map   file column index => column id
+ * @param array $cells column id => value
+ * @return array column id => value
+ */
+function ws_wtable_import_filled($row, $map, $cells)
+{
+    $written = array();
+
+    foreach ((array) $map as $i => $id) {
+        if (trim((string) ($row[$i] ?? '')) !== '') {
+            $written[$id] = true;
+        }
+    }
+
+    $filled = array();
+
+    foreach ((array) $cells as $id => $value) {
+        if (($value !== null) && (($value !== false) || isset($written[$id]))) {
+            $filled[$id] = $value;
+        }
+    }
+
+    return $filled;
+}
+
+/**
+ * A value read from a file as UTF-8: one that is not UTF-8 is taken to be
+ * the Windows Turkish code page, which Turkish Excel writes its "CSV
+ * (comma delimited)" in (ISO-8859-9 where mbstring lacks it; the two
+ * differ only in 0x80-0x9F). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_wtable_import_utf8($value)
+{
+    $value = (string) $value;
+
+    if (mb_check_encoding($value, 'UTF-8')) {
+        return $value;
+    }
+
+    static $encoding = null;
+
+    if ($encoding === null) {
+        $encoding = in_array('windows-1254', array_map('strtolower', mb_list_encodings()), true) ? 'Windows-1254' : 'ISO-8859-9';
+    }
+
+    return (string) mb_convert_encoding($value, 'UTF-8', $encoding);
+}
+
+/**
  * A CSV or spreadsheet file as a table of trimmed values, blank lines
  * dropped: a spreadsheet through the product import's reader, a CSV with
- * the separator its first line uses most. Reads one line more than $max so
- * that a longer file is told (more).
+ * the separator its first line uses most, values not in UTF-8 read as the
+ * Turkish code page (ws_wtable_import_utf8()). Reads one line more than
+ * $max so that a longer file is told (more).
  *
  * The one reader of a table file: the bulk product drafts read through it
  * too (ws_bulk_file_table()), capped at a product card's rows.
@@ -588,7 +668,7 @@ function ws_wtable_import_file_table($path, $file_name, $max)
             $row[0] = substr((string) $row[0], 3);
         }
 
-        $row = array_map('trim', array_map('strval', (array) $row));
+        $row = array_map('trim', array_map('ws_wtable_import_utf8', (array) $row));
 
         if (implode('', $row) === '') {
             continue;
@@ -945,10 +1025,7 @@ function ws_wtable_import_rows($viewer, $table, $rows, $map)
 
     foreach (array_values($rows) as $i => $row) {
         $cells = ws_wtable_import_row_cells($row, $map, $columns, $people);
-
-        $filled = array_filter($cells, function ($value) {
-            return ($value !== null) && ($value !== false);
-        });
+        $filled = ws_wtable_import_filled($row, $map, $cells);
 
         if (empty($filled)) {
             continue;
@@ -1117,11 +1194,8 @@ function ws_wtable_import_rows_check($columns, $map, $rows, $room, $people = arr
 
     foreach ($rows as $i => $row) {
         $cells = ws_wtable_import_row_cells($row, $map, $columns, $people);
-        $filled = array_filter($cells, function ($value) {
-            return ($value !== null) && ($value !== false);
-        });
 
-        if (empty($filled)) {
+        if (empty(ws_wtable_import_filled($row, $map, $cells))) {
             continue;
         }
 
@@ -1243,6 +1317,21 @@ function ws_wtable_import_create($viewer, $name, $plan, $rows)
 }
 
 /**
+ * A read table as the JSON ws_wtable_import_keep() writes, '' when it has
+ * none (a value not in UTF-8 makes json_encode() fail, and an empty file
+ * kept would show the person nothing at all). Pure.
+ *
+ * @param array $table
+ * @return string
+ */
+function ws_wtable_import_keep_json($table)
+{
+    $json = json_encode(array_values((array) $table), JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && ($json !== '[]')) ? $json : '';
+}
+
+/**
  * Keep a read file between the upload and the confirmation: its table as
  * JSON in the system's temp folder, the path in the person's session. A
  * file kept before is dropped.
@@ -1257,9 +1346,15 @@ function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
 {
     ws_wtable_import_drop();
 
+    $json = ws_wtable_import_keep_json($read['table'] ?? array());
+
+    if ($json === '') {
+        return false;
+    }
+
     $path = @tempnam(sys_get_temp_dir(), 'pg_wtimport_');
 
-    if (($path === false) || (@file_put_contents($path, json_encode($read['table'], JSON_UNESCAPED_UNICODE)) === false)) {
+    if (($path === false) || (@file_put_contents($path, $json) !== strlen($json))) {
         return false;
     }
 

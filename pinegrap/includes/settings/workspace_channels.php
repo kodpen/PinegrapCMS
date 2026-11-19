@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - Channels, mail and voice: the channel templates (archive
- * and bring back here, edited on the template screen), the voice message
- * transcripts and spoken answers, the GitHub repositories linked to
+ * Site Settings - Channels: the channel templates (archive and bring back
+ * here, edited on the template screen), the GitHub repositories linked to
  * channels (Link a repository in a drawer) and the link previews switch.
- * The mailboxes have a category of their own (includes/settings/mailboxes.php).
+ * The mailboxes have a category of their own (includes/settings/mailboxes.php);
+ * the voice message transcripts are a card of Assistants and agents
+ * (includes/settings/workspace_assistants.php).
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -29,13 +30,6 @@ $ws_viewer = ws_viewer($user);
 
 // ── Channel templates ──
 $ws_card = ws_templates_settings_card('', $ws_viewer, $ws_form);
-
-if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
-}
-
-// ── Voice message transcripts ──
-$ws_card = ws_voice_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;

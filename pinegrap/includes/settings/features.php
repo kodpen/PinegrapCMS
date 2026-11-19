@@ -502,6 +502,54 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                         </div>';
 }
 
+// Courses (includes/fn/courses.php): off on every site, a new install too.
+// On, the Pages menu offers the Courses screen and the lesson gate runs.
+if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-courses" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Courses')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="courses_card" value="1"/>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_course_switch_on() ? ' checked="checked"' : '') . ' id="courses_on" name="courses_on" aria-describedby="courses_on_help"/>
+                                        <label class="pg-text-2" for="courses_on">' . h(lang('Courses with ordered and timed lessons')) . '</label>
+                                    </div>
+                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="courses_on_help">' . h(lang('A course is a private folder a product already opens: its pages become lessons that open in order or some days after enrolment, and each member\'s progress is kept. On, the Pages menu offers the Courses screen.')) . '</p>
+                                </div>
+                            </div>
+                        </div>';
+}
+
+// Visitor notifications (includes/fn/site_push.php): off on every site, a new
+// install too, until it is switched on here. Read and saved only through the
+// module's one reader and saver. With it off the "Notify me" block draws
+// nothing and site_push.php takes no subscription.
+if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-site-push" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Visitor notifications')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="site_push_card" value="1"/>
+                                    <div class="row gy-12">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_site_push_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_on" name="site_push_on"/></div>
+                                                <label for="site_push_on">' . h(lang('Let visitors turn on notifications from this site')) . '</label>
+                                                <div class="form-text">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // Content changes that wait for approval (includes/fn/content_proposals.php):
 // off on every site until it is switched on here, by a designer or an
 // administrator only (a Manager's own saves are the ones held). The channel

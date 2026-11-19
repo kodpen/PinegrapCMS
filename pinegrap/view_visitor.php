@@ -167,7 +167,7 @@ $output_fact = function ($label, $value_html) {
 $output_card = function ($heading, $tiles) {
     return '
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($heading) . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h($heading) . '</h2>
                         <div class="card-body pt-0">
                             <div class="row">' . $tiles . '
                             </div>
@@ -281,7 +281,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('Visit Details'),
-        'extra classes'=>'visitor',
+        'extra classes'=>'visitor pg-measure-edit',
         'icon'=>'visitor',
         'heading'=> lang('Visit Details'),
         'heading_description' => lang('View this computer\'s visit to the website.'),
@@ -301,7 +301,7 @@ pg_page_shell(
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
                     <div class="card-body pt-0 small">
                         <dl class="mb-0">'
                             . $output_fact(lang('Visitor Number'), h($id ? $id : '-'))
@@ -313,7 +313,7 @@ pg_page_shell(
                     </div>
                 </div>
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor\'s Location Information')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Visitor\'s Location Information')) . '</h2>
                     <div class="card-body pt-0 small">
                         <dl class="mb-0">'
                             . $output_fact(lang('City'), h($city ? $city : '-'))

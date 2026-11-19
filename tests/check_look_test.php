@@ -69,3 +69,36 @@ function test_look_baseline_lists_every_stylesheet()
 		pg_assert_true(isset($baseline[$path]['size'], $baseline[$path]['weight'], $baseline[$path]['colour']), $path . ' has a baseline');
 	}
 }
+
+function test_look_markup_counts_old_buttons_and_tabs()
+{
+	$php = "<?php\n"
+		. "// a btn btn-primary in a comment\n"
+		. "echo '<button class=\"btn btn-sm btn-outline\">A</button><a class=\"btn btn-link\">B</a>';\n"
+		. "echo '<ul class=\"nav nav-tabs\"></ul><ul class=\"nav nav-pills\"></ul><ul class=\"nav nav-underline\"></ul>';\n"
+		. "echo '<span class=\"pg-button pg-seg nav-tabs-x my-btn btn-x\"></span>';\n";
+	pg_assert_same(array('button' => 2, 'tabs' => 3), pg_look_markup_counts($php, 'php'), 'two buttons and three tab strips, the comment and lookalikes left out');
+
+	$js = "/* btn btn-primary */\n"
+		. "  // nav-tabs\n"
+		. "var a = '<button class=\"btn btn-danger\">x</button>'; // see https://example.com\n"
+		. "$('.nav-tabs').show();\n";
+	pg_assert_same(array('button' => 1, 'tabs' => 1), pg_look_markup_counts($js, 'js'), 'JavaScript comments left out, a selector counted');
+
+	$site = "<?php\necho '<a class=\"btn btn-primary\">panel</a>';\n";
+	$from = strlen($site);
+	$site .= "echo '<a class=\"btn btn-primary\">site</a>';\n";
+	pg_assert_same(array('button' => 1, 'tabs' => 0), pg_look_markup_counts($site, 'php', array(array($from, strlen($site)))), 'a site-output range is not counted');
+}
+
+function test_look_markup_files_are_panel_sources_only()
+{
+	pg_assert_true(pg_look_markup_file('api_settings.php', 'panel'), 'a panel screen');
+	pg_assert_true(pg_look_markup_file('assets/js/workspace.js', 'panel'), 'a script source');
+	pg_assert_false(pg_look_markup_file('assets/js/workspace.min.js', 'panel'), 'a bundle');
+	pg_assert_false(pg_look_markup_file('assets/js/style_designer_panels.js', 'panel'), 'the visual designer');
+	pg_assert_false(pg_look_markup_file('assets/lib/x/y.js', 'panel'), 'a library');
+	pg_assert_false(pg_look_markup_file('assets/css/backend.src.css', 'panel'), 'a stylesheet');
+	pg_assert_false(pg_look_markup_file('includes/design_templates/x/parts.php', 'site'), 'site output');
+	pg_assert_false(pg_look_markup_file('liveform.class.php', 'shared'), 'a file shared with the site');
+}

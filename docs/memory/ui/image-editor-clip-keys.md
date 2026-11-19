@@ -8,7 +8,7 @@ module: image_editor
 - The `clip` part (`pg_image_editor_clip.js`), the model's `CLIP` section (`clipSplitPick()`, `clipSplit()`) and ACCESS section (`timelineLetter()`, the `?` sheet's timeline group), the motion part's `motionKey()`. Tests: `tests/image_editor_clip_test.php`, `tests/image_editor_access_test.php`. The rest of clip editing: `image-editor-clip-timeline.md`.
 
 ## How is a clip split quickly?
-- One method, `Editor.clipSplitHere(id)`, for every Split: the panel's Split clip, the play bar's Split (after Record, before the clock, only while the document holds a clip; scissors, its label from 1024 px of stage width, `pgie-mwide`), the S key in Animate, the chip and the phone's selection bar. #9972.
+- One method, `Editor.clipSplitHere(id)`, for every Split: the panel's Split clip, the play bar's Split (after Record, before the clock, only while the document holds a clip; scissors, its label from 1024 px of stage width, `pgie-mwide`), the S key in Animate, the chip, the phone's selection bar (Split, `actSplit`) and the bar over one selected clip in Animate on the desktop (Split clip, `clipSplit`, #10003). #9972.
 - Without an id `M.clipSplitPick(layers, selected, t)` chooses: the one selected clip when the playhead can split it, else the clip it can split lowest in the stack; never hidden or locked. Nothing to split shows `clipSplitNote` as an alert toast (a screen reader hears it).
 - The chip: 24 px scissors on a clip row's lane at the playhead where it can split a clip of that row (`clipChipSet()`, moved with the tracks' playhead); not while playing, dragging a bar, at rest or on a phone (under 600 px).
 

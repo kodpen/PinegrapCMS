@@ -4,11 +4,11 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 ---
 
 ## Where is the setup kept?
-- `config.product_feeds` (TEXT JSON, 2026.11.0 step 11.0.4): seller name/URL, privacy and terms URLs, default brand, excluded group ids, and per format (`openai_jsonl`, `openai_csv`, `google_tsv`) `enabled`, `token_hash`, `token_secret`, `built_at`, `count`, `bytes`, `error`, `skipped`.
-- Always read through `pg_product_feed_settings()` → `pg_product_feed_settings_parse()` (typed, unknown keys dropped); written by `pg_product_feed_settings_save()`, which parses again before writing. Before the step, `pg_product_feed_schema_ready()` is false and nothing runs.
+- `config.product_feeds` (TEXT JSON, 2026.11.0 step 11.0.4): seller name/URL, privacy and terms URLs, default brand, excluded group ids, and per format (`openai_jsonl`, `openai_csv`, `google_tsv`, `google_xml`) `enabled`, `token_hash`, `token_secret`, `built_at`, `count`, `bytes`, `error`, `skipped`.
+- Read through `pg_product_feed_settings()` → `pg_product_feed_settings_parse()` (typed, unknown keys dropped); written by `pg_product_feed_settings_save()`, which parses again before writing. Before the step, `pg_product_feed_schema_ready()` is false and nothing runs.
 
 ## How does an address work?
-- One token per format (`pg_product_feed_issue_token()`, 43 URL-safe chars): `token_hash` (SHA-256) finds it, `token_secret` is the token sealed with `ENCRYPTION_KEY` (`"<cipher>:<iv>"`) so the screen can show the address again; a new token ends the old address at once. Same model as the Workspace calendar address.
+- One token per format (`pg_product_feed_issue_token()`, 43 URL-safe chars): `token_hash` (SHA-256) finds it, `token_secret` is the token sealed with `ENCRYPTION_KEY` (`"<cipher>:<iv>"`) so the screen can show the address; a new token ends the old address at once. Same model as the Workspace calendar address.
 - Address: `<site>/<software dir>/feed.php?f=<token>` (`pg_product_feed_url()`).
 
 ## What does the daily job do?

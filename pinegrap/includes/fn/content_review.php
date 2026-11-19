@@ -619,3 +619,269 @@ function pg_content_review_sweep($seconds = 5)
 
     return $out;
 }
+
+/** The most rows one general job tick announces; the rest wait for the next. */
+const PG_CONTENT_REVIEW_ANNOUNCE_LIMIT = 200;
+
+/**
+ * The claim of one row, pure: the UPDATE that writes announced_on =
+ * review_on only where the date has passed and was not announced yet (or
+ * was announced for another date), with its values. Only a write that
+ * changed the row announces, so two job runs at once announce an item once;
+ * a new date (Mark reviewed, a date set) differs from announced_on again.
+ *
+ * @param string $kind
+ * @param int    $item_id
+ * @param string $review_on the date the row was read with
+ * @param string $today     Y-m-d, pg_content_review_today()
+ * @return array array('sql', 'params')
+ */
+function pg_content_review_claim_sql($kind, $item_id, $review_on, $today)
+{
+    return array(
+        'sql' => 'UPDATE content_review SET announced_on = review_on'
+            . ' WHERE item_kind = ? AND item_id = ? AND review_on = ? AND review_on < ?'
+            . ' AND (announced_on IS NULL OR announced_on <> review_on)',
+        'params' => array((string) $kind, (string) (int) $item_id, (string) $review_on, (string) $today),
+    );
+}
+
+/**
+ * The rows whose date has passed and that were not announced for that date,
+ * oldest date first. Today is a bound value, never CURDATE().
+ *
+ * @param string $today
+ * @param int    $limit
+ * @return array item_kind, item_id, user_id, review_on each
+ */
+function pg_content_review_due_rows($today, $limit = PG_CONTENT_REVIEW_ANNOUNCE_LIMIT)
+{
+    $result = db_q(
+        'SELECT item_kind, item_id, user_id, review_on FROM content_review
+        WHERE review_on IS NOT NULL AND review_on < ? AND (announced_on IS NULL OR announced_on <> review_on)
+        ORDER BY review_on, item_kind, item_id
+        LIMIT ' . max(1, (int) $limit),
+        array((string) $today));
+
+    $rows = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = $row;
+    }
+
+    return $rows;
+}
+
+/**
+ * An item's name as the screen shows it: a page's name, a record's title
+ * field, else its reference code.
+ *
+ * @param string $kind
+ * @param int    $item_id
+ * @return string
+ */
+function pg_content_review_item_name($kind, $item_id)
+{
+    $item_id = (int) $item_id;
+
+    if ($kind === 'page') {
+        return (string) db_value("SELECT page_name FROM page WHERE page_id = '" . $item_id . "'");
+    }
+
+    $title = (string) db_value(
+        "SELECT form_data.data FROM form_data
+        JOIN form_fields ON form_data.form_field_id = form_fields.id
+        WHERE form_data.form_id = '" . $item_id . "' AND form_fields.rss_field = 'title' AND form_fields.office_use_only = 0
+        LIMIT 1");
+
+    return (trim($title) !== '') ? $title : (string) db_value("SELECT reference_code FROM forms WHERE id = '" . $item_id . "'");
+}
+
+/**
+ * What content.review_due carries, pure: the item (id, kind, name), its
+ * person (user_id, 0 for nobody, and their username) and the date passed.
+ *
+ * @param array  $row         item_kind, item_id, user_id, review_on
+ * @param string $name        the item's name
+ * @param string $person_name the person's username, '' for nobody
+ * @return array
+ */
+function pg_content_review_due_payload(array $row, $name, $person_name)
+{
+    return array(
+        'id'        => (int) $row['item_id'],
+        'kind'      => (string) $row['item_kind'],
+        'name'      => (string) $name,
+        'user_id'   => (int) $row['user_id'],
+        'person'    => ((int) $row['user_id'] > 0) ? (string) $person_name : '',
+        'review_on' => (string) $row['review_on'],
+    );
+}
+
+/**
+ * One announce run over the rows read, pure but for the callables: each
+ * row is claimed first and announced only when the claim changed it and the
+ * item still counts (a page outside the Recycle Bin, a record of a
+ * collection). An item that is gone or no longer counts is claimed but not
+ * announced, so it is not read again every run.
+ *
+ * @param array    $rows     pg_content_review_due_rows()
+ * @param callable $claim    row => bool, whether the claim changed the row
+ * @param callable $counts   row => bool, whether the item counts
+ * @param callable $announce row => void
+ * @return int the items announced
+ */
+function pg_content_review_announce_run(array $rows, callable $claim, callable $counts, callable $announce)
+{
+    $announced = 0;
+
+    foreach ($rows as $row) {
+        if (($row['review_on'] ?? null) === null || ((string) $row['review_on'] === '')) {
+            continue;
+        }
+
+        if (!$claim($row) || !$counts($row)) {
+            continue;
+        }
+
+        $announce($row);
+        $announced++;
+    }
+
+    return $announced;
+}
+
+/**
+ * The general job's announce (job.php): content.review_due once per item on
+ * the first run after its review date has passed, through pg_announce(), so
+ * a flow can start from it and a webhook can carry it.
+ *
+ * @param int|null $now unix time; now when null
+ * @return int the items announced
+ */
+function pg_content_review_announce_due($now = null)
+{
+    if (!pg_content_review_ready() || !function_exists('pg_announce')) {
+        return 0;
+    }
+
+    $today = pg_content_review_today(($now === null) ? 0 : (int) $now);
+
+    return pg_content_review_announce_run(pg_content_review_due_rows($today),
+        function ($row) use ($today) {
+            $claim = pg_content_review_claim_sql($row['item_kind'], $row['item_id'], $row['review_on'], $today);
+
+            return (db_q($claim['sql'], $claim['params']) !== false) && ((int) mysqli_affected_rows(db::$con) === 1);
+        },
+        function ($row) {
+            return pg_content_review_item_counts($row['item_kind'], pg_content_review_item_facts($row['item_kind'], $row['item_id']));
+        },
+        function ($row) {
+            $person = ((int) $row['user_id'] > 0) ? (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $row['user_id'] . "'") : '';
+
+            pg_announce('content.review_due', pg_content_review_due_payload($row, pg_content_review_item_name($row['item_kind'], $row['item_id']), $person));
+        });
+}
+
+/**
+ * Whether the Workspace is on, its files loaded for "Make a task" (they are
+ * not loaded on every panel screen).
+ *
+ * @return bool
+ */
+function pg_content_review_workspace()
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return function_exists('ws_followup_task_open') && function_exists('ws_rights');
+}
+
+/**
+ * Whether "Make a task" is offered on an item, pure: only with the
+ * Workspace on, an item with a person, and that person a member of the
+ * Workspace's team.
+ *
+ * @param bool $workspace     WORKSPACE_ENABLED
+ * @param int  $person_id     the item's person, 0 for nobody
+ * @param bool $person_member whether that person is a member
+ * @return bool
+ */
+function pg_content_review_task_offered($workspace, $person_id, $person_member)
+{
+    return $workspace && ((int) $person_id > 0) && $person_member;
+}
+
+/**
+ * The follow-up "Make a task" opens, pure (ws_followup_task_data()'s
+ * input): a task for the item's person, tagged with the item (a page, or
+ * a record as a form), due on the review date, or today without one. A
+ * date already here or passed sends no reminder: the task is due at once.
+ *
+ * @param string      $kind
+ * @param int         $item_id
+ * @param string      $name
+ * @param int         $person_id
+ * @param string|null $review_on
+ * @param string      $today
+ * @return array
+ */
+function pg_content_review_task_input($kind, $item_id, $name, $person_id, $review_on, $today)
+{
+    $due = (($review_on !== null) && ($review_on !== '')) ? (string) $review_on : (string) $today;
+    $input = array(
+        'title'       => lang(array('string' => 'Review {var:1}', 'vars' => array((string) $name))),
+        'description' => lang('Read the item again and mark it reviewed on the Content review screen.'),
+        'refs'        => array(array('type' => ($kind === 'record') ? 'form' : 'page', 'id' => (int) $item_id)),
+        'assignees'   => array((int) $person_id),
+        'channel_id'  => 0,
+        'due_date'    => $due,
+    );
+
+    if ($due <= (string) $today) {
+        $input['remind_minutes'] = null;
+    }
+
+    return $input;
+}
+
+/**
+ * "Make a task": opens the follow-up of an item as whoever pressed, for the
+ * item's person; pressed again while that task is open, the open one is
+ * handed back (ws_followup_task_open() with $once).
+ *
+ * @param array  $user    the signed-in user
+ * @param string $kind
+ * @param int    $item_id
+ * @return array ok, error, task_id, existing
+ */
+function pg_content_review_task_open(array $user, $kind, $item_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'task_id' => 0, 'existing' => false);
+    };
+
+    $kind = pg_content_review_kind($kind);
+    $row = pg_content_review_get($kind, $item_id);
+    $workspace = pg_content_review_workspace();
+    $person_id = $row ? (int) $row['user_id'] : 0;
+    $person = ($workspace && ($person_id > 0)) ? ws_change_viewer_for_id($person_id) : null;
+
+    if (!pg_content_review_task_offered($workspace, $person_id, is_array($person) && !empty($person['member']))) {
+        return $fail(lang('A task can be made only for an item whose person is on the Workspace team.'));
+    }
+
+    if (!pg_content_review_item_counts($kind, pg_content_review_item_facts($kind, $item_id))) {
+        return $fail(lang('This item is no longer listed.'));
+    }
+
+    $input = pg_content_review_task_input($kind, $item_id, pg_content_review_item_name($kind, $item_id), $person_id, $row['review_on'], pg_content_review_today());
+    $opened = ws_followup_task_open(ws_viewer($user), $input, true);
+
+    return $opened['ok']
+        ? array('ok' => true, 'error' => '', 'task_id' => (int) $opened['task_id'], 'existing' => !empty($opened['existing']))
+        : $fail((string) $opened['error']);
+}

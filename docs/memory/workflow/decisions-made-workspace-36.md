@@ -18,7 +18,7 @@ description: Decisions made, workspace part 36 (2026-11-16 on): the two plan dra
 
 ## Where does a question's picture stand? (owner, 2026-11-16, to the architect)
 - In the question's own box. His words, with a picture of a question whose sheet was a message of its own above it: "çizimlerimizde ajan sorusu tek görsel de sorunun solunda, her seçenek için görsel de seçenek içinde olacaktı. ancak sen resmi atıp mesaj etiketi ile soruya dahil ediyorsun".
-- The architect's reading, not his words: the approved drawing draws the large picture only from the options' own pictures, so a question gets a picture of its own, large at the left of the options, with the options' thumbnails in their rows. Plan: `plans/agent-question-picture.md`; his look at the built box follows.
+- The architect's reading, not his words: the approved drawing draws the large picture only from the options' own pictures, so a question gets a picture of its own, large at the left of the options, with the options' thumbnails in their rows. Built: #9948, #9964, #10001 (`workspace/poll-question-picture-box.md`); his look: poll 92.
 
 ## Are agents' tasks kept apart from the team's? (owner, 2026-11-16, agent channel poll 80)
 - Yes, both parts. He had asked the architect to find out whether agent questions and tasks, which pile up in the Workspace's general Decisions and Tasks, should be kept apart from the team's.

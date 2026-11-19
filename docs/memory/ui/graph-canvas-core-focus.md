@@ -5,7 +5,7 @@ module: graph_canvas
 ---
 
 ## What is it?
-- Optional parts of `create()` in `assets/js/pg_graph_canvas.js` for a canvas where one box at a time shows its arrows, added for the Prototype view (`plans/prototype-canvas.md`, F10-F12). Nothing in them means page or link.
+- Optional parts of `create()` in `assets/js/pg_graph_canvas.js` for a canvas where one box at a time shows its arrows, added for the Prototype view (designer/prototype-focus.md). Nothing in them means page or link.
 - Without `adapter.focus` every arrow is drawn as before and `focus()` does nothing: Flows passes none (its harness 40 of 40, with and without `--min`).
 
 ## Which classes does a focus give?

@@ -5,7 +5,7 @@ module: widgets_booking
 ---
 
 ## What did CB8 open?
-- Step CB8 of `plans/designer-closed-blocks-steps.md`; the census: [[canvas-closed-blocks-widgets]]. The widget: [[booking-widget]].
+- Step CB8 (#9918) of the closed-blocks opening ([[canvas-closed-blocks]]); the census: [[canvas-closed-blocks-widgets]]. The widget: [[booking-widget]].
 - The server never replaces a part's children: `pg_booking_widget_mark()` only adds `data-pg-booking-part`. So the five steps (`booking_step_service|staff|when|details|done`) and `booking_form` were already element trees; the canvas wrongly warned that their children are replaced with backend HTML. They are in `_SD_BOOKING_KEEPS_CHILDREN` now: no warning, drawn as designed.
 - The six parts `pg_booking.js` fills (`booking_staff`, `booking_calendar`, `booking_times`, `booking_summary`, `booking_done`, `booking_status`, list `_SD_BOOKING_FILLED`) depend on the visitor's choices and the free slots of the moment: settings only, drawn true on the canvas, never a stored tree.
 

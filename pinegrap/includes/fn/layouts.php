@@ -475,9 +475,56 @@ function pg_layout_widget_order_field(array $row, $n, array $field_names)
 // to put that widget beside the page's system region, never on its own.
 function pg_layout_widget_offers(array $layout_page_ids)
 {
+    return _pg_widget_offers($layout_page_ids, pg_layout_widget_kinds());
+}
+
+// Every classic page type a system widget stands in for, page type => kind:
+// the layout types (pg_layout_widget_kinds()) and the account, checkout and
+// calendar types the widget pages use (pg_sw_page_type_widgets()). A custom
+// form page is left out (its layout converts into a widget of design
+// elements), as are the types with no widget (e-mail a friend, form view
+// directory, the affiliate pages but the sign up form, order receipt). Pure.
+function pg_classic_widget_kinds()
+{
+    $kinds = pg_layout_widget_kinds();
+
+    foreach (pg_sw_page_type_widgets() as $type => $kind) {
+        if (!isset($kinds[$type])) {
+            $kinds[$type] = $kind;
+        }
+    }
+
+    return $kinds;
+}
+
+// Of the given pages, those whose type has a widget, in the shape of
+// pg_layout_widget_offers(), custom layout or not: the visual designer's
+// "Convert to design elements" on the page's own system region puts that
+// widget in the region's place.
+function pg_classic_widget_offers(array $page_ids)
+{
+    return _pg_widget_offers($page_ids, pg_classic_widget_kinds());
+}
+
+// The classic page types with a System region that no widget stands in for:
+// #2436 keeps them System regions, and a widget kind for one needs the
+// owner's decision first. The designer shows a muted line instead of a
+// converter on them. Pure.
+function pg_classic_no_widget_types()
+{
+    return array(
+        'email a friend', 'form view directory', 'affiliate sign up confirmation', 'affiliate welcome', 'order receipt',
+        'custom form confirmation', 'registration confirmation', 'membership confirmation', 'error',
+    );
+}
+
+// Of the given pages, the ids of those whose type is in
+// pg_classic_no_widget_types().
+function pg_classic_no_widget_page_ids(array $page_ids)
+{
     $ids = array();
 
-    foreach ($layout_page_ids as $id) {
+    foreach ($page_ids as $id) {
         if ((int) $id > 0) {
             $ids[(int) $id] = true;
         }
@@ -487,7 +534,36 @@ function pg_layout_widget_offers(array $layout_page_ids)
         return array();
     }
 
-    $kinds = pg_layout_widget_kinds();
+    $types = array();
+
+    foreach (pg_classic_no_widget_types() as $type) {
+        $types[] = "'" . e($type) . "'";
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT page_id FROM page WHERE page_id IN (" . implode(',', array_keys($ids)) . ") AND page_type IN (" . implode(',', $types) . ")") as $page) {
+        $out[] = (int) $page['page_id'];
+    }
+
+    return $out;
+}
+
+// The offers of pg_layout_widget_offers() for the given pages and kinds.
+function _pg_widget_offers(array $page_ids, array $kinds)
+{
+    $ids = array();
+
+    foreach ($page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = true;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
     $tables = array(
         'catalog'        => array('catalog_pages', ''),
         'catalog detail' => array('catalog_detail_pages', ''),

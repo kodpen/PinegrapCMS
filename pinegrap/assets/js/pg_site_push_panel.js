@@ -59,12 +59,69 @@
     // A send to every subscriber cannot be called back: it asks first, with
     // what goes and to how many, whether a button or Enter in a field sent
     // the form. A test goes without asking.
-    var confirmed = false;
+    //
+    // The post writes every subscriber's queue row before it answers, so the
+    // page may wait a while: the first send that goes through (the confirmed
+    // news or a test) disables both buttons and turns every later submit
+    // away, or a second press would send the news again without asking. The
+    // chosen action travels in a hidden "send" input, because a disabled
+    // submit button drops its own name and value from the request.
+    var buttons = form.querySelectorAll('button[name="send"]');
+    var sending = false;
+    var before = [];
+
+    function sendOnce(action) {
+        var input = form.querySelector('input[type="hidden"][name="send"]');
+
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'send';
+            form.appendChild(input);
+        }
+
+        input.value = action;
+        sending = true;
+        before = [];
+        form.setAttribute('aria-busy', 'true');
+
+        Array.prototype.forEach.call(buttons, function (button) {
+            before.push(button.disabled);
+            button.disabled = true;
+        });
+    }
+
+    // A page restored from the back/forward cache is a fresh screen again.
+    window.addEventListener('pageshow', function (event) {
+        var input = form.querySelector('input[type="hidden"][name="send"]');
+
+        if (!event.persisted || !sending) {
+            return;
+        }
+
+        sending = false;
+        form.removeAttribute('aria-busy');
+
+        if (input) {
+            input.parentNode.removeChild(input);
+        }
+
+        Array.prototype.forEach.call(buttons, function (button, index) {
+            button.disabled = before[index];
+        });
+    });
 
     form.addEventListener('submit', function (event) {
         var submitter = event.submitter || null;
+        var isTest = !!(submitter && submitter.value === 'test');
 
-        if (confirmed || (submitter && submitter.value === 'test') || (typeof window.pgConfirm !== 'function')) {
+        if (sending) {
+            event.preventDefault();
+            return;
+        }
+
+        if (isTest || (typeof window.pgConfirm !== 'function')) {
+            sendOnce(isTest ? 'test' : 'news');
             return;
         }
 
@@ -80,17 +137,11 @@
             confirmText: form.getAttribute('data-confirm-button'),
             variant: 'primary'
         }).then(function (ok) {
-            if (!ok) {
+            if (!ok || sending) {
                 return;
             }
 
-            var send = document.createElement('input');
-
-            send.type = 'hidden';
-            send.name = 'send';
-            send.value = 'news';
-            form.appendChild(send);
-            confirmed = true;
+            sendOnce('news');
             form.submit();
         });
     });

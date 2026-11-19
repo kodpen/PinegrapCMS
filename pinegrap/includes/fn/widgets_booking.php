@@ -236,10 +236,11 @@ function pg_booking_month_days($service, $staff, $month, $busy, $now, $policy)
 /**
  * The busy ranges of Workspace calendar events, per staff member. An
  * all-day event, stored up to 23:59:59 of its last day, takes that whole
- * second too.
+ * second too. A holiday read from a calendar and left out (skipped) is a
+ * working day and takes none, as in the Workspace calendar.
  *
  * @param array $events     rows with starts_at, ends_at, all_day, scope,
- *                          department_id, people (user ids)
+ *                          department_id, people (user ids), skipped
  * @param array $staff      rows with id, user_id
  * @param array $departments user id => department ids
  * @return array staff id => list of array(start, end)
@@ -253,6 +254,10 @@ function pg_booking_ws_busy($events, $staff, $departments)
         $own = isset($departments[$user_id]) ? array_map('intval', (array) $departments[$user_id]) : array();
 
         foreach ((array) $events as $event) {
+            if (!empty($event['skipped'])) {
+                continue;
+            }
+
             $scope = isset($event['scope']) ? (string) $event['scope'] : 'people';
             $people = isset($event['people']) ? array_map('intval', (array) $event['people']) : array();
 
@@ -540,8 +545,10 @@ function pg_booking_busy_between($staff, $from, $until, $now)
         }
     }
 
+    // skipped arrived with the holiday calendars' "Do not count".
+    $skipped = pg_schema_has('ws_events', 'skipped') ? 'skipped' : '0 AS skipped';
     $events = (array) db_items(
-        "SELECT id, scope, department_id, starts_at, ends_at, all_day FROM ws_events
+        "SELECT id, scope, department_id, starts_at, ends_at, all_day, " . $skipped . " FROM ws_events
         WHERE starts_at < '" . (int) $until . "' AND ends_at >= '" . (int) $from . "'");
 
     if ($events) {

@@ -157,14 +157,14 @@ function pg_customer_value_month_label($month)
 function pg_customer_value_state_new($started)
 {
     return array(
-        'v' => 1,
+        'v' => 2,
         'started' => (int) $started,
         'date' => 0,
         'id' => 0,
         'done' => 0,
         'total' => 0,
         'unplaced' => 0,
-        // key => "first,last,orders,value,recent,number,m.m.m"
+        // key => "first,last,orders,value,recent value,number,m.m.m,recent orders"
         'customers' => array(),
         // month => array(first orders, first value, returning orders, returning value, gap seconds, gaps)
         'months' => array(),
@@ -218,7 +218,8 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $time = (int) $order['order_date'];
         $month = pg_customer_value_month($time);
-        $recent = ($time >= $recent_from) ? $amount : 0;
+        $is_recent = ($time >= $recent_from);
+        $recent = $is_recent ? $amount : 0;
         $number = (int) $order['order_number'];
 
         if (!isset($state['months'][$month])) {
@@ -226,7 +227,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
         }
 
         if (!isset($state['customers'][$key])) {
-            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month;
+            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month . ',' . ($is_recent ? 1 : 0);
             $state['months'][$month][0]++;
             $state['months'][$month][1] += $amount;
             continue;
@@ -234,7 +235,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $c = explode(',', $state['customers'][$key]);
         $gap = max(0, $time - (int) $c[1]);
-        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month;
+        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month . ',' . ((int) $c[7] + ($is_recent ? 1 : 0));
         $state['months'][$month][2]++;
         $state['months'][$month][3] += $amount;
         $state['months'][$month][4] += $gap;
@@ -254,7 +255,9 @@ function pg_customer_value_state_encode($state)
 }
 
 /**
- * The state read back, or null when the text is not one.
+ * The state read back, or null when the text is not one. A state of an
+ * earlier shape (v 1 kept no recent orders) is not one either, so its pass
+ * starts again.
  *
  * @param string $text
  * @return array|null
@@ -263,7 +266,7 @@ function pg_customer_value_state_decode($text)
 {
     $state = @unserialize((string) $text, array('allowed_classes' => false));
 
-    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 1)) {
+    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 2)) {
         return null;
     }
 
@@ -311,6 +314,47 @@ function _pg_customer_value_top_sort($top)
 }
 
 /**
+ * The groups' age bounds in days: a last order within each, then longer.
+ * Pure.
+ *
+ * @return int[]
+ */
+function pg_customer_value_ages()
+{
+    return array(30, 90, 180, 365);
+}
+
+/**
+ * The age row of a customer whose last order was $days ago: 0 for within
+ * 30 days (30 itself included), up to 4 for longer than 365. Pure.
+ *
+ * @param float $days
+ * @return int
+ */
+function pg_customer_value_cell_age($days)
+{
+    foreach (pg_customer_value_ages() as $i => $bound) {
+        if ($days <= $bound) {
+            return $i;
+        }
+    }
+
+    return count(pg_customer_value_ages());
+}
+
+/**
+ * The orders column of a customer: 0 for one order, 1 for two or three, 2
+ * for four or more. Pure.
+ *
+ * @param int $orders
+ * @return int
+ */
+function pg_customer_value_cell_band($orders)
+{
+    return ($orders >= 4) ? 2 : (($orders >= 2) ? 1 : 0);
+}
+
+/**
  * The summary of a finished walk. Tiles are kept for the last 1, 3, 6, 12
  * and 24 whole months and for all time, each array(customers, customers with
  * two orders or more, orders, value, average days between orders); months
@@ -329,7 +373,7 @@ function pg_customer_value_finish($state, $base)
     $now = (int) $state['started'];
     $this_month = pg_customer_value_month($now);
     $periods = array(1, 3, 6, 12, 24);
-    $ages = array(30, 90, 180, 365);
+    $ages = pg_customer_value_ages();
 
     $tiles = array();
     $repeaters = array();
@@ -406,22 +450,13 @@ function pg_customer_value_finish($state, $base)
             }
         }
 
-        $days = ($now - $last) / 86400;
-        $age = count($ages);
-
-        foreach ($ages as $i => $bound) {
-            if ($days <= $bound) {
-                $age = $i;
-                break;
-            }
-        }
-
-        $band = ($orders >= 4) ? 2 : (($orders >= 2) ? 1 : 0);
+        $age = pg_customer_value_cell_age(($now - $last) / 86400);
+        $band = pg_customer_value_cell_band($orders);
         $cells[$age][$band][0]++;
         $cells[$age][$band][1] += $value;
 
         $top_all = _pg_customer_value_top_add($top_all, array((int) $c[5], $value, $orders));
-        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], $orders));
+        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], (int) $c[7]));
     }
 
     $month_table = array();
@@ -705,4 +740,533 @@ function pg_customer_value_job_run($budget = PG_CUSTOMER_VALUE_TICK_SECONDS, $no
     pg_config_text_claim('customer_values_pass', $claimed, json_encode(array('lease' => 0, 'started' => (int) $state['started'], 'done' => (int) $state['done'], 'total' => (int) $state['total'])));
 
     return array('done' => false, 'read' => $read);
+}
+
+/**
+ * The periods the Customers report offers, as the summary keys its tiles:
+ * the last whole months, or all time. Pure.
+ *
+ * @return array key => label
+ */
+function pg_customer_value_periods()
+{
+    return array(
+        '1' => lang('Last month'),
+        '3' => lang('3 months'),
+        '6' => lang('6 months'),
+        '12' => lang('12 months'),
+        '24' => lang('24 months'),
+        'all' => lang('All time'),
+    );
+}
+
+/**
+ * The period the screen shows: the one asked for when it is offered, else
+ * the one kept, else twelve months. Pure.
+ *
+ * @param mixed $asked
+ * @param mixed $kept
+ * @return string
+ */
+function pg_customer_value_period_pick($asked, $kept)
+{
+    $periods = pg_customer_value_periods();
+
+    foreach (array($asked, $kept) as $value) {
+        if (is_string($value) && isset($periods[$value])) {
+            return $value;
+        }
+    }
+
+    return '12';
+}
+
+/**
+ * Which group a cell of the groups table is: new, returning, loyal, at_risk
+ * or lost, by its age row (pg_customer_value_cell_age()) and orders column
+ * (pg_customer_value_cell_band()). Every cell has exactly one group. Pure.
+ *
+ * @param int $age
+ * @param int $band
+ * @return string
+ */
+function pg_customer_value_cell_group($age, $band)
+{
+    if ($age >= 4) {
+        return 'lost';
+    }
+
+    if ($age === 3) {
+        return 'at_risk';
+    }
+
+    if ($age === 2) {
+        return array('at_risk', 'returning', 'loyal')[$band];
+    }
+
+    return array('new', 'returning', 'loyal')[$band];
+}
+
+/**
+ * Each group's bounds as the screen states them beside its name. Pure.
+ *
+ * @return array key => text
+ */
+function pg_customer_value_group_bounds()
+{
+    return array(
+        'new' => lang('one order, the last within 90 days'),
+        'returning' => lang('two to three orders, the last within 180 days'),
+        'loyal' => lang('four orders or more, the last within 180 days'),
+        'at_risk' => lang('the last order 181 to 365 days ago, or one order 91 to 180 days ago'),
+        'lost' => lang('the last order over 365 days ago'),
+    );
+}
+
+/**
+ * The groups' names as the screen writes them.
+ *
+ * @return array key => label
+ */
+function pg_customer_value_group_names()
+{
+    return array(
+        'new' => lang('New customers'),
+        'returning' => lang('Returning customers'),
+        'loyal' => lang('Loyal customers'),
+        'at_risk' => lang('At-risk customers'),
+        'lost' => lang('Lost customers'),
+    );
+}
+
+/**
+ * A share as the screen writes it, one decimal; '' with nothing to share
+ * out. Pure.
+ *
+ * @param int|float $part
+ * @param int|float $whole
+ * @return string
+ */
+function pg_customer_value_share($part, $whole)
+{
+    if ($whole <= 0) {
+        return '';
+    }
+
+    return lang(array('string' => '{var:1}%', 'vars' => pg_format_number($part / $whole * 100, 1)));
+}
+
+/**
+ * The report's tiles for one period: customers, repeat purchase rate,
+ * orders per customer, value per customer, days between orders. Pure.
+ *
+ * @param array  $tile   a summary tile: customers, customers with two
+ *                       orders or more, orders, value, days between orders
+ * @param string $symbol the base currency's symbol
+ * @return array pg_report_view_figure() arrays
+ */
+function pg_customer_value_figures($tile, $symbol)
+{
+    $customers = (int) $tile[0];
+    $repeat = (int) $tile[1];
+    $orders = (int) $tile[2];
+    $value = (int) $tile[3];
+    $days = (float) $tile[4];
+
+    return array(
+        pg_report_view_figure(lang('Customers'), pg_format_number($customers, 0), 'bi-people', 'blue'),
+        pg_report_view_figure(lang('Repeat purchase rate'), ($customers > 0) ? pg_customer_value_share($repeat, $customers) : '–', 'bi-arrow-repeat', 'violet', lang(array('string' => '{var:1} with two orders or more', 'vars' => pg_format_number($repeat, 0)))),
+        pg_report_view_figure(lang('Orders per customer'), ($customers > 0) ? pg_format_number($orders / $customers, 2) : '–', 'bi-bag', 'teal', lang(array('string' => '{var:1} order{suffix:1}', 'vars' => pg_format_number($orders, 0), 'suffix' => ($orders == 1) ? '' : 's'))),
+        pg_report_view_figure(lang('Value per customer'), ($customers > 0) ? pg_report_view_money($value / $customers, $symbol) : '–', 'bi-cash-stack', 'amber', pg_report_view_money($value, $symbol)),
+        pg_report_view_figure(lang('Days between orders'), ($days > 0) ? pg_format_number($days, 1) : '–', 'bi-calendar3', 'gray'),
+    );
+}
+
+/**
+ * The months of a period that the summary holds, oldest first: for N whole
+ * months the N before the summary's month, for all time every month kept.
+ * Pure.
+ *
+ * @param array  $summary
+ * @param string $period
+ * @return array 'YYYY-MM' => array(first orders, first value, returning orders, returning value)
+ */
+function pg_customer_value_period_months($summary, $period)
+{
+    $months = isset($summary['months']) ? (array) $summary['months'] : array();
+
+    if ($period === 'all') {
+        return $months;
+    }
+
+    // The month the summary was worked out in is the last key and is not a
+    // whole month yet.
+    $keys = array_keys($months);
+    array_pop($keys);
+    $keys = array_slice($keys, -max(1, (int) $period));
+
+    return array_intersect_key($months, array_flip($keys));
+}
+
+/**
+ * A 'YYYY-MM' month as the screen names it ('Kas 2026'). Pure.
+ *
+ * @param string $key
+ * @return string
+ */
+function pg_customer_value_month_name($key)
+{
+    $time = mktime(12, 0, 0, (int) substr((string) $key, 5, 2), 1, (int) substr((string) $key, 0, 4));
+
+    return lang(date('M', $time)) . ' ' . date('Y', $time);
+}
+
+/**
+ * The chart of the months: value from first-time customers, with the value
+ * from returning customers dashed beside it. Null for fewer than two months
+ * or none with a sale. Pure.
+ *
+ * @param array  $months pg_customer_value_period_months()
+ * @param string $symbol
+ * @return array|null
+ */
+function pg_customer_value_month_chart($months, $symbol)
+{
+    if (count($months) < 2) {
+        return null;
+    }
+
+    $first = lang('First-time customers');
+    $returning = lang('Returning customers');
+    $chart = array('kind' => 'line', 'label' => lang('Value by month'), 'series' => $first, 'compare_label' => $returning, 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'tips' => array());
+    $any = false;
+
+    foreach ($months as $key => $row) {
+        $name = pg_customer_value_month_name($key);
+        $any = $any || ($row[1] > 0) || ($row[3] > 0);
+        $chart['values'][] = round($row[1] / 100, 2);
+        $chart['compare'][] = round($row[3] / 100, 2);
+        $chart['names'][] = $name;
+        $chart['notes'][] = pg_report_view_money($row[1], $symbol);
+        $chart['compare_notes'][] = pg_report_view_money($row[3], $symbol);
+        $chart['tips'][] = $name . ': ' . $first . ' ' . pg_report_view_money($row[1], $symbol) . ' · ' . $returning . ' ' . pg_report_view_money($row[3], $symbol);
+    }
+
+    return $any ? $chart : null;
+}
+
+/**
+ * The cohort table's rows, newest cohort first: the month of the first
+ * order, its customers and, for each of the twelve months after it, the
+ * share that ordered again; null for a month that has not begun. Pure.
+ *
+ * @param array $summary
+ * @param int   $count cohorts shown
+ * @return array rows array('month' => 'YYYY-MM', 'size' => int, 'shares' => (string|null)[12])
+ */
+function pg_customer_value_cohort_rows($summary, $count = 12)
+{
+    $cohorts = isset($summary['cohorts']) ? (array) $summary['cohorts'] : array();
+    $rows = array();
+    $last = pg_customer_value_month((int) $summary['at']);
+
+    foreach (array_slice($cohorts, -max(1, (int) $count), null, true) as $key => $row) {
+        $month = ((int) substr($key, 0, 4) * 12) + (int) substr($key, 5, 2) - 1;
+        $shares = array();
+
+        for ($k = 1; $k <= 12; $k++) {
+            $shares[] = (($month + $k) > $last) ? null : pg_customer_value_share((int) $row[$k], (int) $row[0]);
+        }
+
+        $rows[] = array('month' => (string) $key, 'size' => (int) $row[0], 'shares' => $shares);
+    }
+
+    return array_reverse($rows);
+}
+
+/**
+ * The top customers' rows. A name and the order to open are given only to
+ * a reader who may read contacts; others get the figures. Pure.
+ *
+ * @param array $top    summary rows array(last order number, value, orders)
+ * @param array $orders order number => array('id' => int, 'name' => string),
+ *                      read only for a reader who may see names
+ * @param bool  $names  whether the reader may see names
+ * @return array rows: rank, name, orders, value, order_id (0 when hidden)
+ */
+function pg_customer_value_top_rows($top, $orders, $names)
+{
+    $rows = array();
+
+    foreach (array_values((array) $top) as $i => $row) {
+        $number = (int) $row[0];
+        $known = ($names && isset($orders[$number])) ? $orders[$number] : array('id' => 0, 'name' => '');
+
+        $rows[] = array(
+            'rank' => $i + 1,
+            'name' => (string) $known['name'],
+            'orders' => (int) $row[2],
+            'value' => (int) $row[1],
+            'order_id' => (int) $known['id'],
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The orders the top customers are kept by, with the billing name each one
+ * carries now: read when the screen is shown, so an erased person's name is
+ * never kept. Call only for a reader who may read contacts.
+ *
+ * @param array $numbers order numbers
+ * @return array order number => array('id' => int, 'name' => string)
+ */
+function pg_customer_value_order_names($numbers)
+{
+    $numbers = array_values(array_unique(array_filter(array_map('intval', (array) $numbers))));
+
+    if (empty($numbers)) {
+        return array();
+    }
+
+    $result = db_q(
+        'SELECT id, order_number, billing_first_name, billing_last_name, billing_company FROM orders WHERE order_number IN (' . implode(', ', array_fill(0, count($numbers), '?')) . ')',
+        $numbers);
+    $names = array();
+
+    if ($result === false) {
+        return $names;
+    }
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $name = trim($row['billing_first_name'] . ' ' . $row['billing_last_name']);
+        $names[(int) $row['order_number']] = array('id' => (int) $row['id'], 'name' => ($name !== '') ? $name : trim((string) $row['billing_company']));
+    }
+
+    mysqli_free_result($result);
+
+    return $names;
+}
+
+/**
+ * Whether the orders behind a summary are too few to say anything: fewer
+ * than twenty customers. Pure.
+ *
+ * @param array $summary
+ * @return bool
+ */
+function pg_customer_value_too_little($summary)
+{
+    return (int) ($summary['customers'] ?? 0) < 20;
+}
+
+/**
+ * The age rows of the groups table as the screen names them, youngest
+ * first (pg_customer_value_cell_age()).
+ *
+ * @return string[]
+ */
+function pg_customer_value_age_labels()
+{
+    return array(lang('Within 30 days'), lang('31 to 90 days'), lang('91 to 180 days'), lang('181 to 365 days'), lang('More than 365 days'));
+}
+
+/**
+ * The orders columns of the groups table as the screen names them
+ * (pg_customer_value_cell_band()).
+ *
+ * @return string[]
+ */
+function pg_customer_value_band_labels()
+{
+    return array(lang('1 order'), lang('2 to 3 orders'), lang('4 or more orders'));
+}
+
+/**
+ * The rules of a contact group filled by rules that stands for a cell of the
+ * groups table: the last order within the row's upper bound and not within
+ * its lower one, and the number of orders of the column. Only conditions the
+ * rule editor already knows (core/audiences-rules.md); null for a cell that
+ * does not exist. Pure.
+ *
+ * @param int $age  0 to 4
+ * @param int $band 0 to 2
+ * @return array|null array('match' => 'all', 'conditions' => [...])
+ */
+function pg_customer_value_cell_rules($age, $band)
+{
+    $ages = pg_customer_value_ages();
+    $age = (int) $age;
+    $band = (int) $band;
+
+    if (($age < 0) || ($age > count($ages)) || ($band < 0) || ($band > 2)) {
+        return null;
+    }
+
+    $conditions = array();
+
+    if ($age < count($ages)) {
+        $conditions[] = array('key' => 'last_order', 'op' => 'within', 'value' => $ages[$age]);
+    }
+
+    if ($age > 0) {
+        $conditions[] = array('key' => 'last_order', 'op' => 'not_within', 'value' => $ages[$age - 1]);
+    }
+
+    if ($band === 0) {
+        $conditions[] = array('key' => 'order_count', 'op' => 'eq', 'value' => 1);
+    } else {
+        $conditions[] = array('key' => 'order_count', 'op' => 'gte', 'value' => ($band === 1) ? 2 : 4);
+
+        if ($band === 1) {
+            $conditions[] = array('key' => 'order_count', 'op' => 'lte', 'value' => 3);
+        }
+    }
+
+    return array('match' => 'all', 'conditions' => $conditions);
+}
+
+/**
+ * The cell a "Make a contact group" button posts ('age-band'), or null for
+ * anything else. Pure.
+ *
+ * @param mixed $value
+ * @return array|null array(age, band)
+ */
+function pg_customer_value_cell_from($value)
+{
+    if (!is_string($value) || !preg_match('/^([0-4])-([0-2])$/', $value, $match)) {
+        return null;
+    }
+
+    return array((int) $match[1], (int) $match[2]);
+}
+
+/**
+ * The name a group made from a cell starts with: the cell's group, its
+ * orders column and its age row. Pure.
+ *
+ * @param int $age
+ * @param int $band
+ * @return string
+ */
+function pg_customer_value_cell_group_name($age, $band)
+{
+    $names = pg_customer_value_group_names();
+    $ages = pg_customer_value_age_labels();
+    $bands = pg_customer_value_band_labels();
+
+    return $names[pg_customer_value_cell_group($age, $band)] . ' · ' . $bands[$band] . ' · ' . $ages[$age];
+}
+
+/**
+ * The first of $name, "$name (2)", "$name (3)"… that is not in $taken, cut
+ * to the group name's 100 characters. Pure.
+ *
+ * @param string   $name
+ * @param string[] $taken
+ * @return string
+ */
+function pg_customer_value_free_name($name, $taken)
+{
+    $taken = array_flip(array_map('mb_strtolower', (array) $taken));
+
+    for ($i = 1; ; $i++) {
+        $suffix = ($i === 1) ? '' : ' (' . $i . ')';
+        $candidate = mb_substr($name, 0, 100 - mb_strlen($suffix)) . $suffix;
+
+        if (!isset($taken[mb_strtolower($candidate)])) {
+            return $candidate;
+        }
+    }
+}
+
+/**
+ * Whether $user may make a contact group from a cell: whoever may open the
+ * contact group screens and edit rules (the manager role up), once the
+ * upgrade has added the rule columns.
+ *
+ * @param array $user
+ * @return bool
+ */
+function pg_customer_value_may_make_groups($user)
+{
+    return pg_audience_ready() && ((int) $user['role'] < 3) && (bool) validate_contacts_access($user, true);
+}
+
+/**
+ * Makes a contact group filled by rules for a cell of the groups table, as
+ * the group editor would save it, and answers its id (0 on a failed
+ * query). The general job fills it; it counts as its rules do.
+ *
+ * @param array $user
+ * @param int   $age
+ * @param int   $band
+ * @return int
+ */
+function pg_customer_value_group_create($user, $age, $band)
+{
+    $rules = pg_customer_value_cell_rules($age, $band);
+
+    if ($rules === null) {
+        return 0;
+    }
+
+    $base = pg_customer_value_cell_group_name($age, $band);
+    $taken = array();
+    $result = db_q('SELECT name FROM contact_groups WHERE name LIKE ?', array(pg_list_like_pattern(mb_substr($base, 0, 90))));
+
+    if ($result !== false) {
+        while ($row = mysqli_fetch_row($result)) {
+            $taken[] = (string) $row[0];
+        }
+
+        mysqli_free_result($result);
+    }
+
+    $name = pg_customer_value_free_name($base, $taken);
+    $stored = json_encode(pg_audience_rules_clean($rules), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    $done = db_q(
+        "INSERT INTO contact_groups (name, description, email_subscription, email_subscription_type, kind, rules, computed_at,
+            created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
+        VALUES (?, ?, 0, 'open', 'dynamic', ?, 0, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())",
+        array($name, lang('Made from the Customers Report.'), $stored, (int) $user['id'], (int) $user['id']));
+
+    if ($done === false) {
+        return 0;
+    }
+
+    $id = (int) mysqli_insert_id(db::$con);
+
+    log_activity(lang(array('string' => 'contact group (name: {var:1}) was created', 'vars' => $name)), $_SESSION['sessionusername'] ?? '');
+
+    return $id;
+}
+
+/**
+ * The CSV of the top customers: a header, then each list's rows with the
+ * name read from the last order, its number, orders and value in the base
+ * currency. Only for a reader who may read contacts. Pure.
+ *
+ * @param array $summary
+ * @param array $names   pg_customer_value_order_names()
+ * @return string[] lines without their line ends
+ */
+function pg_customer_value_top_csv($summary, $names)
+{
+    $lines = array('list,rank,customer,last_order_number,orders,value,currency');
+    $unit = (string) ($summary['unit'] ?? '');
+
+    foreach (array('all', 'year') as $list) {
+        foreach (array_values((array) ($summary['top'][$list] ?? array())) as $i => $row) {
+            $number = (int) $row[0];
+            $name = isset($names[$number]) ? (string) $names[$number]['name'] : '';
+
+            $lines[] = $list . ',' . ($i + 1) . ',"' . csv_cell($name) . '",' . $number . ',' . (int) $row[2] . ',' . number_format((int) $row[1] / 100, 2, '.', '') . ',' . $unit;
+        }
+    }
+
+    return $lines;
 }

@@ -20,8 +20,9 @@ module: customer_values
 - `pg_customer_value_summary()` reads it (null before the first rebuild). Keys: `at` (pass start), `unit`, `orders`, `customers`, `unplaced`, `apart`.
 - `tiles` for `1`, `3`, `6`, `12`, `24` last whole months and `all`: customers, customers with 2+ orders in the period, orders, value, average days between orders (a gap counts in the month of the later order).
 - `months` (last 36, `YYYY-MM`): first-time orders, value, returning orders, value. `cohorts` (last 24 first-order months): size, then customers ordering in each of the 12 months after.
-- `cells[age][orders]`: last order within 30, 90, 180, 365 days or longer, against 1, 2-3, 4+ orders: customers and value. The names over the cells: `plans/customer-value.md` (U11).
-- `top.all` / `top.year` (20 each): last order number, value, orders. No name, address or e-mail (U7).
+- `cells[age][orders]`: last order within 30, 90, 180, 365 days or longer, against 1, 2-3, 4+ orders: customers and value (rows and columns: `pg_customer_value_cell_age()`, `pg_customer_value_cell_band()`; names: `customer-value-report-screen.md`, decided in `plans/customer-value.md` U11).
+- `top.all` / `top.year` (20 each): last order number, value, orders. `year` counts only the last 365 days before the pass start: its value and its orders both (the orders were every order of all time until the bug hunt fix). No name, address or e-mail (U7).
+- The state's customer text is `first,last,orders,value,recent value,number,m.m.m,recent orders`, state `v` 2; a state file of another `v` is dropped and its pass restarts.
 
 ## What did the measurement give? (#9995)
 - MariaDB 10.11, PHP 8.3, 200,000 seeded orders, 61,514 customers: whole rebuild 1.0 s in one run, summary 4.1 KB, about 15 MB above the 42 MB that loading `functions.php` takes; state text 5.6 MB. At 500,000 orders: 2.9 s, 4.1 KB, 7.8 MB state. No table needed.

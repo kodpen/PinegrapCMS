@@ -527,7 +527,7 @@ function test_product_feeds_settings_parse_defaults()
 {
 	$settings = pg_product_feed_settings_parse(null);
 
-	pg_assert_same(array('openai_jsonl', 'openai_csv', 'google_tsv'), array_keys($settings['formats']));
+	pg_assert_same(array('openai_jsonl', 'openai_csv', 'google_tsv', 'google_xml'), array_keys($settings['formats']));
 	pg_assert_same(pg_product_feed_format_defaults(), $settings['formats']['google_tsv']);
 	pg_assert_same('', $settings['seller_name']);
 	pg_assert_same(array(), $settings['excluded_group_ids']);
@@ -806,7 +806,7 @@ function test_product_feeds_writer_matches_render()
 	}
 
 	pg_assert_contains('gtin', (string) file_get_contents($folder . '/openai_csv.feed'), 'a column the first chunk left empty');
-	pg_assert_same(3, count(glob($folder . '/*')), 'no work file left behind');
+	pg_assert_same(4, count(glob($folder . '/*')), 'no work file left behind');
 
 	product_feeds_test_remove($folder);
 }
@@ -817,7 +817,7 @@ function test_product_feeds_writer_errors_and_empty()
 {
 	$folder = product_feeds_test_folder();
 
-	foreach (array('openai_csv', 'google_tsv', 'openai_jsonl') as $format) {
+	foreach (array('openai_csv', 'google_tsv', 'openai_jsonl', 'google_xml') as $format) {
 		$writer = pg_product_feed_writer_open($format, $folder . '/' . $format, array('seller_name' => 'Kodpen'));
 		$result = pg_product_feed_writer_close($writer);
 
@@ -842,7 +842,7 @@ function test_product_feeds_writer_errors_and_empty()
 	pg_assert_same('old feed', file_get_contents($folder . '/served'), 'the file being served stays');
 
 	pg_assert_same('unknown_format', pg_product_feed_writer_open('xml', $folder . '/x')['error']);
-	pg_assert_same(4, count(glob($folder . '/*')), 'no work file left behind');
+	pg_assert_same(5, count(glob($folder . '/*')), 'no work file left behind');
 
 	product_feeds_test_remove($folder);
 }
@@ -873,3 +873,138 @@ function test_product_feeds_seller_from_input_keeps_long_addresses()
 	pg_assert_same('', pg_product_feed_seller_from_input(array('terms_url' => $too_long))['terms_url'], 'over 2000 is refused, not cut');
 	pg_assert_same('', pg_product_feed_seller_from_input(array())['seller_name'], 'missing keys read as empty');
 }
+
+// The g: children of each <item> of a Google XML feed, name => text (a
+// repeated element as a list); the parse fails the test when the feed is not
+// well-formed XML.
+function product_feeds_test_xml_items($body)
+{
+	$previous = libxml_use_internal_errors(true);
+	$xml = simplexml_load_string($body);
+	libxml_use_internal_errors($previous);
+
+	pg_assert_true($xml !== false, 'the feed parses as XML');
+
+	if ($xml === false) {
+		return array();
+	}
+
+	pg_assert_same('rss', $xml->getName());
+	pg_assert_same('2.0', (string) $xml['version']);
+	pg_assert_same('http://base.google.com/ns/1.0', (string) $xml->getDocNamespaces()['g']);
+
+	$items = array();
+
+	foreach ($xml->channel->item as $item) {
+		$fields = array();
+
+		foreach ($item->children('http://base.google.com/ns/1.0') as $name => $node) {
+			$text = (string) $node;
+
+			if (isset($fields[$name])) {
+				$fields[$name] = array_merge((array) $fields[$name], array($text));
+			} else {
+				$fields[$name] = ($name === 'additional_image_link') ? array($text) : $text;
+			}
+		}
+
+		$items[] = $fields;
+	}
+
+	return $items;
+}
+
+// What breaks XML in a product's name and description - an ampersand, an
+// angle bracket, a CDATA end, control bytes, a broken UTF-8 byte - is
+// written so the feed parses and the text comes back as it was (control
+// bytes, which XML 1.0 cannot carry, left out).
+function test_product_feeds_xml_text_escapes()
+{
+	$name = 'Masa & sandalye <10 kg> ]]> "iki" \'tek\'';
+	$body = pg_product_feed_render('google_xml', array(
+		product_feeds_test_item(array('title' => $name, 'full_description' => "<p>Ölçü &lt;40&gt; cm ]]&gt; R&amp;D \x01\x08\x1Fson</p>")),
+	))['body'];
+
+	$items = product_feeds_test_xml_items($body);
+
+	pg_assert_same(1, count($items));
+	pg_assert_same($name, $items[0]['title']);
+	pg_assert_same('Ölçü <40> cm ]]> R&D son', $items[0]['description']);
+	pg_assert_false(strpos($body, ']]>') !== false, 'no raw CDATA end in the file');
+
+	pg_assert_same('a &amp; b &lt;c&gt; ]]&gt; &quot;d&quot; &apos;e&apos;', pg_product_feed_xml_text("a & b <c> ]]> \"d\" 'e'"));
+	pg_assert_same('ab', pg_product_feed_xml_text("a\x00\x01\x0B\x1Fb"), 'control bytes left out');
+	pg_assert_same("a\tb\nc", pg_product_feed_xml_text("a\tb\nc"), 'tab and line break are XML');
+	pg_assert_same('x?(y', pg_product_feed_xml_text("x\xC3\x28y"), 'a broken byte is replaced as in the other formats, not fatal');
+}
+
+// The same products as google_tsv and google_xml carry the same fields and
+// values: both come from pg_product_feed_google_row().
+function test_product_feeds_xml_matches_tsv()
+{
+	$items = array(
+		product_feeds_test_item(array('gtin' => '', 'mpn' => ''), array('gallery' => array('a.jpg', 'b,c.jpg'), 'sale_price' => 99900, 'group_id' => 7)),
+		product_feeds_test_item(array('id' => '13', 'brand' => '', 'inventory_quantity' => '0')),
+		product_feeds_test_item(array('id' => '14', 'image_name' => '')),
+	);
+
+	$tsv = pg_product_feed_render('google_tsv', $items);
+	$xml = pg_product_feed_render('google_xml', $items, array('seller_name' => 'Kodpen Mağaza', 'seller_url' => 'https://shop.example/'));
+
+	pg_assert_true($xml['ok']);
+	pg_assert_same($tsv['count'], $xml['count']);
+	pg_assert_same($tsv['skipped'], $xml['skipped']);
+
+	$lines = explode("\n", rtrim($tsv['body'], "\n"));
+	$columns = explode("\t", array_shift($lines));
+	$parsed = product_feeds_test_xml_items($xml['body']);
+
+	pg_assert_same(count($lines), count($parsed));
+
+	foreach ($lines as $index => $line) {
+		$expected = array();
+
+		foreach (array_combine($columns, explode("\t", $line)) as $column => $value) {
+			if ($value !== '') {
+				$expected[$column] = ($column === 'additional_image_link') ? explode(',', $value) : $value;
+			}
+		}
+
+		$row = $parsed[$index];
+		ksort($expected);
+		ksort($row);
+
+		pg_assert_same($expected, $row, 'item ' . $index);
+	}
+
+	pg_assert_same(array('https://shop.example/a.jpg', 'https://shop.example/b%2Cc.jpg'), $parsed[0]['additional_image_link'], 'one element per gallery image');
+	pg_assert_contains('<title>Kodpen Mağaza</title>', $xml['body']);
+	pg_assert_contains('<link>https://shop.example/</link>', $xml['body']);
+}
+
+// The fourth format: its extension and content type, an empty catalog is
+// still a channel, and a feed switched off is not built.
+function test_product_feeds_xml_format()
+{
+	$formats = pg_product_feed_formats();
+
+	pg_assert_same(array('extension' => 'xml', 'content_type' => 'application/xml; charset=utf-8'), $formats['google_xml']);
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/feeds/google_xml.xml', pg_product_feed_path('google_xml'));
+	pg_assert_same(pg_product_feed_columns('google_tsv'), pg_product_feed_columns('google_xml'), 'the fields of google_tsv');
+
+	$empty = pg_product_feed_render('google_xml', array());
+
+	pg_assert_true($empty['ok'], 'no seller name needed');
+	pg_assert_same(array(), product_feeds_test_xml_items($empty['body']));
+
+	$settings = pg_product_feed_settings_parse('{"formats":{"google_xml":{"enabled":0},"google_tsv":{"enabled":1}}}');
+
+	pg_assert_same(0, $settings['formats']['google_xml']['enabled']);
+	pg_assert_same(array('google_tsv'), pg_product_feed_formats_to_build($settings), 'a switched-off format is not built');
+
+	$settings['formats']['google_xml']['enabled'] = 1;
+
+	pg_assert_same(array('google_tsv', 'google_xml'), pg_product_feed_formats_to_build($settings));
+	pg_assert_same(array('google_xml'), pg_product_feed_formats_to_build($settings, array('google_xml')));
+}
+

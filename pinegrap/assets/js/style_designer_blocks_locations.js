@@ -14,6 +14,10 @@
  * the time slots and the cut-off time for the same day. The labels name no
  * trade: a florist, a bakery or a pharmacy places it as delivery zones, a
  * plumber, a cleaner or a repair service as the areas it calls out to.
+ * Map of places: the records of the page's form list (a collection with
+ * latitude and longitude) as cards with a search box; assets/js/pg_map.js
+ * fills it on the page (data-pg-map). The canvas shows a still picture of a
+ * map with three markers and three sample cards, which the page drops.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -40,13 +44,18 @@ StyleDesigner.registerBlockFamily(function (kit) {
         'pg-zone-key': '.pg-zone-key { width: 1.25rem; height: 1.25rem; flex-shrink: 0; margin-top: .25rem; border-radius: 50%; } ' +
                        '.pg-zone-z3 { --bs-border-style: dashed; } ' +
                        '.pg-zone-z3 .pg-zone-ring { --bs-border-style: solid; } ' +
-                       '.pg-zone-list { font-variant-numeric: tabular-nums; }'
+                       '.pg-zone-list { font-variant-numeric: tabular-nums; }',
+        // The places as cards that fill the row, as many as fit.
+        'pg-map-list': '.pg-map-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem; padding: 0; margin: 0; list-style: none; } ' +
+                       '.pg-map-list .pg-map-card { padding: 1rem; border: var(--bs-border-width) solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg); background: var(--bs-body-bg); }',
+        'pg-map-picture': '.pg-map-picture svg { display: block; width: 100%; height: auto; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
         'locations-spaces': ['pg-ratio-16x9', 'pg-space-facts'],
         'locations-floors': ['pg-floor-level'],
-        'locations-zones': ['pg-zone-map', 'pg-zone-key']
+        'locations-zones': ['pg-zone-map', 'pg-zone-key'],
+        'locations-map': ['pg-map-list', 'pg-map-picture']
     };
 
     // ── Spaces to hire ──────────────────────────────────────────────────
@@ -226,6 +235,67 @@ StyleDesigner.registerBlockFamily(function (kit) {
         ]);
     };
 
+    // ── Map of places ───────────────────────────────────────────────────
+    // The canvas's picture: streets, a park, water and three markers, in
+    // the text colour, so it follows the look and the dark mode.
+    var mapPicture = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none" aria-hidden="true">' +
+        '<rect width="400" height="260" rx="16" fill="currentColor" fill-opacity=".05"/>' +
+        '<path d="M0 190C80 170 120 215 200 200S330 150 400 170V260H0Z" fill="currentColor" fill-opacity=".1"/>' +
+        '<rect x="250" y="30" width="90" height="60" rx="10" fill="currentColor" fill-opacity=".08"/>' +
+        '<path d="M0 70H400M0 140H400M90 0V260M210 0V260M320 0V260M30 0L180 260" stroke="currentColor" stroke-opacity=".18" stroke-width="6"/>' +
+        '<g fill="currentColor"><path d="M90 52c-11 0-20 9-20 20 0 15 20 36 20 36s20-21 20-36c0-11-9-20-20-20Z"/>' +
+        '<path d="M210 112c-11 0-20 9-20 20 0 15 20 36 20 36s20-21 20-36c0-11-9-20-20-20Z"/>' +
+        '<path d="M320 92c-11 0-20 9-20 20 0 15 20 36 20 36s20-21 20-36c0-11-9-20-20-20Z"/></g>' +
+        '<g fill="var(--bs-body-bg, #fff)"><circle cx="90" cy="72" r="7"/><circle cx="210" cy="132" r="7"/><circle cx="320" cy="112" r="7"/></g></svg>';
+    var place = function (name, address, hours, phone) {
+        return kit.tag('li', 'pg-map-card', _sdT('Place'), [
+            kit.h('h3', name, 'h6 mb-1'),
+            kit.p(address, 'mb-1'),
+            kit.p(hours, 'mb-1 text-body-secondary small'),
+            kit.link(phone, '#', 'd-inline-block mb-2', _sdT('Phone')),
+            kit.div('d-flex flex-wrap gap-2', _sdT('Links'), [
+                kit.link(_sdT('Directions'), '#', 'btn btn-sm btn-outline-primary', _sdT('Directions')),
+                kit.link(_sdT('Details'), '#', 'btn btn-sm btn-link', _sdT('Details'))
+            ])
+        ], [{ name: 'data-pg-map-sample', value: '' }]);
+    };
+    var buildMap = function () {
+        var id = kit.uid('pm');
+        var picture = kit.div('pg-map-picture text-primary', _sdT('Map Picture'), [
+            kit.createNode('content', { contentType: 'svg', html: mapPicture, cssClass: '' })
+        ], [{ name: 'data-pg-map-picture', value: '' }]);
+        var block = kit.div('', _sdT('Map of Places'), [
+            kit.div('mb-4', _sdT('Search'), [
+                kit.tag('label', 'form-label', _sdT('Search Label'), [ kit.h('span', _sdT('Search by town, postcode or name')) ], [{ name: 'for', value: id + '_q' }]),
+                kit.tag('input', 'form-control', _sdT('Search Box'), [], [
+                    { name: 'type', value: 'search' },
+                    { name: 'id', value: id + '_q' },
+                    { name: 'data-pg-map-search', value: '' },
+                    { name: 'autocomplete', value: 'off' }
+                ])
+            ]),
+            kit.row(_sdT('Map Row'), [
+                kit.col(_sdT('Map Picture'), [ picture ], '7'),
+                kit.col(_sdT('Places'), [
+                    kit.tag('p', 'small text-body-secondary mb-2', _sdT('Status'), [], [
+                        { name: 'data-pg-map-status', value: '' },
+                        { name: 'role', value: 'status' },
+                        { name: 'aria-live', value: 'polite' }
+                    ]),
+                    kit.tag('ul', 'pg-map-list', _sdT('Places'), [
+                        place(_sdT('City Centre'), _sdT('12 Market Street, Riverside'), _sdT('Mon–Sat 09:00–19:00'), '+1 555 0101'),
+                        place(_sdT('Harbour'), _sdT('4 Quay Road, Old Port'), _sdT('Every day 10:00–20:00'), '+1 555 0102')
+                    ], [{ name: 'data-pg-map-list', value: '' }])
+                ], '5')
+            ], 'g-4')
+        ], [{ name: 'data-pg-map', value: '' }]);
+        block.props._fx = { effect: 'fade', trigger: 'view' };
+        return kit.section('py-5', _sdT('Locations (Map)'), [
+            kit.intro(_sdT('Find a place near you'), _sdT('Search by town, postcode or name, then open a place for directions.')),
+            block
+        ]);
+    };
+
     return {
         prefix: 'locations-',
         items: [
@@ -234,12 +304,15 @@ StyleDesigner.registerBlockFamily(function (kit) {
             { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' },
               desc: _sdT('A floor directory from the roof down, each level with its number, its name and line, what is on it as pills and who may go up.') },
             { label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' },
-              desc: _sdT('Nested rings drawn beside a list of zones with the places each covers, its fee and how soon it is served, and three time slots below.') }
+              desc: _sdT('Nested rings drawn beside a list of zones with the places each covers, its fee and how soon it is served, and three time slots below.') },
+            { label: _sdT('Locations: Map of Places'), type: 'component', icon: 'bi-geo-alt', extra: { componentType: 'locations-map' },
+              desc: _sdT('The records of the page\'s form list as place cards with a search box; latitude and longitude come from two number fields of the collection.') }
         ],
         build: function (ctype) {
             if (ctype === 'locations-spaces') return buildSpaces();
             if (ctype === 'locations-floors') return buildFloors();
             if (ctype === 'locations-zones') return buildZones();
+            if (ctype === 'locations-map') return buildMap();
             return null;
         },
         css: _SD_BLOCK_CSS,

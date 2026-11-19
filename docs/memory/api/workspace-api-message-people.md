@@ -6,7 +6,7 @@ description: Workspace API routes for a message's readers (seen by and read rece
 ## What does GET /workspace/messages/{id}/readers answer?
 - `workspace.messages.readers` (`ws_api_messages_readers()`, api_resources.php), read scope, MCP tool. Same answer as the panel's Seen by (`ws_message_seen_by()`) plus the read receipts (`ws_ack_people()`), in one call (#9767).
 - `seen` / `unseen`: members as {user_id, name}; the writer is left out, and a public channel counts only its members. `agents`: seen, waiting and quiet agents in that order, each {key, app_id (null for an assistant without one), name, handle, state, at}.
-- `ack` is null unless read receipts were asked. When they were asked: `listed` true with `read` ({user_id, name, read_at}) and `unread`, only for the writer, whoever asked and staff (`can_list` of `ws_acks_map()`). Anyone else gets `listed` false and empty lists, not a 403.
+- `ack` is null unless read receipts were asked. When they were asked: `listed` true with `read` ({user_id, name, read_at}) and `unread`; `read_at` is the receipt's moment, `at` of `ws_ack_people()`, which keeps it beside the panel's `time` label (null on every site before #10339, PR #10385), only for the writer, whoever asked and staff (`can_list` of `ws_acks_map()`). Anyone else gets `listed` false and empty lists, not a 403.
 - 404 for a deleted message, a channel the owner cannot read, or a channel Claude's key may not use (`ws_api_channel_or_404()`). A message of an earlier version of the conversation is still answered, as the panel answers it.
 
 ## What does POST /workspace/messages/{id}/mention-invite do?

@@ -1178,11 +1178,11 @@ function api_order_document_schema() {
 		'type'             => 'string',
 		'label'            => 'string?',
 		'accepted'         => 'boolean',
-		'accepted_at'      => 'string?',
+		'accepted_at'      => 'datetime?',
 		'accepted_at_unix' => 'integer?',
 		'ip'               => 'string',
 		'user_agent'       => 'string',
-		'created_at'       => 'string?',
+		'created_at'       => 'datetime?',
 		'created_at_unix'  => 'integer',
 		'html'             => 'string'
 	);
@@ -1685,13 +1685,13 @@ function api_order_return_schema() {
 			'order_item_id' => 'integer',
 			'quantity'      => 'integer'
 		)),
-		'requested_at'    => 'string',
-		'decided_at'      => 'string?',
-		'shipped_at'      => 'string?',
-		'received_at'     => 'string?',
-		'refunded_at'     => 'string?',
-		'closed_at'       => 'string?',
-		'modified_at'     => 'string?',
+		'requested_at'    => 'datetime',
+		'decided_at'      => 'datetime?',
+		'shipped_at'      => 'datetime?',
+		'received_at'     => 'datetime?',
+		'refunded_at'     => 'datetime?',
+		'closed_at'       => 'datetime?',
+		'modified_at'     => 'datetime?',
 		'refund'          => 'OrderReturnRefund?',
 		'withdrawal'      => 'OrderReturnWithdrawal?'
 	);
@@ -1744,9 +1744,9 @@ function api_order_schema() {
 		'id'             => 'integer',
 		'order_number'   => 'string?',
 		'status'         => 'string',
-		'placed_at'      => 'string?',
+		'placed_at'      => 'datetime?',
 		'placed_at_unix' => 'integer',
-		'modified_at'      => 'string?',
+		'modified_at'      => 'datetime?',
 		'modified_at_unix' => 'integer',
 		'customer' => array(
 			'contact_id' => 'integer?',
@@ -1782,11 +1782,11 @@ function api_order_schema() {
 		'offer_code' => 'string',
 		'payment_installment' => 'integer',
 		'type'                => 'string?',
-		'cancelled_at'        => 'string?',
+		'cancelled_at'        => 'datetime?',
 		'cancellation_reason' => 'string?',
 		'refund_status'       => 'string?',
 		'vat_id'              => 'string?',
-		'vat_checked_at'      => 'string?',
+		'vat_checked_at'      => 'datetime?',
 		'vat_request_id'      => 'string?',
 		'items' => array(array(
 			'id'             => 'integer',
@@ -1825,8 +1825,8 @@ function api_order_schema() {
 			),
 			'shipping'          => 'integer',
 			'requested_arrival' => 'string?',
-			'ship_date'         => 'string?',
-			'delivery_date'     => 'string?',
+			'ship_date'         => 'date?',
+			'delivery_date'     => 'date?',
 			'complete'          => 'boolean',
 			'tracking_numbers'  => 'string[]',
 			'parcels' => array(array(
@@ -1835,7 +1835,7 @@ function api_order_schema() {
 				'carrier_name' => 'string?',
 				'tracking_url' => 'string?',
 				'status'       => 'string',
-				'shipped_at'   => 'string?',
+				'shipped_at'   => 'datetime?',
 				'delivered_at' => 'string?'
 			)),
 			'labels' => array(api_order_label_schema())
@@ -1883,10 +1883,10 @@ function api_order_label_schema() {
 		'format'       => 'string?',
 		'state'        => 'string',
 		'is_return'    => 'boolean',
-		'created_at'   => 'string?',
-		'cancelled_at' => 'string?',
+		'created_at'   => 'datetime?',
+		'cancelled_at' => 'datetime?',
 		'pickup_ref'   => 'string?',
-		'pickup_at'    => 'string?',
+		'pickup_at'    => 'datetime?',
 		'file_kept'    => 'boolean',
 		'document_url' => 'string'
 	);

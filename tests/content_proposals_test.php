@@ -313,7 +313,7 @@ function test_content_proposals_history_names_both()
 	pg_assert_contains('ayse', pg_content_proposals_revision_by('ayse', 'mehmet'));
 
 	$revisions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_revisions.php');
-	pg_assert_contains("\$by = pg_content_proposals_revision_by(\$by, \$editor_of[(string) \$row['tree_hash']]);", $revisions);
+	pg_assert_contains("\$by = pg_content_proposals_revision_by(\$by, \$editor);", $revisions);
 }
 
 // A9: a change whose node is gone, or whose node a designer changed since,
@@ -473,4 +473,39 @@ function test_content_proposals_count_on_page_list()
 	pg_assert_contains('content_changes.php', $pages);
 	pg_assert_contains('pg_content_proposals_may_decide($user)', $pages, 'designers only');
 	pg_assert_contains("'One content change waits for approval.'", $pages, 'a sentence of its own for one');
+}
+
+// A change applied outside the panel (an approval answered over the API, the
+// approvals job) has no session name: the save's Site Log line is written in
+// the name of the person it acts for, and the session is left as it was.
+function test_content_proposals_write_logs_in_the_actors_name()
+{
+	$keep = isset($_SESSION) ? $_SESSION : null;
+
+	$_SESSION = array();
+	$state = pg_content_proposals_name_set(array('id' => 4, 'username' => 'designer.a'));
+	pg_assert_same('designer.a', $_SESSION['sessionusername'], 'the log line names the approver');
+	pg_content_proposals_name_restore($state);
+	pg_assert_same(array(), $_SESSION, 'the session is left as it was');
+
+	$_SESSION = array('sessionusername' => '', 'other' => 1);
+	$state = pg_content_proposals_name_set(array('id' => 4, 'username' => 'designer.a'));
+	pg_assert_same('designer.a', $_SESSION['sessionusername'], 'an empty name is filled in');
+	pg_content_proposals_name_restore($state);
+	pg_assert_same(array('sessionusername' => '', 'other' => 1), $_SESSION);
+
+	$_SESSION = array('sessionusername' => 'panel.user');
+	$state = pg_content_proposals_name_set(array('id' => 4, 'username' => 'designer.a'));
+	pg_assert_same('panel.user', $_SESSION['sessionusername'], 'a panel name is kept');
+	pg_content_proposals_name_restore($state);
+	pg_assert_same(array('sessionusername' => 'panel.user'), $_SESSION);
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains("\$name = pg_content_proposals_name_set(\$user);\n    \$saved = pg_designer_save_page(\$style_id, \$fields, \$user);\n    pg_content_proposals_name_restore(\$name);", $module, 'the write sets and puts back the name around the save');
+
+	if ($keep === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $keep;
+	}
 }

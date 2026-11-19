@@ -192,7 +192,8 @@ function ws_step_list_records_check($viewer, $config)
  * The field a list holds back its records until a moment with: the field of
  * its one filter "is less than (or equal to)" the current date (and time),
  * as the news templates' publish_date; its name as the filters compare it
- * (lower case). '' with none or more than one such filter. Pure.
+ * (lower case). '' with none or with such filters on more than one field;
+ * the same field found twice is one field. Pure.
  *
  * @param array $filters the filters the list applies (pg_sw_form_feed_pick())
  * @return string
@@ -212,11 +213,13 @@ function ws_flow_records_live_field($filters)
         if (($field !== '') && ($value === '')
             && in_array((string) ($filter['operator'] ?? ''), array('is less than', 'is less than or equal to'), true)
             && in_array((string) ($filter['dynamic_value'] ?? ''), array('current date and time', 'current date'), true)) {
-            $found[] = mb_strtolower($field, 'UTF-8');
+            $found[mb_strtolower($field, 'UTF-8')] = true;
         }
     }
 
-    return (count($found) === 1) ? $found[0] : '';
+    // Counted by distinct field: a list's filters merged with its detail
+    // page's (pg_sw_merge_record_filters()) can hold the same filter twice.
+    return (count($found) === 1) ? (string) key($found) : '';
 }
 
 /**
@@ -699,5 +702,66 @@ function ws_step_list_records_try($action, $flow)
         'said'     => ws_step_list_records_said((string) $action['page_name'], count($records), count($read['left_out']), $window !== null),
         'records'  => $records,
         'left_out' => $titles,
+        'texts'    => ws_flow_records_try_texts($records, $titles),
     );
+}
+
+/**
+ * The pages the box's form offers: those with a list of form records shown
+ * to everyone (pg_sw_form_widget_public()), in a folder everybody may open,
+ * by title. The run checks the page again (ws_flow_records_page()).
+ *
+ * @return array[] id, name, title
+ */
+function ws_flow_records_pages()
+{
+    $out = array();
+
+    foreach (array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list') as $type) {
+        foreach (pg_sw_widget_pages($type, 'pg_sw_form_widget_public') as $page) {
+            $id = (int) $page['page_id'];
+
+            if (isset($out[$id]) || (get_access_control_type((int) ($page['page_folder'] ?? 0)) !== 'public')) {
+                continue;
+            }
+
+            $out[$id] = array('id' => $id, 'name' => (string) $page['page_name'], 'title' => (string) $page['page_title']);
+        }
+    }
+
+    usort($out, function ($a, $b) {
+        return strcasecmp(($a['title'] !== '') ? $a['title'] : $a['name'], ($b['title'] !== '') ? $b['title'] : $b['name']);
+    });
+
+    return array_values($out);
+}
+
+/**
+ * Try's lists in the shape the canvas draws a box's texts: the records a
+ * run now would read, one a line with its date, and the titles left out.
+ * Pure but for lang().
+ *
+ * @param array[]  $records  title, date
+ * @param string[] $left_out titles
+ * @return array[] key, text
+ */
+function ws_flow_records_try_texts($records, $left_out)
+{
+    $texts = array();
+
+    if (!empty($records)) {
+        $lines = array();
+
+        foreach ($records as $record) {
+            $lines[] = '• ' . (string) $record['title'] . ' (' . (string) $record['date'] . ')';
+        }
+
+        $texts[] = array('key' => 'records', 'text' => lang('Would read:') . "\n" . implode("\n", $lines));
+    }
+
+    if (!empty($left_out)) {
+        $texts[] = array('key' => 'left_out', 'text' => lang('Left out, dated before the last run:') . "\n• " . implode("\n• ", array_map('strval', $left_out)));
+    }
+
+    return $texts;
 }

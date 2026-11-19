@@ -34,6 +34,31 @@
     // and reads Waiting to be sent or Not sent until it has left. A draft
     // fills the answer; nothing leaves before the member presses Send. all:
     // Reply to all is on from the start.
+    // Reply by e-mail, on the card and in the E-mails pane alike. A box that
+    // cannot send (switched off, deleted, no sending server) keeps the
+    // button, disabled, with the server's reason printed beside it
+    // (ws_mail_reply_off()); the answer's own check stays on the server.
+    // Returns what to insert: the button, or the button and its reason.
+    function replyButton(h, classes, off, click) {
+        var button = h.button(classes, h.t('mail_reply'), 'bi-reply');
+
+        if (!off) {
+            button.addEventListener('click', click);
+            return button;
+        }
+
+        var place = document.createDocumentFragment();
+        var note = h.el('span', 'small fg-secondary ms-2', off);
+
+        note.id = 'ws-mail-reply-off-' + Math.random().toString(36).slice(2, 8);
+        button.disabled = true;
+        button.setAttribute('aria-describedby', note.id);
+        place.appendChild(button);
+        place.appendChild(note);
+
+        return place;
+    }
+
     function replyForm(message, view, h, draft, all) {
         h.api('ws_mail_reply_form', { conversation_id: message.mail_reply }).then(function (data) {
             answerForm(message.mail_reply, data, view, h, draft, all);
@@ -1098,14 +1123,10 @@
         }
 
         if (message.mail_reply) {
-            var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
-
-            open.addEventListener('click', function (event) {
+            row.appendChild(replyButton(h, 'btn btn-sm btn-outline theme-primary py-0', message.mail_reply_off, function (event) {
                 event.stopPropagation();
                 replyForm(message, view, h);
-            });
-
-            row.appendChild(open);
+            }));
         }
 
         // Forward as e-mail: the New e-mail form filled with this mail.
@@ -1160,6 +1181,12 @@
             control.disabled = true;
 
             h.api('ws_mail_conversation', data).then(function () {
+                // The E-mails screen says the change was kept and asks its
+                // list again; a channel's card is only drawn again.
+                if (view.changed) {
+                    view.changed(data.status ? 'state_saved' : 'holder_saved');
+                }
+
                 view.sync();
             }).catch(function (error) {
                 control.disabled = false;
@@ -1365,6 +1392,11 @@
             window.history.replaceState(window.history.state, '', url.toString());
         }
 
+        // The phone layout of the stylesheet: the pane in the list's place.
+        function phone() {
+            return !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
+        }
+
         function mark(row) {
             each('.ws-mail-row[aria-current]', function (node) {
                 node.removeAttribute('aria-current');
@@ -1518,6 +1550,7 @@
 
                     if (choice === 'cancel') {
                         h.toast(t('mail_remind_off'), 'success');
+                        refresh();
                         open(id);
 
                         return;
@@ -1633,24 +1666,28 @@
                 channel: { id: data.channel_id, members: data.members || [] },
                 sync: function () {
                     open(data.reply);
+                },
+                changed: function (key) {
+                    h.toast(w(key), 'success');
+                    refresh();
                 }
             };
-            var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
-
-            answer.addEventListener('click', function () {
+            var answer = replyButton(h, 'btn btn-sm btn-outline theme-primary', data.reply_off, function () {
                 replyForm(message, view, h);
             });
-            place.insertBefore(answer, place.firstChild);
+            var after = place.firstChild;
+
+            place.insertBefore(answer, after);
 
             // Reply to all, when the last mail named anybody besides the
-            // customer and the mailbox.
-            if (data.others) {
+            // customer and the mailbox, and the box can send.
+            if (data.others && !data.reply_off) {
                 var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
 
                 everyone.addEventListener('click', function () {
                     replyForm(message, view, h, '', true);
                 });
-                place.insertBefore(everyone, answer.nextSibling);
+                place.insertBefore(everyone, after);
             }
 
             if (data.state) {
@@ -1762,6 +1799,12 @@
                 if (!again) {
                     pane.scrollTop = 0;
                     pane.querySelector('h2').focus();
+
+                    // On a phone the page itself scrolls: the mail starts at
+                    // the top of the screen, not where the list was.
+                    if (phone()) {
+                        root.scrollIntoView({ block: 'start' });
+                    }
                 } else if (keep) {
                     pane.querySelector('h2').focus({ preventScroll: true });
                 }
@@ -1793,6 +1836,30 @@
             }).catch(function (error) {
                 link.classList.remove('disabled');
                 link.removeAttribute('aria-disabled');
+                h.fail(error);
+            });
+        }
+
+        // After a change made in the pane (status, holder, a cancelled
+        // reminder) the list is asked again as the address filters it, its
+        // first page: a conversation that no longer matches leaves it, one
+        // that matches again comes back, the open one stays marked.
+        function refresh() {
+            var data = { whole: '1', conversation: String(current || 0) };
+
+            new URLSearchParams(window.location.search).forEach(function (value, key) {
+                if (key !== 'before' && key !== 'conversation') {
+                    data[key] = value;
+                }
+            });
+
+            h.api('ws_mail_rows', data).then(function (result) {
+                var list = root.querySelector('.ws-mail-list');
+
+                if (list && typeof result.list === 'string') {
+                    list.innerHTML = result.list;
+                }
+            }).catch(function (error) {
                 h.fail(error);
             });
         }
@@ -2844,6 +2911,29 @@
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
 
+        // The field a refusal names (ws_mail_send_error_field()) is marked
+        // beside the notice and focused, till it is changed.
+        function markField(name) {
+            var fields = { to: to.field, cc: cc.field, bcc: bcc.field, subject: subject.field, text: body.input };
+            var field = fields[name];
+
+            if (!field) {
+                return;
+            }
+
+            if ((name === 'cc') || (name === 'bcc')) {
+                setCopies(true);
+            }
+
+            field.classList.add('is-invalid');
+            field.setAttribute('aria-invalid', 'true');
+            field.addEventListener('input', function () {
+                field.classList.remove('is-invalid');
+                field.removeAttribute('aria-invalid');
+            }, { once: true });
+            field.focus();
+        }
+
         function sendNew(anyway) {
             var fields = current();
             var empty = [[to.field, fields.to], [subject.field, fields.subject], [body.input, fields.text]].filter(function (pair) {
@@ -2925,6 +3015,7 @@
                 }
 
                 h.fail(error);
+                markField(error.field);
             });
         }
 

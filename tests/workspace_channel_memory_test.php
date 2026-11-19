@@ -218,10 +218,87 @@ function test_workspace_memory_schema_step()
 	pg_assert_same(array(), $second, 'the second run writes nothing');
 }
 
+function test_workspace_memory_project_and_general()
+{
+	pg_assert_same('Site launch', ws_memory_project("  Site \n  launch "));
+	pg_assert_same('', ws_memory_project(null));
+
+	pg_assert_true(ws_memory_is_general(array('channel_id' => 0)), 'channel_id 0 is general');
+	pg_assert_true(ws_memory_is_general(array('channel_id' => '0')), 'as the database gives it');
+	pg_assert_true(!ws_memory_is_general(array('channel_id' => 5)), 'a channel record');
+	pg_assert_true(!ws_memory_is_general(array()), 'no channel id is not general');
+	pg_assert_true(!ws_memory_is_general(null), 'nothing is not general');
+	pg_assert_true(ws_memory_is_general(ws_memory_general_channel(), 'id'), 'the general channel stand-in');
+	pg_assert_true(!ws_memory_is_general(array('id' => 3), 'id'), 'a channel row');
+
+	$now = 1000;
+	pg_assert_same(null, ws_memory_entry_fault(array('title' => 'x', 'project' => str_repeat('p', 80)), $now));
+	$fault = ws_memory_entry_fault(array('title' => 'x', 'project' => str_repeat('p', 81)), $now);
+	pg_assert_same('project', $fault ? $fault['field'] : '', 'a project over 80 characters names its field');
+}
+
+function test_workspace_memory_general_wiring()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+
+	// The sweep deletes records of channels that are gone, never a general one.
+	pg_assert_true(strpos($source, 'OR (c.id IS NULL AND m.channel_id > 0)') !== false, 'the sweep leaves general records alone');
+
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.memory.create', 'workspace.memory.update') as $id) {
+		$names = array_map(function ($param) {
+			return $param['name'];
+		}, $routes[$id]['params']);
+		pg_assert_true(in_array('project', $names, true), $id . ' takes a project');
+	}
+
+	$schema = ws_api_memory_index_entry_schema();
+	pg_assert_same('string', $schema['project']);
+	pg_assert_same('boolean', $schema['general']);
+
+	$present = ws_memory_present(array('id' => 1, 'channel_id' => 0, 'project' => ' Launch ', 'title' => 't', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'author_kind' => 'user', 'author_id' => 0, 'updated_by_kind' => 'user', 'updated_by_id' => 0, 'created_at' => 1, 'updated_at' => 1, 'text' => ''));
+	pg_assert_true($present['general'], 'a general record says so');
+	pg_assert_same('Launch', $present['project']);
+
+	$old = ws_memory_present(array('id' => 2, 'channel_id' => 4, 'title' => 't', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'author_kind' => 'user', 'author_id' => 0, 'updated_by_kind' => 'user', 'updated_by_id' => 0, 'created_at' => 1, 'updated_at' => 1, 'text' => ''));
+	pg_assert_same('', $old['project'], 'a row read before the step has no project');
+	pg_assert_true(!$old['general'], 'a channel record');
+}
+
+function test_workspace_memory_project_schema_step()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+
+	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_memory_project();"), 'called once');
+	pg_assert_same(1, substr_count($source, '// 11.0.236' . "\n"), 'its label is its own');
+
+	$result = workspace_channel_memory_test_run_twice('upgrade_2026_11_0_ws_memory_project', array('ws_channel_memory' => array('id' => 'int', 'channel_id' => 'int')));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($result['error']), 'the step ran: ' . (isset($result['error']) ? $result['error'] : ''));
+
+	if (isset($result['error'])) {
+		return;
+	}
+
+	list($first, $second) = $result['runs'];
+
+	pg_assert_same(array("ALTER TABLE `ws_channel_memory` ADD `project` VARCHAR(80) NOT NULL DEFAULT '' AFTER channel_id"), $first, 'one column');
+	pg_assert_same(array(), $second, 'the second run writes nothing');
+}
+
 // Runs the step twice in a child process against a fake db layer that
 // answers the runner's probes from an array and logs every write. Null when
 // PHP cannot be started again.
-function workspace_channel_memory_test_run_twice()
+function workspace_channel_memory_test_run_twice($step = 'upgrade_2026_11_0_ws_channel_memory', $schema = array('ws_messages' => array('marked_by' => 'int')))
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return null;
@@ -236,7 +313,7 @@ function workspace_channel_memory_test_run_twice()
 	$script = <<<'PHP'
 define('INSTALL_OR_UPDATE', true);
 
-$GLOBALS['fake_schema'] = array('ws_messages' => array('marked_by' => 'int'));
+$GLOBALS['fake_schema'] = $pg_schema;
 $GLOBALS['fake_writes'] = array();
 
 function e($value) { return addslashes((string) $value); }
@@ -288,7 +365,7 @@ require $pg_dir . '/includes/migrations/2026.11.0.php';
 $runs = array();
 foreach (array(1, 2) as $run) {
 	$GLOBALS['fake_writes'] = array();
-	upgrade_2026_11_0_ws_channel_memory();
+	$pg_step();
 	$runs[] = $GLOBALS['fake_writes'];
 }
 
@@ -297,6 +374,8 @@ PHP;
 
 	file_put_contents($file, '<?php' . "\n"
 		. '$pg_dir = ' . var_export(PG_FUNCTIONS_DIR, true) . ";\n"
+		. '$pg_step = ' . var_export((string) $step, true) . ";\n"
+		. '$pg_schema = ' . var_export($schema, true) . ";\n"
 		. $script . "\n");
 
 	$out = array();

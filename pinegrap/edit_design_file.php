@@ -244,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
                                             <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control" maxlength="100"/>
                                         </div>
