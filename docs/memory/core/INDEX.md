@@ -85,6 +85,7 @@
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws: a site error in the site's language (pg_tr_finalize()), a panel screen's error in the panel's own frame (#9024); which "not found" screens answer 404
+- excel-reader2-embedding.md: The bundled excel_reader2.php (php-excel-reader 2.22) that reads an uploaded .xls for the site search index, and the local patch that makes it run and stay quiet on PHP 8
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-restore-notes.md: What a File Manager restore says about items that came back changed (root folder, new name, page without its style) and what the bin badge names as the origin
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
