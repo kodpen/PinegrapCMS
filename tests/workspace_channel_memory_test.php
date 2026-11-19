@@ -218,10 +218,87 @@ function test_workspace_memory_schema_step()
 	pg_assert_same(array(), $second, 'the second run writes nothing');
 }
 
+function test_workspace_memory_project_and_general()
+{
+	pg_assert_same('Site launch', ws_memory_project("  Site \n  launch "));
+	pg_assert_same('', ws_memory_project(null));
+
+	pg_assert_true(ws_memory_is_general(array('channel_id' => 0)), 'channel_id 0 is general');
+	pg_assert_true(ws_memory_is_general(array('channel_id' => '0')), 'as the database gives it');
+	pg_assert_true(!ws_memory_is_general(array('channel_id' => 5)), 'a channel record');
+	pg_assert_true(!ws_memory_is_general(array()), 'no channel id is not general');
+	pg_assert_true(!ws_memory_is_general(null), 'nothing is not general');
+	pg_assert_true(ws_memory_is_general(ws_memory_general_channel(), 'id'), 'the general channel stand-in');
+	pg_assert_true(!ws_memory_is_general(array('id' => 3), 'id'), 'a channel row');
+
+	$now = 1000;
+	pg_assert_same(null, ws_memory_entry_fault(array('title' => 'x', 'project' => str_repeat('p', 80)), $now));
+	$fault = ws_memory_entry_fault(array('title' => 'x', 'project' => str_repeat('p', 81)), $now);
+	pg_assert_same('project', $fault ? $fault['field'] : '', 'a project over 80 characters names its field');
+}
+
+function test_workspace_memory_general_wiring()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+
+	// The sweep deletes records of channels that are gone, never a general one.
+	pg_assert_true(strpos($source, 'OR (c.id IS NULL AND m.channel_id > 0)') !== false, 'the sweep leaves general records alone');
+
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.memory.create', 'workspace.memory.update') as $id) {
+		$names = array_map(function ($param) {
+			return $param['name'];
+		}, $routes[$id]['params']);
+		pg_assert_true(in_array('project', $names, true), $id . ' takes a project');
+	}
+
+	$schema = ws_api_memory_index_entry_schema();
+	pg_assert_same('string', $schema['project']);
+	pg_assert_same('boolean', $schema['general']);
+
+	$present = ws_memory_present(array('id' => 1, 'channel_id' => 0, 'project' => ' Launch ', 'title' => 't', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'author_kind' => 'user', 'author_id' => 0, 'updated_by_kind' => 'user', 'updated_by_id' => 0, 'created_at' => 1, 'updated_at' => 1, 'text' => ''));
+	pg_assert_true($present['general'], 'a general record says so');
+	pg_assert_same('Launch', $present['project']);
+
+	$old = ws_memory_present(array('id' => 2, 'channel_id' => 4, 'title' => 't', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'author_kind' => 'user', 'author_id' => 0, 'updated_by_kind' => 'user', 'updated_by_id' => 0, 'created_at' => 1, 'updated_at' => 1, 'text' => ''));
+	pg_assert_same('', $old['project'], 'a row read before the step has no project');
+	pg_assert_true(!$old['general'], 'a channel record');
+}
+
+function test_workspace_memory_project_schema_step()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+
+	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_memory_project();"), 'called once');
+	pg_assert_same(1, substr_count($source, '// 11.0.236' . "\n"), 'its label is its own');
+
+	$result = workspace_channel_memory_test_run_twice('upgrade_2026_11_0_ws_memory_project', array('ws_channel_memory' => array('id' => 'int', 'channel_id' => 'int')));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($result['error']), 'the step ran: ' . (isset($result['error']) ? $result['error'] : ''));
+
+	if (isset($result['error'])) {
+		return;
+	}
+
+	list($first, $second) = $result['runs'];
+
+	pg_assert_same(array("ALTER TABLE `ws_channel_memory` ADD `project` VARCHAR(80) NOT NULL DEFAULT '' AFTER channel_id"), $first, 'one column');
+	pg_assert_same(array(), $second, 'the second run writes nothing');
+}
+
 // Runs the step twice in a child process against a fake db layer that
 // answers the runner's probes from an array and logs every write. Null when
 // PHP cannot be started again.
-function workspace_channel_memory_test_run_twice()
+function workspace_channel_memory_test_run_twice($step = 'upgrade_2026_11_0_ws_channel_memory', $schema = array('ws_messages' => array('marked_by' => 'int')))
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return null;
@@ -236,7 +313,7 @@ function workspace_channel_memory_test_run_twice()
 	$script = <<<'PHP'
 define('INSTALL_OR_UPDATE', true);
 
-$GLOBALS['fake_schema'] = array('ws_messages' => array('marked_by' => 'int'));
+$GLOBALS['fake_schema'] = $pg_schema;
 $GLOBALS['fake_writes'] = array();
 
 function e($value) { return addslashes((string) $value); }
@@ -288,7 +365,7 @@ require $pg_dir . '/includes/migrations/2026.11.0.php';
 $runs = array();
 foreach (array(1, 2) as $run) {
 	$GLOBALS['fake_writes'] = array();
-	upgrade_2026_11_0_ws_channel_memory();
+	$pg_step();
 	$runs[] = $GLOBALS['fake_writes'];
 }
 
@@ -297,6 +374,8 @@ PHP;
 
 	file_put_contents($file, '<?php' . "\n"
 		. '$pg_dir = ' . var_export(PG_FUNCTIONS_DIR, true) . ";\n"
+		. '$pg_step = ' . var_export((string) $step, true) . ";\n"
+		. '$pg_schema = ' . var_export($schema, true) . ";\n"
 		. $script . "\n");
 
 	$out = array();
@@ -339,4 +418,101 @@ function test_workspace_agent_questions_settle_in_the_agents_name()
 
 	pg_assert_contains('$app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();', $send);
 	pg_assert_contains("(\$app_mark ? \$app_id : (int) \$viewer['id'])", $send, 'the application is the marker');
+}
+
+// In an agent channel the brief lists the general memory first, each line
+// naming its project, inside the same size as the channel's own index.
+function test_workspace_memory_digest_general_first()
+{
+	$now = 1000;
+	$general = array(
+		array('id' => 9, 'project' => 'Site  launch', 'title' => 'Release day', 'tags' => 'ci', 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 40),
+		array('id' => 8, 'project' => '', 'title' => 'House rule', 'tags' => '', 'pinned' => 1, 'expires_at' => 0, 'updated_at' => 1),
+		array('id' => 7, 'project' => 'Old', 'title' => 'Gone', 'tags' => '', 'pinned' => 0, 'expires_at' => 900, 'updated_at' => 99),
+	);
+	$entries = array(array('id' => 1, 'title' => 'Own', 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 10));
+	$decisions = array(array('body' => 'Ship on Friday', 'marked_at' => 20));
+	$general_heading = 'General memory, shared by the agent channels (read an entry with workspace.memory.get, its id without the #):';
+	$heading = 'Channel memory (read an entry with workspace.memory.get, its id without the #):';
+
+	pg_assert_same($general_heading . "\n- #8 House rule\n- #9 Site launch: Release day [ci]\n\n" . $heading . "\n- #1 Own\n\nDecisions in this channel:\n- Ship on Friday",
+		ws_memory_digest($entries, $decisions, $now, WS_MEMORY_DIGEST_MAX, null, $general));
+
+	// Without the general records the digest is the channel's alone.
+	pg_assert_same(ws_memory_digest($entries, $decisions, $now), ws_memory_digest($entries, $decisions, $now, WS_MEMORY_DIGEST_MAX, null, array()));
+
+	// A general memory alone still makes a digest.
+	pg_assert_same($general_heading . "\n- #8 House rule\n- #9 Site launch: Release day [ci]", ws_memory_digest(array(), array(), $now, WS_MEMORY_DIGEST_MAX, null, $general));
+
+	// One size holds both: the general lines take their room first, and the
+	// count names the general list when a general line was left out.
+	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($general_heading) + 2 + 16, null, $general);
+	pg_assert_same($general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)", $small);
+}
+
+function test_workspace_memory_move_fault()
+{
+	$row = array('id' => 3, 'channel_id' => 5);
+	$agent = array('id' => 5, 'agent_channel' => 1);
+	$plain = array('id' => 5, 'agent_channel' => 0);
+
+	pg_assert_same(null, ws_memory_move_fault($row, $agent, true, true));
+
+	$general = ws_memory_move_fault(array('id' => 3, 'channel_id' => 0), null, true, true);
+	pg_assert_true(!$general['forbidden'] && ($general['error'] !== ''), 'already general: 422');
+
+	$post = ws_memory_move_fault($row, $agent, false, true);
+	pg_assert_true($post['forbidden'], 'not a poster of the channel');
+
+	$not_agent = ws_memory_move_fault($row, $plain, true, true);
+	pg_assert_true(!$not_agent['forbidden'] && ($not_agent['error'] !== ''), 'only an agent channel\'s records move');
+
+	$keeper = ws_memory_move_fault($row, $agent, true, false);
+	pg_assert_true($keeper['forbidden'], 'the mover must keep the general memory');
+
+	pg_assert_true(ws_memory_move_fault(null, $agent, true, true) !== null, 'no record');
+}
+
+function test_workspace_memory_general_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expect = array(
+		'workspace.memory.general.list'   => array('GET', '/workspace/memory/general'),
+		'workspace.memory.general.create' => array('POST', '/workspace/memory/general'),
+		'workspace.memory.move_general'   => array('POST', '/workspace/memory/{id}/general'),
+	);
+
+	foreach ($expect as $id => $where) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($where, array($routes[$id]['method'], $routes[$id]['path']), $id);
+		pg_assert_true(!isset($routes[$id]['mcp']) || ($routes[$id]['mcp'] !== false), $id . ' is a tool');
+
+		if ($where[0] !== 'GET') {
+			pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		}
+	}
+
+	// GET /workspace/memory/{id} takes digits only, so "general" never reaches it.
+	$get = $routes['workspace.memory.get']['params'][0];
+	pg_assert_same(array('id', 'path', 'int'), array($get['name'], $get['in'], $get['type']));
+
+	$names = array_map(function ($param) {
+		return $param['name'];
+	}, $routes['workspace.memory.general.create']['params']);
+	pg_assert_true(in_array('project', $names, true) && !in_array('id', $names, true), 'a general record takes a project and no channel');
+
+	// The brief reads the general records only for an agent channel's asker who keeps them.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+	pg_assert_contains("\$general = ws_memory_brief_general(\$viewer, \$channel) ? ws_memory_rows(0, false) : array();", $source);
+	pg_assert_contains('return function_exists(\'ws_agent_channel_is\') && ws_agent_channel_is($channel) && ws_memory_general_can($viewer);', $source);
 }

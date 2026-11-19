@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - Channels, mail and voice: links to the channel cards still kept
- * on the Workspace Settings screen.
+ * Site Settings - Channels: the channel templates, the GitHub repositories
+ * and the link previews.
  *
  * One of the Workspace categories, opened by a holder of the Workspace
  * settings right (pg_settings_category_open()). Everything the screen does

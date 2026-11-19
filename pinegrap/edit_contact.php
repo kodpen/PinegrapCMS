@@ -183,8 +183,8 @@ if (!$_POST) {
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                 <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4; background: var(--pg-surface-inset);" title="' . h($row['image']) . '">
-                    <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
-                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
+                    <input type="hidden" name="image_url" id="image_url" value="' . h($row['image']) . '">
+                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_contact_image_address($row['image'])) . '" />
                 </div>
             </div>
         </div>';
@@ -272,6 +272,11 @@ if (!$_POST) {
 
     $email_address = h($row['email_address']);
 
+    // Return in a field presses the form's first submit button. While the
+    // address is suppressed the subscriber card holds Allow again, printed
+    // before the save bar, so the form opens with a hidden nameless submit:
+    // it reaches the save branch (the final else, which reads no button
+    // name), as on Edit User.
     print
     pg_page_shell(
         array(
@@ -290,6 +295,7 @@ if (!$_POST) {
                 ' . $liveform_edit_contact->output_notices() . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
+                    <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     ' . pg_contact_form_layout(
                         pg_contact_form_name_card($row, false) . '

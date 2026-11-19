@@ -11,6 +11,8 @@ module: site_push_panel
 ## What does the screen do?
 - The form: "Pick a page or record", Title (60), Text (200), Link (a path of the site; empty is the home page). "Send to N subscriber(s)" writes kind 0 through `pg_site_push_message_send()`; the sender's pass sends it (`platform/visitor-push-sender.md`).
 - With the switch off or before the upgrade a note says so and the form is disabled; the send would answer `off` anyway.
+- The form sends once (#10249): the first send that goes through (the confirmed news or a test) sets `sending`, disables both `button[name="send"]` and sets `aria-busy`; any later submit is cancelled. The action travels in a hidden `send` input (a disabled button drops its value). A page restored from the back/forward cache is reset. Before, a second press while the post wrote the queue sent the news to every subscriber again without asking.
+- The server has no one-use guard: `messages_notifications.php` takes every valid post as a new message.
 - Errors are sentences from `pg_site_push_send_error()`; the form keeps what was typed (liveform).
 
 ## Where does Pick a page or record read?

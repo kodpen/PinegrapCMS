@@ -4,15 +4,15 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
 ---
 
 ## Which steps follow?
-- CC7 (M) after CC2: /oluştur kişi and /oluştur satır. CC7a (kişi) done: #10187; CC7b next.
+- CC7 (M) after CC2: /oluştur kişi and /oluştur satır. Done: #10187, #10213.
   - Existing: `includes/workspace/quick_edit.php` (`ws_quick_create_types()`), `includes/workspace/changes.php` (the contact is in the catalogue), `ws_command_create_names()`, the drawer's new mode in `assets/js/workspace.js`.
   - Tests: a contact's required list; a person without the contacts right neither offered nor let through; a row of a table the person may not write refused; nothing written before Save; "All fields".
   - Pictures: the two cards.
   - Features: K21, K22.
 
-- CC8 (M) after CC7: /oluştur cari and /oluştur etkinlik. Tests: not offered with the ERP module off; each kind's right. Pictures: the two cards. Features: K23, K24.
+- CC8 (M) after CC7: /oluştur cari and /oluştur etkinlik. Tests: not offered with the ERP module off; each kind's right. Pictures: the two cards. Features: K23, K24. Done: #10262.
 
-- CC9 (S) after CC7: /kargo.
+- CC9 (S) after CC7: /kargo. Done: #10300.
   - Tests: the card shows the old numbers beside the new; Save writes `tracking_numbers` only if the value is still the one the card showed; no mail is sent; the order right.
   - Picture: the card. Feature: K25.
 
@@ -34,7 +34,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
 - Close-out, with the last step that lands: every K number checked against the code with its PR; `workspace/workspace-command-registry.md`, `workspace/workspace-app-commands.md` and `workspace/workspace-command-api.md` current; this plan's files deleted.
 
 ## Which steps wait for each other?
-- CC1, then CC2. After CC2 the steps CC3 to CC7 and CC10 may run side by side, at most two at a time, and never two that both edit `assets/js/workspace.js` (CC5, CC7, CC10) or the same group function of the registry.
+- CC1, then CC2. After CC2 the steps CC3 to CC7 and CC10 may run side by side, at most two at a time, and never two that edit the same function of `assets/js/workspace.js` or the same group function of the registry (PR Merge, agent channel 8073, 8076).
 - CC8 and CC9 after CC7; CC11 after CC10; CC12 after CC11.
 - A step that meets another plan's open PR on `assets/js/workspace.js` waits for it and says so in the agent channel.
 

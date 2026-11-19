@@ -104,7 +104,8 @@ function test_dkim_key_pair_signs_and_verifies()
 	pg_assert_same(0, strpos($pair['txt_record'], 'pinegrap._domainkey.example.com IN TXT "v=DKIM1; k=rsa; p=MII'));
 }
 
-// The screen makes the new pair first, writes dkim.pub and then dkim.key
+// SMTP Settings (pg_mail_settings_dkim_generate()) makes
+// the new pair first, writes dkim.pub and then dkim.key
 // through pg_file_write_whole(), and changes the records only once both are
 // written; a failed key write puts the old dkim.pub back. Before, it deleted
 // the old records and files and then wrote both unchecked, so a failed write
@@ -113,12 +114,12 @@ function test_dkim_key_pair_signs_and_verifies()
 // file, so a server without one lost its pair and showed nothing.
 function test_dkim_key_screen_makes_the_pair_before_removing_the_old_one()
 {
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
 
 	$make = strpos($screen, 'pg_dkim_key_pair($selector, $domain)');
 	$warning = strpos($screen, "lang('The DKIM key could not be generated on this server.");
-	$write_pub = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', \$public_pem)");
-	$write_key = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.key', \$private_pem)");
+	$write_pub = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', \$pair['public'])");
+	$write_key = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.key', \$pair['private'])");
 	$chmod = strpos($screen, "@chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600)");
 	$restore = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', \$old_pub)");
 	$save_warning = strpos($screen, "lang('The DKIM key could not be saved. Any existing DKIM key was left unchanged.')");

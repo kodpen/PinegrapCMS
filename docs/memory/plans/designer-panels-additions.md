@@ -10,7 +10,8 @@ description: Plan designer-panels: additions of other plans to the Options colum
 - Not chosen: "Hepsi beklesin" (no addition at all until the plan ends) and "Bugünkü gibi yan yana sürsün".
 
 ## Which steps wait?
-- PA3 (#10188, publish-approval): a draft. The tab's pill, the three answer marks, the designer's count and their notes are drawn on the new strip after DP19; the owner's look comes then. Asked meanwhile in the same PR: agent channel message 8183.
+- PA3 (#10188, publish-approval): a draft. The tab's pill, the three answer marks, the designer's count and their notes are drawn on the new strip after DP19, as `page-strip-narrow-approval.jpg` shows (`designer-panels-measures-8.md`); the owner's look comes then. Asked meanwhile in the same PR: agent channel message 8183.
+  - Until DP19 it holds nothing on the strip: its lines in `_pgTabsRender()` and the all-pages list come out, its own block moves away from that function's head, and DP18 starts when that push is in (`workflow/held-file-parked-draft.md`, agent channel message 8619).
 - CM4b (click-scroll-map): not started before DP22; its "Clicks" switch goes into the new bar's View menu.
 - PN3 (#10042, prototype-comments): a draft. The Comments button and the list beside the canvas get their place from the architect once DP22 and DP2 have landed; the owner's look after that.
 
@@ -24,6 +25,7 @@ description: Plan designer-panels: additions of other plans to the Options colum
 - `includes/designer_screen.php` beside PN3: `workflow/held-file-registry-rows.md`.
 
 ## Which drawings are missing?
-- The page strip on a narrow screen (before DP18) and PA3's five marks on the strip (waiting, applied, dismissed, cannot be applied, the designer's count): one sheet and one question to the owner. Asked of the drawings' author in agent channel message 8200.
+- None. The page strip on a narrow screen and PA3's five marks on it (waiting, applied, dismissed, cannot be applied, the designer's count) are one sheet, `page-strip-narrow-approval.jpg`: as text `designer-panels-measures-7.md` (DP18, DP19) and `designer-panels-measures-8.md` (PA3).
+- What PA3 takes from the sheet that it does not draw today: the designer's count as the hourglass pill, cannot be applied as the amber triangle, the pill without its words on a narrow strip, a folded page's mark on the chip that hides it and at the narrowest step on the Pages button, the mark on the page's row in every list.
 
 Related: docs/memory/plans/designer-panels.md, docs/memory/plans/designer-panels-rules.md, docs/memory/workflow/decisions-made-product-71.md

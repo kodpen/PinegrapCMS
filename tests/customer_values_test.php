@@ -123,6 +123,23 @@ function test_customer_values_customer_key()
 	pg_assert_same(array(array(1002, 16000, 2)), $summary['top']['all'], 'the top customer is kept as its last order number');
 }
 
+// The top customers of the last twelve months carry the orders of those
+// twelve months beside their value, not every order of all time.
+function test_customer_values_top_year_counts_its_own_orders()
+{
+	$now = mktime(12, 0, 0, 6, 15, 2026);
+	$day = 86400;
+	$summary = _cv_test_summary(array(
+		_cv_test_order(1, $now - 700 * $day, 'a@x.com', 10000),
+		_cv_test_order(2, $now - 500 * $day, 'a@x.com', 20000),
+		_cv_test_order(3, $now - 400 * $day, 'a@x.com', 30000),
+		_cv_test_order(4, $now - 20 * $day, 'a@x.com', 4000),
+	), $now);
+
+	pg_assert_same(array(array(1004, 64000, 4)), $summary['top']['all']);
+	pg_assert_same(array(array(1004, 4000, 1)), $summary['top']['year'], 'one order in the last twelve months');
+}
+
 // A rebuild cut into runs, its state written and read back between them,
 // gives the same summary as one run.
 function test_customer_values_runs_match_one_run()

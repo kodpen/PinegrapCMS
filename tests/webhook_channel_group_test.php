@@ -153,7 +153,7 @@ function test_webhook_channel_group_checked_before_the_write()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/webhooks.php');
 
-	foreach (array('function api_webhooks_create(' => 'INSERT INTO api_webhooks', 'function api_webhooks_update(' => 'UPDATE api_webhooks SET') as $start => $write) {
+	foreach (array('function api_webhooks_create(' => 'api_webhook_store(', 'function api_webhooks_update(' => 'UPDATE api_webhooks SET') as $start => $write) {
 		$body = substr($source, (int) strpos($source, $start));
 		$check = strpos($body, 'api_webhook_clean_channel_group(');
 		$stop = strpos($body, 'api_dry_run_stop(');

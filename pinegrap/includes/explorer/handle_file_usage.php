@@ -191,6 +191,11 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
 {
     $usage_file = pg_explorer_file_row((int) (isset($request['file_id']) ? $request['file_id'] : 0));
 
+    // A language's picture of a Design Canvas file is no file of its own here.
+    if ($usage_file && pg_picture_tr_is_picture((int) $usage_file['id'])) {
+        $usage_file = null;
+    }
+
     if (!$usage_file) {
         respond(array('status' => 'error', 'message' => lang('Sorry, we could not find the file.')));
     }

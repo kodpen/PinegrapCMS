@@ -179,6 +179,13 @@ function ws_quick_edit_js_strings()
         'qc_command_title' => lang('The product that will be created'),
         'qc_command_title_group' => lang('The product group that will be created'),
         'qc_command_title_contact' => lang('The contact that will be created'),
+        'qc_command_title_account' => lang('The account that will be created'),
+        'qc_command_title_event' => lang('The event that will be created'),
+        // The /create row card.
+        'qc_command_title_row' => lang('The row that will be added'),
+        'qc_row_table'     => lang('Table'),
+        'qc_row_choose'    => lang('Choose the table.'),
+        'qc_row_none'      => lang('(none)'),
         'qc_new_contact'   => lang('New contact'),
         'qc_all_fields'    => lang('All fields'),
         'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
@@ -468,7 +475,7 @@ function ws_quick_edit_log_name($viewer)
  */
 function ws_quick_create_types()
 {
-    return array('product', 'product_group', 'contact');
+    return array('product', 'product_group', 'contact', 'erp_account', 'calendar_event');
 }
 
 /**
@@ -561,6 +568,8 @@ function ws_quick_create_short_list($type)
         'product'       => array('name', 'short_description', 'price', 'enabled', WS_QUICK_EDIT_STOCK_FIELD, 'group_ids'),
         'product_group' => array('name', 'short_description', 'enabled', 'parent_id'),
         'contact'       => array('first_name', 'last_name', 'company', 'email'),
+        'erp_account'    => array('title', 'kind', 'is_person', 'tax_number', 'email', 'phone'),
+        'calendar_event' => array('name', 'start_time', 'end_time', 'all_day', 'calendar_ids', 'location'),
     );
 
     return $lists[$type] ?? array();
@@ -660,6 +669,14 @@ function ws_quick_create_title($type)
         return lang('New contact');
     }
 
+    if ($type === 'erp_account') {
+        return lang('New account');
+    }
+
+    if ($type === 'calendar_event') {
+        return lang('New event');
+    }
+
     return ($type === 'product_group') ? lang('New product group') : lang('New product');
 }
 
@@ -691,6 +708,52 @@ function ws_quick_create_check($viewer, $type)
 }
 
 /**
+ * The calendars this person may put an event on (ws_change_calendar_access(),
+ * the event screens' rule), by name.
+ *
+ * @param array $viewer
+ * @return array[] id, name
+ */
+function ws_quick_create_calendars($viewer)
+{
+    if (!is_array($viewer) || !function_exists('ws_change_calendar_access')) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT id, name FROM calendars ORDER BY name, id") as $calendar) {
+        if (ws_change_calendar_access($viewer, (int) $calendar['id'])) {
+            $out[] = array('id' => (int) $calendar['id'], 'name' => (string) $calendar['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A list field of records the workspace does not tag (an event's calendars)
+ * cannot be searched for in the drawer: it gets the person's choices
+ * instead, which the drawer draws as a select.
+ *
+ * @param array[] $form   ws_quick_create_form()'s fields
+ * @param array   $viewer
+ * @return array[]
+ */
+function ws_quick_create_choices($form, $viewer)
+{
+    foreach ($form as $index => $meta) {
+        if (($meta['kind'] === 'ids') && (($meta['tag'] ?? '') === 'calendar')) {
+            $form[$index]['choices'] = array_map(function ($calendar) {
+                return array('id' => $calendar['id'], 'label' => $calendar['name']);
+            }, ws_quick_create_calendars($viewer));
+        }
+    }
+
+    return $form;
+}
+
+/**
  * The empty form of a new record, as the drawer's new mode draws it.
  *
  * @param array  $viewer
@@ -714,7 +777,7 @@ function ws_quick_create_fields($viewer, $type)
         'title'    => ws_quick_create_title($type),
         'label'    => (string) $types[$type]['label'],
         'tag'      => (string) $types[$type]['tag'],
-        'fields'   => ws_quick_create_form($type, $types[$type]),
+        'fields'   => ws_quick_create_choices(ws_quick_create_form($type, $types[$type]), $viewer),
         'short'    => ws_quick_create_short_list($type),
         'required' => ws_quick_create_starred((array) ($types[$type]['required'] ?? array())),
     );
@@ -837,7 +900,8 @@ function ws_quick_create_save($viewer, $type, $fields, $channel_id = 0, $decisio
         }
 
         $shown = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
-        $lines[] = ((string) $field[0] === 'ids') ? $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']) : $shown;
+        // Records the workspace tags as their tags; calendars by name.
+        $lines[] = (((string) $field[0] === 'ids') && isset($types[(string) $field[1]])) ? $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']) : $shown;
         $logged[] = $shown;
     }
 

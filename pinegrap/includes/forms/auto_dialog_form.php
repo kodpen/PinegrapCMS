@@ -217,7 +217,7 @@ function pg_auto_dialog_form_open_fields()
             lang('Visitors with a cart') => 'cart',
         )),
         'place' => array(lang('Place'), array(
-            lang('Centre') => 'centre',
+            lang('In the centre') => 'centre',
             lang('Bar at the top') => 'top',
             lang('Bar at the bottom') => 'bottom',
             lang('Corner') => 'corner',

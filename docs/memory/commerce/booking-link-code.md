@@ -20,6 +20,8 @@ module: booking_links
 ## Where is the meeting address kept?
 - `ws_profiles.meeting_url VARCHAR(500) NULL` (step 11.0.232, architect, agent channel message 7221; no index, no backfill; NULL and an empty string are both no address). `pg_booking_link_meeting_url()` reads it, `pg_booking_link_meeting_url_save()` writes it cleaned by `ws_meeting_url_clean()` (empty is NULL). `pg_booking_link_booking_meeting_url()` gives it only for a booking with `source = 'link'` (`PG_BOOKING_LINK_SOURCE`), read and cleaned when shown.
 
+The page that books through the link: [[booking-link-page]].
+
 Test: `tests/booking_links_test.php`.
 
 Related: docs/memory/commerce/bookings-model.md, docs/memory/plans/meeting-link-features.md

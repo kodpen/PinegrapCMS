@@ -70,8 +70,10 @@ function test_whatsapp_offer_check()
 		pg_assert_true(isset($errors['offer_days']), 'validity ' . $days . ' refused');
 	}
 
+	// The designer has no "The code goes in" field (the chip decides), so
+	// where the code goes is marked on the offer's choice, which it draws.
 	$errors = pg_whatsapp_design_check(whatsapp_offer_test_design(array('label_2' => 'Code', 'offer_variable' => '3')));
-	pg_assert_true(isset($errors['offer_variable']), 'a variable the message does not hold');
+	pg_assert_true(isset($errors['offer_mode']) && !isset($errors['offer_variable']), 'a variable the message does not hold, marked on the offer');
 
 	$errors = pg_whatsapp_design_check(whatsapp_offer_test_design(array('offer_mode' => '')));
 	pg_assert_true(isset($errors['button_0']), 'a copy-code button needs an offer');
@@ -80,7 +82,7 @@ function test_whatsapp_offer_check()
 	pg_assert_true(isset($errors['category']), 'an offer code makes a marketing template');
 
 	$errors = pg_whatsapp_design_check(whatsapp_offer_test_design(array('label_2' => 'Code', 'offer_variable' => '', 'button_type' => array('QUICK_REPLY'), 'button_text' => array('More'))));
-	pg_assert_true(isset($errors['offer_variable']), 'the code must go somewhere');
+	pg_assert_true(isset($errors['offer_mode']) && !isset($errors['offer_variable']), 'the code must go somewhere, marked on the offer');
 
 	$errors = pg_whatsapp_design_check(whatsapp_offer_test_design(array('button_sample' => array('has space'))));
 	pg_assert_true(isset($errors['button_0']), 'a sample code without spaces');

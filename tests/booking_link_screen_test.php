@@ -63,9 +63,18 @@ function test_booking_link_screen_short_target_is_a_path_on_the_site()
 	$key = str_repeat('k', 32);
 	$member = _booking_link_screen_test_member();
 
-	pg_assert_same('/site/book_with.php?c=' . pg_booking_link_code($member, $key), pg_booking_link_short_target($member, $key, '/site/'), 'the link as a path, so a new host name keeps it');
-	pg_assert_same('', pg_booking_link_short_target($member, '', '/'), 'no key, no target');
-	pg_assert_same('', pg_booking_link_short_target(_booking_link_screen_test_member(array('user_id' => 0)), $key, '/'), 'no user, no target');
+	// The page sits in the software folder: /book_with.php at the site's
+	// root is no file, and the router answers it with a 404.
+	pg_assert_same('/site/pinegrap/book_with.php?c=' . pg_booking_link_code($member, $key), pg_booking_link_short_target($member, $key, '/site/', 'pinegrap'), 'the link as a path, so a new host name keeps it');
+	pg_assert_same('/site/book_with.php?c=' . pg_booking_link_code($member, $key), pg_booking_link_short_target($member, $key, '/site/', ''), 'the shape the first version saved, to find its row');
+	pg_assert_same('', pg_booking_link_short_target($member, '', '/', 'pinegrap'), 'no key, no target');
+	pg_assert_same('', pg_booking_link_short_target(_booking_link_screen_test_member(array('user_id' => 0)), $key, '/', 'pinegrap'), 'no user, no target');
+
+	// The screen asks for the link's own path and finds a row saved with the
+	// first version's path, then writes the right one into it.
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_meeting_link.php');
+	pg_assert_contains("pg_booking_link_short_target(\$member, pg_booking_key(), PATH, SOFTWARE_DIRECTORY)", $screen);
+	pg_assert_contains("UPDATE short_links SET url = ?", $screen, 'a row with the old path is put right');
 }
 
 function test_booking_link_screen_is_behind_more_for_booking_staff_only()

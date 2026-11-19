@@ -14,7 +14,7 @@ module: connections_registry
 
 ## Which state readers are there?
 - `pg_connections_state_kinds()`: `account` (a connected account of a provider for a purpose; the only kind that reads "needs attention", from `reauth`), `app` (an enabled `connect_apps` row), `service` (`pg_connect_service_get()`), `config` (constants set, or the first equal to `equals`), `reader` (a function answering true from stored data), `marketplace`, `edoc`, `model`, `mcp`, `notify`.
-- Nothing is read yet: the Connections screen implements one reader per kind. A state that nothing stored can tell is left out and named (`no_state`), never kept in a new table.
+- The Connections screen reads them (`ui/connections-screen-layout.md`). A state nothing stored can tell is left out and named (`no_state`), never kept in a new table.
 
 ## What is one service, and what is not counted?
 - One outside product or API the code was written for, with a place to set it up, counted once however many drivers, purposes or screens reach it: iyzico's card and redirect drivers are one row; Google Drive and Google Analytics are two products behind one Google account.
@@ -23,7 +23,7 @@ module: connections_registry
 
 ## What is the figure?
 - `pg_connections_count()`: 78 services, beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
-- Architect (2026-11-17): the public figure is the registry's count, kept by a test and never typed in a text (`plans/connections-hub.md`).
+- Architect (2026-11-17, agent channel message 7524): the public figure is the registry's count, kept by a test and never typed in a text.
 
 ## How does it differ from the census's 79? (`plans/integrations-census-today.md`)
 - Left out, 2: Unsplash (only a constant in `data/config.php`, no place to set it), the WordPress, WooCommerce and Shopify importers (file uploads, no call to the service).

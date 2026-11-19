@@ -35,7 +35,7 @@ function api_openapi_time_formats_test_field($object, $path)
 {
 	api_openapi_load_declarations();
 
-	$objects = api_openapi_objects();
+	$objects = api_openapi_objects() + erp_openapi_objects() + ws_openapi_objects() + translate_openapi_objects();
 
 	$schema = api_openapi_type_spec(call_user_func($objects[$object]));
 
@@ -121,6 +121,48 @@ function test_api_openapi_time_formats_core_fields_follow_their_presenters()
 	// A time of day and a minute without a zone are neither, and stay strings.
 	pg_assert_false(isset(api_openapi_time_formats_test_field('StoreShippingMethod', 'end_of_day')['format']), 'end_of_day is HH:MM');
 	pg_assert_false(isset(api_openapi_time_formats_test_field('CampaignProfile', 'schedule_time')['format']), 'schedule_time is HH:MM');
+}
+
+// The Workspace, ERP and translation objects: a sample of each presenter
+// kind there, an api_time() moment, a moment written by a module helper of
+// the same ISO form, a DATE column and a Y-m-d day built in PHP.
+function test_api_openapi_time_formats_module_fields_follow_their_presenters()
+{
+	$moments = array(
+		'ErpInvoice'           => array('edoc.sent_at', 'created_at', 'updated_at'),
+		'ErpQuoteSignature'    => array('signed_at'),
+		'ErpPurchaseOrder'     => array('sent_at'),
+		'TranslationJob'       => array('created_at', 'claimed_at', 'finished_at'),
+		'WorkspaceThread'      => array('closed_at', 'kept_until', 'last_message_at'),
+		'WorkspacePlanItem'    => array('starts_at', 'ends_at'),
+		'WorkspaceFlowRun'     => array('started_at', 'finished_at'),
+		'WorkspaceSavedReply'  => array('created_at', 'updated_at'),
+		'WorkspaceChannelEras' => array('eras[].from', 'eras[].to', 'current.since'),
+	);
+
+	$days = array(
+		'ErpInvoice'             => array('issue_date', 'due_date', 'late_fee_through'),
+		'ErpPurchaseOrder'       => array('issue_date', 'expected_date', 'invoices[].issue_date'),
+		'ErpCashForecast'        => array('as_of', 'columns[].start', 'columns[].end', 'items[].date'),
+		'WorkspacePlanItem'      => array('start_date', 'end_date'),
+		'WorkspaceChannelExport' => array('from', 'to'),
+		'WorkspaceCustomerQuote' => array('valid_until'),
+	);
+
+	foreach (array('date-time' => $moments, 'date' => $days) as $format => $fields) {
+		foreach ($fields as $object => $paths) {
+			foreach ($paths as $path) {
+				$schema = api_openapi_time_formats_test_field($object, $path);
+				pg_assert_same($format, isset($schema['format']) ? $schema['format'] : null, $object . '.' . $path);
+			}
+		}
+	}
+
+	// A time of day, and a day whose source may be empty or the zero date,
+	// stay strings.
+	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspacePlanItem', 'start_time')['format']), 'start_time is HH:MM');
+	pg_assert_false(isset(api_openapi_time_formats_test_field('ErpWaybill', 'ship_time')['format']), 'ship_time is HH:MM');
+	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspaceCustomerQuote', 'issue_date')['format']), 'issue_date is passed through unchecked');
 }
 
 // Every word a declaration uses is one api_openapi_field_words() maps: a word

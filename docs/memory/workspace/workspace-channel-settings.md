@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-settings
-description: Channel templates, voice transcripts and GitHub links in Site Settings (Channels, mail and voice) and Workspace Settings: names, shared saves, the GitHub drawer
+description: Channel templates, voice transcripts and the GitHub card in Site Settings (Channels, mail and voice) and Workspace Settings: names, shared saves, where the GitHub links went
 ---
 
 ## Where are the three cards?
@@ -18,8 +18,7 @@ description: Channel templates, voice transcripts and GitHub links in Site Setti
 - Fields `ws_voice_*` (old `voice_*`), saved with the pane's Save: `ws_voice_settings_input($post, $prefix)`, `ws_voice_settings_check()` (each refused field, marked `ws_voice_<field>`, nothing stored), `ws_voice_settings_write($input, $liveform, $refuse)`. The old screen's `ws_voice_settings_post()` gives the first refusal as its error.
 - A write clears both services' last errors and the transcripts' wait, so `ws_voice_settings_changed()` (pure) skips an unchanged card; a typed key or a ticked remove box is a change. Role 0 only: others see the fields disabled, not posted.
 
-## How do GitHub links move?
-- Remove is `ws_github_link_remove` (value the link's id, behind `confirm()`). "Link a repository" opens the drawer `pgset-ws-github-link` (`ws_settings_github_link_drawer()`): fields `ws_github[...]` joined by `form=` (`lists` entry `ws_github` 2, events `ws_github[events][]`), no `required`, button `ws_github_link_save`.
-- `ws_github_links_settings_dialog_input()` gives the old names to `ws_github_links_settings_post($viewer, $action, $liveform, $input, $refuse)`; both screens draw `ws_github_links_settings_form()`.
+## Where are the GitHub links?
+- On GitHub's page of Connections since #10418 (`ui/connections-service-page.md`). The Channels card `pgset-ws-github` (`ws_github_links_settings_card($viewer)`) only counts the links and leads there; its drawer and its save buttons are gone.
 
 Tests: `tests/settings_workspace_channels_test.php`.

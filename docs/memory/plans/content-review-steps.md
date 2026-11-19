@@ -19,7 +19,8 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Architect (6410): the announce first claims the row with one UPDATE writing `announced_on = review_on` only where `announced_on` is NULL or differs, and announces only when that write changed a row; a new date (Mark reviewed, a set date) separates them again. Today goes in as `pg_content_review_today()`, never `CURDATE()`.
   - Done: #10008 with V14 and V15 (`platform/content-review-announce.md`). Architect (2026-11-16, agent channel message 7026): the gallery template (V16) moves to CH3b, after a general "assign to the person the event names" setting on flow task boxes. Owner (poll 102, message 7036): the row menu's "Make a task" stands as shown.
 
-- CH3b (S) after CH3: the task box setting "the person the event names" (`steps.php`, `workspace_flow.js`), then the gallery template; pictures to the architect (`workflow/decisions-made-product-66.md`).
+- CH3b (S) after CH3: the task box setting "the person the event names" (`steps.php`, `workspace_flow.js`), then the gallery template (`workflow/decisions-made-product-66.md`).
+  - Done: #10077 with V16 (`workspace/workspace-flows-task-event-person.md`). The rule is on the task box (kind `task`, `flows.php` and `flow_runs.php`), which has the "Given to" rules; the "Open a task" step keeps its people list.
 
 - CH4 Done (#10006): the API, `GET /content-review` and `POST /content-review/{kind}/{id}` (`api/api-content-review.md`); scope `content_review:read` / `:write` for roles 0-3 (architect, agent channel message 7025). Features: V17.
 

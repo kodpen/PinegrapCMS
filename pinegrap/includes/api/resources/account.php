@@ -492,7 +492,7 @@ function api_auth_me($params) {
 	// device folded into it for the activity log.
 	$app_name = (string)api_value("SELECT name FROM api_apps WHERE id = '" . (int)$app['id'] . "' LIMIT 1");
 
-	api_ok(array(
+	$me = array(
 		'kind' => ($device === null) ? 'application' : ((isset($app['kind']) && ($app['kind'] === 'oauth')) ? 'oauth' : 'device'),
 		// No per-person language yet: the site's, as GET /meta gives it.
 		'language' => api_text_language(),
@@ -520,7 +520,23 @@ function api_auth_me($params) {
 		)),
 		'unread_notifications' => $unread,
 		'server_time' => api_time(time())
-	));
+	);
+
+	// The person's own quiet hours, null with no range set; left out where
+	// the Workspace is off or its database step has not run.
+	if (api_meta_quiet_hours() && function_exists('ws_api_quiet_hours_read')) {
+
+		$quiet_hours = ws_api_quiet_hours_read((int)$owner['id']);
+
+		if ($quiet_hours !== false) {
+
+			$me['quiet_hours'] = $quiet_hours;
+
+		}
+
+	}
+
+	api_ok($me);
 
 }
 
@@ -544,6 +560,7 @@ function api_auth_me_schema() {
 		'scopes'      => 'string[]',
 		'features'    => 'object',
 		'unread_notifications' => 'integer?',
+		'quiet_hours' => 'object?',
 		'server_time' => 'datetime'
 	);
 

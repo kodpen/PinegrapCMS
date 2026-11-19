@@ -14,7 +14,8 @@
  * includes/workspace/mail_list.php, the pane in mail_pane.php, the unread
  * marks in mail_reads.php. The tab shows to whoever reads a mailbox
  * (ws_mail_list_visible()), campaign rights or not; workspace_mail.php is
- * the door from the old address.
+ * the door from the old address. Pin to main menu on the toolbar puts the
+ * tab into the person's own main menu (mail_menu.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -79,7 +80,8 @@ echo pg_page_shell(array(
 <div class="ws-shell-main">
     <div id="ws-root" class="ws-mail-screen' . (($pane !== '') ? ' ws-mail-reading' : '') . '">
         ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports, !pg_demo() && (bool) ws_mail_check_boxes($viewer, $filters['box']), ws_enabled(),
-            function_exists('ws_mail_blocked_box_ids') && (bool) ws_mail_blocked_box_ids($viewer)) . '
+            function_exists('ws_mail_blocked_box_ids') && (bool) ws_mail_blocked_box_ids($viewer),
+            ws_mail_menu_ready() ? ws_mail_menu_pinned((int) $viewer['id']) : null) . '
         <div class="ws-mail-check-line" data-ws-mail-check-line role="status" aria-live="polite" hidden></div>
         <div class="ws-mail-columns">
             <div class="ws-mail-list">' . (($filters['view'] === 'blocked') ? ws_mail_blocked_html(ws_mail_blocked_items($viewer), $now) : (($filters['view'] === 'drafts') ? ws_mail_drafts_view_html(ws_mail_drafts_view($viewer)) : ws_mail_list_html($list, $filters, $now, $open))) . '</div>
@@ -88,4 +90,4 @@ echo pg_page_shell(array(
     </div>
 </div>
 </div>
-</div></div></main>' . ws_screen_assets($viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings()))) . output_footer();
+</div></div></main>' . ws_screen_assets($viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings() + ws_mail_menu_js_strings()))) . output_footer();

@@ -4222,16 +4222,80 @@ function _civ_related_list_shown_when_off($node)
 // of other tokens empty.
 function _civ_cross_sell_part_draw($node, $sid, $product_id, $rows)
 {
+    return _civ_list_part_draw($node, $sid, $product_id, 'product.related', $rows, array('__has_related' => $rows ? '1' : ''));
+}
+
+// A part $node holding a list of $source drawn alone for product
+// $product_id of widget $sid with the list's rows $rows, as the detail view
+// draws it: the design's own elements and classes, the record's values
+// $values, every other token empty.
+function _civ_list_part_draw($node, $sid, $product_id, $source, $rows, $values = array())
+{
     $scope = pg_sw_finish_open(array('sid' => (int)$sid, 'kind' => 'catalog_item_view', 'email' => false));
     try {
         $html = _render_tree_node($node, 0, 0);
-        if (pg_sw_list_wanted('product')) pg_sw_list_publish('product', array('product.related' => array((int)$product_id => $rows)));
-        $values = pg_sw_escape_token_values(array('__id' => (string)(int)$product_id, '__has_related' => $rows ? '1' : ''));
+        if (pg_sw_list_wanted('product')) pg_sw_list_publish('product', array($source => array((int)$product_id => $rows)));
+        $values = pg_sw_escape_token_values(array('__id' => (string)(int)$product_id) + $values);
         $html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, $values));
     } finally {
         pg_sw_finish_close();
     }
     return trim(pg_sw_finish_widget_html($html, $scope));
+}
+
+// The path (child indexes from the root) of the "Quantity prices" box of a
+// catalog detail view's tree: around the first product.quantity_prices
+// list, the nearest element marked pg-hide-if-empty, else the element
+// holding the list; null without such a list or an element around it.
+function _civ_qty_prices_part_path($node, $path = array(), $marked = null, $holder = null)
+{
+    if (!is_array($node)) return null;
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.quantity_prices') {
+        return ($marked !== null) ? $marked : $holder;
+    }
+    $element = isset($node['type']) && ($node['type'] === 'semantic');
+    if ($element && isset($node['props']['cssClass']) && preg_match('/(^|\s)pg-hide-if-empty(\s|$)/', (string)$node['props']['cssClass'])) {
+        $marked = $path;
+    }
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $i => $child) {
+        $found = _civ_qty_prices_part_path($child, array_merge($path, array($i)), $marked, $element ? $path : null);
+        if ($found !== null) return $found;
+    }
+    return null;
+}
+
+// Mark the "Quantity prices" box of $tree (_civ_qty_prices_part_path())
+// with data-pg-civ-qty-prices, the element the variant script redraws, and
+// answer the box's node; null when the tree has none.
+function _civ_qty_prices_part_mark(&$tree)
+{
+    $path = _civ_qty_prices_part_path($tree);
+    if ($path === null) return null;
+    $node = &$tree;
+    foreach ($path as $i) $node = &$node['children'][$i];
+    _pg_member_set_attr($node, 'data-pg-civ-qty-prices', '1');
+    return $node;
+}
+
+// The "Quantity prices" box of catalog detail widget $sid drawn for the
+// variant the visitor picked ($product_id, enabled), with the variant's
+// own breaks (pg_sw_list_product_read(): its list price, the visitor's own
+// price); '' when the widget has no such box or the variant no break (the
+// script then hides the box). The get_quantity_prices_for_product API
+// action answers with it.
+function _civ_qty_prices_part_html($sid, $product_id)
+{
+    $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1");
+    $cfg = $row ? json_decode((string)$row['system_region_config'], true) : null;
+    if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== 'catalog_item_view') return '';
+    $tree = json_decode(pg_sw_default_parts_apply((string)$row['tree_json'], 'catalog_item_view', $cfg), true);
+    $node = is_array($tree) ? _civ_qty_prices_part_mark($tree) : null;
+    if ($node === null) return '';
+    $p = db_item("SELECT id, price FROM products WHERE id = '" . (int)$product_id . "' AND enabled = 1 LIMIT 1");
+    if (!$p) return '';
+    $read = pg_sw_list_product_read(array($p), array('product.quantity_prices' => true));
+    $rows = isset($read['product.quantity_prices'][(int)$p['id']]) ? $read['product.quantity_prices'][(int)$p['id']] : array();
+    return $rows ? _civ_list_part_draw($node, (int)$sid, (int)$p['id'], 'product.quantity_prices', $rows) : '';
 }
 
 // The cross-sell part of catalog detail widget $sid drawn for a variant the
@@ -5173,6 +5237,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // or cut once the product is known (below). Another widget's flag stays
     // drawn.
     _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating', 'can_notify', 'is_bundle', 'has_bundle_saving'));
+    // The "Quantity prices" box the variant script redraws for the variant
+    // picked (_civ_qty_prices_part_html()).
+    _civ_qty_prices_part_mark($tree_decoded);
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -5683,8 +5750,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'default_selection' => $default_selection,
             'currency_symbol'   => $currency_symbol,
             'api_url'           => $base_path . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software') . '/api.php',
-            // The widget, whose cross-sell part the server draws again for
-            // a variant picked (_civ_cross_sell_part_html()).
+            // The widget, whose cross-sell part and "Quantity prices" box
+            // the server draws again for a variant picked
+            // (_civ_cross_sell_part_html(), _civ_qty_prices_part_html()).
             'widget_id'         => (int)$widget_id,
             // Visitor-facing text the script renders itself.
             'labels'            => array(
@@ -6424,7 +6492,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '12';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '13';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = pg_civ_variants_script($variant_data)
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }

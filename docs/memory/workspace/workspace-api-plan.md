@@ -1,6 +1,6 @@
 ---
 name: workspace-api-plan
-description: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count) and where they come from
+description: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count), where they come from, agent channels' tasks left out
 ---
 
 ## What does a row of GET /workspace/plan carry?
@@ -14,3 +14,7 @@ description: GET /workspace/plan: what a cell and a row carry (task entries with
 ## Where do the values come from?
 - Only from the cells `ws_board()` / `ws_plan_grid()` build for the panel board; `ws_api_plan_present()` maps a board row and repeats none of the grid's logic (`ws_event_applies()`, `ws_event_minutes_on()`, projections). Why: a client placing `GET /workspace/plan-items` on days itself guessed repeat copies wrongly (owner issue #2081).
 - A new field on the board's cell reaches the API only when added to the presenter and `ws_api_plan_row_schema()`; `tests/workspace_api_plan_test.php` checks the two agree.
+
+## Are agent channels' tasks on it?
+- No, unless `agent_channels=include|only` (#10342, as `GET /workspace/tasks`): `ws_api_plan_get()` passes `ws_agent_channel_mode()` to `ws_board()`, as the panel's board does. Before it the route counted every task, so a person's load differed between the panel and a team device.
+- The answer has `agent_channels` beside `data` and `page` (`api_ok_list()` `$extra`): how many agent channels the caller may read. A client offers its toggle above 0; a site without the key counts every task.

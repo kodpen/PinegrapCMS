@@ -215,7 +215,8 @@ function test_workspace_command_picker_js_wiring()
 
 	// The composer passes whether it is a discussion's, and groups only an
 	// untyped list longer than it shows.
-	pg_assert_contains("commandPickerRows(BOOT.commands, query, !!self.isThread || !!(self.channel && (self.channel.kind === 'thread')))", $source, 'the list knows a discussion\'s box');
+	pg_assert_contains("var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));", $source, 'the list knows a discussion\'s box');
+	pg_assert_contains("commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere)", $source, 'and where the catch-up line sums up');
 	pg_assert_contains("if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {", $source, 'headers only when nothing is typed and the list is longer than it shows');
 	pg_assert_contains('commandPickerGroups(commands, BOOT.command_groups)', $source, 'the groups in the server\'s order');
 

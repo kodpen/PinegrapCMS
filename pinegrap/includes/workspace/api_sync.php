@@ -179,7 +179,7 @@ function ws_api_sync_thread_schema()
         'channel_id'      => 'integer',
         'message_id'      => 'integer',
         'unread'          => 'integer',
-        'last_message_at' => 'string?',
+        'last_message_at' => 'datetime?',
     );
 }
 
@@ -262,7 +262,7 @@ function ws_api_sync_pin_schema()
     return array(
         'message'   => 'WorkspaceMessage',
         'pinned_by' => 'WorkspacePerson?',
-        'pinned_at' => 'string?',
+        'pinned_at' => 'datetime?',
         'hidden'    => 'boolean',
     );
 }
@@ -331,7 +331,7 @@ function ws_api_sync_schema()
         'channels'     => 'WorkspaceChannel[]?',
         'threads'      => 'WorkspaceSyncThread[]?',
         'inbox_unread' => 'integer',
-        'inbox_changed_at' => 'string?',
+        'inbox_changed_at' => 'datetime?',
         'notifications_unread' => 'integer?',
         'gone'         => 'boolean',
         'messages'     => 'WorkspaceMessage[]',

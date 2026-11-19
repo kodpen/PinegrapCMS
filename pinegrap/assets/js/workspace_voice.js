@@ -698,9 +698,13 @@
         save.setAttribute('aria-label', t('download'));
         save.appendChild(h.icon('bi-download'));
 
+        // The buttons after the name wrap as one group: all beside it, or
+        // all on the next line at its right in a narrow column.
+        var tools = el('div', 'ws-voice-tools');
+
         box.appendChild(play);
         box.appendChild(main);
-        box.appendChild(speed);
+        tools.appendChild(speed);
 
         if (options && options.reply) {
             var answer = h.button('btn btn-sm btn-text theme-secondary ws-voice-reply', '', 'bi-mic', t('voice_reply'));
@@ -708,10 +712,11 @@
             answer.addEventListener('click', function () {
                 options.reply();
             });
-            box.appendChild(answer);
+            tools.appendChild(answer);
         }
 
-        box.appendChild(save);
+        tools.appendChild(save);
+        box.appendChild(tools);
         box.appendChild(audio);
 
         function setRate(value) {
@@ -889,7 +894,7 @@
         var under = voice ? transcript(voice, h) : null;
 
         if (!under && window.PGVoiceText) {
-            under = window.PGVoiceText.control(file.url, t, locale, { into: box, before: save });
+            under = window.PGVoiceText.control(file.url, t, locale, { into: tools, before: save });
         }
 
         if (!under) {

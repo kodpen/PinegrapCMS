@@ -1,18 +1,21 @@
 ---
 name: coordinator-worker-steps
-description: A worker does at most three steps in its life, whoever hands them; a coordinator starts a new session for every step it gives and never feeds a step to an idle or ended worker
+description: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 ---
 
 ## How many steps does one worker session do?
-- At most three in a row, counted from the session's start, then it hands over through the plan file and ends (`session-lifecycle.md`).
-- The count covers every step the session does, the ones it takes itself after a merge and the ones a coordinator's brief gives it. A new brief does not restart the count.
+- One: it ends when its PR has the `ready` label (`session-lifecycle.md`).
+- Architect (2026-11-19): changed from three steps in a row with a wait for each merge, on the measurement in `quota-use-measured.md`.
 
-## Does a coordinator give a new step to a worker that is waiting or done?
-- No. Every step a coordinator hands out goes to a new session, cloud or desktop, with its own short brief (`coordinator.md`, `coordinator-worker-brief.md`).
-- A worker whose PR merged takes its plan's next step itself, under the three-step limit; when it has ended or waits on someone else, its place gets a new worker (`coordinator-workers.md`). The coordinator never sends it one more step.
+## Who gets the plan's next step?
+- A new session, cloud or desktop, with its own short brief, once the step before it has landed (`coordinator.md`, `coordinator-worker-brief.md`). A coordinator never sends a step to a worker that is waiting or done.
+
+## What is given out as one task?
+- Work in one file or on one screen that is known when the task is given: two fixes of one screen go to one worker as one PR, inside the small-PR limit. The second fix then costs about a third less than in a new session, since the reading is paid once and nothing waits in between.
 
 ## Why?
-- A session pays for its whole context on every wake; each step added to a long session costs more than the step before.
-- On 2026-11-11 and 2026-11-12 a coordinator briefed its workers to stop after one step, then at each 30-minute check-in sent the idle session the next step itself. Each brief looked new to the worker, so its three-step count never filled: some sessions did more than 200 tasks, and the account's quota for the period was spent in one day.
+- A session pays for its whole context on every call. A new worker starts at 92,000 tokens and reads itself to about 120,000; a session that has finished a product step stands at 170,000 or more, so a next step in it would cost about half as much again on every call.
+- The wait for the merge is paid too: a wake more than an hour after the last call writes the session's whole context into the cache again. A measured worker spent 48% of its use after the label.
+- On 2026-11-11 and 2026-11-12 a coordinator sent idle sessions the next step itself at each 30-minute check-in: some sessions did more than 200 tasks, and the account's quota for the period was spent in one day.
 
 Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/coordinator-worker-brief.md, docs/memory/workflow/coordinator-workers.md, docs/memory/workflow/session-lifecycle.md

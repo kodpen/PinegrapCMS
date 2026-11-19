@@ -22,6 +22,10 @@ module: site_push
 - `action=subscribe`: an endpoint is taken only as https on port 443 on a host of `pg_site_push_services()` (FCM, Mozilla, Windows, Apple), with a 65-byte p256dh point starting 0x04 and a 16-byte auth (`pg_site_push_subscription_check()`). A longer endpoint or a key of another length is refused, never cut (architect, message 6528). The answer is the secret, given once; only its sha256 is kept. The same endpoint again gets new keys and a new secret.
 - `action=stop` with the secret removes the row and its queue rows. `action=message` with the secret returns the newest pushed, unread message of that subscription within a day and marks it read, or one read in the last 5 minutes again (a worker woken twice, #9957); the query is scoped by the secret's subscription (`pg_site_push_waiting_query()`).
 
+## Which message does a wake get?
+- `pg_site_push_waiting_query()` orders `(q.status = PUSHED) DESC, q.sent_at DESC, q.message_id DESC`: any unread row before a re-read one, then the newest. Messages pushed close together (a phone waking from sleep, news and a stock notice to one device) show one per wake, newest first; a re-read only when nothing unread waits (#10247).
+- Ordered by `sent_at` alone, the message just read stayed newer than the unread ones: every wake showed the newest, the older never. The test runs the query on in-memory SQLite when pdo_sqlite is there.
+
 ## What goes to the consent log, export and erasure?
 - A yes and a stop: channel `push`, purpose `news`, source `notify`. `push` is, like `cookie`, a channel an anonymous visitor may answer without a person (`pg_consent_log_row()`).
 - Signed in, the row carries `user_id`: the privacy export's section "Site notifications" (no endpoint, keys or secret) and the erasure (delete) find it by the account.

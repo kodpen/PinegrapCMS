@@ -168,12 +168,11 @@ function test_auto_dialog_count_screens_show_the_period()
 	pg_assert_same(1, substr_count($list, 'pg_auto_dialog_count_figures('), 'the list sums once for every pop-up');
 	pg_assert_true(strpos($list, 'pg_auto_dialog_count_figures(') < strpos($list, 'foreach ($auto_dialogs as $auto_dialog)'), 'before the rows, no query per row');
 
-	foreach (array('shown', 'closed', 'taken') as $event) {
-		pg_assert_contains("'" . $event . "' => array('heading' => lang('" . ucfirst($event) . " (30 days)'), 'kind' => 'number')", $list, 'the list\'s ' . $event . ' column');
-	}
+	pg_assert_contains("'shown' => array('heading' => lang('Shown (30 days)'), 'kind' => 'number')", $list, 'the list\'s shown column');
+	pg_assert_contains('pg_auto_dialog_count_total($auto_dialog_figures)', $list, 'the figure row sums all three');
 
 	pg_assert_contains('pg_auto_dialog_count_of(pg_auto_dialog_count_figures($id), $id)', auto_dialog_counts_test_source('edit_auto_dialog.php'), 'the edit screen reads its own');
-	pg_assert_contains('data-pg-auto-dialog-count="<?=$count_field?>"', auto_dialog_counts_test_source('includes/templates/edit_auto_dialog.php'), 'and shows them in its Summary');
+	pg_assert_contains('data-pg-auto-dialog-count="<?=$count_field?>"', auto_dialog_counts_test_source('includes/templates/edit_auto_dialog.php'), 'and shows them in its status column');
 }
 
 function test_auto_dialog_count_beacon_in_both_scripts()

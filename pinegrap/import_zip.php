@@ -55,19 +55,17 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . h(lang('Import ZIP')) . '
-                                </div>
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Import ZIP')) . '</h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 pg-field-span-6 my-3">
                                             <div class="form-field">
                                                 <label for="file" class="form-label">' . h(lang('Select .zip to Upload')) . '</label>
                                                 ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control', 'accept'=>'.zip,application/zip', 'required'=>'required')) . '
                                                 ' . pg_upload_limit_hint() . '
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <div class="form-field">
                                                 <label for="name" class="form-label">' . h(lang('Tag')) . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'import_name', 'class'=>'form-control', 'aria-describedby'=>'import_zip_tag_help')) . '
@@ -79,8 +77,9 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                            <div class="card my-7 position-sticky" style="top:3.3rem;">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
+                            <div class="position-sticky my-7" style="top:3.3rem;">
+                            <div class="card">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('What Is Imported')) . '</h2>
                                 <div class="card-body">
                                     <ul class="small ps-5 mb-0">
                                         <li class="mb-2">' . h(lang('Each web page (.html, .htm, .xhtml) becomes a page with its own custom page style, in a new folder under Import ZIP File.')) . '</li>
@@ -90,6 +89,7 @@ if (!$_POST) {
                                         <li>' . h(lang('Files of a type that cannot be uploaded here are left out.')) . '</li>
                                     </ul>
                                 </div>
+                            </div>
                             </div>
                         </div>
                         ' . pg_save_bar('

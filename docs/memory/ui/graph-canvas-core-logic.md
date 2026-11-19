@@ -5,7 +5,7 @@ module: graph_canvas
 ---
 
 ## What is it?
-- Pure helpers of `assets/js/pg_graph_canvas.js` (`window.PGGraphCanvas`, here `G`) for any box-and-arrow user: nothing in them means page, link or flow, nothing touches the DOM. Added for the Prototype view (`plans/prototype-canvas.md`); Flows calls none of them and draws as before.
+- Pure helpers of `assets/js/pg_graph_canvas.js` (`window.PGGraphCanvas`, here `G`) for any box-and-arrow user: nothing in them means page, link or flow, nothing touches the DOM. Added for the Prototype view (designer/prototype-arrangement.md, designer/prototype-problems.md); Flows calls none of them and draws as before.
 - A graph is `ids` (box ids, an array, its order meaningful) and `edges` (objects with `from` and `to`; other fields are kept and ignored). An edge whose end is not among `ids` is skipped by `order()` and reported by `check()`.
 - Tests: `tests/graph_canvas_test.php` (`test_graph_canvas_order_and_links`, `test_graph_canvas_arrange`, `test_graph_canvas_arrange_wraps_a_tall_side_column`, `test_graph_canvas_check`), run in Node.
 
@@ -26,4 +26,4 @@ module: graph_canvas
   - `dangling`: edges whose `from` or `to` is no box (as given, in order).
   - `unreached`: boxes no edge from another box reaches; never `start`. A self-arrow does not count. The caller leaves out what is never one (the Prototype view: shared parts, chips).
   - `stuck`: boxes with no edge out to anything but themselves (an edge to a non-box counts as a way out).
-- The Prototype view shows `unreached` from PV11a (F27); no screen shows `stuck`.
+- The Prototype view shows `unreached` from PV11a; no screen shows `stuck`.

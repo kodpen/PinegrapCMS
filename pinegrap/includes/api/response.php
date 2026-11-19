@@ -38,6 +38,7 @@ function api_status_text($code) {
 		405 => 'Method Not Allowed',
 		409 => 'Conflict',
 		410 => 'Gone',
+		412 => 'Precondition Failed',
 		413 => 'Payload Too Large',
 		416 => 'Range Not Satisfiable',
 		422 => 'Unprocessable Entity',
@@ -54,6 +55,14 @@ function api_status_text($code) {
 // is what guarantees the log line is written exactly once and that no handler
 // can return without one.
 function api_send($status_code, $body, $error_code = '') {
+
+	// An answer read inside this request (api_current_etag()) is handed back
+	// before anything is printed, sent or logged.
+	if (api_send_capture()) {
+
+		throw new ApiAnswerCaptured($status_code, $body);
+
+	}
 
 	// Anything the shared code printed on the way here - a notice out of
 	// functions.php, a stray warning - is in the buffer and would sit in front
@@ -140,7 +149,7 @@ function api_send($status_code, $body, $error_code = '') {
 
 	if ($read) {
 
-		$etag = 'W/"' . substr(sha1((string)$json), 0, 32) . '"';
+		$etag = api_etag_of_json((string)$json);
 
 		api_extra_headers('ETag', $etag);
 
@@ -239,6 +248,48 @@ function api_send($status_code, $body, $error_code = '') {
 function api_json_encode($body) {
 
 	return pg_json_encode_answer($body);
+
+}
+
+// While on, api_send() throws its answer as an ApiAnswerCaptured instead of
+// answering: a GET route is run inside an update to read the record's current
+// ETag (includes/api/preconditions.php).
+function api_send_capture($on = null) {
+
+	static $capturing = false;
+
+	if ($on !== null) {
+
+		$capturing = (bool)$on;
+
+	}
+
+	return $capturing;
+
+}
+
+class ApiAnswerCaptured extends Exception {
+
+	public $status;
+
+	public $body;
+
+	public function __construct($status, $body) {
+
+		parent::__construct('HTTP ' . (int)$status);
+
+		$this->status = (int)$status;
+
+		$this->body = $body;
+
+	}
+
+}
+
+// The weak ETag of a JSON answer: a digest of the exact bytes sent.
+function api_etag_of_json($json) {
+
+	return 'W/"' . substr(sha1((string)$json), 0, 32) . '"';
 
 }
 

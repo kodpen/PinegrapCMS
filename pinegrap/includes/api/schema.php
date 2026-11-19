@@ -197,7 +197,7 @@ function api_schema() {
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
-				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones. A product in no group is not shown in the shop\'s catalogue tree.'),
+				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones; a group it is in already keeps its sort order, featured mark and new date. A product in no group is not shown in the shop\'s catalogue tree.'),
 				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
 				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it, replacing the current ones. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
 				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.'),
@@ -3217,7 +3217,22 @@ function api_schema() {
 			'dry_run' => true,
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
-			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'description' => 'A client that cannot send DELETE, or talks to an IIS server, uses POST /webhooks/{id}/delete, the way every other record is deleted. A plain POST to /webhooks/{id} removes the subscription as well, as it has since the first release, and keeps doing so.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.delete_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/delete',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_delete',
+			'dry_run' => true,
+			'status'  => 204,
+			'summary' => 'Remove a subscription, addressed as a POST',
+			'description' => 'The same removal as DELETE /webhooks/{id}, for clients and servers that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3756,6 +3771,18 @@ function api_schema() {
 				array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',   'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.')
 			)
+		),
+
+		array(
+			'id'      => 'reports.customer_value',
+			'method'  => 'GET',
+			'path'    => '/reports/customer-value',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_customer_value',
+			'returns' => 'CustomerValueReport',
+			'summary' => 'Repeat purchase, value per customer, cohorts and customer groups',
+			'description' => 'The figures of the Customers report, read from the summary the scheduled jobs work out again once a day, never summed at the call: as_of says when. Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address, else the contact of its order; not_placed counts the orders with neither. Amounts are minor units of currency, the base currency; marketplace orders kept in another currency are left out and counted in apart. periods holds the last 1, 3, 6, 12 and 24 whole months and all: customers who ordered in them, those with two orders or more, orders, value and the average days between orders. months is the last 36 months, the last one not whole yet. cohorts is the last 24 months of first orders with, for each of the 12 months after, the customers who ordered again. groups is every customer of all time by the age of their last order and their number of orders, each cell with its group (new, returning, loyal, at_risk, lost). top lists 20 customers by value of all time and of the last 12 months, kept by the number of their last order; name is read from that order and given only when the key also holds customers:read (names_shown), else null. Before the first rebuild has finished, ready is false, the lists are empty and progress says how many orders of how many the rebuild under way has read.',
+			'params'  => array()
 		),
 
 		array(
@@ -5362,7 +5389,8 @@ function api_schema() {
 				array('name' => 'audience',      'in' => 'body', 'type' => 'enum', 'values' => array('anyone', 'team'), 'required' => true, 'description' => 'anyone: whoever has the link; team: signed-in administrators, designers and managers.'),
 				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
 				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
-				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.')
+				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.'),
+				array('name' => 'allow_comments', 'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'Whoever opens the link can pin comments with a name on its pages and answer them. Off unless sent as true.')
 			)
 		),
 
@@ -6313,12 +6341,17 @@ function api_error_catalogue() {
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
 		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
 
+		'precondition_failed'      => array(412, 'The record changed since the ETag sent in If-Match was read; nothing was written. Read it again and repeat the change.'),
+
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
 		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
+		'limit_message_mine'       => array(422, 'The person already keeps 10 highlights on this message. Remove one first.'),
+		'limit_message'            => array(422, 'The message already carries 30 highlights, as many as it can.'),
+		'limit_person'             => array(422, 'The person keeps 2,000 highlights, as many as they can. Remove some first.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

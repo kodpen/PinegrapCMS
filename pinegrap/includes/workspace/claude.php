@@ -1636,6 +1636,8 @@ function ws_claude_draft_accept($viewer, $draft_id)
         'due_date'    => $due,
         'channel_id'  => (int) $channel['id'],
         'assignees'   => $people,
+        // The assistant whose answer proposed it.
+        'app_id'      => ws_message_app_id((int) $draft['message_id']),
     );
 
     // The same clash check a task drawer makes: leave is a hard stop unless

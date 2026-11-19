@@ -305,3 +305,22 @@ function test_workspace_wtable_screen_list_cells()
 	pg_assert_same(array('of' => 'number'), ws_wtable_screen_options_from_form('list', array('of' => 'number')));
 	pg_assert_same(array(), ws_wtable_screen_options_from_form('list', array()), 'a made column\'s form sends none');
 }
+
+// A page of rows in table order goes on after the last row's position and
+// id: two rows sharing a position are both shown, one on each page.
+function test_workspace_wtable_screen_after_qs()
+{
+	pg_assert_same('', ws_wtable_screen_after_qs(0, 0), 'the first page');
+	pg_assert_same('&after=12&after_id=40', ws_wtable_screen_after_qs(12, 40));
+	pg_assert_same('&after=12', ws_wtable_screen_after_qs(12, 0), 'an old link without the id');
+	pg_assert_contains("id > '40'", ws_wtable_rows_after_sql(12, 40), 'the store reads the id');
+	pg_assert_contains('$after_id', ws_wtable_screen_after_test_source(), 'the screen passes the id');
+}
+
+function ws_wtable_screen_after_test_source()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
+	preg_match('~ws_wtable_rows_page\(\$id, \$columns, \$after, 100[^)]*\)~', $source, $call);
+
+	return $call[0] ?? '';
+}

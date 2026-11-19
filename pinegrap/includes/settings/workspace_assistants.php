@@ -6,7 +6,9 @@
  * connection, its key, the connection test, the latest requests and the
  * setup steps), the Workspace agents (each edited in a drawer with its
  * waiting and failed requests), Pinegrap AI in the channels (its switch,
- * application, key and connection test), the assistants' bulk changes, and
+ * application, key and connection test), the voice message transcripts and
+ * spoken answers (the services' addresses, models and keys), the
+ * assistants' bulk changes, and
  * a card linking the MCP servers, still kept on the Workspace Settings
  * screen. They move here one at a time; each that
  * moves takes its link out of that card.
@@ -70,9 +72,11 @@ if ($ws_card !== '') {
     $ws_apps = ws_agents_settings_apps();
     $ws_agents = ws_agents_list();
     $ws_counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($ws_agents) : array();
+    // Every agent's open and today's requests, read once for the drawers.
+    $ws_requests = ws_agent_request_counts($ws_agents, time());
 
     foreach ($ws_agents as $ws_agent) {
-        $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog));
+        $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog), $ws_requests);
     }
 
     if ((int) $ws_viewer['role'] === 0) {
@@ -87,6 +91,12 @@ if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
 
+// ── Voice message transcripts ──
+$ws_card = ws_voice_settings_card('', $ws_viewer, $ws_form);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}
 
 // ── MCP servers ──
 // What a refused server form or an address check kept, handed over through

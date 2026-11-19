@@ -43,13 +43,16 @@ function test_settings_workspace_channels_sections_and_anchors()
 	$entry = substr($source, (int) $from, 2500);
 
 	pg_assert_contains("'pgset-ws-templates'       => lang('Channel templates'),", $entry, 'templates are a section');
-	pg_assert_contains("'pgset-ws-voice'           => lang('Voice message transcripts'),", $entry, 'voice is a section');
+	pg_assert_contains("'label' => lang('Channels'),", $entry, 'the category is named Channels');
+	pg_assert_false(strpos($entry, "'pgset-ws-voice'") !== false, 'voice is a card of Assistants and agents');
 	pg_assert_contains("'pgset-ws-github'          => lang('GitHub repositories'),", $entry, 'GitHub is a section');
-	pg_assert_contains("'ws_github' => 2,", $entry, 'the events are ws_github[events][]');
+	pg_assert_false(strpos($entry, "'ws_github' =>") !== false, 'the card has no field: the links are on GitHub\'s page of Connections');
 
-	foreach (array('templates', 'voice', 'github') as $card) {
+	foreach (array('templates', 'github') as $card) {
 		pg_assert_same(array('workspace_channels', 'pgset-ws-' . $card), pg_settings_legacy_anchors()['ws-' . $card] ?? null, 'the old #ws-' . $card . ' lands on the card');
 	}
+
+	pg_assert_same(array('workspace_channels', 'pgset-ws-github'), pg_settings_legacy_anchors()['pgset-ws-github'] ?? null, 'a settings*.php#pgset-ws-github link lands on the card');
 
 	pg_assert_false(strpos($entry, "'pgset-ws-mail'") !== false, 'mailboxes have a category of their own');
 	pg_assert_false(strpos($entry, 'pgset-ws-channels-screen') !== false, 'no link card left');
@@ -61,6 +64,8 @@ function test_settings_workspace_channels_sections_and_anchors()
 	pg_assert_contains("'ws_mail' => 3,", $mail, 'a route is ws_mail[id][route_match][]');
 
 	$cards = settings_workspace_channels_test_source('includes/settings/workspace_channels.php');
+	pg_assert_false(strpos($cards, 'ws_voice_settings_card(') !== false, 'the voice card is not drawn here');
+	pg_assert_false(strpos(settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php'), 'ws_voice_') !== false, 'nor saved here');
 	pg_assert_false(strpos($cards, 'ws_settings_screen_links_card(') !== false, 'no card linking the old screen');
 	pg_assert_false(function_exists('ws_settings_screen_links_card'), 'the link card is gone');
 }
@@ -116,27 +121,22 @@ function test_settings_workspace_channels_voice_unchanged_is_not_written()
 	pg_assert_true(ws_voice_settings_changed($off, $transcript, $speech), 'the switch');
 }
 
-function test_settings_workspace_channels_github_drawer_reads_as_the_old_form()
+function test_settings_workspace_channels_github_card_leads_to_connections()
 {
-	$post = array('ws_github' => array('connection_id' => '4', 'channel_id' => '9', 'repository' => 'kodpen/site', 'events' => array('ci', 'label'), 'labels' => 'ready', 'other' => 'x'));
-
-	pg_assert_same(array('github_connection_id' => '4', 'github_channel_id' => '9', 'github_repository' => 'kodpen/site', 'github_events' => array('ci', 'label'), 'github_labels' => 'ready'),
-		ws_github_links_settings_dialog_input($post), 'the old names, nothing else');
-	pg_assert_same(array(), ws_github_links_settings_dialog_input(array('ws_github' => 'x')), 'a hand-made string is no form');
-
 	$source = settings_workspace_channels_test_source('includes/workspace/github_links.php');
-	pg_assert_contains("name=\"ws_github_link_save\" value=\"1\" form=\"' . h(\$form) . '\"", $source, 'Link is a named button');
-	pg_assert_contains("name=\"ws_github_link_remove\" value=\"' . (int) \$link['id'] . '\"", $source, 'Remove is a named button');
+
+	pg_assert_false(function_exists('ws_settings_github_link_drawer'), 'no Link a repository drawer in Site Settings');
+	pg_assert_false(function_exists('ws_github_links_settings_dialog_input'), 'nor its field names');
+	pg_assert_contains("'/connections.php?service=github#connections-repositories'", $source, 'the card leads to the links on GitHub\'s page');
+	pg_assert_false(strpos(settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php'), 'ws_github_') !== false, 'Channels writes no link');
 }
 
 function test_settings_workspace_channels_save_runs_the_buttons_after_the_save()
 {
 	$save = settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php');
 
-	pg_assert_true(strpos($save, "mark_error('ws_voice_'") < strpos($save, 'ws_voice_settings_write('), 'the voice card is checked before it is written');
-	pg_assert_true(strpos($save, 'ws_voice_settings_write(') < strpos($save, "'ws_template_archive'"), 'the buttons run after the save');
+	pg_assert_true(strpos($save, 'ws_link_preview_settings_save(') < strpos($save, "'ws_template_archive'"), 'the buttons run after the save');
 	pg_assert_contains("ws_templates_settings_post(\$ws_viewer, \$liveform, (int) \$ws_value, \$ws_archive, \$ws_warn)", $save, 'a template\'s refusal is a warning');
-	pg_assert_contains("ws_github_links_settings_post(\$ws_viewer, 'github_link_save', \$liveform, ws_github_links_settings_dialog_input(\$_POST), \$ws_warn)", $save, 'the drawer\'s fields');
 
 	$templates = settings_workspace_channels_test_source('includes/workspace/templates.php');
 	pg_assert_contains("name=\"' . (\$present['archived'] ? 'ws_template_restore' : 'ws_template_archive') . '\"", $templates, 'archive and bring back are named buttons');

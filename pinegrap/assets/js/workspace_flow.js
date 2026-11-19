@@ -591,6 +591,10 @@
             return t('tpl_assign_lead');
         }
 
+        if (rule === 'event_person') {
+            return t('fl_assign_event_person');
+        }
+
         if (match && (match[1] === 'department')) {
             var department = (BOOT.departments || []).filter(function (item) { return item.id === +match[2]; })[0];
 
@@ -5330,23 +5334,40 @@
 
     // ── Settings ───────────────────────────────────────────────────────
 
+    // A labelled control with an optional help line. A tick (a checkbox,
+    // .pg-checkbox) stands before its label on one line, the help under the
+    // label; any other control stands under its label.
     function field(label, control, help) {
         var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
-        var caption = el('label', 'form-label small fw-semibold mb-1', label);
+        var tick = control.tagName === 'INPUT' && control.type === 'checkbox';
+        var caption = el('label', tick ? 'small' : 'form-label small fw-semibold mb-1', label);
+        var words = wrap;
 
         caption.htmlFor = id;
         control.id = id;
         control.disabled = control.disabled || !state.edit;
-        wrap.appendChild(caption);
-        wrap.appendChild(control);
+
+        if (tick) {
+            var line = el('div', 'd-flex align-items-start gap-3');
+
+            words = el('div', 'flex-fill min-w-0');
+            control.classList.add('mt-1');
+            line.appendChild(control);
+            line.appendChild(words);
+            words.appendChild(caption);
+            wrap.appendChild(line);
+        } else {
+            wrap.appendChild(caption);
+            wrap.appendChild(control);
+        }
 
         if (help) {
             var note = el('div', 'form-text', help);
 
             note.id = id + '-help';
             control.setAttribute('aria-describedby', note.id);
-            wrap.appendChild(note);
+            words.appendChild(note);
         }
 
         return wrap;
@@ -7438,7 +7459,8 @@
 
     function taskFields(box, node) {
         var config = node.config;
-        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
+        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['event_person', t('fl_assign_event_person')],
+            ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
 
         (BOOT.departments || []).forEach(function (department) {
             options.push(['department:' + department.id, t('tpl_assign_dept', department.name)]);
@@ -7467,8 +7489,26 @@
             people.classList.add('d-none');
         }
 
+        // "The person the event names" asks who gets the task when the event
+        // names nobody on the team; the publish check requires one.
+        var fallback = el('div', 'wsf-people mt-3');
+        var showFallback = function () {
+            if (!fallback.firstChild) {
+                fallback.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_assign_fallback')));
+                peopleList(node, fallback, 'fallback', 20, t('fl_assign_fallback'));
+                fallback.appendChild(el('div', 'form-text', t('fl_assign_fallback_help')));
+            }
+        };
+
+        if (current === 'event_person') {
+            showFallback();
+        } else {
+            fallback.classList.add('d-none');
+        }
+
         who.addEventListener('change', function () {
             people.classList.toggle('d-none', who.value !== 'people');
+            fallback.classList.toggle('d-none', who.value !== 'event_person');
 
             if (who.value === 'people') {
                 config.assign = '';
@@ -7479,12 +7519,21 @@
                 Array.prototype.forEach.call(people.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
             }
 
+            if (who.value === 'event_person') {
+                config.fallback = config.fallback || [];
+                showFallback();
+            } else {
+                config.fallback = [];
+                Array.prototype.forEach.call(fallback.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
+            }
+
             refreshNode(node);
         });
 
         var whoField = field(t('fl_assign'), who, t('fl_assign_help'));
 
         whoField.appendChild(people);
+        whoField.appendChild(fallback);
         box.appendChild(whoField);
 
         var due = el('input', 'form-control form-control-sm wsf-number');
@@ -7790,7 +7839,7 @@
             box.appendChild(vars);
         }
 
-        var fallback = el('input', 'check');
+        var fallback = el('input', 'pg-checkbox');
 
         fallback.type = 'checkbox';
         fallback.checked = !!config.fallback;
@@ -7930,7 +7979,7 @@
             })));
             more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
 
-            var redirect = el('input', 'check');
+            var redirect = el('input', 'pg-checkbox');
 
             redirect.type = 'checkbox';
             redirect.checked = !!config.redirect;
@@ -7990,7 +8039,7 @@
 
     // A tick whose state goes to config[key].
     function tickField(box, node, key, label, onChange) {
-        var tick = el('input', 'check');
+        var tick = el('input', 'pg-checkbox');
 
         tick.type = 'checkbox';
         tick.checked = !!node.config[key];
@@ -8120,7 +8169,7 @@
     // it opens is private, and who is put in it.
     function leadFields(box, node) {
         var config = node.config;
-        var closed = el('input', 'check');
+        var closed = el('input', 'pg-checkbox');
 
         closed.type = 'checkbox';
         closed.checked = !!config.private;
@@ -9930,7 +9979,7 @@
         });
         box.appendChild(field(t('fl_records_page'), pick, t('fl_records_page_help')));
 
-        var only = el('input', 'check');
+        var only = el('input', 'pg-checkbox');
 
         only.type = 'checkbox';
         only.checked = !!config.only_new;
@@ -10900,7 +10949,7 @@
     // The team as ticks, with a filter once it is long, drawn into wrap: the
     // ids go into the box's settings under key (assignees by default), at
     // most max of them.
-    function peopleList(node, wrap, key, max) {
+    function peopleList(node, wrap, key, max, label) {
         var config = node.config;
         var list = el('div', 'wsf-people-list');
 
@@ -10911,7 +10960,7 @@
         var team = BOOT.people || [];
 
         list.setAttribute('role', 'group');
-        list.setAttribute('aria-label', t('fl_assign_people'));
+        list.setAttribute('aria-label', label || t('fl_assign_people'));
 
         if (team.length > 8) {
             var filter = el('input', 'form-control form-control-sm mb-1');
@@ -10946,7 +10995,9 @@
 
                 config[key] = ids.slice(0, max);
 
-                if (node.kind === 'task') {
+                // Ticking the box's own people drops its rule; its fallback
+                // people belong to the rule and keep it.
+                if ((node.kind === 'task') && (key === 'assignees')) {
                     config.assign = '';
                 }
                 refreshNode(node);

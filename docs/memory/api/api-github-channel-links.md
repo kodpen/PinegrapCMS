@@ -6,7 +6,7 @@ module: github_links
 
 ## Where are links kept, and how is one saved?
 - `ws_channel_links` / `ws_channel_link_deliveries`, step `upgrade_2026_11_0_ws_channel_links()` (11.0.175, #8271; decision #8270 in `workflow/decisions-made-schema-13.md`). Code: `includes/workspace/github_links.php` (DB, receiver, card); pure rules in `includes/fn/github_links.php`, tested in `tests/github_links_test.php`.
-- Workspace settings card "GitHub repositories" (`#ws-github`): only a manager or above holding the Workspace settings right (`ws_github_links_can_manage()`); channels = public/private ones the person may post in; a private channel's link is hidden from non-members.
+- Managed on GitHub's page of Connections, card "Repository links" (`connections.php?service=github#connections-repositories`, #10418): only a manager or above holding the Workspace settings right (`ws_github_links_can_manage()`); channels = public/private ones the person may post in; a private channel's link is hidden from non-members.
 - Save: row first (its id is in the hook address `github_webhook.php?link=<id>`), then `POST /repos/{o}/{r}/hooks` through the `channel_links` account; anything but 201 deletes the row and the card shows `pg_github_api_problem()`. Secret: 32 random bytes hex, sealed with `pg_connect_seal()`; no encryption key, no link.
 - Remove (card, or ending the GitHub account in `pg_connect_disconnect()`, which runs before the token is revoked): `DELETE` the hook best effort, then the row and its delivery ids.
 

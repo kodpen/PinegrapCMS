@@ -71,6 +71,28 @@ function pg_settings_pane_url()
 
 
 /**
+ * The "Connections" row at the end of the dialog's list, above System
+ * tools: Connections is a manager's screen, so only a manager gets it. It
+ * leaves the dialog, like the System tools row.
+ *
+ * @param bool $manager the reader is a manager or above
+ * @return string
+ */
+function pg_settings_connections_link($manager)
+{
+    if (!$manager) {
+        return '';
+    }
+
+    return
+        '<a class="pg-sm-link pg-sm-away" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php') . '">'
+        . '<i class="bi bi-plug" aria-hidden="true"></i>'
+        . '<span>' . h(lang('Connections')) . '</span>'
+        . '<i class="bi bi-chevron-right pg-sm-out" aria-hidden="true"></i></a>';
+}
+
+
+/**
  * The button that opens it, for the header.
  *
  * @param array|null $user the row validate_user() returned
@@ -161,6 +183,9 @@ function pg_settings_modal_markup($user)
     // right alone does not get the row.
     $output_tools = $reader['manager'] ? pg_settings_tools_link(pg_settings_tool_groups($user)) : '';
 
+    // Connections, the one place of the outside services, sits just above.
+    $output_connections = pg_settings_connections_link($reader['manager']);
+
     // Where an old #pgset- link should land, for the script that follows them.
     $output_anchors = array();
 
@@ -203,6 +228,7 @@ function pg_settings_modal_markup($user)
                 <div class="pg-sm-nav pg-sm-hits" id="pg_settings_modal_hits" role="region" aria-live="polite" aria-label="' . h(lang('Search results')) . '" hidden></div>
                 <nav class="pg-sm-nav" id="pg_settings_modal_nav" aria-label="' . h(lang('Site Settings')) . '">
                     ' . $output_links . '
+                    ' . $output_connections . '
                     ' . $output_tools . '
                 </nav>
             </aside>

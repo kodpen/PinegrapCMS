@@ -407,7 +407,7 @@ function ws_mail_actions_without_workspace()
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel', 'ws_mail_undo_send',
-        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind',
+        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind', 'ws_mail_menu_pin',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
 }
@@ -1029,7 +1029,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That flow could not be found.'));
             }
 
-            $result = ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request));
+            $fields = ws_action_flow_run_fields($request);
+
+            // Started in a channel about a customer (the composer's Start a
+            // flow, the "/" list, /flow): the run is about them, as a run the
+            // canvas starts for a picked customer is, when the starter reads
+            // the contact.
+            if (isset($fields['channel_id']) && !isset($fields['contact_id'])) {
+                $contact_id = ws_flow_run_channel_contact($viewer, ws_channel($fields['channel_id']));
+
+                if ($contact_id > 0) {
+                    $fields['contact_id'] = $contact_id;
+                }
+            }
+
+            $result = ws_flow_run_start($viewer, $flow, $fields);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
@@ -2011,14 +2025,19 @@ function ws_handle_action($action, $request)
                 ws_mail_read_rows($viewer, $rows);
             }
 
+            $flows_here = empty($request['as_thread']) ? ws_flows_here($viewer, $channel) : array();
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
                 // Polls, agent questions, the check-in and approval requests
                 // still open, over the conversation (open_items.php).
                 'open_items' => ws_channel_open_items($viewer, $channel),
-                // Add › Start a flow is offered only where it lists a flow.
-                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow;
+                // the same flows, read once here, are the "/" list's and
+                // /flow's (ws_flows_here()).
+                'flows_here' => !empty($flows_here),
+                'flows'      => $flows_here,
                 'messages'   => ws_message_payloads($viewer, $rows),
                 'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
                 'era'        => null,
@@ -2220,7 +2239,12 @@ function ws_handle_action($action, $request)
                     'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
                     'decision'  => !empty($request['decision']),
                     'on_sale'   => !empty($request['on_sale']),
+                    'table_id'  => (int) ($request['table_id'] ?? 0),
+                    'cells'     => (array) ($request['cells'] ?? array()),
                     'parent_id' => (int) ($request['parent_id'] ?? 0),
+                    // /recap: the last message read before this visit, as
+                    // the catch-up line hands it.
+                    'since_id'  => max(0, (int) ($request['since_id'] ?? 0)),
                 ));
 
                 if ($command !== null) {
@@ -3021,6 +3045,30 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('state' => $result['state']));
+
+        // Incoming e-mail pinned to the person's own main menu, or taken
+        // off it (mail_menu.php): only whoever may open the tab, which the
+        // menu row follows. The answer carries the row's drawing and its
+        // unread count, for the screen to add the row without a reload; the
+        // next page draws it on the server (output_menu()).
+        case 'ws_mail_menu_pin':
+            if (!function_exists('ws_mail_menu_ready') || !ws_mail_menu_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (!ws_mail_list_visible($viewer)) {
+                return ws_action_error(lang('Access denied'));
+            }
+
+            ws_mail_menu_pin($viewer, !empty($request['pinned']));
+
+            $unread = !empty($request['pinned']) ? ws_mail_unread_count($viewer) : 0;
+
+            return ws_action_ok(array(
+                'pinned' => !empty($request['pinned']),
+                'icon'   => pg_menu_icon('mail', 'campaigns-color'),
+                'badge'  => pg_menu_count_badge($unread, lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $unread))),
+            ));
 
         // My e-mail settings: the person's own signature, which stands in
         // place of their name in every mail they send (mail_signature.php).
@@ -4116,7 +4164,8 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // The person's own quiet hours (notify.php): their own session only,
-        // never for another person; no API route or MCP tool.
+        // never for another person; no MCP tool (the API route is the team
+        // devices session's own, api_quiet_hours.php).
         case 'ws_quiet_hours_save':
             $result = ws_quiet_hours_save($viewer, $request);
 
@@ -4332,8 +4381,10 @@ function ws_handle_action($action, $request)
 
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
+        // general=1 addresses the general memory (channel_id 0) instead,
+        // kept by whoever may post in an agent channel.
         case 'ws_memory_list':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4341,11 +4392,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
-                'can_post' => ws_can_post_channel($viewer, $channel),
+                'can_post' => ws_memory_can_write($viewer, $channel),
             ));
 
         case 'ws_memory_save':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4370,6 +4421,11 @@ function ws_handle_action($action, $request)
                 'pinned'     => !empty($request['pinned']),
                 'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
             );
+
+            if (array_key_exists('project', $request)) {
+                $input['project'] = (string) $request['project'];
+            }
+
             $check = ws_memory_check($viewer, $channel, $input, $current);
 
             if (!$check['ok']) {
@@ -4383,7 +4439,7 @@ function ws_handle_action($action, $request)
         case 'ws_memory_delete':
             $row = ws_memory_row((int) ($request['id'] ?? 0));
 
-            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+            if (!$row || !ws_memory_can_read($viewer, $row)) {
                 return ws_action_error(lang('That memory entry could not be found.'));
             }
 
@@ -4398,7 +4454,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            return ws_action_ok(array('messages' => ws_channel_files($viewer, $channel['id'])));
+            // A page at a time: before is where the last page ended.
+            return ws_action_ok(ws_channel_files_page($viewer, $channel['id'], (int) ($request['before'] ?? 0)));
 
         case 'ws_channel_tasks':
             $channel = ws_action_channel($viewer, $request);
@@ -5018,6 +5075,7 @@ function ws_handle_action($action, $request)
                 'priority'      => (string) ($request['priority'] ?? ''),
                 'soon'          => min(90, max(0, (int) ($request['soon'] ?? 0))),
                 'agent_channels' => ws_agent_channel_mode($request['agent_channels'] ?? ''),
+                'made_by'        => ws_task_made_by_mode($request['made_by'] ?? ''),
             );
 
             // "Everything" is the board holder's view.
@@ -5033,6 +5091,8 @@ function ws_handle_action($action, $request)
                 'tasks'          => ws_tasks_list($viewer, $filters),
                 'agent_channels' => ws_tasks_agent_count($agent_names),
                 'agent_names'    => (object) $agent_names,
+                // The "Made by agents" filter shows once tasks carry the mark.
+                'made_by_ready'  => ws_task_app_ready(),
             ));
 
         case 'ws_board':

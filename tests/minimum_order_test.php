@@ -121,6 +121,9 @@ function test_minimum_order_wiring()
 	$classic = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_shopping_cart.php');
 	pg_assert_contains('pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, \'cart\')', $classic, 'the classic cart asks the same function');
 	pg_assert_contains("\$form->add_warning(\$minimum_order['message']);", $classic);
+	pg_assert_true(strpos($classic, 'pg_minimum_order_check(') > strpos($classic, '$result = apply_offers_to_cart();'), 'the classic cart checks the refreshed line prices');
+	pg_assert_true(strpos($classic, 'pg_minimum_order_check(') > strpos($classic, 'update_order_item_prices();'), 'after the price refresh');
+	pg_assert_true(strpos($classic, 'pg_minimum_order_check(') < strpos($classic, '$form->get_warnings() .'), 'before the messages are drawn');
 	pg_assert_contains("\$form->output_errors() .\n            \$form->get_warnings() .", $classic, 'the system layout shows the warning');
 
 	pg_assert_contains('pg_minimum_order_card($liveform)', $edit, 'the field on the edit screen');

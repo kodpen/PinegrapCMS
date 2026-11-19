@@ -4,7 +4,14 @@ description: What was decided for the designer's Prototype view (owner 2026-10-2
 ---
 
 ## What was asked? (owner, 2026-10-24)
-- Link a menu item or link in the visual editor to the page it opens, like the prototype mode of Figma and Adobe XD, on a Flows-style box-and-arrow canvas. Built in #5401-#6376: designer/prototype-view.md.
+- Link a menu item or link in the visual editor to the page it opens, like the prototype mode of Figma and Adobe XD, on a Flows-style box-and-arrow canvas. Built in #5401-#6376, rebuilt in #9864-#10243: designer/prototype-view.md.
+
+## Why was it rebuilt, and which looks did the owner give?
+- Owner (2026-11-15): forty pages in one row with every arrow drawn was "koca bir kargaşa" (a big mess); he wants Figma's idea, clearer. The engine is the graph canvas core strengthened, not a second one (`workflow/decisions-made-product-57.md`).
+- Owner (2026-11-16, agent channel poll 58): all three of arrows routing themselves, a target suggested for a link without one (nothing written before he applies), and pages no link leads to and links without a target found as problems.
+- Owner (2026-11-16, poll 89, message 6541): No to PV5's sheet: arrows leave the link itself, an unselected page shows no detail, a link is joined by dragging it onto a page (`workflow/decisions-made-product-63.md`). Architect (2026-11-16, agent channel message 6548): PV5 landed as the base; his look came again after PV10.
+- Owner (2026-11-17, poll 119, message 7680): Yes to the view after PV10 (#10101), the links panel staying (`workflow/decisions-made-product-70.md`).
+- Owner (2026-11-17, poll 137, message 8763): Yes to the "Suggest targets" window (#10243) (`workflow/decisions-made-product-72.md`).
 
 ## Where does it live?
 - Inside the visual designer (not the Workspace Flows screen), on the shared graph canvas core (ui/graph-canvas-core-module.md), so the designer's Save, rights, undo and page lock apply.

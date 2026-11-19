@@ -109,7 +109,12 @@ if (!$_POST) {
             'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang('Edit Auto Dialog'),
+            'heading_description' => lang('Edit an auto dialog that can automatically popup for visitors.'),
             'cancel'=>array('enable'=>'true','url'=>'view_auto_dialogs.php'),
+            'breadcrumb' => array(
+                array('label' => lang('All Auto Dialogs'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php'),
+                array('label' => (string) $auto_dialog['name']),
+            ),
         )
     );
 

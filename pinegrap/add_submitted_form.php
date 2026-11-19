@@ -270,6 +270,10 @@ if (!$_POST) {
     // a partially filled in submitted form can still be stored.
     pg_submitted_form_create_check($liveform, $fields, $page_id, $complete_clicked, $office_use_only_access, $pretty_urls, $_FILES);
 
+    // The rows of a collection's rows fields, checked before anything is
+    // written (includes/fn/collection_rows.php).
+    pg_coll_rows_screen_check($liveform, $page_id, '', $complete_clicked, $office_use_only_access);
+
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
 
@@ -285,6 +289,9 @@ if (!$_POST) {
         }
 
         $reference_code = $created['reference_code'];
+
+        // The rows of its rows fields, now that the record exists.
+        $rows_failed = pg_coll_rows_screen_write($liveform, $page_id, $created['id'], ($new_complete == 1), $user['id'], $office_use_only_access);
 
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was created','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 
@@ -309,6 +316,10 @@ if (!$_POST) {
 
         // add notice that submitted form has been created
         $liveform_view_submitted_forms->add_notice($message);
+
+        foreach ($rows_failed as $rows_message) {
+            $liveform_view_submitted_forms->add_warning($rows_message);
+        }
 
         // Send the user back to the submitted forms list.  The custom form is passed along so
         // that the list focuses on it, and the end of the date range is moved to today, because

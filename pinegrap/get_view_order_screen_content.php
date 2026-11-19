@@ -21,7 +21,9 @@ function get_view_order_screen_content($properties)
     // The id is used in SQL, session comparisons and links below, so keep it an
     // integer. An id sent as an array counts as not given (it would read as order 1).
     $order_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
-    $page_id = $properties['page_id'];
+    // The default screen (forms.php, a site without a View Order page) passes
+    // no page, so there is no id and no device type.
+    $page_id = $properties['page_id'] ?? '';
 
     // These are only added to / set further below under some conditions, but they are always
     // read when the totals and the layout are assembled.
@@ -49,7 +51,7 @@ function get_view_order_screen_content($properties)
     $applied_offers = array();
     $output_recurring_products = '';
 
-    $device_type = $properties['device_type'];
+    $device_type = $properties['device_type'] ?? '';
 
 
 
@@ -226,7 +228,9 @@ function get_view_order_screen_content($properties)
 
 
 
-    if ($layout_type == 'system') {
+    // Without a View Order page there is no layout setting: the system layout
+    // draws the order, as on the other default screens (get_login.php).
+    if ($layout_type == 'system' || !$layout_type) {
 
         // set shipping to false until we find out that this is a shipping order
         $shipping = false;

@@ -69,11 +69,9 @@ function test_settings_dialog_keep_place_drawer_rule()
 		array('pgset-ws-agent-7', array('name' => 'ws_agent_delete', 'value' => '7')),
 		array('pgset-ws-mcp-3', array('name' => 'ws_mcp_delete', 'value' => '3')),
 		array('pgset-ws-dept-2', array('name' => 'ws_department_archive', 'value' => '2')),
-		array('pgset-ws-github-link', array('name' => 'ws_github_link_remove', 'value' => '4')),
 		array('pgset-ws-agent-0', array('name' => 'ws_agent_save', 'value' => '')),
 		array('pgset-ws-mcp-add', array('name' => 'ws_mcp_save', 'value' => '0')),
 		array('pgset-ws-holiday-new', array('name' => 'ws_holiday_add', 'value' => '1')),
-		array('pgset-ws-github-link', array('name' => 'ws_github_link_save', 'value' => '1')),
 		array('', array('name' => 'ws_agent_save', 'value' => '7')),
 		array(null, null),
 	);
@@ -86,7 +84,7 @@ function test_settings_dialog_keep_place_drawer_rule()
 		return;
 	}
 
-	pg_assert_same(array(true, true, true, false, false, false, false, false, false, false, false, false, false), $kept, 'an existing record\'s drawer opens again; not after delete, remove or archive, not from an add drawer, not without a drawer');
+	pg_assert_same(array(true, true, true, false, false, false, false, false, false, false, false), $kept, 'an existing record\'s drawer opens again; not after delete, remove or archive, not from an add drawer, not without a drawer');
 }
 
 // The save path keeps the form's scroll and hands the drawer over to the

@@ -267,7 +267,7 @@ function test_workspace_mail_list_wiring()
 
 	pg_assert_contains('$viewer = ws_screen_gate($user, false, true);', $page, 'members only');
 	pg_assert_contains('ws_mail_list($viewer, $filters, $now)', $page);
-	pg_assert_contains("ws_screen_assets(\$viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings())))", $page, 'the script and its words');
+	pg_assert_contains("ws_screen_assets(\$viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings() + ws_mail_menu_js_strings())))", $page, 'the script and its words, with the pin\'s');
 	pg_assert_contains('data-ws-mail-pane', $page, 'the pane beside the list');
 	pg_assert_contains('$pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters), ws_enabled());', $page, 'the address\'s conversation drawn by the server');
 	pg_assert_true(strpos($page, 'ws_mail_pane_open($viewer, $open)') < strpos($page, '$list = ws_mail_list($viewer, $filters, $now);'), 'read before the list and the menu count are drawn');

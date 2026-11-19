@@ -30,6 +30,7 @@
 - api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation [decision: decisions-made-product-53.md]
 - api-discovery-document.md: The credential-free discovery document (.well-known/pinegrap.json and GET integration.php/discovery): its fields and sources, where it is wired, which gates apply, device_signin and pairing
 - api-docs-conventions.md: The Conventions section and the heading outline of the API reference (api_docs.php and integration.php/docs): one renderer, what each topic states, how to keep it true when a rule changes
+- api-docs-webhook-events.md: The Webhook events section of the API reference (api_docs.php and integration.php/docs): the catalogue table linking to one block per event with the fields of data and the sample's delivered body
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes [decision: decisions-made-schema-9.md]
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
@@ -46,6 +47,7 @@
 - api-github-channel-links.md: GitHub repository links of a Workspace channel (G2): link tables, the settings card, hook creation and removal, github_webhook.php, the GitHub application, the [ci]/[pr]/[label] lines
 - api-http-manners.md: External API manners (#10142): HEAD as GET without a body, Location on a 201, Content-Language on an error, exposed headers, the Basic challenge on credentials_missing
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
+- api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
 - api-list-newest-first.md: sort=newest on the lists automation triggers sample (customers, form submissions, products, subscriptions, ERP invoices and quotes): the walk, the marked cursor, list_order.php
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
@@ -53,6 +55,7 @@
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why [decision: here]
 - api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
 - api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
+- api-meta-workspace-values.md: The workspace object on GET /meta: default_task_minutes (WS_DEFAULT_TASK_MINUTES) and day_minutes (WS_DAY_MINUTES), for a team device's task form (issue #10345, PR #10388)
 - api-native-push.md: Native push for team devices (M7a #9703, M7b #9720): /push/devices routes, the broker call, push_subscriptions.provider (11.0.215), PG_PUSH_BROKER_URL, the badge body, 429 hold, forget on revoke
 - api-notifications-group-fold.md: GET /notifications group filter (site or workspace, applied in SQL before paging) and the fold key on every Notification row, the panel bell's chips and flow-run folding (#5085)
 - api-oauth-client-compat.md: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Codex, mcp-remote, Claude) connecting: lenient registration, app schemes, loopback matching, unknown scopes, discovery, panel guide
@@ -99,6 +102,9 @@
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain [decision: here]
+- api-workspace-highlights.md: Readers' highlights over the Workspace API (#10341): the WorkspaceMessage keys, who gets For me rows, the three person-only writes, what quote indexes, how changes reach devices
+- api-workspace-quiet-hours.md: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
+- application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
@@ -110,7 +116,7 @@
 - connections-registry-rows.md: Every row of the registry of outside services by group: the place of its setting (Site Settings card or screen) and how its state is read, and the services that show no state, with why
 - connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (78 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
-- external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing [decision: decisions-made-product-13.md]
+- external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
@@ -123,6 +129,7 @@
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
 - workspace-api-link-preview.md: link_preview on a Workspace message read over the external API and MCP (LP3): the card's plain fields, the states and the switch that leave it null, which routes carry it
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
+- workspace-api-message-sender-feedback.md: Workspace API for a team device client: app_id, agent, claude, ai on an app sender; feedback on an agent's reply; POST /workspace/messages/{id}/agent-feedback
 - workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-api-status-checkins.md: Workspace API for a channel's status update and check-ins - POST …/status, POST …/checkins, POST /workspace/checkins/{id}/answer - who may call each and the checks shared with the panel
 - workspace-assistant-requests-agents.md: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row

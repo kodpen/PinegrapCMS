@@ -1660,8 +1660,9 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-pick .mpp-meta { font-size: var(--pg-text-count); margin-top: 0; }
 .mpp-search { min-width: 220px; }
 /* The views are one segmented control over the screen, drawn with the
-   look A segments; it scrolls sideways on a phone (.pg-list-seg). */
-.mpp-modes { display: flex; width: fit-content; margin-bottom: 14px; }
+   look A segments and centred as an area tab strip (.pg-area-tabs); it
+   scrolls sideways on a phone (.pg-list-seg). */
+.mpp-modes { margin-bottom: 14px; }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
 .mpp-err { margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
@@ -1717,8 +1718,7 @@ a.mpp-title:hover { text-decoration: underline; }
 }
 }</style>
 
-<main id="content" class="container-fluid">
-	<div id="mpp-flash" aria-live="polite"></div>';
+<main id="content" class="container-fluid">';
 
 // The views this account has: the catalogue where the connector lists the
 // store's products there, the listings where it reads the categories.
@@ -1741,7 +1741,7 @@ if ($account && ($supported || $can_listings)) {
 	}
 
 	echo '
-	<nav class="pg-seg pg-list-seg mpp-modes" aria-label="' . h(lang('Display')) . '">';
+	<nav class="pg-area-tabs mpp-modes" aria-label="' . h(lang('Display')) . '"><div class="pg-seg pg-list-seg">';
 
 	foreach ($modes as $key => $item) {
 
@@ -1752,9 +1752,13 @@ if ($account && ($supported || $can_listings)) {
 	}
 
 	echo '
-	</nav>';
+	</div></nav>';
 
 }
+
+// The screen's messages sit under the strip, so one never moves it down.
+echo '
+	<div id="mpp-flash" aria-live="polite"></div>';
 
 if (!$account) {
 

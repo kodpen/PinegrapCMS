@@ -42,9 +42,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
  * @param string $title the heading, as markup
  * @param string $body the content, as markup
  * @param bool $in_dialog true when drawn inside the Site Settings dialog
+ * @param string $foot buttons kept in view under the scrolling body, as markup
  * @return string
  */
-function pg_settings_drawer($id, $title, $body, $in_dialog)
+function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '')
 {
     $id = (string) $id;
     $close = lang('Close');
@@ -56,7 +57,8 @@ function pg_settings_drawer($id, $title, $body, $in_dialog)
                         <h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>
                         <button type="button" class="btn-close" data-pgdrawer-close aria-label="' . h($close) . '" title="' . h($close) . '"></button>
                     </div>
-                    <div class="pg-sm-drawer-body">' . $body . '</div>
+                    <div class="pg-sm-drawer-body">' . $body . '</div>' . (($foot !== '') ? '
+                    <div class="pg-sm-drawer-foot">' . $foot . '</div>' : '') . '
                 </div>';
     }
 
@@ -66,6 +68,7 @@ function pg_settings_drawer($id, $title, $body, $in_dialog)
                         <h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h($close) . '"></button>
                     </div>
-                    <div class="drawer-body">' . $body . '</div>
+                    <div class="drawer-body">' . $body . '</div>' . (($foot !== '') ? '
+                    <div class="drawer-footer pg-set-drawer-foot">' . $foot . '</div>' : '') . '
                 </dialog>';
 }

@@ -13,7 +13,7 @@ description: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialo
 - PU2 (M) after PU1: the `<dialog>` script, the pick in the browser, `open_dialog()` as a wrapper, the session key gone. Done: #9805 (`platform/auto-dialog-browser-dialog.md`). No schema. Before and after pictures of an old row on a site: the architect's look.
 - PU3 (S) after PU2: consent. Done: #9852. The one cookie, `sessionStorage` without consent, the catalogue and the revoke names; with the notice on nothing opens until it is answered (the `pg:consent` event). No schema.
 - PU4 (M) after PU2: the columns `open_on`, `open_scroll`, `audience` and `place`, the scroll and leave triggers, the form's fields and the API's fields (`api/api-design-dialogs-regions.md`). Done: #9851 (`platform/auto-dialog-open-settings.md`; columns confirmed in agent channel message 5632).
-- PU5 (M) after PU4: the three screens (`view_auto_dialogs.php`, `add_auto_dialog.php`, `edit_auto_dialog.php`) in the panel's new look. Pictures to the owner.
+- PU5 (M) after PU4: the three screens (`view_auto_dialogs.php`, `add_auto_dialog.php`, `edit_auto_dialog.php`) in the panel's new look. Done: #9905 (`ui/auto-dialog-screens-look.md`).
 - PU6 (M) after PU5: `content` and `component_id`. The edit screen asks "What does it show?": an address or a designed pop-up, with links into the designer. A site with no visual design keeps the address kind.
 - PU7 (M) after PU6: the four ready blocks. Pictures to the owner.
 - PU8 (M) after PU4: the day rollup table, the beacon, the figures on the list and edit screens. Follows `visitors/README.md`. Done: #9877 (`visitors/auto-dialog-counts.md`; table confirmed in agent channel message 5840).
