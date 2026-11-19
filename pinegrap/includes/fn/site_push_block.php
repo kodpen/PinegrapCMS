@@ -112,15 +112,18 @@ function pg_site_push_block_inject($content, $settings = null, $src = null)
 /**
  * The line put before the worker's script: its settings as
  * self.pgSitePushWorker (the door, the site's name, the fixed text shown
- * when a message cannot be read, the site icon). Pure.
+ * when a message cannot be read, the site icon) and, in app mode, the
+ * offline page (pg_site_push_worker_offline()). Pure.
  *
- * @param string $door  the door's address
- * @param string $name  the site's name
- * @param string $text  the fixed text
- * @param string $icon  the site icon's address, or ''
+ * @param string $door     the door's address
+ * @param string $name     the site's name
+ * @param string $text     the fixed text
+ * @param string $icon     the site icon's address, or ''
+ * @param array  $offline  pg_site_push_worker_offline(), or none: the worker
+ *                         then has no fetch handler
  * @return string
  */
-function pg_site_push_worker_prelude($door, $name, $text, $icon)
+function pg_site_push_worker_prelude($door, $name, $text, $icon, $offline = array())
 {
     $conf = array('door' => (string) $door, 'name' => (string) $name, 'text' => (string) $text);
 
@@ -128,5 +131,33 @@ function pg_site_push_worker_prelude($door, $name, $text, $icon)
         $conf['icon'] = (string) $icon;
     }
 
+    if (!empty($offline)) {
+        $conf['offline'] = $offline;
+    }
+
     return 'self.pgSitePushWorker = ' . json_encode($conf, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ";\n";
+}
+
+/**
+ * The offline page's settings for the worker in app mode: the address the
+ * page is never given for (the software directory: the panel and its files),
+ * the page's language and its lines. Pure.
+ *
+ * @param string $path      PATH
+ * @param string $software  SOFTWARE_DIRECTORY
+ * @param string $language  the page's language code, or ''
+ * @param string $title     the page's heading
+ * @param string $text      the line under it
+ * @param string $retry     the link that loads the page again
+ * @return array
+ */
+function pg_site_push_worker_offline($path, $software, $language, $title, $text, $retry)
+{
+    return array(
+        'skip'  => (string) $path . (string) $software . '/',
+        'lang'  => preg_match('/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/', (string) $language) ? (string) $language : '',
+        'title' => (string) $title,
+        'text'  => (string) $text,
+        'retry' => (string) $retry,
+    );
 }

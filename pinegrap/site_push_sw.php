@@ -10,7 +10,8 @@
  * presses its button (assets/js/pg_site_push.js).
  *
  * It is answered while the switch is off too: a browser that subscribed
- * before keeps a worker that still loads, and nothing is sent to it.
+ * before keeps a worker that still loads, and nothing is sent to it. In app
+ * mode (pg_site_push_app_mode()) its settings carry the offline page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -48,10 +49,26 @@ header('Service-Worker-Allowed: ' . PATH);
 header('Cache-Control: private, no-cache');
 header('X-Robots-Tag: noindex');
 
+// App mode: the worker answers a page load the network lost with an
+// offline page. The answer changes with the switch, so a browser's update
+// check (no-cache above) gives the installed site the handler or takes it
+// away.
+$site_push_sw_offline = pg_site_push_app_mode()
+    ? pg_site_push_worker_offline(
+        PATH,
+        SOFTWARE_DIRECTORY,
+        (string) lang(array('info' => true)),
+        lang('You are offline'),
+        lang('This page could not be loaded. Check your connection and try again.'),
+        lang('Try again')
+    )
+    : array();
+
 echo pg_site_push_worker_prelude(
     $site_push_sw_settings['door'],
     defined('TITLE') ? TITLE : '',
     lang('Open the site to see what is new.'),
-    $site_push_sw_icon
+    $site_push_sw_icon,
+    $site_push_sw_offline
 );
 echo $site_push_sw_script;

@@ -526,7 +526,8 @@ if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('co
 // Visitor notifications (includes/fn/site_push.php): off on every site, a new
 // install too, until it is switched on here. Read and saved only through the
 // module's one reader and saver. With it off the "Notify me" block draws
-// nothing and site_push.php takes no subscription.
+// nothing and site_push.php takes no subscription. App mode, its own switch
+// that also starts off, works only beside it (pg_site_push_app_mode()).
 if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
     $pg_settings_cards[] = '
                         <div id="pgset-site-push" class="pg-set-card">
@@ -542,6 +543,13 @@ if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
                                                 <div class="switch"><input value="1"' . (pg_site_push_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_on" name="site_push_on"/></div>
                                                 <label for="site_push_on">' . h(lang('Let visitors turn on notifications from this site')) . '</label>
                                                 <div class="form-text">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_site_push_app_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_app_on" name="site_push_app_on"/></div>
+                                                <label for="site_push_app_on">' . h(lang('App mode')) . '</label>
+                                                <div class="form-text">' . h(lang('A visitor who adds the site to the home screen opens it as an app, without the browser\'s address bar. On an iPhone, notifications reach only a site added this way. A page that cannot be loaded without a connection shows an offline page. Works while visitor notifications are on and a site icon is set.')) . '</div>
                                             </div>
                                         </div>
                                     </div>
