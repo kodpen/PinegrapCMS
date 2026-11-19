@@ -478,6 +478,74 @@ function pg_connections_screen_fold_at($states)
 }
 
 /**
+ * The mail routes the list shows as one row, E-mail sending's: the sending
+ * services and the two accounts the System card chooses. Mailchimp keeps
+ * its own row. Pure.
+ *
+ * @return array registry keys
+ */
+function pg_connections_screen_mail_routes()
+{
+    return array('postmark', 'mailgun', 'brevo', 'resend', 'ses', 'gmail', 'microsoft_mail');
+}
+
+/**
+ * The list's rows with the mail routes folded into one, keyed mail_sending,
+ * at the first route's place: its state the most urgent of theirs, its
+ * search every route's texts besides its own, its uses their names when it
+ * brings none. Without a route the rows come back as they were. Pure.
+ *
+ * @param array $rows id => row with 'name', 'state' and 'search'
+ * @param array $row  the folded row: kind, name, group, line, url, search
+ * @return array id => row
+ */
+function pg_connections_screen_fold_mail($rows, $row)
+{
+    $routes = array_flip(pg_connections_screen_mail_routes());
+    $ranks = pg_connections_screen_state_ranks();
+    $folded = array();
+    $state = '';
+    $names = array();
+    $search = isset($row['search']) ? (array) $row['search'] : array();
+
+    foreach ($rows as $id => $item) {
+
+        if (!isset($routes[$id])) {
+            $folded[$id] = $item;
+            continue;
+        }
+
+        if (!$names) {
+            $folded['mail_sending'] = null;
+        }
+
+        $rank = isset($ranks[$item['state']]) ? $ranks[$item['state']] : count($ranks);
+
+        if (($state === '') || ($rank < (isset($ranks[$state]) ? $ranks[$state] : count($ranks)))) {
+            $state = $item['state'];
+        }
+
+        $names[] = $item['name'];
+        $search = array_merge($search, isset($item['search']) ? (array) $item['search'] : array());
+    }
+
+    if (!$names) {
+        return $rows;
+    }
+
+    $row['state'] = $state;
+    $row['search'] = $search;
+
+    if (!isset($row['uses']) || ($row['uses'] === '')) {
+        $row['uses'] = implode(', ', $names);
+    }
+
+    $folded['mail_sending'] = $row;
+
+    return $folded;
+}
+
+/**
  * The one action a row of the list offers: Connect while nothing is set
  * up, Manage for every other state. Pure.
  *

@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-draw
-description: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw and the 70% fit floor
+description: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 module: picture_translation
 ---
 
@@ -12,7 +12,8 @@ module: picture_translation
 - An Out of date row says "Visitors see the source picture until this one is drawn again." in place of the count. A drawn picture's thumbnail is a link opening it at full size in a new tab, named "Open the picture: {name}".
 
 ## How is a picture drawn?
-- Action `picture_languages` (`pg_picture_tr_languages_answer()`) gives the live canvas document, its hash and per language the texts (`id`, `field`, `text` or null) and a stamp. The browser draws from that saved document, never the unsaved one ("Changes not saved yet are not in these pictures.").
+- Action `picture_languages` (`pg_picture_tr_languages_answer()`) gives the live canvas document, its hash and per language the texts (`id`, `field`, `text` or null), a stamp and `queued` (a row waiting or out of date). The browser draws from that saved document, never the unsaved one ("Changes not saved yet are not in these pictures.").
+- A Save of the file the list belongs to draws its `queued` languages that are drawable again at once, with no press: `picture-text-auto-panel.md`.
 - `M.languageDoc()` puts the words in by layer id and field; each changed text layer is fitted (`M.languageFit()`): the size shrinks to the source's box width and height, never under `LANGUAGE_FLOOR` 0.7; below it the text is drawn at 70% and the draw is marked (`fit` 1). The aligned side stays across (`M.textFit()`), the box's middle stays upright.
 - A painter on the editor's prototype (as `workspace_canvas_picture.js`) waits for fonts (`layersReady()`) and draws with `drawArtboard()`, the save's renderer.
 

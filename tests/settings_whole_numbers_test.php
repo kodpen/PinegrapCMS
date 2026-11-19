@@ -63,7 +63,7 @@ function test_settings_whole_numbers_save_modules_use_the_reader()
 	pg_assert_contains("pg_parse_whole_number(post_value('ecommerce_gift_card_validity_days'), 65535)", $commerce);
 	pg_assert_contains("pg_parse_whole_number(post_value('ecommerce_reward_program_membership_days'), 4294967295)", $commerce);
 
-	$contact = settings_whole_numbers_test_source('includes/settings/contact.save.php');
+	$contact = settings_whole_numbers_test_source('includes/settings/mail_sending.save.php');
 	pg_assert_contains("pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535)", $contact);
 	pg_assert_contains("pg_parse_whole_number(post_value('mailchimp_sync_limit'), 4294967295)", $contact);
 

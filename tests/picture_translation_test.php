@@ -454,16 +454,13 @@ function test_picture_translation_queue_sql()
 	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($url(array(\'draw\' => 1', $screen, 'the group\'s button is quiet');
 }
 
-// The queue's script: the count left and the state a draw's answer gives.
+// The queue's script: the count left, a row's reason, edit link, button and
+// end line. The state a draw's answer gives is the shared drawing's
+// (tests/picture_auto_test.php).
 function test_picture_translation_queue_script()
 {
 	$r = picture_translation_node('console.log(JSON.stringify({'
 		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
-		. ' drawn: Q.statusOf({ status: "success", state: "drawn" }),'
-		. ' look: Q.statusOf({ status: "success", state: "look" }),'
-		. ' refused: Q.statusOf({ status: "error", message: "No" }),'
-		. ' none: Q.statusOf(null),'
-		. ' skipped: Q.statusOf("skipped"),'
 		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
 		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
 		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
@@ -476,7 +473,7 @@ function test_picture_translation_queue_script()
 		return;
 	}
 
-	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
+	pg_assert_same(array('left' => 3,
 		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
-		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
+		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
 }

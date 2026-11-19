@@ -3634,6 +3634,66 @@ function pg_shortcuts_dialog()
         </dialog>';
 }
 
+/**
+ * The panel's background draw of translated Design Canvas pictures
+ * (assets/js/picture_auto.js): its tag with the rows this person may draw,
+ * after the Design Canvas's loader it draws with. Printed only while the
+ * mark says a row may wait (no query while it is clear) and the person's
+ * queue is not empty; never for a visitor.
+ *
+ * @return string HTML
+ */
+function pg_picture_tr_auto_tag()
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || !function_exists('pg_picture_tr_marked')) {
+        return '';
+    }
+
+    return pg_picture_tr_auto_tag_with('pg_picture_tr_marked', 'pg_picture_tr_queue', function ($rows) {
+        $file = 'assets/js/picture_auto.js';
+
+        return pg_image_editor_includes() . pg_picture_tr_auto_script(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file), $rows);
+    });
+}
+
+/**
+ * The tag with the mark, the queue and the drawing of the tag handed in:
+ * nothing while $marked() is false ($queue is not asked) or the queue is
+ * empty; else $render() with each row's picture and language.
+ *
+ * @param callable $marked () => bool
+ * @param callable $queue  () => rows of pg_picture_tr_queue()
+ * @param callable $render (rows of file_id, language) => HTML
+ * @return string HTML
+ */
+function pg_picture_tr_auto_tag_with($marked, $queue, $render)
+{
+    if (!call_user_func($marked)) {
+        return '';
+    }
+
+    $rows = call_user_func($queue);
+    $list = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $list[] = array('file_id' => (int) $row['file_id'], 'language' => (string) $row['language']);
+    }
+
+    return $list ? (string) call_user_func($render, $list) : '';
+}
+
+/**
+ * The script's tag: deferred, the rows in its data-rows. Pure.
+ *
+ * @param string $src
+ * @param array  $rows of file_id, language
+ * @return string HTML
+ */
+function pg_picture_tr_auto_script($src, $rows)
+{
+    return '<script src="' . h($src) . '" id="pg_picture_auto" data-rows="' . h(json_encode(array_values($rows))) . '" defer></script>';
+}
+
 function output_footer($properties = false)
 {
     $output_software_labeling = '';
@@ -3658,6 +3718,7 @@ function output_footer($properties = false)
         </div>
         </div>
         ' . $output_chat_launcher . '
+        ' . pg_picture_tr_auto_tag() . '
         ' . pg_output_email_off_close() . '
         </body>
         </html>';
@@ -8067,7 +8128,7 @@ function pg_js_bundles()
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
-        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js'),
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js', 'assets/js/pg_dash_cards_mail.js'),
         // The Visitors overview (visitors.php): its period bar and charts.
         'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
         // The picker dialog (window.pgPicker, includes/fn/picker.php), printed

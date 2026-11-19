@@ -27,6 +27,7 @@
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
+- boxpacker-embedding.md: The bundled BoxPacker (includes/boxpacker, 1.x): which code loads it, and the local patch that keeps it quiet on PHP 8.5 (#10323)
 - build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
 - campaign-profile-flow-converter.md: Campaign profiles into flows, the converter and dry-run report (MA9d, #9458): profile to boxes, when a chain stays, owner, limits, tools/campaign_profile_flow_report.php
 - campaign-profile-flow-dry-run.md: The dry-run report of turning e-mail campaign profiles into flows (MA9a, #9077): what it lists per chain and per profile left, where it is shown, the starting sites' profiles by hand
@@ -152,12 +153,14 @@
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
 - phpexcel-embedding.md: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintained): which screens load it, and the local patch that keeps it quiet on PHP 8.5
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
+- picture-text-auto-panel.md: Pictures drawn by an open panel page in the background (picture_auto.js): the footer's tag, the lock, the order, the stop, a failed row, the draw after a Save, the shared drawing
 - picture-text-auto-rows.md: A translated picture's waiting rows written at a page save, its texts' translate-on-save job (scope file:<id>), the waiting mark in data/temp, the keep shared by every draw
+- picture-text-auto-server.md: Translated canvas pictures drawn by the server with nobody there: the job's draw, PHP twins of the language document and fit, what waits for a panel, budget and mark
 - picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, built in #10028 to #10269): what it does, its binding decisions, what the first version leaves out and why, where each part is [decision: decisions-made-product-63.md, decisions-made-product-64.md]
 - picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
 - picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
 - picture-text-translation-draw-server.md: The Design Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
-- picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw and the 70% fit floor [decision: here]
+- picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save [decision: here]
 - picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points [decision: here]
 - picture-text-translation-group.md: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Design Canvas link
 - picture-text-translation-page.md: Picture text translation's page pass: a page in another language shows a Design Canvas picture's drawn language version in src, srcset, og:image, links and style url(); waiting rows, one query

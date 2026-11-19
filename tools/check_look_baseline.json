@@ -195,15 +195,11 @@
         "tabs": 0
     },
     "assets/js/workspace_highlights.js": {
-        "button": 8,
+        "button": 7,
         "tabs": 0
     },
     "assets/js/workspace_mail.js": {
         "button": 25,
-        "tabs": 0
-    },
-    "assets/js/workspace_memory.js": {
-        "button": 5,
         "tabs": 0
     },
     "assets/js/workspace_note_group_shares.js": {
@@ -854,44 +850,16 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/settings/accounting.php": {
-        "button": 3,
-        "tabs": 0
-    },
     "includes/settings/appearance.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "includes/settings/bookings.php": {
-        "button": 2,
-        "tabs": 0
-    },
-    "includes/settings/commerce.php": {
-        "button": 3,
-        "tabs": 0
-    },
-    "includes/settings/commerce_merchant.php": {
-        "button": 4,
-        "tabs": 0
-    },
-    "includes/settings/features.php": {
-        "button": 2,
         "tabs": 0
     },
     "includes/settings/fediverse.php": {
         "button": 4,
         "tabs": 0
     },
-    "includes/settings/firewall.php": {
-        "button": 2,
-        "tabs": 0
-    },
     "includes/settings/languages.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "includes/settings/maintenance.php": {
-        "button": 7,
         "tabs": 0
     },
     "includes/settings/prep.php": {
@@ -900,10 +868,6 @@
     },
     "includes/settings/privacy_analytics.php": {
         "button": 3,
-        "tabs": 0
-    },
-    "includes/settings/security.php": {
-        "button": 4,
         "tabs": 0
     },
     "includes/settings/seo.php": {
@@ -996,10 +960,6 @@
     },
     "includes/workspace/mail_pane.php": {
         "button": 6,
-        "tabs": 0
-    },
-    "includes/workspace/mail_settings.php": {
-        "button": 11,
         "tabs": 0
     },
     "includes/workspace/mcp.php": {

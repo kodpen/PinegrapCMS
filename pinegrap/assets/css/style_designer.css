@@ -1260,6 +1260,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
 }
 .sd-sect-sum-txt.sd-sect-sum-whole { flex: 0 0 auto; min-width: max-content; }
+/* A state in a closed section's head ("EN · not translated"): a badge,
+   amber while something is missing. */
+.sd-sect-state {
+    flex: 0 0 auto; padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+    background: var(--sd-raised-bg-2); color: var(--sd-text-muted);
+    font-size: 10.5px; font-weight: 750; line-height: 1.3;
+}
+.sd-sect-state.is-warn { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .sd-sect-hdr.sd-sect-open .sd-sect-sum,
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }
@@ -1312,6 +1320,44 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-id-step:not(:last-child),
 .sd-rcol-narrow .sd-id-sep { display: none; }
 .sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
+/* The head over the Options search: the identity row, then the tabs. */
+.sd-props-head { flex-shrink: 0; background: var(--sd-panel-bg); }
+.sd-props-head[hidden] { display: none; }
+/* The three tabs (40): the holder 4 around them, a tab 30 high, 4 apart,
+   12 from the sides; the open tab has the raised ground. A tab's badge
+   counts its changed rows, filled with the accent on the open tab. */
+.sd-otabs {
+    display: flex; gap: 4px; height: 40px; padding: 4px; margin: 0 12px 8px;
+    background: var(--sd-input-bg); border-radius: 11px;
+}
+.sd-otab {
+    position: relative; flex: 1 1 0; min-width: 0; height: 30px; padding: 0 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 0; border-radius: 8px; background: transparent; cursor: pointer;
+    color: var(--sd-text-muted); font-size: 12.5px; font-weight: 600; line-height: 1;
+}
+.sd-otab .bi { font-size: 13px; flex-shrink: 0; }
+.sd-otab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-otab.active { color: var(--sd-text); background: var(--sd-raised-bg-2); font-weight: 630; }
+.sd-otab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-otab-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-otab-count {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-width: 18px; height: 17px; padding: 0 5px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text);
+    font-size: 10.5px; font-weight: 750; line-height: 1;
+}
+.sd-otab.active .sd-otab-count { background: var(--sd-accent); color: var(--sd-panel-bg); }
+/* Under 300 px a tab carries no icon; its badge sits on its top right
+   corner, 16 high in a ring of the holder's ground, and takes no width. */
+.sd-rcol-narrow .sd-otab .bi { display: none; }
+.sd-rcol-narrow .sd-otab-count {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    box-shadow: 0 0 0 2px var(--sd-input-bg);
+}
+/* A tab's sections start under the search. */
+.sd-otab-pane { padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .sd-sect-chev { transition: none; } }
 /* A row: the changed dot's place (14), the label column (92), a gap of
    10, the control; at least 32 high, 6 apart. The dot's reset button
@@ -7392,7 +7438,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 1px 8px; border-radius: 10px; white-space: nowrap;
     background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
 }
+.sd-proto-pic-foot { border: 0; font-family: inherit; line-height: 1.5; cursor: default; }
 .sd-proto-pic-foot[hidden] { display: none; }
+/* The selected long page's foot opens it whole, the open page's closes it
+   (_sdProtoPicFoot()). */
+.sd-proto-pic-foot.sd-proto-pic-foot-on { cursor: pointer; background: var(--sd-accent-strong); color: #fff; }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:hover { filter: brightness(1.1); }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 /* The selected frame's name in the accent colour (F2). */
 .sd-proto .pgc-selected .sd-proto-name { color: var(--sd-accent); }
 @media (prefers-reduced-motion: reduce) {

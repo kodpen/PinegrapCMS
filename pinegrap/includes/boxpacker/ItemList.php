@@ -18,6 +18,7 @@ class ItemList extends \SplMaxHeap
      * Compare elements in order to place them correctly in the heap while sifting up.
      * @see \SplMaxHeap::compare()
      */
+    #[\ReturnTypeWillChange]
     public function compare($itemA, $itemB)
     {
         if ($itemA->getVolume() > $itemB->getVolume()) {

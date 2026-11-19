@@ -193,8 +193,8 @@ function ws_mail_route_fields($prefix, $box, $channels)
     }
 
     $html = '
-                <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Routing')) . '</h3>
-                    <div class="form-text">' . h(lang('A new conversation written to one of these addresses goes to its channel instead; the first route that fits wins. A tag such as +billing stands for the mailbox\'s address with that tag (support+billing@…). Answers stay in their conversation\'s channel.')) . '</div>
+                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Routing')) . '</h3>
+                    <div class="pg-field-help">' . h(lang('A new conversation written to one of these addresses goes to its channel instead; the first route that fits wins. A tag such as +billing stands for the mailbox\'s address with that tag (support+billing@…). Answers stay in their conversation\'s channel.')) . '</div>
                 </div>';
 
     foreach ($rows as $index => $route) {
@@ -213,12 +213,12 @@ function ws_mail_route_fields($prefix, $box, $channels)
         $id = $prefix . 'route_' . $index;
         $html .= '
                 <div class="md:col-6">
-                    <label class="form-label visually-hidden" for="' . $id . '">' . h(lang('Address or tag')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="email" spellcheck="false" autocapitalize="off" name="route_match[]" id="' . $id . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
+                    <label class="pg-field-label visually-hidden" for="' . $id . '">' . h(lang('Address or tag')) . '</label>
+                    <input class="pg-input font-monospace" type="text" inputmode="email" spellcheck="false" autocapitalize="off" name="route_match[]" id="' . $id . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
                 </div>
                 <div class="md:col-6">
-                    <label class="form-label visually-hidden" for="' . $id . '_channel">' . h(lang('Channel')) . '</label>
-                    <select class="form-control form-control-sm" name="route_channel[]" id="' . $id . '_channel">' . $options . '</select>
+                    <label class="pg-field-label visually-hidden" for="' . $id . '_channel">' . h(lang('Channel')) . '</label>
+                    <select class="pg-input" name="route_channel[]" id="' . $id . '_channel">' . $options . '</select>
                 </div>';
     }
 

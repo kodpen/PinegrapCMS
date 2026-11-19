@@ -11,7 +11,8 @@ description: The Mailboxes card in Site Settings (category Mailboxes, gate mail)
 ## What opens in a drawer?
 - Each box's line keeps its channel ("Kept in the mailbox itself", a link to its list, for a box kept in no channel), last e-mail and last check; Test connection is a named submit button `ws_mail_test` (value the box's id), run after the pane's save. Edit opens `pgset-ws-mail-<id>`, Add a mailbox `pgset-ws-mail-0` (`ws_settings_mail_drawer()`).
 - A box's drawer holds its form and, after it, "Bring in an .eml file": a form of its own (`ws_mail_eml_form()`), since a file cannot travel with the pane's Ajax save. It posts to the category's page (`settings_mailboxes.php`) with the button `ws_mail_eml` and the file `ws_mail_eml_file`; the browser then shows that page with the result.
-- "Connect a Microsoft account for mailboxes" is a button of the hidden Connect form `pgset_mail_connect` (`ui/settings-modal-card-extras.md`), returning to the category's page.
+- "Connect a Microsoft account for mailboxes" is a button of the hidden Connect form `pgset_mail_connect` (`ui/settings-modal-card-extras.md`), returning to the category's page. Since #10431 both are drawn only while the Microsoft application is set up (`ws_mail_connect_ready()`); before that the card shows "Set up the Microsoft application first", a link to `connections.php#connections-microsoft`.
+- The category writes connect.php's message (`pg_connect_flash_take()`) on the page, a refusal as an error; before #10431 nothing read it, so the button seemed to do nothing.
 
 ## Which names does the dialog post?
 - `ws_mail[<id>][<field>]`, routes `ws_mail[<id>][route_match][]` (`lists` entry `ws_mail` 3). The form and its helpers in mail_route.php, mail_status.php and mail_triage.php keep their old names; `ws_mail_box_dialog_names()` renames them and drops `required` in the dialog. The script finds a field by either name and leaves the connected account unrequired there.

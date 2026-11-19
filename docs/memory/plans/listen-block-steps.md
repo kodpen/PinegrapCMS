@@ -10,7 +10,7 @@ description: Plan listen-block, steps LS1 to LS3: the script and its two doors, 
   - Tests, red first: the pieces of the fixtures, the cut of `-x-mtfrom-`, a part's own language, nothing read outside `article` or `main`.
   - Features: L2 to L11.
 
-- LS2 (S) after LS1: the block.
+- LS2 (S) after LS1: the block. Done: #9924.
   - New: `assets/js/style_designer_blocks_listen.js`, copied from `tests/fixtures/designer/style_designer_blocks_sample.js`, its rules in the block CSS without `!important`, `tests/designer_blocks_listen_test.php`.
   - Pictures: the block on an article at 1440 and 390, light and dark, idle, speaking and paused; the canvas; a browser with no voice showing nothing. To the owner; not marked ready before his look.
   - Features: L1, L12, L13.

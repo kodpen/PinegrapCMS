@@ -180,7 +180,7 @@ function test_workspace_memory_panel_wiring()
 		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
 	};
 
-	foreach (array('ws_memory_list', 'ws_memory_save', 'ws_memory_delete') as $action) {
+	foreach (array('ws_memory_list', 'ws_memory_save', 'ws_memory_delete', 'ws_memory_move') as $action) {
 		pg_assert_same(1, substr_count($source('includes/panel/actions.php'), "'" . $action . "'"), $action . ' is a panel action');
 		pg_assert_same(1, substr_count($source('includes/workspace/actions.php'), "case '" . $action . "':"), $action . ' is handled');
 	}
@@ -515,4 +515,49 @@ function test_workspace_memory_general_routes()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
 	pg_assert_contains("\$general = ws_memory_brief_general(\$viewer, \$channel) ? ws_memory_rows(0, false) : array();", $source);
 	pg_assert_contains('return function_exists(\'ws_agent_channel_is\') && ws_agent_channel_is($channel) && ws_memory_general_can($viewer);', $source);
+}
+
+function test_workspace_memory_first_line()
+{
+	pg_assert_same('Trains land at 08:00.', ws_memory_first_line("\n  \nTrains   land at 08:00.\nThen the next."));
+	pg_assert_same('', ws_memory_first_line(" \n\t"));
+	pg_assert_same('abcd…', ws_memory_first_line('abcdefgh', 5), 'a long line is cut with an ellipsis');
+	pg_assert_same('çğış', ws_memory_first_line('çğış', 4), 'a line at the limit stays whole, counted in characters');
+}
+
+function test_workspace_memory_groups()
+{
+	$entries = array(
+		array('id' => 1, 'project' => ''),
+		array('id' => 2, 'project' => 'launch'),
+		array('id' => 3, 'project' => 'Billing'),
+		array('id' => 4, 'project' => 'Launch '),
+		array('id' => 5, 'project' => '2026'),
+	);
+	$groups = ws_memory_groups($entries);
+
+	pg_assert_same(array('2026', 'Billing', 'launch', ''), array_map(function ($group) {
+		return $group['project'];
+	}, $groups), 'projects in alphabetical order, case aside, the ones without a project last');
+	pg_assert_same(array(2, 4), array_map(function ($entry) {
+		return $entry['id'];
+	}, $groups[2]['entries']), 'one heading per project whatever its case, records in the order given');
+	pg_assert_same(array(), ws_memory_groups(array()));
+}
+
+function test_workspace_memory_tab_parts_wiring()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	// The general part comes first, only in an agent channel for whoever keeps it.
+	pg_assert_contains("\$general = !ws_memory_is_general(\$channel, 'id') && ws_memory_brief_general(\$viewer, \$channel);", $actions);
+	pg_assert_contains("\$parts[] = ws_memory_panel_part('general', 0, true);", $actions);
+	pg_assert_true(strpos($actions, "ws_memory_panel_part('general', 0, true)") < strpos($actions, "ws_memory_panel_part(ws_memory_is_general(\$channel, 'id') ? 'general' : 'channel'"), 'the general part before the channel\'s');
+	// Moving goes through GM2's check before the write.
+	pg_assert_true(strpos($actions, '$check = ws_memory_move_check($viewer, $row);') < strpos($actions, "ws_memory_move_general(\$row, 'user', \$viewer['id']);"), 'checked before it moves');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+	pg_assert_contains("h.api('ws_memory_move', { id: entry.id })", $script, 'a row moves to the general memory');
+	pg_assert_contains("return general ? { general: 1 } : { channel_id: channel.id };", $script, 'a general record is written with general=1');
+	pg_assert_contains('fields.project = project.value;', $script, 'the form files a record under a project');
 }

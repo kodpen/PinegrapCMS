@@ -9,7 +9,7 @@ module: picture_translation
 - The architect's reading, not his words: the fit as built is what he expects, and an improvement is made only where a point below turns out to need one. These words changed no behaviour.
 
 ## What does the draw already do for a longer text?
-- `M.languageFit()` (`picture-text-translation-draw.md`): the size shrinks until the text is inside its source's box, never under 70%. Under it the text is drawn at 70%, so it runs past the box, and the language is listed as "Look by hand". The server's draw follows the same rule (`plans/picture-text-auto-draw-steps.md`, DA3).
+- `M.languageFit()` (`picture-text-translation-draw.md`): the size shrinks until the text is inside its source's box, never under 70%. Under it the text is drawn at 70%, so it runs past the box, and the language is listed as "Look by hand". The server's draw follows the same rule with its own letter widths (`pg_picture_tr_language_fit()`, `picture-text-auto-server.md`).
 - A line breaks only where the text has a new line (`ui/image-editor-text.md`): a long translation is made smaller, never wrapped.
 
 ## What does the draw already do for letters?

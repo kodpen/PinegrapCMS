@@ -5,7 +5,7 @@ description: The Prototype view's link marks on a page picture (PV9, #10040): re
 
 ## What is a mark?
 - A rounded rectangle over a link's element on its frame's picture (`span.sd-proto-hot` in `div.sd-proto-hots`, `_sdProtoHots()`): blue when it leads somewhere, red when broken, amber for a shared part's link into the selected page. The frame has no link rows any more; the links panel lists them (designer/prototype-list.md).
-- Its place: `PGProtoHotspots.picRects(rows, marks, sharedId)` from the markers read after `load` (designer/prototype-page-picture.md), page pixels times the scale, cut at 1600; the first element seen counts. Not seen: no size (hidden, a closed dropdown), at or under the cut, outside the 1280 width, no marker (a menu or region, a link not written).
+- Its place: `PGProtoHotspots.picRects(rows, marks, sharedId)` from the markers read after `load` (designer/prototype-page-picture.md), page pixels times the scale, cut at 1600 (the page opened whole at its shown height, prototype-page-whole.md); the first element seen counts. Not seen: no size (hidden, a closed dropdown), at or under the cut, outside the 1280 width, no marker (a menu or region, a link not written).
 
 ## Which marks show?
 - `markState(layout, id)`: the selected frame all of its own (`own`), another frame those starting an arrow into it (`lit`), a shared part's link into it (`shared`, amber, with the note under that frame). Nothing selected: none. The others stay in the DOM, hidden.

@@ -17,6 +17,7 @@ class BoxList extends \SplMinHeap
      * Compare elements in order to place them correctly in the heap while sifting up.
      * @see \SplMinHeap::compare()
      */
+    #[\ReturnTypeWillChange]
     public function compare($boxA, $boxB)
     {
         if ($boxB->getInnerVolume() > $boxA->getInnerVolume()) {

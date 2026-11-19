@@ -10,7 +10,7 @@ module: connections_registry
 - Shipping (`commerce/pgset-shipping`): Geliver, Basit Kargo, Kargonomi, Aras Kargo, Shippo, Sendcloud by `pg_label_ready()`; UPS, FedEx, USPS by `pg_carrier_api_ready()`; ShipWorks none.
 - Marketplaces and feeds: n11, Trendyol (`marketplace_settings.php`) by their account; Google Merchant Center (`pgset-feeds`) by the Google account for `merchant_center`; OpenAI product feed none.
 - E-documents: Paraşüt, Logo İşbaşı (`accounting/pgset-invoice`) by the active e-document provider; VIES (`pgset-store`) none.
-- E-mail: Postmark, Mailgun, Brevo, Resend, Amazon SES (`mail_sending/pgset-mail-transport`) by the app `mail_<key>`; Gmail and Microsoft 365 mail (`mail_sending/pgset-mail-system`, where the account is chosen) by the account for `mail` (Microsoft's also covers `mail_read`); Mailchimp (`contact/pgset-mailchimp`) by `MAILCHIMP`.
+- E-mail: Postmark, Mailgun, Brevo, Resend, Amazon SES (`mail_sending/pgset-mail-transport`) by the app `mail_<key>`; Gmail and Microsoft 365 mail (`mail_sending/pgset-mail-system`, where the account is chosen) by the account for `mail` (Microsoft's also covers `mail_read`); Mailchimp (`mail_sending/pgset-mailchimp`) by `MAILCHIMP`.
 - SMS and messaging (`contact/`): Netgsm, İleti Merkezi, Twilio by the app `sms_<key>` (`pgset-sms`); İYS by the app `iys`; WhatsApp by the app `whatsapp`; Slack, Microsoft Teams, Telegram (`maintenance/pgset-chat-notify`) by a stored target of that kind.
 - Files and backups (`maintenance/pgset-backup`): Google Drive, OneDrive, Dropbox by the account for `backup`.
 - Sign-in (`security/pgset-signin`): Google, Microsoft, Apple by `pg_signin_enabled()`.

@@ -64,7 +64,12 @@ function test_mail_settings_save_is_one_function()
 	pg_assert_same(1, substr_count(mail_settings_save_module(), 'pg_write_config_file('), 'config.php is written in one place');
 	pg_assert_contains('$mail_saved = pg_mail_settings_save($_POST, $liveform);', mail_settings_save_screen(), 'the category saves through it');
 	pg_assert_same(0, substr_count(mail_settings_save_screen(), 'pg_write_config_file('), 'the category writes nothing itself');
-	pg_assert_same(0, substr_count(mail_settings_save_screen(), 'UPDATE config'), 'the category writes no config row column');
+	// The campaign texts and MailChimp are config row columns, written once,
+	// after the mail settings were saved.
+	$screen = mail_settings_save_screen();
+	pg_assert_same(1, substr_count($screen, 'UPDATE config'), 'the config row is written in one place');
+	pg_assert_true(strpos($screen, 'UPDATE config') > strpos($screen, '$mail_saved = pg_mail_settings_save('), 'the config row is written after the mail settings');
+	pg_assert_true(strpos($screen, "'path' => '/ping'") < strpos($screen, '$mail_saved = pg_mail_settings_save('), 'Mailchimp is asked before anything is written');
 	pg_assert_same(array(
 		'SYSTEM_SMTP_HOSTNAME', 'SYSTEM_SMTP_USERNAME', 'SYSTEM_SMTP_PASSWORD', 'SYSTEM_SMTP_PORT',
 		'EMAIL_CAMPAIGN_JOB', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',

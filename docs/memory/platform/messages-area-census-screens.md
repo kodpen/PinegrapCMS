@@ -25,7 +25,7 @@ description: MA0 census (2026-11-13): today's campaign, campaign profile, SMS ca
 - The SMS campaign screens also need `pg_sms_campaigns_ready()` (the 11.0.137 tables).
 
 ## Which Communication settings cards are there?
-- Site Settings category `contact`, "Communication" (İletişim), `includes/settings/contact.php`: Campaigns (Opt-In Label, Plain Text Footer), Chat, MailChimp, SMS (provider, sender, test message), SMS Messages (order and back-in-stock texts), İYS.
+- Site Settings category `contact`, "Communication" (İletişim), `includes/settings/contact.php`: Chat, SMS (provider, sender, test message), SMS Messages (order and back-in-stock texts), WhatsApp, İYS. The campaign texts (Opt-In Label, Plain Text Footer) and MailChimp are in E-mail sending (`ui/settings-mail-sending.md`).
 - The e-mail sender is Site Settings › E-mail sending (`includes/settings/mail_sending.php`). WhatsApp's card: `whatsapp-connection.md`.
 
 Related: [[messages-area-census-tabs]], [[messages-area-census-addresses]], [[messages-area-census-sends]]

@@ -103,7 +103,7 @@ function pg_test_form_adorn_settings_fields()
 			'ecommerce_surcharge_percentage' => '>%</span>',
 			'affiliate_default_commission_rate' => '>%</span>',
 		),
-		'contact.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
+		'mail_sending.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
 		'features.php' => array(
 			'image_quality_webp' => array('>%</span>', '$image_quality_adorn'),
 			'image_quality_avif' => array('>%</span>', '$image_quality_adorn'),
@@ -247,8 +247,9 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 
 	// The groups left are the ones form-adorn cannot hold: two add-ons
 	// (language address prefix), a hint on the add-on (membership warning) and
-	// buttons (SEO, the Paraşüt connect code).
-	$left = array('accounting.php' => 1, 'languages.php' => 1, 'commerce.php' => 1, 'security.php' => 1, 'seo.php' => 1);
+	// a button (SEO). The feed address and the Paraşüt connect code set their
+	// button beside the field as a small look A button, in no group.
+	$left = array('languages.php' => 1, 'security.php' => 1, 'seo.php' => 1);
 
 	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'privacy.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);

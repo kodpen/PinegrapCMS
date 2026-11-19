@@ -27,6 +27,6 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 ## What is not done yet?
 - The 34 px icon tile at a row's left, the segmented control and small quiet button as row controls: per-row markup, card by card.
 - The foot's amber pill counting unsaved changes and "Undo" (a new behaviour, not only a look).
-- Buttons inside card headers keep their Bootstrap classes; the page's toolbar (category menu, chips) is unchanged; the page draws one look card per settings card, not one surface for all.
+- Buttons inside card headers keep their Bootstrap classes, but in Maintenance, Firewall, Security and Features (quiet small `pg-button`, `look-settings-maintenance-security.md`); the page's toolbar (category menu, chips) is unchanged; the page draws one look card per settings card, not one surface for all.
 
 Related: docs/memory/ui/settings-modal-overview.md
