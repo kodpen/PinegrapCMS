@@ -73446,7 +73446,7 @@ const StyleDesigner = (function () {
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
         link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
         edgeTo: {},
-        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
     // widget requests among them, and at most this many alive; past it the
@@ -73704,6 +73704,9 @@ const StyleDesigner = (function () {
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
+            // The selected page's foot button ("Show the whole page",
+            // "Show less") keeps its own clicks and keys.
+            ownClicks: '.sd-proto-pic-foot-on',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -74101,7 +74104,7 @@ const StyleDesigner = (function () {
     function _sdProtoHots(item, pic) {
         var H = window.PGProtoHotspots;
         var canvas = _sdProto.canvas;
-        var rects = H.picRects(item.rows, pic.marks, item.sharedId);
+        var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);
         var old = pic.box.querySelector('.sd-proto-hots');
         if (old) old.parentNode.removeChild(old);
         var layer = _sdProtoEl('div', 'sd-proto-hots');
@@ -74192,8 +74195,12 @@ const StyleDesigner = (function () {
             byGroup[gid].keys.push(p.key);
         });
         // partH: the shared parts' measured heights, so each frame is as
-        // tall as its part (_sdProtoPicLoaded()).
-        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };
+        // tall as its part (_sdProtoPicLoaded()); openH: the page opened
+        // whole and its height (_sdProtoPicFull()).
+        var P = _sdProto.pics;
+        var openH = {};
+        if (P.full && P.pageH[P.full]) openH[P.full] = P.pageH[P.full];
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: P.partH, openH: openH };
     }
 
     // Tidy up: every frame and chip back in the arrangement, after a
@@ -74249,6 +74256,7 @@ const StyleDesigner = (function () {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
             r.tabIndex = -1;
         });
+        _sdProto.layout.frames.forEach(function (item) { _sdProtoPicFoot(item, id); });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
         // The selected frame shows all its marks, another frame those that
@@ -74329,6 +74337,8 @@ const StyleDesigner = (function () {
     // picked link that is not the frame's own nor one into it is let go.
     function _sdProtoFocused(id) {
         var l = _sdProto.link;
+        // The page opened whole closes when another frame, or none, is selected.
+        if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);
         if (l) {
             var edge = (_sdProto.layout ? _sdProto.layout.edges : []).filter(function (e) { return e.id === l.frame + '|' + l.port; })[0];
             if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
@@ -74733,8 +74743,18 @@ const StyleDesigner = (function () {
         box.style.height = item.thumb + 'px';
         box.setAttribute('data-pic', item.id);
         box.appendChild(_sdProtoEl('div', 'sd-proto-pic-fade'));
-        var foot = _sdProtoEl('div', 'sd-proto-pic-foot');
+        // The count of links it cannot show; on the selected long page the
+        // button opening it whole, and on the open page the one closing it
+        // (_sdProtoPicFoot()).
+        var foot = _sdProtoEl('button', 'sd-proto-pic-foot');
+        foot.type = 'button';
+        foot.tabIndex = -1;
         foot.hidden = true;
+        foot.addEventListener('click', function () {
+            if (!foot.classList.contains('sd-proto-pic-foot-on')) return;
+            _sdProtoPicFull(_sdProto.pics.full === item.id ? null : item.id);
+            foot.focus({ preventScroll: true });
+        });
         box.appendChild(foot);
         _sdProto.pics.boxes[item.id] = box;
         return box;
@@ -74786,6 +74806,8 @@ const StyleDesigner = (function () {
         P.live = {};
         P.boxes = {};
         P.rects = {};
+        // A redraw keeps the page opened whole; closing the view closes it.
+        if (all) P.full = null;
         clearTimeout(P.settle);
         clearTimeout(P.refill);
     }
@@ -74906,14 +74928,25 @@ const StyleDesigner = (function () {
     // tall as its part is drawn again at its height.
     function _sdProtoPicLoaded(item, pic) {
         var H = window.PGProtoHotspots;
+        var P = _sdProto.pics;
         var doc = null;
         try { doc = pic.frame.contentDocument; } catch (e) { doc = null; }
         if (!doc || !doc.documentElement) return;
+        // Measured at the cut's height; the page opened whole is then drawn
+        // as tall as its page, its viewport heights pinned first.
+        if (pic.frame.getAttribute('height') !== H.PIC_FRAME.height) pic.frame.setAttribute('height', H.PIC_FRAME.height);
+        var height = doc.documentElement.scrollHeight;
+        if (item.kind === 'page') P.pageH[item.id] = height;
+        var open = item.kind === 'page' && P.full === item.id;
+        pic.cut = open ? H.picOpenCut(height) : H.FRAME.pic.cut;
+        if (open) {
+            _sdProtoPicPinVh(doc);
+            pic.frame.setAttribute('height', String(pic.cut));
+        }
         pic.marks = Array.prototype.map.call(doc.querySelectorAll('[data-pg-pic]'), function (el) {
             var r = el.getBoundingClientRect();
             return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
         });
-        var height = doc.documentElement.scrollHeight;
         if (item.kind === 'shared') {
             // The part's own height: the lowest edge of what the body holds
             // (the document is at least the frame's 1600 high).
@@ -74925,18 +74958,98 @@ const StyleDesigner = (function () {
             if (H.picPartBox(height) !== item.thumb) _sdProtoPicSettle();
         }
         pic.box.classList.add('sd-proto-pic-on');
-        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(height));
-        var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
-        var footEl = pic.box.querySelector('.sd-proto-pic-foot');
-        if (footEl) {
-            footEl.hidden = !foot.below;
-            footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
-        }
+        pic.long = H.picLong(height, pic.cut);
+        pic.box.classList.toggle('sd-proto-pic-long', pic.long);
+        pic.below = H.picFoot(item.rows, pic.marks, item.sharedId, pic.cut).below;
+        _sdProtoPicFoot(item, _sdProto.canvas.focused());
         _sdProtoHots(item, pic);
     }
 
-    // The shared frames measured since the last arrangement get their
-    // heights: soon after the last of them, everything is placed again
+    // A picture's foot (PGProtoHotspots.picFootState()): "+N links below",
+    // on the selected long page also "Show the whole page", on the page
+    // opened whole "Show less"; only then a button the canvas leaves alone.
+    function _sdProtoPicFoot(item, selected) {
+        var P = _sdProto.pics;
+        var box = P.boxes[item.id];
+        var el = box ? box.querySelector('.sd-proto-pic-foot') : null;
+        if (!el) return;
+        var pic = P.live[item.id];
+        var shown = !!(pic && pic.frame && box.classList.contains('sd-proto-pic-on'));
+        var st = window.PGProtoHotspots.picFootState({ below: shown ? pic.below : 0, long: shown && pic.long, open: P.full === item.id, selected: selected === item.id, page: item.kind === 'page' });
+        var parts = [];
+        if (st.below) parts.push(st.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', st.below));
+        if (st.action === 'open') parts.push(_sdT('Show the whole page'));
+        if (st.action === 'close') parts.push(_sdT('Show less'));
+        el.hidden = !shown || st.hidden;
+        el.textContent = parts.join(' · ');
+        el.classList.toggle('sd-proto-pic-foot-on', !!st.action);
+        el.tabIndex = st.action ? 0 : -1;
+        if (st.action) el.setAttribute('aria-expanded', st.action === 'close' ? 'true' : 'false');
+        else el.removeAttribute('aria-expanded');
+    }
+
+    // Opens the page frame `id` whole (null closes it): one at a time,
+    // nothing kept. Its picture is drawn again as tall as its page, up to
+    // FRAME.pic.full page pixels, every link it shows marked, and the
+    // frames below moved down as for a measured shared part.
+    function _sdProtoPicFull(id) {
+        var P = _sdProto.pics;
+        var was = P.full;
+        if (id && !(_sdProto.byId[id] && _sdProto.byId[id].kind === 'page')) id = null;
+        if (was === id) return;
+        P.full = id;
+        [was, id].forEach(function (one) {
+            var pic = one ? P.live[one] : null;
+            if (pic && pic.frame && _sdProto.byId[one]) _sdProtoPicLoaded(_sdProto.byId[one], pic);
+            else if (one && _sdProto.byId[one]) _sdProtoPicFoot(_sdProto.byId[one], _sdProto.canvas.focused());
+        });
+        _sdProtoPicSettle();
+    }
+
+    // Writes the viewport heights of a picture's document as the pixels
+    // they are in the 1600-high frame (PGProtoHotspots.picVh()), in its
+    // style rules and style attributes, so drawing it taller does not
+    // stretch a full-height section. A style sheet of another origin
+    // cannot be read; Bootstrap's vh-100 and min-vh-100 are pinned beside.
+    function _sdProtoPicPinVh(doc) {
+        if (doc.documentElement.getAttribute('data-pg-vh')) return;
+        doc.documentElement.setAttribute('data-pg-vh', '1');
+        var H = window.PGProtoHotspots;
+        var cut = H.FRAME.pic.cut;
+        var fix = function (style) {
+            for (var i = 0; i < style.length; i++) {
+                var name = style[i];
+                var value = style.getPropertyValue(name);
+                if (!/v(h|max)/i.test(value)) continue;
+                var next = H.picVh(value, cut);
+                if (next !== value) style.setProperty(name, next, style.getPropertyPriority(name));
+            }
+        };
+        var walk = function (rules) {
+            Array.prototype.forEach.call(rules || [], function (rule) {
+                if (rule.style) fix(rule.style);
+                if (rule.cssRules) walk(rule.cssRules);
+                // An @import's sheet (another origin's cannot be read).
+                if (rule.styleSheet) {
+                    var imported = null;
+                    try { imported = rule.styleSheet.cssRules; } catch (e) { imported = null; }
+                    walk(imported);
+                }
+            });
+        };
+        Array.prototype.forEach.call(doc.styleSheets, function (sheet) {
+            var rules = null;
+            try { rules = sheet.cssRules; } catch (e) { rules = null; }
+            walk(rules);
+        });
+        Array.prototype.forEach.call(doc.querySelectorAll('[style]'), function (el) { fix(el.style); });
+        var pin = doc.createElement('style');
+        pin.textContent = '.vh-100{height:' + cut + 'px!important}.min-vh-100{min-height:' + cut + 'px!important}';
+        (doc.head || doc.documentElement).appendChild(pin);
+    }
+
+    // The shared frames measured since the last arrangement, and the page
+    // opened whole or closed (_sdProtoPicFull()), get their heights: soon after the last of them, everything is placed again
     // (a moved frame keeps its place), the boxes resized and moved where
     // they are, their arrows routed again. The pictures stay.
     function _sdProtoPicSettle() {
@@ -74984,6 +75097,7 @@ const StyleDesigner = (function () {
             return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
         }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height });
         order.slice(SD_PROTO_PIC.alive).forEach(function (id) {
+            if (id === P.full) return;
             var pic = P.live[id];
             if (pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
             pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');

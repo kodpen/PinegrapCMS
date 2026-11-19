@@ -931,9 +931,10 @@
     // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
     // `inner` units inside a box with the thumbnail's padding and border;
     // the picture starts `x`, `y` into its box, and the foot's middle sits
-    // `foot` above the box's lower edge. `row`: the line a frame with no
-    // picture keeps under its head.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
+    // `foot` above the box's lower edge; the selected page opened whole
+    // shows at most `full` page pixels (picOpenCut()). `row`: the line a
+    // frame with no picture keeps under its head.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, full: 6400, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
 
     // How layout() arranges the frames: eight a row, the gap between frames
     // and between rows, a section heading's height, and the gap between a
@@ -986,7 +987,8 @@
     // Where everything of a marked design goes on the canvas and which
     // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each its
     // head and its picture (a shared part's as tall as opts.partH gives its
-    // page pixels, picPartBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
+    // page pixels, picPartBox(); the page opened whole as opts.openH gives,
+    // picOpenBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
     // outside the design's tabs; an arrow (id '<frame id>|<port>') from
     // each row to the tab frame it opens or to its chip. The places come
     // from the graph canvas core's arrange() (window.PGGraphCanvas, read
@@ -1033,7 +1035,10 @@
                 // as tall as it is, between the sketch strip and the cut.
                 var pic = Array.isArray(frame.sketch);
                 var partH = isObject(opts.partH) ? opts.partH[frame.id] : null;
-                var thumb = !pic ? 0 : (group[0] === 'page' ? picSize().box : picPartBox(partH));
+                // The one page opened whole (opts.openH, its id => the
+                // page's height) is as tall as its page, up to the limit.
+                var openH = (group[0] === 'page' && isObject(opts.openH) && has(opts.openH, 'p:' + frame.key)) ? opts.openH['p:' + frame.key] : null;
+                var thumb = !pic ? 0 : (group[0] === 'page' ? (openH !== null ? picOpenBox(openH) : picSize().box) : picPartBox(partH));
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -1263,6 +1268,53 @@
         return Math.min(size.h, Math.max(FRAME.thumb - FRAME.pic.edge, h)) + FRAME.pic.edge;
     }
 
+    // How many page pixels the page opened whole shows: its height, at
+    // least the cut and at most `full`.
+    function picOpenCut(height) {
+        var p = FRAME.pic;
+
+        return Math.min(p.full, Math.max(p.cut, Math.round(Number(height) || 0)));
+    }
+
+    // The box of the page opened whole, in canvas units (a frame's `thumb`).
+    function picOpenBox(height) {
+        return Math.round(picOpenCut(height) * picSize().scale) + FRAME.pic.edge;
+    }
+
+    // What a picture's foot is (`o`: below, the links it cannot show;
+    // long, the page runs past what is shown; open, the page is shown
+    // whole; selected, its frame is the selected one; page, a page frame,
+    // not a shared part). The selected long page's foot is the button
+    // opening it whole ('open'), the open page's the one closing it
+    // ('close'); else it is the count, hidden at none. Answers { hidden,
+    // action, below }.
+    function picFootState(o) {
+        o = isObject(o) ? o : {};
+
+        var below = Math.max(0, parseInt(o.below, 10) || 0);
+        var action = '';
+
+        if (o.page && o.open) {
+            action = 'close';
+        } else if (o.page && o.selected && o.long) {
+            action = 'open';
+        }
+
+        return { hidden: action === '' && below === 0, action: action, below: below };
+    }
+
+    // A CSS value with its viewport-height units (vh, svh, lvh, dvh, and
+    // vmax, the height in a 1280-wide picture) written as the pixels they
+    // are in a viewport `viewH` high. The page opened whole is drawn in a
+    // taller frame; pinned first, a min-vh-100 section keeps its height.
+    function picVh(value, viewH) {
+        var h = Number(viewH) || 0;
+
+        return String(value === null || value === undefined ? '' : value).replace(/(^|[^\w.-])(-?(?:\d+\.?\d*|\.\d+))(?:[sld]?vh|vmax)(?![\w-])/gi, function (all, lead, n) {
+            return lead + round2(Number(n) * h / 100) + 'px';
+        });
+    }
+
     function round2(value) {
         return Math.round(value * 100) / 100;
     }
@@ -1284,10 +1336,13 @@
     // link is not seen when its elements have no size, start at or under
     // the cut or lie outside the page's width, or when it has none (a menu
     // or region, a link not written). A page frame reads no shared
-    // component's marker; a shared frame (sharedId) only its own.
-    function picRects(rows, marks, sharedId) {
+    // component's marker; a shared frame (sharedId) only its own. `cut`:
+    // the page pixels shown, FRAME.pic.cut when not given (the page opened
+    // whole: picOpenCut()).
+    function picRects(rows, marks, sharedId, cut) {
         var p = FRAME.pic;
         var scale = p.inner / p.page;
+        var end = Number(cut) > 0 ? Number(cut) : p.cut;
         var first = {};
         var out = {};
 
@@ -1302,11 +1357,11 @@
             var h = Number(m.h) || 0;
             var key = str(m.pic);
 
-            if (w <= 0 || h <= 0 || top >= p.cut || left + w <= 0 || left >= p.page || has(first, key)) {
+            if (w <= 0 || h <= 0 || top >= end || left + w <= 0 || left >= p.page || has(first, key)) {
                 return;
             }
 
-            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, p.cut) - top) * scale) };
+            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, end) - top) * scale) };
         });
 
         (Array.isArray(rows) ? rows : []).forEach(function (row) {
@@ -1323,12 +1378,12 @@
     // The foot of a frame's picture: how many of its links it cannot show
     // (picRects() finds no place for them: under the cut, hidden, in a
     // closed menu, in a menu or region, not written). Two rows of one
-    // element count once. Answers { links, below }.
-    function picFoot(rows, marks, sharedId) {
+    // element count once; `cut` as picRects(). Answers { links, below }.
+    function picFoot(rows, marks, sharedId, cut) {
         var list = (Array.isArray(rows) ? rows : []).filter(isObject).map(function (row, i) {
             return { port: 'f' + i, nodeId: row.nodeId, source: row.source, index: row.index };
         });
-        var seen = picRects(list, marks, sharedId);
+        var seen = picRects(list, marks, sharedId, cut);
         var counted = {};
         var links = 0;
         var below = 0;
@@ -1458,9 +1513,10 @@
 
     // Whether a picture runs past its cut and gets the fade: only when the
     // page is taller than the cut. A page that ends at it (a short page
-    // with min-vh-100 fills the 1600-high frame exactly) gets none.
-    function picLong(height) {
-        return Number(height) > FRAME.pic.cut;
+    // with min-vh-100 fills the 1600-high frame exactly) gets none. `cut`:
+    // the page pixels shown, the cut when not given.
+    function picLong(height, cut) {
+        return Number(height) > (Number(cut) > 0 ? Number(cut) : FRAME.pic.cut);
     }
 
     // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
@@ -2322,6 +2378,10 @@
         picFoot: picFoot,
         picRects: picRects,
         picPartBox: picPartBox,
+        picOpenCut: picOpenCut,
+        picOpenBox: picOpenBox,
+        picFootState: picFootState,
+        picVh: picVh,
         markPort: markPort,
         markLeg: markLeg,
         markState: markState,

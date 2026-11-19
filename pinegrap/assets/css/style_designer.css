@@ -7392,7 +7392,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 1px 8px; border-radius: 10px; white-space: nowrap;
     background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
 }
+.sd-proto-pic-foot { border: 0; font-family: inherit; line-height: 1.5; cursor: default; }
 .sd-proto-pic-foot[hidden] { display: none; }
+/* The selected long page's foot opens it whole, the open page's closes it
+   (_sdProtoPicFoot()). */
+.sd-proto-pic-foot.sd-proto-pic-foot-on { cursor: pointer; background: var(--sd-accent-strong); color: #fff; }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:hover { filter: brightness(1.1); }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 /* The selected frame's name in the accent colour (F2). */
 .sd-proto .pgc-selected .sd-proto-name { color: var(--sd-accent); }
 @media (prefers-reduced-motion: reduce) {

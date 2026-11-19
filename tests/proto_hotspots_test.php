@@ -758,7 +758,7 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 
 	pg_assert_contains('var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());', $source, 'the view hands the sections');
 	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
-	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };", $source, 'the headings are translated');
+	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: P.partH, openH: openH };", $source, 'the headings are translated');
 	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
 	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
@@ -1106,7 +1106,7 @@ function test_proto_hotspots_view_marks_on_the_picture()
 
 	pg_assert_contains('portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },', $source, 'an arrow leaves where markPort() says');
 	pg_assert_contains('return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);', $source, 'the mark, the foot or the middle, by the side facing the target');
-	pg_assert_contains('var rects = H.picRects(item.rows, pic.marks, item.sharedId);', $source, 'the marks are read from the picture');
+	pg_assert_contains('var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);', $source, 'the marks are read from the picture');
 	pg_assert_contains('canvas.reroute([item.id]);', $source, 'the frame\'s arrows move to its marks once loaded');
 	pg_assert_contains('var mark = window.PGProtoHotspots.markState(_sdProto.layout, id);', $source, 'which marks show follows the selected frame');
 	pg_assert_contains("children: [{ _id: 'pic-part', type: 'shared_ref', props: { sharedId: item.sharedId }, children: [] }] };", $source, 'a shared part is drawn alone');
@@ -1935,4 +1935,85 @@ function test_proto_hotspots_row_target()
 	pg_assert_contains('.sd-proto-li-out { flex-wrap: wrap; }', $css, 'the control takes a line of its own');
 	pg_assert_contains('display: flex; align-items: center; gap: 4px; flex: 1 1 100%; min-width: 0;', $css, 'as wide as the row, never wider');
 	pg_assert_contains('.sd-proto-li-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }', $css, 'a long name is cut, not pushed past the panel\'s edge');
+}
+
+// The selected page opened whole: as tall as its page between the cut and
+// the limit, every link above the limit marked, the frames under it moved
+// down, the foot a button only on the selected long page and the open one,
+// the viewport heights pinned before the frame grows.
+function test_proto_hotspots_page_opened_whole()
+{
+	$out = proto_hotspots_test_node(<<<'JS'
+var pages = [];
+for (var i = 0; i < 9; i++) pages.push({ key: "t" + i, name: "P" + i, hotspots: [], sketch: [] });
+var d = { pages: pages, shared: [] };
+var shut = H.layout(d, {});
+var open = H.layout(d, {}, { openH: { "p:t0": 4000 } });
+var rows = [{ port: "h0", nodeId: "a", source: "href" }, { port: "h1", nodeId: "b", source: "btn" }, { port: "h2", nodeId: "c", source: "href" }];
+var marks = [{ pic: "a", left: 0, top: 100, w: 100, h: 40 }, { pic: "b", left: 0, top: 3000, w: 100, h: 40 }, { pic: "c", left: 0, top: 7000, w: 100, h: 40 }];
+out = {
+    cut: [H.picOpenCut(4000), H.picOpenCut(900), H.picOpenCut(99999), H.picOpenCut(null), H.picOpenCut("2500.4")],
+    box: [H.picOpenBox(1600) === H.picSize().box, H.picOpenBox(4000), H.picOpenBox(99999)],
+    thumb: [shut.frames[0].thumb, open.frames[0].thumb, open.frames[1].thumb],
+    below: [open.frames[8].y - shut.frames[8].y, open.frames[0].y === shut.frames[0].y],
+    rects: [Object.keys(H.picRects(rows, marks, 0)), Object.keys(H.picRects(rows, marks, 0, 6400)), H.picRects(rows, marks, 0, 6400).h1],
+    foot: [H.picFoot(rows, marks, 0), H.picFoot(rows, marks, 0, 6400)],
+    long: [H.picLong(4000), H.picLong(4000, 4000), H.picLong(7000, 6400)],
+    state: [
+        H.picFootState({ page: true, selected: true, long: true, below: 2 }),
+        H.picFootState({ page: true, selected: false, long: true, below: 2 }),
+        H.picFootState({ page: true, selected: true, long: false, below: 0 }),
+        H.picFootState({ page: true, open: true, below: 0 }),
+        H.picFootState({ page: false, selected: true, long: true, below: 1 }),
+        H.picFootState(null)
+    ],
+    vh: [H.picVh("100vh", 1600), H.picVh("calc(50vh - 10px)", 1600), H.picVh("10svh 20dvh 30lvh 5vmax", 1600), H.picVh(".5vh", 1600), H.picVh("1px 2rem", 1600), H.picVh("min-vh-100", 1600), H.picVh(null, 1600)]
+};
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(4000, 1600, 6400, 1600, 2500), $out['cut'], 'the page\'s height, at least the cut, at most 6400');
+	pg_assert_same(array(true, 726, 1153), $out['box'], 'the box is the shown page pixels scaled, with its edge');
+	pg_assert_same(array(298, 726, 298), $out['thumb'], 'only the open page grows');
+	pg_assert_true($out['below'][0] >= 726 - 298, 'the frames under the open page move down by its growth');
+	pg_assert_true($out['below'][1], 'the open page keeps its place');
+	pg_assert_same(array(array('h0'), array('h0', 'h1'), array('x' => 0, 'y' => 534.38, 'w' => 17.81, 'h' => 7.13)), $out['rects'], 'opened whole, a link under the cut gets its mark');
+	pg_assert_same(array(array('links' => 3, 'below' => 2), array('links' => 3, 'below' => 1)), $out['foot'], 'the foot counts only what lies past what is shown');
+	pg_assert_same(array(true, false, true), $out['long'], 'long against what is shown');
+	pg_assert_same(array(
+		array('hidden' => false, 'action' => 'open', 'below' => 2),
+		array('hidden' => false, 'action' => '', 'below' => 2),
+		array('hidden' => true, 'action' => '', 'below' => 0),
+		array('hidden' => false, 'action' => 'close', 'below' => 0),
+		array('hidden' => false, 'action' => '', 'below' => 1),
+		array('hidden' => true, 'action' => '', 'below' => 0),
+	), $out['state'], 'the selected long page opens, the open page closes, a shared part never');
+	pg_assert_same(array('1600px', 'calc(800px - 10px)', '160px 320px 480px 80px', '8px', '1px 2rem', 'min-vh-100', ''), $out['vh'], 'viewport heights become pixels, a class name stays');
+}
+
+// The view's side: the foot is a button the canvas leaves alone, one page
+// open at a time, closed by another selection and with the view, measured
+// at the cut, the frames placed again as for a measured part.
+function test_proto_hotspots_view_opens_the_page_whole()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on',", $source, 'the canvas takes no click from the foot button');
+	pg_assert_contains("_sdProtoPicFull(_sdProto.pics.full === item.id ? null : item.id);", $source, 'the foot opens and closes the page');
+	pg_assert_contains("if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);", $source, 'another selection closes it');
+	pg_assert_contains("if (all) P.full = null;", $source, 'closing the view closes it; a redraw keeps it');
+	pg_assert_contains("if (pic.frame.getAttribute('height') !== H.PIC_FRAME.height) pic.frame.setAttribute('height', H.PIC_FRAME.height);", $source, 'measured at the cut');
+	pg_assert_contains("_sdProtoPicPinVh(doc);\n            pic.frame.setAttribute('height', String(pic.cut));", $source, 'viewport heights pinned before the frame grows');
+	pg_assert_contains("var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);", $source, 'the marks down to what is shown');
+	pg_assert_contains("partH: P.partH, openH: openH };", $source, 'the layout gets the open page\'s height');
+	pg_assert_contains("_sdProtoPicSettle();\n    }", $source, 'the frames are placed again');
+	pg_assert_contains("if (id === P.full) return;", $source, 'the cap keeps the open picture');
+	pg_assert_contains("_sdT('Show the whole page')", $source, 'the open button\'s words');
+	pg_assert_contains("_sdT('Show less')", $source, 'the close button\'s words');
+	pg_assert_contains('.sd-proto-pic-foot.sd-proto-pic-foot-on {', $css, 'the button is styled');
 }
