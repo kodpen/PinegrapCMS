@@ -20,4 +20,4 @@ description: External API 422 lists every wrong field in error.errors (field, co
 - An empty list `[]` stays an empty body: `json_encode()` writes an empty PHP array so, and clients send it for "nothing".
 
 ## Where is it tested?
-- `tests/api_field_errors_test.php`. The OpenAPI `Error` schema and every operation's error answer declare `errors`; the API Documentation page's Conventions entry "Errors and X-Request-Id" says it. Step AM8 of plan api-clean-modern, PR #10156.
+- `tests/api_field_errors_test.php`. The OpenAPI `Error` schema and every operation's error answer declare `errors`; the API Documentation page's Conventions entry "Errors and X-Request-Id" says it. Added by PR #10156.
