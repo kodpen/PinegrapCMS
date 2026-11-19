@@ -21,7 +21,7 @@ description: Census (2026-11-17) of where an administrator connects an outside s
 
 ## AI and mail?
 - AI keys in six places: the subscription key on General › Software (the licence, also read by update checks and the push broker; "Pinegrap AI in the channels" has no key of its own and uses it), "Claude in the channels", a key for each assistant on "Workspace agents", "Voice message transcripts" (two keys: transcripts and spoken answers), "Translation Engines" (the Google Cloud Translation key), and AI programs that come in on Application Access, which holds no AI key of the site's.
-- Mail in four: E-mail sending (SMTP Settings until #10404), the Google or Microsoft application on Connections, Mailboxes, and Communication for the campaign texts and MailChimp (CX3c).
+- Mail in four: E-mail sending (SMTP Settings until #10404), the Google or Microsoft application on Connections, Mailboxes, Mailboxes; campaign texts and MailChimp in E-mail sending (CX3c).
 
 ## What binds a change?
 - Owner (2026-10-30): one place per setting; one dialog and one Save per pane; the tools that leave the dialog live on System tools; card addresses and old anchors stay (`workflow/decisions-made-product-14.md`, `ui/settings-modal-overview.md`).

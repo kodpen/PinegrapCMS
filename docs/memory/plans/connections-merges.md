@@ -23,7 +23,8 @@ priority: 10
 ## Which steps are there?
 - CX1 GitHub: closed by the build steps CX7 to CX11 (sheet: messages 9308 to 9320).
 - CX2 Voice message transcripts: to Assistants and agents, the category named "Kanallar" (poll 147, message 9350); the key moves in CX9. Built: #10332.
-- CX3 Mail. Drawn: messages 9351 to 9365. Poll 148 (message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools; the campaign's two texts and MailChimp join it. Three steps: CX3a the logic into `includes/fn/mail_settings.php` (#10334); CX3b the category `mail_sending` with SMTP Settings' five cards, the old addresses opening it (#10404); CX3c Communication's Opt-In Label, Plain Text Footer and MailChimp card.
+- CX3 Mail. Drawn: messages 9351 to 9365. Poll 148 (message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools; the campaign's two texts and MailChimp join it.
+- CX3's three steps: CX3a the logic into `includes/fn/mail_settings.php` (#10334); CX3b the category `mail_sending` with SMTP Settings' five cards, the old addresses opening it (#10404); CX3c Communication's Opt-In Label, Plain Text Footer and MailChimp card, with the Connections list's one mail row (#PRNUM). CX3 is done.
 - CX6 The management screen's sheet. Drawn: messages 9405 to 9422; the owner's yes: poll 149 (message 9425).
 - CX7 to CX11, the build (poll 149's yes, messages 9423 and 9425): `connections-merges-build.md`.
 - CX4 A provider's client typed in one place: answered by CX10. CX5 the names ("Connections", "Connected accounts", "Connected applications"): waits for the pages.

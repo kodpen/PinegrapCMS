@@ -220,11 +220,9 @@ function pg_settings_categories()
             'label' => lang('Communication'),
             'group' => 'site',
             'icon'  => 'bi-chat-dots',
-            'description' => lang('E-mail campaigns, live chat, MailChimp and SMS.'),
+            'description' => lang('Live chat, SMS, WhatsApp and İYS.'),
             'sections' => array(
-                'pgset-campaigns' => lang('Campaigns'),
                 'pgset-chat'      => lang('Chat'),
-                'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
                 'pgset-whatsapp'  => lang('WhatsApp'),
@@ -232,9 +230,7 @@ function pg_settings_categories()
                 'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
-                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
-                'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
@@ -244,26 +240,28 @@ function pg_settings_categories()
         ),
 
         // What the site's e-mail is sent through: SMTP Settings' cards, which
-        // write config.php defines (includes/fn/mail_settings.php), not the
-        // config row.
+        // write config.php defines (includes/fn/mail_settings.php), then the
+        // campaign texts and MailChimp, which write the config row.
         'mail_sending' => array(
             'label' => lang('E-mail sending'),
             'group' => 'site',
             'icon'  => 'bi-envelope-at',
-            'description' => lang('The service or server the site\'s e-mail is sent through, the campaign job, DKIM and the sending domain.'),
+            'description' => lang('The service or server the site\'s e-mail is sent through, the campaign job and its texts, DKIM, the sending domain and MailChimp.'),
             'sections' => array(
                 'pgset-mail-transport' => lang('Sending service'),
                 'pgset-mail-system'    => lang('System'),
                 'pgset-mail-campaign'  => lang('Campaign'),
                 'pgset-mail-dkim'      => lang('DKIM TXT Record'),
                 'pgset-mail-domain'    => lang('Sending domain'),
+                'pgset-mailchimp'      => lang('MailChimp'),
             ),
             'keywords' => array(
                 'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
                 'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
-                'pgset-mail-campaign'  => pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')),
+                'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
                 'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
                 'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
+                'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
             ),
         ),
 
@@ -994,7 +992,10 @@ function pg_settings_legacy_anchors()
         'pgset-analytics'  => array('privacy',    'pgset-analytics'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
-        'pgset-campaigns'  => array('contact',    'pgset-campaigns'),
+        // Communication's campaign texts and MailChimp moved into E-mail
+        // sending; an old Communication link lands there.
+        'pgset-campaigns'  => array('mail_sending', 'pgset-mail-campaign'),
+        'pgset-mailchimp'  => array('mail_sending', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         'pgset-security'   => array('security',   'pgset-session'),

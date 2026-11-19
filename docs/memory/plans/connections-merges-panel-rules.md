@@ -13,7 +13,7 @@ description: Connections management screen (plan connections-merges): the archit
 
 ## Does the registry's figure change?
 - Architect (2026-11-17): no. The registry keeps its services and `pg_connections_count()` stays 78; the figure is the owner's public one (`workflow/decisions-made-product-69.md`).
-- The list folds the seven mail routes (Postmark, Mailgun, Brevo, Resend, Amazon SES, Gmail, Microsoft 365 mail) into one "E-posta gönderimi" row whose "Yönet" opens the Site Settings category of poll 148; each route's name still finds the row in search. The filter counts rows.
+- The list folds the seven mail routes (Postmark, Mailgun, Brevo, Resend, Amazon SES, Gmail, Microsoft 365 mail) into one "E-posta gönderimi" row whose "Yönet" opens the Site Settings category of poll 148; each route's name still finds the row in search. The filter counts rows. Done in #PRNUM.
 
 ## Who sees a panel's section?
 - Architect (2026-11-17): each section keeps the gate of the place it came from (the GitHub repository links and the voice card: the Workspace settings right; the screen: a manager). A section the viewer may not open is not drawn, and a service with no section left is not a row, as `pg_connections_screen_may_see()` does today. Nobody gains or loses a right by the move.

@@ -83,7 +83,7 @@ $filter_forms = '<div class="pg-messages-filters">' . implode('', $filter_forms)
 $secondary = array();
 
 if ($user['role'] < 3) {
-    $secondary[] = array('label' => lang('Campaign settings'), 'url' => pg_settings_link('contact', 'pgset-campaigns'), 'icon' => 'bi-sliders');
+    $secondary[] = array('label' => lang('Campaign settings'), 'url' => pg_settings_link('mail_sending', 'pgset-mail-campaign'), 'icon' => 'bi-sliders');
 }
 
 $warning = '';

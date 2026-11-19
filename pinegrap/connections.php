@@ -516,8 +516,21 @@ if (isset($_GET['service']) && ($page_id === '')) {
 	exit();
 }
 
-$counts = pg_connections_screen_counts(pg_connections_screen_search($rows, $query));
-$shown = pg_connections_screen_filter(pg_connections_screen_search($rows, $query), $filter);
+// The seven mail routes are one row on the list, opening Site Settings ›
+// E-mail sending; a route's name still finds it, and a route's own page
+// stays reachable by its address.
+$list_rows = pg_connections_screen_fold_mail($rows, array(
+	'kind'   => 'settings',
+	'name'   => lang('E-mail sending'),
+	'group'  => 'email',
+	'line'   => lang('Site Settings') . ' › ' . lang('E-mail sending'),
+	'uses'   => '',
+	'url'    => pg_settings_link('mail_sending'),
+	'search' => array(lang('E-mail sending'), 'E-mail sending', $group_labels['email']),
+));
+
+$counts = pg_connections_screen_counts(pg_connections_screen_search($list_rows, $query));
+$shown = pg_connections_screen_filter(pg_connections_screen_search($list_rows, $query), $filter);
 $order = pg_connections_screen_order($shown, array_keys($group_labels));
 $folding = ($query === '') && ($filter === '');
 
@@ -977,7 +990,7 @@ foreach ($order as $group_key => $ids) {
 	$states = array();
 
 	foreach ($ids as $id) {
-		$states[] = $rows[$id]['state'];
+		$states[] = $list_rows[$id]['state'];
 	}
 
 	// The providers are the screen's own rows and never fold.
@@ -986,7 +999,7 @@ foreach ($order as $group_key => $ids) {
 
 	foreach ($ids as $index => $id) {
 
-		$row = $rows[$id];
+		$row = $list_rows[$id];
 		$hidden = ($index >= $fold_at) ? ' hidden' : '';
 
 		$tile = ($row['kind'] === 'provider')
@@ -1000,7 +1013,7 @@ foreach ($order as $group_key => $ids) {
 					' . (($row['uses'] !== '') ? '<span class="pg-text-2 d-block">' . h($row['uses']) . '</span>' : '') . '
 				</span>
 				<span class="connections-row-side">' . connections_state_pill($row['state']) . '
-					<span class="pg-button pg-button-sm pg-button-quiet">' . h((pg_connections_screen_action($row['state']) === 'connect') ? lang('Connect') : lang('Manage')) . '</span>
+					<span class="pg-button pg-button-sm pg-button-quiet">' . h((($row['kind'] !== 'settings') && (pg_connections_screen_action($row['state']) === 'connect')) ? lang('Connect') : lang('Manage')) . '</span>
 				</span>';
 
 		$page_service = ($row['kind'] === 'provider') ? array_search($row['provider'], pg_connections_screen_page_providers(), true) : false;
@@ -1025,6 +1038,14 @@ foreach ($order as $group_key => $ids) {
 
 			$drawers .= connections_provider_drawer($provider_key, $providers[$provider_key], $provider_apps[$provider_key],
 				isset($site_accounts[$provider_key]) ? $site_accounts[$provider_key] : array(), $provider_draft, $can_seal, $redirect_uri);
+
+		} elseif ($row['kind'] === 'settings') {
+
+			// The folded mail routes open their Site Settings category.
+			$group_rows .= '
+			<a class="pg-card-inner-row connections-row" href="' . h($row['url']) . '"' . $hidden . '>'
+				. $inner . '
+			</a>';
 
 		} else {
 
