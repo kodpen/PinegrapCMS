@@ -262,6 +262,7 @@
     "Each kind of pet has its own needs. Find the vets who see yours most and the articles written for it.": "Her evcil hayvanın kendine özgü ihtiyaçları vardır. Sizinkine en çok bakan veteriner hekimleri ve onun için yazılmış yazıları bulun.",
     "Each language is drawn from the picture's last saved version once every one of its texts is translated. The pages in that language show it from then on.": "Her dil, tüm metinleri çevrildiğinde görselin son kaydedilen sürümünden çizilir. O dildeki sayfalar bundan sonra bu görseli gösterir.",
     "Each language opens this page in that language. The button names the language the visitor is reading.": "Her dil bu sayfayı o dilde açar. Düğmede ziyaretçinin okuduğu dil yazar.",
+    "Each language's picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; \"Draw\" does it now.": "Her dilin görseli, bütün metinleri çevrilince son kaydedilen sürümden kendiliğinden çizilir ve o dildeki sayfalarda gösterilir; \"Çiz\" bunu hemen yapar.",
     "Each language's picture is drawn from the last saved version with its translated words, and shown on the pages in that language.": "Her dilin görseli, son kaydedilen sürümden o dilin çevrilmiş sözcükleriyle çizilir ve o dildeki sayfalarda gösterilir.",
     "Each line must be an object of {line_id, quantity}.": "Her satır {line_id, quantity} biçiminde bir nesne olmalıdır.",
     "Each line must be an object.": "Her satır bir nesne olmalıdır.",
