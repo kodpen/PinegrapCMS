@@ -428,8 +428,13 @@ function local_sale_stock_error($product, $wanted, $completing = false)
  * "silikon" followed by Enter adds the one silicone the shop carries, and
  * two matches ask the operator to pick.
  *
+ * A code that is a barcode of one product and the product code of another
+ * adds neither, as the barcode stock screens refuse it
+ * (pg_barcode_scan_product()): taking the barcode's product sold the other
+ * product than the label the operator scanned.
+ *
  * @param string $code
- * @return array  product => row|null, matches => int
+ * @return array  product => row|null, matches => int, refusal => string
  */
 function local_sale_find_product($code)
 {
@@ -437,22 +442,27 @@ function local_sale_find_product($code)
     $columns = "id, name, short_description, enabled, inventory, inventory_quantity";
 
     if ($code === '') {
-        return array('product' => null, 'matches' => 0);
+        return array('product' => null, 'matches' => 0, 'refusal' => '');
     }
 
     if (defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
-        $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($code) . "' LIMIT 1");
-        if ($product_id > 0) {
-            $product = db_item("SELECT " . $columns . " FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+        $scan = pg_barcode_scan_product($code);
+
+        if ($scan['refusal'] !== '') {
+            return array('product' => null, 'matches' => 0, 'refusal' => $scan['refusal']);
+        }
+
+        if ($scan['id'] > 0) {
+            $product = db_item("SELECT " . $columns . " FROM products WHERE id = '" . (int) $scan['id'] . "' LIMIT 1");
             if ($product) {
-                return array('product' => $product, 'matches' => 1);
+                return array('product' => $product, 'matches' => 1, 'refusal' => '');
             }
         }
     }
 
     $product = db_item("SELECT " . $columns . " FROM products WHERE name = '" . escape($code) . "' AND enabled = '1' LIMIT 1");
     if ($product) {
-        return array('product' => $product, 'matches' => 1);
+        return array('product' => $product, 'matches' => 1, 'refusal' => '');
     }
 
     $like = escape(escape_like(mb_substr($code, 0, 100)));
@@ -463,10 +473,10 @@ function local_sale_find_product($code)
     );
 
     if (is_array($found) && (count($found) === 1)) {
-        return array('product' => $found[0], 'matches' => 1);
+        return array('product' => $found[0], 'matches' => 1, 'refusal' => '');
     }
 
-    return array('product' => null, 'matches' => is_array($found) ? count($found) : 0);
+    return array('product' => null, 'matches' => is_array($found) ? count($found) : 0, 'refusal' => '');
 }
 
 /**
@@ -512,6 +522,9 @@ function local_sale_add_item($code, $product_id, $quantity)
         $found = local_sale_find_product($code);
         $product = $found['product'];
 
+        if ($found['refusal'] !== '') {
+            return local_sale_fail($found['refusal'], array('field' => 'product'));
+        }
         if (!$product && ($found['matches'] > 1)) {
             return local_sale_fail(lang(array('string' => 'More than one product matches “{var:1}”. Pick one from the list.', 'vars' => array($code))), array('field' => 'product', 'level' => 'warning'));
         }
