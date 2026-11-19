@@ -20,7 +20,6 @@ priority: 6
 - `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
 - `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
 - `content-review.md`: a person and a "review by" date for a page or record, and the list of what is due.
-- `listen-block.md`: a "Listen" button that reads an article aloud.
 - `prototype-comments.md`: a customer's pinned comments on a shared prototype.
 - `visitor-push.md`: notifications a visitor without an account subscribes to.
 - `release-bundle.md`: several pages prepared, previewed, published and taken back together.
