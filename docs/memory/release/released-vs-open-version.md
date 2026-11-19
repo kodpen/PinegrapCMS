@@ -16,7 +16,7 @@ description: Released versions are closed, the unreleased one open: where the st
 - Owner (2026-11-19, `workflow/decisions-made-schema-28.md`): "eski sürümlerde değilse ekleme aynı sürüm içinde eklendiği yerden kaldırabiliriz"; "bir kere eklendi artık değişemez yada kaldırılamaz mantığında olmamıza gerek yok".
 - A table, column or index that only the open version's sub-steps add and that no code reads or writes any more is taken out where it was added: its line leaves the sub-step (the sub-step and its call too when nothing else is in it), a table leaves `get_tables()`, and the memory that named it is corrected. A site upgrading from the released version never gets it.
 - Databases that ran the earlier step (dev installs) are cleaned by a clean-up sub-step of the open version: `install_drop_column()`, `install_drop_table()`, `install_drop_index()`, which do nothing where the thing is absent; rows worth keeping are moved first.
-- The PR that gives a structure up removes it, beside the step that adds its replacement. It asks the architect first (Fixed rules 5), who answers under this rule when the thing is the open version's own; what a released version brought stays the owner's question.
+- The PR that gives a structure up removes it in the same PR, beside the step that adds its replacement; no later census looks for it. The 2026.11.0 census (PR #10391) found two leftovers, removed in #10402 (`whatsapp_inbox.read_user_id`, `read_at`) and #10403 (`ws_saved_replies.idx_user`). It asks the architect first (Fixed rules 5), who answers under this rule when the thing is the open version's own; what a released version brought stays the owner's question.
 
 ## What does the upgrade loop compare?
 Only `config.version`:
