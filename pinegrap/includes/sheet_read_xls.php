@@ -201,7 +201,7 @@ class Pg_Sheet_Xls_Ole extends OLERead
      * @param int $bl
      * @return string
      */
-    public function __readData($bl)
+    public function __readData($bl) // phpcs:ignore PHPCompatibility.FunctionNameRestrictions.ReservedFunctionNames.MethodDoubleUnderscore -- overrides the library method OLERead::read() calls by this name
     {
         $data = '';
 
