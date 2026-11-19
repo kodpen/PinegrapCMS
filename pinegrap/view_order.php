@@ -505,6 +505,8 @@ if (!$_POST) {
     // A VAT id VIES confirmed at checkout: the reverse charge behind the
     // tax-exempt flag, with the time of the check and the consultation number.
     $order_vat_note = pg_vat_order_note($row);
+    // Taken now: $row holds other result sets by the time the card is drawn.
+    $order_vat_id = (string) ($row['vat_id'] ?? '');
 
     $output_gift_card_discount_row = '';
 
@@ -2728,7 +2730,7 @@ if (!$_POST) {
                                                 <span class="translateable fg-secondary">' . lang('Tax-Exempt') . '</span>
                                                 <span class="text-end text-break">' . $tax_exempt . '</span>
                                             </div>
-                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h((string) $row['vat_id']) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
+                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h($order_vat_id) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
                                             ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
                                             <hr/>
                                             <div class="d-flex justify-content-between gap-3">
