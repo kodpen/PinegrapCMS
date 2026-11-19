@@ -7230,6 +7230,10 @@ const StyleDesigner = (function () {
         // a browser that can subscribe; the canvas draws it as it will look
         // before the visitor presses (its other states stay hidden).
         '[data-pg-push][hidden] { display:block !important; }',
+        // A course block is hidden in its markup until its script has the
+        // member's view; the canvas draws it as it will look (its status
+        // line, Continue and empty line stay hidden).
+        '[data-pg-course][hidden] { display:block !important; }',
     ];
 
     // The canvas stylesheet for this design: everything for a Bootstrap design,
@@ -73539,7 +73543,8 @@ const StyleDesigner = (function () {
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
-        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' }
+        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' },
+        { test: /\sdata-pg-course(?=[\s=>\/])/i, file: 'assets/js/pg_course.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -85457,10 +85462,11 @@ const StyleDesigner = (function () {
                 !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
             if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
             if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
-            // A Listen or "Notify me" root is hidden until its script shows
-            // it; the canvas draws it (IFRAME_CSS), so the sketch does too.
+            // A Listen, "Notify me" or course block's root is hidden until
+            // its script shows it; the canvas draws it (IFRAME_CSS), so the
+            // sketch does too.
             return attr(n, 'hidden') !== null && attr(n, 'data-pg-listen') === null &&
-                attr(n, 'data-pg-push') === null;
+                attr(n, 'data-pg-push') === null && attr(n, 'data-pg-course') === null;
         }
         // A block that is itself a dropdown shows its menu open.
         function kids(n) {
