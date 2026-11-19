@@ -1,6 +1,6 @@
 ---
 name: content-translation-jobs-duplicates
-description: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
+description: Translation jobs (includes/translate/jobs.php): no second translate-on-save job while one is open, texts translated meanwhile skipped, one run at a time per server job
 ---
 
 ## When does translate-on-save open a job?
@@ -12,3 +12,8 @@ The check and the insert run under `GET_LOCK('pg_tr_auto_' . md5(language|scope)
 
 ## Why?
 Before #852 (PR #1031) the duplicate check looked at `queued` / `sent` only. A save while the first job was `running` (Pinegrap AI works three texts a call, a job takes several turns) opened a second job with the same texts, and the server run sent them to the paid engine again without looking whether they had been translated since: every extra save cost another round of the same texts.
+
+## Can two runs work the same Google or Pinegrap AI job at once?
+No. The Translations screen's run calls, a second open screen and the scheduled job (`translation_job`, every 5 minutes, `pg_tr_jobs_run_due()`) all call `pg_tr_job_run_server()`. It takes `GET_LOCK(pg_tr_job_lock_sql($job_id), 0)` (database name and job id, hashed) before it reads the waiting texts and lets it go at the end.
+A run that finds the job taken works nothing and answers `busy`; the screen looks again 5 s later and shows the other run's counts, the scheduled job goes on to the next job. A lock answer of NULL (the server cannot lock) still works the job.
+Before, two runs read the same waiting texts and sent each to the paid engine twice. The `running` claim also no longer reopens a job cancelled or closed since it was read.
