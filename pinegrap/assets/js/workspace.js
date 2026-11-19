@@ -18283,23 +18283,8 @@
 
             self.input = input;
 
-            // On a phone the box is one row, the field between this switch
-            // and Send (or the microphone); the switch opens the row of
-            // tools under it. A wider screen always shows that row.
-            var toolsSwitch = button('btn btn-sm btn-text theme-secondary ws-composer-more', '', 'bi-plus-lg', t('composer_tools'));
-
-            toolsSwitch.setAttribute('aria-expanded', 'false');
-            toolsSwitch.addEventListener('click', function () {
-                var open = !box.classList.contains('is-tools-open');
-
-                box.classList.toggle('is-tools-open', open);
-                toolsSwitch.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-                if (typeof self.fit === 'function') {
-                    self.fit();
-                }
-            });
-            box.appendChild(toolsSwitch);
+            // The field on top, the row of tools with Send under it, on a
+            // phone as on a wide screen.
             box.appendChild(input);
 
             // The row under the box, in order: the inserts, then the box's own

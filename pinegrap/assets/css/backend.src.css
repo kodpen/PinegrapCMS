@@ -16997,8 +16997,8 @@ a.ws-chip-message:hover,
   max-height: 12rem;
   padding: .15rem .25rem;
 }
-/* The row wraps where it has no room (a phone with the tools open, the
-   narrow discussion panel), so Send and Send later stay inside the box. */
+/* The row wraps where it has no room (a phone, the narrow discussion
+   panel), so Send and Send later stay inside the box. */
 .ws-composer-tools {
   display: flex;
   flex-wrap: wrap;
@@ -17018,10 +17018,6 @@ a.ws-chip-message:hover,
   margin-left: .1rem;
   padding-left: .25rem;
   border-left: 1px solid var(--pg-border-color-translucent);
-}
-/* The phone's switch for the row of tools: a wider screen shows the row. */
-.ws-composer-more {
-  display: none;
 }
 /* Empty in the one-line box; the expanded box names its keys there. */
 .ws-composer-hint {
@@ -20691,46 +20687,19 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     font-size: 16px;
     min-height: 2.5rem;
   }
+  /* Narrow pads keep the inserts, Send and Send later on one line at
+     375 px; the row still wraps where even that has no room. */
   .ws-composer-tools .btn {
-    padding: .3rem .5rem;
+    padding: .3rem .4rem;
   }
-  /* One row: the switch, the field, then Send or the microphone; the
-     switch opens the row of tools under the field. */
+  /* The field takes the full width on top and the row of tools with Send
+     sits under it, as on a wide screen; the frame is a little tighter. */
   .ws-composer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: .15rem;
     padding: .3rem .35rem;
   }
-  .ws-composer > .ws-composer-more {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-self: flex-end;
-    margin-bottom: .2rem;
-  }
-  .ws-composer > :is(.ws-rich, textarea) {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .ws-composer > .ws-composer-tools {
-    flex: 0 0 auto;
-    align-self: flex-end;
-    margin-bottom: .2rem;
-  }
-  .ws-composer:not(.is-tools-open) > .ws-composer-tools > :not(.ws-send-group, .ws-voice-mic, .btn-solid, .ws-composer-meter) {
-    display: none;
-  }
-  .ws-composer.is-tools-open > .ws-composer-tools {
-    flex-basis: 100%;
-    order: 3;
-  }
-  /* Send keeps its icon and a narrow pad, so the open row fits a phone. */
+  /* Send keeps its icon and a narrow pad, so the row fits a phone. */
   .ws-composer-tools .btn.px-5 {
     padding-inline: .6rem;
-  }
-  .ws-composer.is-tools-open > .ws-composer-more .bi {
-    transform: rotate(45deg);
   }
   /* A recording row as tall as the box it stands in for, with buttons a
      finger hits; the player's small buttons the same. */
