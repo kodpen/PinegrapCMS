@@ -111,13 +111,19 @@ StyleDesigner.definePart('comments', function (K) {
 
     // ── The threads ───────────────────────────────────────────────────────
 
-    // A page's threads numbered as the customer saw them: by the first
-    // comment, oldest first, open and resolved alike.
-    function numbers(page) {
-        var ids = page.threads.map(function (t) { return t.id; }).sort(function (a, b) { return a - b; });
-        var out = {};
-        ids.forEach(function (id, i) { out[id] = i + 1; });
-        return out;
+    // A thread's number is the one the customer sees on its pin: the server
+    // numbers a page's threads per link, by the first comment, oldest first,
+    // open and resolved alike (pg_proto_comment_list_pages()).
+    function num(t) {
+        return parseInt(t.n, 10) || 0;
+    }
+
+    // The link a thread came through, named as the Share prototype dialog
+    // lists it; told only where a page has comments of more than one link,
+    // as the numbers then repeat.
+    function linkTag(t, page) {
+        if (!page || !(page.links > 1) || !t.link_hint) return '';
+        return '<code class="sd-pc-link" title="' + esc(_sdT('Share link')) + '">' + esc(t.link_hint) + '…</code>';
     }
 
     function openCount() {
@@ -227,12 +233,13 @@ StyleDesigner.definePart('comments', function (K) {
         if (box) box.focus();
     }
 
-    function threadHtml(t, num, pageId) {
+    function threadHtml(t, page) {
         var resolved = t.resolved_at > 0;
-        var there = nodeThere(pageId, t.node);
-        var head = function (c) {
+        var there = nodeThere(page.page_id, t.node);
+        var head = function (c, tag) {
             return '<div class="sd-pc-meta"><span class="sd-pc-name">' + esc(c.name) + '</span>' +
-                (c.staff ? '<span class="badge theme-secondary">' + esc(_sdT('Designer')) + '</span>' : '') +
+                // A staff answer carries the badge the customer sees on it.
+                (c.staff ? '<span class="badge theme-secondary">' + esc(_sdT('Team')) + '</span>' : '') + (tag || '') +
                 '<time class="sd-pc-time">' + esc(when(c.created_at)) + '</time></div>';
         };
         var answers = t.answers.map(function (a) {
@@ -261,9 +268,9 @@ StyleDesigner.definePart('comments', function (K) {
                 '<button type="submit" class="btn btn-sm btn-solid theme-primary">' + esc(_sdT('Send')) + '</button></div></form>'
             : '';
         return '<li class="sd-pc-thread' + (S.focus === t.id ? ' is-focus' : '') + (resolved ? ' is-resolved' : '') + '" data-thread="' + t.id + '">' +
-            '<button type="button" class="sd-pc-num" data-pc="go" data-id="' + t.id + '" title="' + esc(_sdT('Show on the canvas')) + '">' + num + '</button>' +
+            '<button type="button" class="sd-pc-num" data-pc="go" data-id="' + t.id + '" title="' + esc(_sdT('Show on the canvas')) + '" aria-label="' + esc(_sdT('Comment {var}', String(num(t)))) + '">' + num(t) + '</button>' +
             '<div class="sd-pc-body">' +
-                head(t) +
+                head(t, linkTag(t, page)) +
                 (there === false ? '<div class="sd-pc-gone"><span class="bi bi-exclamation-triangle me-1" aria-hidden="true"></span>' + esc(_sdT('Not on the page any more')) + '</div>' : '') +
                 '<p class="sd-pc-text">' + esc(t.text) + '</p>' +
                 (answers ? '<ul class="sd-pc-answers">' + answers + '</ul>' : '') +
@@ -278,14 +285,13 @@ StyleDesigner.definePart('comments', function (K) {
         S.pages.forEach(function (p) { open += p.open; resolved += p.resolved; });
         var wantResolved = S.filter === 'resolved';
         var groups = S.pages.map(function (p) {
-            var nums = numbers(p);
             var list = p.threads.filter(function (t) { return (t.resolved_at > 0) === wantResolved; });
             if (!list.length) return '';
             var tab = pageById(p.page_id);
             return '<section class="sd-pc-page">' +
                 '<h3 class="sd-pc-page-name">' + (p.name !== '' ? esc(p.name) : esc(_sdT('A deleted page'))) +
                     (tab ? '' : '<span class="sd-pc-page-note">' + esc(_sdT('not open as a tab')) + '</span>') + '</h3>' +
-                '<ol class="sd-pc-threads">' + list.map(function (t) { return threadHtml(t, nums[t.id], p.page_id); }).join('') + '</ol>' +
+                '<ol class="sd-pc-threads">' + list.map(function (t) { return threadHtml(t, p); }).join('') + '</ol>' +
             '</section>';
         }).join('');
         var scroll = S.panel.querySelector('.sd-pc-list');
@@ -403,7 +409,6 @@ StyleDesigner.definePart('comments', function (K) {
         // CSS pixels; a canvas zoomed with zoom on <html> is drawn scaled.
         var zoom = parseFloat(doc.documentElement.style.zoom) || 1;
         var scale = (frame.clientWidth > 0 && doc.documentElement.clientWidth > 0 && Math.abs(doc.documentElement.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
-        var nums = numbers(data);
         var showResolved = !!(S.panel && !S.panel.hidden && S.filter === 'resolved');
         var html = '';
         data.threads.forEach(function (t) {
@@ -418,11 +423,13 @@ StyleDesigner.definePart('comments', function (K) {
             // A pin is drawn above its point: one whose point is out of the
             // frame's view is left out rather than cut at the edge.
             if (x < 0 || y < 0 || x > fr.width || y > fr.height) return;
-            var title = t.name + ': ' + t.text;
+            // Two links' threads on one page can share a number: the title
+            // names the link then, as the list does.
+            var title = (data.links > 1 && t.link_hint ? t.link_hint + '… · ' : '') + t.name + ': ' + t.text;
             html += '<button type="button" class="sd-pc-pin' + (resolved ? ' is-resolved' : '') + (S.focus === t.id ? ' is-focus' : '') + '" data-pin="' + t.id + '"' +
                 ' style="left:' + Math.round(x) + 'px;top:' + Math.round(y) + 'px"' +
                 ' title="' + esc(title.length > 140 ? title.slice(0, 139) + '…' : title) + '"' +
-                ' aria-label="' + esc(_sdT('Comment {var}', String(nums[t.id]))) + '">' + nums[t.id] + '</button>';
+                ' aria-label="' + esc(_sdT('Comment {var}', String(num(t)))) + '">' + num(t) + '</button>';
         });
         if (S.layer.innerHTML !== html) S.layer.innerHTML = html;
     }

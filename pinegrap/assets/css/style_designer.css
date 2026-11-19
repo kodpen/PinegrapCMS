@@ -7527,29 +7527,32 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ── Prototype comments (assets/js/style_designer_comments.js) ──
-   The toolbar's Comments button, the pins over the canvas frame and the
-   list beside it. */
+   The toolbar's Comments button (beside the Assistant's), the pins over the
+   canvas frame and the list over the right column. Colours come from the
+   chrome's tokens only (designer/designer-chrome-tokens.md): a pin is the
+   warning amber with the panel's ground as its text, a resolved one the
+   success green. */
 .sd-pc-btn { width: auto; gap: .35rem; padding: 0 .55rem; position: relative; }
-.sd-pc-btn[aria-expanded="true"] { background: rgba(var(--sd-accent-rgb), .22); border-color: rgba(var(--sd-accent-rgb), .5); }
+.sd-pc-btn[aria-expanded="true"] { background: rgba(var(--sd-accent-rgb), .22); border-color: var(--sd-accent-line); }
 .sd-pc-btn-txt { font-size: .8rem; }
 .sd-pc-btn-count {
     min-width: 18px; height: 18px; padding: 0 .3rem; border-radius: 999px;
-    background: #f0883e; color: #1c1e22; font-size: .68rem; font-weight: 700; line-height: 18px; text-align: center;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: .68rem; font-weight: 700; line-height: 18px; text-align: center;
 }
-.sd-pc-btn-dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #f0883e; }
+.sd-pc-btn-dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--sd-warning); }
 @media (max-width: 1279.98px) { .sd-pc-btn-txt { display: none; } }
 
 .sd-pc-layer { position: fixed; z-index: 1040; overflow: hidden; pointer-events: none; }
 .sd-pc-pin {
     position: absolute; transform: translate(-4px, -100%);
     min-width: 26px; height: 26px; padding: 0 .4rem;
-    border: 2px solid #fff; border-radius: 13px 13px 13px 2px;
-    background: #f0883e; color: #1c1e22; font: 700 .75rem/22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    box-shadow: 0 2px 8px rgba(0,0,0,.45); cursor: pointer; pointer-events: auto;
+    border: 2px solid var(--sd-text); border-radius: 13px 13px 13px 2px;
+    background: var(--sd-warning); color: var(--sd-panel-bg); font: 700 .75rem/22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--sd-shadow) 45%, transparent); cursor: pointer; pointer-events: auto;
 }
-.sd-pc-pin:hover, .sd-pc-pin:focus-visible { background: #ffa657; outline: none; }
-.sd-pc-pin.is-resolved { background: #3fb950; }
-.sd-pc-pin.is-focus { box-shadow: 0 0 0 3px rgba(var(--sd-accent-rgb), .8), 0 2px 8px rgba(0,0,0,.45); }
+.sd-pc-pin:hover, .sd-pc-pin:focus-visible { background: color-mix(in srgb, var(--sd-warning) 80%, var(--sd-text)); outline: none; }
+.sd-pc-pin.is-resolved { background: var(--sd-success); }
+.sd-pc-pin.is-focus { box-shadow: 0 0 0 3px var(--sd-accent), 0 2px 8px color-mix(in srgb, var(--sd-shadow) 45%, transparent); }
 
 .sd-pc-panel {
     position: fixed; top: 96px; right: 16px; bottom: 16px; z-index: 1060;
@@ -7557,11 +7560,11 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     display: flex; flex-direction: column; min-height: 0;
     background: var(--sd-panel-bg); color: var(--sd-text);
     border: 1px solid var(--sd-panel-border); border-radius: 10px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.55); font-size: .82rem;
+    box-shadow: 0 12px 40px color-mix(in srgb, var(--sd-shadow) 55%, transparent); font-size: .82rem;
 }
 .sd-pc-panel[hidden] { display: none; }
 .sd-pc-head { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-bottom: 1px solid var(--sd-panel-border); }
-.sd-pc-head > .bi { color: #f0883e; }
+.sd-pc-head > .bi { color: var(--sd-warning); }
 .sd-pc-title { flex: 1; margin: 0; font-size: .9rem; font-weight: 600; color: var(--sd-text); }
 .sd-pc-tabs { display: flex; gap: .25rem; padding: .5rem .75rem 0; border-bottom: 1px solid var(--sd-panel-border); }
 .sd-pc-tab {
@@ -7569,7 +7572,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: .3rem .5rem .45rem; font-size: .8rem; cursor: pointer;
 }
 .sd-pc-tab.is-active { color: var(--sd-text); border-bottom-color: var(--sd-accent); }
-.sd-pc-tab-count { margin-left: .2rem; padding: 0 .35rem; border-radius: 999px; background: rgba(255,255,255,.08); font-size: .7rem; }
+.sd-pc-tab-count { margin-left: .2rem; padding: 0 .35rem; border-radius: 999px; background: var(--sd-raised-bg-2); font-size: .7rem; }
 .sd-pc-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .5rem .75rem .75rem; }
 .sd-pc-empty { color: var(--sd-text-muted); text-align: center; padding: 1.25rem .5rem; line-height: 1.5; margin: 0; }
 .sd-pc-page + .sd-pc-page { margin-top: .75rem; }
@@ -7581,28 +7584,29 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-pc-threads, .sd-pc-answers { list-style: none; margin: 0; padding: 0; }
 .sd-pc-thread {
     display: flex; gap: .55rem; padding: .55rem .6rem; margin-bottom: .45rem;
-    border: 1px solid rgba(255,255,255,.06); border-radius: 8px; background: rgba(0,0,0,.14);
+    border: 1px solid var(--sd-panel-border); border-radius: 8px; background: var(--sd-raised-bg);
 }
-.sd-pc-thread.is-focus { border-color: rgba(var(--sd-accent-rgb), .7); }
+.sd-pc-thread.is-focus { border-color: var(--sd-accent-line); }
 .sd-pc-num {
     flex: 0 0 auto; min-width: 22px; height: 22px; padding: 0 .3rem; border: 0; border-radius: 11px 11px 11px 2px;
-    background: #f0883e; color: #1c1e22; font-size: .7rem; font-weight: 700; cursor: pointer;
+    background: var(--sd-warning); color: var(--sd-panel-bg); font-size: .7rem; font-weight: 700; cursor: pointer;
 }
-.sd-pc-thread.is-resolved .sd-pc-num { background: #3fb950; }
+.sd-pc-thread.is-resolved .sd-pc-num { background: var(--sd-success); }
 .sd-pc-body { flex: 1 1 auto; min-width: 0; }
 .sd-pc-meta { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .sd-pc-name { font-weight: 600; color: var(--sd-text); }
+.sd-pc-link { font-size: .7rem; color: var(--sd-text-muted); }
 .sd-pc-time { margin-left: auto; font-size: .7rem; color: var(--sd-text-muted); }
 .sd-pc-text { margin: .2rem 0 0; white-space: pre-line; word-break: break-word; line-height: 1.5; }
-.sd-pc-answers { margin-top: .45rem; padding-left: .6rem; border-left: 2px solid rgba(255,255,255,.1); }
+.sd-pc-answers { margin-top: .45rem; padding-left: .6rem; border-left: 2px solid var(--sd-border-strong); }
 .sd-pc-answer + .sd-pc-answer { margin-top: .4rem; }
-.sd-pc-gone { margin-top: .25rem; font-size: .74rem; color: #f0b072; }
-.sd-pc-resolved { margin-top: .35rem; font-size: .74rem; color: #56d364; }
+.sd-pc-gone { margin-top: .25rem; font-size: .74rem; color: var(--sd-warning); }
+.sd-pc-resolved { margin-top: .35rem; font-size: .74rem; color: var(--sd-success); }
 .sd-pc-actions, .sd-pc-confirm { display: flex; align-items: center; gap: .25rem; margin-top: .4rem; flex-wrap: wrap; }
-.sd-pc-confirm > span { flex: 1 1 100%; color: #ffa198; }
+.sd-pc-confirm > span { flex: 1 1 100%; color: var(--sd-danger); }
 .sd-pc-answer-form { margin-top: .45rem; }
 .sd-pc-answer-form textarea {
-    background: var(--sd-input-bg); color: var(--sd-text); border-color: rgba(255,255,255,.14); font-size: .8rem;
+    background: var(--sd-input-bg); color: var(--sd-text); border-color: var(--sd-input-border); font-size: .8rem;
 }
 .sd-pc-answer-form textarea::placeholder { color: var(--sd-text-muted); }
 .sd-pc-answer-foot { display: flex; align-items: center; gap: .5rem; margin-top: .35rem; }

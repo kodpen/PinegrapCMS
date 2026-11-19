@@ -73,6 +73,41 @@ function test_proto_comment_list_pages_groups_by_page_with_counts()
 	pg_assert_same(array(), pg_proto_comment_list_pages(array(), array(120 => 'Home')), 'no page without comments');
 }
 
+// The viewer (assets/js/pg_proto_comments.js, threads()) reads one page of
+// one link and numbers its threads by the first comment, oldest first,
+// resolved ones counted: the designer's list gives the same numbers, and
+// the link's hint where a page has comments from more than one link.
+function test_proto_comment_list_pages_numbers_threads_per_link_as_the_viewer_does()
+{
+	$threads = pg_proto_comment_threads(array(
+		prototype_comments_designer_test_row(array('id' => 1, 'link_id' => 7)),
+		prototype_comments_designer_test_row(array('id' => 2, 'link_id' => 8)),
+		prototype_comments_designer_test_row(array('id' => 3, 'link_id' => 7, 'resolved_at' => 99)),
+		prototype_comments_designer_test_row(array('id' => 4, 'link_id' => 7)),
+		prototype_comments_designer_test_row(array('id' => 6, 'link_id' => 9, 'page_id' => 130)),
+	));
+
+	$pages = pg_proto_comment_list_pages($threads, array(120 => 'Home', 130 => 'About'), array(7 => 'Ab12Cd34', 8 => 'Zz99Yy88'));
+	$numbers = array();
+	$hints = array();
+
+	foreach ($pages[0]['threads'] as $thread) {
+		$numbers[$thread['id']] = $thread['n'];
+		$hints[$thread['id']] = $thread['link_hint'];
+	}
+
+	ksort($numbers);
+	ksort($hints);
+
+	pg_assert_same(array(1 => 1, 2 => 1, 3 => 2, 4 => 3), $numbers, 'numbered per link, oldest first, a resolved thread keeps its number');
+	pg_assert_same(array(1 => 'Ab12Cd34', 2 => 'Zz99Yy88', 3 => 'Ab12Cd34', 4 => 'Ab12Cd34'), $hints, 'each thread names its link');
+	pg_assert_same(2, $pages[0]['links'], 'a page with two links\' comments');
+	pg_assert_same(1, $pages[1]['threads'][0]['n'], 'every page and link numbers from 1');
+	pg_assert_same(1, $pages[1]['links'], 'a page with one link');
+	pg_assert_same('', $pages[1]['threads'][0]['link_hint'], 'a link without a hint has none');
+	pg_assert_same(array(4, 2, 1, 3), array_column($pages[0]['threads'], 'id'), 'still open first, newest first');
+}
+
 function test_proto_comment_bell_words_and_address()
 {
 	$words = pg_proto_comment_bell_words('Home & more', 'Ayşe');

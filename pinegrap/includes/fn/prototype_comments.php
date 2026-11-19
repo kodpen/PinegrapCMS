@@ -852,11 +852,18 @@ function pg_proto_comment_threads($rows)
  * open threads first, then the resolved ones, each newest first; the open and
  * resolved counts. A page without comments is left out. Pure.
  *
+ * Each thread gets the number the customer sees on its pin ('n'): the
+ * viewer reads one page of one link and numbers its threads by the first
+ * comment, oldest first, resolved ones counted (pg_proto_comments.js,
+ * threads()); so numbers run per page and link. 'link_hint' names the link
+ * as the Share prototype dialog lists it, 'links' counts a page's links.
+ *
  * @param array[] $threads pg_proto_comment_threads()
  * @param array   $pages   page_id => name, in the order they are listed
- * @return array[] page_id, name, open, resolved, threads
+ * @param array   $hints   link_id => token_hint
+ * @return array[] page_id, name, open, resolved, links, threads
  */
-function pg_proto_comment_list_pages($threads, $pages)
+function pg_proto_comment_list_pages($threads, $pages, $hints = array())
 {
     $by_page = array();
 
@@ -885,6 +892,19 @@ function pg_proto_comment_list_pages($threads, $pages)
         $list = $by_page[$page_id];
 
         usort($list, function ($a, $b) {
+            return (int) $a['id'] - (int) $b['id'];
+        });
+
+        $count = array();
+
+        foreach ($list as $i => $thread) {
+            $link = (int) $thread['link_id'];
+            $count[$link] = isset($count[$link]) ? $count[$link] + 1 : 1;
+            $list[$i]['n'] = $count[$link];
+            $list[$i]['link_hint'] = isset($hints[$link]) ? (string) $hints[$link] : '';
+        }
+
+        usort($list, function ($a, $b) {
             $a_open = ((int) $a['resolved_at'] === 0);
             $b_open = ((int) $b['resolved_at'] === 0);
 
@@ -906,6 +926,7 @@ function pg_proto_comment_list_pages($threads, $pages)
             'name' => $name,
             'open' => $open,
             'resolved' => count($list) - $open,
+            'links' => count($count),
             'threads' => $list,
         );
     }
@@ -917,7 +938,7 @@ function pg_proto_comment_list_pages($threads, $pages)
  * The designer's list of a design: every comment of its draft pages, over
  * all its links, as pg_proto_comment_list_pages() gives it. The page names
  * are read from the page table; a deleted page's comments stay and are
- * listed without a name.
+ * listed without a name. The links' hints come from prototype_links.
  *
  * @param int $style_id
  * @return array[]
@@ -931,9 +952,11 @@ function pg_proto_comments_list_of_style($style_id)
     $rows = db_items("SELECT * FROM prototype_comments WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 2000");
     $rows = is_array($rows) ? $rows : array();
     $ids = array();
+    $link_ids = array();
 
     foreach ($rows as $row) {
         $ids[(int) $row['page_id']] = (int) $row['page_id'];
+        $link_ids[(int) $row['link_id']] = (int) $row['link_id'];
     }
 
     $pages = array();
@@ -946,7 +969,17 @@ function pg_proto_comments_list_of_style($style_id)
         }
     }
 
-    return pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages);
+    $hints = array();
+
+    if ($link_ids) {
+        $links = db_items("SELECT id, token_hint FROM prototype_links WHERE id IN (" . implode(',', $link_ids) . ")");
+
+        foreach (is_array($links) ? $links : array() as $link) {
+            $hints[(int) $link['id']] = (string) $link['token_hint'];
+        }
+    }
+
+    return pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
 }
 
 /**
