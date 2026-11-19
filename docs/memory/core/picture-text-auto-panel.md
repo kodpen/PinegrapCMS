@@ -6,7 +6,7 @@ module: picture_translation, output
 
 ## When does a panel page draw?
 - `output_footer()` prints `pg_picture_tr_auto_tag()`: the Design Canvas's loader (`pg_image_editor_includes()`) and `<script id="pg_picture_auto" defer>` with `data-rows` (file id and language only). Only for a signed-in person, only while the mark is set (`pg_picture_tr_marked()`, no query while it is clear) and the person's queue (`pg_picture_tr_queue()`, folders they may edit, not in the Recycle Bin) is not empty. Never on the site's pages, nor in `output_footer_secure()`.
-- The queue view (`#pg_pq`, "Draw the waiting pictures") draws its own rows: the script does nothing there.
+- The queue view (`#pg_pq`, "Draw the waiting pictures") draws its own rows: the script does nothing there, though the footer still asks the queue once for its tag.
 
 ## How does it draw?
 - 3 s after the page loads, once the tab is visible and the browser idle (`requestIdleCallback`), one tab of the browser takes the lock `pg-picture-draw` (`navigator.locks` with `ifAvailable`; without it, a lease `pg_picture_draw_lease` in `localStorage`, 60 s, renewed every 20 s while it draws; with neither, the tab draws on its own). A tab refused looks again every 30 s while visible.

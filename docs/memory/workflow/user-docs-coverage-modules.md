@@ -9,7 +9,7 @@ A line gives the page's subjects, then the memory to write it from. The mark of 
 - `/seo`: SEO score and checks, `sitemap.xml`, `robots.txt`, IndexNow, structured data, social sharing tags. `visitors/`, `ui/`, `platform/`.
 - `/design`: classic page styles, menus, regions, themes, design files, Import My Site, Find And Replace, Mass Edit, Migration. `designer/`.
 - `/visual-page-editor`: the editor's home, starting a design, templates, import, the editor, pages and tabs, building blocks, shared components, system widgets, data binding, theme, e-mail pages, publishing, who can edit, working together, the assistant. `designer/`: `designer-blocks-*`, `designer-canvas-*`, `designer-code-*`, `system-widget-*`, `widget-lists-*`, `comments-widget-*`, `design-template-*`.
-- `/multilingual`: site languages, translation engines, the Translations screen, glossary, the language switcher, visitors and search engines in other languages. `core/`: `content-translation-*`.
+- `/multilingual`: site languages, translation engines, the Translations screen, glossary, the language switcher, visitors and search engines in other languages. `core/`: `content-translation-*`. Translated pictures (`core/picture-text-overview.md`), drawn by themselves, have no section yet.
 
 ## Which pages cover commerce and the ERP?
 - `/commerce`: orders, Add Local Order, order reports, commissions, products, variant sets, Catalog Manager, product attributes, gift cards. `commerce/`: `order-completion-*`, `order-returns-*`, `payment-driver-*`, `product-price-*`, `product-review-*`, `gift-card-*`, `store-credit-*`; totals from `commerce/order-totals-overview.md`.

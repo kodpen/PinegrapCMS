@@ -16,7 +16,7 @@ module: picture_server_draw
 ## How is a language's picture made?
 - `pg_picture_tr_language_doc()` and `pg_picture_tr_language_fit()` are the twins of `M.languageDoc()` and `M.languageFit()`: the floor is 0.7, `fit` 1 below it. Both languages run `tests/fixtures/picture_language/fit.json` and `doc.json`; a change to one changes the other and the fixtures.
 - `pg_picture_tr_language_fitted()` ports the loop of the editor's `drawLanguage()`: the size scaled and rounded to two places, the box kept on its aligned side (`M.textFit()`), the middle kept upright. The widths are the server's own (`pg_picture_tr_server_layout()`: the font file's letter advances, as `pg_image_draw_plan()` lays a text out), so a picture may differ a little from a browser's, as the owner was told (poll 143).
-- Then `pg_image_draw_plan()`'s verdict on the fitted document, with no picture resolver: a sticker, an effect (a shadow, an outline), a picture layer, a system font list (`sans`), a face or a letter the server has no file of, a script it does not draw: the row is left as it is for an open panel, the mark kept.
+- Then `pg_image_draw_plan()`'s verdict on the fitted document, with no picture resolver: a sticker, an effect (a shadow, an outline), a picture layer, a system font list (`sans`), a face or a letter the server has no file of, a script it does not draw: the row is left as it is for an open panel, the mark kept. Such a row is read and planned again at each run (no paint) until a panel draws it, inside the budget.
 - Poll 143 (`workflow/decisions-made-product-75.md`) named what the server draws as plain text and shapes; picture layers wait too, as their files would need a reader's rights.
 
 ## How is it kept?
