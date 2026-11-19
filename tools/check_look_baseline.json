@@ -850,24 +850,8 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/settings/accounting.php": {
-        "button": 3,
-        "tabs": 0
-    },
     "includes/settings/appearance.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "includes/settings/bookings.php": {
-        "button": 2,
-        "tabs": 0
-    },
-    "includes/settings/commerce.php": {
-        "button": 3,
-        "tabs": 0
-    },
-    "includes/settings/commerce_merchant.php": {
-        "button": 4,
         "tabs": 0
     },
     "includes/settings/features.php": {

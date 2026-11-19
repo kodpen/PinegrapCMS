@@ -57,7 +57,7 @@ $booking_number = function ($name, $id, $label, $value, $unit, $min, $max, $help
                         <label for="' . $id . '" class="form-label">' . $label . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">' . $unit . '</span>
-                            <input type="number" name="' . $name . '" id="' . $id . '" class="form-ghost" value="' . (int) $value . '" min="' . (int) $min . '" max="' . (int) $max . '" inputmode="numeric" style="text-align: right;"/>
+                            <input type="number" name="' . $name . '" id="' . $id . '" class="form-ghost text-end" value="' . (int) $value . '" min="' . (int) $min . '" max="' . (int) $max . '" inputmode="numeric"/>
                         </label>' . (($help !== '') ? '
                         <div class="form-text">' . $help . '</div>' : '') . '
                     </div>';
@@ -112,7 +112,7 @@ $booking_deposit_fields = function ($name, $id, $service) use ($booking_separato
                                     <label for="' . $id . '_deposit" class="form-label">' . lang('Deposit') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
-                                        <input type="text" name="' . $name . '[deposit]" id="' . $id . '_deposit" class="form-ghost" value="' . h(pg_booking_settings_price_text((int) ($service['deposit'] ?? 0), $booking_separators)) . '" maxlength="16" inputmode="decimal" style="text-align: right;"/>
+                                        <input type="text" name="' . $name . '[deposit]" id="' . $id . '_deposit" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text((int) ($service['deposit'] ?? 0), $booking_separators)) . '" maxlength="16" inputmode="decimal"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-md">
@@ -134,7 +134,7 @@ $booking_service_block = function ($key, $service, $legend) use ($booking_separa
     return '
                     <div class="col-12">
                         <fieldset class="border rounded p-5">
-                            <legend class="form-label fs-md fw-bold float-none w-auto px-3 mb-0">' . h($legend) . '</legend>
+                            <legend class="pg-group-label float-none w-auto px-3 mb-0">' . h($legend) . '</legend>
                             <div class="row gy-5">
                                 <div class="pg-f-md">
                                     <label for="' . $id . '_name" class="form-label">' . lang('Name') . '</label>
@@ -144,28 +144,28 @@ $booking_service_block = function ($key, $service, $legend) use ($booking_separa
                                     <label for="' . $id . '_length" class="form-label">' . lang('Duration') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[length]" id="' . $id . '_length" class="form-ghost" value="' . (int) $service['length_minutes'] . '" min="5" max="1440" step="5" inputmode="numeric" style="text-align: right;"/>
+                                        <input type="number" name="' . $name . '[length]" id="' . $id . '_length" class="form-ghost text-end" value="' . (int) $service['length_minutes'] . '" min="5" max="1440" step="5" inputmode="numeric"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_before" class="form-label">' . lang('Break before') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[before]" id="' . $id . '_before" class="form-ghost" value="' . (int) $service['buffer_before'] . '" min="0" max="480" inputmode="numeric" style="text-align: right;"/>
+                                        <input type="number" name="' . $name . '[before]" id="' . $id . '_before" class="form-ghost text-end" value="' . (int) $service['buffer_before'] . '" min="0" max="480" inputmode="numeric"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_after" class="form-label">' . lang('Break after') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[after]" id="' . $id . '_after" class="form-ghost" value="' . (int) $service['buffer_after'] . '" min="0" max="480" inputmode="numeric" style="text-align: right;"/>
+                                        <input type="number" name="' . $name . '[after]" id="' . $id . '_after" class="form-ghost text-end" value="' . (int) $service['buffer_after'] . '" min="0" max="480" inputmode="numeric"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_price" class="form-label">' . lang('Price') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
-                                        <input type="text" name="' . $name . '[price]" id="' . $id . '_price" class="form-ghost" value="' . h(pg_booking_settings_price_text($service['price'], $booking_separators)) . '" maxlength="16" inputmode="decimal" style="text-align: right;"/>
+                                        <input type="text" name="' . $name . '[price]" id="' . $id . '_price" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text($service['price'], $booking_separators)) . '" maxlength="16" inputmode="decimal"/>
                                     </label>
                                 </div>' . ($booking_deposit_on ? $booking_deposit_fields($name, $id, $service) : '') . '
                                 <div class="pg-f-xs">
@@ -281,7 +281,7 @@ foreach ($booking_staff as $user_id => $member) {
     $output_booking_staff .= '
                     <div class="col-12">
                         <fieldset class="border rounded p-5" data-pg-booking-staff>
-                            <legend class="form-label fs-md fw-bold float-none w-auto px-3 mb-0">' . h($member['person']) . '</legend>
+                            <legend class="pg-group-label float-none w-auto px-3 mb-0">' . h($member['person']) . '</legend>
                             <input type="hidden" name="' . $name . '[seen]" value="1"/>
                             <div class="row gy-5">
                                 <div class="col-12">
@@ -296,19 +296,21 @@ foreach ($booking_staff as $user_id => $member) {
                                 </div>
                                 <div class="col-12">
                                     <div class="table-responsive">
-                                    <table class="table table-sm align-middle small mb-3">
+                                    <table class="table table-hover mb-0 pg-embedded-table">
                                         <caption class="visually-hidden">' . h(lang(array('string' => 'Weekly hours of {var:1}', 'vars' => $member['person']))) . '</caption>
                                         <thead><tr><th scope="col">' . lang('Day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th><th scope="col">' . lang('Opens again') . '</th><th scope="col">' . lang('Closes again') . '</th></tr></thead>
                                         <tbody>' . $grid . '
                                         </tbody>
                                     </table>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline theme-secondary" data-pg-booking-copy><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Copy the first day to every day') . '</button>
+                                    <div class="pg-embedded-table-foot">
+                                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-booking-copy><i class="bi bi-copy" aria-hidden="true"></i>' . lang('Copy the first day to every day') . '</button>
+                                    </div>
                                 </div>
                                 <div class="col-12">
-                                    <div class="form-label">' . lang('Days off and special hours') . '</div>
+                                    <h3 class="pg-group-label">' . lang('Days off and special hours') . '</h3>
                                     <div class="table-responsive">
-                                    <table class="table table-sm align-middle small mb-3">
+                                    <table class="table table-hover mb-0 pg-embedded-table">
                                         <caption class="visually-hidden">' . h(lang(array('string' => 'Days off and special hours of {var:1}', 'vars' => $member['person']))) . '</caption>
                                         <thead><tr><th scope="col">' . lang('First day') . '</th><th scope="col">' . lang('Last day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th></tr></thead>
                                         <tbody data-pg-booking-exceptions>' . $exceptions . '
@@ -316,7 +318,9 @@ foreach ($booking_staff as $user_id => $member) {
                                     </table>
                                     </div>
                                     <template data-pg-booking-exception>' . $booking_exception_row($user_id, array('from' => '', 'to' => '', 'open' => '', 'close' => '')) . '</template>
-                                    <button type="button" class="btn btn-sm btn-outline theme-secondary" data-pg-booking-add-exception><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add a row') . '</button>
+                                    <div class="pg-embedded-table-foot">
+                                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-booking-add-exception><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a row') . '</button>
+                                    </div>
                                     <div class="form-text">' . lang('Without hours the days are off; with hours they replace the weekly hours on those days. A public holiday is closed unless a row gives it hours. Past days drop off the list.') . '</div>
                                 </div>
                             </div>
