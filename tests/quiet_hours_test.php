@@ -139,19 +139,73 @@ function test_quiet_hours_save_check_is_the_persons_own()
 	pg_assert_same(0, $bad['user_id']);
 }
 
-function test_quiet_hours_save_is_a_panel_action_only()
+// The panel action and the team devices route are the only writers; the
+// route is no MCP tool and refuses a key and an OAuth connection before it
+// rehearses or writes.
+function test_quiet_hours_save_is_the_panel_action_and_the_device_route_only()
 {
 	$actions = pg_panel_actions();
 
 	pg_assert_true(isset($actions['ws_quiet_hours_save']), 'the panel action is there');
 
-	$api = '';
+	$callers = array();
 
 	foreach (glob(PG_FUNCTIONS_DIR . '/includes/{api,mcp,workspace}/*.php', GLOB_BRACE) as $file) {
-		if (basename($file) !== 'actions.php' && basename($file) !== 'notify.php') {
-			$api .= file_get_contents($file);
+		if (!in_array(basename($file), array('actions.php', 'notify.php'), true) && (strpos(file_get_contents($file), 'ws_quiet_hours_save(') !== false)) {
+			$callers[] = basename($file);
 		}
 	}
 
-	pg_assert_same(false, strpos($api, 'ws_quiet_hours_save'), 'no API route or MCP tool writes quiet hours');
+	pg_assert_same(array('api_quiet_hours.php'), $callers, 'only the quiet hours route writes quiet hours over the API');
+
+	quiet_hours_test_load_api();
+
+	$route = null;
+
+	foreach (ws_api_routes() as $row) {
+		if ($row['id'] === 'workspace.quiet_hours.set') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'the route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/quiet-hours', $route['path']);
+	pg_assert_same('account:write', $route['scope']);
+	pg_assert_false($route['mcp'], 'no MCP tool');
+	pg_assert_true($route['dry_run'], 'takes X-Dry-Run');
+
+	$reflection = new ReflectionFunction('ws_api_quiet_hours_set');
+	$lines = file($reflection->getFileName());
+	$source = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+	$gate = strpos($source, 'ws_api_own_words_only(');
+	$check = strpos($source, 'pg_quiet_hours_save_check(');
+	$stop = strpos($source, 'api_dry_run_stop(');
+	$save = strpos($source, 'ws_quiet_hours_save(');
+
+	pg_assert_true(($gate !== false) && ($gate < $check), 'the team devices session is asked for first');
+	pg_assert_true(($check !== false) && ($check < $stop), 'a dry run meets the same refusals');
+	pg_assert_true(($stop !== false) && ($stop < $save), 'a dry run stops before the write');
+}
+
+function test_quiet_hours_api_present()
+{
+	quiet_hours_test_load_api();
+
+	pg_assert_same(null, ws_api_quiet_hours_present(null), 'no range is null');
+	pg_assert_same(array('start' => '22:00', 'end' => '07:00', 'off_days' => 1), ws_api_quiet_hours_present(array('start' => '22:00', 'end' => '07:00', 'off_days' => true)));
+	pg_assert_same(array('start' => '13:00', 'end' => '14:00', 'off_days' => 0), ws_api_quiet_hours_present(pg_quiet_hours_decode('{"start":"13:00","end":"14:00","off_days":0}')));
+}
+
+// The external API's Workspace routes, loaded as the panel loads them.
+function quiet_hours_test_load_api()
+{
+	if (!defined('PG_API_PANEL')) {
+		define('PG_API_PANEL', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 }
