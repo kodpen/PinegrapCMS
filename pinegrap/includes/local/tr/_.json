@@ -608,6 +608,7 @@
     "{var:1} (due {var:2}): {var:3} owed on average for {var:4} day(s), fee {var:5}": "{var:1} (vade {var:2}): ortalama {var:3} borç, {var:4} gün, vade farkı {var:5}",
     "{var:1} (filled by rules)": "{var:1} (kurallarla dolan)",
     "{var:1} (from the site setting)": "{var:1} (site ayarından)",
+    "{var:1} (guest, outside the team) commented on the prototype of {var:2}:": "{var:1} (konuk, ekip dışından), {var:2} prototipine yorum yazdı:",
     "{var:1} (its folder is gone)": "{var:1} (klasörü artık yok)",
     "{var:1} (its folder {var:2} is in the recycle bin)": "{var:1} ({var:2} klasörü geri dönüşüm kutusunda)",
     "{var:1} (last finished {var:2})": "{var:1} (son bitiş {var:2})",
