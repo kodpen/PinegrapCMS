@@ -52,7 +52,7 @@ function test_mail_failure_sentence_is_not_escaped()
 function test_mail_failure_senders_use_the_reason()
 {
 	$files = array(
-		'smtp_settings.php',
+		'includes/fn/mail_settings.php',
 		'includes/erp/mail.php',
 		'includes/erp/quotes.php',
 		'includes/erp/purchase_orders.php',

@@ -2176,6 +2176,19 @@ function ws_change_check($viewer, $type, $action, $record, $values)
                 if (($kind === 'email address') && ($answer !== '') && function_exists('validate_email_address') && !validate_email_address($answer)) {
                     return lang(array('string' => '{var:1} takes an e-mail address.', 'vars' => $name));
                 }
+
+                // A rows field takes only codes of its child collection's
+                // records that stand in no other record's list.
+                $field_id = (int) ($record['__answer_kinds'][$name]['id'] ?? 0);
+                $rows_kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds((int) ($record['page_id'] ?? 0)) : array();
+
+                if (is_array($record) && pg_coll_is_rows_field($field_id, $rows_kinds)) {
+                    $refusal = pg_coll_rows_outside_refusal($answer, $rows_kinds[$field_id]['reference_page_id'], (int) $record['id'], $field_id, (string) $name);
+
+                    if ($refusal !== '') {
+                        return $refusal;
+                    }
+                }
             }
 
             return '';

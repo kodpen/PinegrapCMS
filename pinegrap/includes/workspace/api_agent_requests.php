@@ -163,13 +163,25 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_agent_wake_schema(),
             'summary'     => 'Set the calling agent\'s scheduled wakes',
-            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel or on the Agents card.' . $only,
+            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel, on the Agents card or with POST /workspace/channels/{id}/agents/{agent_id}/wake.' . $only,
             'params'      => array(
                 array('name' => 'every', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => WS_AGENT_WAKE_EVERY_MAX),
                 array('name' => 'at', 'in' => 'body', 'type' => 'datetime'),
                 array('name' => 'off', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_WAKE_NOTE_MAX),
             ),
+        ),
+        array(
+            'id'          => 'workspace.agent_feedback.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/agent-feedback',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_agent_feedback_get',
+            'mcp'         => false,
+            'returns'     => ws_api_agent_feedback_schema(),
+            'summary'     => 'How people marked the calling agent\'s answers',
+            'description' => 'The person who asked or a manager of the channel may mark an answer of the agent right or wrong, with a short reason; one mark per answer, the last one stands. marks lists the newest ' . WS_AGENT_FEEDBACK_LIST_MAX . ' on answers that are still there and in channels the key reads (message_id is the answer); counts are the marks of the last 7 and 30 days by the time they were made.' . $only,
+            'params'      => array(),
         ),
         array(
             'id'          => 'workspace.agent_report.set',
@@ -197,8 +209,8 @@ function ws_api_agent_report_schema()
     return array(
         'handle'      => 'string',
         'model'       => 'string',
-        'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string?')),
-        'reported_at' => 'string?',
+        'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'datetime?')),
+        'reported_at' => 'datetime?',
     );
 }
 
@@ -271,7 +283,7 @@ function ws_api_agent_report_set($params)
 // What the wake routes return.
 function ws_api_agent_wake_schema()
 {
-    return array('handle' => 'string', 'every' => 'integer', 'next_at' => 'string?', 'note' => 'string');
+    return array('handle' => 'string', 'every' => 'integer', 'next_at' => 'datetime?', 'note' => 'string');
 }
 
 /**
@@ -297,10 +309,18 @@ function ws_api_agent_wake_get($params)
     api_ok(ws_api_agent_wake_present(ws_api_agent_caller()));
 }
 
-function ws_api_agent_wake_set($params)
+/**
+ * The every, at, off and note of a wake route as a /wake line's parse
+ * (ws_agent_wake_parse()), or the refusal: exactly one of every, at and
+ * off, and at a moment to come. The agent's own route and a person's
+ * channel route read their input the same way.
+ *
+ * @param array $params
+ * @param int   $now
+ * @return array action, every, at, note
+ */
+function ws_api_agent_wake_parsed($params, $now)
 {
-    $agent = ws_api_agent_caller();
-    $now = time();
     $given = array_values(array_filter(array('every', 'at', 'off'), function ($name) use ($params) {
         return isset($params[$name]) && ($params[$name] !== null) && ($params[$name] !== false);
     }));
@@ -311,11 +331,18 @@ function ws_api_agent_wake_set($params)
 
     $parsed = array('action' => $given[0], 'every' => (int) ($params['every'] ?? 0), 'at' => (int) ($params['at'] ?? 0), 'note' => trim((string) ($params['note'] ?? '')));
 
-    if (($parsed['action'] === 'at') && ($parsed['at'] <= $now)) {
+    if (($parsed['action'] === 'at') && ($parsed['at'] <= (int) $now)) {
         api_fail_validation(lang('That time has passed. Choose a time to come.'), 'at');
     }
 
-    $values = ws_agent_wake_values($parsed, $now);
+    return $parsed;
+}
+
+function ws_api_agent_wake_set($params)
+{
+    $agent = ws_api_agent_caller();
+    $now = time();
+    $values = ws_agent_wake_values(ws_api_agent_wake_parsed($params, $now), $now);
 
     api_dry_run_stop('set', 'workspace_agent_wake', ws_api_agent_wake_present(array('handle' => $agent['handle']) + $values));
 
@@ -834,4 +861,58 @@ function ws_api_agent_request_progress($params)
     }
 
     api_fail(409, 'already_claimed', lang('Another run is working on this request.'));
+}
+
+// What the feedback route returns.
+function ws_api_agent_feedback_schema()
+{
+    return array(
+        'handle' => 'string',
+        'counts' => array(
+            'days_7'  => array('right' => 'integer', 'wrong' => 'integer'),
+            'days_30' => array('right' => 'integer', 'wrong' => 'integer'),
+        ),
+        'marks'  => array(array('message_id' => 'integer', 'request_id' => 'integer', 'channel_id' => 'integer', 'verdict' => 'string', 'reason' => 'string', 'marked_at' => 'datetime')),
+    );
+}
+
+/**
+ * The calling agent's marks and their counts. The list leaves out a channel
+ * the key no longer reads; the counts are numbers about its own answers.
+ */
+function ws_api_agent_feedback_get($params)
+{
+    $agent = ws_api_agent_caller();
+    $viewer = ws_api_viewer();
+    $value = ws_agent_request_value($agent);
+    $now = time();
+    $channels = array();
+
+    $marks = array();
+
+    foreach (ws_agent_feedback_rows($value) as $row) {
+        $id = (int) $row['channel_id'];
+
+        if (!isset($channels[$id])) {
+            $channel = ws_channel($id);
+            $channels[$id] = $channel ? ws_can_read_channel($viewer, $channel) : false;
+        }
+
+        if ($channels[$id]) {
+            $marks[] = array(
+                'message_id' => (int) $row['message_id'],
+                'request_id' => (int) $row['request_id'],
+                'channel_id' => $id,
+                'verdict'    => (string) $row['verdict'],
+                'reason'     => (string) $row['reason'],
+                'marked_at'  => api_time($row['marked_at']),
+            );
+        }
+    }
+
+    api_ok(array(
+        'handle' => (string) $agent['handle'],
+        'counts' => ws_agent_feedback_tally(ws_agent_feedback_rows($value, $now - 30 * 86400, 100000), $now),
+        'marks'  => $marks,
+    ));
 }

@@ -67,7 +67,7 @@ function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
     $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue', 'pipeline', 'goals', 'notes', 'flows');
-    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
+    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops', 'recovery'));
     $built[] = 'ai';
     $built = array_merge($built, array('pins', 'perf'));
     $built[] = 'visitmap';
@@ -119,6 +119,7 @@ function pg_dashboard_v2_cards()
         'ops'        => $card(lang('Operations Desk'), 'bi-clipboard-check', 'shop', 'M', null, 'shop'),
         'orders'     => $card(lang('Orders'), 'bi-cart4', 'shop', 'S', null, 'shop'),
         'offers'     => $card(lang('Offers'), 'bi-tag', 'shop', 'S', null, 'shop'),
+        'recovery'   => $card(lang('Recovered carts'), 'bi-cart-check', 'shop', 'S', 2, 'shop_summary'),
         'fx'         => $card(lang('Exchange rates'), 'bi-currency-exchange', 'shop', 'S', null, 'shop'),
         // System
         'perf'       => $card(lang('Performance'), 'bi-speedometer2', 'system', 'S', null, 'perf'),

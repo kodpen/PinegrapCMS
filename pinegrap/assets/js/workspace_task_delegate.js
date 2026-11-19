@@ -45,8 +45,19 @@
 
     // The call that carries a run on, by its assistant; Claude's routine
     // runs on its own.
+    // A model agent's run is answered by the site's own engine, carried on
+    // as Pinegrap AI's; an application agent answers from its own side.
     function kickFor(agent) {
-        return (agent === 'ai') ? 'ws_ai_kick' : ((agent === 'mcp') ? 'ws_mcp_agent_kick' : '');
+        if ((agent === 'ai') || (String(agent || '').indexOf('model:') === 0)) {
+            return 'ws_ai_kick';
+        }
+
+        return (agent === 'mcp') ? 'ws_mcp_agent_kick' : '';
+    }
+
+    // Is a key a registry agent's (agent:<id>, model:<id>)?
+    function isAgentKey(key) {
+        return /^(agent|model):[1-9][0-9]*$/.test(String(key || ''));
     }
 
     // Server-rendered markup: escaped on the PHP side before it got here.
@@ -632,6 +643,11 @@
             return 'bi-cpu';
         }
 
+        // A registry agent (agent:<id>, model:<id>).
+        if (/^(agent|model):[1-9][0-9]*$/.test(String(task.delegate || ''))) {
+            return 'bi-robot';
+        }
+
         if (String(task.delegate).indexOf('mcp:') === 0) {
             return /^bi-[a-z0-9-]+$/.test(task.delegate_icon || '') ? task.delegate_icon : 'bi-plug';
         }
@@ -642,7 +658,16 @@
     function rowTag(container, task, h) {
         if (task.delegate_name) {
             var tag = h.el('span', 'ws-task-delegate-tag ms-3');
-            tag.appendChild(h.icon(delegateIcon(task), 'me-1'));
+
+            // A registry agent shows its own picture, as on its messages.
+            if (task.delegate_avatar && isAgentKey(task.delegate)) {
+                var holder = h.avatar({ avatar: task.delegate_avatar, name: task.delegate_name }, '1rem');
+                holder.classList.add('me-1');
+                tag.appendChild(holder);
+            } else {
+                tag.appendChild(h.icon(delegateIcon(task), 'me-1'));
+            }
+
             tag.appendChild(document.createTextNode(task.delegate_name));
             tag.title = h.t('dg_with', task.delegate_name);
             container.appendChild(tag);
@@ -665,5 +690,5 @@
         container.appendChild(tag);
     }
 
-    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag, delegateIcon: delegateIcon };
+    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag, delegateIcon: delegateIcon, kickFor: kickFor, isAgentKey: isAgentKey };
 })();

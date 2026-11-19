@@ -52,6 +52,21 @@ function ws_poll_is_asker($poll, $message, $viewer_id, $as_app = 0)
 }
 
 /**
+ * Did this person ask the poll with their own message? False on an
+ * application's poll, whose owner is its created_by but not its asker, so
+ * the box offers no change or take-back the change would refuse. Pure.
+ *
+ * @param array $poll           ws_polls row
+ * @param int   $viewer_id
+ * @param int   $message_app_id the application whose message the poll is, 0 for a person's
+ * @return bool
+ */
+function ws_poll_person_asked($poll, $viewer_id, $message_app_id)
+{
+    return ((int) $poll['created_by'] === (int) $viewer_id) && ((int) $message_app_id === 0);
+}
+
+/**
  * Was the poll taken back? Pure.
  *
  * @param array $poll ws_polls row
@@ -175,13 +190,14 @@ function ws_poll_withdraw($viewer, $poll, $as_app = 0)
 
 /**
  * The new poll an ask-again posts: what was sent over the old poll's
- * question, options (their parts, without ids), multiple and anonymous. The
- * closing moment is not carried over, as the old one's may have passed.
- * Pure.
+ * question, its picture, options (their parts, without ids), multiple and
+ * anonymous. The closing moment is not carried over, as the old one's may
+ * have passed. A picture sent replaces the old one; picture null sent
+ * leaves it out. Pure.
  *
- * @param array $old  question, options (parts), multiple, anonymous
+ * @param array $old  question, picture, options (parts), multiple, anonymous
  * @param array $sent what the caller sent; a key left out keeps the old value
- * @return array question, options, multiple, anonymous, closes_at
+ * @return array question, picture, options, multiple, anonymous, closes_at
  */
 function ws_poll_again_data($old, $sent)
 {
@@ -194,6 +210,7 @@ function ws_poll_again_data($old, $sent)
 
     return array(
         'question'  => array_key_exists('question', $sent) ? (string) $sent['question'] : (string) ($old['question'] ?? ''),
+        'picture'   => array_key_exists('picture', $sent) ? $sent['picture'] : ($old['picture'] ?? null),
         'options'   => array_key_exists('options', $sent) ? (array) $sent['options'] : $options,
         'multiple'  => array_key_exists('multiple', $sent) ? !empty($sent['multiple']) : !empty($old['multiple']),
         'anonymous' => array_key_exists('anonymous', $sent) ? !empty($sent['anonymous']) : !empty($old['anonymous']),
@@ -221,6 +238,7 @@ function ws_poll_again_check($viewer, $poll, $sent, $as_app = 0)
 
     $data = ws_poll_again_data(array(
         'question'  => (string) $checked['message']['body'],
+        'picture'   => ws_poll_picture_of_message($checked['message']),
         'options'   => array_values(ws_poll_parts_stored((int) $poll['id'])),
         'multiple'  => ((int) $poll['multiple'] === 1),
         'anonymous' => ((int) $poll['anonymous'] === 1),
@@ -238,7 +256,15 @@ function ws_poll_again_check($viewer, $poll, $sent, $as_app = 0)
         return array('ok' => false, 'error' => $stored['error'], 'field' => $stored['field'], 'data' => null, 'channel' => null);
     }
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'data' => $data, 'channel' => ws_channel($poll['channel_id']));
+    $channel = ws_channel($poll['channel_id']);
+    $data['picture'] = ws_poll_picture_normal($data['picture']);
+    $pictured = ws_poll_picture_check($viewer, $channel, $data['picture']);
+
+    if (!$pictured['ok']) {
+        return array('ok' => false, 'error' => $pictured['error'], 'field' => 'picture', 'data' => null, 'channel' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'data' => $data, 'channel' => $channel);
 }
 
 /**

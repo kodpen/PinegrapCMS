@@ -293,23 +293,32 @@ function ws_checklist_asks($body)
 
 /**
  * Whom an application's question rings: the people it mentions, or the
- * channel's owners when it mentions nobody. Each once, in order.
+ * channel's owners when none of them is left. Each once, in order. With
+ * $reads, only the people it accepts (team members who read the channel)
+ * count, before the choice: a question that mentions only people who cannot
+ * read the channel asks its owners, not nobody.
  *
- * @param int[] $mentioned user ids the message mentions
- * @param int[] $owners    user ids of the channel's owners
+ * @param int[]         $mentioned user ids the message mentions
+ * @param int[]         $owners    user ids of the channel's owners
+ * @param callable|null $reads     user id => may they be asked
  * @return int[]
  */
-function ws_question_ring_pick($mentioned, $owners)
+function ws_question_ring_pick($mentioned, $owners, $reads = null)
 {
-    $mentioned = array_values(array_unique(array_filter(array_map('intval', (array) $mentioned))));
+    $keep = function ($ids) use ($reads) {
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids))));
 
-    return $mentioned ?: array_values(array_unique(array_filter(array_map('intval', (array) $owners))));
+        return ($reads === null) ? $ids : array_values(array_filter($ids, $reads));
+    };
+
+    return $keep($mentioned) ?: $keep($owners);
 }
 
 /**
  * The people an application's question is asked of: those it mentions (a
  * department's members too), else the owners of the channel (of the channel
- * a discussion was started in). Only team members who read the channel.
+ * a discussion was started in). Only team members who read the channel, on
+ * both sides: when none of the mentioned people reads it, the owners do.
  *
  * @param array $channel
  * @param array $tokens ws_tokens() of the message
@@ -333,19 +342,20 @@ function ws_question_asked_ids($channel, $tokens)
         }
     }
 
+    // Only team members who read the channel are asked, and they are
+    // filtered before the choice, so the owners stand in when none of the
+    // mentioned people is left.
+    $reads = function ($user_id) use ($channel) {
+        return ws_is_team_member($user_id) && ws_can_read_channel(ws_rights_for_id($user_id), $channel);
+    };
+    $mentioned = ws_question_ring_pick($mentioned, array(), $reads);
+
     // A discussion has the owners of the channel it was started in.
     $place = (function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null) ?: $channel;
     $owners = $mentioned ? array() : array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
         WHERE channel_id = '" . (int) $place['id'] . "' AND role = 'owner'"));
-    $asked = array();
 
-    foreach (ws_question_ring_pick($mentioned, $owners) as $user_id) {
-        if (ws_is_team_member($user_id) && ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
-            $asked[] = (int) $user_id;
-        }
-    }
-
-    return $asked;
+    return ws_question_ring_pick($mentioned, $owners, $reads);
 }
 
 /**
@@ -670,7 +680,8 @@ function ws_poll_input($data)
  *
  * @param array $viewer
  * @param array $channel
- * @param array $data question, options (texts or objects, ws_poll_option_part()), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param array $data question, options (texts or objects, ws_poll_option_part()), multiple, anonymous, closes_at (timestamp, 0 = open until closed),
+ *                    picture (the question's own, poll_picture.php: name and bytes, or a kept file_id and file_name)
  * @param int   $app_id
  * @return array ok, error, field, message_id, poll_id
  */
@@ -698,13 +709,21 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         return $fail($stored['error'], $stored['field']);
     }
 
+    // The question's own picture, carried by its message (poll_picture.php).
+    $picture = ws_poll_picture_normal($data['picture'] ?? null);
+    $pictured = ws_poll_picture_check($viewer, $channel, $picture);
+
+    if (!$pictured['ok']) {
+        return $fail($pictured['error'], 'picture');
+    }
+
     // An application asking makes it an agent question (agent_question.php):
     // set here, never from the request, with no anonymous vote or closing time.
     $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
     $data = ws_agent_question_settings(array('multiple' => $data['multiple'] ?? 0, 'anonymous' => $data['anonymous'] ?? 0, 'closes_at' => $closes_at), $flag === 1);
     $closes_at = (int) $data['closes_at'];
 
-    $sent = ws_message_send($viewer, $channel, $checked['question'], array('app_id' => $app_id));
+    $sent = ws_poll_picture_send($viewer, $channel, $checked['question'], $picture, array('app_id' => $app_id));
 
     if (!$sent['ok']) {
         return $fail($sent['error'], 'question');
@@ -1085,9 +1104,12 @@ function ws_polls_map($message_ids, $viewer)
         $channel = ws_channel($poll['channel_id']);
         $withdrawn = ((int) ($poll['withdrawn_at'] ?? 0) > 0);
         $links = $again[$poll_id] ?? array('again_of' => 0, 'again_of_message' => 0, 'asked_again' => 0, 'asked_again_message' => 0);
-        // The person who asked; an agent's poll is taken back through its key.
-        $asker = ((int) $poll['created_by'] === (int) $viewer['id']) && (ws_message_app_id($poll['message_id']) === 0)
-            && ws_can_post_channel($viewer, $channel) && ws_poll_again_ready();
+        // The person who asked, with the question their own message; an
+        // application's poll is changed and taken back through its key, never
+        // by its owner (ws_poll_is_asker()).
+        $own_question = ws_poll_person_asked($poll, $viewer['id'], ws_message_app_id($poll['message_id']));
+        $can_post = ws_can_post_channel($viewer, $channel);
+        $asker = $own_question && $can_post && ws_poll_again_ready();
 
         // Asked of named people, settled by the first answer (agent_question.php).
         $question = ws_agent_question_map_fields($poll, $viewer);
@@ -1110,7 +1132,7 @@ function ws_polls_map($message_ids, $viewer)
             'can_vote'   => $can_vote && (!$question['agent_question'] || $question['can_answer']),
             'can_close'  => !$closed && !$withdrawn && !$question['agent_question'] && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
-            'can_edit'   => !$closed && !$withdrawn && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            'can_edit'   => !$closed && !$withdrawn && $own_question && $can_post,
             // Taken back and asked again (poll_again.php).
             'withdrawn'           => $withdrawn,
             'withdrawn_at'        => (int) ($poll['withdrawn_at'] ?? 0),

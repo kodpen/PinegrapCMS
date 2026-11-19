@@ -404,12 +404,26 @@ function ws_command_wake($viewer, $channel, $text)
     $values = ws_agent_wake_values($parsed, time());
     ws_agent_wake_save((int) $agent['id'], $values);
 
-    $id = ws_message_system((int) $channel['id'], lang(array(
+    return array('type' => 'done', 'message_id' => ws_agent_wake_system_line($viewer, $channel, $agent, $values));
+}
+
+/**
+ * The system line a person's change of an agent's schedule leaves in the
+ * channel, naming who made it, so the channel keeps the trail: /wake and
+ * the API's channel wake route write the same line.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $agent  handle
+ * @param array $values ws_agent_wake_values()
+ * @return int the message id
+ */
+function ws_agent_wake_system_line($viewer, $channel, $agent, $values)
+{
+    return (int) ws_message_system((int) $channel['id'], lang(array(
         'string' => '{var:1} set the wakes: {var:2}',
         'vars'   => array('<@user:' . (int) $viewer['id'] . '>', ws_agent_wake_sentence(array('handle' => $agent['handle']) + $values)),
     )));
-
-    return array('type' => 'done', 'message_id' => $id);
 }
 
 /* ---------------------------------------------------------------------------

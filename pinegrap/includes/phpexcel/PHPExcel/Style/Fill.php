@@ -79,6 +79,20 @@ class PHPExcel_Style_Fill extends PHPExcel_Style_Supervisor implements PHPExcel_
     protected $endColor;
 
     /**
+     * Colour index the Excel5 reader holds until it has read the palette
+     *
+     * @var int
+     */
+    public $startcolorIndex;
+
+    /**
+     * Colour index the Excel5 reader holds until it has read the palette
+     *
+     * @var int
+     */
+    public $endcolorIndex;
+
+    /**
      * Create a new PHPExcel_Style_Fill
      *
      * @param    boolean    $isSupervisor    Flag indicating if this is a supervisor or not
@@ -256,7 +270,7 @@ class PHPExcel_Style_Fill extends PHPExcel_Style_Supervisor implements PHPExcel_
      * @throws    PHPExcel_Exception
      * @return PHPExcel_Style_Fill
      */
-    public function setStartColor(PHPExcel_Style_Color $pValue = null)
+    public function setStartColor(?PHPExcel_Style_Color $pValue = null)
     {
         // make sure parameter is a real color and not a supervisor
         $color = $pValue->getIsSupervisor() ? $pValue->getSharedComponent() : $pValue;
@@ -287,7 +301,7 @@ class PHPExcel_Style_Fill extends PHPExcel_Style_Supervisor implements PHPExcel_
      * @throws    PHPExcel_Exception
      * @return PHPExcel_Style_Fill
      */
-    public function setEndColor(PHPExcel_Style_Color $pValue = null)
+    public function setEndColor(?PHPExcel_Style_Color $pValue = null)
     {
         // make sure parameter is a real color and not a supervisor
         $color = $pValue->getIsSupervisor() ? $pValue->getSharedComponent() : $pValue;

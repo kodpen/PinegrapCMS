@@ -80,8 +80,41 @@ function _pg_offer_condition_types()
         $types['usage limit'] = array(
             'label' => lang('Limit how often the offer is used'),
             'icon'  => 'bi-hourglass-split');
+        $types['contact group'] = array(
+            'label' => lang('The customer is in the contact group'),
+            'icon'  => 'bi-people');
     }
     return $types;
+}
+
+// The contact groups an offer can be for, by name, read once per request.
+function _pg_offer_contact_groups()
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = array();
+        foreach ((array) db_items("SELECT id, name FROM contact_groups ORDER BY name") as $row) {
+            $cache[] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+        }
+    }
+    return $cache;
+}
+
+// A contact group's name, '' for one that no longer exists.
+function _pg_offer_contact_group_label($group_id)
+{
+    foreach (_pg_offer_contact_groups() as $group) {
+        if ($group['id'] == (int) $group_id) {
+            return $group['name'];
+        }
+    }
+    return '';
+}
+
+// The editor's shape of a stored "contact group" row: int_value is the group.
+function _pg_offer_contact_group_condition($row)
+{
+    return array('type' => 'contact group', 'group_id' => max(0, (int) $row['int_value']));
 }
 
 // offer_actions.discount_product_group_id arrived with 2026.4.4 too. A site
@@ -382,6 +415,8 @@ function _pg_offer_load($offer_id)
                         'type' => 'new customer',
                         'mode' => ($row['text_value'] != '') ? $row['text_value'] : 'no_orders',
                         'days' => ((int) $row['int_value'] > 0) ? (int) $row['int_value'] : 30);
+                } elseif ($row['type'] == 'contact group') {
+                    $conditions[] = _pg_offer_contact_group_condition($row);
                 }
             }
         }
@@ -876,6 +911,11 @@ function _pg_offer_validate($payload)
             } else if ($condition['days'] < 1) {
                 $condition['days'] = 30;
             }
+        } elseif ($type == 'contact group') {
+            $condition['group_id'] = isset($condition_in['group_id']) ? (int) $condition_in['group_id'] : 0;
+            if (($condition['group_id'] <= 0) || (_pg_offer_contact_group_label($condition['group_id']) === '')) {
+                $errors[$key . '.group_id'] = lang('Please select a contact group.');
+            }
         }
         $conditions[] = $condition;
     }
@@ -1220,7 +1260,7 @@ function _pg_offer_cart_conditions($conditions)
 {
     $kept = array();
     foreach ($conditions as $condition) {
-        if (($condition['type'] != 'new customer') && ($condition['type'] != 'usage limit')) {
+        if (!in_array($condition['type'], array('new customer', 'usage limit', 'contact group'))) {
             $kept[] = $condition;
         }
     }
@@ -1275,6 +1315,13 @@ function _pg_offer_conditions_write($offer_id, $conditions, $actions = array())
                     'new customer',
                     '" . e((int) $condition['days']) . "',
                     '" . e($condition['mode']) . "')");
+        } elseif ($condition['type'] == 'contact group') {
+            db("INSERT INTO offer_conditions (offer_id, type, int_value, text_value)
+                VALUES (
+                    '" . e($offer_id) . "',
+                    'contact group',
+                    '" . e((int) $condition['group_id']) . "',
+                    '')");
         }
     }
 }
@@ -1609,6 +1656,9 @@ function _pg_offer_conditions_text($conditions, $products)
             $parts[] = _pg_offer_usage_limit_text($condition);
         } elseif ($condition['type'] == 'new customer') {
             $parts[] = _pg_offer_new_customer_text($condition);
+        } elseif ($condition['type'] == 'contact group') {
+            $name = _pg_offer_contact_group_label($condition['group_id']);
+            $parts[] = lang(array('string' => 'the customer is in {var:1}', 'vars' => ($name != '') ? $name : '?'));
         }
     }
     if (!$parts) {
@@ -1718,6 +1768,10 @@ function _pg_offer_action_text($action, $products, $shipping_methods)
 // Short forms for the chips on the list screen.
 function _pg_offer_condition_chip($condition, $products)
 {
+    if ($condition['type'] == 'contact group') {
+        $name = _pg_offer_contact_group_label($condition['group_id']);
+        return ($name != '') ? $name : '?';
+    }
     if ($condition['type'] == 'cart quantity') {
         return lang(array('string' => '{var:1} item(s) in cart', 'vars' => (int) $condition['quantity']));
     }
@@ -1921,6 +1975,8 @@ function _pg_offer_sentences($offer_ids)
                         'type' => 'new customer',
                         'mode' => ($condition_row['text_value'] != '') ? $condition_row['text_value'] : 'no_orders',
                         'days' => ((int) $condition_row['int_value'] > 0) ? (int) $condition_row['int_value'] : 30);
+                } elseif ($condition_row['type'] == 'contact group') {
+                    $conditions[] = _pg_offer_contact_group_condition($condition_row);
                 }
             }
         }
@@ -2001,6 +2057,9 @@ function _pg_offer_is_incomplete($state)
             return true;
         }
         if (($condition['type'] == 'usage limit') && ($condition['total_limit'] < 1) && ($condition['customer_limit'] < 1)) {
+            return true;
+        }
+        if (($condition['type'] == 'contact group') && ($condition['group_id'] <= 0)) {
             return true;
         }
     }

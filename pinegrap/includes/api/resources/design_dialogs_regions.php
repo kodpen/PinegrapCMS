@@ -39,7 +39,8 @@ function api_design_auto_dialog_present($row) {
 		'height'     => (int)$row['height'],
 		'delay'      => (int)$row['delay'],
 		'frequency'  => (int)$row['frequency'],
-		'page'       => (string)$row['page'],
+		'page'       => (string)$row['page']
+	) + pg_auto_dialog_open_settings($row) + array(
 		'created_at' => api_time($row['created_timestamp']),
 		'updated_at' => api_time($row['last_modified_timestamp'])
 	);
@@ -58,8 +59,12 @@ function api_design_auto_dialog_schema() {
 		'delay'      => 'integer',
 		'frequency'  => 'integer',
 		'page'       => 'string',
-		'created_at' => 'string?',
-		'updated_at' => 'string?'
+		'open_on'    => 'string',
+		'open_scroll' => 'integer',
+		'audience'   => 'string',
+		'place'      => 'string',
+		'created_at' => 'datetime?',
+		'updated_at' => 'datetime?'
 	);
 
 }
@@ -156,6 +161,14 @@ function api_design_auto_dialog_values($row, $params) {
 
 	}
 
+	// When, to whom and where it opens: the stored settings (or a new row's
+	// defaults) with the ones sent laid over; checked in the prepare step.
+	foreach (pg_auto_dialog_open_settings(($row === null) ? array() : $row) as $field => $value) {
+
+		$values[$field] = array_key_exists($field, $params) ? $params[$field] : $value;
+
+	}
+
 	return $values;
 
 }
@@ -215,6 +228,26 @@ function api_design_auto_dialog_prepare($params, $row) {
 
 	}
 
+	// The open settings as the screen offers them (422): a value it does not
+	// offer, a scroll share outside 1 to 100. Sent as null or '', a setting
+	// is its default.
+	$open = array();
+
+	foreach (array('open_on', 'open_scroll', 'audience', 'place') as $field) {
+
+		$sent = $values[$field];
+
+		// A list, an object or a boolean is no value the screen offers.
+		$open[$field] = ($sent === null) ? '' : ((is_scalar($sent) && !is_bool($sent)) ? (string)$sent : array());
+
+	}
+
+	foreach (pg_auto_dialog_form_open_problems($open) as $field => $problem) {
+
+		api_fail_validation($problem, $field);
+
+	}
+
 	$taken = pg_auto_dialog_name_in_use($values['name'], ($row === null) ? null : $id);
 
 	if ($taken === null) {
@@ -229,6 +262,12 @@ function api_design_auto_dialog_prepare($params, $row) {
 
 	}
 
+	foreach (pg_auto_dialog_open_settings($open) as $field => $value) {
+
+		$values[$field] = $value;
+
+	}
+
 	return array('id' => $id, 'values' => $values);
 
 }
@@ -237,7 +276,11 @@ function api_design_auto_dialog_commit($prepared) {
 
 	$app = api_current_app();
 
-	$saved = pg_auto_dialog_save($prepared['id'], $prepared['values'], (int)$app['owner']['id']);
+	$values = $prepared['values'];
+
+	$open = array_intersect_key($values, pg_auto_dialog_open_settings(array()));
+
+	$saved = pg_auto_dialog_save($prepared['id'], array_diff_key($values, $open), (int)$app['owner']['id'], $open);
 
 	if ($saved <= 0) {
 
@@ -330,7 +373,7 @@ function api_design_common_region_schema() {
 		'tag'                 => 'string',
 		'content'             => 'string',
 		'shared_component_id' => 'integer?',
-		'updated_at'          => 'string?'
+		'updated_at'          => 'datetime?'
 	);
 
 }

@@ -1129,14 +1129,17 @@ function pg_whatsapp_queue_row($to, $template, $options, $now)
  *
  * Components that hold PG_WHATSAPP_OFFER_PLACEHOLDER get the template's
  * offer code here: the offer's own code, or a single-use key made for this
- * number (its id into key_code_id), so a retry sends the same code.
+ * number (its id into key_code_id), so a retry sends the same code. A key
+ * sent to a left cart (options order_id, else the contact_id's left cart)
+ * is a touch of it (pg_cart_recovery_whatsapp_key_sent()).
  *
  * db_q() rather than db(): a request that only wanted to send a message must
  * not end because the queue refused a row.
  *
  * @param string $to
  * @param array  $template pg_whatsapp_queue_row()
- * @param array  $options  pg_whatsapp_queue_row()
+ * @param array  $options  pg_whatsapp_queue_row(); order_id, the left cart
+ *                         the message is about (0 or missing for none)
  * @return array ok, row (the queue's id), duplicate (a message with this
  *               reference was already queued; row is that one), error
  */
@@ -1214,7 +1217,15 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
         $values);
 
     if ($result !== false) {
-        return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');
+        $queued = (int) mysqli_insert_id(db::$con);
+
+        // A single-use key sent to a left cart is a touch of that cart.
+        if (($row['key_code_id'] > 0) && function_exists('pg_cart_recovery_whatsapp_key_sent')) {
+            pg_cart_recovery_whatsapp_key_sent(isset($options['order_id']) ? (int) $options['order_id'] : 0,
+                $row['contact_id'], $row['template_id']);
+        }
+
+        return array('ok' => true, 'row' => $queued, 'duplicate' => false, 'error' => '');
     }
 
     $errno = (int) mysqli_errno(db::$con);

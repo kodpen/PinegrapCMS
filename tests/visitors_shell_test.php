@@ -195,7 +195,7 @@ function test_visitors_anchor_avoids_the_shells_ids()
 function test_visitors_sections_order_and_files()
 {
 	pg_assert_same(
-		array('alerts', 'traffic', 'conversions', 'sources', 'content', 'site_search', 'google', 'pages', 'speed', 'ai', 'places'),
+		array('alerts', 'traffic', 'conversions', 'cart_recovery', 'sources', 'content', 'site_search', 'google', 'pages', 'speed', 'clicks', 'ai', 'places'),
 		array_keys(pg_visitors_sections())
 	);
 

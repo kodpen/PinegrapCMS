@@ -18,7 +18,7 @@ description: Gift cards on cancel and restore, REFUND ACTION REQUIRED for cards 
 - `refund_status` keeps what the payment step reported (a successful void stays `refunded`); the gift cards set `manual_required` only when the payment step left no outcome. `orders.total` has the gift card part taken off already (#733). Crediting the card automatically would need restore to take it again from a balance that may be spent; not done.
 
 ## How much does a cancelled order still owe?
-- `pg_order_cancel_refund_owed($row)`: `payment` = `total - refunded_amount` (min 0), but 0 when cancelled before the payment arrived (`Offline Payment` or a pending-payment method with `paid_at = 0`; no `paid_at` column counts as paid); `gift_card` = `gift_card_discount`; `total` both. `pg_order_cancel_refund_owed_sql()` is the SUM form.
+- `pg_order_cancel_refund_owed($row)`: `payment` = `total - refunded_amount` (min 0), but 0 when cancelled before the payment arrived (`Offline Payment` or a pending-payment method with `paid_at = 0`; no `paid_at` column counts as paid); `gift_card` = what the cards gave less gift card returns, never `gift_card_discount` (`order-gift-card-owed.md`, #10260); `total` both. `pg_order_cancel_refund_owed_sql()` is the SUM form.
 - Read by the view_order.php banner, dialog, provider sentence (only when `payment > 0` or no gift card part) and cancel notice, cancel_order.php, the orders list Refund Pending card and the dashboard lane. The cancel payment plan is unchanged. Fixed #4161 (PR #4221): an unpaid transfer showed total + gift card and the provider sentence; list and dashboard summed `total`.
 
 ## How do order log lines name the order?

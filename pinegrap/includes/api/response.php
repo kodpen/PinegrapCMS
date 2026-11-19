@@ -38,6 +38,7 @@ function api_status_text($code) {
 		405 => 'Method Not Allowed',
 		409 => 'Conflict',
 		410 => 'Gone',
+		412 => 'Precondition Failed',
 		413 => 'Payload Too Large',
 		416 => 'Range Not Satisfiable',
 		422 => 'Unprocessable Entity',
@@ -54,6 +55,14 @@ function api_status_text($code) {
 // is what guarantees the log line is written exactly once and that no handler
 // can return without one.
 function api_send($status_code, $body, $error_code = '') {
+
+	// An answer read inside this request (api_current_etag()) is handed back
+	// before anything is printed, sent or logged.
+	if (api_send_capture()) {
+
+		throw new ApiAnswerCaptured($status_code, $body);
+
+	}
 
 	// Anything the shared code printed on the way here - a notice out of
 	// functions.php, a stray warning - is in the buffer and would sit in front
@@ -140,7 +149,7 @@ function api_send($status_code, $body, $error_code = '') {
 
 	if ($read) {
 
-		$etag = 'W/"' . substr(sha1((string)$json), 0, 32) . '"';
+		$etag = api_etag_of_json((string)$json);
 
 		api_extra_headers('ETag', $etag);
 
@@ -151,6 +160,32 @@ function api_send($status_code, $body, $error_code = '') {
 		}
 
 	}
+
+	// A new record's address, where a GET route reads it.
+	$extra = api_extra_headers();
+
+	if (($status_code === 201) && !isset($extra['Location'])) {
+
+		$location = api_location_path(api_request_path(), $body, api_get_route_patterns());
+
+		if ($location !== '') {
+
+			api_extra_headers('Location', api_openapi_base_url() . $location);
+
+		}
+
+	}
+
+	// The language of error.message (api/api-meta-language-timezone.md).
+	$language = function_exists('api_text_language') ? api_answer_language($body, api_text_language()) : '';
+
+	if ($language !== '') {
+
+		api_extra_headers('Content-Language', $language);
+
+	}
+
+	$head = api_request_is_head();
 
 	if (!headers_sent()) {
 
@@ -164,7 +199,14 @@ function api_send($status_code, $body, $error_code = '') {
 
 		pg_send_nosniff();
 
-		foreach (api_extra_headers() as $name => $value) {
+		// HEAD answers the length the GET body would have.
+		if ($head && ($status_code !== 204) && ($status_code !== 304)) {
+
+			header('Content-Length: ' . strlen((string)$json));
+
+		}
+
+		foreach (api_with_exposed_headers(api_extra_headers()) as $name => $value) {
 
 			header($name . ': ' . $value);
 
@@ -186,7 +228,7 @@ function api_send($status_code, $body, $error_code = '') {
 
 	api_log_request($status_code, $error_code);
 
-	if (($status_code !== 204) && ($status_code !== 304)) {
+	if (($status_code !== 204) && ($status_code !== 304) && !$head) {
 
 		echo $json;
 
@@ -206,6 +248,48 @@ function api_send($status_code, $body, $error_code = '') {
 function api_json_encode($body) {
 
 	return pg_json_encode_answer($body);
+
+}
+
+// While on, api_send() throws its answer as an ApiAnswerCaptured instead of
+// answering: a GET route is run inside an update to read the record's current
+// ETag (includes/api/preconditions.php).
+function api_send_capture($on = null) {
+
+	static $capturing = false;
+
+	if ($on !== null) {
+
+		$capturing = (bool)$on;
+
+	}
+
+	return $capturing;
+
+}
+
+class ApiAnswerCaptured extends Exception {
+
+	public $status;
+
+	public $body;
+
+	public function __construct($status, $body) {
+
+		parent::__construct('HTTP ' . (int)$status);
+
+		$this->status = (int)$status;
+
+		$this->body = $body;
+
+	}
+
+}
+
+// The weak ETag of a JSON answer: a digest of the exact bytes sent.
+function api_etag_of_json($json) {
+
+	return 'W/"' . substr(sha1((string)$json), 0, 32) . '"';
 
 }
 
@@ -381,7 +465,11 @@ function api_send_html($status_code, $html) {
 
 	api_log_request($status_code, '');
 
-	echo $html;
+	if (!api_request_is_head()) {
+
+		echo $html;
+
+	}
 
 	exit();
 
@@ -493,6 +581,12 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 	api_log_request($status_code, '');
 
+	if (api_request_is_head()) {
+
+		exit();
+
+	}
+
 	if ($status_code === 200) {
 
 		readfile($path);
@@ -580,8 +674,10 @@ function api_ok_list($rows, $limit, $next_cursor = null, $total = null, $extra =
 }
 
 // The only way to fail. $code is the stable machine identifier, $message the
-// translated sentence, $field the offending input when there is one.
-function api_fail($status_code, $code, $message, $field = null) {
+// translated sentence, $field the offending input when there is one, $errors
+// every refused field when the router found more than one way the call was
+// wrong (api_fail_field_errors()).
+function api_fail($status_code, $code, $message, $field = null, $errors = null) {
 
 	$error = array(
 		'code'       => $code,
@@ -592,6 +688,12 @@ function api_fail($status_code, $code, $message, $field = null) {
 	if ($field !== null) {
 
 		$error['field'] = $field;
+
+	}
+
+	if (is_array($errors) && !empty($errors)) {
+
+		$error['errors'] = array_values($errors);
 
 	}
 
@@ -643,13 +745,22 @@ function api_fail_unauthorized($message = '') {
 	// would hang on a mistyped secret. A request that identifies itself as
 	// script-made is therefore answered without it; a command-line client or a
 	// generated SDK never sends that header and keeps the challenge.
-	if (strtolower(trim(api_header('X-Requested-With'))) !== 'xmlhttprequest') {
+	api_basic_challenge();
+
+	api_fail(401, 'unauthorized', $message);
+
+}
+
+// The Basic challenge on a 401, unless the call is script-made
+// (api_basic_challenge_wanted()). A Bearer challenge api_fail() adds while
+// OAuth is on takes its place.
+function api_basic_challenge() {
+
+	if (api_basic_challenge_wanted(api_header('X-Requested-With'))) {
 
 		api_extra_headers('WWW-Authenticate', 'Basic realm="Pinegrap API"');
 
 	}
-
-	api_fail(401, 'unauthorized', $message);
 
 }
 

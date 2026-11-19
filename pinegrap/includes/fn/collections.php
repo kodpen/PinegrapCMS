@@ -469,9 +469,11 @@ function pg_coll_ready()
  * types each one is given to. A text, a rich text, a date, a file or an
  * option set is the field's type itself; these say what the type cannot:
  * a number, an image, a reference to another form's records, a product, a
- * page of the site (its id) or the record's address name (a slug, read by
- * update_submitted_form_address_name() before the Title field). The
- * editor's twin is _CF_KINDS in style_designer.js.
+ * page of the site (its id), the record's address name (a slug, read by
+ * update_submitted_form_address_name() before the Title field) or the
+ * record's own rows, kept as records of a child collection whose codes the
+ * field holds in order (includes/fn/collection_rows.php). The editor's twin
+ * is _CF_KINDS in style_designer.js.
  *
  * @return array kind => field types
  */
@@ -484,6 +486,7 @@ function pg_coll_kinds()
         'product'   => array('pick list'),
         'page'      => array('pick list'),
         'slug'      => array('text box'),
+        'rows'      => array('text box'),
     );
 }
 
@@ -542,9 +545,11 @@ function pg_coll_address_field($rows)
 }
 
 /**
- * The form a reference field points into, as written: a positive page id
- * for a field of kind 'reference', else 0. Whether that page holds a form
- * is the caller's check (pg_coll_reference_target()).
+ * The form a reference field points into, or the child collection a rows
+ * field keeps its rows in, as written: a positive page id for a field of
+ * kind 'reference' or 'rows', else 0. Whether that page holds a form is the
+ * caller's check (pg_coll_reference_target()); whether a rows field may
+ * use it is pg_coll_rows_spec()'s.
  *
  * @param string $kind pg_coll_field_kind()
  * @param mixed  $page_id
@@ -552,7 +557,7 @@ function pg_coll_address_field($rows)
  */
 function pg_coll_field_reference($kind, $page_id)
 {
-    if ($kind !== 'reference') return 0;
+    if ($kind !== 'reference' && $kind !== 'rows') return 0;
     if (is_int($page_id)) return max(0, $page_id);
     if (is_string($page_id) && ctype_digit($page_id)) return (int)$page_id;
     return 0;
@@ -854,7 +859,8 @@ function pg_coll_field_kinds($page_id)
  * valid one is stored as pg_coll_number_value() writes it), an image field
  * given another file, a reference to a record the form it points into does
  * not have, a product or a page the visitor may not pick
- * (pg_coll_kind_options()). Run after the field's own checks; a field
+ * (pg_coll_kind_options()), a rows field naming what is not a record of its
+ * child collection (pg_coll_rows_value_ok()). Run after the field's own checks; a field
  * already marked is left alone.
  *
  * @param liveform $liveform
@@ -877,6 +883,16 @@ function pg_coll_check_field($liveform, $field, $kinds)
     }
 
     $value = $liveform->get_field_value($field['id']);
+
+    // A rows field holds codes of its child collection's records, in order,
+    // at most pg_coll_rows_max(); its rows editor writes them through
+    // pg_coll_rows_write().
+    if ($kind === 'rows') {
+        if (!pg_coll_rows_value_ok($value, (int)$kinds[$id]['reference_page_id'])) {
+            $liveform->mark_error($field['id'], lang(array('string' => 'Please keep only rows of this record in {var:1}', 'vars' => $label)));
+        }
+        return;
+    }
 
     if ($kind === 'number') {
         $number = pg_coll_number_value(is_array($value) ? '' : (string)$value);
@@ -984,3 +1000,6 @@ function pg_coll_reference_lookup($page_id, $value)
     $title = trim((string)$row['title']);
     return array('code' => $code, 'label' => ($title !== '') ? $title : $code);
 }
+
+// A rows field's spec, its records in order and the writer of a posted list.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/collection_rows.php');

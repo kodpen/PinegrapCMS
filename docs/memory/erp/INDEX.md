@@ -70,9 +70,11 @@
 - erp-invoice-screen-layout.md: Invoice create and draft, new quote and new purchase order screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.
-- erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the carrier, the payment type codes, and the open test-environment refusal.
+- erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the payment date format, the carrier and its title, the payment type codes.
 - erp-isbasi-invoice-payload.md: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes. [decision: here]
 - erp-isbasi-poll-documents-screens.md: İşbaşı poll status mapping, fetch_document pitfalls and the e-Arşiv portal printer, taking a document back, the invoice card and list column, the edoc_changed event, 4.62 schema.
+- erp-isbasi-product-card.md: How İşbaşı keeps a product card per item code and reads the withholding from it, and why a withholding line's item code names its withholding (2026-11-17).
+- erp-isbasi-sales-return.md: The İşbaşı sales return endpoint and body found in the test environment (2026-11-17), why the driver still sends no return, and what Logo was asked.
 - erp-late-fee.md: ERP late payment fee (10.61): the rate setting, the pure day-by-day calculation, what lowers what is owed, draft-only writing, late_fee_through so no day is charged twice, the API.
 - erp-line-quantity-places.md: Line quantities are priced at the four places they are stored with: erp_quantity_round(), erp_decimal_units() (float units, 32-bit safe), the editor's quantityRound(), the e-invoice inbox fold.
 - erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version and width, the editor, the checkout (#1329).
@@ -83,6 +85,7 @@
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51, 4.64 district and postcode) and extra document data.
 - erp-module-basics.md: ERP module switch and gate areas, the four permission columns, defensive constants, why tables always install, step names, menu slot 22 and titles, naming traps, where open ERP work is tracked.
 - erp-money-and-currency.md: ERP money storage (integer minor units), the single rounding point in money.php, tax-inclusive splits, home-currency rule, *_base columns, opt-in FX switch, rate history and the fx_diff ledger line.
+- erp-money-overflow.md: ERP amounts too large for an integer: the typed figure, the exchange rate bound and the home-currency total bound, checked where a document is saved or issued
 - erp-negative-price-lines.md: An order line of a product priced below zero: how the checkout, the ERP invoice, ERP returns and Paraşüt treat it (Paraşüt refuses it, #1297), and where such a line can still come from
 - erp-no-till-hint.md: What the ERP till pickers say when no usable till is set up (erp_no_till_hint()): the screens that call it, the transfer and cheque variants, why the save's refusal texts stay.
 - erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live. [decision: decisions-made-product.md]
@@ -149,6 +152,7 @@
 - erp-return-screen.md: Which invoice the return screen opens for (erp_return_refusal(): issued invoices only) and how it writes quantities and fits a phone (PR #5708).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays. [decision: decisions-made-product-12.md]
+- erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public [decision: here]
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
 - erp-stock-return-cost-rounding.md: A line returned in parts takes back exactly the cost and quantity its stock move recorded: each return's share is the difference of rounded running totals.

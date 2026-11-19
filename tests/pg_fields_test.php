@@ -631,7 +631,8 @@ function main() {
         ['input', { id: 'd', 'data-pg-date': '', value: '5/3/2026', 'class': 'form-control' }],
         ['input', { id: 'dt', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM', 'class': 'form-control form-control-sm' }],
         ['input', { id: 't', 'data-pg-time': '', value: '5:30 PM', tabindex: '3' }],
-        ['div', { id: 'drw', 'class': 'drawer' }]
+        ['div', { id: 'drw', 'class': 'drawer' }],
+        ['input', { id: 'inl', 'data-pg-date': '', 'data-pg-calendar-inline': '', value: '3/4/2027' }]
     ] });
     var drawerField = dp.doc.create('input', { id: 'ad', 'data-pg-date': '', value: '1/2/2027' });
     dp.doc.querySelector('#drw').appendChild(drawerField);
@@ -736,6 +737,10 @@ function main() {
     out.dp_drawer.value = drawerField.value;
     dp.win.pgFields.destroy(drawerField);
     out.dp_drawer.after = drawerField.nextSibling === null;
+    // A field that asks for it (a dialog too short for the popup) has its
+    // calendar drawn after it as in a drawer.
+    var inl = q('inl').nextSibling;
+    out.dp_inline = { wrap: inl ? inl.className : '', popup: inl && inl.children[0] ? inl.children[0].instance.opts.inputMode : null };
     // destroy() of a popup calendar puts the field itself back, not the
     // library's copy of it.
     var dParent = q('d').parentNode, dIndex = dParent.children.indexOf(q('d'));
@@ -1142,7 +1147,7 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 		'each hook once, a time field on the calendar too, the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same('bootstrap-5', $r['select2_theme'], 'on a site page a server-searched combobox is a select2 as before');
-	pg_assert_same(array('en', 0, true, array('2026-10-26'), false, 9, 2026, 'system'), $r['date_options'], 'no language on the tag: English, Sunday first; a popup on the stored date parsed by us, its month shown; a second click keeps the day; the system theme outside a data-bs-theme');
+	pg_assert_same(array('en', 0, true, array('2026-10-26'), false, 9, 2026, 'light'), $r['date_options'], 'no language on the tag: English, Sunday first; a popup on the stored date parsed by us, its month shown; a second click keeps the day; light outside a data-bs-theme, never the system');
 	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => array(null, null), 'calls' => 0), $r['no_library'], 'no library: a plain field');
@@ -1360,8 +1365,8 @@ function test_pg_fields_dates_on_the_calendar_control()
 
 	pg_assert_same(
 		array(
-			'calls' => array('calendar:d', 'calendar:form-control pg-datetime-box form-control-sm', 'calendar:form-control pg-time-box', 'calendar:'),
-			'options' => array('tr', 1, true, array('2026-03-05'), 2, 2026, 'dark', '[data-bs-theme]'),
+			'calls' => array('calendar:d', 'calendar:form-control pg-datetime-box form-control-sm', 'calendar:form-control pg-time-box', 'calendar:', 'calendar:'),
+			'options' => array('tr', 1, true, array('2026-03-05'), 2, 2026, 'dark', ''),
 			'value' => '5/3/2026',
 		),
 		$r['dp_draw'],
@@ -1419,6 +1424,7 @@ function test_pg_fields_dates_on_the_calendar_control()
 		'destroy() leaves the field itself in its place, visible with its own tab order and value'
 	);
 	pg_assert_same(array('wrap' => 'pg-date-inline', 'popup' => false, 'value' => '9/2/2027', 'after' => true), $r['dp_drawer'], 'in a drawer the calendar is drawn open after the field');
+	pg_assert_same(array('wrap' => 'pg-date-inline', 'popup' => false), $r['dp_inline'], 'a field with data-pg-calendar-inline has its calendar after it too');
 	pg_assert_same(
 		array('tags' => array('/lib/vcp.js'), 'before' => false, 'after' => 'date', 'calls' => array('calendar:ld')),
 		$r['dp_late'],

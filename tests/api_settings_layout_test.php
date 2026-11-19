@@ -120,7 +120,7 @@ function test_api_settings_new_dialog_kind_is_a_named_choice_group()
 		pg_assert_contains('id="n_kind_' . $kind . '" aria-describedby="n_kind_' . $kind . '_help"', $dialog, $kind . ' is described by its help text');
 		pg_assert_contains('<div class="form-text mt-0" id="n_kind_' . $kind . '_help">', $dialog, $kind . ' help text is a form text');
 	}
-	pg_assert_true(substr_count($dialog, '<div class="form-field form-field-card">') === 3, 'each kind is a choice card');
+	pg_assert_true(substr_count($dialog, '<div class="form-field form-field-card">') === 5, 'each kind and each starting point is a choice card');
 	pg_assert_contains('<div role="group" aria-labelledby="n_scope_title">', $dialog, 'the permission rows are a group named by their title');
 	pg_assert_contains('id="n_scope_title"', $dialog);
 }

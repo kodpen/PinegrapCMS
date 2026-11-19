@@ -80,6 +80,8 @@ function test_ws_api_wtables_routes()
 		'workspace.table_rows.delete_post'    => array('POST', '/workspace/tables/{id}/rows/{row_id}/delete', 'workspace:write'),
 		'workspace.table_rows.deleted'        => array('GET', '/workspace/tables/{id}/deleted-rows', 'workspace:read'),
 		'workspace.table_rows.restore'        => array('POST', '/workspace/tables/{id}/deleted-rows/{bin_id}/restore', 'workspace:write'),
+		'workspace.table_rows.purge'          => array('POST', '/workspace/tables/{id}/deleted-rows/{bin_id}/delete', 'workspace:write'),
+		'workspace.tables.flow'               => array('POST', '/workspace/tables/{id}/flow', 'workspace:write'),
 		'workspace.table_shares.list'         => array('GET', '/workspace/tables/{id}/shares', 'workspace:read'),
 		'workspace.table_shares.set'          => array('POST', '/workspace/tables/{id}/shares', 'workspace:write'),
 		'workspace.table_shares.delete'       => array('DELETE', '/workspace/tables/{id}/shares/{share_id}', 'workspace:write'),
@@ -134,6 +136,7 @@ function test_ws_api_wtables_mcp_tools()
 		'workspace.tables.home', 'workspace.tables.delete', 'workspace.tables.delete_post', 'workspace.tables.deleted', 'workspace.tables.restore',
 		'workspace.table_columns.delete', 'workspace.table_columns.delete_post',
 		'workspace.table_shares.set', 'workspace.table_shares.delete', 'workspace.table_shares.delete_post',
+		'workspace.table_rows.purge',
 	);
 
 	foreach ($routes as $id => $route) {
@@ -156,6 +159,7 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 		'ws_api_wtables_update'        => array('ws_wtable_update_check(', 'ws_wtable_update('),
 		'ws_api_wtables_home'          => array('ws_wtable_home_set_check(', 'ws_wtable_home_set('),
 		'ws_api_wtables_delete'        => array('ws_wtable_delete_check(', 'ws_wtable_delete('),
+		'ws_api_wtable_rows_purge'     => array('ws_wtable_bin_row_delete_check(', 'ws_wtable_bin_row_delete('),
 		'ws_api_wtable_columns_create' => array('ws_wtable_column_create_check(', 'ws_wtable_column_create('),
 		'ws_api_wtable_columns_update' => array('ws_wtable_column_update_check(', 'ws_wtable_column_update('),
 		'ws_api_wtable_columns_retype' => array('ws_wtable_column_retype_check(', 'ws_wtable_column_retype('),
@@ -270,4 +274,30 @@ function test_ws_api_wtables_objects_declared()
 	foreach (array('WorkspaceTable', 'WorkspaceTableColumn', 'WorkspaceTableRow', 'WorkspaceTableShare', 'WorkspaceTableBinRow', 'WorkspaceDeletedTable') as $name) {
 		pg_assert_true(isset($objects[$name]) && function_exists($objects[$name]), $name . ' is declared');
 	}
+}
+
+// An import's map pairs each source column with one table column: two
+// sources into one column would show one in the dry run and write the
+// other, so the pairing is refused.
+function test_ws_api_wtables_import_pairs()
+{
+	$names = array('Phone', 'Mobile', '2025');
+	$columns = array(5 => array('id' => 5, 'type' => 'text'), 6 => array('id' => 6, 'type' => 'money'));
+
+	$pairs = ws_api_wtable_import_pairs($names, $columns, array('Phone' => 5, '2025' => '6', 'Mobile' => 0));
+	pg_assert_true($pairs['ok']);
+	pg_assert_same(array(0 => 5, 2 => 6), $pairs['pairs'], 'a column id 0 leaves the source out');
+
+	$twice = ws_api_wtable_import_pairs($names, $columns, array('Phone' => 5, 'Mobile' => 5));
+	pg_assert_false($twice['ok'], 'one column for two sources');
+	pg_assert_true(strpos($twice['message'], '5') !== false, 'the column is named');
+
+	pg_assert_false(ws_api_wtable_import_pairs($names, $columns, array('Fax' => 5))['ok'], 'a source the file lacks');
+	pg_assert_false(ws_api_wtable_import_pairs($names, $columns, array('Phone' => 9))['ok'], 'a column the table lacks');
+
+	// JSON turns a numeric object key into an integer.
+	$types = json_decode('{"2025": "money", "Phone": ""}', true);
+	pg_assert_same('', ws_api_wtable_import_types_refusal($names, $types), 'a year as a column name');
+	pg_assert_true(ws_api_wtable_import_types_refusal($names, array('Fax' => 'text')) !== '', 'a source the file lacks');
+	pg_assert_true(ws_api_wtable_import_types_refusal($names, array('Phone' => 'person')) !== '', 'a type an import does not make');
 }

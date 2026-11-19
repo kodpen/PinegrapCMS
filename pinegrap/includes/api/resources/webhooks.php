@@ -24,6 +24,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 }
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
+require_once(dirname(dirname(__FILE__)) . '/outbound/webhook_payloads.php');
 
 function api_webhook_present($row) {
 
@@ -137,70 +138,252 @@ function api_webhooks_list($params) {
 
 }
 
+// Every event that can be subscribed to, with what it carries: for an
+// application's own event chooser. GET /webhooks keeps its list of names.
+function api_webhooks_events($params) {
+
+	api_ok(array('data' => api_webhook_event_rows(api_webhook_events(), api_webhook_event_modules(), api_webhook_event_payloads())));
+
+}
+
+// The module of each event a module adds, by name. The flows and the incoming
+// mail merged on their own with the Workspace off are still the Workspace's
+// events.
+function api_webhook_event_modules() {
+
+	api_modules_load();
+
+	$core = api_webhook_core_events();
+
+	$names = array('flows' => 'workspace', 'mail' => 'workspace');
+
+	$out = array();
+
+	foreach (api_modules() as $key => $module) {
+
+		$declare = $module['prefix'] . 'webhook_events';
+
+		if (!$module['enabled'] || !function_exists($declare)) {
+
+			continue;
+
+		}
+
+		foreach ((array)call_user_func($declare) as $name => $description) {
+
+			if (!isset($core[$name]) && !isset($out[$name])) {
+
+				$out[$name] = isset($names[$key]) ? $names[$key] : (string)$key;
+
+			}
+
+		}
+
+	}
+
+	return $out;
+
+}
+
 function api_webhooks_create($params) {
 
 	$app = api_current_app();
 
-	// The address is checked before it is stored, not at delivery time: telling
-	// the integrator now that their address is unreachable, or inside this
-	// network, is worth more than a queue that quietly fails later.
-	$check = api_http_check_url($params['url']);
+	// The checks a subscription is made with, the same for the panel's "New
+	// subscription" form (api_webhook_create_check()).
+	$checked = api_webhook_create_check($params['url'], $params['events'], api_webhook_held_count($app['id']));
 
-	if (!$check['ok']) {
+	if ($checked['refusal'] !== null) {
 
-		api_fail_validation(lang($check['error']), 'url');
+		api_webhook_fail($checked['refusal']);
 
 	}
 
-	$clean = api_webhook_clean_events($params['events']);
+	$clean = $checked['events'];
 
+	// A group of workspace channels is named only through the API; the panel
+	// form makes whole-site subscriptions.
 	$group_id = api_webhook_clean_channel_group(isset($params['channel_group_id']) ? $params['channel_group_id'] : 0, $clean);
 
-	if ((int)api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'") >= 10) {
-
-		api_fail(409, 'too_many_webhooks', lang('An application may hold ten subscriptions.'));
-
-	}
-
-	// Above: the address answers, every event named exists, the group (if
-	// one is named) is there for those events, and the application is under
-	// its ten subscriptions. Below: the row, and the one and only time its
-	// secret is readable.
+	// Above: the address answers, every event named exists, the application is
+	// under its subscription limit, and the group (if one is named) is there
+	// for those events. Below: the row, and the one and only time its secret
+	// is readable.
 	api_dry_run_stop('created', 'webhook', array(
-		'url'              => $params['url'],
+		'url'              => $checked['url'],
 		'events'           => $clean,
 		'channel_group_id' => ($group_id > 0) ? $group_id : null
 	));
 
-	$secret = api_generate_secret();
+	$made = api_webhook_store($app['id'], $checked['url'], $clean, $group_id);
 
-	$narrowed = ($group_id > 0);
+	if ($made === null) {
 
-	api_exec("INSERT INTO api_webhooks (app_id, url, events, secret, status, created_timestamp"
-		. ($narrowed ? ", channel_group_id" : "") . ")
-		VALUES (
-			'" . (int)$app['id'] . "',
-			'" . escape($params['url']) . "',
-			'" . escape(json_encode($clean)) . "',
-			'" . escape($secret) . "',
-			'active',
-			UNIX_TIMESTAMP()"
-			. ($narrowed ? ", '" . $group_id . "'" : "") . "
-		)");
+		api_fail_server();
 
-	$id = api_insert_id();
+	}
 
 	$row = api_row("SELECT " . api_webhook_columns() . "
-		FROM api_webhooks WHERE id = '" . $id . "' LIMIT 1");
+		FROM api_webhooks WHERE id = '" . (int)$made['id'] . "' LIMIT 1");
 
 	$out = api_webhook_present($row);
 
 	// Once, here, and never again from a read.
-	$out['secret'] = $secret;
+	$out['secret'] = $made['secret'];
 
 	$out['signature_header'] = 'X-Pinegrap-Signature: t=<unix>,v1=HMAC_SHA256(t + "." + body, secret)';
 
 	api_ok($out, 201);
+
+}
+
+// What the body of POST /webhooks may hold, as its route row declares it
+// (max_length of url, max_items of events). The panel form is held to the
+// same, so it cannot store what the route refuses; a test keeps the two equal.
+function api_webhook_create_bounds() {
+
+	return array('url' => 500, 'events' => 20);
+
+}
+
+// How many subscriptions an application holds, every status counted.
+function api_webhook_held_count($app_id) {
+
+	return (int)db_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app_id . "'");
+
+}
+
+// One refusal: the status and code the route answers, the field it names
+// (null for none) and the message.
+function api_webhook_refusal($status, $code, $field, $message) {
+
+	return array('status' => (int)$status, 'code' => (string)$code, 'field' => $field, 'message' => (string)$message);
+
+}
+
+// The route's answer to a refusal of api_webhook_create_check() or
+// api_webhook_test_refusal().
+function api_webhook_fail($refusal) {
+
+	api_fail($refusal['status'], $refusal['code'], $refusal['message'], $refusal['field']);
+
+}
+
+// The checks a new subscription is made with, for both callers: POST
+// /webhooks and the panel's "New subscription" form (api_settings.php). In
+// the route's order: the address (present, within its length, then tried by
+// $check_url, api_http_check_url() unless a test passes another), the events
+// (within their count, each in the catalogue, at least one) and the
+// application's limit ($held: the subscriptions it holds now).
+//
+// Answers refusal (null when every check passed), the trimmed url and the
+// events de-duplicated.
+function api_webhook_create_check($url, $events, $held, $check_url = 'api_http_check_url') {
+
+	$bounds = api_webhook_create_bounds();
+
+	$url = trim(is_scalar($url) ? (string)$url : '');
+
+	$out = array('refusal' => null, 'url' => $url, 'events' => array());
+
+	if ($url === '') {
+
+		$out['refusal'] = api_webhook_refusal(422, 'validation_failed', 'url', lang(array('string' => '{var:1} is required.', 'vars' => 'url')));
+
+		return $out;
+
+	}
+
+	if (mb_strlen($url) > $bounds['url']) {
+
+		$out['refusal'] = api_webhook_refusal(422, 'validation_failed', 'url', lang(array(
+			'string' => '{var:1} is longer than the {var:2} characters accepted.',
+			'vars'   => array('url', $bounds['url'])
+		)));
+
+		return $out;
+
+	}
+
+	if (!is_array($events)) {
+
+		$events = ($events === null || $events === '') ? array() : array($events);
+
+	}
+
+	if (count($events) > $bounds['events']) {
+
+		$out['refusal'] = api_webhook_refusal(422, 'validation_failed', 'events', lang(array(
+			'string' => '{var:1} holds more than the {var:2} items accepted in one request.',
+			'vars'   => array('events', $bounds['events'])
+		)));
+
+		return $out;
+
+	}
+
+	// The address is checked before it is stored, not at delivery time: telling
+	// the integrator now that their address is unreachable, or inside this
+	// network, is worth more than a queue that quietly fails later.
+	$check = call_user_func($check_url, $url);
+
+	if (empty($check['ok'])) {
+
+		$out['refusal'] = api_webhook_refusal(422, 'validation_failed', 'url', lang($check['error']));
+
+		return $out;
+
+	}
+
+	$cleaned = api_webhook_events_refusal($events);
+
+	if ($cleaned['message'] !== '') {
+
+		$out['refusal'] = api_webhook_refusal(422, 'validation_failed', 'events', $cleaned['message']);
+
+		return $out;
+
+	}
+
+	$out['events'] = $cleaned['events'];
+
+	if (api_webhook_subscription_limit_reached($held)) {
+
+		$out['refusal'] = api_webhook_refusal(409, 'too_many_webhooks', null, lang(array(
+			'string' => 'An application may hold {var:1} subscriptions.',
+			'vars'   => api_webhook_subscription_limit()
+		)));
+
+	}
+
+	return $out;
+
+}
+
+// The row of a new subscription, active, with its signing secret: answers
+// its id and the plain secret (readable only now), or null when the INSERT
+// failed. Called after api_webhook_create_check() passed.
+function api_webhook_store($app_id, $url, $events, $group_id = 0) {
+
+	$secret = api_generate_secret();
+
+	$narrowed = ((int)$group_id > 0);
+
+	$done = db("INSERT INTO api_webhooks (app_id, url, events, secret, status, created_timestamp"
+		. ($narrowed ? ", channel_group_id" : "") . ")
+		VALUES (
+			'" . (int)$app_id . "',
+			'" . escape($url) . "',
+			'" . escape(json_encode(array_values($events))) . "',
+			'" . escape($secret) . "',
+			'active',
+			UNIX_TIMESTAMP()"
+			. ($narrowed ? ", '" . (int)$group_id . "'" : "") . "
+		)");
+
+	$id = $done ? (int)mysqli_insert_id(db::$con) : 0;
+
+	return ($id > 0) ? array('id' => $id, 'secret' => $secret) : null;
 
 }
 
@@ -254,6 +437,22 @@ function api_webhook_owned($id) {
 // The event list a create or an update was sent, checked and de-duplicated.
 function api_webhook_clean_events($events) {
 
+	$cleaned = api_webhook_events_refusal($events);
+
+	if ($cleaned['message'] !== '') {
+
+		api_fail_validation($cleaned['message'], 'events');
+
+	}
+
+	return $cleaned['events'];
+
+}
+
+// The same check, answered rather than sent: events (the list cleaned) and
+// message ('' when every name is in the catalogue and there is at least one).
+function api_webhook_events_refusal($events) {
+
 	if (!is_array($events)) {
 
 		$events = array($events);
@@ -264,11 +463,11 @@ function api_webhook_clean_events($events) {
 
 	foreach ($events as $event) {
 
-		$event = trim((string)$event);
+		$event = trim(is_scalar($event) ? (string)$event : '');
 
 		if (!api_webhook_event_is_valid($event)) {
 
-			api_fail_validation(lang(array('string' => 'Unknown event: {var:1}', 'vars' => $event)), 'events');
+			return array('events' => array(), 'message' => lang(array('string' => 'Unknown event: {var:1}', 'vars' => $event)));
 
 		}
 
@@ -278,11 +477,11 @@ function api_webhook_clean_events($events) {
 
 	if (empty($clean)) {
 
-		api_fail_validation(lang('At least one event is required.'), 'events');
+		return array('events' => array(), 'message' => lang('At least one event is required.'));
 
 	}
 
-	return $clean;
+	return array('events' => $clean, 'message' => '');
 
 }
 
@@ -432,40 +631,115 @@ function api_webhooks_test($params) {
 
 	$id = (int)$row['id'];
 
+	// With event, that event's sample, one of the subscription's own events:
+	// queued for this subscription alone and never announced, so no flow,
+	// channel or other subscriber hears it.
+	$event = isset($params['event']) ? trim((string)$params['event']) : '';
+
+	$payloads = api_webhook_event_payloads();
+
+	$refusal = api_webhook_test_refusal($row, $event, $payloads);
+
+	if ($refusal !== null) {
+
+		api_webhook_fail($refusal);
+
+	}
+
+	$sample = ($event !== '') ? $payloads[$event]['sample'] : null;
+
+	api_dry_run_stop('queued', 'webhook_test', array('id' => $id, 'event' => ($sample !== null) ? $event : 'webhook.test'));
+
+	$queued = api_webhook_test_queue($id, $event, $sample);
+
+	if ($queued === null) {
+
+		api_fail_server();
+
+	}
+
+	api_ok(array(
+		'webhook_id'  => $id,
+		'delivery_id' => $queued['id'],
+		'event'       => $queued['event'],
+		'queued'      => true
+	));
+
+}
+
+// What refuses a test delivery to a subscription, or null: for POST
+// /webhooks/{id}/test and the panel's "Send a sample". $row is the
+// subscription (status, events as stored); $event '' asks for webhook.test.
+function api_webhook_test_refusal($row, $event, $payloads) {
+
 	// The dispatcher drops whatever is queued for a switched-off subscription,
 	// so queueing a test for one would report a delivery that is never
 	// made.
 	if ($row['status'] === 'disabled') {
 
-		api_fail(409, 'webhook_disabled', lang('Deliveries to this subscription are switched off. Set its status to active first.'));
+		return api_webhook_refusal(409, 'webhook_disabled', null, lang('Deliveries to this subscription are switched off. Set its status to active first.'));
 
 	}
 
-	api_dry_run_stop('queued', 'webhook_test', array('id' => $id));
+	if ((string)$event === '') {
 
-	$body = json_encode(array(
-		'event'      => 'webhook.test',
-		'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
-		'data'       => array('webhook_id' => $id)
-	), JSON_UNESCAPED_UNICODE);
+		return null;
 
-	api_exec("INSERT INTO api_webhook_queue
+	}
+
+	$refused = api_webhook_sample_refusal($event, (array)json_decode((string)$row['events'], true), $payloads);
+
+	if ($refused === 'not_listened') {
+
+		return api_webhook_refusal(422, 'validation_failed', 'event', lang(array('string' => 'This subscription does not listen to {var:1}.', 'vars' => $event)));
+
+	}
+
+	if ($refused === 'no_sample') {
+
+		return api_webhook_refusal(422, 'validation_failed', 'event', lang(array('string' => 'There is no sample of {var:1} yet. Send the test without an event.', 'vars' => $event)));
+
+	}
+
+	return null;
+
+}
+
+// A test delivery on the queue for one subscription: the event's sample
+// under its own name when $sample is given, else webhook.test. Sent by the
+// scheduled task like any other event, signed the same way, so the receiver
+// sees exactly what a real event looks like. Answers the delivery id and the
+// event's name, or null when the INSERT failed.
+function api_webhook_test_queue($id, $event, $sample) {
+
+	$id = (int)$id;
+
+	$created_at = gmdate('Y-m-d\TH:i:s\Z');
+
+	$name = ($sample !== null) ? (string)$event : 'webhook.test';
+
+	$body = ($sample !== null)
+		? api_webhook_sample_body($event, $sample, $created_at)
+		: json_encode(array(
+			'event'      => 'webhook.test',
+			'created_at' => $created_at,
+			'data'       => array('webhook_id' => $id)
+		), JSON_UNESCAPED_UNICODE);
+
+	$done = db("INSERT INTO api_webhook_queue
 		(webhook_id, event, payload, attempts, next_attempt_at, created_timestamp)
 		VALUES (
 			'" . $id . "',
-			'webhook.test',
+			'" . escape($name) . "',
 			'" . escape($body) . "',
 			'0',
 			UNIX_TIMESTAMP(),
 			UNIX_TIMESTAMP()
 		)");
 
-	api_ok(array(
-		'webhook_id'  => $id,
-		'delivery_id' => (int)api_insert_id(),
-		'event'       => 'webhook.test',
-		'queued'      => true
-	));
+	$delivery = $done ? (int)mysqli_insert_id(db::$con) : 0;
+
+	return ($delivery > 0) ? array('id' => $delivery, 'event' => $name) : null;
 
 }
 
@@ -518,10 +792,25 @@ function api_webhook_schema() {
 		'last_status_code' => 'integer?',
 		'last_error'       => 'string?',
 		'channel_group_id' => 'integer?',
-		'created_at'       => 'string?',
+		'created_at'       => 'datetime?',
 		'secret'           => 'string',
 		'signature_header' => 'string',
 		'requeued'         => 'integer'
+	);
+
+}
+
+// One row of GET /webhooks/events (api_webhook_event_rows()), declared for the
+// OpenAPI document. Each field is name, type, nullable and description; the
+// sample is null for an event whose payload is not written yet.
+function api_webhook_event_schema() {
+
+	return array(
+		'name'        => 'string',
+		'description' => 'string',
+		'module'      => 'string',
+		'fields'      => 'object[]',
+		'sample'      => 'object?'
 	);
 
 }

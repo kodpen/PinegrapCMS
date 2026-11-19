@@ -125,6 +125,9 @@ function ws_notify($user_id, $kind, $data)
             // scheduled job, which not every site runs every minute.
             $looking = ws_seen_recently($user_id);
             $delay = (in_array($kind, array('mention', 'guest_message', 'agent_answer'), true) && $looking) ? pg_push_chat_delay() : 0;
+            // Inside the person's quiet hours the push waits for the range's
+            // end; a line read meanwhile is dropped by the queue.
+            $delay = max($delay, ws_quiet_hours_delay($user_id));
 
             pg_push_enqueue($user_id, 'ws', $inbox_id, $delay);
 
@@ -135,6 +138,97 @@ function ws_notify($user_id, $kind, $data)
     }
 
     return $inbox_id;
+}
+
+/**
+ * How long a Workspace push to this person waits for their quiet hours to
+ * end (includes/fn/quiet_hours.php), in seconds; 0 outside them, with no
+ * setting, or before step 11.0.219 ran. Read in the person's own time zone
+ * (user.timezone, else the site's, as their card's local time) and against
+ * their working weekdays (ws_capacity()).
+ *
+ * @param int      $user_id
+ * @param int|null $now
+ * @return int
+ */
+function ws_quiet_hours_delay($user_id, $now = null)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !function_exists('pg_quiet_hours_left') || !pg_schema_has('ws_profiles', 'quiet_hours')) {
+        return 0;
+    }
+
+    $setting = db_value("SELECT quiet_hours FROM ws_profiles WHERE user_id = '" . $user_id . "'");
+
+    if ((string) $setting === '') {
+        return 0;
+    }
+
+    $zone = (string) db_value("SELECT timezone FROM user WHERE user_id = '" . $user_id . "'");
+    $zone = (($zone !== '') && function_exists('pg_timezone_canonical')) ? (string) pg_timezone_canonical($zone) : $zone;
+    $zone = in_array($zone, DateTimeZone::listIdentifiers(), true) ? $zone : (string) date_default_timezone_get();
+    $capacity = ws_capacity($user_id);
+
+    return pg_quiet_hours_left($setting, $zone, (int) $capacity['workdays'], ($now === null) ? time() : (int) $now);
+}
+
+/**
+ * Whether the site has the quiet hours column (step 11.0.219).
+ *
+ * @return bool
+ */
+function ws_quiet_hours_ready()
+{
+    return function_exists('pg_quiet_hours_decode') && pg_schema_has('ws_profiles', 'quiet_hours');
+}
+
+/**
+ * A person's own quiet hours for the "Quiet hours" part of a channel's
+ * Notifications: null with no range set.
+ *
+ * @param int $user_id
+ * @return array|null start, end (HH:MM), off_days
+ */
+function ws_quiet_hours_get($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !ws_quiet_hours_ready()) {
+        return null;
+    }
+
+    return pg_quiet_hours_decode(db_value("SELECT quiet_hours FROM ws_profiles WHERE user_id = '" . $user_id . "'"));
+}
+
+/**
+ * Saves the signed-in person's own quiet hours (pg_quiet_hours_save_check():
+ * a team member, their own profile, clock times). No range clears the value.
+ * Reached from the panel's own session and from the person's team devices
+ * session (POST /workspace/quiet-hours, api_quiet_hours.php); no MCP tool.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param array $request start, end, off_days
+ * @return array ok, value, error, field
+ */
+function ws_quiet_hours_save($viewer, $request)
+{
+    if (!ws_quiet_hours_ready()) {
+        return array('ok' => false, 'value' => null, 'error' => lang('The database has not been upgraded yet.'), 'field' => '');
+    }
+
+    $check = pg_quiet_hours_save_check($viewer, is_array($request) ? $request : array());
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'value' => null, 'error' => $check['error'], 'field' => $check['field']);
+    }
+
+    $json = ($check['value'] === null) ? null : json_encode($check['value']);
+
+    db_q("INSERT INTO ws_profiles (user_id, quiet_hours, updated_at) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE quiet_hours = VALUES(quiet_hours)", array($check['user_id'], $json, time()));
+
+    return array('ok' => true, 'value' => $check['value'], 'error' => '', 'field' => '');
 }
 
 /**
@@ -181,9 +275,11 @@ function ws_inbox_send_again($user_id, $inbox_id, $push, $change = null)
         include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
 
         if (function_exists('pg_push_enqueue')) {
-            pg_push_enqueue($user_id, 'ws', $inbox_id, 0);
+            $delay = ws_quiet_hours_delay($user_id);
 
-            if (function_exists('pg_push_queue_run')) {
+            pg_push_enqueue($user_id, 'ws', $inbox_id, $delay);
+
+            if (($delay === 0) && function_exists('pg_push_queue_run')) {
                 pg_push_queue_run(5);
             }
         }

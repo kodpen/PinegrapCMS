@@ -12,7 +12,7 @@ description: Version numbers from 2026.11.0 on are year.month.patch (calendar ve
 - The runner follows the order of `versions.php`; the schema gate (`pg_schema_upgrade_pending()`), Repair Software (`pg_vendor_release_offer()`) and the dashboard's update notice use `version_compare()`, which reads the parts as numbers: 2026.11.0 > 2026.4.10. A string comparison puts 2026.11.0 first, so versions are never compared with `<`, `strcmp()` or `sort()` (`tests/update_test.php` checks the CalVer cases).
 - Dots become underscores in the entry function: `upgrade_to_2026_11_0()` in `includes/migrations/2026.11.0.php`. `2026.1.0` and `2026.01.0` would compare equal but name two different functions, files and tags, so the month is written without a zero.
 - PATCH is always written, `.0` included: `2026.11` and `2026.11.0` are different versions for `version_compare()` (`2026.11` is lower), and the number has to match the tag, the file and the function.
-- `pg_code_version()` and `install_migration_file()` accept digits and dots only; a beta is a tag (`v2026.11.0-beta`), never a version number.
+- `pg_code_version()` and `install_migration_file()` accept digits and dots only; a beta is a tag, never a version number.
 
 ## Which number does the next version take?
 - One open version at a time (docs/memory/release/released-vs-open-version.md). After a release, the next version takes the month it is planned to ship in with PATCH 0, or the next PATCH when that month already had a release.
@@ -28,4 +28,4 @@ description: Version numbers from 2026.11.0 on are year.month.patch (calendar ve
 - Take the next unused number of your area's range. Two PRs that end up with one label: the later renumbers before merging (`core/concurrent-agents.md`).
 
 ## Which tags mark a release?
-- Stable `v<version>` (`v2026.11.0`), beta `v<version>-beta`, on the merge commit of the release pull request; the integrity check reads them (`pg_integrity_release_tags()`). Release flow: docs/memory/release/release-status.md.
+- Stable `v<version>` (`v2026.11.0`) on the release merge commit; beta `v<version>-beta.<YYYYMMDDHHMM>`, a pre-release on `development` (`release-packages.md`). Tags the integrity check tries: `core/file-integrity-github-reference.md`. Release flow: `release-status.md`.

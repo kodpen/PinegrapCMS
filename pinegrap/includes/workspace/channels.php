@@ -298,11 +298,12 @@ function ws_channel_detail($viewer, $channel)
 
 /**
  * What the channel's tabs hold, for the marks beside their names: the
- * decisions and notes, the open tasks, and whether the summary is written.
- * Two indexed counts (ws_messages.idx_kind, ws_tasks.idx_channel).
+ * decisions and notes, the open tasks, the files posted, and whether the
+ * summary is written. Three counts on indexes led by channel_id
+ * (ws_messages.idx_kind and idx_touched, ws_tasks.idx_channel).
  *
  * @param array $channel
- * @return array decisions, tasks, summary
+ * @return array decisions, tasks, files, summary
  */
 function ws_channel_tab_counts($channel)
 {
@@ -313,6 +314,10 @@ function ws_channel_tab_counts($channel)
             WHERE channel_id = '" . $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0"),
         'tasks'     => (int) db_value("SELECT COUNT(*) FROM ws_tasks
             WHERE channel_id = '" . $channel_id . "' AND status NOT IN ('done', 'cancelled')"),
+        // Every file of the channel, as ws_channel_file_rows() reads them
+        // without its page limit: the tab says how many there are.
+        'files'     => (int) db_value("SELECT COUNT(*) FROM ws_messages
+            WHERE channel_id = '" . $channel_id . "' AND file_id > 0 AND deleted_at = 0"),
         'summary'   => (trim((string) ($channel['summary'] ?? '')) !== ''),
     );
 }
@@ -688,8 +693,10 @@ function ws_channel_make_private($viewer, $channel)
 
     ws_channel_folder_access($channel, array(), true);
 
-    // The rest of the team no longer sees what their inbox said about it.
+    // The rest of the team no longer sees what their inbox said about it,
+    // nor keeps its own highlights there.
     ws_inbox_reach_lost($channel);
+    ws_highlights_reach_lost($channel);
 
     $members = (int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'");
 
@@ -814,6 +821,7 @@ function ws_channel_leave($viewer, $channel, $user_id = 0)
     // said about it.
     ws_channel_folder_access($channel, array($user_id), false);
     ws_inbox_reach_lost($channel, array($user_id));
+    ws_highlights_reach_lost($channel, array($user_id));
 
     if ((int) $channel['owner_user_id'] === $user_id) {
         $next = (int) db_value("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at LIMIT 1");

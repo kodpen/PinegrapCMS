@@ -222,6 +222,65 @@ function ws_api_channel_present($brief)
         'agent_channel' => !empty($brief['agent_channel']),
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
+    ) + (isset($brief['api_settings']) ? $brief['api_settings'] : ws_api_channel_settings_present(null));
+}
+
+/**
+ * The settings fields of the channel object, as the settings drawer and the
+ * channel menu show them to the reader: the records watch, the Claude,
+ * Pinegrap AI and voice-transcript switches (null where the channel offers
+ * none) and the summary. Null for every field when $states is null: a list
+ * carries none. Pure.
+ *
+ * @param array|null $states claude, ai, voice (the *_channel_state() values),
+ *                           watch (ws_watch_channel_state()), shared (a guest's
+ *                           room or a channel shared with guests), summary,
+ *                           summary_updated_at
+ * @return array
+ */
+function ws_api_channel_settings_present($states)
+{
+    if (!is_array($states)) {
+        return array_fill_keys(array('watch', 'claude_allowed', 'ai_allowed', 'voice_allowed', 'summary', 'summary_updated_at'), null);
+    }
+
+    $allowed = function ($state) {
+        return is_array($state) ? !empty($state['allowed']) : null;
+    };
+    // A channel shared with guests never reaches an assistant, and a
+    // discussion follows its channel: neither offers a switch of its own.
+    $fixed = !empty($states['shared']) || !empty($states['thread']);
+
+    return array(
+        'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
+        'claude_allowed'     => $fixed ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $fixed ? null : $allowed($states['ai'] ?? null),
+        'voice_allowed'      => $allowed($states['voice'] ?? null),
+        'summary'            => (string) ($states['summary'] ?? ''),
+        'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
+    );
+}
+
+/**
+ * What ws_api_channel_settings_present() reads, for one channel and its
+ * reader: the same calls ws_channel_detail() makes for the panel.
+ *
+ * @param array $viewer
+ * @param array $channel ws_channels row
+ * @return array
+ */
+function ws_api_channel_settings_states($viewer, $channel)
+{
+    return array(
+        'claude'             => function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null,
+        'ai'                 => function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null,
+        'voice'              => function_exists('ws_voice_channel_state') ? ws_voice_channel_state($channel) : null,
+        'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
+        'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
+            || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'thread'             => ((string) ($channel['kind'] ?? '') === 'thread'),
+        'summary'            => (string) ($channel['summary'] ?? ''),
+        'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
 }
 
@@ -249,6 +308,12 @@ function ws_api_channel_schema()
         'agent_channel'   => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
+        'watch'              => 'boolean?',
+        'claude_allowed'     => 'boolean?',
+        'ai_allowed'         => 'boolean?',
+        'voice_allowed'      => 'boolean?',
+        'summary'            => 'string?',
+        'summary_updated_at' => 'string?',
     );
 }
 
@@ -287,9 +352,12 @@ function ws_api_channels_list($params)
  */
 function ws_api_channel_brief($viewer, $channel)
 {
+    // One channel's answer carries its settings and summary; a list does not.
+    $settings = array('api_settings' => ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel)));
+
     foreach (ws_channels_for($viewer, ((int) $channel['archived_at'] > 0)) as $brief) {
         if ((int) $brief['id'] === (int) $channel['id']) {
-            return $brief;
+            return $brief + $settings;
         }
     }
 
@@ -301,7 +369,7 @@ function ws_api_channel_brief($viewer, $channel)
         'my_role'   => $membership['role'] ?? '',
         'my_pinned' => $membership['pinned'] ?? 0,
         'my_sort'   => $membership['sort'] ?? 0,
-    )));
+    ))) + $settings;
 }
 
 /**
@@ -550,6 +618,16 @@ function ws_api_channels_update($params)
         api_fail_validation(lang('That department could not be found.'), 'department_id');
     }
 
+    // The records watch, as the settings drawer offers it: a public or
+    // private channel only (ws_watch_channel_state()).
+    if (array_key_exists('watch', $params)) {
+        if (!function_exists('ws_watch_channel_state') || (ws_watch_channel_state($channel) === null)) {
+            api_fail_validation(lang('This channel cannot watch records: only a public or private channel can.'), 'watch');
+        }
+
+        $data['watch'] = !empty($params['watch']);
+    }
+
     $changes = array_keys($data);
 
     if (($archive !== null) && ($archive !== $archived)) {
@@ -577,6 +655,206 @@ function ws_api_channels_update($params)
     }
 
     api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/summary: the Summary tab's save, for anybody
+ * who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_summary_set($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array('summary')));
+
+    $result = ws_channel_set_summary($viewer, $channel, (string) ($params['summary'] ?? ''));
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/switches: the channel menu's Claude,
+ * Pinegrap AI and voice-transcript switches. The person's own choice of what
+ * leaves the site, so never an application key (ws_api_person_only()), and
+ * no MCP tool.
+ *
+ * @param array $params
+ */
+function ws_api_channel_switches_set($params)
+{
+    ws_api_person_only(lang('Only the person, signed in on a device, can switch Claude, Pinegrap AI or voice transcripts in a channel; an application cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    // The channel menu hides the switches on an archived channel; the dry
+    // run is refused the same way.
+    if ((int) $channel['archived_at'] > 0) {
+        api_fail(403, 'forbidden', lang('This channel is archived. It can be read but not written in.'));
+    }
+
+    $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));
+    $fields = array('claude' => 'claude_allowed', 'ai' => 'ai_allowed', 'voice' => 'voice_allowed');
+    $changes = array();
+
+    if (!array_intersect_key($params, $fields)) {
+        api_fail_validation(lang('Send claude, ai or voice.'), 'claude');
+    }
+
+    foreach ($fields as $field => $key) {
+        if (!array_key_exists($field, $params)) {
+            continue;
+        }
+
+        if ($now[$key] === null) {
+            api_fail_validation(lang('This channel does not offer that switch.'), $field);
+        }
+
+        if ((bool) $params[$field] !== $now[$key]) {
+            $changes[$field] = (bool) $params[$field];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array_keys($changes)));
+
+    // Each writer leaves the line the menu leaves; one that does not change
+    // is not called, so it leaves none.
+
+    foreach ($changes as $field => $allowed) {
+        if ($field === 'claude') {
+            $result = ws_claude_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } elseif ($field === 'ai') {
+            $result = ws_ai_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } else {
+            $result = ws_voice_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        }
+
+        if (!$result['ok']) {
+            api_fail(403, 'forbidden', $result['error']);
+        }
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/customer/followup: the customer card's
+ * Remind me button, for anybody who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_customer_followup($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    // Every check of the follow-up and of the task, before the dry run.
+    $checked = ws_customer_followup_open($viewer, $channel, $params, true);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ((string) $checked['field'] !== '') ? (string) $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array('channel_id' => (int) $channel['id'], 'assignees' => array((int) $viewer['id'])));
+
+    $made = ws_customer_followup_open($viewer, $channel, $params);
+
+    if (!$made['ok']) {
+        api_fail_validation($made['error'], ((string) $made['field'] !== '') ? (string) $made['field'] : null);
+    }
+
+    api_ok(ws_api_task_present($viewer, ws_task($made['task']['id'])), 201);
+}
+
+/**
+ * Whether the application reaches a titled block: the owner reads its place
+ * (ws_block_source()), and Claude only where it may be asked - a message's
+ * channel open to Claude, a note as ws_api_note_reachable() lets it.
+ *
+ * @param array $viewer
+ * @param int   $block_id
+ * @return bool
+ */
+function ws_api_block_reachable($viewer, $block_id)
+{
+    if (!ws_api_is_claude()) {
+        return true;
+    }
+
+    $row = ws_blocks_ready() ? db_item("SELECT source_kind, source_id FROM ws_blocks WHERE id = '" . (int) $block_id . "'") : null;
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    if ((string) $row['source_kind'] === 'message') {
+        $message = ws_message((int) $row['source_id']);
+        $channel = $message ? ws_channel((int) $message['channel_id']) : null;
+
+        return $channel && ws_claude_channel_allowed($channel);
+    }
+
+    $note = function_exists('ws_note') ? ws_note((int) $row['source_id']) : null;
+
+    return $note && ws_api_note_reachable($viewer, array('access' => ws_note_access($viewer, $note)) + $note);
+}
+
+// What GET /workspace/blocks lists.
+function ws_api_block_schema()
+{
+    return array(
+        'id'     => 'integer',
+        'kind'   => 'string',
+        'title'  => 'string',
+        'where'  => 'string',
+        'author' => 'string',
+        'time'   => 'string',
+    );
+}
+
+function ws_api_blocks_list($params)
+{
+    $viewer = ws_api_viewer();
+    $out = array();
+
+    foreach (ws_blocks_search($viewer, (string) ($params['q'] ?? ''), 20) as $block) {
+        if (ws_api_block_reachable($viewer, $block['id'])) {
+            $out[] = $block;
+        }
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_blocks_get($params)
+{
+    $viewer = ws_api_viewer();
+    $pulled = ws_block_pull($viewer, (int) $params['id']);
+
+    if (!$pulled['ok'] || !ws_api_block_reachable($viewer, (int) $params['id'])) {
+        api_fail_not_found(lang('Block'));
+    }
+
+    api_ok(array('id' => (int) $params['id'], 'kind' => $pulled['kind'], 'markup' => $pulled['markup'], 'from' => $pulled['from']));
 }
 
 /* ---------------------------------------------------------------------------
@@ -832,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null, $feedback = null, $highlights = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -878,6 +1156,18 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $threads = ws_api_message_threads($viewer, array($row['id']));
     }
 
+    // Right or Wrong on an agent's reply, for the asker and the channel's
+    // managers only (agent_feedback.php).
+    if ($feedback === null) {
+        $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, array($row['id'])) : array();
+    }
+
+    // Readers' highlights and the text they index (api_highlights.php).
+    if ($highlights === null) {
+        $highlights = ws_api_message_highlights_map($viewer, array($row));
+    }
+
+    $highlight = $highlights[(int) $row['id']] ?? null;
     $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
@@ -905,7 +1195,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
             $app = ws_proposal_sender($app, $proposals[(int) $row['id']]);
         }
 
-        $sender = array('user_id' => null, 'name' => $app['name']);
+        $sender = ws_api_message_app_sender($app);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
     } elseif (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender')) {
@@ -984,7 +1274,39 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'forwards'       => ws_api_message_forwards($row, $forwards),
         // The OAuth client a person's message was written through.
         'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
+        // The card of its first web address (link_preview.php).
+        'link_preview'   => ws_api_message_link_preview($row, $link_previews),
+        // Right or Wrong on an agent's reply (POST
+        // /workspace/messages/{id}/agent-feedback): verdict '' while
+        // unmarked, null for anybody but the asker and the managers.
+        'feedback'       => $deleted ? null : ($feedback[(int) $row['id']] ?? null),
+        // Readers' highlights (POST /workspace/messages/{id}/highlights):
+        // quote and occurrence index highlight_text, the body as the panel
+        // draws it for this reader, white space folded.
+        'highlights'        => $highlight ? $highlight['rows'] : array(),
+        'highlight_text'    => $highlight ? $highlight['text'] : '',
+        'can_highlight_all' => $highlight ? $highlight['can_all'] : false,
         'created_at'  => api_time($row['created_at']),
+    );
+}
+
+/**
+ * The sender of an application's message, from ws_app_sender(): app_id
+ * keys a run of its lines, and agent, claude and ai say it answers people,
+ * so its one-line messages never fold. Pure.
+ *
+ * @param array $app ws_app_sender(), or ws_proposal_sender() over it
+ * @return array user_id (null), name, app_id, agent, claude, ai
+ */
+function ws_api_message_app_sender($app)
+{
+    return array(
+        'user_id' => null,
+        'name'    => (string) ($app['name'] ?? ''),
+        'app_id'  => ((int) ($app['app_id'] ?? 0) > 0) ? (int) $app['app_id'] : null,
+        'agent'   => !empty($app['agent']),
+        'claude'  => !empty($app['claude']),
+        'ai'      => !empty($app['ai']),
     );
 }
 
@@ -1026,8 +1348,41 @@ function ws_api_message_schema()
             'created_at'          => 'string?',
         )),
         'via'         => 'WorkspaceMessageVia?',
+        'link_preview'   => 'WorkspaceMessageLinkPreview?',
+        'feedback'       => 'WorkspaceMessageFeedback?',
+        'highlights'        => 'WorkspaceMessageHighlight[]',
+        'highlight_text'    => 'string',
+        'can_highlight_all' => 'boolean',
         'created_at'  => 'string',
     );
+}
+
+/**
+ * The card of a message's first web address, the fields the screen draws
+ * (ws_link_preview_card_fields()): null for a deleted message, one with no
+ * card, and every message while previews are switched off.
+ *
+ * @param array      $row           ws_messages row
+ * @param array|null $link_previews ws_link_preview_card_rows_map() of the page
+ * @return array|null url, title, description, site_name
+ */
+function ws_api_message_link_preview($row, $link_previews)
+{
+    if (((int) $row['deleted_at'] > 0) || !function_exists('ws_link_preview_card_rows_map')) {
+        return null;
+    }
+
+    if ($link_previews === null) {
+        $link_previews = ws_link_preview_card_rows_map(array((int) $row['id']));
+    }
+
+    return $link_previews[(int) $row['id']] ?? null;
+}
+
+// What ws_api_message_link_preview() returns: plain texts, never HTML.
+function ws_api_message_link_preview_schema()
+{
+    return array('url' => 'string', 'title' => 'string', 'description' => 'string', 'site_name' => 'string');
 }
 
 // A message of sender_kind mail: the mail it carries (GET
@@ -1041,9 +1396,17 @@ function ws_api_message_mail_schema()
 // workspace itself, carrying no file, with no discussion started from it.
 // An object written inline cannot say it may be null, so each is declared
 // on its own.
+// app_id, agent, claude and ai come on an application's message only
+// (ws_api_message_app_sender()).
 function ws_api_message_sender_schema()
 {
-    return array('user_id' => 'integer?', 'name' => 'string');
+    return array('user_id' => 'integer?', 'name' => 'string', 'app_id' => 'integer?', 'agent' => 'boolean', 'claude' => 'boolean', 'ai' => 'boolean');
+}
+
+// The mark on an agent's reply (ws_agent_feedback_offer()).
+function ws_api_message_feedback_schema()
+{
+    return array('verdict' => 'string', 'reason' => 'string');
 }
 
 function ws_api_message_file_schema()
@@ -1513,12 +1876,15 @@ function ws_api_messages_present($viewer, $rows)
     $forwards = ws_api_message_forwards_map($viewer, $ids);
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
+    $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
+    $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array();
+    $highlights = ws_api_message_highlights_map($viewer, $rows);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews, $feedback, $highlights);
     }
 
     return $out;
@@ -3671,6 +4037,68 @@ function ws_api_messages_readers($params)
 }
 
 /**
+ * POST /workspace/messages/{id}/agent-feedback: the person marks an agent's
+ * answer right or wrong, or takes the mark back, through the panel's one
+ * writer (ws_agent_feedback_mark()) and its refusals.
+ */
+function ws_api_messages_agent_feedback($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can mark an agent\'s answer; an application key or an OAuth connection cannot do it for them.'));
+
+    if (!ws_agent_feedback_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $message_id = (int) $params['id'];
+    $verdict = (string) ($params['verdict'] ?? '');
+    $verdict = ($verdict === '') ? null : $verdict;
+    $reason = (string) ($params['reason'] ?? '');
+    $place = ws_agent_feedback_place($viewer, $message_id);
+    $check = ws_agent_feedback_check($viewer, $place['request'], $place['message'], $place['can_read'], $place['can_manage'], $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($check);
+
+    api_dry_run_stop(($verdict === null) ? 'cleared' : 'marked', 'workspace_agent_feedback', array('message_id' => $message_id, 'verdict' => (string) $verdict));
+
+    $marked = ws_agent_feedback_mark($viewer, $message_id, $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($marked);
+
+    api_ok(array('feedback' => array('verdict' => (string) $verdict, 'reason' => ($verdict === null) ? '' : (string) ($marked['reason'] ?? ''))));
+}
+
+/**
+ * Answers a refusal of ws_agent_feedback_check() or ws_agent_feedback_mark()
+ * with its own status; returns on ok.
+ *
+ * @param array $result ok; or status, error, field
+ */
+function ws_api_agent_feedback_refusal($result)
+{
+    if (!empty($result['ok'])) {
+        return;
+    }
+
+    $status = (int) ($result['status'] ?? 422);
+
+    if ($status === 404) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    if ($status === 403) {
+        api_fail(403, 'forbidden', (string) $result['error']);
+    }
+
+    if ($status === 503) {
+        api_fail(503, 'service_unavailable', (string) $result['error']);
+    }
+
+    api_fail_validation((string) $result['error'], $result['field'] ?? null);
+}
+
+/**
  * POST /workspace/messages/{id}/mention-invite: brings the people a message
  * mentions who are outside its channel in, as the line under the message in
  * the panel does; each is handed the mention.
@@ -3734,6 +4162,16 @@ function ws_api_polls_vote($params)
     $poll = ws_api_poll_or_404($viewer, $params['id']);
 
     ws_api_person_only();
+
+    // An agent question is answered from the person's own team devices
+    // session only: an OAuth connection passes the gate above as the person
+    // who approved it, so the application that asked would settle its own
+    // question in their name, and another connection is no more the person
+    // than the asker. Checked before the dry run stops, so a rehearsal meets
+    // it too.
+    if (ws_agent_question_is($poll)) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer a question an application asked; an application key or an OAuth connection cannot, whichever application asked it.'));
+    }
 
     $checked = ws_poll_vote_check($viewer, $poll);
 
@@ -3873,6 +4311,78 @@ function ws_api_poll_refused($error, $field = '')
 }
 
 /**
+ * What a dry run of POST /workspace/channels/{id}/polls reports: the values
+ * after ws_agent_question_settings(), as ws_poll_create() will store them, so
+ * an application's question is rehearsed without anonymous and closes_at.
+ * Pure; closes_at stays a timestamp for the caller to format.
+ *
+ * @param int   $channel_id
+ * @param array $checked    ws_poll_input() result (options, closes_at)
+ * @param array $data       the request (multiple, anonymous)
+ * @param int   $flag       1 when the poll will be an agent question
+ * @return array channel_id, options, multiple, anonymous, closes_at, agent_question
+ */
+function ws_api_poll_create_rehearsal($channel_id, $checked, $data, $flag)
+{
+    $kept = ws_agent_question_settings(array(
+        'multiple'  => !empty($data['multiple']),
+        'anonymous' => !empty($data['anonymous']),
+        'closes_at' => (int) ($checked['closes_at'] ?? 0),
+    ), (int) $flag === 1);
+
+    return array(
+        'channel_id'     => (int) $channel_id,
+        'options'        => $checked['options'] ?? array(),
+        'multiple'       => !empty($kept['multiple']),
+        'anonymous'      => !empty($kept['anonymous']),
+        'closes_at'      => (int) $kept['closes_at'],
+        'agent_question' => (int) $flag === 1,
+    );
+}
+
+/**
+ * The question's own picture a poll call sends (poll_picture.php), the way
+ * workspace.files.create takes a file: a form part named file, or
+ * content_base64 with name. null when the call sends none.
+ *
+ * @param array $params
+ * @return array|null name, bytes, field (the parameter a refusal names)
+ */
+function ws_api_poll_picture_input($params)
+{
+    $part = (api_send_hook() === null) && isset($_FILES['file']) && is_array($_FILES['file']);
+
+    if (!$part && ((string) ($params['content_base64'] ?? '') === '')) {
+        return null;
+    }
+
+    $upload = ws_api_upload_input($params);
+    $bytes = isset($upload['bytes']) ? $upload['bytes'] : ws_upload_decode($upload['base64']);
+
+    if (!is_string($bytes)) {
+        api_fail_validation(lang('The picture could not be read.'), $upload['field']);
+    }
+
+    return array('name' => (string) $upload['name'], 'bytes' => $bytes, 'field' => $upload['field']);
+}
+
+/**
+ * A refused picture's parameter: the one the call sent it in.
+ *
+ * @param string     $field   the refusal's field
+ * @param array|null $picture ws_api_poll_picture_input()
+ * @return string
+ */
+function ws_api_poll_picture_field($field, $picture)
+{
+    if ($field !== 'picture') {
+        return (string) $field;
+    }
+
+    return ($picture !== null) ? $picture['field'] : 'remove_picture';
+}
+
+/**
  * Asks a poll in a channel, the way Poll by the composer and the /poll
  * command do: the question is the person's message, and the options, the
  * settings and the votes are the poll's. The answer is that message.
@@ -3938,18 +4448,34 @@ function ws_api_polls_create($params)
         api_fail_validation($stored['error'], 'options');
     }
 
-    api_dry_run_stop('created', 'workspace_poll', array(
-        'channel_id' => (int) $channel['id'],
-        'options'    => $checked['options'],
-        'multiple'   => $data['multiple'],
-        'anonymous'  => $data['anonymous'],
-        'closes_at'  => api_time($checked['closes_at']),
-    ));
+    // The question's own picture, held to its checks before anything is
+    // kept, so that a dry run meets the same refusals and stores nothing.
+    $picture = ws_api_poll_picture_input($params);
+    $pictured = null;
+
+    if ($picture !== null) {
+        $data['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+        $pictured = ws_poll_picture_check($viewer, $channel, ws_poll_picture_normal($data['picture']));
+
+        if (!$pictured['ok']) {
+            api_fail_validation($pictured['error'], $picture['field']);
+        }
+    }
+
+    // The flag ws_poll_create() stores, so that the rehearsal reports the
+    // settings an agent question is kept to rather than the ones sent.
+    $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
+    $rehearsal = ws_api_poll_create_rehearsal((int) $channel['id'], $checked, $data, $flag);
+    $rehearsal['closes_at'] = api_time($rehearsal['closes_at']);
+    $rehearsal['file'] = ($pictured !== null) ? array('name' => $pictured['name'], 'kind' => $pictured['kind'], 'size' => $pictured['size']) : null;
+
+    api_dry_run_stop('created', 'workspace_poll', $rehearsal);
 
     $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
@@ -3968,9 +4494,46 @@ function ws_api_polls_update($params)
     $as_app = ws_api_poll_asker_app($poll);
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
+    $editing = (bool) array_intersect($fields, array_keys($params));
 
-    if (!array_intersect($fields, array_keys($params))) {
-        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous or closes_at.'));
+    // The question's own picture: a new one replaces it, remove_picture
+    // takes it away (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+    $remove = !empty($params['remove_picture']);
+
+    if (($picture !== null) && $remove) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if (!$editing && ($picture === null) && !$remove) {
+        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous, closes_at, a picture or remove_picture.'));
+    }
+
+    $new_picture = ($picture !== null) ? ws_poll_picture_normal(array('name' => $picture['name'], 'bytes' => $picture['bytes'])) : null;
+    $changes_picture = ($picture !== null) || $remove;
+
+    if ($changes_picture) {
+        $pictured = ws_poll_picture_change_check($viewer, $poll, $new_picture, $as_app);
+
+        if (!$pictured['ok']) {
+            ws_api_poll_refused($pictured['error'], ws_api_poll_picture_field($pictured['field'], $picture));
+        }
+    }
+
+    if (!$editing) {
+        api_dry_run_stop('updated', 'workspace_poll', array(
+            'id'         => (int) $poll['id'],
+            'message_id' => (int) $poll['message_id'],
+            'file'       => ($new_picture !== null) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
+        ));
+
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+
+        ws_api_poll_message_ok($viewer, ws_poll($poll['id']));
     }
 
     $options = array();
@@ -4064,7 +4627,18 @@ function ws_api_polls_update($params)
         'multiple'   => $checked['multiple'],
         'anonymous'  => $checked['anonymous'],
         'closes_at'  => api_time($checked['closes_at']),
+        'file'       => ($changes_picture && ($new_picture !== null)) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
     ));
+
+    // The picture first: it is refused once somebody has answered, and an
+    // edit never adds an answer.
+    if ($changes_picture) {
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+    }
 
     $result = ws_poll_edit($viewer, $poll, $data, $as_app);
 
@@ -4149,6 +4723,20 @@ function ws_api_polls_again($params)
         }
     }
 
+    // The old question's picture is carried over unless a new one is sent
+    // or remove_picture leaves it out (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+
+    if (($picture !== null) && !empty($params['remove_picture'])) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if ($picture !== null) {
+        $sent['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+    } elseif (!empty($params['remove_picture'])) {
+        $sent['picture'] = null;
+    }
+
     $checked = ws_poll_again_check($viewer, $poll, $sent, $as_app);
 
     if (!$checked['ok']) {
@@ -4156,19 +4744,27 @@ function ws_api_polls_again($params)
             api_fail(503, 'service_unavailable', $checked['error']);
         }
 
-        ws_api_poll_refused($checked['error'], $checked['field']);
+        ws_api_poll_refused($checked['error'], ws_api_poll_picture_field($checked['field'], $picture));
     }
+
+    $carried = $checked['data']['picture'];
 
     api_dry_run_stop('created', 'workspace_poll', array(
         'channel_id' => (int) $poll['channel_id'],
         'again_of'   => (int) $poll['id'],
         'withdraws'  => !ws_poll_withdrawn($poll) && ((int) $poll['closed_at'] === 0),
+        'file'       => ($carried === null) ? null : array(
+            'name' => isset($carried['file_id']) ? $carried['file_name'] : mb_substr((string) $carried['name'], 0, 200),
+            'kind' => 'image',
+            'size' => isset($carried['bytes']) ? strlen($carried['bytes']) : null,
+        ),
     ));
 
     $result = ws_poll_ask_again($viewer, $poll, $sent, $as_app);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
@@ -4767,6 +5363,14 @@ function ws_api_approvals_decide($params)
 
     ws_api_person_only();
 
+    // A request an application made (an OAuth connection's goes out as the
+    // application) is answered from the person's own team devices session
+    // only, as an agent question is: a connection would otherwise approve
+    // what it asked for in the person's name.
+    if (ws_message_app_id($approval['message_id']) > 0) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer an approval request an application made; an application key or an OAuth connection cannot, whichever application made it.'));
+    }
+
     // The checks ws_approval_decide() makes, made first so that a dry run
     // meets the same refusals. An answer after the request's time closes it,
     // as in the panel; a dry run leaves that to the next answer or the hourly
@@ -5017,6 +5621,8 @@ function ws_api_tasks_list($params)
         'department_id' => (int) ($params['department_id'] ?? 0),
         'channel_id'    => (int) ($params['channel_id'] ?? 0),
         'limit'         => (int) ($params['limit'] ?? 100),
+        // Agent channels' tasks are left out unless asked for or named.
+        'agent_channels' => ws_agent_channel_mode($params['agent_channels'] ?? ''),
     );
 
     if (!empty($params['ref_type']) && !empty($params['ref_id'])) {
@@ -5060,8 +5666,47 @@ function ws_api_tasks_list($params)
 function ws_api_tasks_get($params)
 {
     $viewer = ws_api_viewer();
+    $task = ws_api_task_or_404($viewer, $params['id']);
+    $out = ws_api_task_present($viewer, $task);
 
-    api_ok(ws_api_task_present($viewer, ws_api_task_or_404($viewer, $params['id'])));
+    // The linked tasks as the panel's drawer draws them, so a client needs no
+    // read per linked task; null when the links table is not there.
+    $out['links'] = ws_task_links_detail($viewer, $task, ws_can_edit_task($viewer, $task, $out['assignees']));
+
+    api_ok($out);
+}
+
+// What GET /workspace/tasks/{id} returns: the task and its links.
+function ws_api_task_detail_schema()
+{
+    return ws_api_task_schema() + array('links' => 'WorkspaceTaskLinks?');
+}
+
+// The links of GET /workspace/tasks/{id}, as ws_task_links_detail() answers
+// them (task_links.php).
+function ws_api_task_links_schema()
+{
+    return array(
+        'blocked_by' => array('WorkspaceTaskLink'),
+        'blocks'     => array('WorkspaceTaskLink'),
+        'can_edit'   => 'boolean',
+        'max'        => 'integer',
+    );
+}
+
+// One linked task; title is empty for a task the reader cannot see, status
+// and status_label for one that no longer exists.
+function ws_api_task_link_schema()
+{
+    return array(
+        'id'           => 'integer',
+        'number'       => 'string',
+        'title'        => 'string',
+        'status'       => 'string',
+        'status_label' => 'string',
+        'open'         => 'boolean',
+        'visible'      => 'boolean',
+    );
 }
 
 /**
@@ -5817,14 +6462,18 @@ function ws_api_plan_present($row)
 function ws_api_plan_get($params)
 {
     $viewer = ws_api_viewer();
-    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0));
+    // Agent channels' tasks are left out unless asked for, as on the panel's
+    // board; agent_channels counts the ones the viewer may read, so a client
+    // knows whether to offer its toggle.
+    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0),
+        false, 0, ws_agent_channel_mode($params['agent_channels'] ?? ''));
     $out = array();
 
     foreach ($board['rows'] as $row) {
         $out[] = ws_api_plan_present($row);
     }
 
-    api_ok_list($out, count($out));
+    api_ok_list($out, count($out), null, null, array('agent_channels' => (int) ($board['agent_channels'] ?? 0)));
 }
 
 /* ---------------------------------------------------------------------------
@@ -6403,9 +7052,65 @@ function ws_api_task_seen_sql($viewer, $alias)
 }
 
 /**
+ * SQL for the discussions a person is a member of, opened on messages of the
+ * given channels: the candidates ws_api_readable_thread_ids() checks, each
+ * read as a channel there.
+ *
+ * @param int   $user_id
+ * @param int[] $parent_ids
+ * @return string empty when no channel is given
+ */
+function ws_api_thread_ids_sql($user_id, $parent_ids)
+{
+    $parent_ids = array_values(array_unique(array_filter(array_map('intval', (array) $parent_ids))));
+
+    if (empty($parent_ids) || ((int) $user_id <= 0)) {
+        return '';
+    }
+
+    return "SELECT t.channel_id FROM ws_threads t
+        INNER JOIN ws_channel_members m ON m.channel_id = t.channel_id AND m.user_id = '" . (int) $user_id . "'
+        WHERE t.parent_channel_id IN (" . implode(',', $parent_ids) . ")";
+}
+
+/**
+ * The ids of the discussions the owner may read, opened in the given
+ * channels: those they are a member of while they read the channel it is
+ * about (ws_can_read_channel()); for the application Claude works through,
+ * only those Claude may be asked in.
+ *
+ * @param array $viewer
+ * @param int[] $parent_ids ws_api_readable_channel_ids()
+ * @return int[]
+ */
+function ws_api_readable_thread_ids($viewer, $parent_ids)
+{
+    $sql = (function_exists('ws_threads_ready') && ws_threads_ready()) ? ws_api_thread_ids_sql($viewer['id'] ?? 0, $parent_ids) : '';
+
+    if ($sql === '') {
+        return array();
+    }
+
+    $claude = ws_api_is_claude();
+    $ids = array();
+
+    foreach ((array) db_values($sql) as $id) {
+        $channel = ws_channel((int) $id);
+
+        if (!$channel || !ws_can_read_channel($viewer, $channel) || ($claude && !ws_claude_channel_allowed($channel))) {
+            continue;
+        }
+
+        $ids[] = (int) $id;
+    }
+
+    return $ids;
+}
+
+/**
  * Which proposed changes the owner may read, as SQL over ws_ai_changes c:
- * those under answers in the channels the owner reads, and those waiting on
- * the tasks they see.
+ * those under answers in the channels and discussions the owner reads, and
+ * those waiting on the tasks they see.
  *
  * @param array $viewer
  * @return string
@@ -6414,6 +7119,7 @@ function ws_api_changes_reach_sql($viewer)
 {
     $reach = array();
     $channel_ids = ws_api_readable_channel_ids($viewer);
+    $channel_ids = array_merge($channel_ids, ws_api_readable_thread_ids($viewer, $channel_ids));
 
     if (!empty($channel_ids)) {
         $reach[] = "c.channel_id IN (" . implode(',', $channel_ids) . ")";

@@ -4,8 +4,8 @@ description: A poll option's description, picture, links, Recommended mark and t
 ---
 
 ## What can an option carry?
-- Beside its label (`includes/workspace/poll_parts.php`, AQ2a of `plans/poll-agent-questions.md`): `description` (a line, up to 500), `file_id` (a picture), `links` (up to `WS_POLL_LINKS_MAX` (3) `{url, label}`, http or https; a missing label is the address), `recommended`, `other`.
-- Columns of step 11.0.213 (`upgrade_2026_11_0_ws_poll_parts()`), which also adds `ws_polls.withdrawn_at`, `withdrawn_by` and `again_of` for AQ2b. Shapes: `workflow/decisions-made-schema-20.md`.
+- Beside its label (`includes/workspace/poll_parts.php`, #9635): `description` (a line, up to 500), `file_id` (a picture), `links` (up to `WS_POLL_LINKS_MAX` (3) `{url, label}`, http or https; a missing label is the address), `recommended`, `other`.
+- Columns of step 11.0.213 (`upgrade_2026_11_0_ws_poll_parts()`), which also adds `ws_polls.withdrawn_at`, `withdrawn_by` and `again_of` for taking back and asking again (`poll-take-back.md`). Shapes: `workflow/decisions-made-schema-20.md`.
 - Read with `ws_poll_parts_ready()` first: before the upgrade a poll with any part is refused ("The database has to be updated first.", 503 over the API); a plain poll still works.
 
 ## Which rules hold the options together?
@@ -24,7 +24,7 @@ description: A poll option's description, picture, links, Recommended mark and t
 ## What do the box and the API get?
 - `ws_polls_map()` gives each option `description`, `picture` (`file_id`, `name`, `url`, `image`, or null), `links`, `recommended`, `other`, `my_text` (the reader's own words), and each voter `text`.
 - `WorkspacePoll` options carry the same (`picture.url` absolute), voters `text`. `workspace.polls.create` takes each option as a text or an object (`label`, `description`, `file_id`, `links`, `recommended`, `other`).
-- The poll box draws them and the New poll form sends them (`poll-box.md`).
+- The poll box draws them and the New poll form sends them (`poll-box.md`). Beside a question's own picture, an option's picture is a thumbnail in its row (`poll-question-picture-box.md`).
 
 ## How does a poll made before read?
 - Every part is empty or 0 on its rows (no backfill), so it draws, counts and closes as before. Tests: `tests/workspace_poll_parts_test.php`.

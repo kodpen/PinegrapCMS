@@ -22,8 +22,8 @@ description: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders, 
 - The architect's, not the owner's words: he had been told "a column"; the census showed the table is safer and the poll said so. The outcome comes from the one pure function, fed both lists; a removed or paused agent counts as not answering.
 
 ## Which schema do the features chosen on 2026-11-15 get? (owner, agent channel polls 49, 50, 51 and message 5139)
-- Poll 49's text (channel message 5089) named both: the duty text "ajan tablosuna bir sütun ister", Right or Wrong "küçük bir tablo ister"; he chose both. Column `ws_agents.duty` TEXT NULL, added by AF1; a small table of marks, one row per marked reply, added by AF5a (`plans/agent-work-features.md`).
-- Poll 50: "Evet, tablo ve 7 gün": one small table of a left cart's touches, added by CR1 (`plans/cart-recovery.md`).
+- Poll 49's text (channel message 5089) named both: the duty text "ajan tablosuna bir sütun ister", Right or Wrong "küçük bir tablo ister"; he chose both. Column `ws_agents.duty` TEXT NULL, added by AF1; a small table of marks, one row per marked reply, added by AF5a (`workspace/agent-duty.md`, `workspace/agent-feedback.md`).
+- Poll 50: "Evet, tablo ve 7 gün": one small table of a left cart's touches, added by #9778 (`commerce/cart-recovery-touches.md`).
 - Poll 51: "Evet, ikisi de": a rollup table for a pop-up's counts. Message 5139: "gerekiyorsa ona yeni tablo sütunları eklenir": new columns on `auto_dialogs` for when it opens, how often, who sees it and what it shows.
 - Each step states its exact columns in its PR and the architect confirms them; they are recorded here when the step lands. Running sites: no backfill; an empty duty and an auto dialog's old row behave as before.
 - No schema: the progress note (inside `ai_state`), the task hand-over (`ws_tasks.delegate` takes `agent:<id>` and `model:<id>`), the open items line.

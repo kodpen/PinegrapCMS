@@ -490,7 +490,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request', 'ws_link_preview_remove'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again'), true)) {
@@ -668,15 +668,9 @@ function ws_handle_action($action, $request)
                 return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
             }
 
-            $ran = ws_scheduled_execute($scheduled['id'], true);
+            $result = ws_scheduled_message_send_now($viewer, $scheduled);
 
-            if ($ran !== 'ran') {
-                $again = ws_scheduled_message_mine($viewer, $scheduled['id']);
-
-                return ws_action_error(($again && ($again['status'] === 'failed')) ? ws_scheduled_message_present($viewer, $again)['error'] : lang('It is being posted right now.'));
-            }
-
-            return ws_action_ok();
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // Works out a table as it is typed (the table window), the lines of a
         // writing box that end with "=", or draws a text the way a message
@@ -1035,7 +1029,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That flow could not be found.'));
             }
 
-            $result = ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request));
+            $fields = ws_action_flow_run_fields($request);
+
+            // Started in a channel about a customer (the composer's Start a
+            // flow, the "/" list, /flow): the run is about them, as a run the
+            // canvas starts for a picked customer is, when the starter reads
+            // the contact.
+            if (isset($fields['channel_id']) && !isset($fields['contact_id'])) {
+                $contact_id = ws_flow_run_channel_contact($viewer, ws_channel($fields['channel_id']));
+
+                if ($contact_id > 0) {
+                    $fields['contact_id'] = $contact_id;
+                }
+            }
+
+            $result = ws_flow_run_start($viewer, $flow, $fields);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
@@ -1855,6 +1863,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('versions' => ws_file_history($message['id'], (int) $viewer['id'])));
 
+        // The message a tag points at, for its popup: only for a reader of
+        // its channel (message_refs.php).
+        case 'ws_message_ref':
+            return ws_action_ok(ws_message_ref_popup($viewer, (int) ($request['message_id'] ?? 0)));
+
         // The overview: what is coming, what was written to the person, the
         // latest decisions and the channels they could join.
         case 'ws_home':
@@ -1892,9 +1905,11 @@ function ws_handle_action($action, $request)
                     return ws_change_allowed($viewer, $type, 0);
                 })),
                 'commands'    => ws_command_help($viewer),
+                // The order of the "/" list's groups, as /help has them.
+                'command_groups' => array_keys(ws_command_group_labels()),
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
-                'command_values' => ws_command_suggestions(),
+                'command_values' => ws_command_suggestions(null, $viewer),
                 // The screen sends files as form parts (apiUpload()).
                 'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
@@ -2010,14 +2025,19 @@ function ws_handle_action($action, $request)
                 ws_mail_read_rows($viewer, $rows);
             }
 
+            $flows_here = empty($request['as_thread']) ? ws_flows_here($viewer, $channel) : array();
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
                 // Polls, agent questions, the check-in and approval requests
                 // still open, over the conversation (open_items.php).
                 'open_items' => ws_channel_open_items($viewer, $channel),
-                // Add › Start a flow is offered only where it lists a flow.
-                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow;
+                // the same flows, read once here, are the "/" list's and
+                // /flow's (ws_flows_here()).
+                'flows_here' => !empty($flows_here),
+                'flows'      => $flows_here,
                 'messages'   => ws_message_payloads($viewer, $rows),
                 'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
                 'era'        => null,
@@ -2197,36 +2217,47 @@ function ws_handle_action($action, $request)
 
             $body = (string) ($request['body'] ?? '');
 
-            // "/claude ..." asks Claude, like writing @Claude.
-            if (function_exists('ws_claude_command_body')) {
-                $body = ws_claude_command_body($body);
-            }
+            // as_text: the body is posted as written, never run as a / command
+            // nor rewritten for /claude or /ai (a record shared from its drawer).
+            $as_text = !empty($request['as_text']);
 
-            // "/ai ..." asks Pinegrap AI, like writing @ai.
-            if (function_exists('ws_ai_command_body')) {
-                $body = ws_ai_command_body($body);
-            }
-
-            $command = ws_command_run($viewer, $channel, $body, array(
-                'confirm'   => !empty($request['confirm']),
-                'force'     => !empty($request['force']),
-                'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
-                'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
-                'decision'  => !empty($request['decision']),
-                'on_sale'   => !empty($request['on_sale']),
-                'parent_id' => (int) ($request['parent_id'] ?? 0),
-            ));
-
-            if ($command !== null) {
-                if ($command['type'] === 'error') {
-                    return ws_action_error($command['error']);
+            if (!$as_text) {
+                // "/claude ..." asks Claude, like writing @Claude.
+                if (function_exists('ws_claude_command_body')) {
+                    $body = ws_claude_command_body($body);
                 }
 
-                return ws_action_ok(array('command' => $command));
-            }
+                // "/ai ..." asks Pinegrap AI, like writing @ai.
+                if (function_exists('ws_ai_command_body')) {
+                    $body = ws_ai_command_body($body);
+                }
 
-            // "//word ..." is the text "/word ..." posted as a message.
-            $body = ws_command_unescape($body);
+                $command = ws_command_run($viewer, $channel, $body, array(
+                    'confirm'   => !empty($request['confirm']),
+                    'force'     => !empty($request['force']),
+                    'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
+                    'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
+                    'decision'  => !empty($request['decision']),
+                    'on_sale'   => !empty($request['on_sale']),
+                    'table_id'  => (int) ($request['table_id'] ?? 0),
+                    'cells'     => (array) ($request['cells'] ?? array()),
+                    'parent_id' => (int) ($request['parent_id'] ?? 0),
+                    // /recap: the last message read before this visit, as
+                    // the catch-up line hands it.
+                    'since_id'  => max(0, (int) ($request['since_id'] ?? 0)),
+                ));
+
+                if ($command !== null) {
+                    if ($command['type'] === 'error') {
+                        return ws_action_error($command['error']);
+                    }
+
+                    return ws_action_ok(array('command' => $command));
+                }
+
+                // "//word ..." is the text "/word ..." posted as a message.
+                $body = ws_command_unescape($body);
+            }
 
             $result = ws_message_send($viewer, $channel, $body, array(
                 'parent_id' => (int) ($request['parent_id'] ?? 0),
@@ -2432,6 +2463,25 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // "Remove preview": the writer takes a message's link card away for
+        // everyone (link_preview.php); the message is sent back.
+        case 'ws_link_preview_remove':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_link_preview_remove($viewer, $message);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
         case 'ws_delete':
             $message = ws_message((int) ($request['message_id'] ?? 0));
 
@@ -2494,6 +2544,52 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // A reader's highlight on a message (highlights.php): made, its
+        // scope changed, its note written, removed. Nobody is told; the
+        // message comes back drawn with it.
+        case 'ws_highlight_set':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_highlight_set($viewer, $message, (string) ($request['quote'] ?? ''), (int) ($request['occurrence'] ?? 0),
+                (string) ($request['scope'] ?? ''), isset($request['note']) ? (string) $request['note'] : null);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('id' => $result['id'], 'message' => $payload[0]));
+
+        case 'ws_highlight_note':
+        case 'ws_highlight_remove':
+            $result = ($action === 'ws_highlight_note')
+                ? ws_highlight_note($viewer, (int) ($request['id'] ?? 0), (string) ($request['note'] ?? ''))
+                : ws_highlight_remove($viewer, (int) ($request['id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($result['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0] ?? null));
+
+        // My highlights: the person's own, a page at a time, and removing
+        // many at once (the ids ticked, or every one of a filter).
+        case 'ws_highlights_mine':
+            return ws_action_ok(ws_highlights_mine($viewer, (string) ($request['filter'] ?? ''), (int) ($request['after'] ?? 0)));
+
+        case 'ws_highlights_remove':
+            $ids = is_array($request['ids'] ?? null) ? $request['ids'] : explode(',', (string) ($request['ids'] ?? ''));
+            $result = ws_highlights_remove_many($viewer, $ids, isset($request['every']) ? (string) $request['every'] : null);
+
+            return $result['ok'] ? ws_action_ok(array('removed' => $result['removed'], 'kept' => $result['kept'])) : ws_action_error($result['error']);
+
         case 'ws_check':
             $message = ws_message((int) ($request['message_id'] ?? 0));
 
@@ -2549,12 +2645,20 @@ function ws_handle_action($action, $request)
                 $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
+            // The question's own picture, sent with it (poll_picture.php).
+            $form_picture = ws_poll_picture_from_form($request);
+
+            if ($form_picture['error'] !== '') {
+                return ws_action_error($form_picture['error'], $form_picture['field']);
+            }
+
             $result = ws_poll_create($viewer, $channel, array(
                 'question'  => ws_tokens_normalise((string) ($request['question'] ?? '')),
                 'options'   => (array) ($request['options'] ?? array()),
                 'multiple'  => !empty($request['multiple']),
                 'anonymous' => !empty($request['anonymous']),
                 'closes_at' => $closes_at,
+                'picture'   => $form_picture['picture'],
             ));
 
             return $result['ok']
@@ -2582,6 +2686,23 @@ function ws_handle_action($action, $request)
                 $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
+            // A new picture or its removal: refused once somebody has
+            // answered, so it is checked before the edit and written after it
+            // (an edit never adds an answer).
+            $form_picture = ws_poll_picture_from_form($request);
+
+            if ($form_picture['error'] !== '') {
+                return ws_action_error($form_picture['error'], $form_picture['field']);
+            }
+
+            if ($form_picture['sent']) {
+                $pictured = ws_poll_picture_change_check($viewer, $poll, $form_picture['picture']);
+
+                if (!$pictured['ok']) {
+                    return ws_action_error($pictured['error'], 'picture');
+                }
+            }
+
             $result = ws_poll_edit($viewer, $poll, array(
                 'question'  => (string) ($request['question'] ?? ''),
                 'options'   => (array) ($request['options'] ?? array()),
@@ -2592,6 +2713,14 @@ function ws_handle_action($action, $request)
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], $result['field']);
+            }
+
+            if ($form_picture['sent']) {
+                $changed = ws_poll_picture_change($viewer, $poll, $form_picture['picture']);
+
+                if (!$changed['ok']) {
+                    return ws_action_error($changed['error'], 'picture');
+                }
             }
 
             $payload = ws_message_payloads($viewer, array(ws_message($poll['message_id'])));
@@ -2618,6 +2747,18 @@ function ws_handle_action($action, $request)
                     if (array_key_exists($key, $request)) {
                         $sent[$key] = $request[$key];
                     }
+                }
+
+                // The old question's picture is carried unless a new one is
+                // sent or it is removed.
+                $form_picture = ws_poll_picture_from_form($request);
+
+                if ($form_picture['error'] !== '') {
+                    return ws_action_error($form_picture['error'], $form_picture['field']);
+                }
+
+                if ($form_picture['sent']) {
+                    $sent['picture'] = $form_picture['picture'];
                 }
 
                 $result = ws_poll_ask_again($viewer, $poll, $sent);
@@ -2996,7 +3137,8 @@ function ws_handle_action($action, $request)
             $result = ws_mail_send($viewer, $mail + array('send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), ws_mail_send_error_field($result['error'], $result['detail'], $mail))
+                    + array('code' => $result['error']);
             }
 
             ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);
@@ -3188,8 +3330,8 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($answer);
 
-        // The E-mails screen: the next page of the list, a conversation in
-        // the reading pane (read from then on), Mark all as read
+        // The E-mails screen: the next page of the list (or the whole list
+        // after a change in the pane), a conversation in the reading pane (read from then on), Mark all as read
         // (mail_list.php, mail_pane.php, mail_reads.php).
         case 'ws_mail_rows':
         case 'ws_mail_pane':
@@ -3208,10 +3350,7 @@ function ws_handle_action($action, $request)
                 $filters = ws_mail_list_filters($request);
                 $list = ws_mail_list($viewer, $filters, time());
 
-                return ws_action_ok(array(
-                    'html' => ws_mail_list_rows_html($list['rows'], $filters, time()),
-                    'more' => ws_mail_list_more_html($filters, $list['next']),
-                ));
+                return ws_action_ok(ws_mail_rows_answer($list, $filters, time(), !empty($request['whole']), (int) ($request['conversation'] ?? 0)));
             }
 
             $pane = ws_mail_pane_open($viewer, (int) ($request['conversation_id'] ?? 0));
@@ -4000,6 +4139,14 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // The person's own quiet hours (notify.php): their own session only,
+        // never for another person; no MCP tool (the API route is the team
+        // devices session's own, api_quiet_hours.php).
+        case 'ws_quiet_hours_save':
+            $result = ws_quiet_hours_save($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('quiet_hours' => $result['value'])) : ws_action_error($result['error'], $result['field']);
+
         // Whether Claude may be asked in a channel.
         case 'ws_channel_claude':
             $channel = ws_action_channel($viewer, $request, 'manage');
@@ -4143,6 +4290,19 @@ function ws_handle_action($action, $request)
 
             return ($error === '') ? ws_action_ok() : ws_action_error($error);
 
+        // Right or Wrong on an agent's reply, or the mark taken back
+        // (verdict ''): the asker and the channel's managers only
+        // (agent_feedback.php).
+        case 'ws_agent_feedback':
+            $verdict = (string) ($request['verdict'] ?? '');
+            $marked = ws_agent_feedback_mark($viewer, (int) ($request['message_id'] ?? 0), ($verdict === '') ? null : $verdict, (string) ($request['reason'] ?? ''));
+
+            if (!$marked['ok']) {
+                return ws_action_error($marked['error']);
+            }
+
+            return ws_action_ok(array('feedback' => array('verdict' => $verdict, 'reason' => ($verdict === '') ? '' : (string) ($marked['reason'] ?? ''))));
+
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':
             $channel = ws_action_channel($viewer, $request, 'manage');
@@ -4197,8 +4357,10 @@ function ws_handle_action($action, $request)
 
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
+        // general=1 addresses the general memory (channel_id 0) instead,
+        // kept by whoever may post in an agent channel.
         case 'ws_memory_list':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4206,11 +4368,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
-                'can_post' => ws_can_post_channel($viewer, $channel),
+                'can_post' => ws_memory_can_write($viewer, $channel),
             ));
 
         case 'ws_memory_save':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4235,6 +4397,11 @@ function ws_handle_action($action, $request)
                 'pinned'     => !empty($request['pinned']),
                 'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
             );
+
+            if (array_key_exists('project', $request)) {
+                $input['project'] = (string) $request['project'];
+            }
+
             $check = ws_memory_check($viewer, $channel, $input, $current);
 
             if (!$check['ok']) {
@@ -4248,7 +4415,7 @@ function ws_handle_action($action, $request)
         case 'ws_memory_delete':
             $row = ws_memory_row((int) ($request['id'] ?? 0));
 
-            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+            if (!$row || !ws_memory_can_read($viewer, $row)) {
                 return ws_action_error(lang('That memory entry could not be found.'));
             }
 
@@ -4882,6 +5049,7 @@ function ws_handle_action($action, $request)
                 'search'        => (string) ($request['search'] ?? ''),
                 'priority'      => (string) ($request['priority'] ?? ''),
                 'soon'          => min(90, max(0, (int) ($request['soon'] ?? 0))),
+                'agent_channels' => ws_agent_channel_mode($request['agent_channels'] ?? ''),
             );
 
             // "Everything" is the board holder's view.
@@ -4889,13 +5057,21 @@ function ws_handle_action($action, $request)
                 $filters['scope'] = 'mine';
             }
 
-            return ws_action_ok(array('tasks' => ws_tasks_list($viewer, $filters)));
+            // The agent channels the reader may read: the toggle shows when
+            // there is one, and a task row names its agent channel.
+            $agent_names = ws_tasks_agent_readable($viewer);
+
+            return ws_action_ok(array(
+                'tasks'          => ws_tasks_list($viewer, $filters),
+                'agent_channels' => ws_tasks_agent_count($agent_names),
+                'agent_names'    => (object) $agent_names,
+            ));
 
         case 'ws_board':
-            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0)));
+            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_calendar':
-            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0)));
+            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_my_calendar':
             // Always the reader's own: no person is taken from the request.

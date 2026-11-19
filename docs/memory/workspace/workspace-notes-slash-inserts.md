@@ -4,7 +4,7 @@ description: "/" in a note's writing box lists the box's own inserts (lists, quo
 ---
 
 ## Where does "/" open the list?
-- Only in a note's box: `startNotes()` (assets/js/workspace.js) passes `slashInserts: { insertLabel }` through `richField()` to `PGWsEditor.create()`. The composer and every other box leave "/" as before; the composer's command picker (workspace-command-registry.md) is untouched.
+- Only in a note's box: `startNotes()` (assets/js/workspace.js) passes `slashInserts: { insertLabel }` through `richField()` to `PGWsEditor.create()`. The composer and every other box leave "/" as before; the composer's command picker (workspace-command-picker.md) is untouched.
 - `slashInserts(before, blocked, labels)` (assets/js/workspace_editor.js, pure): a "/" at a line's start, after a space or a chip; never in a word (`and/or`, `/var/www`), inside code, a link or a card (`blocked`), nor while a word is composed (IME). `Editor.slashCheck()` runs it on every input.
 
 ## What does it list?

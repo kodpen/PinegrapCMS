@@ -6,7 +6,9 @@
  * connection, its key, the connection test, the latest requests and the
  * setup steps), the Workspace agents (each edited in a drawer with its
  * waiting and failed requests), Pinegrap AI in the channels (its switch,
- * application, key and connection test), the assistants' bulk changes, and
+ * application, key and connection test), the voice message transcripts and
+ * spoken answers (the services' addresses, models and keys), the
+ * assistants' bulk changes, and
  * a card linking the MCP servers, still kept on the Workspace Settings
  * screen. They move here one at a time; each that
  * moves takes its link out of that card.
@@ -89,6 +91,12 @@ if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
 
+// ── Voice message transcripts ──
+$ws_card = ws_voice_settings_card('', $ws_viewer, $ws_form);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}
 
 // ── MCP servers ──
 // What a refused server form or an address check kept, handed over through

@@ -199,7 +199,7 @@ function test_workspace_agent_routes()
 		$routes[$route['id']] = $route;
 	}
 
-	pg_assert_same(array('workspace.channels.agents.list', 'workspace.channels.agents.card', 'workspace.channels.agents.set', 'workspace.channels.agents.remove'), array_keys($routes));
+	pg_assert_same(array('workspace.channels.agents.list', 'workspace.channels.agents.card', 'workspace.channels.agents.set', 'workspace.channels.agents.wake', 'workspace.channels.agents.remove', 'workspace.channels.agents.remove_post'), array_keys($routes));
 	pg_assert_same('workspace:read', $routes['workspace.channels.agents.card']['scope']);
 	pg_assert_same('workspace:read', $routes['workspace.channels.agents.list']['scope']);
 	pg_assert_true(!empty($routes['workspace.channels.agents.set']['dry_run']) && !empty($routes['workspace.channels.agents.remove']['dry_run']), 'writes rehearse');

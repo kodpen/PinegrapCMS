@@ -189,7 +189,7 @@ $portfolio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Web Designer Portfolio'),
-    'version'     => '1.0.2',
+    'version'     => '1.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 72,
     'icon'        => 'bi-vector-pen',

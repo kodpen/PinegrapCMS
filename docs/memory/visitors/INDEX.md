@@ -7,9 +7,14 @@
 - ai-fetch-counter.md: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at request end by waf.php for AI user fetchers and search indexers the firewall let through; unverified claims as a count only.
 - ai-visibility-figures.md: AI visibility figures and GET /reports/ai-visibility: fetches per bot, top pages per bot, unfetched sitemap pages, robots/llms state, AI assistant referrals, 400-day sweep.
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
+- auto-dialog-counts.md: Pop-up counts (auto_dialog_daily, 11.0.223, #9877): shown, closed, taken per pop-up and day; the day-signed beacon, who is not counted, the sweep, the 30-day figures [decision: decisions-made-schema-22.md]
 - experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
+- page-clicks-designer-layer.md: The designer's Clicks layer (part clicks, CM4a #10056): the canvas matched by the four folded parts, badges, tenth lines, device choice, side list, empty state; what CM4b wires in the core
+- page-clicks-script.md: The clicks and scroll depth script (pg_clicks.src.js, CM2 #9946): who gets it, how it names and folds an element, the depth, the one request it shares with the speed beacon, the consent check
+- page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where [decision: here]
+- page-clicks.md: Clicks and scroll depth counter (page_click_daily, 11.0.224, #9902): four row kinds, the beacon in page_view.php, the fold, the 200-element bound, figures, 400-day sweep [decision: decisions-made-schema-23.md]
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3). [decision: decisions-made-product.md]
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
 - page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
@@ -21,7 +26,7 @@
 - seo-impact-window-days.md: The SEO screens' recent-views column starts its window with pg_seo_impact_since(): calendar days, not 86400-second blocks, so a clock change does not move the first day.
 - seo-link-graph-self-links.md: SEO link graph: a page's link to itself is neither an incoming link nor a click-path step, so a page only its own menu item links to is an orphan
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
-- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep. [decision: decisions-made-product-19.md]
+- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts (no staff), once per visit, the signed result click through page_view.php, the 400-day sweep. [decision: decisions-made-product-19.md]
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records

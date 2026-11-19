@@ -88,8 +88,13 @@ $home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' O
 // them in the browser (browser mode) and keeps a heading's sort.
 $list_rows = array();
 
+// The last 30 days' counts of every auto dialog, in one grouped query
+// (includes/fn/auto_dialog_counts.php).
+$auto_dialog_figures = pg_auto_dialog_count_figures();
+
 foreach ($auto_dialogs as $auto_dialog) {
     $id = (int) $auto_dialog['id'];
+    $counts = pg_auto_dialog_count_of($auto_dialog_figures, $id);
     $width = (int) $auto_dialog['width'];
     $height = (int) $auto_dialog['height'];
     $delay = (int) $auto_dialog['delay'];
@@ -108,6 +113,9 @@ foreach ($auto_dialogs as $auto_dialog) {
             'page' => pg_list_cell(h($auto_dialog['page'])),
             'created' => pg_list_table_when_cell($auto_dialog['created_timestamp'], (string) $auto_dialog['created_username']),
             'last_modified' => pg_list_table_when_cell($auto_dialog['last_modified_timestamp'], (string) $auto_dialog['last_modified_username']),
+            'shown' => pg_list_cell(h(pg_format_number($counts['shown'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['shown'])),
+            'closed' => pg_list_cell(h(pg_format_number($counts['closed'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['closed'])),
+            'taken' => pg_list_cell(h(pg_format_number($counts['taken'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['taken'])),
             'preview' => pg_list_cell('<a class="btn-data-control btn btn-outline theme-secondary border-2" href="' . h(PATH . encode_url_path($home_page_name) . '?preview_auto_dialog=' . $id) . '" target="_blank" title="' . h(lang('Preview')) . '" aria-label="' . h(lang('Preview')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>', 'align-middle text-end'),
         ),
     );
@@ -126,6 +134,9 @@ $list = pg_list_table_printed(array(
         'page' => array('heading' => lang('Only on Page')),
         'created' => array('heading' => lang('Created'), 'kind' => 'date'),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'shown' => array('heading' => lang('Shown (30 days)'), 'kind' => 'number'),
+        'closed' => array('heading' => lang('Closed (30 days)'), 'kind' => 'number'),
+        'taken' => array('heading' => lang('Taken (30 days)'), 'kind' => 'number'),
         'preview' => array('heading' => lang('Preview'), 'kind' => 'actions'),
     ),
     'levels' => $sort_levels,

@@ -6,7 +6,7 @@ description: Rules for a Visitors overview section (includes/visitors/<name>.php
 ## What does a section own?
 - Its `includes/visitors/<name>.php`, its labelled block in `assets/css/pg_visitors.src.css`, `tests/visitors_<name>_test.php` and its topic (`visitors/visitors-<name>.md` or `ui/visitors-<name>-section.md`). Contract and loader: `visitors-screen.md`.
 - A change to one section never edits `visitors.php`, `shell.php`, `pg_visitors.src.js`, the figures module or another section. A helper only it needs stays in its file (or its own `includes/fn/` module, as `visitor_pages`); one a second section needs moves into `shell.php` or `visitor_figures.php`.
-- A new section: a name and heading in `pg_visitors_sections()` (screen order) and the file; the menu anchor follows by itself.
+- A new section: a name and heading in `pg_visitors_sections()` (screen order), one line in `pg_visitors_section_icons()` (`shell.php`; `tests/visitors_shell_test.php` asks every section for an icon; architect, message 6197), and the file; the menu anchor follows by itself.
 
 ## Where does a figure come from?
 - Visits, page views, forms, orders and every dimension: `includes/fn/visitor_figures.php` (`visitors/visitor-figures-module.md`): the daily summary for whole past days it covers, the raw rows for today and the rest. Never `COUNT(*)` over `visitors` in a section.

@@ -397,7 +397,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'message', 'people', 'logic', 'records', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
-	pg_assert_same(array('records:change,row_add,row_set,row_get,rows_get,record_get,contact_group', 'system:webhook,web_check,start_flow,mcp,ai,agent'), $result['records'], 'the boxes on records and table rows have a group of their own, out of System');
+	pg_assert_same(array('records:change,row_add,row_set,row_get,rows_get,record_get,list_records,contact_group', 'system:webhook,web_check,start_flow,mcp,ai,agent'), $result['records'], 'the boxes on records and table rows have a group of their own, out of System');
 	pg_assert_same(array(true, true, true, false, false, false, true, false), $result['open'], 'at first Message and People are open, Logic, Records and tables, System and Values folded');
 	pg_assert_same(true, $result['openSearched'], 'a search unfolds the groups');
 	pg_assert_same(array(false, true, false), $result['openChosen'], 'a group stays as the person folded it');
@@ -606,7 +606,7 @@ function test_workspace_flows_canvas_run_actions_use_the_runner()
 {
 	$flow = "ws_flow_for(\$viewer, (int) (\$request['flow_id'] ?? 0), 'view')";
 	$expected = array(
-		'ws_flow_run_start'  => array($flow, 'ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request))', 'ws_action_flow_run_answer('),
+		'ws_flow_run_start'  => array($flow, '$fields = ws_action_flow_run_fields($request);', 'ws_flow_run_start($viewer, $flow, $fields)', 'ws_action_flow_run_answer('),
 		'ws_flow_runs_list'  => array($flow, 'ws_flow_runs_list($viewer, $flow,', 'ws_action_flow_run_present('),
 		'ws_flow_run_get'    => array('ws_action_flow_run_answer(', 'ws_scheduled_due()'),
 		'ws_flow_run_cancel' => array('ws_flow_run_for($viewer,', 'ws_flow_run_cancel($viewer, $run)', 'ws_action_flow_run_answer('),
@@ -2229,7 +2229,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'sms', 'whatsapp', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'list_records', 'contact_group', 'ai', 'agent'))
 	);
 }
 

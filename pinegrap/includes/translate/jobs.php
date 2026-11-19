@@ -263,15 +263,35 @@ function pg_tr_job_cancel($job_id)
 }
 
 /**
+ * The name of a job's run lock, as SQL. GET_LOCK names belong to the whole
+ * database server, so the database is part of the name; hashed, so a long
+ * database name never pushes it past the 64 characters a name may have.
+ *
+ * @param int $job_id
+ * @return string  An SQL expression
+ */
+function pg_tr_job_lock_sql($job_id)
+{
+    $job_id = is_numeric($job_id) ? (int) $job_id : 0;
+
+    return "CONCAT('pg_tr_job_', MD5(CONCAT(DATABASE(), ':', " . $job_id . ")))";
+}
+
+/**
  * Works a server engine's job for up to $budget seconds. Returns how many
  * items were answered in this call and whether the job is finished.
  *
- * @return array('done' => int, 'failed' => int, 'finished' => bool, 'error' => string)
+ * One run at a time: the screen's run calls, a second open screen and the
+ * scheduled job all work the same open job, and two runs at once would read
+ * the same waiting texts and send each to the engine twice. A run that finds
+ * the job taken works nothing and answers 'busy'.
+ *
+ * @return array('done' => int, 'failed' => int, 'finished' => bool, 'busy' => bool, 'error' => string)
  */
 function pg_tr_job_run_server($job_id, $budget = 20)
 {
     $job = pg_tr_job_get($job_id);
-    $result = array('done' => 0, 'failed' => 0, 'finished' => false, 'error' => '');
+    $result = array('done' => 0, 'failed' => 0, 'finished' => false, 'busy' => false, 'error' => '');
 
     if (!$job || !in_array($job['status'], array('queued', 'running'), true)) {
         $result['finished'] = true;
@@ -299,7 +319,19 @@ function pg_tr_job_run_server($job_id, $budget = 20)
         return $result;
     }
 
-    db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '" . (int) $job_id . "'");
+    // Only a plain 0 means another run holds the job; a server that cannot
+    // answer (null) still works it, without the protection the lock adds.
+    $lock = pg_tr_job_lock_sql($job_id);
+    $got = db_value("SELECT GET_LOCK(" . $lock . ", 0)");
+
+    if (($got !== null) && ((string) $got === '0')) {
+        $result['busy'] = true;
+        return $result;
+    }
+
+    // A job cancelled or closed by another run since it was read above stays
+    // so.
+    db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '" . (int) $job_id . "' AND status IN ('queued', 'running')");
 
     // A model call may take most of a minute on its own; the budget is
     // checked between batches, not inside one.
@@ -376,6 +408,10 @@ function pg_tr_job_run_server($job_id, $budget = 20)
     }
 
     $result['finished'] = (pg_tr_job_close_if_complete($job_id) !== '');
+
+    if ((string) $got === '1') {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
 
     return $result;
 }
@@ -790,13 +826,18 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
  * and named in 'problems' with its file line and reason. A file without the
  * hash or translation column writes nothing and says so in 'error'.
  * Imported texts are written as reviewed unless $as_machine says otherwise.
+ * A row whose translation is the one already stored is counted as unchanged
+ * and not written: the export lists every text, so a file sent back after a
+ * few fixes carries every other row untouched, and writing those would mark
+ * unread machine translations reviewed (or reviewed ones machine) and
+ * relabel them as imported.
  *
- * @return array('written' => int, 'skipped' => int, 'stale' => int, 'rejected' => int,
- *               'problems' => array of string, 'error' => string)
+ * @return array('written' => int, 'unchanged' => int, 'skipped' => int, 'stale' => int,
+ *               'rejected' => int, 'problems' => array of string, 'error' => string)
  */
 function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 {
-    $summary = array('written' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0, 'problems' => array(), 'error' => '');
+    $summary = array('written' => 0, 'unchanged' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0, 'problems' => array(), 'error' => '');
     $missing_columns = lang('The file has no hash and translation columns. Import a file the Export CSV button wrote.');
     $csv = (string) $csv;
 
@@ -878,6 +919,13 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
             continue;
         }
 
+        $stored = db_value("SELECT text FROM translations WHERE string_id = '" . (int) $string['id'] . "' AND language = '" . e($language) . "' LIMIT 1");
+
+        if (pg_tr_csv_import_unchanged($stored, $clean)) {
+            $summary['unchanged']++;
+            continue;
+        }
+
         pg_tr_save_translation((int) $string['id'], $language, $clean, 'import', $as_machine ? 'machine' : 'reviewed', $user_id, $check['suspicious'] ? 1 : 0, true);
         $summary['written']++;
     }
@@ -885,6 +933,19 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
     fclose($handle);
 
     return $summary;
+}
+
+/**
+ * Whether a CSV row's cleaned translation is the text already stored for
+ * its language ($stored null: none stored yet).
+ *
+ * @param string|null $stored
+ * @param string      $clean
+ * @return bool
+ */
+function pg_tr_csv_import_unchanged($stored, $clean)
+{
+    return ($stored !== null) && ((string) $stored === (string) $clean);
 }
 
 /**

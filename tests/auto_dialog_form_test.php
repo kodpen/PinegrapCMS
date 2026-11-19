@@ -66,7 +66,7 @@ function test_auto_dialog_form_screens_use_shared_helpers()
 
 		pg_assert_contains('includes/forms/auto_dialog_form.php', $source, $file . ' loads the helpers');
 		pg_assert_contains('pg_auto_dialog_form_validate($liveform, ' . $id . ')', $source, $file . ' checks the shared way');
-		pg_assert_contains('pg_auto_dialog_save(' . (($id === 'null') ? '0' : '$id') . ', pg_auto_dialog_form_values($liveform), USER_ID)', $source, $file . ' saves the shared values through pg_auto_dialog_save()');
+		pg_assert_contains('pg_auto_dialog_save(' . (($id === 'null') ? '0' : '$id') . ', pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform))', $source, $file . ' saves the shared values and the open settings through pg_auto_dialog_save()');
 		pg_assert_contains("validate_area_access(\$user, 'manager')", $source, $file . ' is for managers');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'already in use') !== false, $file . ' keeps no copy of the name check');
@@ -241,4 +241,168 @@ function test_auto_dialog_page_and_api_use_the_address_checks()
 	pg_assert_contains("pg_auto_dialog_url_problem(\$values['url'])", $prepare, 'the API asks the screen\'s address check');
 	pg_assert_contains("api_fail_validation(\$problem, 'url')", $prepare, 'a refused address is 422 on url');
 	pg_assert_contains("((\$row === null) || array_key_exists('url', \$params))", $prepare, 'on a create and whenever a URL is sent');
+}
+
+function auto_dialog_test_lacks($needle, $haystack, $label)
+{
+	pg_assert_true(strpos($haystack, $needle) === false, $label);
+}
+
+function test_auto_dialog_page_rows_are_the_same_for_every_visitor()
+{
+	$rows = array(
+		array('id' => '2', 'url' => '/ebook', 'width' => '400', 'height' => '650', 'delay' => '15', 'frequency' => '24', 'page' => ''),
+		array('id' => '3', 'url' => '/ticket', 'width' => '0', 'height' => '0', 'delay' => '0', 'frequency' => '0', 'page' => 'Shop'),
+		array('id' => '4', 'url' => '/sayfa', 'width' => '1', 'height' => '1', 'delay' => '1', 'frequency' => '1', 'page' => 'ürün'),
+		'not a row',
+	);
+
+	$home = pg_auto_dialogs_on_page($rows, 'home');
+	pg_assert_same(array(2), array_column($home, 'id'), 'a row without a page belongs everywhere');
+	pg_assert_same(array('id' => 2, 'url' => '/ebook', 'width' => 400, 'height' => 650, 'delay' => 15, 'frequency' => 24, 'open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre'), $home[0], 'the values the script needs, without the page; a row stored before the open settings opens as before');
+	pg_assert_same(array(2, 3), array_column(pg_auto_dialogs_on_page($rows, 'online-shop-sale'), 'id'), 'a page that is part of the name, case-blind');
+	pg_assert_same(array(2, 4), array_column(pg_auto_dialogs_on_page($rows, 'ÜRÜN-listesi'), 'id'), 'multibyte page names');
+	pg_assert_same(array(), pg_auto_dialogs_on_page(false, 'home'), 'a failed query');
+
+	$saved = $_COOKIE;
+	$_COOKIE['software']['auto_dialog_2'] = (string) time();
+	pg_assert_same($home, pg_auto_dialogs_on_page($rows, 'home'), 'a dialog already shown is still printed: the script reads the cookie');
+	$_COOKIE = $saved;
+}
+
+function test_auto_dialog_page_keeps_nothing_in_the_session()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$start = strpos($page, 'if (AUTO_DIALOGS) {');
+	$block = substr($page, $start, strpos($page, '// If there is JS to output', $start) - $start);
+
+	auto_dialog_test_lacks('visit_start_timestamp', $block, 'no visit start in the session');
+	auto_dialog_test_lacks('$_SESSION', $block, 'nothing in the session');
+	auto_dialog_test_lacks('$_COOKIE', $block, 'the cookie is read by the script');
+	pg_assert_contains('$auto_dialogs_page = pg_auto_dialogs_on_page($auto_dialogs, $page_name, $auto_dialogs_cart);', $block, 'the page prints the rows for the page');
+	pg_assert_contains('encode_json($auto_dialogs_page)', $block, 'and only those');
+	pg_assert_contains('$auto_dialogs_cart = pg_auto_dialogs_need_cart($auto_dialogs) && pg_auto_dialog_session_has_cart();', $block, 'the cart is asked only while a row is for visitors with a cart');
+	pg_assert_contains("pg_page_cache_personal('popup_cart');", $block, 'a page that prints a cart row is drawn for this visitor');
+	auto_dialog_test_lacks('visit_start_timestamp', $page, 'no other place writes it');
+}
+
+function test_auto_dialog_script_picks_in_the_browser_and_opens_the_browsers_dialog()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	$from = strpos($src, 'init_auto_dialogs: function(');
+	$init = substr($src, $from, strpos($src, '// Used by express order', $from) - $from);
+	$open = substr($src, strpos($src, 'open_dialog: function('), 9000);
+	$open = substr($open, 0, strpos($open, "\n    },\n"));
+
+	pg_assert_contains("sessionStorage.getItem('pg_visit_start')", $init, 'the delay counts from the visit\'s first page');
+	pg_assert_contains("'software[auto_dialog_' + id + ']'", $init, 'the old per-row cookie still gives a dialog\'s last time');
+	pg_assert_contains('>= (frequency * 3600)', $init, 'a recurring dialog opens again after its hours');
+	pg_assert_contains("disable_auto_dialog_' + auto_dialog.id", $init, 'the body class of one dialog');
+	pg_assert_contains("'disable_auto_dialogs'", $init, 'the body class of all dialogs');
+	auto_dialog_test_lacks('expires=Tue, 01 Jan 2030', $init, 'the per-row cookie is no longer written');
+
+	pg_assert_contains("document.createElement('dialog')", $open, 'the browser\'s own dialog');
+	pg_assert_contains('dialog.showModal();', $open, 'centred and modal by default');
+	pg_assert_contains('dialog.show();', $open, 'modal false keeps the page usable');
+	pg_assert_contains("addEventListener('pg:consent'", $open, 'it waits while the cookie notice asks');
+	auto_dialog_test_lacks('.dialog(', $open, 'no jQuery UI');
+	auto_dialog_test_lacks('ui-', $open, 'no ui- classes');
+	pg_assert_contains('dialog_style: function(', $src, 'the frame\'s rules');
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
+	pg_assert_contains('sessionStorage.getItem("pg_visit_start")', $min, 'the served script picks in the browser');
+	pg_assert_contains('createElement("dialog")', $min, 'the served script opens the browser\'s dialog');
+	pg_assert_contains('"pg-dialog-style"', $min, 'the served script has the frame\'s rules');
+}
+
+function test_auto_dialog_open_settings_read_as_today_when_unset()
+{
+	$defaults = array('open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre');
+
+	pg_assert_same($defaults, pg_auto_dialog_open_settings(array('id' => 2, 'delay' => 15)), 'a row stored before the columns');
+	pg_assert_same($defaults, pg_auto_dialog_open_settings(array('open_on' => 'hover', 'open_scroll' => '0', 'audience' => 'members', 'place' => 'middle')), 'an unknown value reads as the default');
+	pg_assert_same($defaults, pg_auto_dialog_open_settings(array('open_on' => array('scroll'), 'open_scroll' => '101')), 'a list or a share past 100');
+	pg_assert_same(array('open_on' => 'scroll', 'open_scroll' => 30, 'audience' => 'cart', 'place' => 'corner'), pg_auto_dialog_open_settings(array('open_on' => ' Scroll ', 'open_scroll' => '30', 'audience' => 'cart', 'place' => 'corner')), 'the stored settings, trimmed and case-blind');
+	pg_assert_same(array('delay', 'all', 'centre'), array(pg_auto_dialog_open_choices()['open_on'][0], pg_auto_dialog_open_choices()['audience'][0], pg_auto_dialog_open_choices()['place'][0]), 'each default is listed first, as the form offers it');
+}
+
+function test_auto_dialog_cart_audience_rule()
+{
+	pg_assert_true(pg_auto_dialog_audience_shows('all', false), 'all: a visitor without a cart');
+	pg_assert_true(pg_auto_dialog_audience_shows('all', true), 'all: a visitor with a cart');
+	pg_assert_false(pg_auto_dialog_audience_shows('cart', false), 'cart: not without a line in the cart');
+	pg_assert_true(pg_auto_dialog_audience_shows('cart', true), 'cart: a visitor whose order holds a line');
+
+	$rows = array(
+		array('id' => '2', 'url' => '/ebook', 'page' => ''),
+		array('id' => '5', 'url' => '/waiting', 'page' => '', 'audience' => 'cart', 'open_on' => 'leave', 'place' => 'bottom'),
+	);
+
+	pg_assert_same(array(2), array_column(pg_auto_dialogs_on_page($rows, 'home'), 'id'), 'a cart row is left out by default');
+	pg_assert_same(array(2, 5), array_column(pg_auto_dialogs_on_page($rows, 'home', true), 'id'), 'and printed for a visitor with a cart');
+	pg_assert_same(array('leave', 'bottom'), array(pg_auto_dialogs_on_page($rows, 'home', true)[1]['open_on'], pg_auto_dialogs_on_page($rows, 'home', true)[1]['place']), 'with its trigger and place');
+	pg_assert_false(pg_auto_dialogs_need_cart(array($rows[0])), 'no cart row: the session is not asked');
+	pg_assert_true(pg_auto_dialogs_need_cart($rows), 'a cart row: the session is asked');
+}
+
+function test_auto_dialog_form_open_values_and_fields()
+{
+	$liveform = new class {
+		public $values = array('open_on' => 'scroll', 'open_scroll' => '075', 'audience' => '', 'place' => 'top');
+		public function get_field_value($field) { return $this->values[$field] ?? ''; }
+	};
+
+	pg_assert_same(array('open_on' => 'scroll', 'open_scroll' => 75, 'audience' => 'all', 'place' => 'top'), pg_auto_dialog_form_open_values($liveform), 'the sent settings, a blank one as its default');
+	pg_assert_same(array('open_on', 'open_scroll', 'audience', 'place'), array_keys(pg_auto_dialog_form_open_fields()), 'the four fields');
+
+	foreach (pg_auto_dialog_form_open_fields() as $field => $rule) {
+		if ($rule[1] !== null) {
+			pg_assert_same(pg_auto_dialog_open_choices()[$field], array_values($rule[1]), $field . ' offers exactly the values the writer takes, the default first');
+		}
+	}
+
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_auto_dialog.php');
+	pg_assert_contains('pg_auto_dialog_form_open_fields()', $template, 'the form draws the fields');
+	pg_assert_contains('pg_auto_dialog_form_open_problems($liveform)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/auto_dialog_form.php'), 'the save checks them');
+}
+
+function test_auto_dialog_script_scroll_leave_and_place()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	$from = strpos($src, 'init_auto_dialogs: function(');
+	$init = substr($src, $from, strpos($src, '// Used by express order', $from) - $from);
+
+	pg_assert_contains("software.when_scrolled(parseInt(auto_dialog.open_scroll, 10) || 50, show);", $init, 'scroll waits for its share of the page');
+	pg_assert_contains("software.when_leaving(show);", $init, 'leave waits for the pointer to leave');
+	pg_assert_contains("if ((open_on === 'leave') && software.is_touch_screen()) {", $init, 'a touch screen falls back to the delay');
+	pg_assert_contains("var open_on = preview ? 'delay' : auto_dialog.open_on;", $init, 'a preview opens at once');
+	pg_assert_contains("setTimeout(show, delay * 1000);", $init, 'the delay as before');
+	pg_assert_contains('dialog.modal = false;', $src, 'a bar or a corner card leaves the page usable (show())');
+	pg_assert_contains("'dialog.pg-dialog-corner{", $src, 'the corner card\'s rule');
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
+	foreach (array('show_auto_dialog:function(', 'when_scrolled:function(', 'when_leaving:function(', 'is_touch_screen:function(', 'dialog.pg-dialog-top{', 'software.when_scrolled(parseInt(a.open_scroll,10)||50,d)') as $needle) {
+		pg_assert_contains($needle, $min, 'the served script: ' . $needle);
+	}
+}
+
+function test_auto_dialogs_wait_for_the_cookie_notice_and_keep_one_cookie()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	$from = strpos($src, 'init_auto_dialogs: function(');
+	$init = substr($src, $from, strpos($src, '// Used by express order', $from) - $from);
+
+	pg_assert_contains("document.getElementById('pg-cc')", $init, 'it looks for the cookie notice');
+	pg_assert_contains("document.addEventListener('pg:consent'", $init, 'with the notice on, the dialogs start on its answer');
+	pg_assert_contains('if (preview || !notice) {', $init, 'with the notice off, or for a preview, they start at once');
+	pg_assert_contains('!!(choices && choices.marketing)', $init, 'the cookie is kept only with marketing allowed');
+	pg_assert_contains("var name = 'pg_popup';", $init, 'one cookie for all pop-ups');
+	pg_assert_same(PG_POPUP_COOKIE, 'pg_popup', 'the script and the catalogue name the same cookie');
+	pg_assert_contains('Max-Age=31536000', $init, 'kept for a year');
+	pg_assert_contains("window.sessionStorage.setItem(name, parts.join('|'))", $init, 'without consent, sessionStorage for the visit');
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
+	pg_assert_contains('addEventListener("pg:consent"', $min, 'the served script waits for the notice');
+	pg_assert_contains('"pg_popup"', $min, 'the served script keeps the one cookie');
+	auto_dialog_test_lacks('expires=Tue, 01 Jan 2030', $min, 'the served script no longer writes the per-row cookie');
 }

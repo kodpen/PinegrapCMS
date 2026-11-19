@@ -10,7 +10,7 @@ module: mail_webhook
 - Listed in `waf_is_api_request()` and `waf_country_api_scripts()` like `carrier_webhook.php`.
 
 ## What is the credential?
-- The secret key in the address for every transport, made on the first save of the transport on SMTP Settings and kept in its sealed secrets (`connect_apps` `mail_<key>`, `webhook_key`). It stays when another transport is chosen: a message sent earlier may still bounce. The card shows the address in the transport's pane.
+- The secret key in the address for every transport, made on the first save of the transport on E-mail sending and kept in its sealed secrets (`connect_apps` `mail_<key>`, `webhook_key`). It stays when another transport is chosen: a message sent earlier may still bounce. The card shows the address in the transport's pane.
 - Mailgun and Resend (`webhook_signed` capability) also check the provider's signature when a "Webhook signing key" is stored (`webhook_signing`, same sealed array): Mailgun HMAC of timestamp+token, Resend Svix `v1` HMAC of `id.timestamp.body`. Without a stored signing key the URL key alone admits.
 - SES via SNS: the SNS signature is not verified (it would need a certificate fetch); the URL key is the credential. A SubscriptionConfirmation is confirmed by a GET of `SubscribeURL` only when it is https on an `sns.<region>.amazonaws.com` host.
 

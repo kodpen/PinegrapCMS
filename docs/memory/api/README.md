@@ -23,7 +23,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 ## Clusters
 
 - `api-store-*`: 6 files.
-- `channel-api-*`: 16 files; start at `channel-api-overview.md`.
+- `api-webhook-*`: 6 files.
 
 ## Files
 

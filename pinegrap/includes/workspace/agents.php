@@ -108,6 +108,9 @@ define('WS_AGENT_HOURLY_MAX', 30);
 /** The longest duty text, in characters (ws_agents.duty is TEXT). */
 define('WS_AGENT_DUTY_MAX', 2000);
 
+/** How much of another agent's duty its channel's agents are told: its first line, cut here. */
+define('WS_AGENT_DUTY_LINE_MAX', 160);
+
 /**
  * Are the registry tables there? Files can land before the upgrade runs
  * (11.0.172): until then Claude's routine is read from config.

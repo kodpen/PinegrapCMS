@@ -245,6 +245,7 @@
         row_get: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
         rows_get: ['M1.5 2h9v8.5h-9z', 'M1.5 4.75h9M1.5 7.5h9M5 4.75v5.75', 'M9.5 10.5h5.5l-2.25 2.5v2.25l-1-.75V13z'],
         record_get: ['M2.5 1.5h7l2.5 2.5v4.5', 'M2.5 1.5v13h6', 'M4.5 5.5h5M4.5 8h3', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
+        list_records: ['M2.5 3.5h1M2.5 8h1M2.5 12.5h1', 'M5.5 3.5h8M5.5 8h8M5.5 12.5h5', 'M12.5 11v3M11 12.5h3'],
         contact_group: ['M3 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M1.5 13c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5', 'M9.5 4.5a1.75 1.75 0 1 0 3.5 0a1.75 1.75 0 1 0 -3.5 0', 'M10.5 8.5c1.75 0 3 1 3.5 2.5', 'M12.5 11.5v3.5M10.75 13.25h3.5'],
         ai: ['M6 2l1.25 3.25L10.5 6.5L7.25 7.75L6 11L4.75 7.75L1.5 6.5l3.25-1.25z', 'M12 9l.75 1.75l1.75.75l-1.75.75L12 14l-.75-1.75L9.5 11.5l1.75-.75z'],
         agent: ['M3.5 5.5h9v7.5h-9z', 'M8 2.5v3', 'M6 9v.5M10 9v.5', 'M6.5 11.25h3'],
@@ -507,6 +508,59 @@
         }
 
         return node;
+    }
+
+    // A button of the look's recipes (.pg-button and its ranks): the
+    // button's own gap spaces its icon, so the icon carries no margin.
+    function lookButton(className, label, iconName) {
+        var node = el('button', className);
+        node.type = 'button';
+
+        if (iconName) {
+            node.appendChild(icon(iconName, ''));
+        }
+
+        node.appendChild(document.createTextNode(label));
+
+        return node;
+    }
+
+    // A tick of the look's recipes (.pg-checkbox) with its label beside it,
+    // added to box; the tick is given back.
+    function lookCheck(box, label, checked, prefix) {
+        var wrap = el('div', 'd-flex align-items-center gap-2 mb-1');
+        var input = el('input', 'pg-checkbox');
+        input.type = 'checkbox';
+        input.checked = !!checked;
+        input.id = nextId(prefix);
+        var text = el('label', 'pg-text-2', label);
+        text.htmlFor = input.id;
+        wrap.appendChild(input);
+        wrap.appendChild(text);
+        box.appendChild(wrap);
+
+        return input;
+    }
+
+    // A field of the look's recipes: .pg-field-label over the control
+    // (.pg-input, or a .pg-input wrapper round it), the help under it.
+    function lookField(label, control, field, help) {
+        var wrap = el('div', 'mb-2');
+        var caption = el('label', 'pg-field-label', label);
+
+        if (!field.id) {
+            field.id = nextId('ws-look-field-');
+        }
+
+        caption.htmlFor = field.id;
+        wrap.appendChild(caption);
+        wrap.appendChild(control);
+
+        if (help) {
+            wrap.appendChild(el('div', 'pg-field-help', help));
+        }
+
+        return wrap;
     }
 
     // "2026-10-16" as people write it: 16.10.2026.
@@ -777,12 +831,27 @@
 
     var toastRoot = null;
 
-    function toast(message, kind, action) {
+    // The corner the notices stand in. While a drawer or dialog is open it
+    // lives inside it: a modal <dialog> and its backdrop are in the top
+    // layer, above every z-index of the page, so a notice left on the body
+    // is drawn dimmed under the backdrop. pgUI.hostLayer() moves it back to
+    // the body as that dialog starts hiding.
+    function toastHost() {
         if (!toastRoot) {
             toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
             toastRoot.style.zIndex = 1090;
             document.body.appendChild(toastRoot);
         }
+
+        if (window.pgUI && pgUI.hostLayer) {
+            pgUI.hostLayer(toastRoot);
+        }
+
+        return toastRoot;
+    }
+
+    function toast(message, kind, action) {
+        toastHost();
 
         // Bootstrap 6 has no text-bg-*: the fill and its ink are two
         // classes, and the dark notice is the inverse surface.
@@ -882,18 +951,25 @@
     // (label, the file's name), a bar with the share sent, "1.4 MB of 6.0
     // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
     // moves it; remove() takes it away once the request has ended.
+    // A reply's quote line is cut with an ellipsis in a narrow column: its
+    // title carries the whole quoted text first and what a click does on
+    // the next line; with no text, the action alone.
+    function quoteTitle(text, action) {
+        var whole = String(text || '').trim();
+
+        return whole ? whole + '\n' + action : action;
+    }
+
     function uploadCard(label, name, onCancel) {
-        if (!toastRoot) {
-            toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
-            toastRoot.style.zIndex = 1090;
-            document.body.appendChild(toastRoot);
-        }
+        toastHost();
 
         var box = el('div', 'toast show border-0 bg-inverse fg-contrast-inverse');
         var inner = el('div', 'toast-body');
         var title = el('div', 'fw-semibold', label);
         var file = el('div', 'small text-truncate', name);
         var bar = progressBar({ percent: 0 }, true, label);
+
+        file.title = name;
         var fill = bar.firstChild;
         var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
         var bytes = el('span');
@@ -1464,6 +1540,13 @@
     var ctxOpener = null;
     var ctxKeyAt = 0;
     var messageMetaSeq = 0;
+    // A menu of the writing box stands by its button (ctxFollow()): where it
+    // was asked for, the button's place then and the window's width.
+    var ctxAnchor = null;
+    var ctxNextAnchor = null;
+    var ctxAt = null;
+    var ctxWidth = 0;
+    var ctxPlaceTimer = 0;
 
     // Focus inside the menu (or already lost to the page) goes back to what
     // opened it: removing a focused node drops focus to the body.
@@ -1476,6 +1559,8 @@
             ctxNode.remove();
             ctxNode = null;
             ctxOpener = null;
+            ctxAnchor = null;
+            ctxAt = null;
 
             if (opener && opener.hasAttribute('aria-haspopup')) {
                 opener.setAttribute('aria-expanded', 'false');
@@ -1485,6 +1570,73 @@
                 giveFocusBack(opener);
             }
         }
+    }
+
+    // The next menu or floating box opened stands by this button of the
+    // writing box. On a phone the menu takes the focus from the field, the
+    // keyboard goes down and the window grows: the box, and the button with
+    // it, moves down while the menu has to stay open.
+    function ctxFollow(node) {
+        ctxNextAnchor = node || null;
+    }
+
+    // What a change of the window does to an open menu: one standing by a
+    // button of the writing box moves with it while only the height changed
+    // (the keyboard came or went); a new width (a turn of the phone, a
+    // resized window) or any other menu closes it.
+    function ctxAfterChange(oldWidth, newWidth, follows) {
+        return (follows && oldWidth === newWidth) ? 'place' : 'close';
+    }
+
+    // Called once the menu or box is in the page at its first place: the
+    // point it was asked for, kept as an offset from its button, and whether
+    // it stands over that point.
+    function ctxSettle(x, y, above) {
+        var box = null;
+
+        ctxAnchor = ctxNextAnchor;
+        ctxNextAnchor = null;
+        ctxWidth = window.innerWidth;
+
+        if (ctxAnchor) {
+            box = ctxAnchor.getBoundingClientRect();
+        }
+
+        ctxAt = box ? { dx: x - box.left, dy: y - box.top, above: !!above } : null;
+    }
+
+    // Puts the open menu at the same offset from its button, kept in the
+    // window. Its height is read again: a taller window lets it grow.
+    function ctxPlace() {
+        ctxPlaceTimer = 0;
+
+        if (!ctxNode || !ctxAnchor || !ctxAt) {
+            return;
+        }
+
+        var now = ctxAnchor.getBoundingClientRect();
+
+        // The button left the page or is no longer drawn: nothing to stand by.
+        if (!ctxAnchor.isConnected || (!now.width && !now.height)) {
+            closeCtx();
+            return;
+        }
+
+        var height = ctxNode.offsetHeight;
+        var x = now.left + ctxAt.dx;
+        var y = now.top + ctxAt.dy - (ctxAt.above ? height : 0);
+
+        ctxNode.style.left = Math.max(8, Math.min(x, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
+        ctxNode.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
+    }
+
+    // After the box has settled: bindFit() lays it out a frame later.
+    function ctxPlaceSoon() {
+        if (ctxPlaceTimer) {
+            window.clearTimeout(ctxPlaceTimer);
+        }
+
+        ctxPlaceTimer = window.setTimeout(ctxPlace, 60);
     }
 
     function giveFocusBack(opener) {
@@ -1561,6 +1713,7 @@
         });
 
         if (!list.length) {
+            ctxNextAnchor = null;
             return;
         }
 
@@ -1667,6 +1820,7 @@
 
         var width = menu.offsetWidth;
         var height = menu.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -1677,6 +1831,7 @@
 
         ctxNode = menu;
         ctxOpenedAt = Date.now();
+        ctxSettle(x, asked, above);
 
         var first = menu.querySelector('.ws-ctx-item:not([disabled])');
 
@@ -1777,9 +1932,41 @@
         }
     });
 
-    window.addEventListener('resize', closeCtx);
+    window.addEventListener('resize', function () {
+        if (!ctxNode) {
+            return;
+        }
+
+        if (ctxAfterChange(ctxWidth, window.innerWidth, !!ctxAnchor) === 'close') {
+            closeCtx();
+        } else {
+            ctxPlaceSoon();
+        }
+    });
+
+    // A phone's keyboard may change only the visual viewport (iOS): a menu
+    // of the writing box follows it; any other menu is left as it was.
+    if (window.visualViewport) {
+        ['resize', 'scroll'].forEach(function (name) {
+            window.visualViewport.addEventListener(name, function () {
+                if (ctxNode && ctxAnchor) {
+                    ctxPlaceSoon();
+                }
+            });
+        });
+    }
+
+    // A scroll closes a menu opened from a message's row; one of the writing
+    // box moves with its button instead (bindFit() scrolls the conversation
+    // to its end when the keyboard goes down).
     document.addEventListener('scroll', function (event) {
-        if (ctxNode && !ctxNode.contains(event.target) && (Date.now() - ctxOpenedAt > 350)) {
+        if (!ctxNode || ctxNode.contains(event.target)) {
+            return;
+        }
+
+        if (ctxAnchor) {
+            ctxPlaceSoon();
+        } else if (Date.now() - ctxOpenedAt > 350) {
             closeCtx();
         }
     }, true);
@@ -2471,6 +2658,9 @@
     var DRAFT_DAYS = 14;
     var DRAFT_KEEP = 50;
 
+    // The pictures the Files tab's gallery draws at a time (drawFiles()).
+    var FILE_PAGE = 60;
+
     function draftKey(site, viewer, channelId, threadId) {
         var thread = parseInt(threadId, 10) || 0;
 
@@ -2570,7 +2760,8 @@
     }
 
     // A box that floats like a context menu and closes like one: a click
-    // elsewhere, Escape, a scroll or a resize. "above" places it over the
+    // elsewhere, Escape, a scroll or a resize (one of the writing box moves
+    // with its button instead, ctxFollow()). "above" places it over the
     // point instead of under it (for the composer, at the bottom).
     function floatBox(x, y, content, className, above) {
         closeCtx();
@@ -2587,6 +2778,7 @@
 
         var width = box.offsetWidth;
         var height = box.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -2597,6 +2789,7 @@
 
         ctxNode = box;
         ctxOpenedAt = Date.now();
+        ctxSettle(x, asked, above);
 
         return box;
     }
@@ -2977,10 +3170,40 @@
         keepStop();
     }
 
+    // The channel's agent a tag names: an application's tag (app:N, N the
+    // application's id) of an agent the channel offers, as its member row
+    // (agentOfApp()); null for any other tag, a muted one or a channel
+    // without agents. Pure (tests/workspace_agent_card_js_test.php).
+    function chipAgent(ref, muted, channel) {
+        var parts = String(ref || '').split(':');
+        var appId = parseInt(parts[1], 10);
+
+        if (muted || (parts.length !== 2) || (parts[0] !== 'app') || !(appId > 0)) {
+            return null;
+        }
+
+        var agent = agentOfApp(channel, appId);
+
+        return (agent && agent.id) ? agent : null;
+    }
+
     // Tags inside a message, and the head of a lone tag's card: open the
-    // record, see where else it came up.
-    function chipMenus(container) {
+    // record, see where else it came up. channel: the channel the text is
+    // read in, when there is one; an agent's tag then opens its card.
+    function chipMenus(container, channel) {
         Array.prototype.forEach.call(container.querySelectorAll('.ws-chip[data-ws-ref], .ws-tag-card-head[data-ws-ref]'), function (chip) {
+            // Another message pointed at opens it in a card (messageRefHook()).
+            if (chip.classList.contains('ws-chip-message')) {
+                messageRefHook(chip);
+            }
+
+            // An agent of the channel opens the card its name opens.
+            var agent = channel ? chipAgent(chip.getAttribute('data-ws-ref'), chip.classList.contains('ws-chip-muted'), channel) : null;
+
+            if (agent) {
+                agentCardHook(chip, channel, agent, true);
+            }
+
             onContext(chip, function () {
                 var parts = chip.getAttribute('data-ws-ref').split(':');
                 var type = parts[0];
@@ -3299,6 +3522,19 @@
         return face;
     }
 
+    // The theme a sender's face is drawn in (avatar()), without its
+    // "theme-" prefix: a message's box takes a faint tint of it on a wide
+    // screen.
+    function senderTone(personData) {
+        var data = personData || {};
+
+        if ((data.avatar_kind || '') === 'user') {
+            return 'secondary';
+        }
+
+        return AVATAR_THEMES[((parseInt(data.tone, 10) || 0) % 8 + 8) % 8].slice(6);
+    }
+
     // Overlapping faces in an .avatar-stack. The stack is row-reverse (the
     // last child sits leftmost and on top), so the faces go in backwards
     // and the first person still reads first.
@@ -3320,16 +3556,19 @@
 
     // A channel's agents as its head and Channel info show them: Claude and
     // Pinegrap AI where they can be asked, then the registry agents the
-    // server sends (ws_channel_member_agents()).
+    // server sends (ws_channel_member_agents()); in a discussion also the
+    // channel's agents asked there by name (reach_from) and the one it
+    // follows (following).
     function channelAgents(channel) {
         var out = [];
+        var follow = (channel.thread && channel.thread.follow) || '';
 
         if (BOOT.claude && channel.claude && channel.claude.available) {
-            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'claude' });
         }
 
         if (BOOT.ai && channel.ai && channel.ai.available) {
-            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'ai' });
         }
 
         (channel.agents || []).forEach(function (agent) {
@@ -3345,11 +3584,69 @@
                 assistant: !!agent.assistant,
                 active: !!agent.active,
                 seen: agent.seen,
-                seen_state: agent.seen_state
+                seen_state: agent.seen_state,
+                reach_from: agent.reach_from || 0,
+                following: !!agent.following
             });
         });
 
         return out;
+    }
+
+    // One agent's row as Channel info and a discussion's people panel draw
+    // it: its face and name (a registry agent's open its card), role, badge,
+    // Paused, Following, under it @handle and what wakes it, its last seen
+    // at the right of the first line. In a narrow column the badges move
+    // to the next line and the role is the part cut (.ws-info-agents).
+    function agentInfoRow(channel, agent, list) {
+        var row = el('div', 'ws-info-person');
+        var text = el('div', 'ws-info-person-text');
+        var name = el('div', 'ws-info-person-name');
+        var title = name.appendChild(el('span', 'ws-info-agent-title'));
+        var badges = el('span', 'ws-info-agent-badges');
+        var face = agentFace(agent);
+
+        title.appendChild(el('span', 'ws-info-agent-name', agent.name));
+
+        // The role the agent's form gives it, a label only.
+        if (agent.role) {
+            title.appendChild(el('span', 'ws-info-agent-role small fg-secondary fw-normal', agent.role));
+        }
+
+        badges.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+
+        if (!agent.active) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
+        }
+
+        if (agent.following) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-success ws-info-badge', t('cm_following')));
+        }
+
+        name.appendChild(badges);
+
+        // A registry agent's name and face open its card.
+        if (agent.id) {
+            agentCardHook(name, channel, agent, true);
+            agentCardHook(face, channel, agent, false);
+        }
+
+        row.appendChild(face);
+        text.appendChild(name);
+
+        if (agent.line) {
+            text.appendChild(el('div', 'ws-info-person-role', agent.line));
+        }
+
+        row.appendChild(text);
+
+        if (agent.seen) {
+            row.appendChild(el('span', 'ws-info-seen' + (agent.seen_state ? ' is-' + agent.seen_state : ''), agent.seen));
+        }
+
+        list.appendChild(row);
+
+        return row;
     }
 
     // The "Who has seen it" drawer's parts from ws_message_seen's answer:
@@ -3591,6 +3888,17 @@
         }
 
         agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
+
+        // How people marked its answers in 30 days; left out while none was.
+        if (data.feedback && data.feedback.length) {
+            var marks = el('span', 'ws-agent-card-value is-lines');
+
+            data.feedback.forEach(function (line) {
+                marks.appendChild(el('span', '', line));
+            });
+
+            agentCardRow(facts, t('ac_feedback'), marks);
+        }
         node.appendChild(facts);
 
         if (data.windows && data.windows.length) {
@@ -3656,6 +3964,9 @@
                 var link = el('button', 'pg-button pg-button-ghost pg-button-sm', '#' + item.name);
 
                 link.type = 'button';
+                // A long name is cut with an ellipsis on the card: the title
+                // carries it whole.
+                link.title = '#' + item.name;
                 link.addEventListener('click', function () {
                     agentCardClose();
                     app.open(item.id, 0);
@@ -3802,13 +4113,25 @@
             });
         }
 
+        // A finger never leaves the anchor: the mouse events a tap brings
+        // with it would close the card as soon as the layout moves the
+        // anchor (a message's tool bar opening under it). A tap's card
+        // closes on a tap outside, Escape or a scroll.
+        var touched = false;
+
+        target.addEventListener('pointerdown', function (event) {
+            touched = (event.pointerType === 'touch');
+        });
         target.addEventListener('mouseenter', function () {
             clearTimeout(agentCardOpen.timer);
             agentCardOpen.timer = setTimeout(open, 350);
         });
         target.addEventListener('mouseleave', function () {
             clearTimeout(agentCardOpen.timer);
-            agentCardOpen.timer = setTimeout(agentCardClose, 250);
+
+            if (!touched) {
+                agentCardOpen.timer = setTimeout(agentCardClose, 250);
+            }
         });
         target.addEventListener('click', function (event) {
             event.preventDefault();
@@ -3831,6 +4154,340 @@
         }
 
         return cardHook(target, function () { agentCardShow(target, channel, agent); }, keyboard);
+    }
+
+    // ── A message pointed at (<#message:N>, message_refs.php) ──
+    // Its chip opens the agent card's frame with the message as the channel
+    // draws it: on hover, on keyboard focus or Enter, or on a tap; one at a
+    // time; Escape, a click outside or leaving it closes it. A reader who
+    // may not read its channel, or a message deleted, gets the server's
+    // sentence alone.
+
+    // Where a link to a message of this Workspace leads, for every such
+    // link on the Workspace screen: the channel open on the screen scrolls
+    // to it ({kind: 'jump', id}); another channel opens in place at it
+    // ({kind: 'open', channel, message, thread, era}). Off the channels
+    // screen, with a modifier key or another button, or for any other
+    // address, the address is followed as the browser does ({kind: 'url'}).
+    // href and home are resolved against page (the page's address); place:
+    // {screen, channel (the open one, 0 for none), modified}. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageLinkGo(href, home, page, place) {
+        if (!href) {
+            return { kind: 'none' };
+        }
+
+        var follow = { kind: 'url', url: href };
+        var url;
+        var base;
+
+        try {
+            url = new URL(href, page);
+            base = new URL(home, page);
+        } catch (error) {
+            return follow;
+        }
+
+        if ((url.origin !== base.origin) || (url.pathname !== base.pathname)) {
+            return follow;
+        }
+
+        var number = function (name) {
+            var value = url.searchParams.get(name) || '';
+
+            return /^[0-9]{1,10}$/.test(value) ? parseInt(value, 10) : 0;
+        };
+        var channel = number('channel');
+        var message = number('message');
+
+        if (!channel || !message || !place || !place.screen || place.modified) {
+            return follow;
+        }
+
+        var era = number('era');
+
+        if ((place.channel === channel) && !era) {
+            return { kind: 'jump', id: message };
+        }
+
+        return { kind: 'open', channel: channel, message: message, thread: number('thread'), era: era };
+    }
+
+    // Where "Go to the message" leads: as any link to the message
+    // (messageLinkGo()); nothing for a message the reader may not see. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageRefGo(ref, home, page, place) {
+        if (!ref || !ref.message || !ref.url) {
+            return { kind: 'none' };
+        }
+
+        return messageLinkGo(ref.url, home, page, place);
+    }
+
+    // What a click on a message chip does: with a mouse it goes to the
+    // message ('go'; the card opens on hover); a tap, a pen or a click with
+    // no pointer named opens the card ('card'); a modifier key leaves the
+    // link to the browser ('browser', a new tab or window). A chip with no
+    // address (a message the reader may not see) only opens its card. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageChipAction(pointer, modified, hasHref) {
+        if (!hasHref) {
+            return 'card';
+        }
+
+        if (modified) {
+            return 'browser';
+        }
+
+        return (pointer === 'mouse') ? 'go' : 'card';
+    }
+
+    // A click that is not a plain one: a modifier key or another button.
+    function linkModified(event) {
+        return !!(event && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || ((event.button || 0) !== 0)));
+    }
+
+    // The Workspace screen as messageLinkGo() reads it.
+    function messageLinkPlace(event) {
+        return {
+            screen: !!app.root,
+            channel: (app.view === 'channel' && app.channel) ? app.channel.id : 0,
+            modified: linkModified(event)
+        };
+    }
+
+    // Goes to a message in place as messageLinkGo() said: the open channel
+    // scrolls to it and flashes it; another opens there, as a switch from
+    // the sidebar does (its address in the bar, no new history entry), with
+    // the discussion the address names. false when the address is to be
+    // followed instead.
+    function messageLinkFollow(go) {
+        if (go.kind === 'jump') {
+            app.jumpTo(go.id, true);
+            return true;
+        }
+
+        if (go.kind === 'open') {
+            app.flashAfterOpen = [go.message];
+
+            if (go.thread) {
+                app.pendingThread = { id: go.thread, message: 0 };
+            }
+
+            app.open(go.channel, go.message, go.era);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Every other link to a message on the Workspace screen (in a message's
+    // text, the inbox, a list's "Go to the message", a toast) goes in place;
+    // a drawer it sits in closes, as the page it replaced would have.
+    function messageLinksInPlace() {
+        document.addEventListener('click', function (event) {
+            var link = (!event.defaultPrevented && event.target && event.target.closest) ? event.target.closest('a[href]') : null;
+
+            if (!link || link.hasAttribute('download')) {
+                return;
+            }
+
+            if (messageLinkFollow(messageLinkGo(link.href, CFG.urls.workspace, window.location.href, messageLinkPlace(event)))) {
+                event.preventDefault();
+
+                var drawer = link.closest('.drawer');
+
+                if (drawer) {
+                    hideOffcanvas(drawer);
+                }
+            }
+        });
+    }
+
+    // The head of the card: the sender's face, name, and the message's
+    // number, channel and time; the chip's own words until the answer.
+    function messageRefHead(chip, ref, message) {
+        var head = el('div', 'ws-msgref-head');
+        var who = el('div', 'ws-msgref-who');
+        var mark = el('span', 'ws-msgref-mark');
+
+        if (message) {
+            head.appendChild(avatar(message.sender, '2rem'));
+        } else {
+            mark.appendChild(icon((ref && ref.gone) ? 'bi-x-circle' : 'bi-chat-quote'));
+            mark.setAttribute('aria-hidden', 'true');
+            head.appendChild(mark);
+        }
+
+        who.appendChild(el('div', 'ws-msgref-name', (message && message.sender && message.sender.name) || (ref ? ref.label : chip.textContent.trim())));
+
+        if (message && ref && ref.message) {
+            who.appendChild(el('div', 'pg-text-meta ws-msgref-meta', [ref.label, '#' + ref.message.channel, message.time].filter(Boolean).join(' · ')));
+        }
+
+        head.appendChild(who);
+
+        return head;
+    }
+
+    // A poll's options with their counts, as the channel shows them.
+    function messageRefPoll(poll) {
+        var box = el('div', 'ws-msgref-poll');
+        var voters = poll.voters || 0;
+        var top = el('div', 'ws-msgref-poll-head');
+
+        top.appendChild(icon('bi-bar-chart-line'));
+        top.appendChild(el('span', 'fw-semibold', t('poll_title')));
+        top.appendChild(el('span', 'pg-text-meta', t('poll_voters', voters)));
+        box.appendChild(top);
+
+        (poll.options || []).forEach(function (option) {
+            var row = el('div', 'ws-msgref-poll-option');
+            var bar = el('span', 'ws-poll-bar');
+            var share = voters ? Math.round((option.count || 0) * 100 / voters) : 0;
+
+            bar.style.width = share + '%';
+            row.appendChild(bar);
+            row.appendChild(el('span', 'ws-msgref-poll-label', option.label));
+            row.appendChild(el('span', 'pg-tabular ws-msgref-poll-count', t('poll_share', option.count || 0, share)));
+            box.appendChild(row);
+        });
+
+        return box;
+    }
+
+    function messageRefBody(node, chip, data) {
+        var ref = (data && data.ref) || null;
+        var message = (data && data.message) || null;
+
+        clear(node);
+        node.appendChild(messageRefHead(chip, ref, message));
+
+        if (!data) {
+            node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
+            return;
+        }
+
+        if (!message) {
+            var none = el('div', 'pg-text-meta ws-msgref-none', (ref && ref.meta) || t('error_generic'));
+
+            none.setAttribute('role', 'status');
+            node.appendChild(none);
+            return;
+        }
+
+        // The words as the channel draws them, cut at a height; the whole
+        // message is a step away.
+        if (message.html) {
+            var text = el('div', 'ws-msg-body ws-msgref-text');
+
+            setHtml(text, message.html);
+            node.appendChild(text);
+            requestAnimationFrame(function () {
+                text.classList.toggle('ws-msgref-cut', text.scrollHeight > text.clientHeight + 1);
+            });
+        }
+
+        var file = message.file;
+
+        if (file && file.image) {
+            var picture = el('button', 'ws-msgref-picture');
+            var image = el('img');
+
+            picture.type = 'button';
+            picture.title = file.name;
+            image.src = file.url;
+            image.alt = file.name;
+            image.loading = 'lazy';
+            picture.appendChild(image);
+            picture.addEventListener('click', function () {
+                agentCardClose();
+                previewFile(file);
+            });
+            node.appendChild(picture);
+        } else if (file) {
+            var line = el('div', 'ws-msgref-file');
+
+            line.appendChild(icon('bi-file-earmark'));
+            line.appendChild(el('span', 'text-truncate', file.name));
+            node.appendChild(line);
+        }
+
+        if (message.poll) {
+            node.appendChild(messageRefPoll(message.poll));
+        }
+
+        var go = messageRefGo(ref, CFG.urls.workspace, window.location.href, messageLinkPlace(null));
+
+        if (go.kind !== 'none') {
+            var button = el('button', 'pg-button pg-button-quiet pg-button-sm ws-msgref-go');
+
+            button.type = 'button';
+            button.appendChild(el('span', 'pg-btn-label', t('mr_go')));
+            button.appendChild(icon('bi-arrow-right'));
+            button.addEventListener('click', function () {
+                agentCardClose();
+
+                if (!messageLinkFollow(go)) {
+                    window.location.href = go.url;
+                }
+            });
+            node.appendChild(button);
+        }
+    }
+
+    function messageRefShow(chip, id) {
+        cardShow(chip, 'message:' + id, t('mr_title'), 'ws-msgref-card', function (node, data) {
+            if (!agentCardGuard(function () { messageRefBody(node, chip, data); }) && data) {
+                agentCardGuard(function () { messageRefBody(node, chip, null); });
+                agentCardRefused(node, t('error_generic'));
+            }
+        }, function () {
+            return api('ws_message_ref', { message_id: id }).then(function (data) {
+                return { card: data };
+            });
+        });
+    }
+
+    // Makes a message chip open its card, once however often its text is
+    // drawn again. A mouse click goes to the message (messageChipAction()),
+    // before the card's own click; the card opens on hover and on focus.
+    function messageRefHook(chip) {
+        var id = parseInt((chip.getAttribute('data-ws-ref') || '').split(':')[1], 10);
+
+        if (!id || chip.hasAttribute('data-ws-msgref')) {
+            return;
+        }
+
+        var pointer = '';
+
+        chip.setAttribute('data-ws-msgref', '1');
+        chip.addEventListener('pointerdown', function (event) {
+            pointer = event.pointerType || '';
+        });
+        chip.addEventListener('click', function (event) {
+            var action = messageChipAction(event.pointerType || pointer, linkModified(event), !!chip.getAttribute('href'));
+
+            if (action === 'card') {
+                return;
+            }
+
+            // Neither the card nor the screen's link listener takes it.
+            event.stopImmediatePropagation();
+
+            if (action === 'browser') {
+                return;
+            }
+
+            event.preventDefault();
+            clearTimeout(agentCardOpen.timer);
+            agentCardClose();
+
+            if (!messageLinkFollow(messageLinkGo(chip.href, CFG.urls.workspace, window.location.href, messageLinkPlace(event)))) {
+                window.location.href = chip.href;
+            }
+        });
+        cardHook(chip, function () { messageRefShow(chip, id); }, true);
     }
 
     // ── A person's card (person_card.php, ws_person_card) ──
@@ -4527,6 +5184,89 @@
         return row;
     }
 
+    // The person's own quiet hours under a channel's Notifications, for all
+    // their channels (ws_quiet_hours_save): From, To, the days off switch,
+    // Save and Clear. Equal times are no quiet range, as the server reads it.
+    function quietHoursPart() {
+        var setting = CFG.quiet_hours.value || {};
+        var part = el('div', 'ws-info-qh');
+        var grid = el('div', 'row g-3');
+        var fromCell = el('div', 'col-6');
+        var toCell = el('div', 'col-6');
+        var from = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var to = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var off = el('div', 'form-field mb-0 ws-info-check');
+        var offBox = el('input', 'check');
+        var offLabel = el('label', '', t('qh_off_days'));
+        var actions = el('div', 'ws-info-qh-actions');
+        var save = button('btn btn-sm btn-solid theme-primary', t('qh_save'), 'bi-check2');
+        var clear = button('btn btn-sm btn-text theme-secondary', t('qh_clear'), 'bi-x-circle');
+        var hint = el('div', 'form-text mt-0 mb-3', t('qh_hint'));
+
+        from.id = nextId('ws-qh-from-');
+        to.id = nextId('ws-qh-to-');
+        hint.id = nextId('ws-qh-hint-');
+        from.value = setting.start || '';
+        to.value = setting.end || '';
+        from.setAttribute('aria-describedby', hint.id);
+        offBox.type = 'checkbox';
+        offBox.id = nextId('ws-qh-off-');
+        offBox.checked = !!setting.off_days;
+        offLabel.htmlFor = offBox.id;
+        clear.hidden = !CFG.quiet_hours.value;
+
+        part.appendChild(el('h3', 'ws-panel-kicker', t('qh_title')));
+        part.appendChild(hint);
+        fromCell.appendChild(formRow(t('qh_from'), from));
+        toCell.appendChild(formRow(t('qh_to'), to));
+        fromCell.firstChild.classList.replace('mb-5', 'mb-0');
+        toCell.firstChild.classList.replace('mb-5', 'mb-0');
+        grid.appendChild(fromCell);
+        grid.appendChild(toCell);
+        part.appendChild(grid);
+        off.appendChild(offBox);
+        off.appendChild(offLabel);
+        part.appendChild(off);
+        actions.appendChild(save);
+        actions.appendChild(clear);
+        part.appendChild(actions);
+
+        function send(values, done) {
+            save.disabled = true;
+            clear.disabled = true;
+            api('ws_quiet_hours_save', values).then(function (data) {
+                CFG.quiet_hours.value = data.quiet_hours || null;
+                from.value = CFG.quiet_hours.value ? CFG.quiet_hours.value.start : '';
+                to.value = CFG.quiet_hours.value ? CFG.quiet_hours.value.end : '';
+                offBox.checked = !!(CFG.quiet_hours.value && CFG.quiet_hours.value.off_days);
+                dateShown(from);
+                dateShown(to);
+                clear.hidden = !CFG.quiet_hours.value;
+                toast(t(CFG.quiet_hours.value ? done : 'qh_cleared'), 'success');
+            }).catch(function (error) {
+                fail(error);
+
+                var field = (error.field === 'end') ? to : ((error.field === 'start') ? from : null);
+
+                if (field) {
+                    field.focus();
+                }
+            }).then(function () {
+                save.disabled = false;
+                clear.disabled = false;
+            });
+        }
+
+        save.addEventListener('click', function () {
+            send({ start: from.value, end: to.value, off_days: offBox.checked ? 1 : 0 }, 'qh_saved');
+        });
+        clear.addEventListener('click', function () {
+            send({ start: '', end: '', off_days: 0 }, 'qh_cleared');
+        });
+
+        return part;
+    }
+
     function select(options, value) {
         var node = el('select', 'form-control form-control-sm');
 
@@ -4543,6 +5283,165 @@
 
         return node;
     }
+
+    // ── Drawer form parts (look A) ─────────────────────────────────────
+
+    // The parts a drawer form is built from in look A: a field (label bound
+    // to its control, help and error lines), text, date and time inputs, a
+    // textarea, a select, a pair of fields side by side, a switch row, a
+    // segmented choice and the footer's buttons. My calendar's plan drawer,
+    // its roadmap and the plan item form ("Add to the plan") are built from
+    // them; formRow() stays for the forms in Bootstrap's small look.
+    var formParts = {
+        // A field: its caption bound to the control (an id is given when it
+        // has none), then an optional muted help line.
+        field: function (label, control, help) {
+            var row = el('div', 'ws-plan-field');
+            var caption = el('label', 'pg-field-label', label);
+
+            control.id = control.id || nextId('ws-plan-');
+            caption.htmlFor = control.id;
+            row.appendChild(caption);
+            row.appendChild(control);
+
+            if (help) {
+                row.appendChild(el('div', 'pg-text-meta', help));
+            }
+
+            return row;
+        },
+
+        // A field whose control is a group (a segmented choice, a picker):
+        // the caption is a plain text, the group carries its own name.
+        group: function (label, control) {
+            var row = el('div', 'ws-plan-field');
+
+            row.appendChild(el('span', 'pg-field-label', label));
+
+            if (control) {
+                row.appendChild(control);
+            }
+
+            return row;
+        },
+
+        // A help line under a picker, and its error line, hidden until shown.
+        help: function (text) {
+            return el('div', 'pg-field-help', text);
+        },
+
+        error: function (text) {
+            return el('div', 'pg-field-help pg-field-error d-none', text);
+        },
+
+        // An input: date and time on the panel's calendar (data-pg-*
+        // hooks), anything else a typed box. small: the compact height.
+        input: function (type, value, small) {
+            var node = el('input', 'pg-input' + (small ? ' pg-input-sm' : ''));
+
+            if (type === 'date' || type === 'time') {
+                pgDateField(node, type);
+            } else {
+                node.type = type;
+            }
+
+            node.value = (value === undefined || value === null) ? '' : value;
+
+            return node;
+        },
+
+        textarea: function (value, rows) {
+            var node = el('textarea', 'pg-input');
+
+            node.rows = rows || 4;
+            node.value = value || '';
+
+            return node;
+        },
+
+        // A select of [value, text] pairs in look A's recipe: .pg-input on
+        // the select itself (its own caret). small: the compact height.
+        select: function (options, value, small) {
+            var node = el('select', 'pg-input' + (small ? ' pg-input-sm' : ''));
+
+            options.forEach(function (option) {
+                var item = el('option', '', option[1]);
+                item.value = option[0];
+                node.appendChild(item);
+            });
+
+            if (value !== undefined) {
+                node.value = value;
+            }
+
+            return node;
+        },
+
+        // Two fields side by side, on every width.
+        pair: function () {
+            var row = el('div', 'ws-plan-pair');
+
+            Array.prototype.forEach.call(arguments, function (child) {
+                if (child) {
+                    row.appendChild(child);
+                }
+            });
+
+            return row;
+        },
+
+        // A switch with its words, the whole row its label.
+        switchRow: function (label, checked) {
+            var row = el('label', 'ws-plan-switch');
+            var input = el('input', 'pg-switch');
+
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            row.appendChild(input);
+            row.appendChild(document.createTextNode(label));
+
+            return { row: row, input: input };
+        },
+
+        // A segmented choice of [value, text] pairs, named as a group;
+        // onPick(value) on a click. The pressed state is set by the caller.
+        seg: function (label, options, onPick, extra) {
+            var node = el('div', 'pg-seg' + (extra ? ' ' + extra : ''));
+            var items = {};
+
+            node.setAttribute('role', 'group');
+            node.setAttribute('aria-label', label);
+
+            options.forEach(function (option) {
+                var item = el('button', 'pg-seg-item', option[1]);
+
+                item.type = 'button';
+                item.addEventListener('click', function () { onPick(option[0]); });
+                items[option[0]] = item;
+                node.appendChild(item);
+            });
+
+            return { node: node, items: items };
+        },
+
+        // The footer's buttons: Save (fill) at the right, Delete (danger) at
+        // the left.
+        save: function (text) {
+            var node = el('button', 'pg-button pg-button-fill pg-button-sm', text);
+
+            node.type = 'button';
+
+            return node;
+        },
+
+        remove: function (text) {
+            var node = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', text);
+
+            node.type = 'button';
+
+            return node;
+        }
+    };
 
     var uid = 0;
 
@@ -4594,6 +5493,149 @@
         bar.appendChild(fill);
 
         return bar;
+    }
+
+    // Whether / commands are off in a writing box: a box that never reads
+    // them (noCommands), and the channel's composer while it changes a
+    // sent or a scheduled message, whose text is saved as typed and never
+    // run. No command list, no argument strip there.
+    function commandsOff(box) {
+        return !!(box.noCommands || box.editing || box.editingScheduled);
+    }
+
+    // The words after /search (/ara) when the line is that command, else
+    // null: the box opens the search palette with them itself, so nothing
+    // is posted and the server is not asked. "//ara" is no command.
+    function commandSearchWords(body, commands) {
+        var text = String(body || '').replace(/^\s+/, '');
+        var found = null;
+
+        (commands || []).forEach(function (item) {
+            if (item.key !== 'search') {
+                return;
+            }
+
+            (item.names || []).forEach(function (name) {
+                var after = text.charAt(name.length);
+
+                if ((found === null) && (text.slice(0, name.length).toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr')) && ((after === '') || /\s/.test(after))) {
+                    found = text.slice(name.length).trim();
+                }
+            });
+        });
+
+        return found;
+    }
+
+    // The "/" list's rows: every command a name of it matches as typed (the
+    // name as typed first, "/gö" shows /görev, then with the Turkish
+    // letters folded, "/go" finds it too); with nothing typed, the name in
+    // the screen's language. A discussion's box leaves out what runs only
+    // in the channel itself (where: channel, ws_command_runs_here()). Each
+    // row carries its group and the group's header for commandPickerGroups().
+    function commandPickerRows(commands, query, inThread, recapHere, flowsHere) {
+        var typed = ('/' + query).toLocaleLowerCase('tr');
+        var typedFolded = foldText(typed);
+        var rows = [];
+
+        (commands || []).forEach(function (item) {
+            if (inThread && (item.where === 'channel')) {
+                return;
+            }
+
+            // /recap only where the catch-up line offers "Sum up what I
+            // missed" (recapHere false); left as it was when not told.
+            if ((recapHere === false) && (item.key === 'recap')) {
+                return;
+            }
+
+            // /flow only where Add › Start a flow lists a flow (flowsHere
+            // false); left as it was when not told.
+            if ((flowsHere === false) && (item.key === 'flow')) {
+                return;
+            }
+
+            var aliases = String(item.command || '').split(' · ');
+            var names = (item.names && item.names.length) ? item.names : aliases;
+            var match = item.name || aliases[0];
+
+            if (query !== '') {
+                match = null;
+
+                names.forEach(function (name) {
+                    if (!match && name.toLocaleLowerCase('tr').indexOf(typed) === 0) {
+                        match = name;
+                    }
+                });
+
+                names.forEach(function (name) {
+                    if (!match && foldText(name).indexOf(typedFolded) === 0) {
+                        match = name;
+                    }
+                });
+            }
+
+            if (match) {
+                rows.push({ label: match, meta: item.description, detail: item.example, icon: 'bi-slash-square', insert: match + ' ', group: item.group || '', groupLabel: item.group_label || '' });
+            }
+        });
+
+        return rows;
+    }
+
+    // The same rows under one header per group, in the groups' order
+    // (BOOT.command_groups, ws_command_group_labels()), as /help shows
+    // them; a group the order does not name comes after, as met. A group
+    // without rows has no header. A header ({ header: true, label }) is
+    // never picked: drawPicker() leaves it out of the rows the keys walk.
+    function commandPickerGroups(rows, order) {
+        var groups = (order || []).slice();
+        var out = [];
+
+        rows.forEach(function (row) {
+            if (groups.indexOf(row.group) === -1) {
+                groups.push(row.group);
+            }
+        });
+
+        groups.forEach(function (group) {
+            var inGroup = rows.filter(function (row) {
+                return row.group === group;
+            });
+
+            if (inGroup.length) {
+                out.push({ header: true, label: inGroup[0].groupLabel || group });
+                out = out.concat(inGroup);
+            }
+        });
+
+        return out;
+    }
+
+    // The channel's flows as rows of the "/" list and of /flow's argument
+    // list: every flow with nothing typed, else those whose name, or a word
+    // of it, starts with what is typed (Turkish letters folded). A row
+    // carries its flow: picking it starts the flow, it writes nothing.
+    function flowPickerRows(flows, query, meta) {
+        var typed = foldText(String(query || '').trim());
+
+        return (flows || []).filter(function (flow) {
+            var name = foldText(String(flow.name || ''));
+
+            return !typed || (name.indexOf(typed) === 0) || (name.indexOf(' ' + typed) !== -1);
+        }).map(function (flow) {
+            return { label: flow.name, meta: meta, icon: 'bi-play-circle', flow: flow };
+        });
+    }
+
+    // The "/" list with the channel's flows after the commands, under a
+    // header of their own whatever is typed: a flow is no command.
+    function commandPickerAddFlows(rows, flowRows, header) {
+        if (!flowRows.length) {
+            return rows;
+        }
+
+        return rows.concat([{ header: true, label: header }], flowRows);
     }
 
     // Where a list of people or records opens at the caret (placePicker()):
@@ -7564,6 +8606,8 @@
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
+            // The drawer form parts in look A (formParts).
+            form: formParts,
             openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); },
             // The task drawer and the plan item form, each calling done()
             // after a save, for a screen that draws them again (My calendar).
@@ -7618,6 +8662,7 @@
             self.root = root;
             root.classList.add('ws-app');
             root.innerHTML = '';
+            messageLinksInPlace();
 
             // The list of channels is the Workspace panel of the main menu
             // (assets/js/workspace_side.js); where the menu has none, a box
@@ -9987,8 +11032,11 @@
 
                 self.channel = data.channel;
                 self.era = data.era || null;
-                // Whether Add › Start a flow has a flow to offer here.
+                // Whether Add › Start a flow has a flow to offer here, and
+                // which: the "/" list and /flow offer the same, read once
+                // as the channel opens.
                 self.flowsHere = !!data.flows_here;
+                self.flowsList = data.flows || [];
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
                 self.openItems = data.open_items || [];
@@ -10550,7 +11598,9 @@
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
             } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
-                window.PGWsMemory.mount(pane, channel);
+                // /memory without a text opens New entry, filled.
+                window.PGWsMemory.mount(pane, channel, self.memoryFill || null);
+                self.memoryFill = null;
             } else if ((self.tab === 'board') && self.hasBoard(channel)) {
                 window.PGWsChannelBoard.mount(pane, channel, {
                     openMessage: function (messageId) { self.open(channel.id, messageId); },
@@ -10567,9 +11617,9 @@
             }
         },
 
-        // The marks on the tabs: how many decisions and open tasks there are,
-        // and whether the summary is written, so a tab says it holds
-        // something before it is opened.
+        // The marks on the tabs: how many decisions, open tasks and files
+        // there are, and whether the summary is written, so a tab says it
+        // holds something before it is opened.
         drawTabMarks: function () {
             var self = this;
             var counts = (self.channel && self.channel.tab_counts) || null;
@@ -10578,7 +11628,7 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -10811,7 +11861,7 @@
             }, '', sounding);
             divider();
 
-            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
+            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
@@ -10825,7 +11875,7 @@
                 divider();
             }
 
-            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
+            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
@@ -11197,29 +12247,7 @@
                 var agentList = el('div', 'ws-info-people ws-info-agents');
 
                 agents.forEach(function (agent) {
-                    var name = el('div', 'ws-info-person-name', agent.name);
-
-                    // The role the agent's form gives it, a label only.
-                    if (agent.role) {
-                        name.appendChild(el('span', 'small fg-secondary fw-normal ms-2', agent.role));
-                    }
-
-                    name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
-
-                    if (!agent.active) {
-                        name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
-                    }
-
-                    // A registry agent's name and face open its card.
-                    if (agent.id) {
-                        agentCardHook(name, channel, agent, true);
-                    }
-
-                    var row = personRow(agent.id ? agentCardHook(agentFace(agent), channel, agent, false) : agentFace(agent), name, agent.line, agentList);
-
-                    if (agent.seen) {
-                        row.appendChild(seenNode(agent.seen, agent.seen_state));
-                    }
+                    agentInfoRow(channel, agent, agentList);
                 });
 
                 body.appendChild(agentList);
@@ -11299,6 +12327,12 @@
                 speak.appendChild(speakBox);
                 speak.appendChild(speakLabel);
                 body.appendChild(speak);
+            }
+
+            // The person's own quiet hours, for all their channels: after this
+            // channel's own choices, so its Save reads as theirs alone.
+            if (channel.joined && CFG.quiet_hours && CFG.quiet_hours.ready) {
+                body.appendChild(quietHoursPart());
             }
 
             // The time spent on its tasks (task_time.php), as the Summary
@@ -11834,6 +12868,7 @@
             var node = el('div', 'ws-msg' + (follow ? ' ws-msg-follow' : '') + (message.deleted ? ' ws-msg-deleted' : '')
                 + ((message.kind === 'decision' || message.kind === 'note') ? ' ws-msg-' + message.kind : ''));
             node.setAttribute('data-ws-message', message.id);
+            node.setAttribute('data-ws-tone', senderTone(message.sender));
 
             // A Tab stop of the pane's one (messageKeys()), named by its
             // sender and time row.
@@ -11891,7 +12926,10 @@
             // A person's message written through an OAuth connection: their
             // name, and the client it came through beside it.
             if (message.via) {
-                meta.appendChild(el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via)));
+                var via = el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via));
+
+                via.title = via.textContent;
+                meta.appendChild(via);
             }
 
             // An MCP agent's answer, under the agent's own name: who asked and
@@ -11947,10 +12985,11 @@
             if (message.parent_id) {
                 var parent = self.findMessage(message.parent_id);
                 var quote = el('button', 'ws-msg-quote');
+                var quoted = (parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message');
                 quote.type = 'button';
-                quote.title = t('reply_go_to');
+                quote.title = quoteTitle(quoted, t('reply_go_to'));
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode(quoted));
 
                 // The message answered: brought into view and lit up for a
                 // moment, so which one it was is plain. One deleted since is
@@ -11970,10 +13009,11 @@
             // An answer to several: the others it answers, in their order.
             (message.quotes || []).forEach(function (other) {
                 var more = el('button', 'ws-msg-quote ws-msg-quote-more');
+                var otherQuoted = other.deleted ? t('earlier_message') : ((other.sender ? other.sender + ': ' : '') + other.text);
                 more.type = 'button';
-                more.title = t('reply_go_to');
+                more.title = quoteTitle(otherQuoted, t('reply_go_to'));
                 more.appendChild(icon('bi-reply', 'me-1'));
-                more.appendChild(document.createTextNode(other.deleted ? t('earlier_message') : ((other.sender ? other.sender + ': ' : '') + other.text)));
+                more.appendChild(document.createTextNode(otherQuoted));
                 more.addEventListener('click', function (event) {
                     event.stopPropagation();
 
@@ -12001,7 +13041,7 @@
                 }));
             } else {
                 setHtml(body, message.html);
-                chipMenus(body);
+                chipMenus(body, self.channel);
                 self.bindChecks(body, message);
             }
 
@@ -12023,6 +13063,27 @@
             }
 
             main.appendChild(body);
+
+            // The card of its first web address, read once by the server
+            // (link_preview.php); the server escapes it.
+            if (message.link_preview && !message.deleted) {
+                var linkCard = el('div', 'ws-link-card-wrap');
+                setHtml(linkCard, message.link_preview);
+                main.appendChild(linkCard);
+            }
+
+            // Readers' highlights drawn into the text, the toolbar on a
+            // selection and the card on one (workspace_highlights.js).
+            if (window.PGWsHighlights && !message.deleted && !message.note_card && !message.note_group_card && !message.scheduled) {
+                window.PGWsHighlights.attach(message, body, featureHelpers(), function (fresh) {
+                    self.replaceMessage(fresh);
+                }, senderTone);
+            }
+
+            // A translation this reader made shows again on a redraw.
+            if (window.PGWsTranslate && !message.deleted) {
+                window.PGWsTranslate.apply(message, body, featureHelpers());
+            }
 
             if (message.forwards && message.forwards.length) {
                 main.appendChild(self.forwardsNode(message));
@@ -12051,7 +13112,8 @@
                 main.appendChild(self.listTasksNode(message));
             }
 
-            if (message.file) {
+            // A poll question's own picture is drawn in its box, not here.
+            if (message.file && !self.pollQuestionPicture(message)) {
                 var fileBox = el('div', 'ws-msg-file');
                 fileBox.appendChild(self.filePreview(message));
 
@@ -12094,6 +13156,12 @@
 
             if (message.reactions && message.reactions.length) {
                 main.appendChild(self.reactionRow(message));
+            }
+
+            // Right or Wrong on an agent's reply: only the person who asked
+            // and the channel's managers get it (agent_feedback.php).
+            if (message.feedback && !message.deleted) {
+                main.appendChild(self.feedbackNode(message));
             }
 
             // A read receipt asked for (workspace_acks.js).
@@ -12275,6 +13343,17 @@
                 }
             }
 
+            // The browser's own translator, into the reader's panel
+            // language (workspace_translate.js); nothing leaves the device.
+            if (message.html && !message.deleted && window.PGWsTranslate && window.PGWsTranslate.supported()) {
+                items.push({ icon: 'bi-translate', label: t('tr_translate'), action: function () {
+                    var box = self.center || self.pane;
+                    var drawn = box ? box.querySelector('[data-ws-message="' + message.id + '"] .ws-msg-main > .ws-msg-body') : null;
+
+                    window.PGWsTranslate.translate(message, drawn, featureHelpers());
+                } });
+            }
+
             // A room of its own beside the channel to talk this message over.
             if (CFG.threads && !self.isThread && !self.era && !message.deleted && !message.past
                 && ['message', 'decision', 'note', 'task'].indexOf(message.kind) !== -1) {
@@ -12368,6 +13447,15 @@
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));
             } });
 
+            // The message's tag: pasted into a writing box it becomes the
+            // chip that opens this message (workspace_editor.js), with no
+            // answer and nobody told.
+            if (!message.deleted && (message.kind !== 'system')) {
+                items.push({ icon: 'bi-chat-quote', label: t('mr_copy'), action: function () {
+                    copyText('<#message:' + message.id + '>');
+                } });
+            }
+
             if (!message.deleted && message.kind !== 'system') {
                 items.push({ icon: 'bi-eye', label: t('seen_by'), action: function () { self.seenBy(message); } });
             }
@@ -12400,11 +13488,27 @@
                 items.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.editMessage(message); } });
             }
 
+            // The writer takes the card of the message's web address away
+            // for everyone (link_preview.php).
+            if (message.can_remove_preview) {
+                items.push({ icon: 'bi-x-square', label: t('link_preview_remove'), action: function () { self.removePreview(message); } });
+            }
+
             if (message.can_delete || message.can_hide) {
                 items.push({ icon: 'bi-trash', label: t('delete'), danger: true, action: function () { self.deleteMessage(message); } });
             }
 
             return items;
+        },
+
+        // "Remove preview": the card goes for everyone; the message comes
+        // back as the server now draws it.
+        removePreview: function (message) {
+            var self = this;
+
+            api('ws_link_preview_remove', { message_id: message.id }).then(function (data) {
+                self.replaceMessage(data.message);
+            }).catch(fail);
         },
 
         // Deleting: in a private channel of one's own there is nobody else,
@@ -12736,7 +13840,10 @@
 
                 var bar = el('div', 'ws-media-bar');
                 bar.appendChild(icon(kind === 'video' ? 'bi-film' : 'bi-music-note-beamed'));
-                bar.appendChild(el('span', 'ws-grow text-truncate', file.name));
+                var barName = el('span', 'ws-grow text-truncate', file.name);
+
+                barName.title = file.name;
+                bar.appendChild(barName);
 
                 if (kind === 'video') {
                     var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
@@ -12764,19 +13871,24 @@
             name.target = '_blank';
             name.rel = 'noopener';
             name.textContent = file.name;
+            name.title = file.name;
             text.appendChild(name);
             card.appendChild(text);
+
+            // The buttons wrap as one group: all beside the name, or all
+            // under it at the right in a narrow column.
+            var tools = el('div', 'ws-file-tools');
 
             if (kind === 'pdf' || file.office) {
                 var look = button('btn btn-sm btn-outline theme-secondary', t('preview'), 'bi-eye');
                 look.addEventListener('click', function () { previewFile(file, function (result) { self.fileEdited(result); }); });
-                card.appendChild(look);
+                tools.appendChild(look);
             }
 
             if (file.text) {
                 var read = button('btn btn-sm btn-outline theme-secondary', t('file_edit_text'), 'bi-file-earmark-text');
                 read.addEventListener('click', function () { self.openText(message); });
-                card.appendChild(read);
+                tools.appendChild(read);
             }
 
             var get = el('a', 'btn btn-sm btn-text theme-secondary');
@@ -12784,7 +13896,8 @@
             get.setAttribute('download', file.name);
             get.title = t('download');
             get.appendChild(icon('bi-download'));
-            card.appendChild(get);
+            tools.appendChild(get);
+            card.appendChild(tools);
 
             return card;
         },
@@ -12869,6 +13982,100 @@
                 });
             });
             box.appendChild(invite);
+
+            return box;
+        },
+
+        // Right and Wrong under an agent's reply. The chosen mark shows
+        // pressed and a press on it takes it back; Wrong opens a short
+        // reason box first. The server checks who may mark.
+        feedbackNode: function (message) {
+            var self = this;
+            var mark = message.feedback || {};
+            var box = el('div', 'ws-agent-feedback');
+            var row = el('div', 'ws-agent-feedback-row');
+            var buttons = [];
+
+            var send = function (verdict, reason) {
+                buttons.forEach(function (node) { node.disabled = true; });
+
+                api('ws_agent_feedback', { message_id: message.id, verdict: verdict, reason: reason || '' }).then(function (data) {
+                    message.feedback = data.feedback;
+                    self.replaceMessage(message);
+                }).catch(function (error) {
+                    buttons.forEach(function (node) { node.disabled = false; });
+                    fail(error);
+                });
+            };
+
+            var markButton = function (verdict, label, iconName, help) {
+                var on = (mark.verdict === verdict);
+                var node = button('btn btn-sm btn-text rounded-pill py-0 px-2 ws-agent-feedback-mark' + (on ? ' is-on is-' + verdict : ''), label, iconName + (on ? '-fill' : ''), on ? t('af_undo_help') : help);
+
+                node.setAttribute('aria-pressed', on ? 'true' : 'false');
+                buttons.push(node);
+
+                return node;
+            };
+
+            row.appendChild(el('span', 'ws-agent-feedback-ask', mark.verdict ? t('af_marked') : t('af_ask')));
+
+            var right = markButton('right', t('af_right'), 'bi-hand-thumbs-up', t('af_right_help'));
+            var wrong = markButton('wrong', t('af_wrong'), 'bi-hand-thumbs-down', t('af_wrong_help'));
+
+            right.addEventListener('click', function (event) {
+                event.stopPropagation();
+                send((mark.verdict === 'right') ? '' : 'right');
+            });
+
+            wrong.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (mark.verdict === 'wrong') {
+                    send('');
+                    return;
+                }
+
+                if (box.querySelector('.ws-agent-feedback-form')) {
+                    return;
+                }
+
+                var form = el('form', 'ws-agent-feedback-form');
+                var reason = el('textarea', 'form-control form-control-sm');
+                var save = button('btn btn-sm btn-solid theme-primary rounded-pill py-0 px-3', t('af_save'));
+                var cancel = button('btn btn-sm btn-text rounded-pill py-0 px-2', t('af_cancel'));
+                var actions = el('div', 'ws-agent-feedback-actions');
+
+                reason.rows = 2;
+                reason.maxLength = 300;
+                reason.placeholder = t('af_reason');
+                reason.setAttribute('aria-label', t('af_reason'));
+                save.type = 'submit';
+                buttons.push(save);
+
+                form.addEventListener('click', function (inner) { inner.stopPropagation(); });
+                form.addEventListener('submit', function (submit) {
+                    submit.preventDefault();
+                    send('wrong', reason.value);
+                });
+                cancel.addEventListener('click', function () { form.remove(); });
+
+                actions.appendChild(save);
+                actions.appendChild(cancel);
+                form.appendChild(reason);
+                form.appendChild(actions);
+                box.appendChild(form);
+                reason.focus();
+            });
+
+            row.appendChild(right);
+            row.appendChild(wrong);
+            box.appendChild(row);
+
+            // The reason given with a Wrong, as the asker wrote it.
+            if ((mark.verdict === 'wrong') && mark.reason) {
+                box.appendChild(el('div', 'ws-agent-feedback-reason', mark.reason));
+            }
 
             return box;
         },
@@ -13417,31 +14624,82 @@
                 box.appendChild(self.claudeStateLine(state));
             });
 
+            // The column's width decides whether "since" keeps its word:
+            // measured again whenever the box is resized, and once the
+            // panel's font has loaded (it changes the label's width).
+            var fit = function () {
+                Array.prototype.forEach.call(box.children, function (line) {
+                    self.claudeStateFit(line);
+                });
+            };
+
+            if (typeof window.ResizeObserver === 'function') {
+                new window.ResizeObserver(fit).observe(box);
+            }
+
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(fit);
+            }
+
             return box;
         },
 
+        // When the first line cannot hold everything, the word of "since
+        // HH:MM" goes before the label is cut: the time stays, the whole
+        // phrase in its title. A label is then cut only when it is too long
+        // by itself.
+        claudeStateFit: function (line) {
+            var label = line.querySelector('.ws-claude-label');
+
+            if (!label || !line.querySelector('.ws-claude-since-word')) {
+                return;
+            }
+
+            line.classList.remove('ws-claude-tight');
+
+            if (label.scrollWidth > label.clientWidth) {
+                line.classList.add('ws-claude-tight');
+            }
+        },
+
+        // Icon, then the label, since and Stop on one row, and the progress
+        // note last: on that row when the whole of it fits, on a line of
+        // its own under the label when it does not (backend.src.css).
         claudeStateLine: function (state) {
             var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
+            var body = el('div', 'ws-claude-body');
+            var head = el('div', 'ws-claude-head');
+            var label = el('span', 'ws-claude-label', state.label);
 
+            // A label too long for the column is cut with an ellipsis; the
+            // title keeps the whole of it.
+            label.title = state.label || '';
             line.appendChild(icon(state.icon));
-            line.appendChild(el('span', '', state.label));
+            line.appendChild(body);
+            body.appendChild(head);
+            head.appendChild(label);
 
-            // While an agent holds the request: its last progress note and
-            // since when it holds it (agent_shown.php). The answer's line
+            // While an agent holds the request: since when it holds it and
+            // its last progress note (agent_shown.php). The answer's line
             // takes their place.
-            if (state.note) {
-                line.appendChild(el('span', 'ws-claude-note', '· ' + state.note));
-            }
-
             if (state.since) {
-                line.appendChild(el('span', 'ws-claude-since', '· ' + state.since));
+                var since = el('span', 'ws-claude-since');
+                var at = /\d{1,2}:\d{2}\s*$/.exec(state.since);
+                var time = at ? at[0].trim() : state.since;
+                var word = at ? state.since.slice(0, at.index) : '';
+
+                since.title = state.since;
+                since.setAttribute('aria-label', state.since);
+                since.appendChild(el('span', 'ws-claude-since-word', '· ' + word));
+                since.appendChild(el('span', '', time));
+                head.appendChild(since);
             }
 
             // A request to an MCP agent can be stopped while it waits or
             // runs, by the one who asked or an administrator (mcp_agent.php).
             if (state.cancel) {
-                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+                var stop = el('a', 'ws-claude-stop ms-1', t('mcp_agent_stop'));
 
                 stop.href = '#';
                 stop.addEventListener('click', function (event) {
@@ -13458,7 +14716,11 @@
                     });
                 });
 
-                line.appendChild(stop);
+                head.appendChild(stop);
+            }
+
+            if (state.note) {
+                body.appendChild(el('span', 'ws-claude-note', state.note));
             }
 
             return line;
@@ -14643,6 +15905,15 @@
 
         // ── Polls ──
 
+        // Whether this box offers the channel's flows (the "/" list, /flow):
+        // where Add › Start a flow is offered.
+        flowsOffered: function () {
+            var self = this;
+
+            return !!(CFG.flows && CFG.flows.nav && self.flowsHere && (self.flowsList || []).length && !self.isThread && !self.era
+                && self.channel && ((self.channel.kind === 'public') || (self.channel.kind === 'private')));
+        },
+
         // Add › Start a flow: the flows the person may start in this
         // channel (ws_flows_runnable_in()), each with its last run's flag.
         flowStarter: function () {
@@ -14693,19 +15964,22 @@
         // Starts a flow from the drawer, asked first as the canvas asks. The
         // token stays with the flow until the server answers, so a start sent
         // again after a lost answer gets the run the first one started.
+        // From the "/" list or /flow there is no button: the flow itself
+        // keeps a second pick away while it is asked or sent.
         startFlowHere: function (flow, control, node) {
             var self = this;
             var channelId = self.channel.id;
+            var hold = control || flow;
 
-            if (control.disabled) {
+            if (hold.disabled) {
                 return;
             }
 
-            control.disabled = true;
+            hold.disabled = true;
 
             ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
                 if (!yes) {
-                    control.disabled = false;
+                    hold.disabled = false;
                     return null;
                 }
 
@@ -14714,7 +15988,11 @@
                 // start_token, not token: api() sends the CSRF token as token.
                 return api('ws_flow_run_start', { flow_id: flow.id, channel_id: channelId, start_token: flow.startToken }).then(function (data) {
                     flow.startToken = null;
-                    hideOffcanvas(node);
+                    hold.disabled = false;
+
+                    if (node) {
+                        hideOffcanvas(node);
+                    }
                     toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
 
                     if (self.channel && (self.channel.id === channelId)) {
@@ -14726,7 +16004,7 @@
                     flow.startToken = null;
                 }
 
-                control.disabled = false;
+                hold.disabled = false;
                 fail(error);
             });
         },
@@ -14885,14 +16163,21 @@
             return box;
         },
 
-        // The box's shape, by what the options carry: one large picture
-        // beside the options, following the option pointed at, when every
-        // option of a single-choice poll has a picture and none is "Other";
-        // a picture on the rows that have one; text alone when none has.
-        pollShape: function (poll) {
+        // The box's shape. A question with a picture of its own (the
+        // question message's image) draws it large beside the options, the
+        // options keeping theirs as thumbnails. Otherwise by what the
+        // options carry: one large picture beside the options, following the
+        // option pointed at, when every option of a single-choice poll has a
+        // picture and none is "Other"; a picture on the rows that have one;
+        // text alone when none has.
+        pollShape: function (poll, picture) {
             var options = poll.options || [];
             var pictured = options.filter(function (option) { return !!(option.picture && option.picture.image); });
             var others = options.filter(function (option) { return !!option.other; });
+
+            if (picture) {
+                return 'question';
+            }
 
             if (!pictured.length) {
                 return 'text';
@@ -14901,25 +16186,141 @@
             return (!poll.multiple && !others.length && (pictured.length === options.length)) ? 'split' : 'rows';
         },
 
-        // The pictures of a poll's options, opened in the image viewer at
-        // the one asked for.
-        pollPictures: function (poll, optionId) {
+        // A poll's distinct pictures for the viewer: the question's own
+        // ({ src, alt }) first when it has one, then the options' in their
+        // order. One file on several options is one entry, captioned with
+        // the first of those options' labels; start maps each pictured
+        // option's id to its entry.
+        pollPictureList: function (poll, question) {
             var images = [];
-            var start = 0;
+            var start = {};
+            var seen = {};
 
-            poll.options.forEach(function (option) {
-                if (option.picture && option.picture.image) {
-                    if (option.id === optionId) {
-                        start = images.length;
-                    }
+            if (question) {
+                seen[question.src] = images.length;
+                images.push({ src: question.src, alt: question.alt, caption: question.alt });
+            }
 
-                    images.push({ src: option.picture.url, alt: option.label, caption: option.label });
+            (poll.options || []).forEach(function (option) {
+                if (!option.picture || !option.picture.image) {
+                    return;
                 }
+
+                var src = option.picture.url;
+
+                if (!Object.prototype.hasOwnProperty.call(seen, src)) {
+                    seen[src] = images.length;
+                    images.push({ src: src, alt: option.label, caption: option.label });
+                }
+
+                start[option.id] = seen[src];
             });
 
-            if (images.length) {
-                viewImages(images, start);
+            return { images: images, start: start };
+        },
+
+        // Opens the image viewer over the poll's distinct pictures at the
+        // asked option's picture, else at the first (the question's own).
+        pollPictures: function (poll, optionId, question) {
+            var list = this.pollPictureList(poll, question);
+
+            if (list.images.length) {
+                viewImages(list.images, Object.prototype.hasOwnProperty.call(list.start, optionId) ? list.start[optionId] : 0);
             }
+        },
+
+        // The count mark on a large figure when the poll has two or more
+        // distinct pictures; its words go into the figure's name too
+        // (pollFigureName()). One picture: no mark.
+        pollFigureCount: function (figure, poll, question) {
+            var count = this.pollPictureList(poll, question).images.length;
+
+            if (count < 2) {
+                return;
+            }
+
+            var words = t('poll_pictures_count', count);
+            var mark = el('span', 'ws-poll-picture-count');
+
+            mark.setAttribute('aria-hidden', 'true');
+            mark.appendChild(icon('bi-images'));
+            mark.appendChild(el('span', '', words));
+            figure.appendChild(mark);
+            figure.setAttribute('data-count-words', words);
+        },
+
+        // A large figure's title, and its accessible name with the count.
+        pollFigureName: function (figure, name) {
+            var words = figure.getAttribute('data-count-words');
+
+            figure.title = name;
+            figure.setAttribute('aria-label', words ? name + ', ' + words : name);
+        },
+
+        // The question's own picture: the poll message's image file, or null
+        // (a deleted message's, or a file of another kind, is not one).
+        pollQuestionPicture: function (message) {
+            var file = message.file;
+
+            return (message.poll && !message.deleted && file && file.image) ? file : null;
+        },
+
+        // How a poll's box is laid out: its shape; which picture stands large
+        // ('question', 'option' or none); whether rows show their own
+        // thumbnails; for an agent question whether it is answered, whether a
+        // click is the answer, whether "Other" is the words field and whether
+        // one Send goes under the options.
+        pollLayout: function (poll, picture) {
+            var shape = this.pollShape(poll, picture);
+            var agent = !!poll.agent_question;
+            var withdrawn = !!poll.withdrawn;
+            var answered = agent && !withdrawn && (!!poll.closed || !!poll.answered_by);
+            var canAnswer = agent && !!poll.can_answer && !answered && !withdrawn;
+            var hasOther = (poll.options || []).some(function (option) { return !!option.other; });
+            var direct = canAnswer && !poll.multiple && !hasOther;
+            var otherField = canAnswer && hasOther;
+
+            return {
+                shape: shape,
+                figure: (shape === 'question') ? 'question' : ((shape === 'split') ? 'option' : ''),
+                thumbs: (shape === 'question') || (shape === 'rows'),
+                answered: answered,
+                withdrawn: withdrawn,
+                can_answer: canAnswer,
+                direct: direct,
+                other_field: otherField,
+                other_row: hasOther && !otherField,
+                send: canAnswer && !direct
+            };
+        },
+
+        // The question's picture for the viewer: its address, and its alt
+        // from the question's words.
+        pollQuestionView: function (message, picture) {
+            var words = el('div');
+
+            setHtml(words, message.body || '');
+
+            return { src: picture.url, alt: (words.textContent || '').replace(/\s+/g, ' ').trim() || t('poll_question') };
+        },
+
+        // The question's large picture: a button that opens the viewer on it,
+        // the options' pictures following.
+        pollQuestionFigure: function (poll, question) {
+            var self = this;
+            var figure = button('ws-poll-figure ws-poll-figure-question');
+            var image = el('img');
+
+            image.src = question.src;
+            image.alt = question.alt;
+            figure.appendChild(image);
+            self.pollFigureCount(figure, poll, question);
+            self.pollFigureName(figure, t('poll_question_picture_open'));
+            figure.addEventListener('click', function () {
+                self.pollPictures(poll, 0, question);
+            });
+
+            return figure;
         },
 
         // An option's description, links and, on the "Other" row, the words
@@ -15035,7 +16436,10 @@
                 return self.agentQuestionNode(message);
             }
 
-            var shape = self.pollShape(poll);
+            var picture = self.pollQuestionPicture(message);
+            var question = picture ? self.pollQuestionView(message, picture) : null;
+            var layout = self.pollLayout(poll, picture);
+            var shape = layout.shape;
             var card = el('div', 'ws-poll ws-poll-shape-' + shape + (poll.closed ? ' ws-poll-closed' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
             var head = el('div', 'ws-poll-head');
             // Shares are of the people who voted, so a multiple-choice poll
@@ -15076,15 +16480,22 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
-            if (shape === 'split') {
+            if (layout.figure === 'question') {
+                var questionSplit = el('div', 'ws-poll-split');
+
+                // The question's picture stays put; it does not follow the rows.
+                questionSplit.appendChild(self.pollQuestionFigure(poll, question));
+                questionSplit.appendChild(list);
+                card.appendChild(questionSplit);
+            } else if (shape === 'split') {
                 var split = el('div', 'ws-poll-split');
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
@@ -15142,7 +16553,7 @@
                 input.addEventListener('change', send);
                 row.appendChild(input);
 
-                if ((shape === 'rows') && option.picture && option.picture.image) {
+                if (layout.thumbs && option.picture && option.picture.image) {
                     var thumb = el('span', 'ws-poll-thumb');
                     var image = el('img');
 
@@ -15154,7 +16565,7 @@
                     // The picture opens; it does not tick the row.
                     thumb.addEventListener('click', function (event) {
                         event.preventDefault();
-                        self.pollPictures(poll, option.id);
+                        self.pollPictures(poll, option.id, question);
                     });
                     row.appendChild(thumb);
                 }
@@ -15289,8 +16700,11 @@
         agentQuestionNode: function (message) {
             var self = this;
             var poll = message.poll;
-            var shape = self.pollShape(poll);
-            var answered = !poll.withdrawn && (poll.closed || !!poll.answered_by);
+            var picture = self.pollQuestionPicture(message);
+            var question = picture ? self.pollQuestionView(message, picture) : null;
+            var layout = self.pollLayout(poll, picture);
+            var shape = layout.shape;
+            var answered = layout.answered;
             var card = el('div', 'ws-poll ws-poll-agent ws-poll-shape-' + shape + (answered ? ' ws-poll-answered' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
             var head = el('div', 'ws-poll-head');
             var names = (poll.asked || []).map(function (person) { return person.name; }).join(', ');
@@ -15354,7 +16768,7 @@
                         image.src = option.picture.url;
                         image.alt = '';
                         thumb.appendChild(image);
-                        thumb.addEventListener('click', function () { self.pollPictures(poll, option.id); });
+                        thumb.addEventListener('click', function () { self.pollPictures(poll, option.id, question); });
                         row.appendChild(thumb);
                     }
 
@@ -15371,17 +16785,29 @@
                     chosen.appendChild(row);
                 });
 
-                card.appendChild(chosen);
+                // The question's picture stays at the left of the answer.
+                if (question) {
+                    var answeredSplit = el('div', 'ws-poll-split');
+
+                    answeredSplit.appendChild(self.pollQuestionFigure(poll, question));
+                    answeredSplit.appendChild(chosen);
+                    card.appendChild(answeredSplit);
+                } else {
+                    card.appendChild(chosen);
+                }
+
                 foot.appendChild(el('span', 'ws-grow', t('aq_answered_by', poll.answered_by ? poll.answered_by.name : '', poll.closed_on || '')));
 
                 return finish();
             }
 
-            var canAnswer = !!poll.can_answer;
-            var otherOption = poll.options.filter(function (option) { return option.other; })[0] || null;
+            var canAnswer = layout.can_answer;
+            var otherOption = layout.other_field ? (poll.options.filter(function (option) { return option.other; })[0] || null) : null;
             // With one answer and no "Other", the click is the answer.
-            var direct = canAnswer && !poll.multiple && !otherOption;
+            var direct = layout.direct;
             var list = el('div', 'ws-poll-options');
+            // Where Send goes: under the options, beside the question's picture.
+            var column = card;
             var group = nextId('ws-poll-' + poll.id + '-');
             var figure = null;
             var otherInput = null;
@@ -15397,15 +16823,23 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
-            if (shape === 'split') {
+            if (layout.figure === 'question') {
+                var questionSplit = el('div', 'ws-poll-split');
+
+                column = el('div', 'ws-poll-column');
+                column.appendChild(list);
+                questionSplit.appendChild(self.pollQuestionFigure(poll, question));
+                questionSplit.appendChild(column);
+                card.appendChild(questionSplit);
+            } else if (shape === 'split') {
                 var split = el('div', 'ws-poll-split');
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
@@ -15437,7 +16871,7 @@
 
             poll.options.forEach(function (option) {
                 // "Other" is the words field under the options, for whoever answers.
-                if (option.other && canAnswer) {
+                if (option.other && layout.other_field) {
                     return;
                 }
 
@@ -15459,7 +16893,7 @@
                 });
                 row.appendChild(input);
 
-                if ((shape === 'rows') && option.picture && option.picture.image) {
+                if (layout.thumbs && option.picture && option.picture.image) {
                     var thumb = el('span', 'ws-poll-thumb');
                     var image = el('img');
 
@@ -15470,7 +16904,7 @@
                     thumb.title = t('poll_picture_open', option.label);
                     thumb.addEventListener('click', function (event) {
                         event.preventDefault();
-                        self.pollPictures(poll, option.id);
+                        self.pollPictures(poll, option.id, question);
                     });
                     row.appendChild(thumb);
                 }
@@ -15486,7 +16920,7 @@
             });
 
             // Several answers or "Other": tick, write, and one Send.
-            if (canAnswer && !direct) {
+            if (layout.send) {
                 var sendRow = el('div', 'ws-poll-send');
                 var send = button('btn btn-sm btn-solid theme-primary ws-poll-send-button', t('send'));
 
@@ -15529,8 +16963,8 @@
                     answer(ids, words);
                 });
                 sendRow.appendChild(send);
-                card.appendChild(sendRow);
-                card.appendChild(error);
+                column.appendChild(sendRow);
+                column.appendChild(error);
             }
 
             var note = poll.withdrawn ? t('aq_taken_back_note') : (names ? t('aq_only', names) : '');
@@ -15614,6 +17048,65 @@
             question.id = nextId('ws-poll-q-');
             question.value = defaults.question || '';
             body.appendChild(formRow(t('poll_question'), question));
+
+            // The question's own picture, sent with it: kept as it is, a new
+            // one read from the device, or removed. An answered question keeps
+            // the picture it was asked with.
+            var keptPicture = editing ? self.pollQuestionPicture(editing) : null;
+            var questionPicture = { change: '', name: '', data: '' };
+            var pictureLocked = changing && (poll.voters > 0 || poll.closed || poll.withdrawn);
+            var pictureRow = el('div', 'ws-poll-form-picture');
+            var pictureShown = el('span', 'ws-poll-thumb');
+            var pictureFile = el('input', 'd-none');
+            var pictureUpload = button('btn btn-sm btn-text theme-secondary', t('poll_question_picture_upload'), 'bi-upload');
+            var pictureDrop = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('poll_option_picture_remove'));
+
+            function showQuestionPicture(url, name) {
+                clear(pictureShown);
+                pictureShown.classList.toggle('d-none', !url);
+                pictureDrop.classList.toggle('d-none', !url || pictureLocked);
+
+                if (url) {
+                    var image = el('img');
+
+                    image.src = url;
+                    image.alt = name || '';
+                    pictureShown.appendChild(image);
+                }
+            }
+
+            pictureFile.type = 'file';
+            pictureFile.accept = 'image/*';
+            pictureFile.setAttribute('aria-label', t('poll_question_picture_upload'));
+            pictureUpload.addEventListener('click', function () { pictureFile.click(); });
+            pictureFile.addEventListener('change', function () {
+                var chosen = pictureFile.files && pictureFile.files[0];
+                var reader = new FileReader();
+
+                if (!chosen) {
+                    return;
+                }
+
+                reader.onload = function () {
+                    var url = String(reader.result || '');
+
+                    questionPicture = { change: 'new', name: chosen.name, data: url.slice(url.indexOf(',') + 1) };
+                    showQuestionPicture(url, chosen.name);
+                };
+                reader.readAsDataURL(chosen);
+                pictureFile.value = '';
+            });
+            pictureDrop.addEventListener('click', function () {
+                questionPicture = { change: keptPicture ? 'remove' : '', name: '', data: '' };
+                showQuestionPicture('', '');
+            });
+            pictureRow.appendChild(pictureShown);
+            pictureRow.appendChild(pictureUpload);
+            pictureRow.appendChild(pictureDrop);
+            pictureRow.appendChild(pictureFile);
+            pictureUpload.disabled = pictureLocked;
+            showQuestionPicture(keptPicture ? keptPicture.url : '', keptPicture ? keptPicture.name : '');
+            body.appendChild(formRow(t('poll_question_picture'), pictureRow, pictureLocked ? t('poll_question_picture_locked') : t('poll_question_picture_help')));
 
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
@@ -15999,6 +17492,13 @@
 
                 settings.question = text;
                 settings.options = collect();
+
+                if (questionPicture.change === 'new') {
+                    settings.picture_name = questionPicture.name;
+                    settings.picture_base64 = questionPicture.data;
+                } else if (questionPicture.change === 'remove') {
+                    settings.remove_picture = 1;
+                }
 
                 if (!again) {
                     settings.closes_date = date.value;
@@ -16680,6 +18180,8 @@
             // panel is not inside the channel screen's centre.
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
                 placeholder: placeholder,
+                // A pasted message tag or link of a message becomes its chip.
+                messageRefs: true,
                 onKeydown: keys,
                 onEnter: function () { self.send(); },
                 pasteFiles: function (files) { self.uploadFiles(files); },
@@ -16743,6 +18245,7 @@
                 }
 
                 event.stopPropagation();
+                ctxFollow(attach);
                 ctxMenu(box.left, box.top - 6, [
                     { icon: 'bi-laptop', label: t('lib_from_device'), action: function () { self.attach(); } },
                     { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } }
@@ -16763,6 +18266,7 @@
                 var box = emoji.getBoundingClientRect();
 
                 event.stopPropagation();
+                ctxFollow(emoji);
                 emojiPicker(box.left, box.top - 6, function (picked) { self.insertText(picked); }, true);
             });
             parts.push(emoji);
@@ -16778,8 +18282,15 @@
                 var box = insert.getBoundingClientRect();
 
                 event.stopPropagation();
+                ctxFollow(insert);
                 ctxMenu(box.left, box.top - 6, [
-                    { icon: 'bi-table', label: t('insert_table'), action: function () { self.tablePicker(box.left, box.top - 6); } },
+                    // Read again: the keyboard may have gone down since.
+                    { icon: 'bi-table', label: t('insert_table'), action: function () {
+                        var now = insert.getBoundingClientRect();
+
+                        ctxFollow(insert);
+                        self.tablePicker(now.left, now.top - 6);
+                    } },
                     { icon: 'bi-calculator', label: t('insert_calc'), action: function () { self.insertCalc(); } },
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
                     window.pgImageEditor ? { icon: 'pg-design-canvas', label: t('canvas_new'), action: function () { self.newCanvas(); } } : null,
@@ -16890,6 +18401,7 @@
                         });
                     } });
 
+                    ctxFollow(later);
                     ctxMenu(Math.max(8, place.right - 240), place.top - 6, items, true);
                 });
 
@@ -17076,6 +18588,8 @@
             self.editing = null;
             self.reply = null;
             self.editingScheduled = item;
+            self.closePicker();
+            self.drawCommandStrip(null);
 
             if (self.rich) {
                 self.rich.focus();
@@ -17821,6 +19335,11 @@
             self.reply = null;
             self.editHoldStart(message);
 
+            // A command list or argument strip open in the box goes: no
+            // command runs from an edit (commandsOff()).
+            self.closePicker();
+            self.drawCommandStrip(null);
+
             // The rich box reads the stored text itself: tags back into chips,
             // tables and lists back into cards.
             if (self.rich) {
@@ -17960,10 +19479,27 @@
                 options = pending.confirm();
             }
 
+            // /search: the palette on this channel with the words, opened
+            // here; nothing is posted and the server is not asked.
+            var searchWords = (!options && !commandsOff(self) && window.PGWsPalette) ? commandSearchWords(body, BOOT ? BOOT.commands : []) : null;
+
+            if (searchWords !== null) {
+                self.busy = false;
+                self.clearInput();
+                window.PGWsPalette.open({ scope: 'here', query: searchWords });
+                return;
+            }
+
             var data = { channel_id: self.channel.id, body: body, parent_id: self.reply ? self.reply.id : 0 };
 
             if (self.reply && self.replyMore && self.replyMore.length) {
                 data.quote_ids = self.replyMore.map(function (item) { return item.id; });
+            }
+
+            // /recap sums up from where this visit began, as the catch-up
+            // line's button does.
+            if (!self.isThread && self.briefing && self.briefing.recap && (body.charAt(0) === '/')) {
+                data.since_id = self.briefing.recap.since_id;
             }
 
             Object.keys(options || {}).forEach(function (key) { data[key] = options[key]; });
@@ -18005,6 +19541,101 @@
                     return;
                 }
 
+                // /approval without a title or people, /update without a
+                // state, /checkin without a question: the form of the box's
+                // Insert menu, filled with what was typed; the box empties
+                // once it is sent.
+                var commandForms = {
+                    approval_form: [window.PGWsApprovals, 'form'],
+                    status_form: [window.PGWsStatus, 'form'],
+                    checkin_form: [window.PGWsStatus, 'checkinForm']
+                };
+
+                if (result.command && commandForms[result.command.type]) {
+                    var opener = commandForms[result.command.type];
+
+                    if (opener[0] && opener[0][opener[1]]) {
+                        opener[0][opener[1]](self, featureHelpers(), result.command.fill || {}, function () {
+                            self.clearInput();
+                        });
+                    }
+                    return;
+                }
+
+                // /flow with a flow of the channel named: asked and started as
+                // Start a flow does; without one, Start a flow's list opens.
+                if (result.command && ((result.command.type === 'flow_start') || (result.command.type === 'flow_form'))) {
+                    self.clearInput();
+
+                    if (result.command.type === 'flow_form') {
+                        self.flowStarter();
+                        return;
+                    }
+
+                    var named = (self.flowsList || []).filter(function (flow) {
+                        return flow.id === result.command.flow.id;
+                    })[0] || result.command.flow;
+
+                    self.startFlowHere(named, null, null);
+                    return;
+                }
+
+                // /memory without a text: the Memory tab's New entry form,
+                // filled with what the line carried (an answered message's
+                // link); the box empties, its text is in the form.
+                if (result.command && result.command.type === 'memory_form') {
+                    if (self.channel.memory && window.PGWsMemory) {
+                        self.clearInput();
+                        self.memoryFill = result.command.fill || {};
+                        self.tab = 'memory';
+                        self.drawCenter();
+                    }
+                    return;
+                }
+
+                // /remind without a time: My calendar's New plan drawer,
+                // filled with what was typed; the box empties once it saves.
+                if (result.command && result.command.type === 'plan_form') {
+                    if (window.PGWsMyCalendar && window.PGWsMyCalendar.fill) {
+                        window.PGWsMyCalendar.fill(featureHelpers(), result.command.fill, result.command.strings, function () {
+                            self.clearInput();
+                        });
+                    }
+                    return;
+                }
+
+                // /leave: the menu's question as a card to the writer alone;
+                // only its button leaves, sending the line again confirmed.
+                if (result.command && result.command.type === 'leave_card') {
+                    var leaveCard = el('div', 'ws-ephemeral');
+                    var leaveRow = el('div', 'd-flex flex-wrap gap-2 mt-2');
+                    var leaveGo = button('pg-button pg-button-danger pg-button-sm', t('leave_channel'), 'bi-box-arrow-right');
+                    var leaveStay = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+
+                    leaveCard.appendChild(el('div', '', t(result.command.private ? 'leave_private_confirm' : 'leave_confirm')));
+                    leaveGo.addEventListener('click', function () {
+                        leaveCard.remove();
+                        self.send({ confirm: 1, body: body });
+                    });
+                    leaveStay.addEventListener('click', function () { leaveCard.remove(); });
+                    leaveRow.appendChild(leaveGo);
+                    leaveRow.appendChild(leaveStay);
+                    leaveCard.appendChild(leaveRow);
+                    self.pane.appendChild(leaveCard);
+                    self.clearInput();
+                    self.scrollToEnd();
+                    return;
+                }
+
+                // Left through /leave's card: as the menu's item, the list
+                // without the channel and an empty centre.
+                if (result.command && result.command.type === 'left') {
+                    self.clearInput();
+                    self.reloadChannels(0);
+                    self.drawEmptyCenter();
+                    return;
+                }
+
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
@@ -18013,6 +19644,12 @@
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
                     self.scrollToEnd();
+
+                    // /topic changed what the channel is about: its header
+                    // and info panel show the new one.
+                    if (result.command.refresh) {
+                        self.refreshInfo();
+                    }
 
                     // A command that does not exist: nothing was posted, and
                     // the text stays in the box to be put right.
@@ -18201,28 +19838,19 @@
             }
 
             // Kept in this channel as a decision, as from the record drawer.
-            var tick = el('div', 'form-field mb-1');
-            var decision = el('input', 'check');
-            decision.type = 'checkbox';
-            decision.checked = true;
-            decision.id = nextId('ws-cmd-decision-');
-            var tickLabel = el('label', 'small', t('qe_decision'));
-            tickLabel.htmlFor = decision.id;
-            tick.appendChild(decision);
-            tick.appendChild(tickLabel);
-            card.appendChild(tick);
+            var decision = lookCheck(card, t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Save writes the text this card was drawn from, not what the box
             // holds by then, which nobody has seen as a card.
             var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qe_save'), 'bi-check2');
+            var save = lookButton('pg-button pg-button-fill pg-button-sm', t('qe_save'), 'bi-check2');
             save.addEventListener('click', function () {
                 self.send({ confirm: 1, body: drawn, from: command.from, decision: decision.checked ? 1 : 0 });
             });
             actions.appendChild(save);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -18233,16 +19861,44 @@
         },
 
         // The /product card: the values the product is made with, the "On
-        // sale" tick (off by default), the decision tick, and "All fields",
-        // which opens the drawer's new mode with the same values. As on the
-        // /price card, Enter draws the card again; only Create writes.
+        // sale" tick (off by default; a contact has none), the decision
+        // tick, and "All fields", which opens the drawer's new mode with the
+        // same values. As on the /price card, Enter draws the card again;
+        // only Create writes. A line that left a required field out
+        // (preview.missing) opens the drawer's new mode straight away,
+        // filled with what was typed.
         drawCreatePreview: function (command) {
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
             var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var created = function () {
+                self.pending = null;
+                clear(self.previewBox);
+                self.clearSent(drawn);
+                self.autosize();
+            };
 
-            card.appendChild(el('div', 'fw-semibold', t((preview.kind === 'product_group') ? 'qc_command_title_group' : 'qc_command_title')));
+            // /create row: a form of the table's own fields.
+            if (preview.kind === 'wtable_row') {
+                self.drawRowCreate(command);
+                return;
+            }
+
+            if (preview.missing && preview.missing.length) {
+                self.pending = null;
+                openRecord(preview.kind, 0, '', { values: command.values || {}, labels: command.labels || {}, channelId: self.channel.id, onCreated: created });
+                return;
+            }
+
+            var titles = {
+                product_group: 'qc_command_title_group',
+                contact: 'qc_command_title_contact',
+                erp_account: 'qc_command_title_account',
+                calendar_event: 'qc_command_title_event'
+            };
+            card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
             (preview.rows || []).forEach(function (item) {
@@ -18258,40 +19914,36 @@
             card.appendChild(list);
 
             var tick = function (label, checked, prefix) {
-                var wrap = el('div', 'form-field mb-1');
-                var input = el('input', 'check');
-                input.type = 'checkbox';
-                input.checked = checked;
-                input.id = nextId(prefix);
-                var text = el('label', 'small', label);
-                text.htmlFor = input.id;
-                wrap.appendChild(input);
-                wrap.appendChild(text);
-                card.appendChild(wrap);
-
-                return input;
+                return lookCheck(card, label, checked, prefix);
             };
 
-            var onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
-            card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            var onSale = null;
+
+            if (preview.on_sale) {
+                onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
+                card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            }
+
             var decision = tick(t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Create makes what the card shows: the text it was drawn from,
             // not what the box holds by then, as on the /task card.
-            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
-                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: (onSale && onSale.checked) ? 1 : 0 });
             });
             actions.appendChild(create);
 
-            var all = button('btn btn-sm btn-outline theme-secondary', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
+            var all = lookButton('pg-button pg-button-quiet pg-button-sm', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
             all.addEventListener('click', function () {
                 var values = {};
 
                 Object.keys(command.values || {}).forEach(function (name) { values[name] = command.values[name]; });
-                values.enabled = onSale.checked;
+
+                if (onSale) {
+                    values.enabled = onSale.checked;
+                }
 
                 openRecord(preview.kind, 0, '', {
                     values: values,
@@ -18303,17 +19955,130 @@
                     decision: decision.checked,
                     // Made from the drawer: the line that asked for it goes,
                     // a draft typed since the card appeared stays.
-                    onCreated: function () {
-                        self.pending = null;
-                        clear(self.previewBox);
-                        self.clearSent(drawn);
-                        self.autosize();
-                    }
+                    onCreated: created
                 });
             });
             actions.appendChild(all);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        // The /create row card: the table the line named, or a choice of the
+        // tables the person may write (choosing one draws the card again
+        // with its fields), then each field the row stores, empty, as the
+        // table screen draws them. Create sends what was filled in, as
+        // typed; the server reads it as the screen does. Nothing is written
+        // before Create.
+        drawRowCreate: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview ws-row-card');
+            var drawn = self.pending.body;
+            var inputs = {};
+            var tableId = preview.table_id || 0;
+
+            card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
+
+            var tables = el('select', 'pg-input');
+            tables.appendChild(new Option(t('qc_row_choose'), ''));
+            (preview.tables || []).forEach(function (table) {
+                tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
+            });
+            tables.addEventListener('change', function () {
+                var id = parseInt(tables.value, 10) || 0;
+
+                if (id) {
+                    self.send({ body: drawn, table_id: id });
+                }
+            });
+            card.appendChild(lookField(t('qc_row_table'), tables, tables, ''));
+
+            // Two fields a line on a wide screen; a long table scrolls
+            // inside the card, so the box stays in view.
+            var grid = el('div', 'row g-2 mt-1 overflow-auto');
+            grid.style.maxHeight = '45vh';
+            card.appendChild(grid);
+
+            (preview.columns || []).forEach(function (column) {
+                var input;
+                var cell = el('div', 'col-12 md:col-6');
+
+                if (column.type === 'checkbox') {
+                    // On a wide screen, on the line of its neighbour's
+                    // control, below that one's label.
+                    cell.classList.add('md:pt-7');
+                    input = lookCheck(cell, column.name, false, 'ws-row-cell-');
+                    input.parentNode.style.minHeight = '2.25rem';
+                    input.read = function () { return input.checked ? '1' : '0'; };
+                    inputs[column.id] = input;
+                    grid.appendChild(cell);
+                    return;
+                }
+
+                if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
+                    input = el('select', 'pg-input');
+                    input.appendChild(new Option(t('qc_row_none'), ''));
+                    column.choices.forEach(function (choice) {
+                        input.appendChild(new Option(choice[1], choice[0]));
+                    });
+                } else if (column.type === 'list') {
+                    // One item a line: the recipe's text box.
+                    input = el('textarea', 'pg-input');
+                    input.rows = 2;
+                } else if (column.type === 'text') {
+                    // A text keeps its line breaks (a pasted address or
+                    // note): a text box, one line high at rest, growing
+                    // with its lines (.ws-row-text).
+                    input = el('textarea', 'pg-input ws-row-text');
+                    input.rows = 1;
+                } else if (column.type === 'date') {
+                    input = pgDateField(el('input', 'pg-input'), column.time ? 'datetime-local' : 'date');
+                } else {
+                    input = el('input', (column.type === 'money' && column.hint) ? '' : 'pg-input');
+                    input.type = 'text';
+
+                    if (column.type === 'number' || column.type === 'money') {
+                        input.inputMode = 'decimal';
+                    }
+                }
+
+                input.read = function () { return input.value; };
+                inputs[column.id] = input;
+
+                // Money: its currency beside the amount, the bare input in a
+                // .pg-input wrapper with .pg-input-end.
+                if (column.type === 'money' && column.hint) {
+                    var group = el('span', 'pg-input');
+                    group.appendChild(input);
+                    group.appendChild(el('span', 'pg-input-end', column.hint));
+                    cell.appendChild(lookField(column.name, group, input, ''));
+                } else {
+                    cell.appendChild(lookField(column.name, input, input, column.hint || ''));
+                }
+
+                grid.appendChild(cell);
+            });
+
+            var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
+            create.disabled = !tableId;
+            create.addEventListener('click', function () {
+                var cells = {};
+
+                Object.keys(inputs).forEach(function (id) { cells[id] = inputs[id].read(); });
+                self.send({ confirm: 1, body: drawn, table_id: tableId, cells: cells });
+            });
+            actions.appendChild(create);
+
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -18654,7 +20419,7 @@
             var match;
 
             // A list's first item starting with "/" is words, no command.
-            if (!self.noCommands && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
+            if (!commandsOff(self) && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -18773,7 +20538,7 @@
         commandArgument: function (before) {
             var self = this;
 
-            if (self.noCommands || self.editing || self.editingScheduled || !BOOT || !BOOT.commands) {
+            if (commandsOff(self) || !BOOT || !BOOT.commands) {
                 return null;
             }
 
@@ -18787,8 +20552,31 @@
             var rest = match[3];
             var word = /[^\s\uFFFC]*$/.exec(rest)[0];
             var done = rest.slice(0, rest.length - word.length).replace(/\uFFFC/g, ' \uFFFC ').split(/\s+/).filter(Boolean);
+            var typed = '/' + match[1];
+            // A kind word typed (/create contact): that kind's own
+            // arguments and example, after the word.
+            var variant = done.length ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(done[0])) !== -1;
+            })[0] : null;
+
+            if (variant) {
+                typed += ' ' + done[0];
+                done = done.slice(1);
+                entry = Object.assign({}, entry, { args: variant.args, example: variant.example });
+            }
+
             var args = entry.args || [];
-            var state = { entry: entry, typed: '/' + match[1], query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+            var state = { entry: entry, typed: typed, query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+
+            // The kind word still being typed (/create row): the strip
+            // already shows that kind's line; the kind's popup stays.
+            var typing = (!variant && !done.length && word) ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(word)) !== -1;
+            })[0] : null;
+
+            if (typing) {
+                state.shown = { typed: typed + ' ' + word, args: typing.args, example: typing.example };
+            }
 
             if (!args.length) {
                 return state;
@@ -18980,6 +20768,24 @@
                 return;
             }
 
+            // The states /update reads.
+            if (source === 'healths') {
+                show(fixed(values.healths, 'bi-activity'));
+                return;
+            }
+
+            // The choices /notify reads.
+            if (source === 'notify') {
+                show(fixed(values.notify, 'bi-bell'));
+                return;
+            }
+
+            // /flow: the channel's flows; a pick starts one.
+            if (source === 'flows') {
+                show(self.flowsOffered() ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : []);
+                return;
+            }
+
             // What /create makes: a product, a group.
             if (source === 'kinds') {
                 show(fixed(values.kinds, 'bi-plus-square'));
@@ -19022,7 +20828,7 @@
             // Tasks and records from the search the # picker uses: only what
             // the person may see. A task is written as its number (T-42), a
             // record as its tag.
-            var type = { tasks: 'task', products: 'product', records: 'all' }[source];
+            var type = { tasks: 'task', products: 'product', orders: 'order', records: 'all' }[source];
 
             if (!type || ((type !== 'all') && !(BOOT.ref_types && BOOT.ref_types[type]))) {
                 self.closePicker();
@@ -19075,17 +20881,25 @@
                 return;
             }
 
-            var entry = argument.entry;
+            // A kind word still being typed shows its kind's own line,
+            // nothing of it marked yet (commandArgument(), shown).
+            var shown = argument.shown || null;
+            var entry = shown || argument.entry;
             var row = el('div', 'ws-cmd-strip');
             var usage = el('span', 'ws-cmd-usage');
 
-            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+            usage.appendChild(el('span', 'ws-cmd-name', shown ? shown.typed : argument.typed));
 
             (entry.args || []).forEach(function (arg, index) {
-                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+                var current = !shown && ((argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1)));
 
                 usage.appendChild(document.createTextNode(' '));
                 usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
+
+                // The mark the line puts after it (a contact's commas).
+                if (arg.after) {
+                    usage.appendChild(document.createTextNode(arg.after));
+                }
             });
 
             row.appendChild(usage);
@@ -19244,42 +21058,24 @@
                 return;
             }
 
-            // Every name a command answers to, Turkish or English: the name
-            // as typed first ("/gö" shows /görev), then with the Turkish
-            // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
-            // With nothing typed, the name in the screen's language.
+            // The commands that run in this box (commandPickerRows()); with
+            // nothing typed and more of them than the list shows, drawn
+            // again under the headers of their groups.
             if (mode === 'command') {
-                var typed = ('/' + query).toLocaleLowerCase('tr');
-                var typedFolded = foldText(typed);
-                var commands = [];
+                var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
+                var flowsHere = !inThread && self.flowsOffered();
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere);
+                // The channel's flows by name, after the commands.
+                var flowRows = flowsHere ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : [];
+                var shown;
 
-                (BOOT.commands || []).forEach(function (item) {
-                    var aliases = item.command.split(' · ');
-                    var names = (item.names && item.names.length) ? item.names : aliases;
-                    var match = item.name || aliases[0];
+                self.drawPicker(commandPickerAddFlows(commands, flowRows, t('cmd_flows')));
+                shown = self.picker.querySelector('.ws-picker-list');
 
-                    if (query !== '') {
-                        match = null;
+                if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {
+                    self.drawPicker(commandPickerAddFlows(commandPickerGroups(commands, BOOT.command_groups), flowRows, t('cmd_flows')));
+                }
 
-                        names.forEach(function (name) {
-                            if (!match && name.toLocaleLowerCase('tr').indexOf(typed) === 0) {
-                                match = name;
-                            }
-                        });
-
-                        names.forEach(function (name) {
-                            if (!match && foldText(name).indexOf(typedFolded) === 0) {
-                                match = name;
-                            }
-                        });
-                    }
-
-                    if (match) {
-                        commands.push({ label: match, meta: item.description, detail: item.example, icon: 'bi-slash-square', insert: match + ' ' });
-                    }
-                });
-
-                self.drawPicker(commands);
                 return;
             }
 
@@ -19456,6 +21252,15 @@
         drawPicker: function (items, emptyText) {
             var self = this;
             var picker = clear(self.picker);
+            // A line the row cuts with an ellipsis in a narrow column keeps
+            // its whole text as its title.
+            var pickerText = function (className, text) {
+                var node = el('span', className, text);
+
+                node.title = text;
+
+                return node;
+            };
 
             if (self.pickerMode === 'record') {
                 var types = el('div', 'ws-picker-types');
@@ -19512,15 +21317,33 @@
             // Enter still sends the line; the row Tab would write is marked.
             var argMode = (self.pickerMode === 'arg');
 
-            self.pickerItems = items;
+            // A group's header row (commandPickerGroups()) is drawn but never
+            // picked: the arrows, Enter and Tab walk the other rows only.
+            var rows = items.filter(function (item) {
+                return !item.header;
+            });
+
+            self.pickerItems = rows;
             self.pickerIndex = argMode ? -1 : 0;
 
-            if (!items.length) {
+            if (!rows.length) {
                 list.appendChild(el('div', 'ws-picker-empty', emptyText || t('nothing_found')));
             }
 
-            items.forEach(function (item, index) {
-                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
+            items.forEach(function (item) {
+                if (item.header) {
+                    var head = el('div', 'ws-picker-group', item.label);
+
+                    head.setAttribute('role', 'presentation');
+                    head.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
+                    });
+                    list.appendChild(head);
+                    return;
+                }
+
+                var index = rows.indexOf(item);
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : '') + (item.flow ? ' ws-picker-flow-row' : ''));
                 row.type = 'button';
 
                 if (item.glyph) {
@@ -19537,11 +21360,11 @@
                 if (item.detail) {
                     var text = el('span', 'ws-picker-text');
 
-                    text.appendChild(el('span', 'ws-picker-label', item.label));
-                    text.appendChild(el('span', 'ws-picker-detail', item.detail));
+                    text.appendChild(pickerText('ws-picker-label', item.label));
+                    text.appendChild(pickerText('ws-picker-detail', item.detail));
                     row.appendChild(text);
                 } else {
-                    row.appendChild(el('span', 'ws-picker-label', item.label));
+                    row.appendChild(pickerText('ws-picker-label', item.label));
                 }
 
                 // The state in words for a screen reader; the dot shows it.
@@ -19567,7 +21390,7 @@
                     meta.appendChild(el('span', '', item.role));
                     row.appendChild(meta);
                 } else if (item.meta) {
-                    row.appendChild(el('span', 'ws-picker-meta', item.meta));
+                    row.appendChild(pickerText('ws-picker-meta', item.meta));
                 }
 
                 row.addEventListener('mousedown', function (event) {
@@ -19702,6 +21525,15 @@
                     if (argMode) {
                         row.classList.toggle('ws-picker-next', index === this.pickerIndex);
                     }
+
+                    // The chosen row stays in view, with its group's header
+                    // when it is the group's first.
+                    if ((index === this.pickerIndex) && row.scrollIntoView) {
+                        var head = row.previousElementSibling;
+
+                        (head && head.classList.contains('ws-picker-group') ? head : row).scrollIntoView({ block: 'nearest' });
+                        row.scrollIntoView({ block: 'nearest' });
+                    }
                 }, this);
 
                 return true;
@@ -19747,6 +21579,25 @@
                 this.closePicker();
                 this.rich.insertStored(typedReply, item.reply.text, item.reply.labels || {});
                 this.autosize();
+                return;
+            }
+
+            // A flow of the "/" list or of /flow's list: the command line goes,
+            // and the flow is asked and started as Start a flow does.
+            if (item.flow) {
+                if (this.rich) {
+                    this.rich.replaceTyped(this.beforeCaret().length, { text: '' });
+                } else {
+                    var line = this.input;
+
+                    line.value = line.value.slice(line.selectionStart);
+                    line.selectionStart = line.selectionEnd = 0;
+                }
+
+                this.closePicker();
+                this.drawCommandStrip(null);
+                this.autosize();
+                this.startFlowHere(item.flow, null, null);
                 return;
             }
 
@@ -19877,14 +21728,57 @@
                     return;
                 }
 
+                var bodies = [];
+
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
                     var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
                     jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                     node.querySelector('.ws-msg-meta').appendChild(jump);
                     pane.appendChild(node);
+
+                    var body = node.querySelector('.ws-msg-main > .ws-msg-body');
+
+                    if (body) {
+                        body.classList.add('ws-folded');
+                        bodies.push(body);
+                    }
                 });
+
+                self.foldLong(bodies);
             }).catch(fail);
+        },
+
+        // A decision longer than about eight lines stays folded (.ws-folded
+        // caps its height) behind Show more / Show less; its head line with
+        // Show in conversation stays above it. All heights are read first,
+        // then the classes and buttons changed, so the pane is laid out
+        // once, not once per card.
+        foldLong: function (bodies) {
+            var long = bodies.filter(function (body) {
+                return body.scrollHeight > body.clientHeight + 2;
+            });
+
+            bodies.forEach(function (body) {
+                if (long.indexOf(body) < 0) {
+                    body.classList.remove('ws-folded');
+                }
+            });
+
+            long.forEach(function (body) {
+                var toggle = lookButton('pg-button pg-button-ghost pg-button-sm ws-fold-toggle', t('pane_show_more'), 'bi-chevron-down');
+
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function () {
+                    var open = body.classList.toggle('ws-folded') === false;
+
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    clear(toggle);
+                    toggle.appendChild(icon(open ? 'bi-chevron-up' : 'bi-chevron-down', ''));
+                    toggle.appendChild(document.createTextNode(t(open ? 'pane_show_less' : 'pane_show_more')));
+                });
+                body.insertAdjacentElement('afterend', toggle);
+            });
         },
 
         // The channel's files: the pictures as a gallery that opens in the
@@ -19960,16 +21854,20 @@
                     var pictures = el('section', 'ws-file-group');
                     pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
+                    var shown = 0;
+                    var more = null;
 
-                    images.forEach(function (message, index) {
+                    // One tile; the viewer still steps through every picture.
+                    var drawTile = function (message, index) {
                         var tile = el('button', 'ws-gallery-tile');
                         tile.type = 'button';
                         tile.title = message.file.name;
 
                         var img = el('img');
-                        img.src = message.file.url;
                         img.alt = message.file.name;
                         img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.src = message.file.url;
                         tile.appendChild(img);
 
                         var caption = el('span', 'ws-gallery-caption');
@@ -19980,9 +21878,31 @@
                         tile.addEventListener('click', function () { viewImages(gallery, index); });
                         onContext(tile, function () { return fileMenu(message, index); });
                         grid.appendChild(tile);
-                    });
+                    };
+
+                    // The gallery is drawn FILE_PAGE tiles at a time: a
+                    // channel with hundreds of pictures builds and loads only
+                    // the first page until Show more asks for the next.
+                    var drawPage = function () {
+                        images.slice(shown, shown + FILE_PAGE).forEach(function (message, offset) {
+                            drawTile(message, shown + offset);
+                        });
+                        shown = Math.min(images.length, shown + FILE_PAGE);
+
+                        if (more) {
+                            more.remove();
+                            more = null;
+                        }
+
+                        if (shown < images.length) {
+                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)), 'bi-chevron-down');
+                            more.addEventListener('click', drawPage);
+                            pictures.appendChild(more);
+                        }
+                    };
 
                     pictures.appendChild(grid);
+                    drawPage();
                     pane.appendChild(pictures);
                 }
 
@@ -20883,6 +22803,7 @@
             var where = el('div', 'ws-topic');
             var parent = (BOOT.channels || []).filter(function (item) { return item.id === thread.channel_id; })[0];
             where.textContent = t('th_in', parent ? parent.name : '');
+            where.title = where.textContent;
             title.appendChild(where);
             head.appendChild(title);
 
@@ -21087,23 +23008,35 @@
         };
 
         // The people in it, and the people of the channel who could be
-        // brought in.
+        // brought in; then its agents as Channel info lists them, and for
+        // whoever the server lets change them its own agents' settings.
         view.showPeople = function () {
             var self = this;
             var channel = self.channel;
             var node = offcanvas('ws-thread-people', t('th_people'));
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
+            var people = el('div', 'ws-info-people');
 
             footer.classList.add('d-none');
+            body.appendChild(el('h3', 'ws-panel-kicker', t('cm_people') + ' · ' + (channel.members || []).length));
 
             (channel.members || []).forEach(function (member) {
-                var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var face = avatar(member, '2rem');
-                row.appendChild(face);
-                row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
-                body.appendChild(row);
+                var row = people.appendChild(el('div', 'ws-info-person'));
+                var text = el('div', 'ws-info-person-text');
+                var name = text.appendChild(el('div', 'ws-info-person-name', member.name));
+
+                row.appendChild(personCardHook(avatar(member, null, true), channel, member, false));
+                personCardHook(name, channel, member, true);
+
+                if (member.id === channel.owner_id) {
+                    text.appendChild(el('div', 'ws-info-person-role', t('owner')));
+                }
+
+                row.appendChild(text);
             });
+
+            body.appendChild(people);
 
             var parent = main.channel;
 
@@ -21135,6 +23068,42 @@
                     });
                     footer.appendChild(add);
                 }
+            }
+
+            // Its own agents, the channel's asked here by name, Claude and
+            // Pinegrap AI where they can be asked, the one it follows.
+            var agentsBox = body.appendChild(el('div'));
+
+            function drawAgents() {
+                var agents = channelAgents(channel);
+
+                clear(agentsBox);
+
+                if (!agents.length) {
+                    return;
+                }
+
+                agentsBox.appendChild(el('h3', 'ws-panel-kicker mt-5', t('cm_agents') + ' · ' + agents.length));
+
+                var list = agentsBox.appendChild(el('div', 'ws-info-people ws-info-agents'));
+
+                agents.forEach(function (agent) {
+                    agentInfoRow(channel, agent, list);
+                });
+            }
+
+            drawAgents();
+
+            // Drawn only for whoever may change them (the server's can_edit);
+            // an add or a removal redraws the list above.
+            if (window.PGWsChannelAgents && !channel.guest) {
+                window.PGWsChannelAgents.mount(body, channel, {
+                    discussion: true,
+                    changed: function (fresh) {
+                        channel.agents = fresh.agents || [];
+                        drawAgents();
+                    }
+                });
             }
 
             showOffcanvas(node);
@@ -21947,6 +23916,16 @@
             sub.appendChild(el('span', task.overdue ? 'fg-danger' : '', task.due_label));
             sub.appendChild(document.createTextNode(' · ' + task.status_label + (task.estimate_label ? ' · ' + task.estimate_label : '')));
 
+            // A task of an agent channel names its channel, so one assigned
+            // to the reader is told apart in "Mine".
+            if (task.agent_channel_name) {
+                var agentChannel = el('span', 'ws-row-agent-channel ms-1');
+                agentChannel.appendChild(document.createTextNode('· '));
+                agentChannel.appendChild(icon('bi-robot', 'me-1'));
+                agentChannel.appendChild(document.createTextNode('#' + task.agent_channel_name));
+                sub.appendChild(agentChannel);
+            }
+
             if (window.PGWsTaskTime) {
                 window.PGWsTaskTime.rowTags(sub, task, partHelpers());
             }
@@ -22021,6 +24000,45 @@
     // Tasks screen
     // ═══════════════════════════════════════════════════════════════════
 
+    // The "Agent channels" toggle of My Tasks, the Planning Board and the
+    // Work Calendar, as the Decisions screen has it: agent channels' tasks
+    // are left out; on, theirs show alone. It shows once the reader may read
+    // an agent channel (shown(count)), and agents=1 keeps it in the address.
+    function taskAgentsToggle(on, onChange) {
+        var node = button('btn btn-sm btn-text theme-secondary' + (on ? ' active' : '') + (on ? '' : ' d-none'), t('task_agents'), 'bi-robot');
+
+        node.title = t('task_agents_help');
+        node.setAttribute('aria-pressed', on ? 'true' : 'false');
+        node.addEventListener('click', function () {
+            on = !on;
+            node.classList.toggle('active', on);
+            node.setAttribute('aria-pressed', on ? 'true' : 'false');
+            taskAgentsAddress(on);
+            onChange(on);
+        });
+        node.shown = function (count) {
+            node.classList.toggle('d-none', !(on || count > 0));
+        };
+
+        return node;
+    }
+
+    function taskAgentsAddress(on) {
+        if (!window.history || !window.history.replaceState || !window.URL) {
+            return;
+        }
+
+        var url = new URL(window.location.href);
+
+        if (on) {
+            url.searchParams.set('agents', '1');
+        } else {
+            url.searchParams['delete']('agents');
+        }
+
+        window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
     // How pressing a task is, as the screens filter by it: every one, urgent
     // and high together, or one priority.
     function priorityFilter(value, onChange) {
@@ -22052,7 +24070,7 @@
     function startTasks(root) {
         clear(root);
 
-        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0 };
+        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '' };
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
@@ -22093,7 +24111,7 @@
 
             // The time view (PGWsTaskTime.myTime()) reads none of the task
             // filters, so they leave the toolbar while it is shown.
-            [status, dept, priority, soon, searchGroup].forEach(function (control) {
+            [status, dept, priority, soon, agents, searchGroup].forEach(function (control) {
                 if (control) {
                     control.hidden = (name === 'time');
                 }
@@ -22171,6 +24189,12 @@
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
+        var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
+            state.agent_channels = on ? 'only' : '';
+            load();
+        });
+        bar.appendChild(agents);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -22202,6 +24226,12 @@
 
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
+                    var names = data.agent_names || {};
+
+                    data.tasks.forEach(function (task) {
+                        task.agent_channel_name = names[task.channel_id] || '';
+                    });
+                    agents.shown(data.agent_channels || 0);
                     taskRows(listBody, data.tasks, load);
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
@@ -22237,7 +24267,7 @@
     function startBoard(root) {
         clear(root);
 
-        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '' };
+        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '', agent_channels: (params().agents === '1') ? 'only' : '' };
         var lastData = null;
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var wrap = el('div', 'ws-board-wrap');
@@ -22337,6 +24367,12 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
+        var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
+            state.agent_channels = on ? 'only' : '';
+            load();
+        });
+        bar.appendChild(agents);
+
         var conflicts = button('btn btn-sm btn-outline theme-secondary', t('conflicts'), 'bi-exclamation-triangle');
         conflicts.addEventListener('click', showConflicts);
         bar.appendChild(conflicts);
@@ -22352,6 +24388,7 @@
 
         function load() {
             api('ws_board', state).then(function (data) {
+                agents.shown(data.agent_channels || 0);
                 lastData = data;
                 draw(data);
             }).catch(fail);
@@ -22701,7 +24738,8 @@
             department_id: 0,
             show: { tasks: true, talk: true, events: true },
             priority: '',
-            status: 'all'
+            status: 'all',
+            agents: query.agents === '1'
         };
         var data = null;
 
@@ -22788,6 +24826,12 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
+        var agents = taskAgentsToggle(state.agents, function (on) {
+            state.agents = on;
+            load();
+        });
+        bar.appendChild(agents);
+
         var shows = el('div', 'btn-group btn-group-sm');
         shows.setAttribute('role', 'group');
 
@@ -22808,14 +24852,15 @@
         // ── loading and drawing ──
 
         function load() {
-            api('ws_calendar', { month: state.month, person_id: state.person_id, department_id: state.department_id }).then(function (result) {
+            api('ws_calendar', { month: state.month, person_id: state.person_id, department_id: state.department_id, agent_channels: state.agents ? 'only' : '' }).then(function (result) {
                 data = result;
                 state.month = result.month;
                 state.person_id = result.person_id || 0;
                 personSelect.value = String(state.person_id);
+                agents.shown(result.agent_channels || 0);
 
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.calendar + '?month=' + result.month + (state.person_id ? '&person=' + state.person_id : ''));
+                    window.history.replaceState(null, '', CFG.urls.calendar + '?month=' + result.month + (state.person_id ? '&person=' + state.person_id : '') + (state.agents ? '&agents=1' : ''));
                 }
 
                 draw();
@@ -23381,27 +25426,51 @@
         }
     }
 
-    // The plan item form: a meeting, a visit, leave, a holiday.
+    // The plan item form: a meeting, a visit, leave, a holiday. Built from
+    // the drawer form parts in look A, in the order and words of My
+    // calendar's "New plan": Kind, Title, the days, All day, the hours, Who,
+    // Note, Customer, the meeting link.
     function eventForm(event, defaults, onDone) {
         var node = offcanvas('ws-event-form', '');
         var body = clear(node.querySelector('.drawer-body'));
         var footer = clear(node.querySelector('.drawer-footer'));
         var rights = BOOT.me.rights;
+        var part = formParts;
 
         defaults = defaults || {};
         footer.classList.remove('d-none');
         node.querySelector('.drawer-title').textContent = event ? t('edit_plan_item') : t('add_plan_item');
 
-        var kind = select(Object.keys(CFG.event_kinds).map(function (key) { return [key, CFG.event_kinds[key]]; }), event ? event.kind : (defaults.kind || 'meeting'));
-        kind.id = nextId('ws-ev-kind-');
-        body.appendChild(formRow(t('kind'), kind));
+        // Where the item goes, under the header as New plan says it; the
+        // words follow Who.
+        var whereLine = el('p', 'ws-plan-private pg-text-meta');
+        var whereText = document.createTextNode('');
+        whereLine.appendChild(icon('bi-people', 'me-1'));
+        whereLine.appendChild(whereText);
+        body.appendChild(whereLine);
 
-        var title = el('input', 'form-control form-control-sm');
-        title.id = nextId('ws-ev-title-');
+        var kind = part.select(Object.keys(CFG.event_kinds).map(function (key) { return [key, CFG.event_kinds[key]]; }), event ? event.kind : (defaults.kind || 'meeting'));
+        body.appendChild(part.field(t('kind'), kind));
+
+        var title = part.input('text', event ? event.title : '');
         title.maxLength = 255;
-        title.value = event ? event.title : '';
-        body.appendChild(formRow(t('title'), title, t('event_title_help')));
+        body.appendChild(part.field(t('title'), title, t('event_title_help')));
 
+        var start = part.input('date', event ? event.start : (defaults.start || CFG.today));
+        var end = part.input('date', event ? event.end : (defaults.start || CFG.today));
+        body.appendChild(part.pair(part.field(t('first_day'), start), part.field(t('end_date'), end)));
+
+        var allDaySwitch = part.switchRow(t('all_day'), event ? (String(event.all_day) === '1') : false);
+        var allDay = allDaySwitch.input;
+        body.appendChild(allDaySwitch.row);
+
+        var startTime = part.input('time', event ? event.start_time : '09:00');
+        var endTime = part.input('time', event ? event.end_time : '10:00');
+        var times = part.pair(part.field(t('start_time'), startTime), part.field(t('end_time'), endTime));
+        body.appendChild(times);
+
+        // Who: chosen people, a department (a lead or a settings holder),
+        // the whole company (a settings holder), as before.
         var scopes = [['people', t('scope_people')]];
 
         if (rights.leads.length || rights.settings) {
@@ -23412,89 +25481,56 @@
             scopes.push(['company', t('scope_company')]);
         }
 
-        var scope = select(scopes, event ? event.scope : 'people');
-        scope.id = nextId('ws-ev-scope-');
-        body.appendChild(formRow(t('who'), scope));
+        var scopeValue = event ? event.scope : 'people';
 
-        var peopleRow = el('div');
+        // A scope this person is not offered falls to the first choice, as
+        // the select it replaces did.
+        if (!scopes.some(function (option) { return option[0] === scopeValue; })) {
+            scopeValue = scopes[0][0];
+        }
+
+        var scopeSeg = part.seg(t('who'), scopes, function (value) {
+            scopeValue = value;
+            scopeView();
+        }, 'ws-plan-who');
+        body.appendChild(part.group(t('who'), scopeSeg.node));
+
         var people = peoplePicker(event ? event.people : (defaults.people || [BOOT.me.id]));
-        peopleRow.appendChild(formRow(t('scope_people'), people));
+        var peopleRow = el('div', 'ws-plan-field');
+        people.setAttribute('aria-label', t('scope_people'));
+        peopleRow.appendChild(people);
         body.appendChild(peopleRow);
 
         // A department item needs its department: no empty choice, and a
         // lead who is no settings holder is offered the departments they lead.
-        var deptRow = el('div');
         var deptChoices = departmentOptions().slice(1).filter(function (option) {
             return rights.settings || rights.leads.indexOf(option[0]) !== -1
                 || (event && String(event.department_id) === String(option[0]));
         });
-        var dept = select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
-        dept.id = nextId('ws-ev-dept-');
-        deptRow.appendChild(formRow(t('department'), dept));
+        var dept = part.select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
+        var deptRow = part.field(t('department'), dept);
         body.appendChild(deptRow);
 
         function scopeView() {
-            peopleRow.classList.toggle('d-none', scope.value !== 'people');
-            deptRow.classList.toggle('d-none', scope.value !== 'department');
+            Object.keys(scopeSeg.items).forEach(function (key) {
+                scopeSeg.items[key].setAttribute('aria-pressed', key === scopeValue ? 'true' : 'false');
+            });
+            peopleRow.classList.toggle('d-none', scopeValue !== 'people');
+            deptRow.classList.toggle('d-none', scopeValue !== 'department');
+            whereText.textContent = t({ people: 'event_where_people', department: 'event_where_dept', company: 'event_where_company' }[scopeValue] || 'event_where_people');
         }
 
-        scope.addEventListener('change', scopeView);
         scopeView();
-
-        var grid = el('div', 'row g-3');
-
-        function col(content, size) {
-            var cell = el('div', size || 'col-6');
-            cell.appendChild(content);
-            grid.appendChild(cell);
-            return cell;
-        }
-
-        var start = el('input', 'form-control form-control-sm');
-        pgDateField(start, 'date');
-        start.id = nextId('ws-ev-start-');
-        start.value = event ? event.start : (defaults.start || CFG.today);
-        col(formRow(t('start_date'), start));
-
-        var end = el('input', 'form-control form-control-sm');
-        pgDateField(end, 'date');
-        end.id = nextId('ws-ev-end-');
-        end.value = event ? event.end : (defaults.start || CFG.today);
-        col(formRow(t('end_date'), end));
-
-        var allDayWrap = el('div', 'form-field mb-3');
-        var allDay = el('input', '');
-        allDay.type = 'checkbox';
-        allDay.id = nextId('ws-ev-allday-');
-        allDay.checked = event ? (String(event.all_day) === '1') : false;
-        var allDayLabel = el('label', '', t('all_day'));
-        allDayLabel.htmlFor = allDay.id;
-        allDayWrap.appendChild(el('div', 'switch')).appendChild(allDay);
-        allDayWrap.appendChild(allDayLabel);
-        col(allDayWrap, 'col-12');
-
-        var startTime = el('input', 'form-control form-control-sm');
-        pgDateField(startTime, 'time');
-        startTime.id = nextId('ws-ev-st-');
-        startTime.value = event ? event.start_time : '09:00';
-        var startTimeCell = col(formRow(t('start_time'), startTime));
-
-        var endTime = el('input', 'form-control form-control-sm');
-        pgDateField(endTime, 'time');
-        endTime.id = nextId('ws-ev-et-');
-        endTime.value = event ? event.end_time : '10:00';
-        var endTimeCell = col(formRow(t('end_time'), endTime));
 
         function timeView() {
             var whole = allDay.checked || kind.value === 'leave' || kind.value === 'holiday';
-            startTimeCell.classList.toggle('d-none', whole);
-            endTimeCell.classList.toggle('d-none', whole);
+            times.classList.toggle('d-none', whole);
         }
 
         allDay.addEventListener('change', timeView);
         kind.addEventListener('change', function () {
             if (kind.value === 'holiday' && rights.settings) {
-                scope.value = 'company';
+                scopeValue = 'company';
                 scopeView();
             }
 
@@ -23502,7 +25538,9 @@
         });
         timeView();
 
-        body.appendChild(grid);
+        var note = part.textarea(event ? event.note : '', 2);
+        note.maxLength = 500;
+        body.appendChild(part.field(t('note'), note));
 
         // The customer of a visit (ws_events.contact_id): sent only once it
         // was changed here, so a customer the person cannot open stays.
@@ -23511,8 +25549,8 @@
         if (CFG.event_contacts) {
             customer = eventCustomerPicker(event ? event.contact : null, event && !event.can_edit);
 
-            var customerRow = el('div');
-            customerRow.appendChild(formRow(t('event_customer'), customer.node, t('event_customer_help')));
+            var customerRow = part.group(t('event_customer'), customer.node);
+            customerRow.appendChild(el('div', 'pg-text-meta', t('event_customer_help')));
             body.appendChild(customerRow);
 
             var customerView = function () {
@@ -23523,40 +25561,33 @@
             customerView();
         }
 
-        var note = el('textarea', 'form-control form-control-sm');
-        note.id = nextId('ws-ev-note-');
-        note.rows = 2;
-        note.maxLength = 500;
-        note.value = event ? event.note : '';
-        body.appendChild(formRow(t('note'), note));
-
         // The video call (includes/workspace/meetings.php): a Jitsi room made
-        // up here, or a link pasted in; Join opens it in a new tab.
+        // up here, or a link pasted in; Join opens it in a new tab. The box
+        // and its two buttons share one row that wraps on a phone.
         var meeting = null;
 
         if (CFG.meetings) {
-            var meetingRow = el('div');
-            var meetingGroup = el('div', 'input-group input-group-sm');
-            meeting = el('input', 'form-control');
-            meeting.type = 'url';
-            meeting.id = nextId('ws-ev-meeting-');
+            meeting = part.input('url', event ? (event.meeting_url || '') : '');
             meeting.maxLength = 500;
             meeting.placeholder = 'https://';
-            meeting.value = event ? (event.meeting_url || '') : '';
-            meetingGroup.appendChild(meeting);
 
-            var jitsi = button('btn btn-outline theme-secondary', '', 'bi-magic', t('meeting_jitsi'));
+            var meetingRow = part.field(t('meeting_link'), meeting, t('meeting_link_help'));
+            var meetingLine = el('div', 'ws-plan-meeting');
+            meetingRow.insertBefore(meetingLine, meeting);
+            meetingLine.appendChild(meeting);
+
+            var jitsi = button('pg-button pg-button-quiet pg-button-sm', t('meeting_jitsi'), 'bi-magic');
             jitsi.addEventListener('click', function () {
                 meeting.value = jitsiRoom(title.value);
                 joinView();
             });
-            meetingGroup.appendChild(jitsi);
+            meetingLine.appendChild(jitsi);
 
-            var join = el('a', 'btn btn-solid theme-primary', t('meeting_join'));
+            var join = el('a', 'pg-button pg-button-sm', t('meeting_join'));
             join.target = '_blank';
             join.rel = 'noopener noreferrer';
             join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
-            meetingGroup.appendChild(join);
+            meetingLine.appendChild(join);
 
             var joinView = function () {
                 var url = meeting.value.trim();
@@ -23573,7 +25604,6 @@
                 jitsi.classList.add('d-none');
             }
 
-            meetingRow.appendChild(formRow(t('meeting_link'), meetingGroup, t('meeting_link_help')));
             body.appendChild(meetingRow);
 
             var meetingView = function () {
@@ -23585,7 +25615,7 @@
 
             // The meeting note: found again, or written from the template.
             if (event && CFG.notes) {
-                var noteButton = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('meeting_note'), 'bi-journal-text');
+                var noteButton = button('pg-button pg-button-quiet pg-button-sm', t('meeting_note'), 'bi-journal-text');
                 noteButton.title = t('meeting_note_help');
                 noteButton.addEventListener('click', function () {
                     noteButton.disabled = true;
@@ -23596,12 +25626,15 @@
                         fail(error);
                     });
                 });
-                body.appendChild(noteButton);
+                // In a row of its own at its own width, as a field.
+                body.appendChild(el('div', 'ws-plan-field')).appendChild(noteButton);
             }
         }
 
+        // The footer: Delete at the left, Save at the right; the header's
+        // cross or Esc closes the drawer, as New plan.
         if (event && event.can_edit) {
-            var remove = button('btn btn-sm btn-outline theme-warning me-auto', t('delete'), 'bi-trash');
+            var remove = part.remove(t('delete'));
             remove.addEventListener('click', function () {
                 ask(t('delete_item_confirm'), t('delete'), true).then(function (yes) {
                     if (!yes) {
@@ -23625,12 +25658,8 @@
             footer.appendChild(remove);
         }
 
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'drawer');
-        footer.appendChild(cancel);
-
         if (!event || event.can_edit) {
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
+            var save = part.save(t('save'));
             save.addEventListener('click', function () {
                 // One click makes one item: a second click while the request
                 // runs would post another insert.
@@ -23639,7 +25668,7 @@
                     id: event ? event.id : 0,
                     kind: kind.value,
                     title: title.value,
-                    scope: scope.value,
+                    scope: scopeValue,
                     people: people.value(),
                     department_id: parseInt(dept.value, 10) || 0,
                     start: start.value,
@@ -23920,7 +25949,14 @@
                 share.appendChild(note);
                 var send = button('btn btn-sm btn-outline theme-secondary mt-3', t('share'), 'bi-send');
                 send.addEventListener('click', function () {
-                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token }).then(function () {
+                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token, as_text: 1 }).then(function (result) {
+                        // The line is a message, never a command: say it was
+                        // shared only when the answer carries the message.
+                        if (!result || !result.message_id) {
+                            fail();
+                            return;
+                        }
+
                         toast(t('shared'), 'success');
                         reopen();
                     }).catch(fail);
@@ -24184,9 +26220,9 @@
         return section;
     }
 
-    // The record drawer's new mode: an empty product or product group
-    // (includes/workspace/quick_edit.php, ws_quick_create_*), opened from
-    // the search box or a /product card. It is made off sale unless "On
+    // The record drawer's new mode: an empty product, product group or
+    // contact (includes/workspace/quick_edit.php, ws_quick_create_*), opened
+    // from the search box or a /product or /create card. It is made off sale unless "On
     // sale" is ticked; once written, the drawer shows the new record.
     // options.values fill the form (a /product card's), options.labels name
     // the records they pick, options.channelId is the channel its decision
@@ -24200,7 +26236,7 @@
 
         options = options || {};
         node.classList.add('ws-record-drawer');
-        node.querySelector('.drawer-title').textContent = t(type === 'product_group' ? 'qc_new_group' : 'qc_new_product');
+        node.querySelector('.drawer-title').textContent = t({ product_group: 'qc_new_group', contact: 'qc_new_contact' }[type] || 'qc_new_product');
         footer.classList.add('d-none');
         body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);
@@ -24270,6 +26306,24 @@
                 row.appendChild(tickLabel);
                 row.appendChild(el('div', 'form-text mt-0', t('qc_unticked')));
                 input.read = function () { return input.checked; };
+            } else if ((meta.kind === 'ids') && meta.choices) {
+                // Records the workspace does not tag (an event's calendars):
+                // one of the person's own, chosen from a list.
+                var chosen = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
+                var select = el('select', 'pg-input');
+                select.appendChild(el('option', '', t('qc_row_none'))).value = '';
+                meta.choices.forEach(function (choice) {
+                    var option = el('option', '', choice.label);
+                    option.value = String(choice.id);
+                    option.selected = choice.id === chosen;
+                    select.appendChild(option);
+                });
+                select.read = function () {
+                    var id = parseInt(select.value, 10);
+                    return id ? [id] : [];
+                };
+                input = select;
+                row = lookField(label, select, select, '');
             } else if (meta.kind === 'ids') {
                 // One record, picked among those the person may tag.
                 var first = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
@@ -25163,6 +27217,29 @@
             var importNotes = button('btn btn-sm btn-text theme-secondary', t('notes_import'), 'bi-box-arrow-in-down');
             importNotes.addEventListener('click', function () { save().then(openImport); });
             bar.appendChild(importNotes);
+        }
+
+        // My highlights: the person's own highlights of messages, drawn
+        // where a note opens (workspace_highlights.js).
+        if (CFG.highlights && window.PGWsHighlights) {
+            var myHighlights = button('btn btn-sm btn-text theme-secondary', t('hl_mine'), 'bi-highlighter');
+            myHighlights.addEventListener('click', function () { save().then(openHighlights); });
+            bar.appendChild(myHighlights);
+        }
+
+        function openHighlights() {
+            clearTimeout(saveTimer);
+            current = null;
+            field = null;
+            dirty = false;
+            remember(0);
+            drawList();
+            root.classList.add('ws-nb-open');
+            window.PGWsHighlights.myList(pane, featureHelpers(), {
+                tone: senderTone((BOOT && BOOT.me) || {}),
+                base: CFG.urls.workspace,
+                back: lockBack()
+            });
         }
 
         // The notes lock: Lock and its menu (workspace_note_lock.js).
@@ -28928,6 +31005,7 @@
             select: select,
             dateField: pgDateField,
             dateShown: dateShown,
+            form: formParts,
             avatar: avatar,
             avatarStack: avatarStack,
             agentFace: agentFace,

@@ -1,9 +1,14 @@
 ---
 name: agent-channel-language
-description: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
+description: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark
 ---
 
 ## Which language is written in the agent channel?
+- English between agents again: the standing rule below. Owner (2026-11-16, agent channel message 7054, to everyone): "kanallarda birbiriniz ile ingilizce konuşmaya geri dönebilirsiniz".
+- From 2026-11-15 (message 5328, "`@herkes` bir süre türkçe konuşun") until that message every agent wrote Turkish there; channel messages of those two days are Turkish for that reason.
+- To the owner it stays Turkish: an answer to him, a question to him and its sheet.
+
+## What is the standing rule?
 - Owner (2026-11-13), in the channel, to every agent: "bu sohbete sadece mimar benimle konuşacağı zaman türkçe yazsın. onun dışında kendi aranızda konuşurken soru sorarken ingilizce konuşun."
 - Between agents: English. Questions, answers, decisions and status lines alike.
 - Turkish: only the architect, and only in a message that speaks with the owner (an answer to his request, a question to him).

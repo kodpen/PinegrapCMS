@@ -127,6 +127,11 @@ function widget_starters_test_contract($kind)
 	foreach (isset($palettes[$kind]) ? $palettes[$kind] : array() as $var) {
 		$values = array_merge($values, widget_starters_test_palette($var));
 	}
+	// The row values of the lists the kind offers (an order preview's
+	// gift cards, for one).
+	foreach (pg_sw_kind_lists($kind) as $source) {
+		foreach ($source['tokens'] as $token) $values[] = $token[0];
+	}
 
 	return array(
 		'values'  => $values,
@@ -246,10 +251,12 @@ function test_widget_starters_are_style_neutral()
 
 			if ($item['body']) {
 				// A whole layout has the widget's one repeated part: its own,
-				// or the default layout's kept by the 'loop' marker.
+				// or the default layout's kept by the 'loop' marker. A list
+				// (a loop area with a source) is not one.
 				$loops = 0;
 				foreach ($placed as $node) {
-					if ($node['type'] === 'loop_area' || (isset($node['props']['starterKeep']) && $node['props']['starterKeep'] === 'loop')) $loops++;
+					if (($node['type'] === 'loop_area' && !pg_sw_list_is_sourced($node))
+						|| (isset($node['props']['starterKeep']) && $node['props']['starterKeep'] === 'loop')) $loops++;
 				}
 				pg_assert_same(1, $loops, $where . ': one repeated part');
 				pg_assert_same(array(), $item['wrap'], $where . ': a whole layout wraps nothing');

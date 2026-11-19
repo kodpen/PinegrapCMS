@@ -385,3 +385,25 @@ function pg_email_campaign_field_errors_html($errors)
 
     return lang('Correct these fields and save again:') . '<ul class="mb-0">' . $items . '</ul> <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.';
 }
+
+/**
+ * The refusals of New campaign, listed above the form that is drawn again
+ * with what was posted; '' when there is none.
+ *
+ * @param array $errors  Messages (already translated), keyed by field
+ * @return string
+ */
+function pg_email_campaign_refusals_alert($errors)
+{
+    if (!$errors) {
+        return '';
+    }
+
+    $items = '';
+
+    foreach ($errors as $message) {
+        $items .= '<li>' . h($message) . '</li>';
+    }
+
+    return '<div class="alert theme-danger" role="alert"><ul class="mb-0">' . $items . '</ul></div>';
+}

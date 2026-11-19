@@ -5,6 +5,7 @@ description: The date calendar in a panel drawer: drawn after the field in a hid
 
 ## Where does a drawer's calendar go?
 - `pg_fields.js` `inlineIn()` passes `inline: true` to `pgDateTime.attach()` for a field inside a `.drawer` (File Manager access drawer ACL expiry rows, API application drawer Security tab `d_expires`).
+- A field marked `data-pg-calendar-inline` gets the same anywhere: for a dialog too short to hold the 410 px popup above or below the field (Bundle settings' Publish time on a phone, #9998). The dialog grows with the calendar.
 - `attach()` puts a `.pg-date-inline` wrapper after the field and draws the calendar (`inputMode: false`) on a `<div>` in it: the library takes over its element's classes. It stays in the drawer's flow; a popup would hang off the drawer's scrolling body.
 
 ## When is it shown?
@@ -15,6 +16,7 @@ description: The date calendar in a panel drawer: drawn after the field in a hid
 ## How is it drawn?
 - `pg_datetime.css` (`@layer custom`, which comes after Bootstrap's `components` layer that strips a non-input calendar's border and shadow): the popup's surface (`--pg-bg-body`, `--pg-border-color-translucent` border, `--pg-radius-lg`, `--pg-shadow`), `width: fit-content`, `max-width: 100%`, `overflow-x: auto`, `.5rem` padding and 1.5rem day cells, so a month fits a half-width drawer column; a narrower one scrolls it sideways, never over the next column.
 - `.pg-date-inline[hidden]` takes no room.
+- In a grid row the wrapper is a grid item: the row places it (the plan drawer's roadmap step spans it over the row, `workspace/workspace-plan-drawer-phone.md`). The hidden posted input keeps 1 px by `.pg-field-native.pg-field-native`, which beats `.pg-input` (#9858).
 
 ## What did the fix change?
 - Before #3271 the calendar was drawn open for good as soon as the drawer tab showed, with no surface, wider than its `col-6`, over the next field's help text (API application drawer, Security tab).

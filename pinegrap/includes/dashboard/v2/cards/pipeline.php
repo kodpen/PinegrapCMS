@@ -26,6 +26,25 @@ if (!defined('PG_DASHBOARD_V2')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
 
 /**
+ * Which tasks the Pipeline card's tasks box counts for a person: the ones
+ * they opened or were given. One opened in an agent channel counts only when
+ * it is also theirs to do: a task assigned to the reader counts whatever its
+ * channel. Pure.
+ *
+ * @param int    $user_id
+ * @param string $agent_sql ws_tasks_agent_out_sql('ws_tasks.channel_id');
+ *                          '' leaves nothing out
+ * @return string SQL condition on ws_tasks
+ */
+function pg_dashboard_v2_pipeline_tasks_sql($user_id, $agent_sql)
+{
+    $user_id = (int) $user_id;
+    $opened = "ws_tasks.creator_id = '" . $user_id . "'" . (($agent_sql !== '') ? ' AND ' . $agent_sql : '');
+
+    return "((" . $opened . ") OR EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '" . $user_id . "'))";
+}
+
+/**
  * The points of a step's line.
  */
 if (!defined('PG_DASHBOARD_V2_PIPELINE_POINTS')) {
@@ -350,8 +369,10 @@ function pg_dashboard_v2_pipeline_step($key, $user, $win)
 
         case 'meetings':
             // Tasks the person opened or was given: a task in a channel they
-            // are not in is never counted.
-            $mine = "AND (ws_tasks.creator_id = '" . $user_id . "' OR EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '" . $user_id . "'))";
+            // are not in is never counted. One they opened in an agent
+            // channel counts only when it is also theirs to do, as "Given by
+            // me" and "Mine" list them (tasks.php, ws_tasks_agent_rule()).
+            $mine = 'AND ' . pg_dashboard_v2_pipeline_tasks_sql($user_id, function_exists('ws_tasks_agent_out_sql') ? ws_tasks_agent_out_sql('ws_tasks.channel_id') : '');
             $signals = pg_dashboard_v2_ws_signals($user);
             return pg_dashboard_v2_pipeline_box($key, lang('Meetings'),
                 pg_dashboard_v2_pipeline_spans('ws_tasks', 'ws_tasks.created_at', "AND ws_tasks.status != 'cancelled' " . $mine, $edges),

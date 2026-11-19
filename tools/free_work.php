@@ -4,8 +4,10 @@
  *
  * What a coordinator can give its workers, in one short listing: the plan
  * steps that are not done and that no open PR holds, and the queue count.
- * The steps of low-priority plans (the design templates) come in a list of
- * their own, after the others: they are given out only when none of the
+ * The plans come highest priority first (the `priority:` line of a plan's
+ * frontmatter, docs/memory/workflow/plan-priority.md), the number in brackets
+ * beside each plan's name. The steps of the design templates come in a list
+ * of their own, after the others: they are given out only when none of the
  * others can be.
  * Bug issues and the bug-hunt plan files are not listed: workers are not
  * given them. It stands in for reading docs/memory/plans/README.md and the
@@ -39,6 +41,9 @@ define('FREE_WORK_LINE', 110);
 // none of its steps is given out and no new template is started. Set back to
 // false to list them again (docs/memory/workflow/coordinator-no-plans.md).
 define('FREE_WORK_LOW_PRIORITY_PAUSED', true);
+// The priority of a plan that has no `priority:` line and that the default
+// rule does not rate: below the owner's requests, above the look steps.
+define('FREE_WORK_PRIORITY_UNRATED', 4);
 
 // The plan a file belongs to: the X of "[plan:X]" in its description (the
 // steps files say "claim as [plan:X] <step>"), else the file name without
@@ -294,6 +299,111 @@ function free_work_holder($plan, $id, array $titles)
 	return 0;
 }
 
+// The number of a plan file's `priority: <n>` frontmatter line, or null
+// when the file has none (the line is read only between the two `---`).
+function free_work_priority_line($text)
+{
+	if (!preg_match('/\A---\R(.*?)\R---/s', (string) $text, $front)) {
+		return null;
+	}
+
+	return preg_match('/^priority:\s*(\d+)\s*$/m', $front[1], $match) ? (int) $match[1] : null;
+}
+
+// The priority of a plan file without the line: 2 for the design templates
+// and the look steps nobody asked for (panel-old-screens*, report-screens*)
+// or a description saying "low priority"; 6 when the description names the
+// owner and a date; else FREE_WORK_PRIORITY_UNRATED.
+function free_work_priority_default($file, $description)
+{
+	$base = basename((string) $file, '.md');
+
+	if (preg_match('/^(?:design-template-|panel-old-screens|report-screens)/', $base)
+		|| preg_match('/\blow priority\b/i', (string) $description)) {
+		return 2;
+	}
+
+	if (preg_match('/\bowner\b/i', (string) $description) && preg_match('/\b\d{4}-\d{2}-\d{2}\b/', (string) $description)) {
+		return 6;
+	}
+
+	return FREE_WORK_PRIORITY_UNRATED;
+}
+
+// The priority of every plan file: its own `priority:` line, else its plan's
+// (the longest other file name that this one starts with followed by "-",
+// so panel-old-screens-census-site-forms follows panel-old-screens-census-
+// site, which follows panel-old-screens), else the default rule.
+// $files is file name => description and text, as array(description, text).
+// Returns file name => priority.
+function free_work_priorities(array $files)
+{
+	$priorities = array();
+	$bases = array();
+
+	foreach (array_keys($files) as $file) {
+		$bases[basename((string) $file, '.md')] = $file;
+	}
+
+	// Shorter names first, so a plan is rated before its steps files.
+	uksort($bases, function ($a, $b) {
+		return (strlen($a) - strlen($b)) ?: strcmp($a, $b);
+	});
+
+	foreach ($bases as $base => $file) {
+		list($description, $text) = $files[$file];
+		$own = free_work_priority_line($text);
+
+		if ($own !== null) {
+			$priorities[$file] = $own;
+
+			continue;
+		}
+
+		$parent = '';
+
+		foreach ($bases as $other => $other_file) {
+			if ((strlen($other) > strlen($parent)) && (strpos($base, $other . '-') === 0) && isset($priorities[$other_file])) {
+				$parent = $other;
+			}
+		}
+
+		$priorities[$file] = ($parent !== '') ? $priorities[$bases[$parent]] : free_work_priority_default($file, $description);
+	}
+
+	return $priorities;
+}
+
+// The plans in listing order: highest priority first; at the same priority
+// the plan asked first (the earliest date in its description, none last),
+// then by name. $plans is name => array(priority, date or ''). Returns the
+// names.
+function free_work_plan_order(array $plans)
+{
+	$names = array_keys($plans);
+
+	usort($names, function ($a, $b) use ($plans) {
+		$date_a = ($plans[$a][1] === '') ? '9999' : $plans[$a][1];
+		$date_b = ($plans[$b][1] === '') ? '9999' : $plans[$b][1];
+
+		return ($plans[$b][0] - $plans[$a][0]) ?: (strcmp($date_a, $date_b) ?: strcmp((string) $a, (string) $b));
+	});
+
+	return $names;
+}
+
+// The earliest YYYY-MM-DD date in a description, or ''.
+function free_work_first_date($description)
+{
+	if (!preg_match_all('/\b\d{4}-\d{2}-\d{2}\b/', (string) $description, $match)) {
+		return '';
+	}
+
+	sort($match[0]);
+
+	return $match[0][0];
+}
+
 // A line cut to the listing's width, on a character boundary.
 function free_work_cut($text, $width = FREE_WORK_LINE)
 {
@@ -398,6 +508,44 @@ foreach ($files as $file => $plan) {
 	}
 }
 
+$priorities = array();
+
+foreach ($files as $file => $plan) {
+	$priorities[$file] = array($plan[1], $plan[2]);
+}
+
+$priorities = free_work_priorities($priorities);
+
+// A plan's number and date: its own file's when it has one, else the highest
+// number and the earliest date of the files that name it.
+$plans = array();
+
+foreach ($files as $file => $plan) {
+	if ($file === $plan[0] . '.md') {
+		$plans[$plan[0]] = array($priorities[$file], free_work_first_date($plan[1]));
+	}
+}
+
+foreach ($files as $file => $plan) {
+	list($name, $description) = $plan;
+
+	if (isset($files[$name . '.md'])) {
+		continue;
+	}
+
+	$date = free_work_first_date($description);
+
+	if (!isset($plans[$name])) {
+		$plans[$name] = array($priorities[$file], $date);
+	} else {
+		$plans[$name][0] = max($plans[$name][0], $priorities[$file]);
+
+		if (($date !== '') && (($plans[$name][1] === '') || ($date < $plans[$name][1]))) {
+			$plans[$name][1] = $date;
+		}
+	}
+}
+
 $free = array();
 $free_low = array();
 $held = array();
@@ -416,6 +564,7 @@ foreach ($files as $file => $plan) {
 
 	// A low-priority plan's free steps go to their own list.
 	$plan_free = array();
+	$label = $name . ' [' . $plans[$name][0] . ']';
 	$sequential = free_work_sequential($text);
 	$waiting = false;
 
@@ -432,7 +581,7 @@ foreach ($files as $file => $plan) {
 		if ($holder) {
 			$held[] = "$name $id #$holder";
 		} elseif (!$waiting && !free_work_step_blocked($rest, $text)) {
-			$plan_free[] = '  ' . free_work_cut("$name $id $rest");
+			$plan_free[] = '  ' . free_work_cut("$label $id $rest");
 		}
 
 		// The later steps wait for this one.
@@ -463,16 +612,27 @@ foreach ($files as $file => $plan) {
 
 	foreach ($looks as $look) {
 		if ($look[1] || ($busy < 4)) {
-			$plan_free[] = "  $name {$look[0]}" . ($look[1] ? ' pages on its blocks' : ' blocks');
+			$plan_free[] = "  $label {$look[0]}" . ($look[1] ? ' pages on its blocks' : ' blocks');
 			$busy += $look[1] ? 0 : 1;
 		}
 	}
 
 	if (isset($low[$name])) {
-		$free_low = array_merge($free_low, $plan_free);
+		$free_low[$name] = array_merge(isset($free_low[$name]) ? $free_low[$name] : array(), $plan_free);
 	} else {
-		$free = array_merge($free, $plan_free);
+		$free[$name] = array_merge(isset($free[$name]) ? $free[$name] : array(), $plan_free);
 	}
+}
+
+// Highest priority first; a plan's lines stay in their file order.
+foreach (array('free', 'free_low') as $list) {
+	$lines = array();
+
+	foreach (free_work_plan_order(array_intersect_key($plans, $$list)) as $name) {
+		$lines = array_merge($lines, $$list[$name]);
+	}
+
+	$$list = $lines;
 }
 
 $architect = array();
@@ -482,7 +642,7 @@ foreach (free_work_gh_lines('issues?state=open&labels=architect&per_page=100', '
 }
 
 echo "Queue: $queue of " . FREE_WORK_QUEUE_LIMIT . " open PRs (drafts and merge trains not counted); $drafts drafts.\n";
-echo "Free plan steps (not done, no open PR; read the step's \"After\" before giving it out):\n";
+echo "Free plan steps, highest priority first, [n] the plan's priority (not done, no open PR; read the step's \"After\" before giving it out):\n";
 echo ($free ? implode("\n", $free) : '  none') . "\n";
 if (FREE_WORK_LOW_PRIORITY_PAUSED) {
 	echo "Low priority (design templates): paused; give none out and start no new template.\n";

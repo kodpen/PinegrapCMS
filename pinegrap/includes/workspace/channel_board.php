@@ -301,6 +301,11 @@ function ws_channel_board_tasks($viewer, $channel, $options)
             'reminder'       => (($row['remind_minutes'] ?? null) !== null) && ((int) ($row['remind_at'] ?? 0) > 0),
             'completed_at'   => (int) ($row['completed_at'] ?? 0),
             'can_edit'       => !empty($brief['can_edit']),
+            // The assistant or agent holding the task (delegation.php).
+            'delegate'        => (string) ($brief['delegate'] ?? ''),
+            'delegate_name'   => (string) ($brief['delegate_name'] ?? ''),
+            'delegate_icon'   => (string) ($brief['delegate_icon'] ?? ''),
+            'delegate_avatar' => (string) ($brief['delegate_avatar'] ?? ''),
         );
     }
 

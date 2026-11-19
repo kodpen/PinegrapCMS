@@ -195,6 +195,8 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
             . (($scope == 'media') ? " AND LOWER(files.type) IN ('" . implode("', '", pg_explorer_media_types()) . "')" : "")
             . (($scope == 'documents') ? " AND LOWER(files.type) NOT IN ('" . implode("', '", array_merge(pg_explorer_image_types(), pg_explorer_media_types())) . "')" : "")
             . (($scope == 'attachments') ? " AND files.attachment = '1'" : "")
+            // A language's picture of a Design Canvas file is listed nowhere.
+            . pg_picture_tr_hidden_sql('files.id')
             . " ORDER BY files.name");
 
         // An access rule is inherited down the folder tree, so it
@@ -372,7 +374,8 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
             FROM files
             LEFT JOIN folder ON files.folder = folder.folder_id
             LEFT JOIN user ON files.user = user.user_id
-            WHERE files.folder = '" . e($folder_id) . "'
+            WHERE files.folder = '" . e($folder_id) . "'"
+            . pg_picture_tr_hidden_sql('files.id') . "
             ORDER BY files.name");
 
         if ($rows) {

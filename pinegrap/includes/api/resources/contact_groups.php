@@ -128,11 +128,11 @@ function api_contact_group_schema() {
 		'subscription_type'  => 'string?',
 		'members'            => 'integer',
 		'by_rule'            => 'boolean',
-		'computed_at'        => 'string?',
+		'computed_at'        => 'datetime?',
 		'created_by'         => 'string?',
-		'created_at'         => 'string?',
+		'created_at'         => 'datetime?',
 		'updated_by'         => 'string?',
-		'updated_at'         => 'string?',
+		'updated_at'         => 'datetime?',
 		'updated_at_unix'    => 'integer',
 		// Only in the answer to a members change: how many contacts were put
 		// in, taken out, and had their choice for this group's e-mail written.

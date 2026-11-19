@@ -59,8 +59,21 @@ function test_settings_workspace_assistants_sections_and_anchors()
 	pg_assert_false(strpos($entry, "'pgset-ws-assistants-screen'") !== false, 'no link card left');
 	pg_assert_same(array('workspace_assistants', 'pgset-ws-claude'), pg_settings_legacy_anchors()['ws-claude'] ?? null, 'the old Claude anchor');
 	pg_assert_same(array('workspace_assistants', 'pgset-ws-bulk'), pg_settings_legacy_anchors()['ws-bulk'] ?? null, 'the old Bulk changes anchor');
+	pg_assert_contains("'pgset-ws-voice'             => lang('Voice message transcripts'),", $entry, 'voice is a section');
+	pg_assert_true(strpos($entry, "'pgset-ws-ai'") < strpos($entry, "'pgset-ws-voice'"), 'voice comes after Pinegrap AI');
+	pg_assert_true(strpos($entry, "'pgset-ws-voice'") < strpos($entry, "'pgset-ws-mcp'"), 'and before the MCP servers');
+	pg_assert_true(strpos($entry, "'pgset-ws-voice'             => pg_settings_keywords(") !== false, 'its keywords moved with it');
+	pg_assert_same(array('workspace_assistants', 'pgset-ws-voice'), pg_settings_legacy_anchors()['ws-voice'] ?? null, 'the old #ws-voice lands on the moved card');
+	pg_assert_same(array('workspace_assistants', 'pgset-ws-voice'), pg_settings_legacy_anchors()['pgset-ws-voice'] ?? null, 'so does an old Channels link to the card');
 
 	$card = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php');
+	pg_assert_true(strpos($card, 'ws_ai_settings_card(') < strpos($card, 'ws_voice_settings_card(') && strpos($card, 'ws_voice_settings_card(') < strpos($card, 'ws_mcp_settings_card('), 'the voice card is drawn after Pinegrap AI');
+
+	// The voice card's fields are checked before anything of the pane is
+	// written, and written by this pane's save.
+	$save = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.save.php');
+	pg_assert_true(strpos($save, 'ws_voice_settings_check(') !== false && strpos($save, 'ws_voice_settings_check($ws_voice)') < strpos($save, '= ws_claude_settings_save('), 'voice checked before the first write');
+	pg_assert_true(strpos($save, 'ws_voice_settings_write(') !== false, 'and written here');
 	pg_assert_false(strpos($card, "array('ws-claude'") !== false, 'no link to the old Claude card');
 	pg_assert_false(strpos($card, "array('ws-bulk'") !== false, 'no link to the old Bulk changes card');
 	pg_assert_false(strpos($card, 'ws_settings_screen_links_card(') !== false, 'no card linking the old screen');

@@ -185,3 +185,113 @@ function test_image_editor_actions_chosen_pin()
 	pg_assert_same(array(), $r['noLayer'], 'no layer, no bar');
 }
 
+
+// The bar over the object (where the panel is not a sheet): the type's own
+// command, Motion in Animate, Duplicate, Delete, Lock, More. A locked layer:
+// Unlock and More; several layers: no type command, no Motion; a redaction
+// never gets Motion; the picture and an area: no bar (their commands stay
+// in the panel). The phone's lists do not change (the tests above).
+function test_image_editor_actions_over_the_object()
+{
+	$r = image_editor_actions_node(
+		'var o = function (s) { s.place = "object"; return names(s); };' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' text: o({ layers: 1, free: 1, kind: "text" }),'
+		. ' textAnimate: o({ layers: 1, free: 1, kind: "text", animate: true }),'
+		. ' videoAnimate: o({ layers: 1, free: 1, kind: "video", animate: true, split: true }),'
+		. ' video: o({ layers: 1, free: 1, kind: "video" }),'
+		. ' several: o({ layers: 3, free: 3, kind: "text", animate: true }),'
+		. ' someLocked: o({ layers: 2, free: 1 }),'
+		. ' locked: o({ layers: 1, free: 0, kind: "text", animate: true }),'
+		. ' redact: o({ layers: 1, free: 1, kind: "redact", animate: true }),'
+		. ' picture: o({ layers: 0, free: 0, picture: true, sheet: false }),'
+		. ' area: o({ layers: 0, area: true, sheet: false, can: all }),'
+		. ' none: o({ layers: 0 }),'
+		. ' phone: names({ layers: 1, free: 1, kind: "text", animate: true, split: true, sheet: true })'
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('editText', 'duplicate', 'remove', 'lock', 'more'), $r['text'], 'one text: Edit text first');
+	pg_assert_same(array('editText', 'motion', 'duplicate', 'remove', 'lock', 'more'), $r['textAnimate'], 'in Animate: Motion after the type\'s command');
+	pg_assert_same(array('split', 'motion', 'duplicate', 'remove', 'lock', 'more'), $r['videoAnimate'], 'one video in Animate: Split, Motion');
+	pg_assert_same(array('duplicate', 'remove', 'lock', 'more'), $r['video'], 'a video outside Animate: no Split');
+	pg_assert_same(array('duplicate', 'remove', 'lock', 'more'), $r['several'], 'several layers: Duplicate, Delete, Lock, More');
+	pg_assert_same(array('duplicate', 'remove', 'lock', 'more'), $r['someLocked'], 'some locked: Lock locks the rest');
+	pg_assert_same(array('unlock', 'more'), $r['locked'], 'a locked layer: Unlock and More');
+	pg_assert_same(array('duplicate', 'remove', 'lock', 'more'), $r['redact'], 'a redaction never gets Motion');
+	pg_assert_same(array(), $r['picture'], 'the picture: no bar over it');
+	pg_assert_same(array(), $r['area'], 'an area: no bar over it');
+	pg_assert_same(array(), $r['none'], 'nothing selected: no bar');
+	pg_assert_same(array('options', 'split', 'duplicate', 'remove'), $r['phone'], 'the phone\'s list unchanged');
+}
+
+// The bar's place: centred above the box, clear of the turning handle;
+// below it at the stage's top edge; kept inside the stage at the sides and
+// above the play bar and the tracks (stage.bottom).
+function test_image_editor_actions_bar_place()
+{
+	$r = image_editor_actions_node(
+		'var bar = { w: 200, h: 40 }, stage = { w: 1000, h: 600, bottom: 0 }, p = M.actBarPlace;' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' middle: p({ x: 400, y: 300, w: 200, h: 100 }, bar, stage),'
+		. ' top: p({ x: 400, y: 20, w: 200, h: 100 }, bar, stage),'
+		. ' left: p({ x: -50, y: 300, w: 100, h: 100 }, bar, stage),'
+		. ' right: p({ x: 950, y: 300, w: 100, h: 100 }, bar, stage),'
+		. ' bottom: p({ x: 400, y: 20, w: 200, h: 560 }, bar, { w: 1000, h: 600, bottom: 120 }),'
+		. ' tall: p({ x: 400, y: -100, w: 200, h: 900 }, bar, stage),'
+		. ' narrow: p({ x: 0, y: 300, w: 50, h: 50 }, bar, { w: 150, h: 600 })'
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('x' => 400, 'y' => 221, 'below' => false), $r['middle'], 'above: 31 px of turning handle and 8 px clear');
+	pg_assert_same(array('x' => 400, 'y' => 133, 'below' => true), $r['top'], 'no room above: 8 px below the box\'s handles');
+	pg_assert_same(8, $r['left']['x'], 'kept inside on the left');
+	pg_assert_same(792, $r['right']['x'], 'kept inside on the right');
+	pg_assert_same(432, $r['bottom']['y'], 'above the play bar and the tracks');
+	pg_assert_same(552, $r['tall']['y'], 'a box taller than the stage: inside the stage');
+	pg_assert_same(8, $r['narrow']['x'], 'a stage narrower than the bar: its left edge');
+}
+
+// The stylesheet: the bar over the object shown where the panel is not a
+// sheet (a class only the script sets there), placed by its two variables;
+// the phone's rule kept.
+function test_image_editor_actions_object_bar_rule()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/pg_image_editor.src.css');
+
+	pg_assert_true(preg_match('/\.pgie-actwrap\.pgie-actobj \{[^}]*top: var\(--pgie-act-y[^}]*left: var\(--pgie-act-x/', $css) === 1, 'placed by the script');
+	pg_assert_true(preg_match('/\n\.pgie-actwrap\.pgie-actobj\.on \{\s*display: flex;/', $css) === 1, 'shown outside the small-screen rule');
+	pg_assert_true(preg_match('/@media \(max-width: 767\.98px\), \(max-height: 499\.98px\) \{\s*\.pgie-actwrap\.on \{\s*display: flex;/', $css) === 1, 'the phone\'s rule kept');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
+	pg_assert_contains("'(max-width: 767.98px), (max-height: 499.98px)'", $js, 'the script asks the same media as the stylesheet');
+	pg_assert_contains('M.actBarPlace(', $js, 'placed by the pure function');
+}
+
+// The bar's and the popover's labels are the owning parts' keys where one
+// exists (Split clip, the phases); the new ones are the actions part's own.
+function test_image_editor_actions_owning_labels()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
+	pg_assert_true(preg_match("#split: \['scissors', 'actSplit', function [^\n]*, false, 'clipSplit'\]#", $js) === 1, 'Split clip over the object, the phone\'s Split kept');
+	pg_assert_true(isset(pg_image_editor_strings_clip()['clipSplit']), 'Split clip is the clip part\'s');
+
+	$motion = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_motion.js');
+	pg_assert_contains("[['in', 'motionIn'], ['loop', 'motionLoop'], ['out', 'motionOut']]", $motion, 'the popover\'s rows use the motion part\'s phase names');
+
+	$own = pg_image_editor_strings_actions();
+
+	foreach (array('actEditText', 'actMotion', 'actMore', 'actMoreOptions') as $key) {
+		pg_assert_true(isset($own[$key]), $key . ' is the actions part\'s');
+	}
+}

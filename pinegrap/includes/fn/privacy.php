@@ -97,6 +97,7 @@ function pg_privacy_is_person_token($token)
  * cookie:   the cookie notice's optional categories (pg_consent_category_letters()).
  * email, sms, call: commercial messages, the three İYS channels.
  * contract: the documents accepted at checkout, the order_documents types.
+ * push:     the site's news by browser notification (includes/fn/site_push.php).
  *
  * @return array  channel => list of purposes
  */
@@ -108,6 +109,7 @@ function pg_consent_log_purposes()
         'sms'      => array('marketing'),
         'call'     => array('marketing'),
         'contract' => array('preinfo', 'contract', 'kvkk'),
+        'push'     => array('news'),
     );
 }
 
@@ -174,6 +176,7 @@ function pg_consent_log_sources()
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
         'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
         'message',      // a stop word in a customer's SMS (includes/fn/sms_inbox.php)
+        'notify',       // the site's "Notify me" block (site_push.php)
     );
 }
 
@@ -181,8 +184,8 @@ function pg_consent_log_sources()
  * The row one consent event becomes, or the reason it is refused.
  *
  * The person is the token (given, or made from 'email'), the user and the
- * contact; at least one is needed, except for a cookie answer, which an
- * anonymous visitor gives. ip and user_agent are taken as given and cut to
+ * contact; at least one is needed, except for a cookie answer or a
+ * notification yes or stop, which an anonymous visitor gives. ip and user_agent are taken as given and cut to
  * their columns; an address that is not an IP is dropped.
  *
  * @param array    $event  channel, purpose, status, source, and any of email,
@@ -225,7 +228,7 @@ function pg_consent_log_row(array $event, $now = null)
     $user_id = isset($event['user_id']) ? max(0, (int) $event['user_id']) : 0;
     $contact_id = isset($event['contact_id']) ? max(0, (int) $event['contact_id']) : 0;
 
-    if (($channel !== 'cookie') && ($token === '') && ($user_id === 0) && ($contact_id === 0)) {
+    if (!in_array($channel, array('cookie', 'push'), true) && ($token === '') && ($user_id === 0) && ($contact_id === 0)) {
         return 'person';
     }
 
@@ -978,6 +981,9 @@ function pg_privacy_erase_tables()
             'manage_token' => '',
             'user_id'      => 0,
         )),
+        // A member's course progress (lessons done, first open, completion)
+        // goes whole; the course and its lessons stay.
+        'course_progress'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_bounces'                 => array('find' => array('address' => 'emails'), 'action' => 'delete', 'fields' => array()),
@@ -988,6 +994,7 @@ function pg_privacy_erase_tables()
         'chat_conversations'           => array('find' => array('id' => 'conversation_ids'), 'action' => 'delete', 'fields' => array()),
         'address_book'                 => array('find' => array('user' => 'user_ids'), 'action' => 'delete', 'fields' => array()),
         'push_subscriptions'           => array('find' => $user, 'action' => 'delete', 'fields' => array()),
+        'site_push_subscription'       => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_passkeys'                => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_identities'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_mfa_recovery'            => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1094,6 +1101,7 @@ function pg_privacy_erase_labels()
         'wishlist_items'               => lang('Favourites'),
         'stock_notify'                 => lang('Back-in-stock requests'),
         'bookings'                     => lang('Appointment bookings'),
+        'course_progress'              => lang('Course progress'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
         'mail_bounces'                 => lang('E-mail bounces and complaints'),
@@ -1104,6 +1112,7 @@ function pg_privacy_erase_labels()
         'chat_conversations'           => lang('Site chat'),
         'address_book'                 => lang('Address book'),
         'push_subscriptions'           => lang('Device notifications'),
+        'site_push_subscription'       => lang('Site notifications'),
         'user_passkeys'                => lang('Passkeys'),
         'user_identities'              => lang('Connected sign-in accounts'),
         'user_mfa_recovery'            => lang('Recovery codes'),
@@ -1919,17 +1928,23 @@ function _pg_privacy_erase_apply_gift_cards($where, array $fields, array $scope,
 /**
  * The person's store credit: every card with a balance is voided first, with
  * a note line and an audit line (pg_credit_void()), so nothing is left to
- * spend, then the cards stop naming the account.
+ * spend, then the cards brought to zero stop naming the account. A void that
+ * lost a race with an order spending the card is tried once more on a fresh
+ * read. A card that still holds a balance after that keeps its account, so
+ * it never turns into a plain gift card that pays for whoever knows the
+ * code; staff void it.
  */
 function _pg_privacy_erase_apply_store_credit($where, array $fields, array $scope, $name)
 {
     if (function_exists('pg_credit_void')) {
         foreach (db_values("SELECT id FROM gift_cards WHERE (balance > 0) AND " . $where) as $card_id) {
-            pg_credit_void((int) $card_id, lang('Personal data erased'));
+            if (!pg_credit_void((int) $card_id, lang('Personal data erased'))) {
+                pg_credit_void((int) $card_id, lang('Personal data erased'));
+            }
         }
     }
 
-    _pg_privacy_erase_write('gift_cards', $where, $fields, $name);
+    _pg_privacy_erase_write('gift_cards', '(' . $where . ') AND (balance = 0)', $fields, $name);
 }
 
 /**

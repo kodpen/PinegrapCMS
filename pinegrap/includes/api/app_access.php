@@ -261,3 +261,78 @@ function api_app_log_time_label($timestamp) {
 	));
 
 }
+
+// The permission rows New application's "Automation platform" starting point
+// ticks: each scope of $scopes (pg_automation_contract_scopes()) on the row of
+// api_scope_groups() that offers it, as 'read' or 'write'; a row offering
+// both takes write, which holds read. A scope no row offers (a module that is
+// off) is left out. Group key => choice, in the rows' order. Pure.
+function api_app_start_choices($scopes, $groups) {
+
+	$scopes = (array)$scopes;
+
+	$choices = array();
+
+	foreach ((array)$groups as $key => $group) {
+
+		if (!empty($group['write']) && in_array($group['write'], $scopes, true)) {
+
+			$choices[$key] = 'write';
+
+		} elseif (!empty($group['read']) && in_array($group['read'], $scopes, true)) {
+
+			$choices[$key] = 'read';
+
+		}
+
+	}
+
+	return $choices;
+
+}
+
+// The label an event row of "New subscription" carries beside its name: the
+// part of the site it is about, read from the name's first segment
+// (order.created: Orders). A module's event takes the module's label; a
+// segment with no area of its own takes $module_label (often ''). Pure.
+function api_app_event_area($name, $module_label = '') {
+
+	$first = strtok((string)$name, '.');
+
+	$areas = array(
+		'order'           => 'Orders',
+		'marketplace'     => 'Marketplaces',
+		'cart_quote'      => 'Cart quotes',
+		'mail'            => 'E-mail',
+		'whatsapp'        => 'WhatsApp',
+		'booking'         => 'Bookings',
+		'subscription'    => 'Subscriptions',
+		'credit'          => 'Store credit',
+		'commission'      => 'Commissions',
+		'affiliate'       => 'Affiliates',
+		'product'         => 'Products',
+		'product_group'   => 'Products',
+		'inventory'       => 'Products',
+		'stock'           => 'Products',
+		'customer'        => 'Customers',
+		'contact_group'   => 'Customers',
+		'user'            => 'Users',
+		'page'            => 'Pages',
+		'experiment'      => 'Pages',
+		'content'         => 'Pages',
+		'zone'            => 'Store settings',
+		'tax_zone'        => 'Store settings',
+		'shipping_method' => 'Store settings',
+		'currency'        => 'Store settings',
+		'offer'           => 'Offers',
+		'file'            => 'Files',
+		'form'            => 'Forms',
+		'calendar_event'  => 'Calendars',
+		'campaign'        => 'Campaigns',
+		'erp'             => 'ERP',
+		'workspace'       => 'Workspace'
+	);
+
+	return isset($areas[$first]) ? lang($areas[$first]) : (string)$module_label;
+
+}

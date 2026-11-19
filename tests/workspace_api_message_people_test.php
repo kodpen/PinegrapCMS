@@ -117,6 +117,31 @@ function test_ws_api_message_read_receipts()
 	pg_assert_same(array(array('user_id' => 5, 'name' => 'Bora')), $shown['unread']);
 }
 
+// ws_ack_people() keeps each receipt's moment, which read_at gives: the
+// panel's time is only a label.
+function test_ws_api_message_read_receipts_keep_the_moment()
+{
+	pg_assert_same('2023-11-14T22:13:20Z', ws_api_message_read_receipts(array('read' => array(array('id' => 4, 'name' => 'Ayla', 'at' => 1700000000))))['read'][0]['read_at']);
+
+	$source = ws_api_message_people_test_source('ws_ack_people');
+	pg_assert_contains("\$entry['at'] = \$when[\$user_id];", $source, 'set on a read entry');
+	pg_assert_false(strpos($source, "unset(\$read") !== false, 'and kept');
+}
+
+// An application's message names its application and whether it answers
+// people; every other sender keeps user_id and name.
+function test_ws_api_message_app_sender()
+{
+	$plain = ws_api_message_app_sender(array('app_id' => 9, 'name' => 'CI (application)', 'agent' => false));
+
+	pg_assert_same(array('user_id' => null, 'name' => 'CI (application)', 'app_id' => 9, 'agent' => false, 'claude' => false, 'ai' => false), $plain);
+	pg_assert_same(array_keys(ws_api_message_sender_schema()), array_keys($plain), 'every key declared');
+	pg_assert_true(ws_api_message_app_sender(array('app_id' => 3, 'name' => 'Helper', 'agent' => true))['agent'], 'a registered agent');
+	pg_assert_true(ws_api_message_app_sender(array('app_id' => 4, 'name' => 'Claude', 'claude' => true))['claude'], 'Claude');
+	pg_assert_true(ws_api_message_app_sender(array('app_id' => 5, 'name' => 'Pinegrap AI', 'ai' => true))['ai'], 'Pinegrap AI');
+	pg_assert_same(null, ws_api_message_app_sender(array('name' => 'Gone'))['app_id']);
+}
+
 // The writes run the panel's check, stop for a rehearsal, then write; the
 // panel's own functions run the same check.
 function test_ws_api_message_people_check_before_the_rehearsal()

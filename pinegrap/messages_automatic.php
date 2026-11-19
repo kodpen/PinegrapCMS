@@ -63,6 +63,10 @@ if ($automatic_email) {
     $body .= $profile_flows_quiet ? '' : $profile_flows_html;
 }
 
+// The quiet report goes under the list, or under the note that stands in for
+// it, so the report stays on this tab after the profiles' list has left.
+$profile_flows_after = !empty($profile_flows_quiet) ? $profile_flows_html : '';
+
 if (!$automatic_flows) {
     $body .= pg_messages_note(
         function_exists('pg_flows_enabled') && pg_flows_enabled()
@@ -71,7 +75,7 @@ if (!$automatic_flows) {
         '',
         '',
         'amber'
-    );
+    ) . $profile_flows_after;
 
     echo pg_messages_tab_page('automatic', $user, lang('Messages the site sends by itself when something happens.'), $body);
     exit();
@@ -93,7 +97,7 @@ $body .= pg_screen_toolbar(array(
         'search'    => array(pg_list_table_search_box('messages_automatic'), pg_list_sort_menu($self, $sort_columns, $list_state['sorts'], $sort_default)),
     ))
     . pg_list_table_html($list['source'], $list['page'], lang('Automatic sends'))
-    . (!empty($profile_flows_quiet) ? $profile_flows_html : '')
+    . $profile_flows_after
     . pg_messages_recipes_html($list['recipes'])
     . pg_js_bundle_tags('assets/js/pg_list_table.min.js');
 

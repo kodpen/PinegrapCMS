@@ -12,8 +12,8 @@ description: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js 
 ## How does the calendar work?
 - `pgDateTime.attach(box, options)` makes a vanilla-calendar-pro `Calendar` (`core/vanilla-calendar-library.md`) in input mode, opened on click or focus. A date pick writes `formatDate()`, fires one `change` and closes; typed text moves it with `set()`, never redrawn. It gets `selectedDates` from `parseDate()`, never reads the box, so `5/3/2026` stays 5 March on a day-first site. `enableDateToggle: false`: a second click keeps the day.
 - Keys (Tab, arrows, Escape, focus leaving): `pg-datepicker-popup-keyboard.md`.
-- Theme: `selectedTheme` from the nearest `data-bs-theme` (else `system`), synced onto the calendar box on init and show; `bootstrap.css` styles every `[data-vc=calendar]`.
-- Clock and words: `data-pg-calendar` on the `pg_datetime.js` tag (`pg_calendar_settings()`): `timeMode` 24 when `pg_time_format_code()` is `H:i`, else 12 (#2040: every picker follows the site's clock; the native time box followed the browser), the Done word and the calendar's screen-reader names in `lang()`. The hour goes in zero-padded (`05:00 PM`): the library's 12-hour pattern refuses `5:00 PM` and shows midnight. AM/PM stay English (the library's).
+- Theme (#9922): only from the calendar's ancestors, nearest `data-bs-theme` (`themeOptions()`): `dark`, `auto` = system, else light; empty `themeAttrDetect` (the library's `system` mode read the page's first `[data-bs-theme]`, a dark footer). Synced on init and show; `month()` follows a change at once. Sites draw it from `data-vc-theme`.
+- Clock and words: `data-pg-calendar` on the `pg_datetime.js` tag (`pg_calendar_settings()`): `timeMode` 24 when `pg_time_format_code()` is `H:i`, else 12 (#2040), the Done word and the calendar's screen-reader names in `lang()`. The hour goes in zero-padded (`05:00 PM`): the library's 12-hour pattern refuses `5:00 PM` and shows midnight. AM/PM stay English (the library's).
 
 ## Dialogs and drawers?
 - The popup hangs off `<body>`, under an open `<dialog>`; on show and resize it moves into `pgUI.overlayHost(field)`, under the field or above it (`opensAbove()`).
@@ -21,5 +21,5 @@ description: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js 
 - The library's `destroy()` puts a copy of the input, as it was at creation, in its place; the control puts the real element back at the same index, or the field loses its listeners, `pgField*` state and value (`switchKind()` on the calendar all-day box).
 
 ## When is a date field drawn?
-- With Bootstrap 6 once its module ran and the library loaded (`pgDateTime.whenReady()`); else plain. Site pages: `site-datetime-loader.md`. No panel screen (#2510-#2639) and no site renderer (#3168) loads the timepicker add-on, deleted in #4383; `pg_fields.js` reads `window.datetimepicker_options`.
-- Tests: `tests/pg_fields_test.php` (`test_pg_fields_dates_on_the_calendar_control`), `tests/vanilla_calendar_library_test.php`, `tests/bs6_timepicker_addon_test.php`.
+- With Bootstrap 6 once its module ran and the library loaded (`pgDateTime.whenReady()`); else plain. Site pages: `site-datetime-loader.md`. The timepicker add-on is gone (#4383); `pg_fields.js` reads `window.datetimepicker_options`.
+- Tests: `tests/pg_fields_test.php` (`test_pg_fields_dates_on_the_calendar_control`), `tests/pg_datetime_theme_test.php`, `tests/vanilla_calendar_library_test.php`, `tests/bs6_timepicker_addon_test.php`.

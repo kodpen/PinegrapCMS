@@ -214,6 +214,7 @@ function ws_task_brief($task, $assignees)
         'delegate'         => (string) ($task['delegate'] ?? ''),
         'delegate_name'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_name($task['delegate']) : '',
         'delegate_icon'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_mcp_icon($task['delegate']) : '',
+        'delegate_avatar'  => ((string) ($task['delegate'] ?? '') !== '') ? ws_task_holder_avatar($task['delegate']) : '',
         // What the assistants proposed on it and nobody has decided yet.
         'waiting_changes'  => $waiting,
     );
@@ -995,6 +996,181 @@ function ws_task_event_payload($task, $assignees)
 }
 
 /**
+ * The agent channels a task can sit in, keyed by id: each agent channel
+ * (agent_channel.php) and each discussion under one, as rows with
+ * agent_channel 1, a name and, for a discussion, parent_id. Empty before the
+ * upgrade, so nothing is left out then.
+ *
+ * @return array[]
+ */
+function ws_tasks_agent_channels()
+{
+    static $rows = null;
+
+    if ($rows !== null) {
+        return $rows;
+    }
+
+    $rows = array();
+
+    if (!function_exists('ws_agent_channel_ready') || !ws_agent_channel_ready()) {
+        return $rows;
+    }
+
+    foreach ((array) db_items("SELECT id, name, kind FROM ws_channels WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest')") as $row) {
+        $rows[(int) $row['id']] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'kind' => (string) $row['kind'], 'agent_channel' => 1, 'parent_id' => 0);
+    }
+
+    if (!empty($rows)) {
+        foreach ((array) db_items("SELECT channel_id, parent_channel_id FROM ws_threads
+            WHERE parent_channel_id IN (" . implode(',', array_keys($rows)) . ")") as $row) {
+            $parent = $rows[(int) $row['parent_channel_id']];
+            $rows[(int) $row['channel_id']] = array('id' => (int) $row['channel_id'], 'name' => $parent['name'], 'kind' => 'thread', 'agent_channel' => 1, 'parent_id' => $parent['id']);
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * The agent channels a reader may read, id => name, discussions under them
+ * included (named after their channel): what draws the "Agent channels"
+ * toggle and the channel's name on a task row.
+ *
+ * @param array $viewer
+ * @return string[]
+ */
+function ws_tasks_agent_readable($viewer)
+{
+    $out = array();
+    $agents = ws_tasks_agent_channels();
+
+    foreach ($agents as $id => $row) {
+        if (($row['parent_id'] === 0) && ws_can_read_channel($viewer, ws_channel($id))) {
+            $out[$id] = $row['name'];
+        }
+    }
+
+    foreach ($agents as $id => $row) {
+        if (($row['parent_id'] > 0) && isset($out[$row['parent_id']])) {
+            $out[$id] = $row['name'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * How many agent channels (discussions not counted) a reader may read.
+ *
+ * @param string[] $readable ws_tasks_agent_readable()
+ * @return int
+ */
+function ws_tasks_agent_count($readable)
+{
+    $agents = ws_tasks_agent_channels();
+
+    return count(array_filter(array_keys((array) $readable), function ($id) use ($agents) {
+        return isset($agents[$id]) && ($agents[$id]['parent_id'] === 0);
+    }));
+}
+
+/**
+ * The agent channel filter over tasks, from the one rule
+ * ws_agent_channel_filter(): an agent channel's tasks are left out unless
+ * asked for (include | only) or the channel is named. My Tasks' own scope
+ * keeps a task assigned to the reader whatever its channel; only narrows it
+ * to the agent channels' tasks there too.
+ *
+ * @param array[] $agents ws_tasks_agent_channels()
+ * @param string  $mode   '' | include | only
+ * @param int     $named  the channel the request names, 0 for none
+ * @param bool    $mine   the list is the reader's own tasks (scope mine)
+ * @return array|null null: nothing to filter; else only (bool: the ids are
+ *                    the tasks' channels) and ids (int[]: kept when only,
+ *                    left out otherwise)
+ */
+function ws_tasks_agent_rule($agents, $mode, $named = 0, $mine = false)
+{
+    $mode = ws_agent_channel_mode($mode);
+
+    if ($mine && ($mode === '')) {
+        return null;
+    }
+
+    $kept = ws_agent_channel_filter((array) $agents, $mode, $named);
+
+    if ($mode === 'only') {
+        $ids = array_map('intval', array_keys($kept));
+
+        if (((int) $named > 0) && !in_array((int) $named, $ids, true)) {
+            $ids[] = (int) $named;
+        }
+
+        return array('only' => true, 'ids' => $ids);
+    }
+
+    $left = array_values(array_map('intval', array_diff(array_keys((array) $agents), array_keys($kept))));
+
+    return empty($left) ? null : array('only' => false, 'ids' => $left);
+}
+
+/**
+ * ws_tasks_agent_rule() as an SQL condition on a task's channel column.
+ *
+ * @param array|null $rule
+ * @param string     $column
+ * @return string '' when nothing is filtered
+ */
+function ws_tasks_agent_sql($rule, $column = 't.channel_id')
+{
+    if (!is_array($rule)) {
+        return '';
+    }
+
+    $ids = array_map('intval', $rule['ids']);
+
+    if ($rule['only']) {
+        return empty($ids) ? '0 = 1' : $column . ' IN (' . implode(',', $ids) . ')';
+    }
+
+    return empty($ids) ? '' : $column . ' NOT IN (' . implode(',', $ids) . ')';
+}
+
+/**
+ * The condition that leaves agent channels' tasks out of a count of other
+ * people's tasks (the dashboard's figures), as the task lists leave them out
+ * by default; '' when there is nothing to leave out.
+ *
+ * @param string     $column the task's channel column
+ * @param array[]|null $agents ws_tasks_agent_channels(); null reads them
+ * @return string
+ */
+function ws_tasks_agent_out_sql($column = 't.channel_id', $agents = null)
+{
+    return ws_tasks_agent_sql(ws_tasks_agent_rule(($agents === null) ? ws_tasks_agent_channels() : $agents, ''), $column);
+}
+
+/**
+ * Whether ws_tasks_agent_rule() keeps a task in this channel (a task in no
+ * channel is no agent channel's task).
+ *
+ * @param array|null $rule
+ * @param int        $channel_id
+ * @return bool
+ */
+function ws_tasks_agent_keeps($rule, $channel_id)
+{
+    if (!is_array($rule)) {
+        return true;
+    }
+
+    $in = in_array((int) $channel_id, array_map('intval', $rule['ids']), true);
+
+    return $rule['only'] ? $in : !$in;
+}
+
+/**
  * Tasks for a list, filtered, with only what the reader may see.
  *
  * @param array $viewer
@@ -1002,7 +1178,9 @@ function ws_task_event_payload($task, $assignees)
  *                       status (open | done | all | a status), department_id,
  *                       channel_id, from, to (due date range), ref_type, ref_id,
  *                       updated_since, delegate (any | none | an assistant's
- *                       key), limit
+ *                       key), limit, agent_channels ('' | include |
+ *                       only; only the readers that pass it leave agent
+ *                       channels' tasks out: ws_tasks_agent_rule())
  * @return array[] briefs
  */
 function ws_tasks_list($viewer, $filters)
@@ -1099,6 +1277,16 @@ function ws_tasks_list($viewer, $filters)
     // them.
     if ((int) ($filters['soon'] ?? 0) > 0) {
         $where[] = "t.due_date IS NOT NULL AND t.due_date > '0000-00-00' AND t.due_date <= '" . e(date('Y-m-d', strtotime('+' . (int) $filters['soon'] . ' days'))) . "'";
+    }
+
+    // An agent channel's tasks stay apart, for the readers that ask
+    // (My Tasks, GET /workspace/tasks).
+    if (array_key_exists('agent_channels', $filters)) {
+        $agent_sql = ws_tasks_agent_sql(ws_tasks_agent_rule(ws_tasks_agent_channels(), $filters['agent_channels'], (int) ($filters['channel_id'] ?? 0), $scope === 'mine'));
+
+        if ($agent_sql !== '') {
+            $where[] = $agent_sql;
+        }
     }
 
     $limit = max(1, min(500, (int) ($filters['limit'] ?? 200)));

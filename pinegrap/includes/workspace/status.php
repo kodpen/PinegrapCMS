@@ -307,19 +307,46 @@ function ws_status_ai_draft($viewer, $channel, $facts)
 }
 
 /**
- * Writes a status update into the channel: the message, then the state.
+ * Why status updates and check-ins are not written in a channel: a
+ * discussion answers to its channel, which says how the work stands, and a
+ * discussion's rows would outlive its purge (threads.php). '' when they may.
+ *
+ * @param array $channel
+ * @return string
+ */
+function ws_status_thread_refusal($channel)
+{
+    return ws_channel_is_thread($channel) ? lang('Status updates and check-ins are written in the channel itself, not in a discussion.') : '';
+}
+
+/**
+ * Everything a status update is checked against before it is written,
+ * shared by the panel and the external API (its dry run included): the
+ * tables, a channel rather than a discussion, the state, then the message
+ * as ws_message_send_check() sees it.
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $health a key of ws_status_healths()
+ * @param string $health  a key of ws_status_healths()
  * @param string $text
- * @return array ok, error, field, message_id
+ * @param array  $options app_id, via_client_id (who it is written as, ws_message_send())
+ * @return array ok, error, field (health | text | channel | ''), body
  */
-function ws_status_post($viewer, $channel, $health, $text)
+function ws_status_post_check($viewer, $channel, $health, $text, $options = array())
 {
     $fail = function ($error, $field = '') {
-        return array('ok' => false, 'error' => $error, 'field' => $field, 'message_id' => 0);
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'body' => '');
     };
+
+    if (!ws_status_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    $thread = ws_status_thread_refusal($channel);
+
+    if ($thread !== '') {
+        return $fail($thread, 'channel');
+    }
 
     $healths = ws_status_healths();
 
@@ -329,11 +356,38 @@ function ws_status_post($viewer, $channel, $health, $text)
 
     $text = trim((string) $text);
     $body = '**' . lang(array('string' => 'Status: {var:1}', 'vars' => $healths[$health])) . '**' . (($text !== '') ? "\n\n" . $text : '');
+    $checked = ws_message_send_check($viewer, $channel, $body, $options);
 
-    $sent = ws_message_send($viewer, $channel, $body);
+    if (!$checked['ok']) {
+        return $fail($checked['error'], 'text');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'body' => $body);
+}
+
+/**
+ * Writes a status update into the channel: the message, then the state.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $health  a key of ws_status_healths()
+ * @param string $text
+ * @param array  $options app_id, via_client_id (who it is written as, ws_message_send())
+ * @return array ok, error, field, message_id
+ */
+function ws_status_post($viewer, $channel, $health, $text, $options = array())
+{
+    $checked = ws_status_post_check($viewer, $channel, $health, $text, $options);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field'], 'message_id' => 0);
+    }
+
+    $body = $checked['body'];
+    $sent = ws_message_send($viewer, $channel, $body, $options);
 
     if (!$sent['ok']) {
-        return $fail($sent['error'], 'text');
+        return array('ok' => false, 'error' => $sent['error'], 'field' => 'text', 'message_id' => 0);
     }
 
     db("INSERT INTO ws_status_updates (channel_id, message_id, health, created_by, created_at)
@@ -342,7 +396,7 @@ function ws_status_post($viewer, $channel, $health, $text)
     ws_message_touch($sent['message_id']);
 
     // A tag in the update asks as in a message.
-    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body);
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body, ws_message_by_app($options['app_id'] ?? 0, $options['via_client_id'] ?? 0));
 
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id']);
 }
@@ -380,23 +434,70 @@ function ws_status_channel_state($channel)
 }
 
 /**
+ * Everything a check-in is checked against before it is asked, shared by
+ * the panel, the flows' check-in box and the external API (its dry run
+ * included): the tables, a channel rather than a discussion, a question,
+ * then the message as ws_message_send_check() sees it.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $question
+ * @param array  $options app_id, via_client_id (who it is written as, ws_message_send())
+ * @return array ok, error, field (question | channel | ''), question, body
+ */
+function ws_checkin_start_check($viewer, $channel, $question, $options = array())
+{
+    $fail = function ($error, $field = '') {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'question' => '', 'body' => '');
+    };
+
+    if (!ws_status_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    $thread = ws_status_thread_refusal($channel);
+
+    if ($thread !== '') {
+        return $fail($thread, 'channel');
+    }
+
+    $question = ws_checkin_question($question);
+
+    if ($question === '') {
+        return $fail(lang('Write the question to ask.'), 'question');
+    }
+
+    $body = '**' . lang('Check-in') . ':** ' . $question;
+    $checked = ws_message_send_check($viewer, $channel, $body, $options);
+
+    if (!$checked['ok']) {
+        return $fail($checked['error'], 'question');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'question' => $question, 'body' => $body);
+}
+
+/**
  * Asks the channel's people a question, as a message with a card under it.
  *
  * @param array  $viewer
  * @param array  $channel
  * @param string $question
- * @param int    $app_id
+ * @param int    $app_id        the application it is asked as, 0 for the person
+ * @param int    $via_client_id the OAuth client a person's question is asked through
  * @return array ok, error, message_id, checkin_id
  */
-function ws_checkin_start($viewer, $channel, $question, $app_id = 0)
+function ws_checkin_start($viewer, $channel, $question, $app_id = 0, $via_client_id = 0)
 {
-    $question = ws_checkin_question($question);
+    $options = array('app_id' => (int) $app_id, 'via_client_id' => (int) $via_client_id);
+    $checked = ws_checkin_start_check($viewer, $channel, $question, $options);
 
-    if ($question === '') {
-        return array('ok' => false, 'error' => lang('Write the question to ask.'), 'message_id' => 0, 'checkin_id' => 0);
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0, 'checkin_id' => 0);
     }
 
-    $sent = ws_message_send($viewer, $channel, '**' . lang('Check-in') . ':** ' . $question, array('app_id' => (int) $app_id));
+    $question = $checked['question'];
+    $sent = ws_message_send($viewer, $channel, $checked['body'], $options);
 
     if (!$sent['ok']) {
         return array('ok' => false, 'error' => $sent['error'], 'message_id' => 0, 'checkin_id' => 0);
@@ -410,7 +511,7 @@ function ws_checkin_start($viewer, $channel, $question, $app_id = 0)
     ws_message_touch($sent['message_id']);
 
     // A tag in the question asks as in a message, once its card is written.
-    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $question, ws_message_by_app($app_id));
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $question, ws_message_by_app($app_id, $via_client_id));
 
     return array('ok' => true, 'error' => '', 'message_id' => (int) $sent['message_id'], 'checkin_id' => $checkin_id);
 }
@@ -438,6 +539,57 @@ function ws_checkin_default_question()
 }
 
 /**
+ * Everything an answer to a check-in is checked against before it is kept,
+ * shared by the panel and the external API (its dry run included): a
+ * check-in of a channel the person reads, not deleted and not in an earlier
+ * version of the conversation, a channel they may post in and an answer
+ * within its length.
+ *
+ * @param array  $viewer
+ * @param int    $checkin_id
+ * @param string $text
+ * @return array ok, error, reason (missing | forbidden | invalid | ''),
+ *               checkin, message, channel, text (trimmed), before (their
+ *               answer until now, '' for none)
+ */
+function ws_checkin_answer_check($viewer, $checkin_id, $text)
+{
+    $fail = function ($error, $reason) {
+        return array('ok' => false, 'error' => $error, 'reason' => $reason, 'checkin' => null, 'message' => null, 'channel' => null, 'text' => '', 'before' => '');
+    };
+
+    if (!ws_status_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), '');
+    }
+
+    $checkin = db_item("SELECT * FROM ws_checkins WHERE id = '" . (int) $checkin_id . "'");
+    $message = is_array($checkin) ? ws_message((int) $checkin['message_id']) : null;
+    $channel = is_array($checkin) ? ws_channel((int) $checkin['channel_id']) : null;
+
+    if (!$message || !$channel || !empty($message['deleted_at']) || !ws_can_read_channel($viewer, $channel)) {
+        return $fail(lang('That check-in could not be found.'), 'missing');
+    }
+
+    if (ws_message_in_past($message)) {
+        return $fail(lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'invalid');
+    }
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return $fail(lang('You cannot post in that channel.'), 'forbidden');
+    }
+
+    $text = trim((string) $text);
+
+    if (mb_strlen($text) > WS_CHECKIN_ANSWER_MAX) {
+        return $fail(lang(array('string' => 'An answer can be at most {var:1} characters long.', 'vars' => WS_CHECKIN_ANSWER_MAX)), 'invalid');
+    }
+
+    $before = (string) db_value("SELECT body FROM ws_checkin_answers WHERE checkin_id = '" . (int) $checkin['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
+
+    return array('ok' => true, 'error' => '', 'reason' => '', 'checkin' => $checkin, 'message' => $message, 'channel' => $channel, 'text' => $text, 'before' => $before);
+}
+
+/**
  * Keeps one person's answer to a check-in; an empty answer takes it back.
  *
  * @param array  $viewer
@@ -447,34 +599,18 @@ function ws_checkin_default_question()
  */
 function ws_checkin_answer($viewer, $checkin_id, $text)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'message_id' => 0);
-    };
+    $checked = ws_checkin_answer_check($viewer, $checkin_id, $text);
 
-    $checkin = db_item("SELECT * FROM ws_checkins WHERE id = '" . (int) $checkin_id . "'");
-    $message = is_array($checkin) ? ws_message((int) $checkin['message_id']) : null;
-    $channel = is_array($checkin) ? ws_channel((int) $checkin['channel_id']) : null;
-
-    if (!$message || !$channel || !empty($message['deleted_at']) || !ws_can_read_channel($viewer, $channel)) {
-        return $fail(lang('That check-in could not be found.'));
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
     }
 
-    if (ws_message_in_past($message)) {
-        return $fail(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
-    }
-
-    if (!ws_can_post_channel($viewer, $channel)) {
-        return $fail(lang('You cannot post in that channel.'));
-    }
-
-    $text = trim((string) $text);
-
-    if (mb_strlen($text) > WS_CHECKIN_ANSWER_MAX) {
-        return $fail(lang(array('string' => 'An answer can be at most {var:1} characters long.', 'vars' => WS_CHECKIN_ANSWER_MAX)));
-    }
-
+    $checkin = $checked['checkin'];
+    $message = $checked['message'];
+    $channel = $checked['channel'];
+    $text = $checked['text'];
+    $before = $checked['before'];
     $now = time();
-    $before = (string) db_value("SELECT body FROM ws_checkin_answers WHERE checkin_id = '" . (int) $checkin['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
 
     if ($text === '') {
         db("DELETE FROM ws_checkin_answers WHERE checkin_id = '" . (int) $checkin['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
@@ -634,10 +770,11 @@ function ws_status_action($viewer, $action, $request)
         return ws_action_error($channel);
     }
 
-    // A discussion answers to its channel: the channel says how the work
-    // stands, and a discussion's rows would outlive its purge (threads.php).
-    if (ws_channel_is_thread($channel)) {
-        return ws_action_error(lang('Status updates and check-ins are written in the channel itself, not in a discussion.'));
+    // A discussion answers to its channel (ws_status_thread_refusal()).
+    $thread = ws_status_thread_refusal($channel);
+
+    if ($thread !== '') {
+        return ws_action_error($thread);
     }
 
     switch ($action) {
@@ -703,6 +840,7 @@ function ws_status_js_strings()
         'st_health'        => lang('How does the work stand?'),
         'st_text'          => lang('What to say'),
         'st_text_help'     => lang('Filled in from the channel\'s figures; change it as you like. @ and # tags work here.'),
+        'st_text_help_own' => lang('@ and # tags work here.'),
         'st_ai'            => lang('Write a draft with Pinegrap AI'),
         'st_ai_busy'       => lang('Pinegrap AI is writing…'),
         'st_send'          => lang('Post the update'),

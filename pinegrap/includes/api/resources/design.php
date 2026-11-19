@@ -183,7 +183,7 @@ function api_design_page_select() {
 
 	return "SELECT page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style,
 			page.page_timestamp, " . api_design_schedule_columns() . " style.style_name, " . $framework . ",
-			(SELECT COUNT(*) FROM design_proposals WHERE design_proposals.page_id = page.page_id AND design_proposals.status = 'pending') AS pending_proposals
+			(SELECT COUNT(*) FROM design_proposals WHERE design_proposals.page_id = page.page_id AND design_proposals.status = 'pending' AND design_proposals.agent <> 'editor') AS pending_proposals
 		FROM page
 		INNER JOIN style ON page.page_style = style.style_id";
 
@@ -967,7 +967,7 @@ function api_design_proposals_list($params) {
 
 	$page = api_design_page_or_fail($params['id']);
 
-	$where = "page_id = '" . (int)$page['page_id'] . "'";
+	$where = "page_id = '" . (int)$page['page_id'] . "' AND " . PG_DESIGN_AI_ROWS;
 
 	if (isset($params['status']) && $params['status'] !== '' && $params['status'] !== 'all') {
 

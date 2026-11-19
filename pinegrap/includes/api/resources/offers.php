@@ -370,6 +370,16 @@ function api_offer_conditions_out($conditions, $lookups) {
 
 				break;
 
+			case 'contact group':
+
+				// Only a signed-in customer whose contact is in the group.
+				$out[] = array(
+					'type'             => 'contact_group',
+					'contact_group_id' => (int)$condition['group_id']
+				);
+
+				break;
+
 		}
 
 	}
@@ -809,8 +819,8 @@ function api_offer_schema() {
 		'offer_status'          => 'string',
 		'incomplete'            => 'boolean',
 		'require_code'          => 'boolean',
-		'start_date'            => 'string',
-		'end_date'              => 'string?',
+		'start_date'            => 'date',
+		'end_date'              => 'date?',
 		'scope'                 => 'string',
 		'multiple_recipients'   => 'boolean',
 		'only_apply_best_offer' => 'boolean',
@@ -821,7 +831,7 @@ function api_offer_schema() {
 			'trigger_quantity' => 'integer',
 			'button_label'     => 'string'
 		),
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer',
 		// The single-offer endpoint adds these two. Each entry carries a type
 		// and the fields that type needs - a subtotal condition has an amount,

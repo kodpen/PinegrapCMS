@@ -59,6 +59,7 @@ function pg_list_table_definitions()
         'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
         'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
         'messages_sends' => array('file' => 'includes/fn/messages_sends.php', 'source' => 'pg_messages_sends_list_source'),
+        'view_content_review' => array('file' => 'includes/fn/content_review_list.php', 'source' => 'pg_content_review_list_source'),
     );
 }
 
@@ -967,14 +968,14 @@ function pg_list_table_texts()
 
 /**
  * The lists whose screen keeps its title without the count beside it
- * (assets/js/pg_list_table.js, headCount()). All Offers is a screen the owner
- * keeps as it is; the count reaches it only once he has seen it there.
+ * (assets/js/pg_list_table.js, headCount()): a screen whose look may not
+ * change until its owner has seen the count there. None today.
  *
  * @return array list names (data-pg-list-table)
  */
 function pg_list_table_no_head_count()
 {
-    return array('view_offers');
+    return array();
 }
 
 /**
@@ -1246,6 +1247,7 @@ function pg_list_table_printed_lists()
         'erp_account_sync_same', 'erp_account_sync_ignored',
         'view_offers',
         'view_bookings', 'view_products_variant_sets',
+        'view_courses', 'edit_course_learners',
         'workspace_wtables',
         'messages_automatic',
     );

@@ -80,7 +80,7 @@ if ($request === 'search_products') {
     }
     $like = escape(escape_like(mb_substr($q, 0, 100)));
     $rows = db_items(
-        "SELECT id, name, short_description, inventory, inventory_quantity, price, taxable, tax_rate
+        "SELECT id, name, short_description, inventory, inventory_quantity, price, taxable, tax_rate, gift_card
          FROM products
          WHERE enabled = '1'
            AND (name LIKE '%" . $like . "%' OR short_description LIKE '%" . $like . "%')
@@ -97,6 +97,8 @@ if ($request === 'search_products') {
             'inventory' => (int) $row['inventory'],
             'inventory_quantity' => (int) $row['inventory_quantity'],
             'price_text' => local_sale_money_text(local_sale_prices_net() ? (int) $row['price'] : (int) $row['price'] + pg_tax_apply_rate((int) $row['price'], $rate)),
+            // Shown under the name instead of being added (a gift card).
+            'refusal' => local_sale_product_refusal($row),
         );
     }
     add_order_json(array('results' => $results));

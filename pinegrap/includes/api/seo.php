@@ -269,18 +269,35 @@ function api_seo_schema()
             'links'     => 'integer?',
             'speed'     => 'integer?'
         ),
-        'scored_at'   => 'string?',
-        'analyzed_at' => 'string?',
+        'scored_at'   => 'datetime?',
+        'analyzed_at' => 'datetime?',
         'stale' => array(
             'meta'      => 'boolean',
             'structure' => 'boolean'
         ),
         'flags'  => 'string[]',
         'depth'  => 'integer?',
+        // What api_seo_issues() puts in a row. Every row has source, code,
+        // severity and label; the rest belong to one kind of row and are left
+        // out of the other.
         'issues' => array(array(
-            'code'     => 'string',
-            'severity' => 'string',
-            'message'  => 'string'
+            // meta, structure or links: which half of the record found it.
+            'source'      => 'string',
+            'code'        => 'string',
+            // error or warning; a structure or link row may also say notice.
+            'severity'    => 'string',
+            // The finding in words, in the site's language.
+            'label'       => 'string',
+            // Meta rows only: the points the check is worth and those it got.
+            'weight'      => 'integer',
+            'earned'      => 'integer',
+            // Structure and link rows only: how many times it was found, and
+            // the analyser's note on where.
+            'occurrences' => 'integer',
+            'detail'      => 'string',
+            // Structure and link rows only, when known: where the markup came
+            // from (the record, a common region, a style).
+            'layer'       => 'string'
         ))
     );
 }

@@ -8,6 +8,12 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// Include-only: every includer loads functions.php first. Opened by URL the
+// file stops here instead of failing on the explorer requires below.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 // JSON sub-actions for the combined folder/page/file explorer
 // (view_folder_and_files.php). Included on demand by the "file_explorer"
 // action in api.php, which has already validated the user, the CSRF token
@@ -467,11 +473,12 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
         }
     }
 
-    // Files.
+    // Files. A language's picture is not copied: it belongs to its source
+    // through file_translation, and a copy would be a stray visible file.
     $files = db_items(
         "SELECT id, name, description, type, design, attachment, optimized, image_width, image_height, optimization_percent
         FROM files
-        WHERE folder = '" . e($source_id) . "'");
+        WHERE folder = '" . e($source_id) . "'" . pg_picture_tr_hidden_sql('id'));
 
     if ($files) {
         // Team chat attachments this person may not open stay behind: the

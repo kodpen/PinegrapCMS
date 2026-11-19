@@ -608,9 +608,12 @@ function ws_claude_answers_claude($message_id)
  * @param bool   $followed a discussion Claude follows asks it without its
  *                         name (ws_thread_follow_ask()); a refusal is not
  *                         written after every message there
+ * @param bool   $answer   a person's answer to the assistant's own question
+ *                         (ws_agent_question_wake()): not a request of theirs,
+ *                         so their per-person limit does not apply
  * @return bool a request was queued
  */
-function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed = false)
+function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed = false, $answer = false)
 {
     // Asked by name, or an answer to one of Claude's own answers: the
     // conversation goes on without writing @Claude again.
@@ -636,8 +639,10 @@ function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed =
         return false;
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only());
+    $waiting = ws_assistant_per_person_limit_applies($answer)
+        ? (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+            WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only())
+        : 0;
 
     if ($waiting >= WS_CLAUDE_PER_PERSON) {
         if (!$followed) {
@@ -1743,6 +1748,18 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
  */
 function ws_claude_channel_set($viewer, $channel, $allowed)
 {
+    // An archived channel is read, never switched: the channel menu hides
+    // the switch there, and this line would land in the archive.
+    if ((int) ($channel['archived_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'));
+    }
+
+    // A discussion follows its channel (ws_claude_channel_allowed()): its own
+    // column is never read, so a line here would not be true.
+    if ((string) ($channel['kind'] ?? '') === 'thread') {
+        return array('ok' => false, 'error' => lang('A discussion follows its channel: switch it in the channel.'));
+    }
+
     if (!ws_claude_schema_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
@@ -1981,6 +1998,7 @@ function ws_claude_routine_text($base, $instructions)
     // The rules every prompt ends with (includes/fn/ai_prompts.php), before
     // the ones about the routine's own endpoints.
     $rules = implode("\n", pg_ai_prompt_rules('assistant'));
+    $message_rule = ws_message_ref_agent_rule();
 
     return <<<PROMPT
 You are the assistant people call with @Claude in the Workspace of a Pinegrap site.
@@ -2026,6 +2044,7 @@ Work through the queue:
       language of the request, short and concrete, to the person who asked. Mention
       people as <@user:ID> and records as tags such as <#order:ID> or <#task:ID>; a
       tag is shown with the name, so do not write the name again next to it.
+      {$message_rule}
       When the answer holds figures that follow from other figures - totals,
       sums, differences, products, shares, percentages - do not work them out
       yourself: the site does. In a Markdown table a cell that starts with = is

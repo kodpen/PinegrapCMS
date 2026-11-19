@@ -373,3 +373,299 @@ function api_vitals_report_schema() {
 	);
 
 }
+
+// Recovered carts (includes/fn/cart_recovery_figures.php): the left carts of
+// a window of whole site days, the touched ones, those that came back and
+// those a touch recovered, in all, by channel and by message.
+function api_reports_cart_recovery($params) {
+
+	if (!function_exists('pg_cart_recovery_ready') || !pg_cart_recovery_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$window = api_visitors_window($params, 400);
+
+	$from = strtotime($window['first'] . ' 00:00:00');
+
+	$to = strtotime($window['last'] . ' 00:00:00 +1 day');
+
+	api_ok(api_cart_recovery_present(pg_cart_recovery_period($from, $to), $window['first'], $window['last']));
+
+}
+
+// The answer's shape from pg_cart_recovery_period(). Pure.
+function api_cart_recovery_present($figures, $first, $last) {
+
+	$out = array(
+		'from'      => (string)$first,
+		'to'        => (string)$last,
+		'left'      => (int)$figures['left'],
+		'untouched' => (int)$figures['untouched'],
+		'reached'   => (int)$figures['reached'],
+		'returned'  => (int)$figures['returned'],
+		'recovered' => (int)$figures['recovered'],
+		'revenue'   => api_money($figures['revenue']),
+		'channels'  => array(),
+		'messages'  => array()
+	);
+
+	foreach ($figures['channels'] as $channel => $row) {
+
+		$out['channels'][] = array(
+			'channel'   => (string)$channel,
+			'reached'   => (int)$row['reached'],
+			'returned'  => (int)$row['returned'],
+			'recovered' => (int)$row['recovered'],
+			'revenue'   => api_money($row['revenue'])
+		);
+
+	}
+
+	foreach ($figures['messages'] as $row) {
+
+		$out['messages'][] = array(
+			'source_type' => (string)$row['source_type'],
+			'source_id'   => (int)$row['source_id'],
+			'channel'     => (string)$row['channel'],
+			'label'       => isset($row['label']) ? (string)$row['label'] : '',
+			'sent'        => (int)$row['sent'],
+			'reached'     => (int)$row['reached'],
+			'returned'    => (int)$row['returned'],
+			'recovered'   => (int)$row['recovered'],
+			'revenue'     => api_money($row['revenue'])
+		);
+
+	}
+
+	return $out;
+
+}
+
+function api_cart_recovery_report_schema() {
+
+	$figures = array(
+		'reached'   => 'integer',
+		'returned'  => 'integer',
+		'recovered' => 'integer',
+		'revenue'   => 'integer'
+	);
+
+	return array_merge(array(
+		'from'      => 'string',
+		'to'        => 'string',
+		'left'      => 'integer',
+		'untouched' => 'integer'
+	), $figures, array(
+		'channels'  => array(array_merge(array('channel' => 'string'), $figures)),
+		'messages'  => array(array_merge(array('source_type' => 'string', 'source_id' => 'integer', 'channel' => 'string', 'label' => 'string', 'sent' => 'integer'), $figures))
+	));
+
+}
+
+// The Customers report (includes/fn/customer_values.php): the summary the
+// general job rebuilds once a day, never a sum over the orders at the call.
+// A top customer's name is read from their last order when answered, and
+// only for a key that may also read customers.
+function api_reports_customer_value($params) {
+
+	$summary = pg_customer_value_summary();
+
+	list(, $pass) = pg_customer_value_pass_read();
+
+	$names_shown = api_has_scope(api_current_scopes(), 'customers:read');
+
+	$names = array();
+
+	if (($summary !== null) && $names_shown) {
+
+		$names = pg_customer_value_order_names(array_merge(
+			array_column((array)$summary['top']['all'], 0),
+			array_column((array)$summary['top']['year'], 0)
+		));
+
+	}
+
+	api_ok(api_customer_value_present($summary, $pass, $names_shown, $names));
+
+}
+
+// The answer of GET /reports/customer-value. Pure: the summary, the pass the
+// job is on, whether names are given and the names read for it.
+function api_customer_value_present($summary, $pass, $names_shown, $names) {
+
+	if ($summary === null) {
+
+		return array(
+			'ready'       => false,
+			'as_of'       => null,
+			'progress'    => api_customer_value_progress($pass),
+			'names_shown' => (bool)$names_shown,
+			'currency'    => null,
+			'customers'   => 0,
+			'orders'      => 0,
+			'not_placed'  => 0,
+			'apart'       => array(),
+			'periods'     => array(),
+			'months'      => array(),
+			'cohorts'     => array(),
+			'groups'      => array(),
+			'top'         => array('all' => array(), 'year' => array())
+		);
+
+	}
+
+	$apart = array();
+
+	foreach ((array)$summary['apart'] as $unit => $row) {
+
+		$apart[] = array('currency' => (string)$unit, 'orders' => (int)$row[0], 'value' => (int)$row[1]);
+
+	}
+
+	$periods = array();
+
+	foreach ((array)$summary['tiles'] as $key => $tile) {
+
+		$periods[] = array(
+			'period'              => (string)$key,
+			'customers'           => (int)$tile[0],
+			'repeat_customers'    => (int)$tile[1],
+			'orders'              => (int)$tile[2],
+			'value'               => api_money($tile[3]),
+			'days_between_orders' => (float)$tile[4]
+		);
+
+	}
+
+	$months = array();
+
+	foreach ((array)$summary['months'] as $key => $row) {
+
+		$months[] = array(
+			'month'            => (string)$key,
+			'first_orders'     => (int)$row[0],
+			'first_value'      => api_money($row[1]),
+			'returning_orders' => (int)$row[2],
+			'returning_value'  => api_money($row[3])
+		);
+
+	}
+
+	$cohorts = array();
+
+	foreach ((array)$summary['cohorts'] as $key => $row) {
+
+		$cohorts[] = array(
+			'month'         => (string)$key,
+			'customers'     => (int)$row[0],
+			'ordered_again' => array_map('intval', array_slice(array_values((array)$row), 1, 12))
+		);
+
+	}
+
+	$ages = array('within_30_days', '31_to_90_days', '91_to_180_days', '181_to_365_days', 'over_365_days');
+
+	$bands = array('1', '2-3', '4+');
+
+	$groups = array();
+
+	foreach ($ages as $age => $age_key) {
+
+		foreach ($bands as $band => $band_key) {
+
+			$cell = isset($summary['cells'][$age][$band]) ? $summary['cells'][$age][$band] : array(0, 0);
+
+			$groups[] = array(
+				'last_order' => $age_key,
+				'orders'     => $band_key,
+				'group'      => pg_customer_value_cell_group($age, $band),
+				'customers'  => (int)$cell[0],
+				'value'      => api_money($cell[1])
+			);
+
+		}
+
+	}
+
+	$top = array();
+
+	foreach (array('all', 'year') as $list) {
+
+		$top[$list] = array();
+
+		foreach (array_values((array)$summary['top'][$list]) as $i => $row) {
+
+			$number = (int)$row[0];
+
+			$top[$list][] = array(
+				'rank'              => $i + 1,
+				'last_order_number' => $number,
+				'name'              => ($names_shown && isset($names[$number])) ? (string)$names[$number]['name'] : null,
+				'orders'            => (int)$row[2],
+				'value'             => api_money($row[1])
+			);
+
+		}
+
+	}
+
+	return array(
+		'ready'       => true,
+		'as_of'       => api_time($summary['at']),
+		'progress'    => api_customer_value_progress($pass),
+		'names_shown' => (bool)$names_shown,
+		'currency'    => (string)$summary['unit'],
+		'customers'   => (int)$summary['customers'],
+		'orders'      => (int)$summary['orders'],
+		'not_placed'  => (int)$summary['unplaced'],
+		'apart'       => $apart,
+		'periods'     => $periods,
+		'months'      => $months,
+		'cohorts'     => $cohorts,
+		'groups'      => $groups,
+		'top'         => $top
+	);
+
+}
+
+// How far the rebuild under way has read; zeros when none is.
+function api_customer_value_progress($pass) {
+
+	$under_way = ((int)$pass['started'] > 0);
+
+	return array('read' => $under_way ? (int)$pass['done'] : 0, 'total' => $under_way ? (int)$pass['total'] : 0);
+
+}
+
+// What api_reports_customer_value() answers with, declared for the OpenAPI
+// document.
+function api_customer_value_report_schema() {
+
+	$top = array(array(
+		'rank'              => 'integer',
+		'last_order_number' => 'integer',
+		'name'              => 'string?',
+		'orders'            => 'integer',
+		'value'             => 'integer'
+	));
+
+	return array(
+		'ready'       => 'boolean',
+		'as_of'       => 'datetime?',
+		'progress'    => array('read' => 'integer', 'total' => 'integer'),
+		'names_shown' => 'boolean',
+		'currency'    => 'string?',
+		'customers'   => 'integer',
+		'orders'      => 'integer',
+		'not_placed'  => 'integer',
+		'apart'       => array(array('currency' => 'string', 'orders' => 'integer', 'value' => 'integer')),
+		'periods'     => array(array('period' => 'string', 'customers' => 'integer', 'repeat_customers' => 'integer', 'orders' => 'integer', 'value' => 'integer', 'days_between_orders' => 'number')),
+		'months'      => array(array('month' => 'string', 'first_orders' => 'integer', 'first_value' => 'integer', 'returning_orders' => 'integer', 'returning_value' => 'integer')),
+		'cohorts'     => array(array('month' => 'string', 'customers' => 'integer', 'ordered_again' => 'integer[]')),
+		'groups'      => array(array('last_order' => 'string', 'orders' => 'string', 'group' => 'string', 'customers' => 'integer', 'value' => 'integer')),
+		'top'         => array('all' => $top, 'year' => $top)
+	);
+
+}

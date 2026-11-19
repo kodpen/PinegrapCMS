@@ -20,6 +20,7 @@
 - api-console-try-fields.md: API documentation Try it fields (fieldsFor() in includes/api/console_view.php): each field gets an id from a page-wide counter and its caption is a <label for>
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens [decision: decisions-made-panel-2.md]
 - approve-affiliate-shared-form.md: approve_affiliate.php draws its request card, Summary and save bar through includes/forms/approve_affiliate_form.php (wide layout, step B11); what the screen keeps, the website link rule
+- area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab whatever the screen's width (owner 2026-11-19, poll 153); Communication since TS1; how, and the notices under it [decision: here]
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 - audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -83,10 +84,12 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
-- connections-screen-layout.md: Connected accounts screen (connections.php) on the wide layout: provider cards in the form column, a Summary of every provider in the status column, application fields as form-field boxes, no save bar
+- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
+- connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
+- connections-service-page.md: A service's own page on Connections (connections.php?service=<key>, CX7): Status and Where it is used from the registry, the Connections row in Site Settings
 - contact-delete-notice-groups.md: The contact list's Delete All Contacts notice names the groups through pg_contact_list_deleted_groups_label(): escaped, only the user's groups.
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
-- contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
+- contact-form-checks.md: Create/Edit Contact save checks: date and rate refused, role 3 keeps a group, picture posted as file_id or image_url and drawn by pg_contact_image_address(), notes box, wording
 - contact-group-rules.md: Rule editor of a contact group filled by rules (Edit Contact Group, pg_audience_editor.js): switch, rows, pickers, live count, Refresh now, the save, list columns, contact card chips
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 - contact-list-filters.md: Contacts list filters (contact_list.php): offered groups only, [None] from [All], range to today, box search, typed date, period links keep the view, export formula guard
@@ -164,12 +167,14 @@
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card [decision: here]
 - duplicate-products-options.md: Duplicate Products (duplicate_products.php) copy options as a titled card of labelled form-field boxes above the list (step B11, #7552)
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
+- edit-contact-return-key.md: Return in an Edit Contact field saves through a hidden nameless first submit; before, with the address suppressed, it pressed Allow again, lifted the block and dropped the edits
 - edit-css-screen-layout.md: Edit CSS (edit_theme_css.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-file-header.md: Edit File (edit_file.php) layout and status column: preview, Summary mirroring the File Manager details ("W × H px", optimized, last change with name, address), access, Where is it used?
 - edit-js-screen-layout.md: Edit JS (edit_javascript.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php. [decision: decisions-made-panel-3.md, decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - edit-user-return-key.md: Return in an Edit User field saves through a hidden nameless first submit; the Create Contact button saves the form first, then creates and opens the contact
 - editor-edit-file-screen-layout.md: The design file text editor (editor_edit_file.php: JS, JSON, TXT, SVG, XML) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
+- email-campaign-create-refusals.md: New campaign (add_email_campaign.php): a refusal stays on the form with what was written (#10086, PR #10096); Create stores the campaign paused and opens Edit Campaign (#10085, PR #10109) [decision: here]
 - email-campaign-profile-follow-ring.md: A campaign profile may not follow itself or a profile that follows it, on the edit screen and in the import
 - email-campaign-profile-gone-trigger.md: A campaign profile whose trigger item is deleted is marked "(deleted)" in the list and CSV, noted on its edit screen; Delete names its followers
 - email-campaign-profile-row-rules.md: How campaign profile values are checked on the form and the CSV import, midnight, length, required pickers
@@ -242,14 +247,17 @@
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
 - generate-layout-screen.md: Generate Layout (generate_layout.php, includes/templates/generate_layout.php) in the edit screen pattern: the read-only code, the Summary, Copy the code and Edit Layout in the save bar
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
+- graph-canvas-core-focus.md: Graph canvas core focus: adapter focus, canvas.focus() and focused(), out, in, hidden and dim classes, allEdges() faint arrows, groups() headings, press to focus, the announcement
+- graph-canvas-core-logic.md: Graph canvas core pure logic: G.order() ranks from a start, G.arrange() a wrapped grid of groups with side columns (maxH wraps a tall one), G.linksOf(), G.check() dangling, unreached, stuck
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
-- graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
+- graph-canvas-core-routing.md: Graph canvas core routing (PV5): G.route() right-angle ways through the gaps, G.path() rounded turns, G.lanes() side by side, adapter route 'elbow', when an arrow keeps the curve, speed
+- graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, Fit to a start corner, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
 - grid-column-min-width.md: CSS pitfall - a .row column taken off Bootstrap's width (width auto, max-width none) needs min-width 0, or a value that does not wrap widens the whole page past the window
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The Design Canvas's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion
-- image-editor-actions.md: The Design Canvas's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked [decision: decisions-made-product-28.md]
+- image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides [decision: decisions-made-product-28.md, decisions-made-product-67.md]
 - image-editor-adjust.md: The Design Canvas's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note [decision: decisions-made-product-15.md, decisions-made-product-16.md]
@@ -264,6 +272,7 @@
 - image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames [decision: here]
 - image-editor-clip-effects.md: A video clip's effects (l.fx) and its transition into the next clip on its row (l.transition), V5 #8667: numbers, stage and save, held frame, layer order, split, panel
 - image-editor-clip-export.md: A video layer in an animation's export (V7b): each frame waits for the clip's own frame of that moment from a decoder of its own, nothing off its span; a still save keeps the source in
+- image-editor-clip-keys.md: Quick clip edits in the Animate tool: the play bar's Split button, the S key, the scissors chip on a clip row, I and O trimming to the playhead, which clip Split takes
 - image-editor-clip-over.md: Layers over a video (V6, #8733): a layer's own end on the timeline (anim.out.at), picture in picture with corners and border (M.clipFrame()), drawn the same on the stage and in a save
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
@@ -272,6 +281,7 @@
 - image-editor-encode.md: The Design Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Design Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
+- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker in a worker; the method's numbers, its limits and how it was checked [decision: decisions-made-product-63.md, decisions-made-product-69.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
@@ -281,7 +291,7 @@
 - image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes [decision: here]
 - image-editor-mix.md: An animation's sound in its MP4 or WebM (V7, #8484): the mix plan, OfflineAudioContext, AAC or Opus via AudioEncoder, the muxers' second track, the dialog's note, Sound field and steps
 - image-editor-modal.md: The Design Canvas core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
-- image-editor-motion.md: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
+- image-editor-motion.md: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the Motion popover, the empty panel [decision: decisions-made-product-67.md]
 - image-editor-outline.md: The Design Canvas's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 - image-editor-overview.md: The Design Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part [decision: decisions-made-panel-6.md, decisions-made-product-14.md, decisions-made-product-24.md, decisions-made-product-27.md]
 - image-editor-parts.md: The Design Canvas in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
@@ -298,7 +308,7 @@
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Design Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
-- image-editor-select.md: How the Design Canvas's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
+- image-editor-select.md: How the Design Canvas picks layers: Select's click, Shift, box, Select all, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Design Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Design Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -308,14 +318,15 @@
 - image-editor-svg.md: The Design Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The Design Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The Design Canvas on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
-- image-editor-tracks.md: The Animate tool's tracks under the play bar: a row per layer, the bars from M.trackBars(), dragging a bar or an end (M.trackEdit()), snapping, the dock hook in the motion part, no tracks on a phone
+- image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
 - image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features [decision: here]
 - image-editor-upload.md: Large files in the Design Canvas (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
 - image-editor-vector.md: The Design Canvas's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 - image-editor-versions.md: The Design Canvas's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage [decision: decisions-made-product-15.md, decisions-made-schema-7.md]
 - image-editor-video-decode.md: How the Design Canvas reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
 - image-editor-video-export.md: The Design Canvas's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
-- image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, Design Canvas on any MP4 or WebM in Files (FV1), an unsaved canvas's video replaced
+- image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it [decision: decisions-made-product-56.md]
+- image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, the door from Files (FV1), an unsaved canvas's video replaced
 - image-editor-warp.md: The Design Canvas's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
 - image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - import-campaign-profiles-screen.md: import_email_campaign_profiles.php on the wide edit layout (step B11): the Import CSV and File Format cards, the Summary with the name-match warning, the save bar
@@ -392,7 +403,7 @@
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
-- look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
+- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own
@@ -402,13 +413,18 @@
 - look-erp-lists.md: SH3: ERP lists in the look's list recipe: the plain list tables' heading and rows (erp-list-table), status badges as .pg-pill through pg_pill(), the Expenses filter card's labels
 - look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans [decision: here]
 - look-figure-cards.md: Look A's figure cards (SH4, #9725): .pg-figures, .pg-figure, -label, -value, -note as the report's figure; Orders, Commissions, Edit Invoice Settlement, Receipt amount, Marketplace Products hero
+- look-forms-files-screens.md: Form fields, the form list view, file, calendar event and booking screens in look A (S3, #10314): titles, group labels, field spans per field, what stayed and what waited for other PRs
+- look-group-heading-rank.md: Look A: a group heading inside a card is .pg-group-label and never outranks the card's title (architect, 2026-11-17, looks of S3 #10314 and S4 #10316) [decision: here]
 - look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why [decision: here]
 - look-kv-list.md: Look A's label and value list of a status column (.pg-kv, SH2, #9757): the markup, the second group under a hairline, the grey second line, which screens use it
 - look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
+- look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built [decision: decisions-made-workspace-38.md]
 - look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments [decision: here]
+- look-menus-regions-screens.md: Menus, regions, ads, styles, theme and design files, the visitor and log screens in look A (S4, #10316): field spans per field, section titles, card tables, what stayed
+- look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look [decision: decisions-made-panel-10.md]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
-- look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-10.md, decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-people-screens.md: Users, contacts, privacy and campaign screens in look A (S2, #9692): titles, group labels, field spans per field, campaign cards unwrapped, what stayed [decision: here]
 - look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
@@ -572,7 +588,7 @@
 - report-view-country-names.md: The report screens name a country level's places by the site's countries list (#9718): where, which levels, what keeps the stored code
 - report-view.md: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table, the chart per level, its data keys and bundles; order (#8709) and visitor (#8764) reports [decision: decisions-made-panel-5.md, decisions-made-panel-8.md]
 - required-boxes-and-seo-counter.md: Boxes the server refuses blank carry required (Delete in the same form gets formnovalidate); the SEO character counter is the field's description and says count, target and state in words
-- return-key-default-button.md: Return in a drawer form or SMTP Settings saves through a hidden first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
+- return-key-default-button.md: Return in a drawer form or a Site Settings category saves through a hidden first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
 - rich-text-editor-files.md: Who the rich text editor (CKEditor 4) offers file browsing and uploading to; the upload addresses carry the session token
 - rich-text-editor-names.md: The rich text editor (CKEditor 4) named by its field's caption through pgCkeditorReplace(); label click focuses it; Source view names the code editor, says how Tab leaves, passes Alt+F10/Alt+0 on
 - rich-text-editor-turkish.md: CKEditor 4's own Turkish texts (lang/tr.js): the Media Embed dialog, the Anchor (Çapa) button, shortcut tips; the stamp that makes browsers fetch it again
@@ -580,6 +596,7 @@
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - save-bar-chat-launcher.md: Look A's floating save bar (edit screens, settings pages) ends its buttons before the chat launcher in the window's bottom right corner (#9330)
 - save-bar-helper.md: pg_save_bar() (SH6a): the framed bar's markup, options, .pg-savebar frame, screens that took it; the buttons' order ghost, quiet, filled and the hidden Return button (SH6b)
+- save-bar-phone.md: The save bar below 576 px (SH6c): three actions share one row with their icons hidden, others two per row, .pg-bar-rows keeps kept screens on two per row
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
@@ -605,7 +622,8 @@
 - settings-invalid-fields.md: A refused Site Settings save marks its fields by name; the dialog marks and focuses them (#3026), a settings page puts the typed values back (pgSettingsRestore())
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the five group headings (four decided #3879, built #4118; Workspace #8675), the group key per category, how a new category joins one. [decision: decisions-made-product-13.md]
-- settings-modal-architecture.md: Site Settings dialog: file map, the 18 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
+- settings-mail-sending.md: Site Settings › E-mail sending (#10404): SMTP Settings' five cards, smtp_settings.php a redirect, a save writing config.php, the test e-mail sent by the pane read after the save [decision: here]
+- settings-modal-architecture.md: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-extras.md: What a Site Settings card hands over beside its markup (PR #8710): its drawer or a hidden Connect form, never a dialog; the extras box and the CSS left from the old dialog path [decision: decisions-made-panel-3.md]
@@ -642,8 +660,7 @@
 - site-native-date-inputs.md: Native date, datetime-local and time inputs on site pages get the date-and-time control by type, ISO kept; the server reads the ISO they post (S4a)
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
 - sms-campaign-screen-layout.md: The SMS campaign screen (edit_sms_campaign.php) on the wide edit layout: what sits in the form column, the status column and the save bar
-- smtp-settings-keyboards.md: Phone keyboards of the SMTP Settings boxes: URL keyboard on hosts and the DKIM domain, no auto-capitalisation on user names and the DKIM selector
-- smtp-settings-screen-layout.md: SMTP Settings on the wide edit layout: which cards sit in the form column, the Sending domain card in the status column, why it is not pinned
+- smtp-settings-keyboards.md: Phone keyboards of the E-mail sending boxes (formerly SMTP Settings): URL keyboard on hosts and the DKIM domain, no auto-capitalisation on user names and the DKIM selector
 - sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the arrow-key grips, no shared or jQuery UI sortable, the global-sortable trap
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province wide layout (Options card, Summary, save bar) and read its posted values through includes/forms/state_form.php; what each screen keeps
 - status-chart-colour-words.md: Status chips, Payment methods doughnut and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
@@ -666,11 +683,13 @@
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
+- translations-screen-csv-import.md: Translations screen's Import CSV: which rows of a file are written, which are left as they are (unchanged), and what the import notice counts
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped chips, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language
-- unsaved-changes-guard.md: Which panel screens ask before the page is left with unsaved changes (code fields, product screen, offer and layout editors, settings dialog), how each knows, and the submit and Ctrl+S traps
+- translations-screen-unsaved-rows.md: Translations screen (translations.js): a row with typed, unsaved text, its Save highlight, the review (eye) button on it and the leave question
+- unsaved-changes-guard.md: Which panel screens ask before being left with unsaved changes (code fields, product, offer and layout editors, settings dialog, Translations), how each knows, submit and Ctrl+S traps
 - update-screens-steps.md: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line, Return in Backup Name, labels kept while they work, a failed file copy removes the backup
 - upload-folder-kept.md: Edit Field keeps a deleted or unlisted upload folder selected and marked; the File Manager's folder delete names the upload fields using the folder [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - upload-keyboard.md: Files and Design Files upload screens from the keyboard: the Choose files button beside the Dropzone area, why outside it, the remove link shown on focus
@@ -685,7 +704,9 @@
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps [decision: here]
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
+- visitor-push-panel.md: Visitor notifications in the panel: the Notifications card on Channels, the screen Send a notification, Pick a page or record, the test to this device, the sent list
 - visitors-ai-section.md: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect
+- visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text [decision: here]
 - visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps [decision: here]
 - visitors-screen.md: The Visitors overview screen (visitors.php): the period and its query string, the period bar, the section loader and contract, the shell helpers, its CSS/JS bundles, the Visitors menu and panel search [decision: decisions-made-product-24.md]
 - visitors-section-rules.md: Rules for a Visitors overview section (includes/visitors/<name>.php): what it owns, where its figures come from, texts and formats, access, files never touched

@@ -256,10 +256,10 @@
             return false;
         }
 
-        // In the Animate tool J, K, L, I and O belong to the timeline
-        // transport (the motion part), not the Line, Image or Ellipse tool
+        // In the Animate tool J, K, L, I, O and S belong to the timeline
+        // (M.timelineLetter()), not the Line, Image, Ellipse or Sticker tool
         // letters: leave them for the timeline handler (the motion part).
-        if ((this.tool === 'motion') && ('jklio'.indexOf(k.toLowerCase()) >= 0)) {
+        if ((this.tool === 'motion') && M.timelineLetter(k)) {
             return false;
         }
 

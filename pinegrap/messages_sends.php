@@ -177,7 +177,7 @@ if ($sends_manager) {
         WHERE (status = 'sent') OR (attempts > 0)
         ORDER BY id DESC
         LIMIT 1"))) {
-        $sends_transport_warning = pg_messages_note(pg_mail_transport_failure_sentence(), lang('Open SMTP Settings'), PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php', 'amber', 'alert');
+        $sends_transport_warning = pg_messages_note(pg_mail_transport_failure_sentence(), lang('Open E-mail sending'), PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-transport'), 'amber', 'alert');
     }
 
     $sends_state_line = $sends_transport_warning . '<p class="pg-text-meta pg-messages-state">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '
@@ -195,10 +195,10 @@ pg_page_shell(array(
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
+            ' . pg_messages_tab_strip_for('sends', $user) . '
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            ' . pg_messages_tab_strip_for('sends', $user) . '
             ' . pg_screen_toolbar(array(
                 'grow'     => $sends_filters_html,
                 'search'   => pg_list_table_search_box('messages_sends'),

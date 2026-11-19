@@ -4,7 +4,7 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 ---
 
 ## Which file is withheld, and why?
-- `dkim.key`, the private key that signs the site's mail. SMTP settings (`smtp_settings.php`) write it to the file directory and register it in the public root folder with `design = 1`; older installations may have registered it in another public folder. `get_file.php` answers 404 for that name whatever folder its record sits in.
+- `dkim.key`, the private key that signs the site's mail. E-mail sending (`pg_mail_settings_dkim_generate()`) writes it to the file directory and register it in the public root folder with `design = 1`; older installations may have registered it in another public folder. `get_file.php` answers 404 for that name whatever folder its record sits in.
 - Owner decision on issue #514 (option A), PR #562: the file screens follow the same rule. Before, the file manager's file window (`explorer_file_get`) and `edit_file.php` returned the whole key to anyone who passed the folder's edit check, because `.key` is in the "shown, not written" formats.
 - Only that name is withheld, case-insensitive. Other `.key` and `.pub` files (and `dkim.pub`, which is published in DNS) are still shown.
 
@@ -19,7 +19,7 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 
 ## Who may give a file that name?
 - Staff (roles 0-2) only: `pg_file_name_reserved($name, $role)`, asked at the end of `prepare_file_name()` on the name as it is stored (after `pg_ascii_file_name()` and the trailing-dot drop, case-insensitive). A basic user (role 3) or anyone without a session (a public form upload, the external API, a job) gets `file`. A new door that builds a stored name without `prepare_file_name()` asks it itself, never on the name as sent.
-- Why: the mailer signs with whatever `FILE_DIRECTORY_PATH/dkim.key` exists (`includes/fn/mail.php`), and `smtp_settings.php` shows that record's description as the TXT record to publish, so a planted key could end up in DNS.
+- Why: the mailer signs with whatever `FILE_DIRECTORY_PATH/dkim.key` exists (`includes/fn/mail.php`), and E-mail sending's DKIM card (`includes/settings/mail_sending.php`) shows that record's description as the TXT record to publish, so a planted key could end up in DNS.
 - Symptom fixed in #620: the rule compared the name as sent and case-sensitively, so `dkım.key` (ı becomes i) and, on Windows, `DKIM.KEY` or `dkim.key.` were stored as the signing key.
 - Archive extraction checks the stored name again for every role (`pg_explorer_unsafe_archive_name()`, `backup-upload-extraction.md`).
 
