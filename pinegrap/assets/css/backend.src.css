@@ -19064,6 +19064,11 @@ a.ws-chip-message:hover,
 .ws-file-group > .ws-gallery-more {
   margin-top: .6rem;
 }
+/* The Files tab's next page from the server, under the last group. */
+.ws-files-older {
+  align-self: flex-start;
+  margin-top: .6rem;
+}
 .ws-file-group .ws-file-list {
   border: 0;
   border-radius: 0;

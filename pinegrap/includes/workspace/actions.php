@@ -4430,7 +4430,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            return ws_action_ok(array('messages' => ws_channel_files($viewer, $channel['id'])));
+            // A page at a time: before is where the last page ended.
+            return ws_action_ok(ws_channel_files_page($viewer, $channel['id'], (int) ($request['before'] ?? 0)));
 
         case 'ws_channel_tasks':
             $channel = ws_action_channel($viewer, $request);

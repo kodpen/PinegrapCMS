@@ -502,6 +502,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'id'       => (int) $row['file_id'],
                 'name'     => (string) $row['file_name'],
                 'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
+                // A picture's 320 px copy for a tile (the Files tab's
+                // gallery); '' for any other file.
+                'thumb'    => ($kind === 'image') ? ws_file_thumb_url(ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas)) : '',
                 // The version a browser draws and posts (canvas_picture), 0 for none.
                 'canvas_pending' => ($canvas && ($canvas['pending'] || $canvas['server']) && $can_post) ? $canvas['version_no'] : 0,
                 // A person's canvas an agent edited: "Edited by @handle", and
@@ -2757,18 +2760,81 @@ function ws_channel_files($viewer, $channel_id)
 }
 
 /**
+ * One page of the files posted in a channel, newest first, for the panel's
+ * Files tab: a channel with thousands of files is read a page at a time, so
+ * none is left out and none is read before the reader asks for it.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @param int   $before the id the previous page ended at, 0 for the first
+ * @return array messages, more (older files are left), before (the cursor
+ *               of the next page)
+ */
+function ws_channel_files_page($viewer, $channel_id, $before = 0)
+{
+    $limit = ws_channel_files_page_size();
+    $page = ws_channel_files_page_cut(ws_channel_file_rows($channel_id, $before, $limit + 1), $limit);
+
+    return array(
+        'messages' => ws_message_payloads($viewer, $page['rows']),
+        'more'     => $page['more'],
+        'before'   => $page['before'],
+    );
+}
+
+/**
+ * How many files one page of the Files tab reads. Pure.
+ *
+ * @return int
+ */
+function ws_channel_files_page_size()
+{
+    return 200;
+}
+
+/**
+ * Cuts the rows read for a page (one more than the page holds, to know
+ * whether older ones are left) to the page. The cursor is the id of the last
+ * row kept, not of the last message drawn: a row whose payload is left out
+ * must not make the next page read it again. Pure.
+ *
+ * @param array[] $rows  ws_messages rows, newest first
+ * @param int     $limit the rows a page holds
+ * @return array rows, more, before
+ */
+function ws_channel_files_page_cut($rows, $limit)
+{
+    $rows = array_values((array) $rows);
+    $limit = max(1, (int) $limit);
+    $more = count($rows) > $limit;
+    $rows = array_slice($rows, 0, $limit);
+    $last = end($rows);
+
+    return array(
+        'rows'   => $rows,
+        'more'   => $more,
+        'before' => is_array($last) ? (int) $last['id'] : 0,
+    );
+}
+
+/**
  * The rows of the messages with a file posted in a channel, newest first:
  * the Files tab's, read by the panel and the API alike.
  *
  * @param int $channel_id
+ * @param int $before only rows older than this message id; 0 for the newest
+ * @param int $limit  the most rows read
  * @return array[] ws_messages rows
  */
-function ws_channel_file_rows($channel_id)
+function ws_channel_file_rows($channel_id, $before = 0, $limit = 300)
 {
+    $before = (int) $before;
+
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0
+        WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0"
+        . (($before > 0) ? " AND id < '" . $before . "'" : '') . "
         ORDER BY id DESC
-        LIMIT 300");
+        LIMIT " . max(1, (int) $limit));
 }
 
 /**
