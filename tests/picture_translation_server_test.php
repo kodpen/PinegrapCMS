@@ -498,7 +498,24 @@ function test_picture_server_system_status_row()
 	$block = (($start === false) || ($end === false)) ? '' : substr($source, $start, $end - $start);
 
 	pg_assert_true(strpos($block, 'pg_tr_target_languages()') !== false, 'a target language shows the row');
-	pg_assert_true(strpos($block, 'translated Design Canvas pictures') !== false, 'its words name the pictures');
+
+	// The row's sentences are picked from a list, so the $makeIcon() literal
+	// check does not see them: each one is a Turkish key here.
+	require_once(__DIR__ . '/helpers/language_map.php');
+	$map = pg_test_language_map('tr');
+	$sentences = 0;
+
+	foreach (token_get_all('<?php ' . $block) as $token) {
+		if (!is_array($token) || ($token[0] !== T_CONSTANT_ENCAPSED_STRING) || (strpos($token[1], ' draw') === false)) {
+			continue;
+		}
+
+		$sentence = stripcslashes(substr($token[1], 1, -1));
+		$sentences++;
+		pg_assert_true(isset($map[$sentence]), 'a Turkish key for "' . $sentence . '"');
+	}
+
+	pg_assert_same(9, $sentences, 'three states, each for agents, pictures or both');
 }
 
 // Where Imagick is loaded: a plain document is drawn at the artboard's size.
