@@ -1861,14 +1861,15 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
 /**
  * The person's live bookings still to come are cancelled first, the way the
  * agenda cancels one (status and slot in one UPDATE, so the slot opens
- * again), without the mails: the person is being erased. Then the personal
- * columns of all their bookings are replaced.
+ * again, and hold_until 0, so a deposit paid later never books it again),
+ * without the mails: the person is being erased. Then the personal columns
+ * of all their bookings are replaced.
  */
 function _pg_privacy_erase_apply_bookings($where, array $fields, array $scope, $name)
 {
     $now = time();
 
-    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
+    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
 
     _pg_privacy_erase_write('bookings', $where, $fields, $name);
 }
