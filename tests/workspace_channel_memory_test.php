@@ -561,3 +561,20 @@ function test_workspace_memory_tab_parts_wiring()
 	pg_assert_contains("return general ? { general: 1 } : { channel_id: channel.id };", $script, 'a general record is written with general=1');
 	pg_assert_contains('fields.project = project.value;', $script, 'the form files a record under a project');
 }
+
+// Outside a channel the general memory is a drawer of the channel screen,
+// listed by ws_memory_list with general=1 alone.
+function test_workspace_memory_general_drawer_wiring()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("} else if (query.panel === 'memory') {", $script, 'the More entry\'s address opens it');
+	pg_assert_contains("memory: function () { self.showMemory(); },", $script, 'the list opens it in place');
+	pg_assert_contains("window.PGWsMemory.mount(body, { general: true });", $script, 'the general part alone');
+
+	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+	pg_assert_contains("h.api('ws_memory_list', target(!!channel.general))", $memory, 'listed with general=1');
+
+	$nav = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
+	pg_assert_contains("'memory'        => function_exists('ws_memory_general_can') && ws_memory_general_can(\$viewer),", $nav, 'under the general memory\'s gate');
+}

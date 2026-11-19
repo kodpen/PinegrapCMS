@@ -8757,6 +8757,8 @@
                 }
             } else if (query.panel === 'archived') {
                 self.showArchived();
+            } else if (query.panel === 'memory') {
+                self.showMemory();
             } else if ((query.panel === 'audit') && BOOT.me.rights.staff) {
                 self.showAudit();
             }
@@ -8837,6 +8839,7 @@
                     home: function () { self.showHome(true); },
                     scheduled: function () { self.showScheduled(true); },
                     archived: function () { self.showArchived(); },
+                    memory: function () { self.showMemory(); },
                     audit: function () { self.showAudit(); }
                 },
                 openChannel: function (id) { self.open(id, 0); },
@@ -10065,6 +10068,23 @@
                     body.appendChild(row);
                 });
             }).catch(fail);
+        },
+
+        // The general memory the agent channels share, read outside a
+        // channel (assets/js/workspace_memory.js); ws_memory_list refuses
+        // whoever keeps none.
+        showMemory: function () {
+            if (!window.PGWsMemory) {
+                return;
+            }
+
+            var node = offcanvas('ws-memory-general', t('mem_general'));
+            var body = clear(node.querySelector('.drawer-body'));
+            // Wide enough for a row's tags and date beside its name.
+            node.style.width = 'min(48rem, 100vw)';
+            node.querySelector('.drawer-footer').classList.add('d-none');
+            window.PGWsMemory.mount(body, { general: true });
+            showOffcanvas(node);
         },
 
         showAudit: function () {
