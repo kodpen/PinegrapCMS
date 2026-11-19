@@ -14,7 +14,7 @@ description: Rule (2026-10-25): the merging session reviews each PR once, fixes 
 - Everything else (naming, style, a missing test for an edge case, a memory wording) is left as it is: no follow-up issue, no comment. The next session in the area meets it in the code and fixes what is worth its own small PR.
 
 ## Who fixes a PR that is sent back?
-- A small blocker (a few lines, clear fix) is fixed by the merging session on the branch itself before the train. A larger one gets one comment on the PR naming it and the PR stays out of the train. The session that opened it stays subscribed until the merge (`working-mode.md`), so the comment wakes it: it pushes the fix and marks it ready again; when it has ended, a new session does (nobody else is on the branch).
+- A small blocker (a few lines, clear fix) is fixed by the merging session on the branch itself before the train. A larger one gets one comment on the PR naming it and the PR stays out of the train. The session that opened it ended at the label (`session-lifecycle.md`): its coordinator sees the comment at a check-in and gives the branch to a new session, which pushes the fix and marks it ready again.
 
 ## Does a PR resting on an architect decision wait for the owner?
 - No. The architect's answer in the agent channel, quoting the owner where it is his decision, counts as the owner's approval (owner, 2026-10-28; until 2026-11-13 a `Karar:` comment on an `architect` issue): the architect asks the owner, in Turkish, and records the answer.
