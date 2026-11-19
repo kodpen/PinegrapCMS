@@ -202,7 +202,7 @@ if (is_array($bw_made_row) && ((int) $bw_made_row['staff_id'] === (int) $bw_memb
             . '<a href="' . h($bw_made_context['meeting_url']) . '" rel="noopener noreferrer" target="_blank">' . h($bw_made_context['meeting_url']) . '</a></dd>';
     }
 
-    $bw_content .= '</dl>';
+    $bw_content .= '</dl><p class="small fg-secondary">' . h(pg_booking_link_zone_note($bw_made_context['zone'])) . '</p>';
 
     if ((string) $bw_made[1] !== '') {
         $bw_content .= '<p class="mb-0"><a class="pg-button pg-button-quiet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_manage.php?b=' . (int) $bw_made[0] . '&t=' . $bw_made[1] . '&ics=1') . '">'
@@ -269,7 +269,7 @@ if ($bw_show_form) {
 
     $bw_content .= '<p class="mb-7"><i class="bi bi-clock me-3" aria-hidden="true"></i>' . h($bw_times['date'] . ', ' . $bw_times['time'])
         . ' · <a href="' . $bw_service_link . '&amp;m=' . substr($bw_times['start'], 0, 7) . '&amp;d=' . substr($bw_times['start'], 0, 10) . '">' . h(lang('Pick another time')) . '</a></p>'
-        . '<p class="small fg-secondary mb-7">' . h(lang(array('string' => 'We keep this time for you for {var:1} minutes.', 'vars' => (int) $bw_policy['hold_minutes']))) . '</p>'
+        . '<p class="small fg-secondary mb-7">' . h(pg_booking_link_zone_note($bw_context['zone']) . ' ' . lang(array('string' => 'We keep this time for you for {var:1} minutes.', 'vars' => (int) $bw_policy['hold_minutes']))) . '</p>'
         . '<form method="post" action="' . $bw_page . '" novalidate>' . get_token_field()
         . '<input type="hidden" name="c" value="' . h($bw_code) . '">'
         . '<input type="hidden" name="s" value="' . (int) $bw_service['id'] . '">'
@@ -348,7 +348,7 @@ if ($bw_day !== '') {
                 . h(pg_booking_time_label($bw_start, $bw_policy['zone'])) . '</button>';
         }
 
-        $bw_content .= '</div></form>';
+        $bw_content .= '</div></form><p class="small fg-secondary mt-5 mb-0">' . h(pg_booking_link_zone_note($bw_policy['zone'])) . '</p>';
     }
 }
 

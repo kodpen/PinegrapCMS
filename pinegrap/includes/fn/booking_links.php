@@ -411,6 +411,18 @@ function pg_booking_link_busy_window($first, $step, $zone)
 }
 
 /**
+ * The sentence that names the zone the page's times are in: a meeting link
+ * reaches people in other zones, and the booking widget names it too.
+ *
+ * @param string $zone pg_booking_widget_policy() zone
+ * @return string
+ */
+function pg_booking_link_zone_note($zone)
+{
+    return lang(array('string' => "Times are in the site's time zone ({var:1}).", 'vars' => (string) $zone));
+}
+
+/**
  * The days of a month with a free time for the member alone, as the engine
  * works them out. Pure.
  *

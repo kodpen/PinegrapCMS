@@ -230,3 +230,13 @@ function test_book_with_confirm_sent_twice_shows_the_booking()
 	pg_assert_contains("pg_booking_link_resent(\$_SESSION['software']['booking_link_done'] ?? null, \$bw_member)", $source, 'checked when no hold is left');
 	pg_assert_contains("(string) \$bw_done['token'], \$bw_status, (int) \$bw_member['id'])", $source, 'the booking is kept with its member');
 }
+
+// A meeting link is handed to people anywhere: the times, the held time and
+// the done card name the site's zone they are in, as the booking widget does.
+function test_book_with_times_name_the_zone()
+{
+	pg_assert_contains('Europe/Istanbul', pg_booking_link_zone_note('Europe/Istanbul'));
+
+	$source = _book_with_test_source();
+	pg_assert_same(3, substr_count($source, 'pg_booking_link_zone_note('), 'under the times, with the held time and on the done card');
+}
