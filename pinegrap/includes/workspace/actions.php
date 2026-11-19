@@ -1029,7 +1029,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That flow could not be found.'));
             }
 
-            $result = ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request));
+            $fields = ws_action_flow_run_fields($request);
+
+            // Started in a channel about a customer (the composer's Start a
+            // flow, the "/" list, /flow): the run is about them, as a run the
+            // canvas starts for a picked customer is, when the starter reads
+            // the contact.
+            if (isset($fields['channel_id']) && !isset($fields['contact_id'])) {
+                $contact_id = ws_flow_run_channel_contact($viewer, ws_channel($fields['channel_id']));
+
+                if ($contact_id > 0) {
+                    $fields['contact_id'] = $contact_id;
+                }
+            }
+
+            $result = ws_flow_run_start($viewer, $flow, $fields);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
@@ -2011,14 +2025,19 @@ function ws_handle_action($action, $request)
                 ws_mail_read_rows($viewer, $rows);
             }
 
+            $flows_here = empty($request['as_thread']) ? ws_flows_here($viewer, $channel) : array();
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
                 // Polls, agent questions, the check-in and approval requests
                 // still open, over the conversation (open_items.php).
                 'open_items' => ws_channel_open_items($viewer, $channel),
-                // Add › Start a flow is offered only where it lists a flow.
-                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow;
+                // the same flows, read once here, are the "/" list's and
+                // /flow's (ws_flows_here()).
+                'flows_here' => !empty($flows_here),
+                'flows'      => $flows_here,
                 'messages'   => ws_message_payloads($viewer, $rows),
                 'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
                 'era'        => null,
@@ -4121,7 +4140,8 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // The person's own quiet hours (notify.php): their own session only,
-        // never for another person; no API route or MCP tool.
+        // never for another person; no MCP tool (the API route is the team
+        // devices session's own, api_quiet_hours.php).
         case 'ws_quiet_hours_save':
             $result = ws_quiet_hours_save($viewer, $request);
 
@@ -4337,8 +4357,10 @@ function ws_handle_action($action, $request)
 
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
+        // general=1 addresses the general memory (channel_id 0) instead,
+        // kept by whoever may post in an agent channel.
         case 'ws_memory_list':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4346,11 +4368,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
-                'can_post' => ws_can_post_channel($viewer, $channel),
+                'can_post' => ws_memory_can_write($viewer, $channel),
             ));
 
         case 'ws_memory_save':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4375,6 +4397,11 @@ function ws_handle_action($action, $request)
                 'pinned'     => !empty($request['pinned']),
                 'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
             );
+
+            if (array_key_exists('project', $request)) {
+                $input['project'] = (string) $request['project'];
+            }
+
             $check = ws_memory_check($viewer, $channel, $input, $current);
 
             if (!$check['ok']) {
@@ -4388,7 +4415,7 @@ function ws_handle_action($action, $request)
         case 'ws_memory_delete':
             $row = ws_memory_row((int) ($request['id'] ?? 0));
 
-            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+            if (!$row || !ws_memory_can_read($viewer, $row)) {
                 return ws_action_error(lang('That memory entry could not be found.'));
             }
 

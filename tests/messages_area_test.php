@@ -207,3 +207,22 @@ function test_messages_area_progress_bar()
 	pg_assert_contains('style="width: 100%"', pg_messages_progress_html(5, 3, '5 / 3'), 'never past the end');
 	pg_assert_false(strpos(pg_messages_progress_html(1, 2, 'x'), 'progress-note') !== false, 'no note without one');
 }
+
+function test_messages_area_strip_comes_before_notices_on_old_screens()
+{
+	// The strip is the first thing in #content, so a notice of the screen
+	// never pushes it down from tab to tab.
+	$screens = array('view_email_campaigns' => 'campaigns', 'messages_sends' => 'sends', 'view_email_campaign_profiles' => 'automatic', 'messages_mail' => 'mail');
+
+	foreach ($screens as $screen => $key) {
+		$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen . '.php');
+		$offset = 0;
+		while (($main = strpos($source, '<main id="content"', $offset)) !== false) {
+			$strip = strpos($source, "pg_messages_tab_strip_for('" . $key . "', \$user)", $main);
+			pg_assert_true($strip !== false, $screen . ' prints the strip in its #content');
+			$before = substr($source, $main, $strip - $main);
+			pg_assert_true(strpos($before, 'output_') === false && strpos($before, 'get_warnings') === false, $screen . ' prints no notice above the strip');
+			$offset = $main + 1;
+		}
+	}
+}

@@ -47,9 +47,10 @@ function test_message_values_system_are_escaped()
 		array('install/index.php', '\'vars\' => h($database_version)', 2),
 		array('search_console.php', '$liveform->add_error(h($flash[\'text\']));', 1),
 		array('search_console.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_error(h($connect_flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_notice(h($connect_flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_notice(lang([\'string\'=>\'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\'=>[h(EMAIL_ADDRESS)]]));', 1),
+		array('includes/settings/mail_sending.php', '$liveform->add_error(h($mail_flash[\'text\']));', 1),
+		array('includes/settings/mail_sending.php', '$liveform->add_notice(h($mail_flash[\'text\']));', 1),
+		array('includes/fn/mail_settings.php', '$liveform->add_notice(lang(array(\'string\' => \'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\' => array(h(EMAIL_ADDRESS)))));', 1),
+		array('includes/fn/mail_settings.php', '\'vars\' => array(h($transports[$transport][\'label\']), h(EMAIL_ADDRESS))', 1),
 		array('view_waf_log.php', '$release_form->add_notice(lang(array(\'string\' => \'The ban on {var:1} has been released.\', \'vars\' => h($release_ip))));', 1),
 	);
 

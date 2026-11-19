@@ -162,6 +162,19 @@ function test_user_form_field_problems()
 		array('username' => 'too_long', 'badge_label' => 'too_long'),
 		pg_user_form_field_problems(array('username' => str_repeat('a', 101), 'badge_label' => str_repeat('b', 101))),
 		'texts longer than their column');
+	// A lenient server cuts a longer address to its 100 characters after the
+	// uniqueness check ran on the whole value, so two accounts could end up
+	// with the same address; the hint is cut the same way.
+	pg_assert_same(
+		array('email' => 'too_long', 'password_hint' => 'too_long'),
+		pg_user_form_field_problems(array('email' => str_repeat('a', 89) . '@example.com', 'password_hint' => str_repeat('h', 101))),
+		'an address and a hint longer than their column');
+	pg_assert_same(
+		array(),
+		pg_user_form_field_problems(array('email' => str_repeat('a', 88) . '@example.com', 'password_hint' => str_repeat('h', 100))),
+		'an address and a hint that fit');
+	pg_assert_contains('User Email', pg_user_form_field_problem_message('email', 'too_long'), 'the address is named by its label');
+	pg_assert_contains('User Password Hint', pg_user_form_field_problem_message('password_hint', 'too_long'), 'the hint is named by its label');
 }
 
 function test_user_form_contact_problem()

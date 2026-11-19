@@ -2364,6 +2364,7 @@
     "flights, airfare, plane, airport": "uçuş, uçak bileti, uçak, havalimanı",
     "floor plan, where is, lift, quiet floor, archive, computers": "kat planı, nerede, asansör, sessiz kat, arşiv, bilgisayarlar",
     "floors, where, building, library, terrace, access, key card": "katlar, nerede, bina, kütüphane, teras, giriş, kartlı geçiş",
+    "flow": "akış",
     "flow run {var:1} failed": "akış çalışması {var:1} başarısız oldu",
     "flow run {var:1} finished": "akış çalışması {var:1} bitti",
     "flow run {var:1} was cancelled": "akış çalışması {var:1} iptal edildi",

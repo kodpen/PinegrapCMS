@@ -27,7 +27,8 @@ function test_order_report_reads_days_in_site_time()
 {
 	$source = pg_test_order_report_source();
 
-	pg_assert_contains("case 'order_date': \$operand_1 = pg_site_time_sql('orders.order_date', '%Y-%m-%d', \$site_time_from, \$site_time_to);", $source, 'Date filter');
+	pg_assert_contains("\$operand_1 = pg_order_report_filter_column(\$filter['field'], \$site_time_from, \$site_time_to);", $source, 'Date filter');
+	pg_assert_contains("return pg_site_time_sql('orders.order_date', '%Y-%m-%d', \$from, \$to);", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_report.php'), 'Date filter column');
 	pg_assert_contains('function get_summarize_by_column($summarize_by, $from = null, $to = null)', $source, 'same signature as the visitor report');
 	pg_assert_contains("case 'year': return pg_site_time_sql('orders.order_date', '%Y', \$from, \$to);", $source, 'year grouping');
 	pg_assert_contains("case 'month': return pg_site_time_sql('orders.order_date', '%m', \$from, \$to);", $source, 'month grouping');
@@ -42,7 +43,7 @@ function test_order_report_site_time_window()
 {
 	$source = pg_test_order_report_source();
 	$start = strpos($source, '$site_time_from = $start_timestamp;');
-	$loop = strpos($source, "case 'order_date': \$operand_1 = ");
+	$loop = strpos($source, "\$operand_1 = pg_order_report_filter_column(");
 
 	pg_assert_true($start !== false, 'the date changer range is the window');
 	pg_assert_true(($loop !== false) && ($start < $loop), 'the window is set before the filter loop');

@@ -1104,7 +1104,7 @@ function pg_field_form_cards($liveform, $field, $context)
 
     if ($form_type == 'custom') {
         $output_rss_field_row =
-            '<div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="rss_field_row">
+            '<div class="col-12 pg-field-span-6 my-3 collapse" id="rss_field_row">
                 <label for="rss_field" class="form-label">' . lang('RSS / Search Element') . '</label>
                 <select id="rss_field" name="rss_field" class="form-control">' . select_rss_field($field['rss_field']) . '</select>
             </div>';
@@ -1131,7 +1131,7 @@ function pg_field_form_cards($liveform, $field, $context)
         }
 
         $output_contact_field_row =
-            '<div class="col-12 md:col-12 lg:col-8 my-3 collapse" id="contact_field_row">
+            '<div class="col-12 pg-field-span-6 my-3 collapse" id="contact_field_row">
                 <label for="contact_field" class="form-label">' . lang('Connect to Contact') . '</label>
                 <select name="contact_field" id="contact_field" class="form-control"><option value="">-' . lang('None') . '-</option>' . select_contact_field($field['contact_field']) . '</select>
                 <span class="form-text">' . lang('Prefill & Update the Submitter\'s Contact Field') . '</span>
@@ -1170,7 +1170,7 @@ function pg_field_form_cards($liveform, $field, $context)
         $output_upload_folder_id_row =
             '<div class="col-12 my-3 collapse" id="upload_folder_id_row">
                 <div class="row">
-                    <div class="col-12 md:col-6 my-3">
+                    <div class="col-12 pg-field-span-6 my-3">
                         <label for="upload_folder_id" class="form-label">' . lang('Folder to upload File') . '</label>
                         <select name="upload_folder_id" id="upload_folder_id" class="form-control"' . ($kept_folder['help'] !== '' ? ' aria-describedby="upload_folder_id_help"' : '') . '>' . $kept_folder['options'] . '</select>
                         ' . $kept_folder['help'] . '
@@ -1205,7 +1205,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                 </label>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6">
+                                        <div class="col-12 pg-field-span-6">
                                             <select id="type" name="type" required class="form-control collapse-if-selected" data-bs-target="#options_field_row" onchange="change_field_type(this.options[this.selectedIndex].value)"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('field'))) . '-</option>' .  select_field_type($field['type'], $form_type) . '</select>
                                             <script>
                                                 $(document).ready(function() {
@@ -1223,24 +1223,24 @@ function pg_field_form_cards($liveform, $field, $context)
                                     </h2>
                                     <div class="card-body pt-0">
                                         <div class="row">
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
+                                            <div class="col-12 my-3">
                                                 <label for="name" class="form-label">' . lang('Name') . '</label>
                                                 ' . $liveform->output_field($name_attributes) . '
                                             </div>
                                             ' . $output_rss_field_row . '
-                                            <div class="col-12 md:col-12 lg:col-4 my-3 collapse" id="label_row">
+                                            <div class="col-12 my-3 collapse" id="label_row">
                                                 <label for="label" class="form-label">' . lang('Label') . '</label>
                                                 <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" maxlength="255" />
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
+                                            <div class="col-12 md:col-3 my-3 collapse" id="size_row">
                                                 <label for="size" class="form-label">' . lang('Size') . '</label>
                                                 <input type="number" placeholder="' . lang('Auto') . '" name="size" value="' . h($field['size']) . '" id="size" class="form-control" min="0" max="1000" step="1" />
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="maxlength_row">
+                                            <div class="col-12 md:col-3 my-3 collapse" id="maxlength_row">
                                                 <label for="maxlength" class="form-label">' . lang('Maximum Characters') . '</label>
                                                 <input type="number" placeholder="' . lang('Unlimited') . '" name="maxlength" value="' . h($field['maxlength']) . '" id="maxlength" class="form-control" min="0" max="65535" step="1" />
                                             </div>
-                                            <div class="col-12 md:col-6  lg:col-4 my-3 collapse" id="position_row">
+                                            <div class="col-12 md:col-6 my-3 collapse" id="position_row">
                                                 <label for="position" class="form-label">' . lang('Position') . '</label>
                                                 <select name="position" id="position" class="form-control">' . select_field_position($context['position'], $field['id'], $context['form_id'], $context['page_type'], $form_type) . '</select>
                                             </div>
@@ -1286,7 +1286,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                                     <label class="" for="use_folder_name_for_default_value">' . lang('Use Folder name for field default value') . '</label>
                                                 </div>
                                                 <div class="row">
-                                                    <div class="col-12 md:col-6 lg:col-4 my-3  collapse show-reverse" id="default_value_input_row">
+                                                    <div class="col-12 my-3 collapse show-reverse" id="default_value_input_row">
                                                         <label for="default_value" class="form-label">' . lang('Default Value') . '</label>
                                                         <input value="' . h($field['default_value']) . '" type="text" name="default_value" id="default_value" class="form-control" maxlength="255"/>
                                                     </div>
@@ -1294,7 +1294,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                             </div>
                                             ' . $output_upload_folder_id_row . '
                                             <div class="col-12 my-1 collapse" id="rows_row">
-                                                <h3 class="h6 fg-secondary">' . lang('Amount of Rows and Columns to Display') . '</h3>
+                                                <h3 class="pg-group-label">' . lang('Amount of Rows and Columns to Display') . '</h3>
                                                 <div class="w-100 border-3 border-top border-start position-relative">
                                                     <div style="background: var(--pg-border-color);width: 3px;height: 14px;right: 0px;position: absolute;"></div>
                                                     <div style="background: var(--pg-border-color);width: 14px;height: 3px;bottom: 0px;position: absolute;"></div>

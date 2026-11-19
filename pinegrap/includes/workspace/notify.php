@@ -204,7 +204,8 @@ function ws_quiet_hours_get($user_id)
 /**
  * Saves the signed-in person's own quiet hours (pg_quiet_hours_save_check():
  * a team member, their own profile, clock times). No range clears the value.
- * Reached only from the panel's own session; no API route or MCP tool.
+ * Reached from the panel's own session and from the person's team devices
+ * session (POST /workspace/quiet-hours, api_quiet_hours.php); no MCP tool.
  *
  * @param array $viewer  ws_viewer()
  * @param array $request start, end, off_days

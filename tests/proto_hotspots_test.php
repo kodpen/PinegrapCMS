@@ -553,7 +553,7 @@ function test_proto_hotspots_list_and_problems()
 
 // The view's links panel and problems (F15-F20, F24): an aside beside the
 // stage drawn from listOf(), never from the canvas; a frame row and a list
-// row pick one link; "Change target" and "Open in the editor" go through
+// row pick one link; the target control and "Open in the editor" go through
 // today's menu and row opening; "N broken" and its list and each frame's
 // badge from brokenOf(); the panel's open state per browser, closed under
 // 1,100 px; Play through _pgPrototypeUrl().
@@ -565,7 +565,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
 	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
 	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link\'s mark on the picture picks the link');
-	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, '"Change target" opens today\'s target menu at the list row, whether or not the picture shows the link');
+	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, 'the row\'s target control opens today\'s target menu at the list row, whether or not the picture shows the link');
 	pg_assert_contains('_sdProtoOpenRow(data.id, row.port);', $source, '"Open in the editor" opens the element by its frame and port');
 	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
 	pg_assert_contains('_sdProto.issues = H.problemsOf(l);', $source, 'the broken links and what to check from the marked layout');
@@ -1271,7 +1271,7 @@ function test_proto_hotspots_view_what_to_check()
 	pg_assert_contains("if (!rows.length) return;", $source, 'an empty group left out');
 	pg_assert_contains("var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
 	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
-	pg_assert_contains("(row.mark === 'empty' ? _sdT('No target') : ", $source, 'a list row without a target says so');
+	pg_assert_contains("shows.state === 'empty' ? _sdT('No target') : ", $source, 'a read-only list row without a target says so');
 	pg_assert_contains("if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');", $source, 'a link count that does not fit is left out whole');
 	pg_assert_contains('el.parentNode.title = el.textContent;', $source, 'its words stay in the bar\'s title');
 	pg_assert_contains('.sd-proto-status.sd-proto-status-out { visibility: hidden; }', $css, 'never cut with an ellipsis');
@@ -1844,4 +1844,52 @@ function test_proto_hotspots_view_suggest_targets()
 	pg_assert_contains("_sdT('{var} links connected', done)", $block, 'the toast counts what was written');
 	pg_assert_contains("_sdProtoSuggestClose(false);\n        _sdProto.open = false;", $source, 'closing the view closes the dialog');
 	pg_assert_contains("if (_sdProto.suggest) _sdProtoSuggestArrows();", $source, 'another selected frame shows its own proposed arrows');
+}
+
+// The links panel as the place to edit: an outgoing row's target is a
+// control (a box with a caret) opening today's target menu, "Choose a
+// page" for a link without a target; a row that may not be drawn keeps its
+// target as text; "Open in the editor" stays an icon.
+function test_proto_hotspots_row_target()
+{
+	$out = proto_hotspots_test_node('out = ['
+		. ' H.rowTarget({ drawable: true, mark: "tab", why: "" }),'
+		. ' H.rowTarget({ drawable: true, mark: "empty", why: "" }),'
+		. ' H.rowTarget({ drawable: true, mark: "broken", why: "gone" }),'
+		. ' H.rowTarget({ drawable: false, mark: "tab", why: "" }),'
+		. ' H.rowTarget({ drawable: false, mark: "empty", why: "" }),'
+		. ' H.rowTarget(null) ];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('control' => true, 'state' => 'set'),
+		array('control' => true, 'state' => 'empty'),
+		array('control' => true, 'state' => 'broken'),
+		array('control' => false, 'state' => 'set'),
+		array('control' => false, 'state' => 'empty'),
+		array('control' => false, 'state' => 'set'),
+	), $out, 'a drawable row\'s target is a control, a read-only row\'s text; empty, broken or set');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$at = strpos($source, 'function _sdProtoListDraw()');
+	$end = strpos($source, 'function _sdProtoProblemsOpen(', (int) $at);
+	pg_assert_true($at !== false && $end !== false, 'the panel\'s drawing function');
+	$block = substr($source, (int) $at, (int) $end - (int) $at);
+
+	pg_assert_contains('var shows = window.PGProtoHotspots.rowTarget(row);', $block, 'each row asks the pure helper how its target shows');
+	pg_assert_contains("var pick = _sdProtoEl('button', 'sd-proto-li-target sd-proto-li-target-' + shows.state);", $block, 'the target is a button');
+	pg_assert_contains("pick.setAttribute('aria-haspopup', 'menu');", $block, 'that opens a menu');
+	pg_assert_contains("pick.addEventListener('click', function () { change(pick); });", $block, 'today\'s target menu, at the control');
+	pg_assert_contains("shows.state === 'empty' ? _sdT('Choose a page') : where", $block, 'a link without a target reads "Choose a page"');
+	pg_assert_contains("'bi bi-chevron-down sd-proto-li-caret'", $block, 'with a caret');
+	pg_assert_contains("if (!shows.control) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to'", $block, 'a read-only row keeps its target as text');
+	pg_assert_contains("_sdT('Open in the editor')", $block, '"Open in the editor" stays an icon');
+	pg_assert_false(strpos($block, 'bi-signpost-split') !== false, 'no second "Change target" icon beside the control');
+	pg_assert_contains('.sd-proto-li-out { flex-wrap: wrap; }', $css, 'the control takes a line of its own');
+	pg_assert_contains('display: flex; align-items: center; gap: 4px; flex: 1 1 100%; min-width: 0;', $css, 'as wide as the row, never wider');
+	pg_assert_contains('.sd-proto-li-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }', $css, 'a long name is cut, not pushed past the panel\'s edge');
 }

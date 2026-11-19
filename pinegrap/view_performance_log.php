@@ -430,10 +430,10 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
                 <td>' . pmon_area_badge($r['area']) . '</td>
                 <td><code>' . h($label) . '</code>'
                     . ($r['query_string'] !== ''
-                        ? '<div class="fg-secondary text-break" style="font-size:.72rem;">?' . h(mb_substr($r['query_string'], 0, 160)) . '</div>'
+                        ? '<div class="pg-text-meta fg-secondary text-break">?' . h(mb_substr($r['query_string'], 0, 160)) . '</div>'
                         : '')
                     . ($r['ip_address'] !== '' || $r['user_agent'] !== ''
-                        ? '<div class="fg-secondary text-break" style="font-size:.72rem;">'
+                        ? '<div class="pg-text-meta fg-secondary text-break">'
                             . ($r['ip_address'] !== '' ? '<span class="font-monospace">' . h($r['ip_address']) . '</span> ' : '')
                             . h(mb_substr($r['user_agent'], 0, 80))
                           . '</div>'
@@ -606,12 +606,10 @@ echo '
             </div>
 
             <div class="card mb-12">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-stopwatch me-3"></i>' . lang('Slowest Pages (by average)') . '</h5>
-                </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Slowest Pages (by average)') . '</h2>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 pg-card-table">
                         <thead>' . $slowest_thead . '</thead>
                         <tbody>' . $slowest_rows . '</tbody>
                     </table>
@@ -620,12 +618,10 @@ echo '
             </div>
 
             <div class="card mb-12">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-memory me-3"></i>' . lang('Most Memory-Intensive Pages') . '</h5>
-                </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Most Memory-Intensive Pages') . '</h2>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 pg-card-table">
                         <thead>' . $memory_thead . '</thead>
                         <tbody>' . $memory_rows . '</tbody>
                     </table>
@@ -634,12 +630,10 @@ echo '
             </div>
 
             <div class="card mb-12">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-clock-history me-3"></i>' . lang('Slowest Individual Requests') . '</h5>
-                </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Slowest Individual Requests') . '</h2>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 pg-card-table">
                         <thead>
                             <tr>
                                 <th>' . lang('Time') . '</th>

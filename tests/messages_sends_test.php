@@ -259,3 +259,18 @@ function test_messages_sends_long_cells_give_way()
 	pg_assert_same(trim($error), $cell['attributes']['title'], 'and is its title');
 	pg_assert_same('--pg-list-table-cell-max: 12rem', $cell['attributes']['style'], 'held to its column');
 }
+
+// functions.php does not load includes/fn/sms_campaigns.php, and both the
+// list and the calendar ask pg_sms_campaigns_ready() through
+// function_exists(): unless the modules load it themselves, the SMS
+// campaigns branch is left out and no SMS campaign is listed or drawn.
+function test_messages_sends_modules_load_sms_campaigns()
+{
+	$functions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/functions.php');
+	pg_assert_same(false, strpos($functions, "/includes/fn/sms_campaigns.php'"), 'functions.php leaves the SMS campaigns to the screens');
+
+	foreach (array('messages_sends.php', 'messages_calendar.php') as $module) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $module);
+		pg_assert_true((bool) preg_match('~^require_once\(PG_FUNCTIONS_DIR \. \'/includes/fn/sms_campaigns\.php\'\);~m', $source), $module . ' loads the SMS campaigns module');
+	}
+}

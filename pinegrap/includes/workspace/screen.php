@@ -92,6 +92,8 @@ function ws_js_strings()
         'cmd_extra_estimate'     => lang('How long it takes, like ~2h'),
         'cmd_extra_people'       => lang('Who does it: a person or a department'),
         'cmd_extra_priority'     => lang('How urgent it is, like !urgent'),
+        'cmd_flow_meta'          => lang('Start this flow'),
+        'cmd_flows'              => lang('Flows'),
         'cmd_keys'               => lang('Tab: write · ↑↓: choose · Esc: close'),
         'commands'               => lang('Slash commands'),
         'completed_on'           => ws_js_template('Finished {var:1}', 1),

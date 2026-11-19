@@ -1,6 +1,6 @@
 ---
 name: campaign-profile-screens-left
-description: Campaign profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, report on Automatic sends, reasons as specs
+description: Profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, the report and who reads what of it, reasons as specs
 ---
 
 ## Which profiles do the screens show?
@@ -15,10 +15,14 @@ description: Campaign profile screens after the switch to flows (MA9f): only pro
 ## Where is the conversion's report?
 - On the E-mail Campaign Profiles screen while it stays, and on the Automatic sends tab always (`pg_profile_flow_switch_notice()`, actions by `pg_profile_flow_action_names()`), so it stays reachable once the profiles screen leaves (architect, 2026-11-14).
 
+## Who reads which part of it?
+- `pg_profile_flow_report_reader()` (the signed-in person when the notice gets no reader): roles 0-2 every profile; a user role (3) only the profiles they made (`created_user_id`, read again: the report keeps no owner), as My Campaign Profiles lists them. Counts and "Flows made so far" count only those; a done report with none of theirs is not drawn.
+- A flow made is linked only when `pg_flows_user_may()` and `ws_flow_for()` at view admit the reader (a converted flow is its owner's, not the creator's), else plain text. Symptom fixed (#10374): a role 3 campaign manager saw every user's profiles and links answering "Access denied".
+
 ## How is a reason kept?
 - Untranslated, as the lang() spec it is drawn from (`array('string' => …, 'vars' => …)`): the converter's reasons, the wait refusals, the limits, "It was made after the update.", a chain partner's line. `pg_profile_flow_reason_text()` draws it in the reader's language, so a report the general job stored reads in whoever opens it's language.
 - A plain string is shown as it is: the flow code's own refusal when a publish fails (in the job's language), and reports stored before MA9f.
-- Tests: `tests/campaign_profile_switch_test.php` (members, the door, the left SQL, the reason specs, each screen calling the door).
+- Tests: `tests/campaign_profile_switch_test.php` (members, the door, the left SQL, the reason specs, each screen calling the door, the report by reader).
 
 ## What is still open?
 - The six actions with no flow start (order abandoned, review request, product ordered, booking reminder, credit expiring, subscription price changed): architect (2026-11-13, #9077), a later plan, written once the dry-run report on running sites shows which are in use ([[campaign-profile-flow-gaps]]). M2b is complete on a site when no profile is left there.

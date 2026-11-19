@@ -1,12 +1,13 @@
 ---
 name: unsaved-changes-guard
-description: Which panel screens ask before the page is left with unsaved changes (code fields, product screen, offer and layout editors, settings dialog), how each knows, and the submit and Ctrl+S traps
+description: Which panel screens ask before being left with unsaved changes (code fields, product, offer and layout editors, settings dialog, Translations), how each knows, submit and Ctrl+S traps
 ---
 
 ## Which panel screens ask before leaving with unsaved changes?
 - Every editable code field drawn by `pg_code_editor_attach()` (`includes/fn/editor.php`): theme CSS, JavaScript, design files, form list/item views, designer, dynamic, login and custom style forms, field and product group forms.
 - The product create/edit screen (`assets/js/product_builder.js`).
 - Their own guards: the offer editor (`offer_editor.js`), the layout editor (`edit_page_layout.php`), the File Manager's file window and the settings dialog.
+- The Translations screen (`translations.js`): while a row is marked unsaved (`.pg-tr-row.pg-tr-dirty`), see `translations-screen-unsaved-rows.md`.
 - The browser shows its own text (`e.preventDefault()` + `e.returnValue = ''` on `beforeunload`), so no `lang()` key. Added for the leave-without-a-word loss on Cancel, a menu link, Back, reload or closing the tab.
 
 ## How does a code field know it changed?

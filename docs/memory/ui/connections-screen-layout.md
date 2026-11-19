@@ -6,6 +6,7 @@ module: connections_screen
 
 ## What is the screen?
 - System tools › Connections › Connections (`connections.php`), "Bağlantılar", for a manager; the redraw of Connected accounts as CN2's sheet shows it (owner 2026-11-17, `workflow/decisions-made-product-70.md`). Tool label and search words in `pg_settings_tool_groups()` / `pg_settings_tool_keys()` of `includes/settings/registry.php`.
+- Each row shows its state pill and one action, "Connect" ("Bağla") while not connected, else "Manage" ("Yönet") (`pg_connections_screen_action()`); a service row is a link to its page (`connections-service-page.md`), a provider row opens its drawer.
 - Rows: the account providers first (group "Account providers", from `pg_connect_providers()`, sign-in-only Apple left out: it is the Sign in with Apple row), then every row of `pg_connections_registry()` in `pg_connections_groups()` order.
 
 ## How is a row's state read?
@@ -26,7 +27,7 @@ module: connections_screen
 - The attention block on top lists every account in `reauth`: the site's with Connect again, a person's with who reconnects it.
 
 ## What does a change to the screen keep?
-- No field of a setting is shown or saved on it: a row leads to the one place (owner 2026-10-30, `workflow/decisions-made-product-14.md`). A setting that moves here or elsewhere is asked of the owner first (`plans/connections-merges.md`).
+- Today a service row shows no field and leads to its setting's place. Owner (2026-11-17, poll 146, message 9372; narrowed by poll 148, message 9374): Connections becomes the one management place, connection fields in each service's own panel here (e-mail sending stays a Site Settings category), feature cards holding no key; nothing moves before his yes to the drawing (`plans/connections-merges.md`).
 - No table and no column for a state, a history of states or an error; no outside call while the list is drawn. A key is never shown.
 - No catalogue of add-ons to install (`plans/addon-hook-system.md`), no copy of Application Access, no one-click broker (`plans/reverse-oauth-leftovers.md`).
 

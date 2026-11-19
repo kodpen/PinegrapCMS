@@ -1413,6 +1413,32 @@ function pg_contact_picture_address($file_id)
 }
 
 /**
+ * The address a contact's stored picture address (contacts.image) is drawn
+ * from. The column holds the address of a picture with no files row (an
+ * Unsplash pick, saved from the posted image_url) and, on older rows, a bare
+ * file name. An absolute, scheme-relative or root-relative address is used
+ * as it is; a bare name goes after $base. '' when there is none.
+ *
+ * @param string|null $image contacts.image
+ * @param string|null $base  what a bare name goes after, PATH when null
+ * @return string
+ */
+function pg_contact_image_address($image, $base = null)
+{
+    $image = (string) $image;
+
+    if ($image === '') {
+        return '';
+    }
+
+    if (preg_match('#^(https?:)?/#i', $image)) {
+        return $image;
+    }
+
+    return (($base === null) ? PATH : (string) $base) . $image;
+}
+
+/**
  * The file name of a contact's picture (contacts.file_id), or '' when the
  * contact has none or its files row was deleted in the File Manager, which
  * leaves contacts.file_id in place. A screen draws its no-picture branch on

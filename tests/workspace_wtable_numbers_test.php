@@ -60,7 +60,7 @@ function test_workspace_wtable_numbers_store()
 	pg_assert_contains('ws_wtable_number_take($table_id)', ws_wtable_numbers_test_source('ws_wtable_row_create_write'));
 	pg_assert_contains("ws_wtable_number_value((int) (\$row['number'] ?? 0))", ws_wtable_numbers_test_source('ws_wtable_row_bin_put'));
 
-	$restore = ws_wtable_numbers_test_source('ws_wtable_row_restore');
+	$restore = ws_wtable_numbers_test_source('ws_wtable_row_restore_write');
 	pg_assert_contains("((int) (\$bin['number'] ?? 0) > 0) ? (int) \$bin['number'] : ws_wtable_number_take(\$table_id)", $restore);
 	pg_assert_same(2, substr_count($restore, 'ws_wtable_number_value($number)'), 'the row\'s values and the way back into the bin');
 }

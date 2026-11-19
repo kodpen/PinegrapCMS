@@ -1095,8 +1095,56 @@ function ws_api_wtable_import_file($file_id, $max)
 }
 
 /**
+ * The pairing an import's map asks for, checked: source index => column id
+ * by source column name, each table column taken by one source at most
+ * (two would show one in the dry run and write the other); a column id 0
+ * leaves the source out. Pure but for lang().
+ *
+ * @param string[] $names
+ * @param array    $columns column id => column
+ * @param array    $map     source column name => column id
+ * @return array ok, pairs (source index => column id), message
+ */
+function ws_api_wtable_import_pairs($names, $columns, $map)
+{
+    $fail = function ($message) {
+        return array('ok' => false, 'pairs' => array(), 'message' => $message);
+    };
+    $pairs = array();
+
+    foreach ((array) $map as $source => $column_id) {
+        $index = array_search((string) $source, array_map('strval', (array) $names), true);
+
+        if ($index === false) {
+            return $fail(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)));
+        }
+
+        if (!is_int($column_id) && !(is_string($column_id) && ctype_digit($column_id))) {
+            return $fail(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'column_id')));
+        }
+
+        if ((int) $column_id === 0) {
+            continue;
+        }
+
+        if (!isset($columns[(int) $column_id]) || !ws_wtable_type_stores((string) $columns[(int) $column_id]['type'])) {
+            return $fail(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'unknown_column ' . (int) $column_id)));
+        }
+
+        if (in_array((int) $column_id, $pairs, true)) {
+            return $fail(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'column_mapped_twice ' . (int) $column_id)));
+        }
+
+        $pairs[(int) $index] = (int) $column_id;
+    }
+
+    return array('ok' => true, 'pairs' => $pairs, 'message' => '');
+}
+
+/**
  * The pairing asked for: source index => column id from map (by source
- * column name), else the columns matched by name.
+ * column name, ws_api_wtable_import_pairs()), else the columns matched by
+ * name.
  *
  * @param string[]   $names
  * @param array      $columns
@@ -1109,31 +1157,40 @@ function ws_api_wtable_import_map($names, $columns, $map)
         return ws_wtable_import_match($names, $columns)['map'];
     }
 
-    $pairs = array();
+    $pairs = ws_api_wtable_import_pairs($names, $columns, $map);
 
-    foreach ($map as $source => $column_id) {
-        $index = array_search((string) $source, $names, true);
-
-        if ($index === false) {
-            api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'map');
-        }
-
-        if (!is_int($column_id) && !(is_string($column_id) && ctype_digit($column_id))) {
-            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'column_id')), 'map');
-        }
-
-        if ((int) $column_id === 0) {
-            continue;
-        }
-
-        if (!isset($columns[(int) $column_id]) || !ws_wtable_type_stores((string) $columns[(int) $column_id]['type'])) {
-            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'unknown_column ' . (int) $column_id)), 'map');
-        }
-
-        $pairs[(int) $index] = (int) $column_id;
+    if (!$pairs['ok']) {
+        api_fail_validation($pairs['message'], 'map');
     }
 
-    return $pairs;
+    return $pairs['pairs'];
+}
+
+/**
+ * What is wrong with a new table's types, '' when nothing: each names a
+ * source column (a name of digits arrives from JSON as an integer key, so
+ * names are compared as text) and a type an import makes, or '' to leave
+ * the column out. Pure but for lang().
+ *
+ * @param string[] $names
+ * @param array    $types source column name => type
+ * @return string
+ */
+function ws_api_wtable_import_types_refusal($names, $types)
+{
+    $names = array_map('strval', (array) $names);
+
+    foreach ((array) $types as $source => $type) {
+        if (!in_array((string) $source, $names, true)) {
+            return lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source));
+        }
+
+        if (!is_string($type) || (($type !== '') && !in_array($type, ws_wtable_import_types(), true))) {
+            return ws_api_wtable_message('type_unknown');
+        }
+    }
+
+    return '';
 }
 
 function ws_api_wtables_import($params)
@@ -1192,15 +1249,10 @@ function ws_api_wtables_import($params)
         $choice = array('map' => ws_api_wtable_import_map($names, ws_wtable_columns((int) $table['id']), isset($params['map']) ? (array) $params['map'] : null));
     } else {
         $types = isset($params['types']) ? (array) $params['types'] : array();
+        $refusal = ws_api_wtable_import_types_refusal($names, $types);
 
-        foreach ($types as $source => $type) {
-            if (!in_array($source, $names, true)) {
-                api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'types');
-            }
-
-            if (!is_string($type) || (($type !== '') && !in_array($type, ws_wtable_import_types(), true))) {
-                api_fail_validation(ws_api_wtable_message('type_unknown'), 'types');
-            }
+        if ($refusal !== '') {
+            api_fail_validation($refusal, 'types');
         }
 
         $choice = array('name' => $name, 'plan' => ws_wtable_import_plan($names, $kept['rows'], $types));

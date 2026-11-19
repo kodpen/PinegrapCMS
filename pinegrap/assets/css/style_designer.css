@@ -7543,6 +7543,22 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-li-acts { display: flex; flex: none; gap: 2px; padding-top: 3px; }
 .sd-proto-li-act { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--sd-text-muted); cursor: pointer; }
 .sd-proto-li-act:hover, .sd-proto-li-act:focus-visible { background: rgba(255,255,255,.08); color: var(--sd-text); outline: none; }
+/* An outgoing row's target: a box with a caret under the label, opening
+   the target menu; it takes the row's width beside the mark's indent and
+   cuts a long name, so nothing passes the panel's right edge. */
+.sd-proto-li-out { flex-wrap: wrap; }
+.sd-proto-li-target {
+    display: flex; align-items: center; gap: 4px; flex: 1 1 100%; min-width: 0;
+    margin: -3px 0 6px 32px; padding: 2px 6px; border: 1px solid var(--sd-panel-border); border-radius: 4px;
+    background: color-mix(in srgb, var(--sd-text) 4%, transparent); color: var(--sd-text); font: inherit; text-align: left; cursor: pointer;
+}
+.sd-proto-li-target:hover { border-color: color-mix(in srgb, var(--sd-text) 35%, transparent); }
+.sd-proto-li-target:focus-visible { border-color: var(--sd-accent); box-shadow: 0 0 0 1px var(--sd-accent); outline: none; }
+.sd-proto-li-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-li-caret { flex: none; font-size: .65rem; color: var(--sd-text-muted); }
+.sd-proto-li-target-empty .sd-proto-li-target-name { color: var(--pgc-in); }
+.sd-proto-li-target-broken { border-color: color-mix(in srgb, #ff6b6b 60%, transparent); }
+.sd-proto-li-target-broken .sd-proto-li-target-name { color: #ff6b6b; }
 /* "N broken" in the bar (F19) and its list; a frame's count (F20). */
 .sd-proto-broken {
     flex: none; padding: 1px 8px; border: 1px solid #ff6b6b; border-radius: 10px;

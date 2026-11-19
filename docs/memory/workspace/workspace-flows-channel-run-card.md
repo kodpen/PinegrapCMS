@@ -4,11 +4,12 @@ description: Add › Start a flow in a channel's composer and the run's card the
 ---
 
 ## What does Add › Start a flow list?
-- The composer's insert menu offers it only where it lists a flow (owner, 2026-11-09): `ws_channel_open` answers `flows_here` (`ws_flows_startable_in()`, the same list, only for whoever sees Flows), kept as `self.flowsHere` until the channel is opened again; never in a discussion thread, an earlier era or a channel other than public or private. It opens a drawer: panel action `ws_flow_list` with `runnable_in` = the channel → `ws_flows_runnable_in()` (`includes/workspace/flow_run_cards.php`), sorted by name, each with its `last_run` flag.
+- The composer's insert menu offers it only where it lists a flow (owner, 2026-11-09): `ws_channel_open` answers `flows_here` and `flows` (`ws_flows_here()`, the same list, only for whoever sees Flows; the "/" list and /flow offer it too, `workspace-command-flow.md`), kept as `self.flowsHere` and `self.flowsList` until the channel is opened again.
+- Never in a discussion thread, an earlier era or a channel other than public or private. It opens a drawer: panel action `ws_flow_list` with `runnable_in` = the channel → `ws_flows_runnable_in()` (`includes/workspace/flow_run_cards.php`), sorted by name, each with its `last_run` flag.
 - Listed (`ws_flow_runnable_here()`, pure): live with a published version, start box `manual`, `run` or `edit` access, owner on the staff (`ws_can_schedule()`) who may write in the channel. The channel must pass `ws_flow_run_channel_allowed()` for the reader. No other start kind is started by hand (there is no "run on a record" start).
 
 ## How is it started?
-- Asked as the canvas asks (`fl_run_ask`), then panel action `ws_flow_run_start` with `channel_id` and a `channel.` start token kept until answered: `ws_action_flow_run_fields()` passes `channel_id` on, so `ws_flow_run_start_check()` checks it (`ws_flow_run_channel_check()`, workspace-flows-run-channel.md). No new action or route.
+- Asked as the canvas asks (`fl_run_ask`), then panel action `ws_flow_run_start` with `channel_id` and a `channel.` start token kept until answered: `ws_action_flow_run_fields()` passes `channel_id` on, so `ws_flow_run_start_check()` checks it (`ws_flow_run_channel_check()`, workspace-flows-run-channel.md). In a channel about a customer the action adds the channel's contact the starter reads (`ws_flow_run_channel_contact()`, `workspace-command-flow.md`). No new action or route.
 - Only a run the call really started (`started`) writes its card: `ws_flow_run_card_post()`, a system line "{name} started the flow {flow}." (flow name stripped of tag and mark characters, `ws_flow_run_card_name()`). A retried token answers its run and writes nothing.
 
 ## How does the line know its run?

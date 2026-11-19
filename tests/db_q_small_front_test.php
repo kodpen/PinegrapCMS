@@ -206,11 +206,19 @@ function test_db_q_small_front_values_fit_placeholders()
 
 			// Only the '?' of the SQL text count: a PHP ternary or '??' adds none.
 			$placeholders = 0;
+			$literal = false;
 
 			foreach (token_get_all('<?php ' . $call['sql'] . ';') as $token) {
 				if (is_array($token) && in_array($token[0], array(T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE), true)) {
 					$placeholders += substr_count($token[1], '?');
+					$literal = true;
 				}
+			}
+
+			// SQL a function builds (pg_order_lines_sql()) has no text here
+			// to count.
+			if (!$literal) {
+				continue;
 			}
 
 			pg_assert_same(

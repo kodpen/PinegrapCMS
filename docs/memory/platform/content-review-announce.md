@@ -19,7 +19,7 @@ module: content_review
 - The row menu's "Make a task" ("Göreve dönüştür"), for roles under 3, only with the Workspace on and the item's person a member of its team (`pg_content_review_task_offered()`, pure; the batch reads membership with `ws_rights()`).
 - `content_review_action.php` (`make_task`, one row) calls `pg_content_review_task_open()`: `ws_followup_task_open()` as whoever pressed, `$once`, with `pg_content_review_task_input()`: title "Review {name}", the page or form tagged, the person assigned, no channel, due on the review date (today without one), no reminder when the date is here or passed. Pressed again while that task is open, it hands the open one back; the notice links `workspace_tasks.php?task=`.
 - The Workspace's files load on demand: `pg_content_review_workspace()`.
-- No gallery flow yet: a flow task box takes only fixed people, so "A page is due for review" waits for CH3b's "the person the event names" setting (architect, 2026-11-16, agent channel message 7026). Owner (poll 102, message 7036): the menu item's look stands.
+- The gallery flow "A page is due for review" (`content_review_due`, CH3b) gives its task to the item's person through the task box's "The person the event names" (`workspace/workspace-flows-task-event-person.md`; architect, 2026-11-16, agent channel message 7026). Owner (poll 102, message 7036): the menu item's look stands.
 
 ## Tested?
 - `tests/content_review_announce_test.php`: once per item and date across days, a new date announced again, none for gone or undated, the claim statement, payload, places, the task's fields, when the button shows.

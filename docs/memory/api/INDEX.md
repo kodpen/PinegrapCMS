@@ -55,6 +55,7 @@
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why [decision: here]
 - api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
 - api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
+- api-meta-workspace-values.md: The workspace object on GET /meta: default_task_minutes (WS_DEFAULT_TASK_MINUTES) and day_minutes (WS_DAY_MINUTES), for a team device's task form (issue #10345, PR #10388)
 - api-native-push.md: Native push for team devices (M7a #9703, M7b #9720): /push/devices routes, the broker call, push_subscriptions.provider (11.0.215), PG_PUSH_BROKER_URL, the badge body, 429 hold, forget on revoke
 - api-notifications-group-fold.md: GET /notifications group filter (site or workspace, applied in SQL before paging) and the fold key on every Notification row, the panel bell's chips and flow-run folding (#5085)
 - api-oauth-client-compat.md: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Codex, mcp-remote, Claude) connecting: lenient registration, app schemes, loopback matching, unknown scopes, discovery, panel guide
@@ -101,6 +102,8 @@
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain [decision: here]
+- api-workspace-highlights.md: Readers' highlights over the Workspace API (#10341): the WorkspaceMessage keys, who gets For me rows, the three person-only writes, what quote indexes, how changes reach devices
+- api-workspace-quiet-hours.md: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
 - application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
@@ -126,6 +129,7 @@
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
 - workspace-api-link-preview.md: link_preview on a Workspace message read over the external API and MCP (LP3): the card's plain fields, the states and the switch that leave it null, which routes carry it
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
+- workspace-api-message-sender-feedback.md: Workspace API for a team device client: app_id, agent, claude, ai on an app sender; feedback on an agent's reply; POST /workspace/messages/{id}/agent-feedback
 - workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-api-status-checkins.md: Workspace API for a channel's status update and check-ins - POST …/status, POST …/checkins, POST /workspace/checkins/{id}/answer - who may call each and the checks shared with the panel
 - workspace-assistant-requests-agents.md: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
