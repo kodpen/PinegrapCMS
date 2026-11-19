@@ -23,11 +23,11 @@ module: picture_translation
 ## What does the first version leave out?
 - A flat picture whose letters are pixels (a photo with no text layer, a scan, an uploaded PNG); the words inside an svg layer; saved animations and videos; pictures in e-mails and RSS; a Workspace canvas (its saves keep no texts).
 - Places the page pass does not read: a `<style>` block, the design's custom CSS file, JSON-LD `image`, a variant's photos in the page's script data.
-- Right-to-left languages; drawing with nobody there; correcting one language's picture by hand (a later step, the owner's look).
+- Right-to-left languages; correcting one language's picture by hand (a later step, the owner's look).
 
 ## Which file holds each part?
 - The store's texts, the table's states, the hooks, the prune: `picture-text-translation-store.md`.
-- The page pass (the swap, waiting rows, one query): `picture-text-translation-page.md`; save-time rows, text jobs, the mark, the keep: `picture-text-auto-rows.md`.
+- The page pass (the swap, waiting rows, one query): `picture-text-translation-page.md`; rows, jobs, mark, keep: `picture-text-auto-rows.md`; the server's draw: `picture-text-auto-server.md`.
 - The Pictures group of the Translations screen: `picture-text-translation-group.md`.
 - The Design Canvas Languages list and the fit: `picture-text-translation-draw.md`; its server side, the hidden lists: `picture-text-translation-draw-server.md`; a photo with text layers: `picture-text-translation-draw-photo.md`.
 - "Draw the waiting pictures": `picture-text-translation-queue.md`. Moves, deletes, the bin, Disk Usage, the sweep: `picture-text-translation-doors.md`.
