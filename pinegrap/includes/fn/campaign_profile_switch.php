@@ -606,13 +606,28 @@ function pg_profile_flow_switch_tick($budget)
  * @param bool       $quiet   a done report as a quiet line under a list,
  *                            opening to the same details
  *                            (pg_profile_flow_switch_quiet())
- * @return string HTML
+ * @param array|null $reader  what the reader may see of it
+ *                            (pg_profile_flow_report_reader()); null for
+ *                            the person signed in
+ * @return string HTML; '' too when nothing of a done report is the
+ *                reader's
  */
-function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet = false)
+function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet = false, $reader = null)
 {
     if (!is_array($state)) {
         return '';
     }
+
+    if (!is_array($reader)) {
+        $reader = pg_profile_flow_report_reader($state);
+    }
+
+    // The profiles the reader may see, by id; null: every one.
+    $seen = is_array($reader['profiles'] ?? null) ? array_flip(array_map('intval', $reader['profiles'])) : null;
+    $may_see = function ($id) use ($seen) {
+        return ($seen === null) || isset($seen[(int) $id]);
+    };
+    $may_open = array_flip(array_map('intval', (array) ($reader['flows'] ?? array())));
 
     $open = function ($tone, $icon) {
         return '<div id="profile-flows" class="alert theme-' . $tone . ' d-flex align-items-start gap-3" role="status">'
@@ -622,7 +637,7 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet
     if ($state['status'] !== 'done') {
         return $open('info', 'bi-arrow-repeat')
             . '<strong>' . h(lang('Profiles are being turned into flows')) . '</strong>'
-            . '<p class="mb-0">' . h(lang(array('string' => 'The general job turns these profiles into flows over its next runs; the report shows here when it is done. Flows made so far: {var:1}.', 'vars' => count((array) $state['switched'])))) . '</p>'
+            . '<p class="mb-0">' . h(lang(array('string' => 'The general job turns these profiles into flows over its next runs; the report shows here when it is done. Flows made so far: {var:1}.', 'vars' => count(array_filter((array) $state['switched'], $may_see, ARRAY_FILTER_USE_KEY))))) . '</p>'
             . '</div></div>';
     }
 
@@ -630,22 +645,32 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet
 
     $report = is_array($state['report'] ?? null) ? $state['report'] : array();
     $plan = (array) ($report['plan'] ?? array()) + array('flows' => array(), 'left' => array(), 'orphans' => array(), 'done' => array());
+    $plan['done'] = array_filter((array) $plan['done'], $may_see, ARRAY_FILTER_USE_KEY);
+    $plan['left'] = array_filter((array) $plan['left'], $may_see, ARRAY_FILTER_USE_KEY);
     $profiles = (array) ($report['profiles'] ?? array());
     $made = '';
+
+    // A reader who sees only their own profiles and has none in it.
+    if (($seen !== null) && empty($plan['done']) && empty($plan['left'])) {
+        return '';
+    }
 
     foreach ($profiles as $id => $profile) {
         $profiles[$id]['action'] = (string) ($actions[(string) ($profile['action'] ?? '')] ?? ($profile['action'] ?? ''));
     }
 
-    foreach ((array) $plan['done'] as $head => $flow_id) {
-        $made .= '<li><a href="workspace_flows.php?flow=' . (int) $flow_id . '">' . h((string) ($profiles[$head]['name'] ?? '')) . '</a></li>';
+    // A flow made leads to the Flows screen only when that screen opens it
+    // to the reader; otherwise its name is plain text.
+    foreach ($plan['done'] as $head => $flow_id) {
+        $name = h((string) ($profiles[$head]['name'] ?? ''));
+        $made .= '<li>' . (isset($may_open[(int) $flow_id]) ? '<a href="workspace_flows.php?flow=' . (int) $flow_id . '">' . $name . '</a>' : $name) . '</li>';
     }
 
     // The profiles left, each as the dry-run report words it, its name
     // leading to the profile and its counts under it.
     $left = '';
 
-    foreach ((array) $plan['left'] as $id => $reason) {
+    foreach ($plan['left'] as $id => $reason) {
         $lines = array_values(array_filter(pg_profile_flow_report_lines(array('flows' => array(), 'left' => array($id => $reason), 'done' => array()), $profiles, (array) ($report['stats'] ?? array())), function ($line) {
             return trim($line) !== '';
         }));
@@ -672,6 +697,77 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet
     return $open('success', 'bi-diagram-3')
         . '<strong>' . h($title) . '</strong>'
         . '<details class="mt-2"><summary>' . h($counts) . '</summary>' . $details . '</details></div></div>';
+}
+
+/**
+ * What a person may see of the conversion's report, as the screens it
+ * names would show it to them. Roles 0-2 read every profile; a user role
+ * (3) reads only the profiles they made (created_user_id), as My Campaign
+ * Profiles lists them and its edit screen opens them. The report keeps no
+ * owner, so the profiles are read again here; one deleted since then is
+ * not shown to a user role. A flow made is opened only for somebody the
+ * Flows screen admits (pg_flows_user_may()) who reaches that flow there
+ * (ws_flow_for() at view): a converted flow belongs to its owner, not to
+ * the profile's creator.
+ *
+ * @param array|null $state pg_profile_flow_switch_state()
+ * @param array|null $user  validate_user(); null for the person signed in
+ * @return array profiles: the ids they may see, null for every one;
+ *               flows: the ids of the flows made they may open
+ */
+function pg_profile_flow_report_reader($state, $user = null)
+{
+    static $signed_in = null;
+
+    $reader = array('profiles' => null, 'flows' => array());
+
+    if (!is_array($state)) {
+        return $reader;
+    }
+
+    if ($user === null) {
+        if ($signed_in === null) {
+            $signed_in = validate_user();
+        }
+
+        $user = $signed_in;
+    }
+
+    $report = is_array($state['report'] ?? null) ? $state['report'] : array();
+    $plan = (array) ($report['plan'] ?? array()) + array('left' => array(), 'done' => array());
+
+    if ((int) ($user['role'] ?? 3) >= 3) {
+        $ids = array_values(array_unique(array_map('intval', array_merge(array_keys((array) ($state['switched'] ?? array())), array_keys((array) $plan['done']), array_keys((array) $plan['left'])))));
+        $reader['profiles'] = array();
+
+        if (!empty($ids)) {
+            foreach ((array) db_items("SELECT id FROM email_campaign_profiles WHERE created_user_id = '" . (int) ($user['id'] ?? 0) . "' AND id IN ('" . implode("', '", $ids) . "')") as $row) {
+                $reader['profiles'][] = (int) $row['id'];
+            }
+        }
+    }
+
+    $done = (array) $plan['done'];
+
+    if (is_array($reader['profiles'])) {
+        $done = array_intersect_key($done, array_flip($reader['profiles']));
+    }
+
+    if (empty($done) || !function_exists('pg_flows_user_may') || !pg_flows_user_may($user)) {
+        return $reader;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    $viewer = ws_viewer($user);
+
+    foreach ($done as $flow_id) {
+        if (ws_flow_for($viewer, (int) $flow_id, 'view') !== null) {
+            $reader['flows'][] = (int) $flow_id;
+        }
+    }
+
+    return $reader;
 }
 
 /**
