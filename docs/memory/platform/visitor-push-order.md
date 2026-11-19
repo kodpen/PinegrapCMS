@@ -1,6 +1,6 @@
 ---
 name: visitor-push-order
-description: Visitor notifications for an order (kind 3, VP6): the door's order action, who may follow an order, shipped and delivered sent once per address beside the SMS, the text, language and link
+description: Visitor notifications for an order (kind 3, VP6, VP6b): the button "Notify me on this device", the door's order action, who may follow, shipped and delivered sent once, text and link
 module: site_push_order
 ---
 
@@ -16,5 +16,10 @@ module: site_push_order
 - Pure `pg_site_push_order_text($moment, $order_number, $language)`: "Your order has shipped" / "Order {var:1} is on its way.", "Your order has been delivered" / "Order {var:1} has been delivered.", in the subscription's own `language` (`lang()` with `language`), cut to 60 and 200.
 - The link (`pg_site_push_order_url()`): the "view order" page type with `?id=`, as a path; the home page when the site has none.
 
-## What is not built yet?
-- The button "Notify me on this device" on the receipt page and the order view (VP6b): it takes the subscribed browser's secret from `window.pgSitePush.secret()` (VP3, `visitor-push-block.md`) and posts the door's `order` action.
+## Where is the button "Notify me on this device"?
+- Under the receipt page (`order receipt`, the session's `completed_order_id`) and the order view (`view order`, `?id=`), added in `get_page_content.php` after the screen, never in an e-mail. `pg_site_push_order_button()` draws it only while the switch is on, the 11.0.229 table exists and the order is placed with at least one address (pure `pg_site_push_order_button_shown()`); who may follow is still the door's check.
+- Markup (pure `pg_site_push_order_button_html()`, Bootstrap 5.3.8, in `bs6_site_functions()`): `data-pg-push-order="<id>"` and `hidden`, the button `data-pg-push-order-on` (`btn btn-outline-primary btn-sm`), the status lines `data-pg-push-order-done` (focused after the yes), `-blocked`, `-failed`.
+- The mark brings `pg_site_push.js` like the block (`pg_site_push_order_on_page()` in `pg_site_push_block_inject()`). Shown where the block would show. The press subscribes the browser first when it has no subscription (the browser's question), then posts `order`; a secret the door no longer knows is replaced once. A "Notify me" block on the same page follows.
+- Not kept across a reload: the button shows again; a second press writes nothing new (INSERT IGNORE).
+- Not on designer order widgets: only the two page types' system regions.
+- Tests: `tests/site_push_order_test.php` (markup, when shown, wiring), `tests/site_push_block_test.php` (the press under Node).

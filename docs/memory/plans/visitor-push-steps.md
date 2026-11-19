@@ -40,6 +40,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - Done: #9976, the server's side and the shared table `site_push_watch` (owner poll 94, architect 6785): `platform/visitor-push-watch.md`, `visitor-push-order.md`.
 
 - VP6b (S) after VP3: the button "Notify me on this device" on the order pages (`action=order`). Features: N16.
+  - Done: #10480.
 
 - VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
 

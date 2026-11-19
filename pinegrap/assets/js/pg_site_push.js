@@ -24,6 +24,13 @@
  * window.pgSitePush.secret() answers the stored secret ('' without one), for
  * the forms that name this device (back in stock, an order).
  *
+ * An order's page (the receipt and the order view) carries the button
+ * "Notify me on this device" (data-pg-push-order with the order's id, hidden,
+ * pg_site_push_order_button_html()). It shows where the block would; the
+ * press subscribes this browser first when it has no subscription yet, then
+ * posts the door's order action, so the order's shipped and delivered
+ * notices reach this device. Its lines: done, blocked and failed.
+ *
  * Plain ES5 and no jQuery: it has to work whatever the design loads. The
  * pure parts are exported for the tests under Node
  * (tests/site_push_block_test.php).
@@ -115,6 +122,25 @@
         };
     }
 
+    // Which parts of an order's button show: 'none' (nothing), 'ready' (the
+    // button), 'blocked' (the hint instead of the button) or 'done' (the
+    // line saying the device will be told).
+    function orderPartsFor(state, failed) {
+        return {
+            root: state !== 'none',
+            on: state === 'ready',
+            done: state === 'done',
+            blocked: state === 'blocked',
+            failed: state === 'ready' && !!failed
+        };
+    }
+
+    // An order's button state when the page opens.
+    function orderStateOf(f) {
+        if (!f || !f.supported) return 'none';
+        return (f.permission === 'denied') ? 'blocked' : 'ready';
+    }
+
     // ── The secret ──────────────────────────────────────────────────────
 
     function store(idb, mode, work) {
@@ -161,7 +187,8 @@
         win.pgSitePush = { secret: function () { return secretGet(idb); } };
 
         var roots = Array.prototype.slice.call(doc.querySelectorAll('[data-pg-push]'));
-        if (!roots.length || !canSubscribe(win, conf)) return;
+        var orders = Array.prototype.slice.call(doc.querySelectorAll('[data-pg-push-order]'));
+        if ((!roots.length && !orders.length) || !canSubscribe(win, conf)) return;
 
         var sw = win.navigator.serviceWorker;
         var busy = false, failed = false;
@@ -260,10 +287,11 @@
             if (el && typeof el.focus === 'function') el.focus();
         };
 
-        var turnOn = function (root) {
-            failed = false;
+        // Asks the browser's question and subscribes this device: the secret
+        // the door gave, kept where the worker reads it, or '' after a no.
+        var device = function () {
             return ask().then(function (answer) {
-                if (answer !== 'granted') return refresh(root);
+                if (answer !== 'granted') return '';
                 return sw.register(conf.worker, { scope: conf.scope }).then(active).then(subscription).then(function (sub) {
                     return post({
                         action: 'subscribe',
@@ -272,14 +300,75 @@
                         auth: b64url(sub.getKey('auth')),
                         language: langOf(doc.documentElement.getAttribute('lang'))
                     }).then(function (j) {
-                        if (j && typeof j.secret === 'string' && j.secret !== '') return secretSet(idb, j.secret);
+                        if (j && typeof j.secret === 'string' && j.secret !== '') {
+                            return secretSet(idb, j.secret).then(function () { return j.secret; });
+                        }
                         // Refused by the site: the browser keeps no subscription
                         // nobody will send to.
                         return sub.unsubscribe().then(function () { throw new Error('door'); });
                     });
-                }).then(function () { return refresh(root); }).then(function (state) {
-                    if (state === 'on') focus(root, 'stop');
                 });
+            });
+        };
+
+        var turnOn = function (root) {
+            failed = false;
+            return device().then(function () { return refresh(root); }).then(function (state) {
+                if (state === 'on') focus(root, 'stop');
+            });
+        };
+
+        // The secret of this subscribed device: the kept one while the
+        // browser still has the permission and its subscription, else a new
+        // subscription ('' after a no).
+        var current = function () {
+            return Promise.all([secretGet(idb), registration().then(function (reg) {
+                return reg ? reg.pushManager.getSubscription() : null;
+            }).catch(function () { return null; })]).then(function (got) {
+                if (win.Notification.permission === 'granted' && got[0] && got[1]) return got[0];
+                return device();
+            });
+        };
+
+        // Draws an order's button; a line that newly shows is spoken.
+        var orderPart = function (root, name) { return root.querySelector('[data-pg-push-order-' + name + ']'); };
+        var orderRender = function (root, state, failedTry, used) {
+            var show = orderPartsFor(state, failedTry);
+            root.hidden = !show.root;
+            root.setAttribute('data-pg-push-state', state);
+            ['on', 'done', 'blocked', 'failed'].forEach(function (name) {
+                var el = orderPart(root, name);
+                if (!el) return;
+                var was = el.hidden;
+                el.hidden = !show[name];
+                if (used && was && show[name] && name !== 'on') speak(el);
+            });
+        };
+
+        // The press on an order's button: this device waits for the order's
+        // shipped and delivered notices. A secret the site no longer knows
+        // (its subscription was removed) is replaced once.
+        var watch = function (root) {
+            var send = function (secret) {
+                if (!secret) return null;
+                return post({ action: 'order', secret: secret, order_id: root.getAttribute('data-pg-push-order') });
+            };
+            return current().then(send).then(function (j) {
+                if (j && j.error === 'subscription') return secretDrop(idb).then(device).then(send);
+                return j;
+            }).then(function (j) {
+                if (j === null) {
+                    // A no: the hint where the browser blocks them now.
+                    orderRender(root, win.Notification.permission === 'denied' ? 'blocked' : 'ready', false, true);
+                } else if (j && j.watching) {
+                    orderRender(root, 'done', false, true);
+                    var done = orderPart(root, 'done');
+                    if (done && typeof done.focus === 'function') done.focus();
+                } else {
+                    throw new Error('order');
+                }
+                // A "Notify me" block on the same page shows the new state.
+                return roots.length ? refresh() : null;
             });
         };
 
@@ -315,6 +404,26 @@
             });
         };
 
+        orders.forEach(function (root) {
+            var btn = orderPart(root, 'on');
+            orderRender(root, orderStateOf({ supported: true, permission: win.Notification.permission }), false, false);
+            if (!btn) return;
+            btn.addEventListener('click', function (e) {
+                if (e && e.preventDefault) e.preventDefault();
+                if (busy) return;
+                busy = true;
+                var old = orderPart(root, 'failed');
+                if (old) old.hidden = true;
+                root.setAttribute('aria-busy', 'true');
+                watch(root).catch(function () {
+                    orderRender(root, win.Notification.permission === 'denied' ? 'blocked' : 'ready', true, true);
+                }).then(function () {
+                    busy = false;
+                    root.removeAttribute('aria-busy');
+                });
+            });
+        });
+
         roots.forEach(function (root) {
             [['on', turnOn], ['stop', turnOff]].forEach(function (pair) {
                 var btn = part(root, pair[0]);
@@ -337,6 +446,8 @@
         b64url: b64url,
         sameKey: sameKey,
         partsFor: partsFor,
+        orderPartsFor: orderPartsFor,
+        orderStateOf: orderStateOf,
         start: start
     };
 });

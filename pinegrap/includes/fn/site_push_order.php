@@ -213,3 +213,66 @@ function pg_site_push_order_drop($order_id)
         pg_site_push_watch_drop(PG_SITE_PUSH_KIND_ORDER, db_values("SELECT id FROM ship_tos WHERE order_id = '" . (int) $order_id . "'"));
     }
 }
+
+/**
+ * The button "Notify me on this device" under an order (the receipt page and
+ * the order view), as Bootstrap markup that stays hidden: the page script
+ * (assets/js/pg_site_push.js) shows it only where the browser can subscribe,
+ * subscribes on the press when it has not yet, and posts the door's order
+ * action. The lines below the button say the answer. Pure.
+ *
+ * @param int $order_id
+ * @return string
+ */
+function pg_site_push_order_button_html($order_id)
+{
+    return '<div class="pg-push-order mt-3" data-pg-push-order="' . (int) $order_id . '" hidden>'
+        . '<button type="button" class="btn btn-outline-primary btn-sm" data-pg-push-order-on>'
+        . h(lang('Notify me on this device')) . '</button>'
+        . '<p class="small text-body-secondary mt-2 mb-0" data-pg-push-order-done role="status" tabindex="-1" hidden>'
+        . h(lang('This device will be told when the order is shipped and when it is delivered.')) . '</p>'
+        . '<p class="small text-body-secondary mt-2 mb-0" data-pg-push-order-blocked role="status" hidden>'
+        . h(lang('Notifications are blocked for this site in your browser. Allow them in the settings of the browser, then reload the page.')) . '</p>'
+        . '<p class="small text-danger-emphasis mt-2 mb-0" data-pg-push-order-failed role="status" hidden>'
+        . h(lang('Notifications could not be turned on. Please try again.')) . '</p>'
+        . '</div>';
+}
+
+/**
+ * Whether an order's page offers the button: a placed order (not
+ * incomplete) with at least one address, as the door's order action asks.
+ * Pure.
+ *
+ * @param array|null $order       id, status
+ * @param int        $addresses   the order's ship_tos rows
+ * @return bool
+ */
+function pg_site_push_order_button_shown($order, $addresses)
+{
+    return is_array($order) && ((int) ($order['id'] ?? 0) > 0)
+        && ((string) ($order['status'] ?? '') !== 'incomplete')
+        && ((int) $addresses > 0);
+}
+
+/**
+ * The button under an order's page, or '' while visitor notifications are
+ * off, the 11.0.229 table is missing, or the order has nothing to ship. Who
+ * may follow the order is the door's check (pg_site_push_order_may_watch()).
+ * The page brings the script for the mark (pg_site_push_block_inject()).
+ *
+ * @param int $order_id
+ * @return string
+ */
+function pg_site_push_order_button($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id < 1) || !pg_site_push_enabled() || !pg_site_push_watch_ready()) {
+        return '';
+    }
+
+    $order = db_item("SELECT id, status FROM orders WHERE id = '" . $order_id . "'");
+    $addresses = $order ? (int) db_value("SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . $order_id . "'") : 0;
+
+    return pg_site_push_order_button_shown($order, $addresses) ? pg_site_push_order_button_html($order_id) : '';
+}

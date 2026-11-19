@@ -182,3 +182,22 @@ function fakeWorkerScope(secret, reply) {
     };
     return sw;
 }
+
+// The button "Notify me on this device" under an order, as
+// pg_site_push_order_button_html() draws it.
+function orderButton(id) {
+    return __movable(el('div', { 'data-pg-push-order': String(id), hidden: '' }, [
+        el('button', { type: 'button', 'data-pg-push-order-on': '' }, ['Notify me on this device']),
+        el('p', { 'data-pg-push-order-done': '', role: 'status', tabindex: '-1', hidden: '' }, ['Told']),
+        el('p', { 'data-pg-push-order-blocked': '', role: 'status', hidden: '' }, ['Blocked']),
+        el('p', { 'data-pg-push-order-failed': '', role: 'status', hidden: '' }, ['Failed'])
+    ]));
+}
+
+// The parts of an order's button that show.
+function orderShown(root) {
+    var out = { root: !root.hidden };
+    ['on', 'done', 'blocked', 'failed'].forEach(function (n) { out[n] = !root.querySelector('[data-pg-push-order-' + n + ']').hidden; });
+    out.state = root.getAttribute('data-pg-push-state');
+    return out;
+}

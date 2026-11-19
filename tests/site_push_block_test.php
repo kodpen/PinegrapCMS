@@ -113,6 +113,19 @@ function test_site_push_block_inject_leaves_pages_alone()
 	pg_assert_same($block, pg_site_push_block_inject($block, pg_site_push_block_settings('/', 'pinegrap', ''), $src), 'no key: the block stays hidden');
 }
 
+function test_site_push_block_inject_for_an_order_button()
+{
+	$src = '/pinegrap/assets/js/pg_site_push.js?v=1';
+	$html = '<html><body><div class="pg-push-order mt-3" data-pg-push-order="7" hidden></div></body></html>';
+	$out = pg_site_push_block_inject($html, _site_push_block_settings(), $src);
+	pg_assert_same(1, substr_count($out, 'pg_site_push.js'), 'an order page gets the script');
+
+	pg_assert_true(pg_site_push_order_on_page('<div data-pg-push-order="12" hidden>'));
+	foreach (array('<p>data-pg-push-order="1"</p>', '<button data-pg-push-order-on>', '<div xdata-pg-push-order="1">') as $html) {
+		pg_assert_false(pg_site_push_order_on_page($html), $html);
+	}
+}
+
 function test_site_push_block_worker_prelude()
 {
 	$line = pg_site_push_worker_prelude('/pinegrap/site_push.php', 'Kafe </script> & Co', 'Open the site.', '');
@@ -287,6 +300,104 @@ console.log(JSON.stringify({ refused: refused, unsubscribed: unsubscribed, secre
 	pg_assert_same(array('failed' => 'Failed'), $r['refusedSaid'], 'a failed try is spoken');
 	pg_assert_same(array('blocked' => 'Blocked'), $r['noSaid'], 'a no is spoken');
 	pg_assert_same(array(), $r['loadSaid'], 'nothing is spoken when the page opens');
+}
+
+// The order's button: shown where the block would be, the press subscribes
+// this device first, then posts the order action; the block on the same
+// page follows.
+function test_site_push_block_order_button_subscribes_and_watches()
+{
+	$r = _site_push_block_node('
+var order = orderButton(42), block = pushBlock(), doc = fakeDoc(el("html", { lang: "en" }, [el("body", {}, [block, order])]));
+var win = fakeBrowser("default", "granted", function (f) { return f.action === "subscribe" ? { secret: "s3cret" } : { watching: 1 }; });
+P.start(win, doc);
+await settle();
+var before = orderShown(order);
+order.querySelector("[data-pg-push-order-on]").click();
+await settle();
+var after = orderShown(order), focused = doc.activeElement === order.querySelector("[data-pg-push-order-done]");
+await heard();
+var said = order.querySelector("[data-pg-push-order-done]").taken;
+console.log(JSON.stringify({ before: before, after: after, focused: focused, said: said, posts: win.rec.posts.map(function (p) { return p.fields; }),
+  block: shown(block).state, stored: win.indexedDB.data.secret }));');
+	if (!_site_push_block_ran($r)) {
+		return;
+	}
+	pg_assert_same(array('root' => true, 'on' => true, 'done' => false, 'blocked' => false, 'failed' => false, 'state' => 'ready'), $r['before']);
+	pg_assert_same(array('root' => true, 'on' => false, 'done' => true, 'blocked' => false, 'failed' => false, 'state' => 'done'), $r['after']);
+	pg_assert_true($r['focused'], 'the focus moves to the line that says it');
+	pg_assert_same(1, $r['said'], 'the line is spoken');
+	pg_assert_same(2, count($r['posts']));
+	pg_assert_same('subscribe', $r['posts'][0]['action'], 'a device without a subscription subscribes first');
+	pg_assert_same(array('action' => 'order', 'secret' => 's3cret', 'order_id' => '42'), $r['posts'][1]);
+	pg_assert_same('on', $r['block'], 'the block on the page shows notifications on');
+	pg_assert_same('s3cret', $r['stored']);
+}
+
+function test_site_push_block_order_button_subscribed_device_and_failures()
+{
+	$r = _site_push_block_node('
+// A device already subscribed posts the order alone.
+var order = orderButton(5), win = fakeBrowser("granted", "granted", function () { return { watching: 1 }; });
+win.indexedDB.data.secret = "kept";
+await win.navigator.serviceWorker.register("/pg/site_push_sw.php", { scope: "/" });
+await (await win.navigator.serviceWorker.getRegistration("/")).pushManager.subscribe({});
+P.start(win, fakeDoc(el("html", {}, [order])));
+await settle();
+order.querySelector("[data-pg-push-order-on]").click();
+await settle();
+var kept = win.rec.posts.map(function (p) { return p.fields; });
+
+// A secret the site no longer knows is replaced once.
+var order2 = orderButton(6), n = 0, win2 = fakeBrowser("granted", "granted", function (f) {
+  if (f.action === "subscribe") return { secret: "fresh" };
+  return (n++ === 0) ? { error: "subscription" } : { watching: 1 };
+});
+win2.indexedDB.data.secret = "old";
+await win2.navigator.serviceWorker.register("/pg/site_push_sw.php", { scope: "/" });
+await (await win2.navigator.serviceWorker.getRegistration("/")).pushManager.subscribe({});
+P.start(win2, fakeDoc(el("html", {}, [order2])));
+await settle();
+order2.querySelector("[data-pg-push-order-on]").click();
+await settle();
+var replaced = win2.rec.posts.map(function (p) { return p.fields.action + ":" + (p.fields.secret || ""); });
+
+// The door refuses the order: the failed line beside the button.
+var order3 = orderButton(7), win3 = fakeBrowser("granted", "granted", function (f) { return f.action === "subscribe" ? { secret: "s" } : { error: "order" }; });
+P.start(win3, fakeDoc(el("html", {}, [order3])));
+await settle();
+order3.querySelector("[data-pg-push-order-on]").click();
+await settle();
+
+// A no: the hint, no order posted.
+var order4 = orderButton(8), win4 = fakeBrowser("default", "denied", function () { return {}; });
+P.start(win4, fakeDoc(el("html", {}, [order4])));
+await settle();
+order4.querySelector("[data-pg-push-order-on]").click();
+await settle();
+
+// Blocked already, and a browser that cannot subscribe.
+var order5 = orderButton(9), win5 = fakeBrowser("denied", "denied", function () { return {}; });
+P.start(win5, fakeDoc(el("html", {}, [order5])));
+await settle();
+var order6 = orderButton(10), win6 = fakeBrowser("default", "granted", function () { return {}; });
+delete win6.PushManager;
+P.start(win6, fakeDoc(el("html", {}, [order6])));
+await settle();
+console.log(JSON.stringify({ kept: kept, done: orderShown(order).state, replaced: replaced, done2: orderShown(order2).state,
+  failed: orderShown(order3), no: orderShown(order4), noPosts: win4.rec.posts.length, blocked: orderShown(order5), none: orderShown(order6) }));');
+	if (!_site_push_block_ran($r)) {
+		return;
+	}
+	pg_assert_same(array(array('action' => 'order', 'secret' => 'kept', 'order_id' => '5')), $r['kept'], 'no new subscription for a subscribed device');
+	pg_assert_same('done', $r['done']);
+	pg_assert_same(array('order:old', 'subscribe:', 'order:fresh'), $r['replaced'], 'an unknown secret is replaced once');
+	pg_assert_same('done', $r['done2']);
+	pg_assert_same(array('root' => true, 'on' => true, 'done' => false, 'blocked' => false, 'failed' => true, 'state' => 'ready'), $r['failed']);
+	pg_assert_same('blocked', $r['no']['state'], 'a no shows the hint');
+	pg_assert_same(0, $r['noPosts'], 'nothing posted after a no');
+	pg_assert_same(array('root' => true, 'on' => false, 'done' => false, 'blocked' => true, 'failed' => false, 'state' => 'blocked'), $r['blocked']);
+	pg_assert_false($r['none']['root'], 'hidden where the browser cannot subscribe');
 }
 
 function test_site_push_block_two_blocks_answer_where_pressed()
