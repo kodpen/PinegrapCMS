@@ -691,6 +691,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-4.md: How many inbox lines do flow runs write? (#3526)
 - decisions-made-workspace-40.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-40.md: Does the Workspace get voice and video calls? (owner, 2026-11-20, in the architect's window, channel message 9832; poll 157, message 9833)
+- decisions-made-workspace-41.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-41.md: Is a table shown on a canvas as a chart or a table that follows its data? (owner, 2026-11-20, in the architect's window, channel message 9848)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?

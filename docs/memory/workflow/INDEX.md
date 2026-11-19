@@ -194,6 +194,7 @@
 - decisions-made-workspace-39.md: Decisions made, workspace part 39 (2026-11-19): a general memory for the agent channels by project; a new agent channel reads the others' decisions; the Decisions and Files tabs' new look
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-40.md: Decisions list, workspace part 40 (2026-11-20 on): voice and video calls in the Workspace, staged: two people and small groups browser to browser first, large meetings later
+- decisions-made-workspace-41.md: Decisions list, workspace part 41 (2026-11-20 on): a Data table shown on a canvas as a chart or a table that follows the data
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel
