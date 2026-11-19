@@ -6497,6 +6497,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // If this page is not being prepared for an email, then add JS to bottom of page.
     if (!$email) {
         $output_js = '';
+        $auto_dialog_templates = '';
 
         // If visitor is logged in and is a designer or admin,
         // then output js variables for the page, style, and theme,
@@ -6531,19 +6532,26 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     FROM auto_dialogs
                     WHERE id = '" . e($_GET['preview_auto_dialog']) . "'");
 
-                // An address that would run as script is never opened.
-                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
+                // An address that would run as script is never opened, nor
+                // a designed pop-up whose component is gone.
+                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs, pg_auto_dialog_components_found($auto_dialogs));
 
                 // A preview opens at once, in its place, whoever its audience.
                 $auto_dialogs = array_map(function ($row) {
+                    $content = pg_auto_dialog_content($row);
+
                     return array(
                         'id' => (int) $row['id'],
-                        'url' => (string) $row['url'],
+                        'url' => ($content['content'] === 'url') ? (string) $row['url'] : '',
                         'width' => (int) $row['width'],
                         'height' => (int) $row['height'],
                         'place' => pg_auto_dialog_open_settings($row)['place'],
-                    );
+                    ) + $content;
                 }, $auto_dialogs);
+
+                $auto_dialog_templates = pg_auto_dialog_templates($auto_dialogs, function ($component_id) use ($mode, $email) {
+                    return pg_common_region_component_html($component_id, $mode, $email);
+                });
 
                 // If an auto dialog was found for that id,
                 // then continue to init auto dialogs.
@@ -6565,8 +6573,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     WHERE enabled = '1'
                     ORDER BY id");
 
-                // An address that would run as script is never opened.
-                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
+                // An address that would run as script is never opened, nor
+                // a designed pop-up whose component is gone.
+                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs, pg_auto_dialog_components_found($auto_dialogs));
 
                 // The rows for this page, the same for every visitor: the
                 // script skips a dialog its cookie says was shown and counts
@@ -6589,6 +6598,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     // beacon (page_view.php); none without the table or a key.
                     $auto_dialogs_page = pg_auto_dialog_count_signed($auto_dialogs_page, pg_auto_dialog_counts_ready() && defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', date('Y-m-d'));
 
+                    // A designed pop-up's content, drawn once for the script
+                    // to copy into its dialog.
+                    $auto_dialog_templates = pg_auto_dialog_templates($auto_dialogs_page, function ($component_id) use ($mode, $email) {
+                        return pg_common_region_component_html($component_id, $mode, $email);
+                    });
+
                     $output_js .= 'software.init_auto_dialogs({
                         auto_dialogs: ' . encode_json($auto_dialogs_page) . ',
                         count_url: ' . encode_json(PATH . SOFTWARE_DIRECTORY . '/page_view.php') . '});';
@@ -6598,8 +6613,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If there is JS to output, then output it.
         if ($output_js != '') {
-            // Wrap JS in script tags.
-            $output_js = '<script>' . $output_js . '</script>';
+            // Wrap JS in script tags; a designed pop-up's <template> goes
+            // before them, so it is there when the script looks for it.
+            $output_js = $auto_dialog_templates . '<script>' . $output_js . '</script>';
 
             // If </body> is in the HTML, place js before </body>.
             if (stripos($content, '</body>') !== false) {

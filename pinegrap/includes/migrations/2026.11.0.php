@@ -230,6 +230,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 	upgrade_2026_11_0_ai_connections();          // 11.0.240
+	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 
 }
 
@@ -7211,6 +7212,29 @@ function upgrade_2026_11_0_auto_dialog_open() {
 	install_add_column('auto_dialogs', 'place', "VARCHAR(10) NOT NULL DEFAULT 'centre' AFTER audience");
 
 	install_note('Auto dialogs: a dialog can open on scroll or when the visitor is leaving, only for visitors with a cart, and as a bar or a corner card.');
+
+}
+
+// What an auto dialog shows (11.0.242, includes/fn/auto_dialogs.php):
+// content url (its address in an iframe) or component (a shared component
+// designed in the visual designer), and component_id, that component's id
+// (0 none). The default reads as an auto dialog always was: an address. A
+// row keeps its address while it shows a component, so it can switch back.
+// No index (a handful of rows), no foreign key, no backfill.
+function upgrade_2026_11_0_auto_dialog_content() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'content', "VARCHAR(10) NOT NULL DEFAULT 'url' AFTER place");
+	install_add_column('auto_dialogs', 'component_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER content");
+
+	install_note('Auto dialogs: a dialog can show a pop-up designed in the visual designer instead of a web address.');
 
 }
 

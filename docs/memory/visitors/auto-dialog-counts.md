@@ -12,7 +12,7 @@ module: auto_dialog_counts
 ## How is an event sent?
 - `get_page_content.php` gives each printed row `sign` = `pg_auto_dialog_count_sign()`: HMAC-SHA256 of `'auto-dialog:' . id . '|' . day` over `ENCRYPTION_KEY`, as the page speed beacon. No table or no key: no signature, no beacon. A preview prints none. It passes `count_url` (page_view.php).
 - `frontend.src.js` (and the hand-patched `frontend.min.js`): `show_auto_dialog()` calls `software.count_auto_dialog(row, 'shown')` when the dialog opens and `'closed'` when it closes; once per pop-up, event and page load (`software.auto_dialog_counted`); `sendBeacon`, else fetch keepalive; posts `ad`, `ae`, `as`.
-- `taken` (a press on the marked action or a form sent inside) has no sender yet: an address pop-up knows shown and closed only; designed content (PU6) calls `software.count_auto_dialog(row, 'taken')`.
+- `taken`: a designed pop-up (#10450, `platform/auto-dialog-content.md`) sends it on a press on an element marked `data-pg-popup-take` or a form sent inside; an address pop-up knows shown and closed only.
 
 ## Who is not counted?
 - The rule is the one check of the anonymous counts: sent unless the visitor refused statistics (`platform/consent-anonymous-counts.md`): the server asks `pg_consent_statistics_not_refused()` (#9902), the browser `software.statistics_not_refused()` (#9946).
