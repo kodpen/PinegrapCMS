@@ -994,10 +994,6 @@
         "button": 6,
         "tabs": 0
     },
-    "includes/workspace/mail_settings.php": {
-        "button": 11,
-        "tabs": 0
-    },
     "includes/workspace/mcp.php": {
         "button": 16,
         "tabs": 0

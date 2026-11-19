@@ -19,4 +19,4 @@ description: Census LM1b against look A (S5): the Site Settings categories in in
 - Shared code: `screen.php` (the page) → 7, `prep.php` 2,496 / 20 / 8 → 20; `modal.php`, `fragment.php`, `registry.php`, `search.php`, the `*.save.php` files and the Workspace assistant and channel cards draw nothing old.
 
 ## Which categories have moved, and where?
-- Mailboxes (`mailboxes.php`, the card and drawers of `includes/workspace/mail_settings.php`): S5d, in progress.
+- Mailboxes (`mailboxes.php`, the card and drawers of `includes/workspace/mail_settings.php`): done in S5d (#10431), `ui/look-settings-mailboxes.md`.

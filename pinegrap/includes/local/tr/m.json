@@ -86,6 +86,7 @@
     "MailChimp Sync": "MailChimp Senkronizasyonu",
     "Mailbox": "Posta kutusu",
     "Mailboxes": "E-posta kutuları",
+    "Mailboxes read incoming e-mail: the mail sent to a mailbox's address is brought in here, read and answered.": "Posta kutuları gelen e-postayı okur: bir posta kutusunun adresine gelen e-posta buraya getirilir, okunur ve yanıtlanır.",
     "Mailing List": "E-posta Listesi",
     "Mailing List (loop_area)": "E-posta Listesi (loop_area)",
     "Mailing List Welcome E-mail": "E-posta Listesi Hoş Geldiniz E-postası",

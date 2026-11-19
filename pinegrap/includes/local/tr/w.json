@@ -1897,6 +1897,7 @@
     "When store credit expires with money left": "Mağaza kredisinin süresi içinde bakiye varken dolduğunda",
     "When store credit is issued": "Mağaza kredisi verildiğinde",
     "When suits you?": "Size hangi zaman uyar?",
+    "When the account's Google password changes, Google revokes its app passwords: create a new one and type it here.": "Hesabın Google parolası değişince Google uygulama şifrelerini iptal eder: yenisini oluşturup buraya yazın.",
     "When the cart holds at least one shippable product, the Checkout button goes to this page (usually the shipping address page).": "Sepet en az 1 kargolanabilir ürün içeriyorsa Ödeme butonu bu sayfaya gider (genelde teslimat adresi sayfası).",
     "When the cart holds only digital products, the Checkout button goes to this page (usually the billing/payment page).": "Sepet sadece dijital/kargolanmaz ürün içeriyorsa Ödeme butonu bu sayfaya gider (genelde fatura/ödeme sayfası).",
     "When the customer enters {var:1}": "Müşteri {var:1} kodunu girince",

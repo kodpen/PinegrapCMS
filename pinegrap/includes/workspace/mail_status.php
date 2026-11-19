@@ -95,12 +95,12 @@ function ws_mail_support_field($prefix, $box)
 {
     return '
                 <div class="md:col-12">
-                    <div class="form-field">
-                        <div class="switch"><input type="checkbox" name="support" value="1" id="' . $prefix . 'support"' . (ws_mail_box_is_support($box) ? ' checked' : '')
-                            . ($box ? '' : ' data-ws-mail-new') . '></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-switch" type="checkbox" name="support" value="1" id="' . $prefix . 'support"' . (ws_mail_box_is_support($box) ? ' checked' : '')
+                            . ($box ? '' : ' data-ws-mail-new') . '>
                         <label for="' . $prefix . 'support">' . h(lang('Support box')) . '</label>
                     </div>
-                    <div class="form-text">' . h(lang('Each conversation gets a status and a holder, the first-answer time and the automatic answer. Off, its e-mails are only read and answered.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Each conversation gets a status and a holder, the first-answer time and the automatic answer. Off, its e-mails are only read and answered.')) . '</div>
                 </div>';
 }
 
@@ -472,9 +472,9 @@ function ws_mail_first_reply_field($prefix, $box)
 
     return '
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'first_reply_hours">' . h(lang('First answer within (hours)')) . '</label>
-                    <input class="form-control form-control-sm" type="number" name="first_reply_hours" id="' . $prefix . 'first_reply_hours" min="0" max="' . WS_MAIL_FIRST_REPLY_MAX . '" value="' . (($hours > 0) ? $hours : '') . '" placeholder="' . h(lang('No target')) . '">
-                    <div class="form-text">' . h(lang('A conversation nobody answered in this time is marked overdue on its card. Empty: no target.')) . '</div>
+                    <label class="pg-field-label" for="' . $prefix . 'first_reply_hours">' . h(lang('First answer within (hours)')) . '</label>
+                    <input class="pg-input" type="number" name="first_reply_hours" id="' . $prefix . 'first_reply_hours" min="0" max="' . WS_MAIL_FIRST_REPLY_MAX . '" value="' . (($hours > 0) ? $hours : '') . '" placeholder="' . h(lang('No target')) . '">
+                    <div class="pg-field-help">' . h(lang('A conversation nobody answered in this time is marked overdue on its card. Empty: no target.')) . '</div>
                 </div>';
 }
 
@@ -663,18 +663,18 @@ function ws_mail_auto_reply_fields($prefix, $box)
     $text = $box ? (string) ($box['auto_reply_text'] ?? '') : '';
 
     return '
-                <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Automatic answer')) . '</h3>
-                    <div class="form-text">' . h(lang('Sent once to the customer of a new conversation, from the mailbox\'s address and the way answers are sent; not to a sender the checking server found forged, and at most once a day to the same address.')) . '</div>
+                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Automatic answer')) . '</h3>
+                    <div class="pg-field-help">' . h(lang('Sent once to the customer of a new conversation, from the mailbox\'s address and the way answers are sent; not to a sender the checking server found forged, and at most once a day to the same address.')) . '</div>
                 </div>
                 <div class="md:col-12">
-                    <div class="form-field">
-                        <div class="switch"><input type="checkbox" name="auto_reply" value="1" id="' . $prefix . 'auto_reply"' . ($on ? ' checked' : '') . '></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-switch" type="checkbox" name="auto_reply" value="1" id="' . $prefix . 'auto_reply"' . ($on ? ' checked' : '') . '>
                         <label for="' . $prefix . 'auto_reply">' . h(lang('Answer new conversations automatically')) . '</label>
                     </div>
                 </div>
                 <div class="md:col-12">
-                    <label class="form-label" for="' . $prefix . 'auto_reply_text">' . h(lang('Text of the automatic answer')) . '</label>
-                    <textarea class="form-control form-control-sm" name="auto_reply_text" id="' . $prefix . 'auto_reply_text" rows="4" maxlength="' . WS_MAIL_AUTO_REPLY_MAX . '" placeholder="' . h(lang('Thank you for your e-mail. We have received it and will answer as soon as we can.')) . '">' . h($text) . '</textarea>
+                    <label class="pg-field-label" for="' . $prefix . 'auto_reply_text">' . h(lang('Text of the automatic answer')) . '</label>
+                    <textarea class="pg-input" name="auto_reply_text" id="' . $prefix . 'auto_reply_text" rows="4" maxlength="' . WS_MAIL_AUTO_REPLY_MAX . '" placeholder="' . h(lang('Thank you for your e-mail. We have received it and will answer as soon as we can.')) . '">' . h($text) . '</textarea>
                 </div>';
 }
 
