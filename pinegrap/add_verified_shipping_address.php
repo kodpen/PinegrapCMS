@@ -20,6 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// Each field is one value: one sent as an array (?state_id[]=1) counts as not
+// given, instead of being drawn and stored as "Array".
+pg_request_single_values(array('company', 'address_1', 'address_2', 'city', 'state_id', 'zip_code'));
+
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/verified_shipping_address_form.php');
 $liveform = new liveform('add_verified_shipping_address');

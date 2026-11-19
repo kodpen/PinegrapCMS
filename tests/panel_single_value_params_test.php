@@ -4,7 +4,10 @@
  *
  * Tests for the single value parameters of the panel screens that ended in an
  * error page when one came as an array (?page_id[]=x): escape(), trim() and
- * urlencode() refuse an array. Each screen hands them to
+ * urlencode() refuse an array. A form field read through liveform and cast
+ * with (string) logged "Array to string conversion" and stored "Array"
+ * instead (?state_id[]=1 on Create Verified Shipping Address). Each screen
+ * hands them to
  * pg_request_single_values() at the top, so the request counts as one without
  * them. The call has to come before the screen first reads the parameter.
  *
@@ -28,11 +31,13 @@ function panel_single_value_params_screens()
 		'add_return'                 => array('order_id', 'order_number', 'ship_to_id', 'reason', 'note'),
 		'add_submitted_form'         => array('page_id'),
 		'add_user'                   => array('contact_id', 'username', 'email'),
+		'add_verified_shipping_address' => array('company', 'address_1', 'address_2', 'city', 'state_id', 'zip_code'),
 		'browse_catalog_menu'        => array('current_page_id', 'product_group_id', 'previous_url_id'),
 		'check_if_file_exists'       => array('file_name'),
 		'edit_form_item_view'        => array('page_id'),
 		'edit_form_list_view'        => array('page_id'),
 		'edit_user'                  => array('username', 'email'),
+		'edit_verified_shipping_address' => array('company', 'address_1', 'address_2', 'city', 'state_id', 'zip_code'),
 		'generate_layout'            => array('page_id'),
 		'get_theme_designer_module'  => array('file_id', 'module_id'),
 		'image_editor_edit'          => array('file_name'),
