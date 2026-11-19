@@ -217,6 +217,7 @@ description: Generated from the module field of the memory files: each includes/
 - `pdf_merge`: [[shipment-label-bulk]]
 - `picker`: [[picker-all-list-dialog]], [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-overview]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-site-lists]], [[picker-upload]]
 - `picker_all`: [[picker-all-list-server]]
+- `picture_server_draw`: [[picture-text-auto-server]]
 - `picture_translation`: [[picture-text-auto-panel]], [[picture-text-auto-rows]], [[picture-text-overview]], [[picture-text-translation-doors]], [[picture-text-translation-draw]], [[picture-text-translation-draw-photo]], [[picture-text-translation-draw-server]], [[picture-text-translation-fit-letters]], [[picture-text-translation-group]], [[picture-text-translation-page]], [[picture-text-translation-queue]], [[picture-text-translation-store]]
 - `place_list`: [[place-list]]
 - `place_map`: [[place-coordinates]]
