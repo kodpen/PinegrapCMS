@@ -14,7 +14,7 @@ description: Plan (owner 2026-11-19): a channel's Decisions tab as one list of w
 ## What is built?
 - TD1 (one PR, no schema). Decisions: one list down the pane, a card as wide as the pane up to about 72rem; a decision longer than about eight lines is folded behind Show more / Show less, its head line and Show in conversation always seen; one column on a phone as now. Files: the count beside the tab's name; the gallery drawn 60 tiles at a time with Show more, tiles of a set size so nothing jumps.
 - TD2 (one PR). Gallery tiles ask a small copy of the picture, not the original, and the server gives the files in pages, so the 300 limit goes. The worker first looks in `platform/` memory for the resize the site already has; a new route or a stored small copy is a question to the architect.
-- Each step: its unit tests (`tests/workspace_channel_look_test.php`, `tests/workspace_files_tab_test.php`) and one composed before and after picture to the architect; the owner looks on dev after it lands.
+- Each step: its unit tests (`tests/workspace_channel_look_test.php`, `tests/workspace_files_tab_test.php`); the owner looks on dev after it lands.
 
 ## What is decided?
 - Architect (2026-11-19): one column, the fold at about eight lines and 60 tiles a page are the reading of the owner's words, changed on his look if he wants. The two columns of CL4 (`workspace/workspace-channel-panes.md`) end with TD1; the Tasks tab keeps its columns.
