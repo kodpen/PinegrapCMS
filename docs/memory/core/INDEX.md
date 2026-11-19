@@ -55,7 +55,7 @@
 - contact-merge-columns.md: pg_contact_merge_select(), the one SELECT list of both merge screens (#5325); the blank-column fill and the group opt-in rule of both merge branches
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
-- content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
+- content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): no second translate-on-save job while one is open, texts translated meanwhile skipped, one run at a time per server job
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked [decision: decisions-made-product-38.md]
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious

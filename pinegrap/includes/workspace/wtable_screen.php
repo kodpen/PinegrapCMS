@@ -865,6 +865,24 @@ function ws_wtable_export_file_name($name, $table_id)
 }
 
 /**
+ * What a link to a page of rows in table order carries: the position the
+ * page starts after and the id of that row, since two rows may share a
+ * position (ws_wtable_rows_after_sql()); '' for the first page. Pure.
+ *
+ * @param int $after    the position of the last row of the page before
+ * @param int $after_id the id of that row, 0 when not known
+ * @return string
+ */
+function ws_wtable_screen_after_qs($after, $after_id)
+{
+    if ((int) $after <= 0) {
+        return '';
+    }
+
+    return '&after=' . (int) $after . (((int) $after_id > 0) ? '&after_id=' . (int) $after_id : '');
+}
+
+/**
  * A delete button of the tables screen: it posts through the form outside
  * the cards (a form may not sit inside a table row), asking first.
  *
@@ -974,8 +992,10 @@ function ws_wtable_screen_retype_choices($column)
         return $out;
     }
 
+    // Its own type is left out: a money column's decimals are changed in
+    // the column's form.
     foreach ($choices as $choice => $label) {
-        if (ws_wtable_retype_is_change($column, ws_wtable_screen_retype_input($choice, '', $column))) {
+        if (($choice !== (string) $column['type']) && ws_wtable_retype_is_change($column, ws_wtable_screen_retype_input($choice, '', $column))) {
             $out[$choice] = $label;
         }
     }
