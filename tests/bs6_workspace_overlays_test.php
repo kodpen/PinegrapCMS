@@ -72,7 +72,8 @@ function test_bs6_mcp_badges_have_a_fill()
 		$php = bs6_overlays_test_source($path);
 
 		pg_assert_same(0, preg_match_all('/text-bg-\w+-subtle/', $php), $path . ' carries no text-bg-*-subtle');
-		pg_assert_true(preg_match_all('/bg-subtle-\w+ fg-emphasis-\w+/', $php) >= 3, $path . ' badges use bg-subtle-*');
+		// The badges are the look's pills since the card moved to its recipes.
+		pg_assert_true(preg_match_all('/pg-tone-(teal|amber|rose|blue)/', $php) >= 3, $path . ' badges are toned pills');
 	}
 }
 

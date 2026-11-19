@@ -50,7 +50,7 @@ if (is_array($ws_credentials) && (($ws_credentials['agent'] ?? '') === 'claude')
         header('Cache-Control: no-store');
     }
 
-    $pg_settings_modals[] = pg_settings_drawer('pgset-ws-claude-secret', h(!empty($ws_credentials['rotated']) ? lang('A new secret was issued') : lang('The application was created')) . ' · ' . h((string) ($ws_credentials['name'] ?? '')), ws_claude_credentials_drawer_html($ws_credentials), !empty($pg_settings_in_dialog));
+    $pg_settings_modals[] = pg_settings_drawer('pgset-ws-claude-secret', h(!empty($ws_credentials['rotated']) ? lang('A new secret was issued') : lang('The application was created')) . ' · ' . h((string) ($ws_credentials['name'] ?? '')), ws_claude_credentials_drawer_html($ws_credentials), !empty($pg_settings_in_dialog), ws_claude_credentials_drawer_foot_html());
 } else {
     $ws_credentials = null;
 }

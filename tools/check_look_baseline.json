@@ -1,6 +1,6 @@
 {
     "assets/css/backend.src.css": {
-        "size": 436,
+        "size": 434,
         "weight": 228,
         "colour": 384
     },
@@ -962,24 +962,12 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/workspace/ai.php": {
-        "button": 5,
-        "tabs": 0
-    },
     "includes/workspace/bulk.php": {
         "button": 1,
         "tabs": 0
     },
     "includes/workspace/calendar_sync.php": {
         "button": 3,
-        "tabs": 0
-    },
-    "includes/workspace/claude.php": {
-        "button": 9,
-        "tabs": 0
-    },
-    "includes/workspace/claude_setup.php": {
-        "button": 2,
         "tabs": 0
     },
     "includes/workspace/mail_blocks.php": {
@@ -996,14 +984,6 @@
     },
     "includes/workspace/mail_settings.php": {
         "button": 11,
-        "tabs": 0
-    },
-    "includes/workspace/mcp.php": {
-        "button": 16,
-        "tabs": 0
-    },
-    "includes/workspace/mcp_catalogue.php": {
-        "button": 6,
         "tabs": 0
     },
     "includes/workspace/notes.php": {

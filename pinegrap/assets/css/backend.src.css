@@ -21310,8 +21310,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   align-items: flex-start;
   gap: .35rem;
 }
-.ws-claude-copy .form-control {
-  font-size: .76rem;
+.ws-claude-copy .pg-input {
+  font-size: var(--pg-text-meta);
 }
 .ws-claude-steps {
   display: grid;
@@ -21373,12 +21373,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   top: calc(var(--pg-navbar-h) + 1rem);
 }
 .ws-claude-recent-row {
-  display: flex;
   align-items: flex-start;
-  gap: .5rem;
-  padding: .4rem 0;
-  border-bottom: 1px solid var(--pg-border-color);
-  font-size: .84rem;
+  font-size: var(--pg-text-2);
 }
 .ws-claude-recent-row > .bi {
   margin-top: .15rem;
