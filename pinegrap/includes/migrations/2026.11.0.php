@@ -225,6 +225,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
 	upgrade_2026_11_0_ws_memory_project();       // 11.0.236
+	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
 
 }
 
@@ -3473,7 +3474,8 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 // composer, each under its shortcut. scope is 'personal' for every row this
 // release writes; it is there now so that team replies come later without a
 // second change to this table or a rebuild of uq_shortcut, which keeps a
-// shortcut once per person and scope. body keeps {customer} and {order} as
+// shortcut once per person and scope; its left column user_id also finds a
+// person's rows, so the table has no index of user_id alone. body keeps {customer} and {order} as
 // typed: they are filled when the reply is put in, so no customer data is
 // stored. The rows go with their user (delete_users.php, edit_user.php).
 function upgrade_2026_11_0_workspace_saved_replies() {
@@ -3488,11 +3490,23 @@ function upgrade_2026_11_0_workspace_saved_replies() {
 		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		KEY idx_user (user_id),
 		UNIQUE KEY uq_shortcut (user_id, scope, shortcut)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the table for saved replies is added: texts a person keeps under a short word and puts into a message. It stays empty until somebody saves a reply.');
+
+}
+
+// ws_saved_replies without idx_user (2026.11.0, 11.0.238). A database that
+// ran 11.0.114 before the index left that step has KEY idx_user (user_id);
+// uq_shortcut (user_id, scope, shortcut) starts with the same column and
+// answers every lookup it served, so the duplicate is dropped. Nothing is
+// done where the table or the index is absent.
+function upgrade_2026_11_0_ws_saved_replies_cleanup() {
+
+	if (install_table_exists('ws_saved_replies') && install_index_exists('ws_saved_replies', 'uq_shortcut')) {
+		install_drop_index('ws_saved_replies', 'idx_user');
+	}
 
 }
 
