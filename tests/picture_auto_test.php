@@ -420,3 +420,29 @@ function test_picture_auto_shared_draw()
 
 	pg_assert_contains("'queued'", $answer, 'a language with a row waiting or out of date');
 }
+
+// The screens' words: the Pictures group's note, the queue view's lead and
+// the Languages list's note say that a picture is drawn by itself, when, and
+// that the button draws it now; a picture is listed from a page's save too.
+function test_picture_auto_screen_words()
+{
+	require_once(__DIR__ . '/helpers/language_map.php');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+	$editor = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+	$map = pg_test_language_map('tr');
+	$words = array(
+		'group note' => array($screen, 'The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.'),
+		'empty group' => array($screen, 'No picture yet. A picture made in the Design Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.'),
+		'queue lead' => array($screen, 'The pictures made in the Design Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.'),
+		'languages note' => array($editor, 'Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
+	);
+
+	foreach ($words as $place => $item) {
+		pg_assert_contains("lang('" . addcslashes($item[1], "'\\") . "')", $item[0], $place . ': the words in the source');
+		pg_assert_true(isset($map[$item[1]]) && ($map[$item[1]] !== ''), $place . ': the words in Turkish');
+	}
+
+	pg_assert_contains("'langNote'          => lang('Each language", $editor, 'the Languages list\'s note keeps its key');
+	pg_assert_false(strpos($screen, 'once a page in another language has shown it') !== false, 'no place still says only a visit lists a picture');
+}

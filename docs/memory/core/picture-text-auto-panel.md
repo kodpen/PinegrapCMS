@@ -23,4 +23,4 @@ module: picture_translation, output
 - A page that reloads after the save cuts it; the footer's tag on the next page takes the rest.
 
 ## Where is it tested?
-- `tests/picture_auto_test.php`: under Node the lock (`navigator.locks` and the lease), the order one at a time, the stop when hidden, a failed row not tried again, the model's plan of a row and the languages after a Save; in PHP the footer's tag (mark clear: no query; queue empty: nothing; the rows) and the shared drawing's places.
+- `tests/picture_auto_test.php`: under Node the lock (`navigator.locks` and the lease), the order one at a time, the stop when hidden, a failed row not tried again, the model's plan of a row and the languages after a Save; in PHP the footer's tag (mark clear: no query; queue empty: nothing; the rows), the shared drawing's places, and the screens' words (the Pictures group's note and empty text, the queue view's lead, the Languages list's note) with their Turkish.
