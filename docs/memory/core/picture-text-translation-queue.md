@@ -10,7 +10,7 @@ module: picture_translation
 
 ## Which rows does it draw?
 - `pg_picture_tr_queue_sql($languages, $limit)` (pure): `file_translation` rows in state 0 (waiting) or 2 (out of date) of the given languages, whose file has texts in `translation_uses` and none untranslated (no row or empty text) in the row's language; ordered by name and language. Codes other than letters, digits and hyphens are dropped; no language gives ''.
-- `pg_picture_tr_queue($limit = 200)`: the target languages written left to right (an RTL language is never drawn), bounded to 200 rows, kept only for a folder the user may edit (`check_edit_access()`) and not in the Recycle Bin (`pg_folder_binned()`). Before the tables exist it returns nothing.
+- `pg_picture_tr_queue($limit = 200)`: the target languages written left to right (`pg_picture_tr_languages()`; an RTL language is never drawn), bounded to 200 rows, kept only for a folder the user may edit (`check_edit_access()`) and not in the Recycle Bin (`pg_folder_binned()`). Before the tables exist it returns nothing. A query finding no row clears the waiting mark (`picture-text-auto-rows.md`).
 - The button's count is `count(pg_picture_tr_queue())`, so it is at most 200.
 
 ## How is a row drawn?

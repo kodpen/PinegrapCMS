@@ -30,7 +30,8 @@ define('PG_TR_JOB_STALE', 86400);
 /**
  * The owners a scope names: 'all' is every owner; 'page:12' is the page, its
  * SEO fields and what it references; 'records:14' the records of one custom
- * form (a record save, pg_tr_records_saved()).
+ * form (a record save, pg_tr_records_saved()); 'file:9' the texts of one
+ * Design Canvas picture (pg_picture_tr_texts_jobs()).
  *
  * @return array of array(owner_type, owner_id); empty for all
  */
@@ -42,6 +43,10 @@ function pg_tr_scope_owners($scope)
 
     if (preg_match('/^records:(\d+)$/', (string) $scope, $m)) {
         return array(array('form_records', (int) $m[1]));
+    }
+
+    if (preg_match('/^file:(\d+)$/', (string) $scope, $m)) {
+        return array(array('file', (int) $m[1]));
     }
 
     // A group of the Translations screen: every owner of its types.
@@ -88,6 +93,12 @@ function pg_tr_scope_extract($scope, $deadline = 0, $from = 0)
         $segments = in_array($form_page_id, pg_tr_record_forms(), true) ? pg_tr_extract_form_records($form_page_id) : 0;
 
         return array('pages' => 0, 'segments' => $segments);
+    }
+
+    // A picture's texts are written by each save of the picture
+    // (pg_picture_tr_saved()): there is nothing to read again.
+    if (preg_match('/^file:\d+$/', (string) $scope)) {
+        return array('pages' => 0, 'segments' => 0);
     }
 
     return pg_tr_extract_all($deadline, $from);

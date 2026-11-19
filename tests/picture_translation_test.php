@@ -351,7 +351,8 @@ function test_picture_translation_draw_refusals()
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
 	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_canvas('), 'before a canvas\'s picture is taken');
 	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_photo('), 'before a photo\'s is drawn');
-	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+	pg_assert_true(strpos($body, 'pg_picture_tr_keep(') > strpos($body, 'pg_picture_tr_draw_refusal('), 'a draw is kept once it is taken');
+	pg_assert_true(strpos(picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep'), 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
 	pg_assert_true(strpos($body, "'missing'  => pg_picture_tr_untranslated(\$texts)") !== false, 'the draw counts the texts not translated');
 	pg_assert_true(strpos($body, 'count($texts), count($texts) - pg_picture_tr_untranslated($texts))') !== false, 'the state after a draw is read from the real count');
 

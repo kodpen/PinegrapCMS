@@ -14,7 +14,8 @@ module: picture_translation
 
 ## What does it cost?
 - One `SELECT` a page (`pg_picture_tr_page_sql()`): the named files, their row in the language, the row's picture and whether the file has `file` uses. No document decoded. A page with no picture of the site asks nothing.
-- An `INSERT IGNORE` only on a first visit of a picture with words in that language (a waiting row, state 0). None for a right-to-left language (`pg_tr_known_languages()` index 5): those are not drawn.
+- An `INSERT IGNORE` only on a first visit of a picture with words in that language (a waiting row, state 0), which also sets the waiting mark. None for a right-to-left language (`pg_tr_known_languages()` index 5): those are not drawn.
+- A page save in the visual editor writes the rows of the pictures in the page's own code beforehand, by the same address rule (`picture-text-auto-rows.md`); a visit still writes those of shared parts, widgets and menus.
 
 ## What is shown?
 - Only a drawn row (state 1) whose picture is found; waiting and out of date show the source (`pg_picture_tr_page_plan()`).
