@@ -74169,6 +74169,9 @@ const StyleDesigner = (function () {
         // The "+" handle (_sdProtoGrip()): the mark it stands beside, the
         // mark under the pointer, the zoom the marks' reach was set at.
         grip: { hot: null, hover: null, k: 0, soon: 0, hide: 0 },
+        // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
+        // back to, null when not; the last tap (_sdProtoTap()).
+        zoom: null, tap: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74324,7 +74327,12 @@ const StyleDesigner = (function () {
         tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
-        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // Fit shows everything, so a zoom to a frame is forgotten.
+        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () {
+            if (!_sdProto.canvas) return;
+            _sdProtoZoomForget();
+            _sdProto.canvas.view.fit();
+        }));
         // All arrows: the other frames' arrows drawn faintly too; the choice
         // is kept in this browser.
         ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
@@ -74373,6 +74381,23 @@ const StyleDesigner = (function () {
         ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.live);
+        // "All" and the frame's name in the canvas's corner while the view
+        // is zoomed to a frame: "All" puts back the view from before.
+        ui.zoomed = _sdProtoEl('div', 'sd-proto-zoomed');
+        ui.zoomed.hidden = true;
+        var all = _sdProtoEl('button', 'sd-proto-zoomed-all');
+        all.type = 'button';
+        all.title = _sdT('Back to the whole map (Esc)');
+        all.innerHTML = '<span class="bi bi-arrow-left" aria-hidden="true"></span>';
+        all.appendChild(_sdProtoEl('span', '', _sdT('All')));
+        all.addEventListener('click', function () {
+            _sdProtoZoomBack();
+            ui.viewport.focus({ preventScroll: true });
+        });
+        ui.zoomed.appendChild(all);
+        ui.zoomedName = _sdProtoEl('span', 'sd-proto-zoomed-name');
+        ui.zoomed.appendChild(ui.zoomedName);
+        ui.stage.appendChild(ui.zoomed);
         // The stage and, right of it, the selected page's links (F15).
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
@@ -74468,10 +74493,18 @@ const StyleDesigner = (function () {
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
+                // A frame or chip pressed and let go without a move is a
+                // tap; anything else breaks a pair of taps.
+                _sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);
             },
             cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
-                if (event.key === 'Escape') { _sdProtoClose(); return true; }
+                // Esc goes back from a frame zoomed to, else closes the view.
+                if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }
+                // Enter on a frame zooms to it, as a double-click does; 0
+                // fits everything (the core's key), so the zoom is forgotten.
+                if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));
+                if (event.key === '0') _sdProtoZoomForget();
                 // The open tab's undo history, as on the canvas; the map is
                 // read again after it.
                 var name = String(event.key || '').toLowerCase();
@@ -74591,6 +74624,7 @@ const StyleDesigner = (function () {
         clearTimeout(_sdProto.grip.hide);
         _sdProto.grip.hover = null;
         _sdProtoGrip(null);
+        _sdProtoZoomBack(true);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
@@ -74985,6 +75019,67 @@ const StyleDesigner = (function () {
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
         _sdProtoLegsSoon();
+    }
+
+    // ── Zoom to a frame ──
+    // A double-click on a frame (two taps on it, PGProtoHotspots.zoomTap())
+    // or Enter on a frame in focus shows that frame whole in the middle (the
+    // core's zoomTo()). Esc or "All" puts back the view from before the
+    // first zoom; Fit, a new arrangement and closing the view forget it.
+
+    // A release on the canvas: `item` the frame or chip of a tap (pressed
+    // and let go without a move), null for anything else (a link mark, its
+    // handle, an arrow, the empty canvas). The canvas captures the pointer,
+    // so the frame gets no dblclick of its own.
+    function _sdProtoTap(item) {
+        var tap = { id: item ? String(item.id) : '', time: Date.now() };
+        var id = window.PGProtoHotspots.zoomTap(_sdProto.tap, tap, _sdProto.layout);
+        _sdProto.tap = id ? null : tap;
+        if (id) _sdProtoZoomTo(id);
+    }
+
+    function _sdProtoZoomTo(id) {
+        var item = id ? _sdProto.byId[String(id)] : null;
+        if (!item || item.kind === 'chip' || !_sdProto.canvas) return false;
+        var v = _sdProto.view;
+        if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };
+        _sdProto.zoom.id = item.id;
+        _sdProto.canvas.view.zoomTo(item);
+        _sdProtoZoomShow();
+        _sdProto.canvas.announce(_sdT('{var}: zoomed in. Esc goes back to the whole map.', _sdProtoFrameName(item)));
+        return true;
+    }
+
+    // Back to the view from before the first zoom, announced unless `quiet`
+    // (the view is closing: the next opening shows it). False when the view
+    // is not zoomed to a frame.
+    function _sdProtoZoomBack(quiet) {
+        var z = _sdProto.zoom;
+        if (!z) return false;
+        _sdProto.zoom = null;
+        _sdProto.view = { x: z.back.x, y: z.back.y, k: z.back.k };
+        _sdProtoZoomShow();
+        if (!_sdProto.canvas) return true;
+        _sdProto.canvas.view.apply();
+        if (!quiet) _sdProto.canvas.announce(_sdT('The whole map'));
+        return true;
+    }
+
+    function _sdProtoZoomForget() {
+        _sdProto.zoom = null;
+        _sdProtoZoomShow();
+    }
+
+    // "All" and the zoomed frame's name (none once it is gone) in the
+    // canvas's corner while zoomed.
+    function _sdProtoZoomShow() {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.zoomed) return;
+        var z = _sdProto.zoom;
+        var item = z ? _sdProto.byId[z.id] : null;
+        ui.zoomed.hidden = !z;
+        ui.zoomedName.textContent = item ? _sdProtoFrameName(item) : '';
+        ui.zoomedName.hidden = !item;
     }
 
     // The selected frame's marks until a frame shows its page: its own rows
@@ -75566,8 +75661,15 @@ const StyleDesigner = (function () {
             _sdProtoFocused(focusOn);
         }
         _sdProtoAllEdges(_sdProtoAllEdgesOn());
-        if (first) canvas.view.fit();
-        else canvas.view.apply();
+        // A new arrangement starts from Fit, so a zoom to a frame is
+        // forgotten; a redraw keeps it and names its frame again.
+        if (first) {
+            _sdProtoZoomForget();
+            canvas.view.fit();
+        } else {
+            canvas.view.apply();
+            _sdProtoZoomShow();
+        }
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();

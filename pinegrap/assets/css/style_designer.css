@@ -7442,6 +7442,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
+/* A double-click on a frame zooms to it, never picks up its words. */
+.sd-proto .pgc-boxes { -webkit-user-select: none; user-select: none; }
+/* Zoomed to a frame (_sdProtoZoomShow()): "All" and the frame's name in the
+   canvas's top left corner, over the map. */
+.sd-proto-zoomed {
+    position: absolute; top: 8px; left: 8px; z-index: 3; max-width: calc(100% - 16px);
+    display: flex; align-items: center; gap: 8px;
+    padding: 2px 12px 2px 2px; border-radius: 14px;
+    background: #2a2f36; color: var(--sd-text); font-size: .75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-proto-zoomed[hidden] { display: none; }
+.sd-proto-zoomed-all {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border: 0; border-radius: 12px;
+    background: var(--sd-accent-strong); color: #fff; font: inherit; font-weight: 600; line-height: 1.5; cursor: pointer;
+}
+.sd-proto-zoomed-all:hover { filter: brightness(1.1); }
+.sd-proto-zoomed-all:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.sd-proto-zoomed-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.sd-proto-zoomed-name[hidden] { display: none; }
 .sd-proto .pgc-node {
     padding: 0; background: #2a2f36; color: var(--sd-text);
     box-shadow: 0 2px 8px rgba(0,0,0,.35);

@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core-sizes-ports
-description: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, Fit to a start corner, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
+description: Graph canvas core for the Prototype view: size per box, lower zoom, Fit to a start corner, zoomTo() one box, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 ---
 
 ## Why was it added?
@@ -20,6 +20,9 @@ description: Graph canvas core slice 4 for the Prototype view: size per box, low
 - `canvas.edge(id, from, to, { port, slot, slots })`: id is kept in `data-edge` as given; a press selects `{ type: 'edge', id }`, a number when it is all digits (Flows' index), else the string.
 - `G.spread([{ to, y }])` → `{ slot, slots }` per arrow: the arrows into one box ordered by their start height, so they do not cross at its left edge.
 - `canConnect(from, to, port)` and `connected(from, to, port)` get the port name (null for a box's own out port).
+
+## What does view.zoomTo() do?
+- `canvas.view.zoomTo(item)` (#10476): one box whole in the middle of the viewport, 48 px clear of its edges, the zoom within `zoomMin` and `zoomMax`; a box taller than the viewport at the smallest zoom shows its top. Its size comes from `size(item)`. Flows calls none; the Prototype view's double-click on a frame does (designer/prototype-zoom.md). Test: `test_graph_canvas_zoom_to_a_box`.
 
 ## Load without defer?
 - The file only defines `window.PGGraphCanvas` at load, so the designer may print it with `pg_js_bundle_tags(..., false)` before `style_designer.min.js`, which is printed without defer.
