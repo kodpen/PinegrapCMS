@@ -161,7 +161,7 @@ function test_marketplace_repricer_grow_lost_buybox_steps_back_and_remembers()
 	$target = mp_repricer_target($input);
 
 	pg_assert_same(10200, $target['price'], 'one step back');
-	pg_assert_same(MP_REPRICER_REASON_LOST, $target['reason'], 'lost buybox');
+	pg_assert_same(MP_REPRICER_REASON_BACK, $target['reason'], 'stepped back');
 	pg_assert_same(10300, $target['lost_price'], 'the lost price is kept');
 	pg_assert_same($input['now'], $target['lost_at'], 'with its time');
 
@@ -314,6 +314,11 @@ function test_marketplace_repricer_alert_codes_are_known()
 
 	pg_assert_same(true, isset($codes[MP_REPRICER_ALERT_LOSING]), 'losing code');
 	pg_assert_same(true, isset($codes[MP_REPRICER_ALERT_FAILING]), 'failing code');
+}
+
+function test_marketplace_repricer_reasons_are_listed_once()
+{
+	pg_assert_same(array('lost', 'floor', 'raised', 'back'), mp_repricer_reasons(), 'the four reasons');
 }
 
 function test_marketplace_repricer_log_sql()

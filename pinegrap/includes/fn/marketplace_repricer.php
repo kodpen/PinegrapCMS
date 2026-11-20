@@ -34,8 +34,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
 
-/** marketplace_price_log.reason: another seller held the buybox, or Grow stepped back. */
+/** marketplace_price_log.reason: another seller held the buybox (Win). */
 define('MP_REPRICER_REASON_LOST', 'lost');
+
+/** marketplace_price_log.reason: Grow while winning lost the buybox and stepped back. */
+define('MP_REPRICER_REASON_BACK', 'back');
 
 /** marketplace_price_log.reason: the price stopped at the floor. */
 define('MP_REPRICER_REASON_FLOOR', 'floor');
@@ -81,6 +84,16 @@ define('MP_REPRICER_ALERT_FAILING', 'buybox_failing');
 
 /** product_price_history.source of a price the robot set. */
 define('MP_REPRICER_HISTORY_SOURCE', 'repricer');
+
+/**
+ * The reasons a log row can carry, the one place they are listed.
+ *
+ * @return string[]
+ */
+function mp_repricer_reasons()
+{
+    return array(MP_REPRICER_REASON_LOST, MP_REPRICER_REASON_FLOOR, MP_REPRICER_REASON_RAISED, MP_REPRICER_REASON_BACK);
+}
 
 /**
  * The highest price the robot may set: the rules' price, or for Grow while
@@ -204,7 +217,7 @@ function mp_repricer_target($in)
             return $hold;
         }
 
-        return array('price' => $price, 'reason' => MP_REPRICER_REASON_LOST,
+        return array('price' => $price, 'reason' => MP_REPRICER_REASON_BACK,
             'lost_price' => $current, 'lost_at' => (int) $in['now']);
     }
 
