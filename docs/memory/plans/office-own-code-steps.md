@@ -15,7 +15,8 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 ## Sheet editing (.xlsx)
 - OE1, rows and columns: insert and delete from a row's or column's head menu. References in the same sheet's formulas, merged ranges and the sheet's dimension are shifted; a workbook where the shift cannot be made safely (a table, a defined name, another sheet's formula or a merged range crossing the line) refuses with its reason.
   - Cut in two: OE1a (done, PR #10618), the server's shift and refusals (`platform/office-sheet-rows-columns.md`). OE1b (done, PR #10637), the grid's head menu that sends it (`pg_office_view.js`).
-- OE2, sheets: add, rename, delete and reorder from the sheet tabs; a delete another sheet's formula points to is refused. In progress, stacked on OE1b.
+- OE2, sheets: add, rename, delete and reorder from the sheet tabs; a delete another sheet's formula points to is refused.
+  - Cut in two: OE2a (in progress), the server's sheet changes and refusals (`platform/office-sheets.md`). OE2b, the sheet tabs' menu that sends them (`pg_office_view.js`), after OE2a.
 - OE3, format of the selected cells: bold, italic, text colour, fill, alignment, number format (general, number, money, percent, date); written as new styles, existing ones untouched.
 - OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet.
 - OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing.
