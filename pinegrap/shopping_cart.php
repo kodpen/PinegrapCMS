@@ -575,10 +575,10 @@ foreach ($order_items as $order_item) {
                     label,
                     type,
                     required,
-                    wysiwyg,
-                    multiple,
                     upload_folder_id,
-                    rules
+                    rules,
+                    wysiwyg,
+                    multiple
                 FROM form_fields
                 WHERE (product_id = ?) AND (form_type = 'product') AND (type != 'information')
                 ORDER BY sort_order";

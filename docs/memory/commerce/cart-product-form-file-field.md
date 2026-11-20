@@ -1,15 +1,24 @@
 ---
 name: cart-product-form-file-field
-description: Why the cart's product form still has no working file upload path after FU1: the field exists but the cart forms post urlencoded and no cart save writes the file yet (FU2, FU3)
+description: Where a shopper can upload a product form's File Upload file: the classic cart and classic express order since FU3; the designer cart widgets still post urlencoded until FU2
+module: product_form_uploads
 ---
 
-## Can a shopper upload a file in the cart yet?
-- No. Since FU1 a product form can hold a File Upload field (`commerce/product-form-upload-field.md`), but no cart draws it as a working upload yet.
-- The cart update form (`widgets_cart.php`, `$update_form_html`) has no `enctype="multipart/form-data"`, so a browser sends only the file name as a text value in `$_POST`; `$_FILES` stays empty.
-- `cart_action.php`, `shopping_cart.php` and `express_order.php` rewrite a line's answers on every save and know no `file_id`.
+## Can a shopper upload a file in the cart?
+- Classic cart (`get_shopping_cart.php` → `shopping_cart.php`) and classic express order (`get_express_order.php` → `express_order.php`): yes, since FU3 (PR #FU3_PR).
+- Designer cart and express order widgets (`widgets_cart.php` → `cart_action.php`): not yet. Their form has no `enctype`, so only the file name arrives as text; FU2 adds it.
 
-## What is the file branch in the cart form renderer then?
-- The `'file upload' => 'file'` kind in `_pg_cart_item_form_blocks()`, the `file` input in `_pg_render_cart_item_form_html()` and the cart list's `__field_file` token. They draw the input, but nothing stores what it sends.
-- FU2 (designer cart) and FU3 (classic cart) add multipart, the upload write through `pg_pfu_file_refusal()`, `pg_pfu_place()` and `pg_pfu_keep()`, and keep the stored file when no new one comes.
+## How do the classic pages draw the field?
+- `get_form_info()` (`includes/fn/content.php`), product form: the file input with `accept` from the field's rule (`pg_pfu_accept_attribute()`), and above it the kept file (`pg_pfu_kept_file_html()`): its name as a link, size, a preview for an image, a Remove box posted as `<field name>_remove`, and "Choose a new file to replace it:". A kept file drops the input's `required`.
+- The system layout's cart form gets `enctype="multipart/form-data"` when a drawn product form holds a File Upload field (`$form_info['file_upload_exists']`).
+- Custom layouts: `$attributes` gets the `enctype` when a line's form holds one; each File Upload field carries `files[quantity number]` (id, name, size, url, html; null when none) and `accept`. The layout draws its own `<input type="file">` named like any product field.
 
-Planned: `plans/product-form-uploads.md`.
+## What does a save do with it?
+- Both saves call `pg_pfu_cart_reset()` instead of deleting all the line's answers: the File Upload answers stay, except those of units above the line's number of forms (their files go too).
+- Each unit's File Upload field goes through `pg_pfu_cart_save_file()`: a new file is checked (`pg_pfu_file_refusal()`, then the rate limit), placed and kept (`pg_pfu_place()`, `pg_pfu_keep()`); a refused one is marked on its own field and the stored file stays; Remove deletes the stored file; no new file keeps it (`pg_pfu_save_action()`).
+- Required: checked on Checkout (cart) and Purchase Now (express order) against the file held after the save (`pg_pfu_holds_file()`), not the posted value.
+- Rate limit: 30 placed files per 10 minutes per address (`waf_rate_exceeded()`, scope `cart_upload`).
+- A body over `post_max_size` stops at `pg_upload_refuse_discarded_body()` right after `init.php` (a 413 page with Go back), before the token check.
+- A gateway return to `express_order.php` carries no files and no Remove box, so it keeps the stored files.
+
+Pinned by `tests/product_form_uploads_cart_test.php`. Related: commerce/product-form-upload-field.md, plans/product-form-uploads.md
