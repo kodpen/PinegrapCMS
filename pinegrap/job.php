@@ -164,6 +164,16 @@ if (($audiences['added'] + $audiences['removed']) > 0) {
 
 }
 
+// Customer rhythm (includes/fn/customer_rhythm_pass.php): each customer's
+// row and the product summary worked out again from the orders once a day,
+// at most PG_CUSTOMER_RHYTHM_TICK_SECONDS of this tick, going on from its
+// place next tick. It announces nothing.
+if (ECOMMERCE && function_exists('pg_customer_rhythm_job_run')) {
+
+    pg_customer_rhythm_job_run(pg_cron_time_left(PG_CUSTOMER_RHYTHM_TICK_SECONDS));
+
+}
+
 // Customer value summary (includes/fn/customer_values.php): rebuilt whole from
 // the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
 // going on from its place next tick; one write when the walk is done.

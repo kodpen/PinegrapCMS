@@ -153,9 +153,29 @@ function pg_customer_rhythm_purchases($lines, $skip = array())
  */
 function pg_customer_rhythm_products($lines, $groups, $subscriptions, $now)
 {
-    $since = (int) $now - (PG_CUSTOMER_RHYTHM_WINDOW_DAYS * 86400);
-    $skip = array_flip(array_map('intval', $subscriptions));
     $pairs = array();
+    pg_customer_rhythm_pairs_add($pairs, $lines, $subscriptions, $now);
+
+    return pg_customer_rhythm_products_from_pairs($pairs, $groups, $subscriptions);
+}
+
+/**
+ * Adds the repeat-purchase pairs of some lines to $pairs: every time a
+ * customer bought a product again within the last 24 months, the days
+ * between the two purchases divided by the units of the first. The nightly
+ * pass hands one customer's lines at a time, so the whole store's lines are
+ * never held at once. Pure.
+ *
+ * @param array $pairs          product_id => v (list of days per unit),
+ *                              c (customer => true)
+ * @param array $lines          customer, product_id, quantity, time
+ * @param array $subscriptions  product ids sold as a subscription
+ * @param int   $now
+ * @return void
+ */
+function pg_customer_rhythm_pairs_add(&$pairs, $lines, $subscriptions, $now)
+{
+    $since = (int) $now - (PG_CUSTOMER_RHYTHM_WINDOW_DAYS * 86400);
 
     foreach (pg_customer_rhythm_purchases($lines, $subscriptions) as $product => $customers) {
         foreach ($customers as $customer => $list) {
@@ -164,11 +184,30 @@ function pg_customer_rhythm_products($lines, $groups, $subscriptions, $now)
                     continue;
                 }
 
-                $pairs[$product][] = array(pg_customer_rhythm_days_between($list[$i - 1][0], $list[$i][0]) / $list[$i - 1][1], (string) $customer);
+                if (!isset($pairs[$product])) {
+                    $pairs[$product] = array('v' => array(), 'c' => array());
+                }
+
+                $pairs[$product]['v'][] = pg_customer_rhythm_days_between($list[$i - 1][0], $list[$i][0]) / $list[$i - 1][1];
+                $pairs[$product]['c'][(string) $customer] = true;
             }
         }
     }
+}
 
+/**
+ * Each product's rhythm from the pairs of pg_customer_rhythm_pairs_add()
+ * (H1, H2): its own median with enough pairs, else its product group's.
+ * Pure.
+ *
+ * @param array $pairs          pg_customer_rhythm_pairs_add()
+ * @param array $groups         product_id => group id or list of group ids
+ * @param array $subscriptions  product ids sold as a subscription
+ * @return array  as pg_customer_rhythm_products()
+ */
+function pg_customer_rhythm_products_from_pairs($pairs, $groups, $subscriptions)
+{
+    $skip = array_flip(array_map('intval', $subscriptions));
     $products = array();
     $pooled = array();
 
@@ -181,19 +220,21 @@ function pg_customer_rhythm_products($lines, $groups, $subscriptions, $now)
 
         foreach ($products[(int) $product] as $group) {
             if (!isset($pooled[$group])) {
-                $pooled[$group] = array();
+                $pooled[$group] = array('v' => array(), 'c' => array());
             }
 
             if (isset($pairs[(int) $product])) {
-                foreach ($pairs[(int) $product] as $pair) {
-                    $pooled[$group][] = $pair;
+                foreach ($pairs[(int) $product]['v'] as $value) {
+                    $pooled[$group]['v'][] = $value;
                 }
+
+                $pooled[$group]['c'] += $pairs[(int) $product]['c'];
             }
         }
     }
 
     foreach (array_keys($pairs) as $product) {
-        if (!isset($products[$product])) {
+        if (!isset($products[$product]) && !isset($skip[(int) $product])) {
             $products[$product] = array();
         }
     }
@@ -201,7 +242,7 @@ function pg_customer_rhythm_products($lines, $groups, $subscriptions, $now)
     $out = array();
 
     foreach ($products as $product => $ids) {
-        $rhythm = pg_customer_rhythm_from_pairs(isset($pairs[$product]) ? $pairs[$product] : array(), 'product');
+        $rhythm = pg_customer_rhythm_from_pairs(isset($pairs[$product]) ? $pairs[$product] : array('v' => array(), 'c' => array()), 'product');
 
         if ($rhythm === null) {
             foreach ($ids as $group) {
@@ -224,31 +265,23 @@ function pg_customer_rhythm_products($lines, $groups, $subscriptions, $now)
 }
 
 /**
- * A rhythm from a list of pairs, or null with fewer than 10 pairs of 5
- * customers. Pure.
+ * A rhythm from the pairs of a product or a group, or null with fewer than
+ * 10 pairs of 5 customers. Pure.
  *
- * @param array  $pairs  list of array(days per unit, customer)
+ * @param array  $pairs  v (list of days per unit), c (customer => true)
  * @param string $from   'product' or 'group'
  * @return array|null
  */
 function pg_customer_rhythm_from_pairs($pairs, $from)
 {
-    $customers = array();
-    $values = array();
-
-    foreach ($pairs as $pair) {
-        $values[] = $pair[0];
-        $customers[$pair[1]] = true;
-    }
-
-    if ((count($values) < PG_CUSTOMER_RHYTHM_MIN_PAIRS) || (count($customers) < PG_CUSTOMER_RHYTHM_MIN_CUSTOMERS)) {
+    if ((count($pairs['v']) < PG_CUSTOMER_RHYTHM_MIN_PAIRS) || (count($pairs['c']) < PG_CUSTOMER_RHYTHM_MIN_CUSTOMERS)) {
         return null;
     }
 
     return array(
-        'days_per_unit' => round(pg_customer_rhythm_median($values), 2),
-        'pairs' => count($values),
-        'customers' => count($customers),
+        'days_per_unit' => round(pg_customer_rhythm_median($pairs['v']), 2),
+        'pairs' => count($pairs['v']),
+        'customers' => count($pairs['c']),
         'from' => $from,
     );
 }
@@ -405,58 +438,92 @@ function pg_customer_rhythm_fixed_chance($band)
  */
 function pg_customer_rhythm_curve($customers)
 {
-    $repeat = 0;
-    $reached = array_fill(0, PG_CUSTOMER_RHYTHM_BAND_TOP + 2, 0);
-    $returned = $reached;
+    $counts = pg_customer_rhythm_curve_counts();
 
     foreach ($customers as $customer) {
-        if ($customer['orders'] >= 2) {
-            $repeat++;
-        }
-
-        if (($customer['interval'] === null) || ($customer['interval'] <= 0) || !$customer['orders']) {
-            continue;
-        }
-
-        $back = -1;
-
-        foreach ($customer['gaps'] as $gap) {
-            $back = max($back, pg_customer_rhythm_band($gap / $customer['interval']));
-        }
-
-        $top = max($back, pg_customer_rhythm_band($customer['days'] / $customer['interval']));
-
-        // Counted once per customer and band, added up from the top below.
-        $reached[$top]++;
-
-        if ($back >= 0) {
-            $returned[$back]++;
-        }
+        pg_customer_rhythm_curve_add($counts, $customer);
     }
 
-    if ($repeat < PG_CUSTOMER_RHYTHM_CURVE_CUSTOMERS) {
+    return pg_customer_rhythm_curve_finish($counts);
+}
+
+/**
+ * The empty counts the store curve is added up in. Pure.
+ *
+ * @return array  repeat, reached, returned
+ */
+function pg_customer_rhythm_curve_counts()
+{
+    $reached = array_fill(0, PG_CUSTOMER_RHYTHM_BAND_TOP + 2, 0);
+
+    return array('repeat' => 0, 'reached' => $reached, 'returned' => $reached);
+}
+
+/**
+ * Adds one customer to the curve's counts: the highest band their silence
+ * reached, and the highest band they came back from. Pure.
+ *
+ * @param array $counts    pg_customer_rhythm_curve_counts()
+ * @param array $customer  pg_customer_rhythm_customer()
+ * @return void
+ */
+function pg_customer_rhythm_curve_add(&$counts, $customer)
+{
+    if ($customer['orders'] >= 2) {
+        $counts['repeat']++;
+    }
+
+    if (($customer['interval'] === null) || ($customer['interval'] <= 0) || !$customer['orders']) {
+        return;
+    }
+
+    $back = -1;
+
+    foreach ($customer['gaps'] as $gap) {
+        $back = max($back, pg_customer_rhythm_band($gap / $customer['interval']));
+    }
+
+    $top = max($back, pg_customer_rhythm_band($customer['days'] / $customer['interval']));
+
+    // Counted once per customer and band, added up from the top below.
+    $counts['reached'][$top]++;
+
+    if ($back >= 0) {
+        $counts['returned'][$back]++;
+    }
+}
+
+/**
+ * The store curve from its counts. Pure.
+ *
+ * @param array $counts  pg_customer_rhythm_curve_counts() with every customer added
+ * @return array  fixed (bool), bands (band => chance)
+ */
+function pg_customer_rhythm_curve_finish($counts)
+{
+    if ($counts['repeat'] < PG_CUSTOMER_RHYTHM_CURVE_CUSTOMERS) {
         return array('fixed' => true, 'bands' => array());
     }
 
     $bands = array();
     $reach = 0;
     $back = 0;
-    $counts = array();
+    $totals = array();
 
     for ($band = PG_CUSTOMER_RHYTHM_BAND_TOP + 1; $band >= 0; $band--) {
-        $reach += $reached[$band];
-        $back += $returned[$band];
-        $counts[$band] = array($reach, $back);
+        $reach += $counts['reached'][$band];
+        $back += $counts['returned'][$band];
+        $totals[$band] = array($reach, $back);
     }
 
     $floor = 1.0;
 
     for ($band = 0; $band <= PG_CUSTOMER_RHYTHM_BAND_TOP + 1; $band++) {
-        if ($counts[$band][0] < PG_CUSTOMER_RHYTHM_BAND_MIN) {
+        if ($totals[$band][0] < PG_CUSTOMER_RHYTHM_BAND_MIN) {
             break;
         }
 
-        $floor = min($floor, $counts[$band][1] / $counts[$band][0]);
+        $floor = min($floor, $totals[$band][1] / $totals[$band][0]);
         $bands[$band] = $floor;
     }
 

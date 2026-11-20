@@ -61,6 +61,7 @@ function pg_privacy_export_sections()
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
+        'customer_rhythm'    => lang('Order rhythm'),
         'bookings'           => lang('Appointment bookings'),
         'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
@@ -1056,6 +1057,18 @@ function pg_privacy_export_collect(array $found)
         if ($notify_events) {
             $sections['stock_notify']['rows'] = pg_stock_notify_export_event_dates($sections['stock_notify']['rows'], 'pg_stock_notify_event_start');
         }
+    }
+
+    // The person's order rhythm worked out by the nightly pass, by the
+    // Customers Report's key of their addresses or by their contact.
+    if (pg_schema_has('customer_rhythm', 'customer_key')) {
+        $rhythm_keys = pg_privacy_customer_keys($emails, $contact_ids);
+        $rhythm_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('customer_key', $rhythm_keys),
+            _pg_privacy_export_in('contact_id', $contact_ids),
+        ));
+
+        $sections['customer_rhythm'] = _pg_privacy_export_select("SELECT * FROM customer_rhythm WHERE " . $rhythm_where . " ORDER BY id", ($rhythm_where !== '') ? array(1) : array());
     }
 
     // Appointment bookings, by the account or the address given when

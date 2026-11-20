@@ -5,7 +5,8 @@ module: customer_rhythm
 ---
 
 ## What does the module hold?
-- Pure functions on plain arrays, no table or settings read: `pg_customer_rhythm_products()` (H1, H2), `pg_customer_rhythm_customer()` and `pg_customer_rhythm_store_median()` (H3), `pg_customer_rhythm_curve()` / `pg_customer_rhythm_chance()` (H4), `pg_customer_rhythm_expected()` (H5), `pg_customer_rhythm_stage()` / `pg_customer_rhythm_step()` (H6, H7), `pg_customer_rhythm_due_products()` (H8). The nightly pass that feeds them is RY1b.
+- Pure functions on plain arrays, no table or settings read: `pg_customer_rhythm_products()` (H1, H2), `pg_customer_rhythm_customer()` and `pg_customer_rhythm_store_median()` (H3), `pg_customer_rhythm_curve()` / `pg_customer_rhythm_chance()` (H4), `pg_customer_rhythm_expected()` (H5), `pg_customer_rhythm_stage()` / `pg_customer_rhythm_step()` (H6, H7), `pg_customer_rhythm_due_products()` (H8).
+- The nightly pass that feeds them: `customer-rhythm-store.md`. The product rule and the curve also come as add-one and finish parts (`pg_customer_rhythm_pairs_add()`, `pg_customer_rhythm_curve_add()`), so the pass holds one customer's lines at a time.
 - Orders are judged by the Customers Report's `pg_customer_value_order_counts()` / `pg_customer_value_order_amount()`; the caller keys lines with `pg_customer_value_key()`.
 
 ## Which orders are read where?
