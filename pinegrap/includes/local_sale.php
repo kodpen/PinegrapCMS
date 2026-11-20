@@ -388,9 +388,46 @@ function local_sale_cart_qty($order_id, $product_id, $except_item_id = 0)
 }
 
 /**
+ * The units a counter sale may sell: the total, or on a site with stock
+ * locations what the sale's location holds (decision #5042: nothing is
+ * taken from another location).
+ *
+ * @param int      $total        products.inventory_quantity
+ * @param int|null $at_location  units at the location, null without locations
+ * @return int
+ */
+function local_sale_stock_units($total, $at_location)
+{
+    return ($at_location === null) ? (int) $total : max(0, (int) $at_location);
+}
+
+/**
+ * The units of a product the counter can sell. A till has no shipping
+ * method, so completion takes the sale's units at the default location
+ * (pg_stock_sale_take()); the limit and the line's "In stock" count there,
+ * not the total of every location.
+ *
+ * @param array $product  a product row (id) or a cart line (product_id),
+ *                        with inventory_quantity
+ * @return int
+ */
+function local_sale_product_stock($product)
+{
+    $total = (int) ($product['inventory_quantity'] ?? 0);
+    $product_id = array_key_exists('product_id', $product) ? (int) $product['product_id'] : (int) ($product['id'] ?? 0);
+    $at_location = null;
+
+    if (($product_id > 0) && function_exists('pg_stock_quantity_at')) {
+        $at_location = pg_stock_quantity_at($product_id, pg_stock_default_location(), $total);
+    }
+
+    return local_sale_stock_units($total, $at_location);
+}
+
+/**
  * Why this many units cannot be in the cart, or '' when they can.
  *
- * @param array $product    keys: inventory, inventory_quantity
+ * @param array $product    keys: inventory, inventory_quantity, id or product_id
  * @param int   $wanted     units the cart would hold
  * @param bool  $completing the sale is being completed: the line is already
  *                          in the cart, so the fix is a lower quantity
@@ -402,7 +439,7 @@ function local_sale_stock_error($product, $wanted, $completing = false)
         return '';
     }
 
-    $stock = (int) $product['inventory_quantity'];
+    $stock = local_sale_product_stock($product);
 
     if ($stock <= 0) {
         return lang('This product is out of stock.');
@@ -1218,7 +1255,8 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
         $number++;
         $id = (int) $line['id'];
         $tracked = ((int) $line['inventory'] === 1);
-        $at_limit = $tracked && ((int) $line['quantity'] >= (int) $line['inventory_quantity']);
+        $stock = $tracked ? local_sale_product_stock($line) : 0;
+        $at_limit = $tracked && ((int) $line['quantity'] >= $stock);
         $error = isset($line_errors[$id]) ? (string) $line_errors[$id] : '';
         $label = local_sale_product_label($line);
 
@@ -1233,7 +1271,7 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
         $code = trim((string) $line['name']);
         $sub = (($code !== '') && ($code !== $label)) ? '<span class="font-monospace">' . h($code) . '</span>' : '';
         if ($tracked) {
-            $sub .= (($sub !== '') ? ' · ' : '') . h(lang(array('string' => 'In stock: {var:1}', 'vars' => array((int) $line['inventory_quantity']))));
+            $sub .= (($sub !== '') ? ' · ' : '') . h(lang(array('string' => 'In stock: {var:1}', 'vars' => array($stock))));
             if ($at_limit) {
                 $sub .= ' · <span class="fg-emphasis-danger">' . lang('at the limit') . '</span>';
             }

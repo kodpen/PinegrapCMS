@@ -338,6 +338,8 @@
             } else if (row.hasAttribute('data-mp-shop')) {
                 if (act === 'code') {
                     editCode(row);
+                } else if (act === 'shop_pricing') {
+                    pricingStep(row, button);
                 } else if (act === 'shop_remove') {
                     if (window.confirm(label('confirm_remove', ['1']))) {
                         shopStep(act, [row.getAttribute('data-mp-row')], button);
@@ -351,6 +353,20 @@
                 openPicker(row);
             } else if ((act === 'dismiss') || (act === 'restore') || (act === 'unmatch')) {
                 rowStep(row, act);
+            }
+        });
+
+        // Return in the own price box presses the row's Save.
+        list.addEventListener('keydown', function (event) {
+            if ((event.key === 'Enter') && event.target.matches('[data-mp-own-price]')) {
+                var row = event.target.closest('[data-mp-row]');
+                var save = row && row.querySelector('[data-mp-act="shop_pricing"]');
+
+                event.preventDefault();
+
+                if (save && !save.disabled) {
+                    pricingStep(row, save);
+                }
             }
         });
 
@@ -514,6 +530,24 @@
             }
 
             return answer;
+        });
+    }
+
+    // A row's own price and strategy. A refused one leaves the row as typed
+    // and says why; a saved one redraws it with the price it now goes out at.
+    function pricingStep(row, button) {
+        var own = row.querySelector('[data-mp-own-price]');
+        var strategy = row.querySelector('[data-mp-strategy]');
+        var id = row.getAttribute('data-mp-row');
+
+        return shopStep('shop_pricing', [id], button, {
+            id: id,
+            own_price: own ? own.value.trim() : '',
+            strategy: strategy ? strategy.value : '0'
+        }).then(function (answer) {
+            if (!answer.ok && own && own.isConnected) {
+                own.focus();
+            }
         });
     }
 

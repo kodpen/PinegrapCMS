@@ -26,7 +26,7 @@
 // a package's invoice or mark it Invoiced with the invoice number, read the
 // buyers' returns and approve or reject the ones
 // that came back, read the buyers' questions and answer them, register or remove
-// that webhook, and read the seller's catalogue a page at a time for matching
+// that webhook, read where the store stands in a listing's buybox, and read the seller's catalogue a page at a time for matching
 // it to the shop's products. What it does not
 // name in the table below mp_can() answers no for, so nothing queues work this
 // connector cannot do.
@@ -98,7 +98,8 @@ function mp_trendyol_connector() {
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook',
 		'remote_products'     => 'mp_trendyol_remote_products',
-		'deductions'          => 'mp_trendyol_deductions'
+		'deductions'          => 'mp_trendyol_deductions',
+		'buybox'              => 'mp_trendyol_buybox'
 	);
 
 }
@@ -192,7 +193,10 @@ function mp_trendyol_credentials_problem($account) {
 // $allow_empty reads a 2xx whose body is empty or not JSON as success, for a
 // call whose answer carries nothing but its status. Every other call keeps
 // reading such an answer as an error.
-function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null, $method = null, $allow_empty = false, $content_type = 'application/json') {
+//
+// $extra_headers are sent after the shared ones (the buybox service's
+// storefront code).
+function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null, $method = null, $allow_empty = false, $content_type = 'application/json', $extra_headers = array()) {
 
 	$problem = mp_trendyol_credentials_problem($account);
 
@@ -242,7 +246,7 @@ function mp_trendyol_call($account, $path, $max_body, $transport = null, $body =
 
 	}
 
-	$options['headers'] = $headers;
+	$options['headers'] = array_merge($headers, (array)$extra_headers);
 
 	if ($method === null) {
 
@@ -4341,5 +4345,150 @@ function mp_trendyol_remote_image($row) {
 	}
 
 	return '';
+
+}
+
+/* ---------------------------------------------------------------- buybox */
+
+// Barcodes per buybox call: their service takes at most ten. The service
+// allows 1000 calls a minute; the job's pass stays far under it
+// (mp_sync_buybox_calls()).
+function mp_trendyol_buybox_size() {
+
+	return 10;
+
+}
+
+// The storefront the buybox is read on, sent in the storeFrontCode header:
+// two capital letters from the credentials' 'storefront', else TR, the one
+// their service assumes when the header is missing.
+function mp_trendyol_storefront($account) {
+
+	$value = isset($account['credentials']['storefront']) ? strtoupper(trim((string)$account['credentials']['storefront'])) : '';
+
+	return (preg_match('/^[A-Z]{2}$/', $value) === 1) ? $value : 'TR';
+
+}
+
+// Where the store stands in each listing's buybox, by barcode.
+//
+// Their "Product Buybox Check" service: a POST of {"barcodes": [...]} (at
+// most ten) with the storefront in the storeFrontCode header. Each entry of
+// buyboxInfo carries the barcode, buyboxOrder (our place: 1 is the buybox),
+// buyboxPrice (the price that holds it) and hasMultipleSeller. The second and
+// third prices they add are not read: the repricer works from the buybox
+// price.
+//
+// Answers data['buybox'], barcode as asked => array('rank', 'price' in minor
+// units, 'others'), for each barcode they answered; a barcode they did not
+// answer is not in it. Barcodes their rules refuse are not asked about and
+// are answered in data['refused'] (barcode => reason).
+function mp_trendyol_buybox($account, $barcodes, $transport = null) {
+
+	$barcodes = array_values(array_unique(array_map(function ($barcode) {
+
+		return trim((string)$barcode);
+
+	}, (array)$barcodes)));
+
+	if (count($barcodes) > mp_trendyol_buybox_size()) {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol is asked about at most {var:1} barcodes at a time.',
+			'vars'   => array(mp_trendyol_buybox_size())
+		)));
+
+	}
+
+	$refused = array();
+
+	$wanted = array();
+
+	foreach ($barcodes as $barcode) {
+
+		$problem = mp_trendyol_barcode_problem($barcode);
+
+		if ($problem !== '') {
+
+			$refused[$barcode] = $problem;
+
+			continue;
+
+		}
+
+		$wanted[mb_strtolower($barcode)] = $barcode;
+
+	}
+
+	if (!$wanted) {
+
+		return mp_ok(array('buybox' => array(), 'refused' => $refused));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account) . '/products/buybox-information',
+		1048576, $transport, array('barcodes' => array_values($wanted)), 'POST', false, 'application/json',
+		array('storeFrontCode: ' . mp_trendyol_storefront($account)));
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('buybox' => mp_trendyol_buybox_rows($result['data'], $wanted), 'refused' => $refused));
+
+}
+
+// The buyboxInfo entries for the barcodes in $wanted (lower case => as
+// asked). An entry with no rank of 1 or more, or a negative price, is left
+// out rather than kept as a read that says nothing. A rank over 1 means
+// another seller holds the buybox, whatever hasMultipleSeller says.
+function mp_trendyol_buybox_rows($decoded, $wanted) {
+
+	$rows = array();
+
+	if (!is_array($decoded) || !isset($decoded['buyboxInfo']) || !is_array($decoded['buyboxInfo'])) {
+
+		return $rows;
+
+	}
+
+	foreach ($decoded['buyboxInfo'] as $entry) {
+
+		if (!is_array($entry) || !isset($entry['barcode'])) {
+
+			continue;
+
+		}
+
+		$key = mb_strtolower(trim((string)$entry['barcode']));
+
+		if (!isset($wanted[$key])) {
+
+			continue;
+
+		}
+
+		$rank = (isset($entry['buyboxOrder']) && is_numeric($entry['buyboxOrder'])) ? (int)$entry['buyboxOrder'] : 0;
+
+		$price = (isset($entry['buyboxPrice']) && is_numeric($entry['buyboxPrice'])) ? mp_trendyol_minor($entry['buyboxPrice']) : -1;
+
+		if ($rank < 1 || $price < 0) {
+
+			continue;
+
+		}
+
+		$rows[$wanted[$key]] = array(
+			'rank'   => $rank,
+			'price'  => $price,
+			'others' => ($rank > 1) || !empty($entry['hasMultipleSeller'])
+		);
+
+	}
+
+	return $rows;
 
 }

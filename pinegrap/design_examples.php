@@ -3,8 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design examples: every recipe of the panel's look drawn live in both
- * themes, with the classes that draw it and what the look does not cover
- * yet. A screen copies its markup from here (includes/fn/look_examples.php).
+ * themes, then the patterns put together from them (a settings pane, a
+ * connect row, a list's empty state), with the classes that draw each and
+ * what the look does not cover yet. A screen copies its markup from here
+ * (includes/fn/look_examples.php).
  * For the Designer role and above.
  *
  * @author      Erdal Güral (Kodpen)
