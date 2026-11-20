@@ -14,13 +14,13 @@ module: store_credit_points
 
 ## How is a double take-back avoided?
 - Cancellation: takes the order's points less the lines of its refunded returns (`refunded_at > 0`) and less the points in those notes (`pg_credit_points_order_refunded()`); a line refund of a cancelled order takes nothing. The cancel count did not change with #10671.
-- Line refunds (architect 2026-11-20, #10671, PR #PRNUM): each unit's points are taken once. `pg_credit_points_units_taken()` counts a line's taken units as min(quantity, paid + max(screen, recorded)): `screen` the order screen's refunds by lines (their `lines:` notes, `pg_credit_points_screen_noted()`), `paid` returns refunded with money, `recorded` returns recorded as refunded with 0, which match the screen's units first.
+- Line refunds (architect 2026-11-20, #10671, PR #10694): each unit's points are taken once. `pg_credit_points_units_taken()` counts a line's taken units as min(quantity, paid + max(screen, recorded)): `screen` the order screen's refunds by lines (their `lines:` notes, `pg_credit_points_screen_noted()`), `paid` returns refunded with money, `recorded` returns recorded as refunded with 0, which match the screen's units first.
 - A new refund takes only the units above that count (`pg_credit_points_units_to_take()`), in either order.
 - Symptom fixed: order screen by lines A x 2 (200 points), then the return of A x 2 recorded with 0 took 200 points again.
 - `pg_return_refund()` passes the return's id and amount; the order screen passes none (`view_order.php` unchanged). Counts come from `pg_credit_points_lines_counted()`; before the refund columns (11.0.34) a return counts as paid.
 
 ## What is not covered?
-- An invoiced order's refund by lines notes no lines (its return invoice may never be issued and does not say which refund it came from), so its units count as none: a 0 recorded return of those lines still takes the points again. Open question to the architect in PR #PRNUM.
+- An invoiced order's refund by lines notes no lines (its return invoice may never be issued and does not say which refund it came from), so its units count as none: a 0 recorded return of those lines still takes the points again. Open question to the architect in PR #10694.
 - A restore of a cancelled order does not give the points back (staff edit the balance on the user screen); returns refunded before this release are still subtracted on a later cancel.
 
 ## Tests?
