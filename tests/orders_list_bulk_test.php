@@ -59,7 +59,7 @@ function test_orders_list_parasut_export_skips_and_checks()
 	pg_assert_contains("pg_order_parasut_exportable(\$row['status'] ?? null)", $block, 'an unread order is skipped');
 	pg_assert_contains('$parasut_skipped++', $block, 'skipped orders are counted');
 	pg_assert_true(
-		strpos($block, 'pg_order_parasut_tax_rate(') < strpos($block, 'PHPExcel_IOFactory::load('),
+		strpos($block, 'pg_order_parasut_tax_rate(') < strpos($block, 'pg_xlsx_write_layout('),
 		'the rate is checked before the workbooks are built'
 	);
 }

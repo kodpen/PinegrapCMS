@@ -32,7 +32,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 - `messages-area-*`: 7 files.
 - `object-storage-*`: 6 files.
-- `visitor-push-*`: 7 files.
+- `visitor-push-*`: 8 files; start at `visitor-push.md`.
 
 ## Files
 

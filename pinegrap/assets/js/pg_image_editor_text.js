@@ -443,6 +443,9 @@
         }
 
         this.textEdit = null;
+        // A panel press that ended no blur must not swallow the next
+        // typing's blur.
+        this.textKeep = false;
         this.root.classList.remove('pgie-typing');
 
         if (ed.area.parentNode) {
@@ -510,7 +513,7 @@
             var type = Editor.layerTypes[l.type] || {};
 
             return !type.fixed && ((l.type === 'text') || !type.hit || type.hit(l, q, slack));
-        });
+        }, this.pickedReach(e));
 
         if (h || hit) {
             this.startDrag(e);
@@ -746,6 +749,30 @@
         }
 
         return false;
+    };
+
+    // Typing ends with another tool, and with a press on the stage in one:
+    // while a text is typed its box lies over it and takes the presses, and
+    // the layer itself is not drawn (textNode()), so Select and Animate
+    // could not pick it. The box's blur alone does not end it where the
+    // tool's button takes no focus (a phone) or a press on the panel set
+    // textKeep.
+    var pickTool = Editor.prototype.pickTool, onDown = Editor.prototype.onDown;
+
+    Editor.prototype.pickTool = function (id) {
+        if (this.textEdit && (id !== 'text') && (this.tools.list.indexOf(id) >= 0)) {
+            this.endTextEdit();
+        }
+
+        return pickTool.call(this, id);
+    };
+
+    Editor.prototype.onDown = function (e) {
+        if (this.textEdit && (this.tool !== 'text')) {
+            this.endTextEdit();
+        }
+
+        return onDown.call(this, e);
     };
 
     Editor.inits.push(function () {

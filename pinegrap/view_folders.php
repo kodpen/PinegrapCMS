@@ -288,15 +288,15 @@ $explorer_lang = array(
     'deselect_all' => lang('Deselect All'),
     'access_permissions' => lang('Access Permissions'),
     'optimize_image' => lang('Optimize this image'),
-    'image_editor' => lang('Design Canvas'),
-    // The Design Canvas's icon (SVG) before its name in the menu and the tools.
+    'image_editor' => lang('Artifact Canvas'),
+    // The Artifact Canvas's icon (SVG) before its name in the menu and the tools.
     'image_editor_icon' => pg_design_canvas_icon_one_colour(),
     'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
     'new_image_saved' => lang('{var:1} was created.'),
     'rotate_right' => lang('Rotate Right'),
-    'image_editor_missing' => lang('The Design Canvas is not loaded on this screen.'),
+    'image_editor_missing' => lang('The Artifact Canvas is not loaded on this screen.'),
     'saved_named' => lang('The {var:1} has been saved.'),
     'file_not_on_disk' => lang('The file is recorded here but is not on the disk.'),
     'file_too_large_to_edit' => lang('This file is larger than {var:1}, so its text is not shown here.'),
@@ -8458,7 +8458,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (wsSend) {
                     html += menuItem('bi-send', L.ws_send, 'ws_send', multi || insideWorkspaceFolder());
                 }
-                // An MP4 or WebM opens in the Design Canvas too: known by its
+                // An MP4 or WebM opens in the Artifact Canvas too: known by its
                 // type here, the file itself is read on the click.
                 if (itemCanvasVideo(item)) {
                     html += menuItem(L.image_editor_icon, L.image_editor, 'image_editor', multi);
@@ -8665,7 +8665,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         positionMenu(event);
     }
 
-    // A video the Design Canvas takes (pg_image_editor_clip_types()), told
+    // A video the Artifact Canvas takes (pg_image_editor_clip_types()), told
     // by its type alone: no query per file in the lists.
     function itemCanvasVideo(item) {
         return item.kind === 'file' && item.can_edit && !item.backup && !item.short_link &&
@@ -14882,7 +14882,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }).catch(function () { toast(L.image_editor_missing, false); });
     }
 
-    // A video in the Design Canvas from the context menu: the file window's
+    // A video in the Artifact Canvas from the context menu: the file window's
     // answer says whether it is on the disk and whether the canvas saved it.
     function openVideoCanvasFor(item) {
 

@@ -16,15 +16,15 @@ description: PHPExcel's .ods reader makes cells of repeated rows/columns and mer
 
 ## What do the importers do?
 - `pg_products_import_ods_load($path, $data_only, &$error)` (import_products_f.php): `pg_products_import_ods_check()`, the reader with `PG_PRODUCTS_IMPORT_ODS_MAX_CELLS` (the part ceiling / 64 = 131,072), then the first sheet's used range (last data row × last data column) at most `PG_PRODUCTS_IMPORT_ODS_MAX_RANGE` (1,048,576). Over either → "The file is too large."; anything thrown → "The file could not be read."
-- The product importer calls it with data only, `erp_bank_read_spreadsheet()` with formats.
-- Cost at the ceilings (PHP 8.3, 128M): 131,072 cells in 5–6 s and 63 MB; both ceilings at once in the bank import 95 MB.
+- No importer calls it since XL2 and XL3: both read an .ods through the sheet reader, whose own .ods ceilings carry these over (`sheet-reader.md`, `product-import-sheets.md`). It goes with PHPExcel in XL5.
+- Cost at the ceilings (PHP 8.3, 128M): 131,072 cells in 5–6 s and 63 MB.
 
 ## Which honest files does it refuse?
 - None of LibreOffice's usual shapes: row-filling empty runs, the trailing repeated empty row, identical rows and cells written as repeats, merged titles. Files saved by LibreOffice 24.2 gave the same rows as the old reader.
 - Refused: more than 131,072 cells (inside 8 MB of `content.xml` that takes mostly repeated values; LibreOffice writes 90–150 bytes a cell), or a used range past 1,048,576 cells (a stray value in column 350 of a 3,000-line sheet).
 
 ## What about .xlsx and .xls?
-- Not limited here. The .xlsx readers pad a row up to its cell reference (`r="ZZZZZ2"`: 128 MB in 0.1 s); the product importer squares every row to the widest. The .xls reader's merged ranges fill memory in the bank import (data-only skips them); a BIFF8 sheet's used range stops at 256 × 65,536 (3 s walk).
+- Not limited here. The .xlsx readers pad a row up to its cell reference (`r="ZZZZZ2"`: 128 MB in 0.1 s); the product importer squares every row to the widest. A BIFF8 sheet's used range stops at 256 × 65,536 (3 s walk).
 
 ## Where are the tests?
 - `tests/ods_cell_ceiling_test.php`.

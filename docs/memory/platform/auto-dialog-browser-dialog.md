@@ -17,6 +17,7 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 - Both cookies are the notice's marketing row and its revoke names (`cookie-consent-catalogue.md`).
 
 ## How is the dialog drawn?
+- A designed pop-up (`content` component, #10450) is drawn from a `<template>` instead: `auto-dialog-content.md`.
 - `software.open_dialog({url, width, height, title, class_name, modal})`: a `<dialog class="pg-dialog …">` with a title bar, a 20px close button and the address in an iframe; `showModal()` (centred, page inert), `show()` with `modal: false`. Escape, the close button and a press on the backdrop close it; it is removed on close. Width and height as before (height + 25 for the bar; 75 % of the window on a mobile device). Returns the dialog, `false` for a non-web address.
 - `software.dialog_style()` adds the rules once (`#pg-dialog-style`): the old frame's white box, `#c5c5c5` line, `0 0 20px #000` shadow, `.2em .2em 1em` padding, grey backdrop. No `ui-dialog` classes; themes' `.software.ui-dialog` rules no longer reach it. Not draggable or resizable any more.
 - While the notice's card is open (reopened by the visitor), a modal dialog waits for `pg:consent` and opens a tick later: a modal dialog would make the notice inert. A waiting dialog is not marked shown.

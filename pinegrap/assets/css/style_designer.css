@@ -1605,6 +1605,26 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-canvas-wrapper { position:relative; }
 
+/* The link marks over the canvas (_sdLinkMarksDraw()): red on a broken
+   link, amber on a link without a target, at the right edge of its
+   element. The layer covers the part of the canvas frame in view and lets
+   every other click through; it stays under the Prototype view and the
+   docked panels. */
+.sd-lm-layer { position: absolute; z-index: 20; overflow: hidden; pointer-events: none; }
+.sd-lm {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--sd-panel-bg); border-radius: 50%;
+    background: var(--sd-danger); color: var(--sd-panel-bg);
+    font-size: 10.5px; line-height: 1;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+    cursor: pointer; pointer-events: auto;
+}
+.sd-lm.sd-lm-empty { background: var(--sd-warning); }
+.sd-lm:hover { filter: brightness(1.12); }
+.sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
@@ -7811,6 +7831,18 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-li-target-empty .sd-proto-li-target-name { color: var(--pgc-in); }
 .sd-proto-li-target-broken { border-color: color-mix(in srgb, #ff6b6b 60%, transparent); }
 .sd-proto-li-target-broken .sd-proto-li-target-name { color: #ff6b6b; }
+/* A row carried onto the canvas: on a touch screen an up or down
+   swipe still scrolls the panel and a sideways one carries the row; the
+   row fades while a ghost with its label follows the pointer. */
+.sd-proto-li-drag { touch-action: pan-y; }
+.sd-proto-li-dragged { opacity: .45; }
+.sd-proto.sd-proto-row-drag,
+.sd-proto.sd-proto-row-drag * { cursor: grabbing; user-select: none; }
+.sd-proto-ghost {
+    position: absolute; z-index: 6; max-width: 280px; padding: 3px 8px; border-radius: 4px; pointer-events: none;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: .75rem; line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
 /* "N broken" in the bar (F19) and its list; a frame's count (F20). */
 .sd-proto-broken {
     flex: none; padding: 1px 8px; border: 1px solid #ff6b6b; border-radius: 10px;

@@ -85,7 +85,7 @@ function test_parasut_export_writes_the_discount()
 	pg_assert_true(strpos($block, 'orders.discount,') !== false, 'the order query reads the discount');
 	pg_assert_true(strpos($block, "pg_order_parasut_line_discounts((int) \$row['discount'], \$line_totals)") !== false, 'spread over the lines');
 	pg_assert_true(strpos($block, '$product_discount = 0;') === false, 'no line forced to no discount');
-	pg_assert_true(strpos($block, "->setCellValue('Q' . \$i_obj_1, (\$product_discount / 100))") !== false, 'the share in Q');
+	pg_assert_true(strpos($block, "'Q' => (\$product_discount / 100),") !== false, 'the share in Q');
 	pg_assert_true(strpos($block, '$product_discount = $product_discount / (1+$product_tax_rate/100);') !== false, 'net of VAT like the price');
 	pg_assert_true(strpos($block, 'gift_card_discount') === false, 'the gift card is not a discount');
 }

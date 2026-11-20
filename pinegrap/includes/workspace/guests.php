@@ -2196,10 +2196,11 @@ function ws_guest_signature($context)
  * when the mark it holds is out of date, the messages.
  *
  * @param array  $context
- * @param string $signature what the page holds
+ * @param string $signature  what the page holds
+ * @param int    $call_after the newest call signal id the page holds
  * @return array
  */
-function ws_guest_state($context, $signature = '')
+function ws_guest_state($context, $signature = '', $call_after = 0)
 {
     $channel = $context['channel'];
     $now = ws_guest_signature($context);
@@ -2232,6 +2233,14 @@ function ws_guest_state($context, $signature = '')
         $state['messages'] = ws_guest_messages($context);
     }
 
+    // The room's live call and the guest's signals in it; nothing is asked
+    // while no call is live on the site (calls.php).
+    $call_part = function_exists('ws_call_live_part') ? ws_call_live_part(ws_call_party_guest($context), (int) $channel['id'], (int) $call_after) : null;
+
+    if ($call_part !== null) {
+        $state['call'] = $call_part;
+    }
+
     return $state;
 }
 
@@ -2239,9 +2248,11 @@ function ws_guest_state($context, $signature = '')
  * One request of the guest's page (workspace_guest.php).
  *
  * claim (token): the token taken, a session opened. hello: the session this
- * browser already has, if any. state (signature), send (text, parent_id),
- * react (message_id, emoji), vote (poll_id, option_ids), check (message_id,
- * item, checked): with the session and its csrf.
+ * browser already has, if any. state (signature, call_after), send (text,
+ * parent_id), react (message_id, emoji), vote (poll_id, option_ids), check
+ * (message_id, item, checked), call_join (call_id), call_leave (call_id),
+ * call_signal (call_id, to_member_id, kind, body): with the session and its
+ * csrf.
  *
  * @param string $action
  * @param array  $request
@@ -2298,7 +2309,25 @@ function ws_guest_handle($action, $request)
     switch ($action) {
 
         case 'state':
-            return ws_guest_state($context, ws_guest_request_text($request['signature'] ?? ''));
+            return ws_guest_state($context, ws_guest_request_text($request['signature'] ?? ''), (int) ($request['call_after'] ?? 0));
+
+        // A guest joins the room's live call, leaves it and sends its
+        // connection messages; it never starts one (calls.php).
+        case 'call_join':
+            $joined = ws_call_join(ws_call_party_guest($context), $context['channel'], (int) ($request['call_id'] ?? 0));
+
+            return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id']) : array('status' => 'error', 'message' => $joined['error']);
+
+        case 'call_leave':
+            $left = ws_call_leave(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0));
+
+            return array('status' => 'ok', 'ended' => $left['ended']);
+
+        case 'call_signal':
+            $sent = ws_call_signal_send(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0), (int) ($request['to_member_id'] ?? 0),
+                ws_guest_request_text($request['kind'] ?? ''), ws_guest_request_text($request['body'] ?? ''));
+
+            return $sent['ok'] ? array('status' => 'ok', 'signal_id' => $sent['signal_id']) : array('status' => 'error', 'message' => $sent['error']);
 
         case 'send':
             $sent = ws_guest_send($context, ws_guest_request_text($request['text'] ?? ''), (int) ($request['parent_id'] ?? 0));
