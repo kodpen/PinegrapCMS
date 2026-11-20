@@ -15,6 +15,7 @@ description: Generated from the module field of the memory files: each includes/
 - `activitypub_settings`: [[fediverse-settings]]
 - `ad_click_ids`: [[ad-conversions-click-ids]]
 - `ad_conversions`: [[ad-conversions-queue]]
+- `ad_conversions_ga4`: [[ad-conversions-ga4]], [[ga4-mp-facts]]
 - `ad_conversions_meta`: [[ad-conversions-meta]], [[meta-capi-facts]]
 - `ad_conversions_tiktok`: [[ad-conversions-tiktok]], [[tiktok-events-facts]]
 - `address_autocomplete`: [[address-autocomplete]]
