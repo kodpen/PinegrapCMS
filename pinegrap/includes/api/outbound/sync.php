@@ -369,21 +369,24 @@ function mp_sync_send_batch($account, &$summary) {
 }
 
 // The channel prices a batch handed to the marketplace go into the price
-// history on the account's channel (marketplace:<account id>, source 'rule'),
-// so what the account sold at is kept beside the shop's own price. Only for
-// an account that sends prices and has price rules: without rules the
-// channel price is the shop's, already kept on the web channel. A product
-// the connector refused or did not get to is left out; it is recorded when
-// it goes.
+// history on the account's channel (marketplace:<account id>), source 'rule',
+// or 'panel' for a price typed on the listing, so what the account sold at
+// is kept beside the shop's own price. Only for an account that sends prices
+// and has price rules or typed prices: otherwise the channel price is the
+// shop's, already kept on the web channel. A product the connector refused
+// or did not get to is left out; it is recorded when it goes.
 function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) {
 
-	if (empty($account['push_price']) || !mp_pricing_account_rules((int)$account['id'])) {
+	$account_id = (int) $account['id'];
+
+	if (empty($account['push_price'])
+		|| (!mp_pricing_account_rules($account_id) && !mp_pricing_account_own_prices($account_id))) {
 
 		return 0;
 
 	}
 
-	$prices = array();
+	$prices = array('rule' => array(), 'panel' => array());
 
 	foreach ((array)$payload as $product) {
 
@@ -395,11 +398,12 @@ function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) 
 
 		}
 
-		$prices[$product_id] = (int) $product['price'];
+		$prices[empty($product['price_own']) ? 'rule' : 'panel'][$product_id] = (int) $product['price'];
 
 	}
 
-	return mp_pricing_history_record((int)$account['id'], $prices);
+	return mp_pricing_history_record($account_id, $prices['rule'])
+		+ mp_pricing_history_record($account_id, $prices['panel'], 'panel');
 
 }
 

@@ -94,6 +94,7 @@ function pg_privacy_inventory_retentions()
         'form_submissions' => 'Rule: form submissions',
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
+        'closed_requests'  => 'Rule: closed requests',
     );
 }
 
@@ -241,6 +242,10 @@ function pg_privacy_inventory()
             'purpose' => 'Rows of workflow tables', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
         'ws_wtable_row_bin' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer'),
             'purpose' => 'Rows in a workflow table\'s bin', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+
+        // Requests about personal data (includes/fn/privacy_requests.php).
+        'privacy_requests' => array('categories' => array('identity', 'contact', 'messages'), 'subjects' => array('customer', 'visitor'),
+            'purpose' => 'Requests about personal data and their answers', 'ground' => 'legal_obligation', 'retention' => 'closed_requests', 'person' => array('email', 'text')),
 
         // Logs.
         'consent_log' => array('categories' => array('ip_cookie'), 'subjects' => array('customer', 'visitor'),

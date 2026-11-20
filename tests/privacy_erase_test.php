@@ -53,6 +53,7 @@ function privacy_erase_test_scope()
 		'wtable_row_ids'   => array(97),
 		'wtable_bin_ids'   => array(98),
 		'application_entry_ids' => array(99),
+		'request_ids'      => array(100),
 		'customer_keys'    => array('e0123456789abcdef0123', 'c7'),
 	);
 }
@@ -78,7 +79,7 @@ function test_privacy_erase_tables_are_pinned()
 			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
 			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'ad_conversion_events' => 'delete', 'gift_cards' => 'anonymise', 'store_credit' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
-			'comments' => 'anonymise', 'prototype_comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'ws_personal_plans' => 'anonymise', 'cart_quotes' => 'anonymise',
+			'comments' => 'anonymise', 'prototype_comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'ws_personal_plans' => 'anonymise', 'cart_quotes' => 'anonymise', 'privacy_requests' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
 			'form_data' => 'delete', 'form_signatures' => 'delete',
 			'application_reviews' => 'delete', 'application_entries' => 'delete', 'application_reviewers' => 'anonymise',
@@ -139,6 +140,7 @@ function test_privacy_erase_tables_are_pinned()
 			'ws_events' => array('contact_id' => 0),
 			'ws_personal_plans' => array('contact_id' => 0),
 			'cart_quotes' => array('contact_id' => 0),
+			'privacy_requests' => array('name' => '{name}', 'email' => '{token}', 'message' => '', 'answer' => '', 'contact_id' => 0, 'user_id' => 0),
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
@@ -185,6 +187,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'ws_events' => array('contact_id' => 'contact_ids'),
 			'ws_personal_plans' => array('contact_id' => 'contact_ids'),
 			'cart_quotes' => array('contact_id' => 'contact_ids'),
+			'privacy_requests' => array('id' => 'request_ids', 'contact_id' => 'contact_ids', 'user_id' => 'user_ids', 'email' => 'emails'),
 			'audit_log' => array('id' => 'audit_ids'),
 			'record_revisions' => array('form_id' => 'revision_form_ids'),
 			'files' => array('id' => 'file_ids'),
