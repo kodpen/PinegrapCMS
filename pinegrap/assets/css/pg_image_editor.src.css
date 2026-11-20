@@ -324,6 +324,22 @@
   background: var(--pgie-hover);
 }
 
+/* Save to Files from a channel: the folder window */
+
+.pgie-files-box .pgie-files-label {
+  display: block;
+  margin: 4px 0 6px;
+}
+
+.pgie-files-box .pgie-select {
+  width: 100%;
+}
+
+.pgie-toast a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* The channels a canvas may be sent to, inside the same menu */
 
 .pgie-menu.pgie-sendmenu {

@@ -51,7 +51,7 @@ function image_editor_send_node($script)
 
 // From a channel: another channel, Save to Files as a picture and as a
 // video, Download. The video only while something moves; Save to Files only
-// with a folder the caller gives; a send only when the caller can send.
+// for someone who may edit a folder; a send only when the caller can send.
 function test_image_editor_send_menu_from_a_channel()
 {
 	$r = image_editor_send_node(
@@ -71,7 +71,7 @@ function test_image_editor_send_menu_from_a_channel()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(array('sendOther', 'savePicture', 'saveVideo', 'download'), $r['all'], 'every choice, in order');
 	pg_assert_same(array('sendOther', 'savePicture', 'download'), $r['still'], 'the video choice only with motion');
-	pg_assert_same(array('sendOther', 'download'), $r['noFolder'], 'Save to Files only with a folder given');
+	pg_assert_same(array('sendOther', 'download'), $r['noFolder'], 'a member who may edit no folder: no Save to Files');
 	pg_assert_same(array('download'), $r['noSend'], 'no channel without the caller\'s channels');
 	pg_assert_same(array(), $r['photo'], 'a photo is no canvas: nothing to send or draw');
 	pg_assert_same(array(), $r['none'], 'no context, no choice');
@@ -153,9 +153,111 @@ function test_image_editor_send_labels()
 
 	$labels = pg_image_editor_strings_core();
 
-	foreach (array('sendOther', 'sendChannel', 'download', 'sendFind', 'sendLoading', 'sendNone', 'sendError', 'sendSent', 'saveCopy') as $key) {
+	foreach (array('sendOther', 'sendChannel', 'download', 'sendFind', 'sendLoading', 'sendNone', 'sendError', 'sendSent', 'saveCopy', 'savePicture', 'saveVideo', 'filesFolder', 'filesLoading', 'filesNone', 'filesError', 'filesNext', 'filesSaved', 'filesOpen') as $key) {
 		pg_assert_true(isset($labels[$key]) && ($labels[$key] !== ''), 'label ' . $key);
 	}
 
 	pg_assert_true(strpos($labels['sendSent'], '{name}') !== false, 'the channel named in the sent line');
+}
+
+// The folder last chosen comes back from this browser's storage, a storage
+// that throws or holds junk picks none; the list indents by depth.
+function test_image_editor_send_files_remembered()
+{
+	$r = image_editor_send_node(
+		'var store = {}; M.filesRemember(31, function (k, v) { store[k] = v; }); M.filesRemember(0, function (k, v) { store.zero = v; });' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' back: M.filesRemembered(function (k) { return store[k]; }),'
+		. ' zero: store.zero === undefined,'
+		. ' junk: M.filesRemembered(function () { return "x"; }),'
+		. ' none: M.filesRemembered(function () { return null; }),'
+		. ' indent: [M.filesIndent(0), M.filesIndent(2).length, M.filesIndent(-3), M.filesIndent(99).length] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(31, $r['back'], 'the last folder picked again');
+	pg_assert_true($r['zero'], 'no folder is not remembered');
+	pg_assert_same(0, $r['junk'], 'junk picks none');
+	pg_assert_same(0, $r['none'], 'nothing kept picks none');
+	pg_assert_same(array('', 4, '', 24), $r['indent'], 'two spaces a level, at most twelve levels');
+}
+
+// Who is offered Save to Files: staff always, a user granted edit rights to
+// a folder, nobody else; the folder list refuses the others (403).
+function test_image_editor_send_files_rights()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+
+	$asked = 0;
+	$none = function () use (&$asked) {
+		$asked++;
+
+		return 0;
+	};
+	$two = function () {
+		return 2;
+	};
+
+	pg_assert_true(pg_image_editor_files_edit(array('id' => 5, 'role' => 1), $none), 'staff');
+	pg_assert_same(0, $asked, 'staff are not looked up');
+	pg_assert_false(pg_image_editor_files_edit(array('id' => 5, 'role' => 3), $none), 'a member who may edit no folder');
+	pg_assert_true(pg_image_editor_files_edit(array('id' => 5, 'role' => 3), $two), 'a user granted edit rights');
+
+	list($payload, $status) = pg_image_editor_action_folders(array('action' => 'folders'), array('id' => 5, 'role' => 3), $none);
+
+	pg_assert_same(403, $status, 'the folder list refused without edit rights');
+	pg_assert_same('error', $payload['status'] ?? '', 'an error answer');
+
+	$editor = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor.js');
+
+	pg_assert_true(strpos($editor, "files: !!config().filesEdit && !!config().api,") !== false, 'the menu follows the config\'s right');
+}
+
+// The folders offered: editable ones in the tree's order, their depth
+// counting the listed folders above them; the bin's and an archived
+// folder's branches never.
+function test_image_editor_send_folder_choices()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+
+	// 1 Files > 2 Pictures > 3 Shoot ; 1 > 4 Recycle Bin > 5 Old ; 1 > 6 Archive > 7 Inside ; 8 Other (top)
+	$folders = array(
+		1 => array('parent' => 0, 'name' => 'Files', 'order' => 0),
+		2 => array('parent' => 1, 'name' => 'Pictures', 'order' => 0),
+		3 => array('parent' => 2, 'name' => 'Shoot', 'order' => 0),
+		4 => array('parent' => 1, 'name' => 'Recycle Bin', 'order' => 0),
+		5 => array('parent' => 4, 'name' => 'Old', 'order' => 0),
+		6 => array('parent' => 1, 'name' => 'Archive', 'order' => 0),
+		7 => array('parent' => 6, 'name' => 'Inside', 'order' => 0),
+		8 => array('parent' => 0, 'name' => 'Other', 'order' => 0),
+	);
+	$all = pg_image_editor_folder_choices($folders, function () { return true; }, array(4, 6));
+
+	pg_assert_same(array(1, 2, 3, 8), array_column($all, 'id'), 'the bin and the archived branch left out');
+	pg_assert_same(array(0, 1, 2, 0), array_column($all, 'depth'), 'depth by the tree');
+
+	// A user granted Pictures only: it stands at the top.
+	$granted = pg_image_editor_folder_choices($folders, function ($id) { return in_array($id, array(2, 3, 5), true); }, array(4, 6));
+
+	pg_assert_same(array(array('id' => 2, 'name' => 'Pictures', 'depth' => 0), array('id' => 3, 'name' => 'Shoot', 'depth' => 1)), $granted, 'only editable folders, never one in the bin');
+	pg_assert_same(array(), pg_image_editor_folder_choices($folders, function () { return false; }, array()), 'none editable');
+}
+
+// The saves themselves ask again of the folder chosen: edit access and the
+// bin for a picture and for a video, folder 0 refused.
+function test_image_editor_send_files_saves_check_the_folder()
+{
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+	$canvas = substr($php, (int) strpos($php, 'function pg_image_editor_save_canvas('), 1500);
+
+	pg_assert_true(strpos($canvas, 'if ($folder <= 0)') !== false, 'a picture: folder 0 refused');
+	pg_assert_true(strpos($canvas, "if (!check_edit_access(\$folder) || pg_folder_binned(\$folder)) {\n            return pg_image_editor_refusal(lang('Access denied'), 403);") !== false, 'a picture: edit access and the bin, 403');
+
+	$render = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_render.js');
+
+	pg_assert_true(strpos($render, 'folder_id: this.filesFolder ? this.filesFolder.id :') !== false, 'a video goes to the folder chosen');
 }

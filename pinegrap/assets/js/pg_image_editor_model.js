@@ -12394,8 +12394,8 @@
     // The choices of the menu beside the main button (the split button's
     // chevron), in order. c.channel: the caller's save posts in a channel
     // (save.url with a send option); c.send: the caller can send to channels
-    // (the Workspace is on, the person in it); c.files: a folder in Files the
-    // caller gives for Save to Files; c.replace: Save writes over a file;
+    // (the Workspace is on, the person in it); c.files: the person may edit a
+    // folder of Files (Save to Files); c.replace: Save writes over a file;
     // c.motion: something moves; c.artboard: the document is a canvas, which
     // is what a channel takes and what Download draws.
     function sendMenu(c) {
@@ -12474,7 +12474,34 @@
         return (stem || 'canvas').slice(0, 120) + '.png';
     }
 
-    var SEND = { sendMenu: sendMenu, sendChannels: sendChannels, sendFilter: sendFilter, sendFileName: sendFileName };
+    // The folder Save to Files chose last, kept in this browser: written
+    // through set(key, value), read through get(key) (either may throw or
+    // answer nothing: then no folder is picked first).
+    var FILES_KEY = 'pgie.filesFolder';
+
+    function filesRemember(id, set) {
+        id = Number(id);
+
+        if (id > 0) {
+            set(FILES_KEY, String(id));
+        }
+    }
+
+    function filesRemembered(get) {
+        var id = Number(get(FILES_KEY));
+
+        return (id > 0) ? Math.floor(id) : 0;
+    }
+
+    // A folder's place in the indented list: two no-break spaces a level.
+    function filesIndent(depth) {
+        return new Array(Math.max(0, Math.min(12, Number(depth) || 0)) + 1).join('\u00a0\u00a0');
+    }
+
+    var SEND = {
+        sendMenu: sendMenu, sendChannels: sendChannels, sendFilter: sendFilter, sendFileName: sendFileName,
+        filesRemember: filesRemember, filesRemembered: filesRemembered, filesIndent: filesIndent
+    };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,

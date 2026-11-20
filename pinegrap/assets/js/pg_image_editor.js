@@ -1646,6 +1646,9 @@
         return {
             channel: ok && (this.saveMode === 'url'),
             send: ok,
+            // Save to Files: someone who may edit a folder (the server asks
+            // again of the folder chosen at every save).
+            files: !!config().filesEdit && !!config().api,
             replace: this.saveMode === 'replace',
             motion: M.hasMotion(this.doc) || (M.sceneCount(this.doc) > 1),
             artboard: !!this.doc.artboard
@@ -1698,6 +1701,8 @@
             saveCopy: function () { self.save('copy'); },
             sendOther: function () { self.openSendList(); },
             sendChannel: function () { self.openSendList(); },
+            savePicture: function () { self.openFilesPick('picture'); },
+            saveVideo: function () { self.openFilesPick('video'); },
             download: function () { self.downloadCanvas(); }
         };
         var items = M.sendMenu(c).filter(function (key) { return !!acts[key]; }).map(function (key) {
@@ -1810,6 +1815,143 @@
             self.setSaving(false);
             self.showMessage(t('sendError'), true);
         });
+    };
+
+    // Save to Files from a channel's canvas: a small window with the
+    // folders the person may edit (action folders) as an indented list, the
+    // last one chosen picked again (this browser's storage). A picture is
+    // the canvas's PNG with its document, a new file in that folder; a
+    // video goes through Save animation into it (filesFolder). The message
+    // in the channel stays as it is: this is a copy.
+    Editor.prototype.openFilesPick = function (kind) {
+        var self = this;
+
+        if (!this.ready || this.saving || this.confirmBox) {
+            return;
+        }
+
+        var title = t(kind === 'video' ? 'saveVideo' : 'savePicture');
+        var select = el('select', { id: 'pgie-files-folder', class: 'pgie-select', disabled: true });
+        var note = el('p', { id: 'pgie-confirm-text', class: 'pgie-note', role: 'status', text: t('filesLoading') });
+        var cancel = el('button', { type: 'button', class: 'pgie-btn', text: t('cancel'), onclick: function () { self.closeConfirm(); } });
+        var go = el('button', { type: 'button', class: 'pgie-btn pgie-primary', text: t(kind === 'video' ? 'filesNext' : 'save'), disabled: true, onclick: function () {
+            var opt = select.options[select.selectedIndex];
+
+            if (!opt) {
+                return;
+            }
+
+            var folder = { id: Number(opt.value), name: opt.getAttribute('data-name') || '' };
+
+            M.filesRemember(folder.id, function (key, value) {
+                try {
+                    window.localStorage.setItem(key, value);
+                } catch (err) {
+                    // No storage: the list starts at its top next time.
+                }
+            });
+            self.closeConfirm();
+
+            if (kind === 'video') {
+                self.filesFolder = folder;
+                self.openAnimation();
+            } else {
+                self.saveToFiles(folder);
+            }
+        } });
+
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-confirm-title', 'aria-describedby': 'pgie-confirm-text' }, [
+            el('div', { class: 'pgie-confirm-box pgie-files-box' }, [
+                el('h2', { id: 'pgie-confirm-title', text: title }),
+                el('label', { class: 'pgie-files-label', for: 'pgie-files-folder', text: t('filesFolder') }),
+                select,
+                note,
+                el('div', { class: 'pgie-confirm-actions' }, [cancel, go])
+            ])
+        ]);
+        this.confirmReturn = this.menuBtn;
+        this.root.appendChild(this.confirmBox);
+        cancel.focus();
+
+        var box = this.confirmBox;
+
+        this.request({ action: 'folders' }).then(function (r) {
+            if (self.confirmBox !== box) {
+                return;
+            }
+
+            if (!r || (r.status !== 'success')) {
+                note.textContent = (r && r.message) || t('filesError');
+                return;
+            }
+
+            if (!r.folders || !r.folders.length) {
+                note.textContent = t('filesNone');
+                return;
+            }
+
+            var last = M.filesRemembered(function (key) {
+                try {
+                    return window.localStorage.getItem(key);
+                } catch (err) {
+                    return null;
+                }
+            });
+
+            r.folders.forEach(function (f) {
+                var opt = el('option', { value: String(f.id), 'data-name': f.name, text: M.filesIndent(f.depth) + f.name });
+
+                if (Number(f.id) === last) {
+                    opt.selected = true;
+                }
+
+                select.appendChild(opt);
+            });
+
+            note.textContent = '';
+            note.hidden = true;
+            select.disabled = false;
+            go.disabled = false;
+            select.focus();
+        }, function () {
+            if (self.confirmBox === box) {
+                note.textContent = t('filesError');
+            }
+        });
+    };
+
+    // The canvas's PNG and its document as a new file in a folder of Files
+    // (save mode new); the editor stays open on the channel's canvas.
+    Editor.prototype.saveToFiles = function (folder) {
+        var self = this;
+
+        if (!this.ready || this.saving || !this.doc.artboard) {
+            return;
+        }
+
+        this.hideMessage();
+        this.setSaving(true);
+        this.layersReady().then(function () {
+            self.send('new', { folder: folder });
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
+    };
+
+    // "Saved to Files > folder" with a link that opens the folder in the
+    // File Manager.
+    Editor.prototype.showFilesSaved = function (folder) {
+        var self = this;
+
+        this.showMessage(t('filesSaved').replace('{folder}', folder.name));
+
+        if (this.toastEl && config().filesUrl) {
+            this.toastEl.appendChild(document.createTextNode(' '));
+            this.toastEl.appendChild(el('a', { href: config().filesUrl + '?folder=' + encodeURIComponent(folder.id), target: '_blank', rel: 'noopener', text: t('filesOpen') }));
+            clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(function () { self.hideMessage(); }, 10000);
+        }
     };
 
     // The canvas as a PNG on this computer, drawn as a save draws it.
@@ -1949,7 +2091,8 @@
     };
 
     // to: { url, name } posts the canvas in another channel instead
-    // (sendTo()), and the editor stays open.
+    // (sendTo()), { folder } writes it as a new file into that folder of
+    // Files (saveToFiles()); either way the editor stays open.
     Editor.prototype.send = function (mode, to) {
         var self = this, body = { action: 'save', mode: mode, doc: this.doc };
 
@@ -1968,7 +2111,7 @@
         // endpoint keeps (save.url, Workspace).
         if (this.doc.artboard) {
             if (mode === 'new') {
-                body.folder_id = (this.opts.save && this.opts.save.folderId) || 0;
+                body.folder_id = (to && to.folder) ? to.folder.id : ((this.opts.save && this.opts.save.folderId) || 0);
             }
 
             body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
@@ -1983,16 +2126,22 @@
 
         Editor.saveHooks.forEach(function (hook) { hook.call(self, body, mode); });
 
-        this.request(body, to ? to.url : ((mode === 'url') ? this.opts.save.url : '')).then(function (r) {
+        this.request(body, to ? (to.url || '') : ((mode === 'url') ? this.opts.save.url : '')).then(function (r) {
             if (!r || (r.status !== 'success')) {
                 self.setSaving(false);
-                self.showMessage((r && r.message) || t(to ? 'sendError' : 'saveError'), true);
+                self.showMessage((r && r.message) || t((to && to.url) ? 'sendError' : 'saveError'), true);
                 return;
             }
 
             // Pictures the save kept as files: their layers point at them.
             if (self.takePictures) {
                 self.takePictures(r.pictures);
+            }
+
+            if (to && to.folder) {
+                self.setSaving(false);
+                self.showFilesSaved(to.folder);
+                return;
             }
 
             if (to) {

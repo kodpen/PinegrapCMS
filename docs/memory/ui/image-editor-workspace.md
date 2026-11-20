@@ -21,5 +21,8 @@ description: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note
 - "Edit the picture" on a message first asks `workspace_file_save.php?message=<id>` `{action: 'canvas'}`: `ws_canvas_open_doc()` (= `pg_image_editor_canvas_open_doc()`) answers the newest version's document while the file still holds its pixels and it is a canvas (`ws_canvas_is_doc()`: v 1, artboard, no source), else null.
 - With a document the editor opens `{blank: doc.artboard, doc}`: `M.canvasOpenDoc()` gives the editor's document, texts and shapes editable, and the New image dialog is not asked. Save with an artboard document on `?message=` replaces or sends the canvas as a picture does.
 
+## How is a channel's canvas saved to Files? (#10858)
+- Architect (2026-11-20): "Save to Files" is the File Manager, into a folder the person picks and may edit, offered only to someone who may edit a folder; every save checks the folder again; a copy, the channel's message unchanged. How: `image-editor-send.md`.
+
 ## Where is it tested?
 - `tests/workspace_canvas_test.php`: `ws_canvas_is_doc()`, `ws_canvas_doc_json()`, `ws_canvas_file_name()`, `ws_canvas_picture_name()`, a pasted picture pointed at its file and opened again as a layer (`canvasOpenDoc()` under Node), the save order, the labels.
