@@ -1,6 +1,6 @@
 ---
 name: prototype-badge-list
-description: The Prototype view's amber count on a frame's head as a button (PX3, #PXNUM): it lists the frame's links without a target, each opened in the links panel
+description: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel
 ---
 
 ## What does a press on a frame's amber count do?
