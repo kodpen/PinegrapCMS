@@ -512,6 +512,10 @@ function ws_call_start($party, $channel, $kind)
         return array('ok' => false, 'error' => lang('Calls are not available yet.'));
     }
 
+    if (!ws_calls_on()) {
+        return array('ok' => false, 'error' => lang('Calls are turned off in the Workspace settings.'));
+    }
+
     $error = ws_call_party_check($party, $channel, true);
 
     if ($error !== '') {
@@ -571,6 +575,10 @@ function ws_call_join($party, $channel, $call_id)
 {
     if (!ws_calls_ready()) {
         return array('ok' => false, 'error' => lang('Calls are not available yet.'));
+    }
+
+    if (!ws_calls_on()) {
+        return array('ok' => false, 'error' => lang('Calls are turned off in the Workspace settings.'));
     }
 
     $call = ws_call($call_id);
@@ -841,15 +849,18 @@ function ws_call_live_part($party, $channel_id, $signal_after)
 // ── Ringing (the channel screen) ──
 
 /**
- * The address the browsers ask for their public route (STUN) until the
- * Calls card of the settings names others. A third party the browsers reach,
- * never the site; nothing of a call's media passes it.
+ * The addresses the browsers ask for their public route (STUN): the Calls
+ * card's, else WS_CALL_DEFAULT_STUN. A third party the browsers reach, never
+ * the site; nothing of a call's media passes it. This list goes into every
+ * Workspace screen's config, so it never holds the relay (TURN) or any
+ * credential: those come only with a granted start or join
+ * (ws_call_member_ice()).
  *
  * @return array[] RTCIceServer entries
  */
 function ws_call_ice_servers()
 {
-    return array(array('urls' => array('stun:stun.l.google.com:19302')));
+    return ws_call_ice_servers_from(ws_calls_settings(), '', time());
 }
 
 /**

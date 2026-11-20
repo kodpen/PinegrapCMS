@@ -568,16 +568,18 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, GitHub links and link previews.'),
+            'description' => lang('Channel templates, GitHub links, link previews and calls.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-link-preview'    => lang('Link previews'),
+                'pgset-ws-calls'           => lang('Calls'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
+                'pgset-ws-calls'           => pg_settings_keywords(lang('workspace, call, voice call, video call, stun, turn, relay')),
             ),
         ),
 
