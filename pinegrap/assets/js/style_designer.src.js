@@ -75109,6 +75109,10 @@ const StyleDesigner = (function () {
         // gone to (-1 for none), the view from before the first one, null
         // when closed.
         search: null,
+        // The shortest click path (_sdProtoPathTo()): { from, to } the two
+        // pages, null when none; pathPick while the bar's button waits for
+        // the page to go to.
+        path: null, pathPick: false,
         // The side panel's tab (links | comments) and the comments part's
         // state: running, its open count, whether a comment is unread.
         side: 'links',
@@ -75338,11 +75342,19 @@ const StyleDesigner = (function () {
             else _sdProtoSearchOpen();
         });
         ui.searchBtn.setAttribute('aria-expanded', 'false');
-        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        // The shortest click path from the selected page: the next page
+        // clicked is the one to go to (Shift+click or Shift+Enter on a
+        // frame does it at once).
+        ui.pathBtn = _sdProtoButton('bi-signpost-split', _sdT('Shortest path to another page (Shift+click it)'), function () {
+            _sdProtoPathPick(!_sdProto.pathPick);
+        });
+        ui.pathBtn.setAttribute('aria-pressed', 'false');
+        [ui.searchBtn, ui.pathBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
         tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
         tools.appendChild(ui.suggest);
+        tools.appendChild(ui.pathBtn);
         tools.appendChild(ui.listToggle);
         tools.appendChild(ui.pcBtn);
         tools.appendChild(ui.play);
@@ -75370,6 +75382,7 @@ const StyleDesigner = (function () {
             '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
             '<marker id="sd-proto-arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-in" d="M0 0L10 5L0 10z"/></marker>' +
             '<marker id="sd-proto-arrow-broken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-broken" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-path" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="sd-proto-arrowhead-path" d="M0 0L10 5L0 10z"/></marker>' +
             '</defs>';
         ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
@@ -75397,6 +75410,17 @@ const StyleDesigner = (function () {
         ui.zoomedName = _sdProtoEl('span', 'sd-proto-zoomed-name');
         ui.zoomed.appendChild(ui.zoomedName);
         ui.stage.appendChild(ui.zoomed);
+        // The shortest click path in words, or "No path", at the canvas's
+        // foot while one is shown (_sdProtoPathShow()).
+        ui.pathBar = _sdProtoEl('div', 'sd-proto-pathbar');
+        ui.pathBar.hidden = true;
+        ui.pathText = _sdProtoEl('span', 'sd-proto-pathbar-text');
+        ui.pathBar.appendChild(ui.pathText);
+        ui.pathBar.appendChild(_sdProtoButton('bi-x-lg', _sdT('Clear the path (Esc)'), function () {
+            _sdProtoPathClear();
+            ui.viewport.focus({ preventScroll: true });
+        }));
+        ui.stage.appendChild(ui.pathBar);
         // The stage and, right of it, the side panel (F15): its tabs Links
         // (the selected page's links) and Comments (the prototype comments,
         // drawn by the comments part), in the right column's tab pattern.
@@ -75530,6 +75554,15 @@ const StyleDesigner = (function () {
                     next.kind = 'head';
                     next.link = head;
                     event.preventDefault();
+                    return;
+                }
+                // Shift on a page, or a page while the bar's path button
+                // waits: the path to it from the selected page; the
+                // selection stays.
+                var frame = event.target.closest ? event.target.closest('.sd-proto-frame[data-node]') : null;
+                if (frame && (event.shiftKey || _sdProto.pathPick) && _sdProtoPathMay(frame.getAttribute('data-node'))) {
+                    next.kind = 'path';
+                    next.to = frame.getAttribute('data-node');
                 }
             },
             move: function (event, drag) {
@@ -75547,14 +75580,19 @@ const StyleDesigner = (function () {
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
+                if (done.kind === 'path' && !done.moved && event.type === 'pointerup') _sdProtoPathTo(done.to);
+                else if (_sdProto.pathPick) _sdProtoPathPick(false);
                 // A frame or chip pressed and let go without a move is a
                 // tap; anything else breaks a pair of taps.
                 _sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);
             },
             cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
-                // Esc goes back from a frame zoomed to, else closes the view.
-                if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }
+                // Esc clears the path (or the wait for its page), else goes
+                // back from a frame zoomed to, else closes the view.
+                if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
+                // Shift+Enter on a frame: the path to it from the selected page.
+                if (event.key === 'Enter' && event.shiftKey && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoPathTo(event.target.getAttribute('data-node'));
                 // Enter on a frame zooms to it, as a double-click does; 0
                 // fits everything (the core's key), so the zoom is forgotten.
                 if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));
@@ -75679,6 +75717,7 @@ const StyleDesigner = (function () {
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
         _sdProtoSearchClose(false);
+        _sdProtoPathClear(true);
         _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
@@ -76100,6 +76139,133 @@ const StyleDesigner = (function () {
         _sdProtoLegsSoon();
     }
 
+    // ── The shortest click path ──
+    // From the selected page to another: Shift+click or Shift+Enter on its
+    // frame, or the bar's path button and then a click on it. The fewest
+    // clicks over the map's arrows (PGProtoHotspots.pathOf()): its frames
+    // ringed, its arrows drawn in place of the selection's (the core's
+    // trail()), the pages named at the canvas's foot; "No path" when no
+    // arrow leads there. Esc or Close clears it, so does another selection.
+
+    // A page frame, not the selected one, with a page selected.
+    function _sdProtoPathMay(id) {
+        var from = _sdProto.canvas ? _sdProto.canvas.focused() : null;
+        var a = from !== null ? _sdProto.byId[from] : null;
+        var b = id ? _sdProto.byId[String(id)] : null;
+        return !!(a && b && a.kind === 'page' && b.kind === 'page' && a.id !== b.id);
+    }
+
+    // The bar's button: waiting for the page to go to (on) or not.
+    function _sdProtoPathPick(on) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var from = _sdProto.canvas ? _sdProto.canvas.focused() : null;
+        var page = from !== null && _sdProto.byId[from] && _sdProto.byId[from].kind === 'page';
+        if (on) _sdProtoPathClear(true);
+        _sdProto.pathPick = !!on && page;
+        ui.pathBtn.setAttribute('aria-pressed', _sdProto.pathPick ? 'true' : 'false');
+        ui.pathBtn.classList.toggle('active', _sdProto.pathPick);
+        if (on) {
+            _sdProtoPathBar(page ? _sdT('Click the page to go to. Esc cancels.') : _sdT('Select a page first, then the page to go to.'), !page);
+            _sdProto.canvas.announce(ui.pathText.textContent);
+        } else if (!_sdProto.path) {
+            _sdProtoPathBar('', false);
+        }
+    }
+
+    // The path from the selected page to page frame `id`; true when the key
+    // or click was taken (a message is shown when it cannot run).
+    function _sdProtoPathTo(id) {
+        if (!_sdProto.canvas || !_sdProto.layout) return false;
+        if (!_sdProtoPathMay(id)) {
+            var from = _sdProto.canvas.focused();
+            if (from !== null && String(from) === String(id)) return false;
+            _sdProtoPathBar(_sdT('A path runs from one page to another: select a page, then Shift+click the page to go to.'), true);
+            _sdProto.canvas.announce(_sdProto.ui.pathText.textContent);
+            return true;
+        }
+        _sdProto.pathPick = false;
+        _sdProto.ui.pathBtn.setAttribute('aria-pressed', 'false');
+        _sdProto.ui.pathBtn.classList.remove('active');
+        _sdProto.path = { from: String(_sdProto.canvas.focused()), to: String(id) };
+        _sdProtoPathShow(true);
+        return true;
+    }
+
+    // The path drawn again (after a redraw too: the map may have changed);
+    // announced when `say`. Gone when an end is no longer on the map.
+    function _sdProtoPathShow(say) {
+        var p = _sdProto.path;
+        var ui = _sdProto.ui;
+        if (!p || !ui || !_sdProto.canvas) return;
+        var a = _sdProto.byId[p.from];
+        var b = _sdProto.byId[p.to];
+        if (!a || !b) { _sdProtoPathClear(true); return; }
+        var found = window.PGProtoHotspots.pathOf(_sdProto.layout, p.from, p.to);
+        _sdProtoPathMarks(found ? found.frames.concat(found.hops.map(function (h) { return h.via; }).filter(Boolean)) : [], found ? '' : p.to);
+        _sdProto.canvas.trail(found ? found.edges : null);
+        var words;
+        if (!found) {
+            words = _sdT('No path from {var:1} to {var:2}: no link leads there.', [_sdProtoFrameName(a), _sdProtoFrameName(b)]);
+        } else {
+            var names = [_sdProtoFrameName(a)].concat(found.hops.map(function (h) {
+                var to = _sdProtoFrameName(_sdProto.byId[h.to]);
+                var via = h.via ? _sdProto.byId[h.via] : null;
+                return via ? _sdT('{var:1} via {var:2}', [to, _sdProtoFrameName(via)]) : to;
+            }));
+            var n = found.hops.length;
+            words = (n === 1 ? _sdT('1 click') : _sdT('{var:1} clicks', n)) + ': ' + names.join(' → ');
+        }
+        _sdProtoPathBar(words, !found);
+        if (say) _sdProto.canvas.announce(words);
+    }
+
+    // The frames on the path ringed (and the shared parts it goes through),
+    // or the page no path reaches.
+    function _sdProtoPathMarks(ids, none) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-path-on, .sd-proto-path-none')).forEach(function (n) {
+            n.classList.remove('sd-proto-path-on', 'sd-proto-path-none');
+        });
+        ids.forEach(function (id) {
+            var node = ui.boxes.querySelector('[data-node="' + String(id).replace(/"/g, '') + '"]');
+            if (node) node.classList.add('sd-proto-path-on');
+        });
+        if (none) {
+            var end = ui.boxes.querySelector('[data-node="' + String(none).replace(/"/g, '') + '"]');
+            if (end) end.classList.add('sd-proto-path-none');
+        }
+    }
+
+    function _sdProtoPathBar(words, none) {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.pathBar) return;
+        ui.pathText.textContent = words || '';
+        ui.pathText.title = words || '';
+        ui.pathBar.hidden = !words;
+        ui.pathBar.classList.toggle('sd-proto-pathbar-none', !!none);
+    }
+
+    // The path, or the wait for its page, cleared, announced unless `quiet`;
+    // false when there was neither.
+    function _sdProtoPathClear(quiet) {
+        var ui = _sdProto.ui;
+        var had = !!_sdProto.path || _sdProto.pathPick || !!(ui && ui.pathBar && !ui.pathBar.hidden);
+        _sdProto.path = null;
+        _sdProto.pathPick = false;
+        if (!ui) return had;
+        if (ui.pathBtn) {
+            ui.pathBtn.setAttribute('aria-pressed', 'false');
+            ui.pathBtn.classList.remove('active');
+        }
+        _sdProtoPathMarks([], '');
+        _sdProtoPathBar('', false);
+        if (_sdProto.canvas) _sdProto.canvas.trail(null);
+        if (had && !quiet && _sdProto.canvas) _sdProto.canvas.announce(_sdT('The path is cleared.'));
+        return had;
+    }
+
     // ── Zoom to a frame ──
     // A double-click on a frame (two taps on it, PGProtoHotspots.zoomTap())
     // or Enter on a frame in focus shows that frame whole in the middle (the
@@ -76467,6 +76633,8 @@ const StyleDesigner = (function () {
         var l = _sdProto.link;
         // The page opened whole closes when another frame, or none, is selected.
         if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);
+        // Another start, or none, ends the path and the wait for its page.
+        if ((_sdProto.path && _sdProto.path.from !== id) || _sdProto.pathPick) _sdProtoPathClear(true);
         if (l) {
             var edge = (_sdProto.layout ? _sdProto.layout.edges : []).filter(function (e) { return e.id === l.frame + '|' + l.port; })[0];
             if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
@@ -77103,6 +77271,7 @@ const StyleDesigner = (function () {
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
         if (_sdProto.search) _sdProtoSearchRun(true);
+        if (_sdProto.path) _sdProtoPathShow(false);
         // The link the key back asked for (_sdProtoBack()), once this
         // drawing is the one of the load it opened.
         var goTo = _sdProto.goTo;

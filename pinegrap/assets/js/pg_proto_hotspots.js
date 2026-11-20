@@ -2430,6 +2430,79 @@
         return out;
     }
 
+    // The shortest click path (PX5) from page frame `from` to page frame
+    // `to` over the map's arrows, breadth first: a page leads to the pages
+    // its own links lead to and to those of the shared parts placed on it
+    // (`parts`, their frame ids: a click on the part as shown on that page); arrows to chips
+    // and to shared frames lead nowhere. Of the paths with the fewest
+    // clicks, the first by the arrows' order. Answers { frames, edges,
+    // hops } (the pages in order, the arrows' ids, each hop as { from, to,
+    // edge, via: the shared frame's id or '' }), from === to as no hop;
+    // null when there is none, or when an end is no page frame.
+    function pathOf(laid, from, to) {
+        var frames = (laid && Array.isArray(laid.frames)) ? laid.frames : [];
+        var byId = {};
+
+        frames.forEach(function (frame) { byId[frame.id] = frame; });
+        from = (from === null || from === undefined) ? '' : String(from);
+        to = (to === null || to === undefined) ? '' : String(to);
+
+        if (!has(byId, from) || !has(byId, to) || byId[from].kind !== 'page' || byId[to].kind !== 'page') {
+            return null;
+        }
+
+        var outOf = {};
+
+        ((laid && laid.edges) || []).forEach(function (edge) {
+            if (!has(byId, edge.to) || byId[edge.to].kind !== 'page' || edge.to === edge.from) {
+                return;
+            }
+
+            (outOf[edge.from] = outOf[edge.from] || []).push(edge);
+        });
+
+        var came = {};
+        var queue = [from];
+
+        came[from] = null;
+
+        while (queue.length && !has(came, to)) {
+            var at = queue.shift();
+            var page = byId[at];
+            var own = outOf[at] || [];
+            var parts = Array.isArray(page.parts) ? page.parts : [];
+
+            parts.forEach(function (sid) {
+                sid = String(sid);
+                (has(byId, sid) && outOf[sid] ? outOf[sid] : []).forEach(function (edge) {
+                    own = own.concat([{ id: edge.id, from: at, to: edge.to, via: sid }]);
+                });
+            });
+            own.forEach(function (edge) {
+                if (has(came, edge.to)) {
+                    return;
+                }
+
+                came[edge.to] = { from: at, edge: str(edge.id), via: edge.via || '' };
+                queue.push(edge.to);
+            });
+        }
+
+        if (!has(came, to)) {
+            return null;
+        }
+
+        var out = { frames: [to], edges: [], hops: [] };
+
+        for (var step = came[to], at2 = to; step; at2 = step.from, step = came[step.from]) {
+            out.frames.unshift(step.from);
+            out.edges.unshift(step.edge);
+            out.hops.unshift({ from: step.from, to: at2, edge: step.edge, via: step.via });
+        }
+
+        return out;
+    }
+
     // The marks a picture shows while frame `id` is selected (F5, F13):
     // '<frame>|<port>' => 'own' for each link of the selected frame, 'lit'
     // for a link of another frame whose arrow leads into it, 'shared' (the
@@ -2807,6 +2880,7 @@
         brokenWhy: brokenWhy,
         SUGGEST_FILLER: SUGGEST_FILLER,
         foldWords: foldWords,
+        pathOf: pathOf,
         searchOf: searchOf,
         searchStep: searchStep,
         searchKey: searchKey,

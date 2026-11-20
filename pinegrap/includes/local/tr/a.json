@@ -2136,6 +2136,7 @@
     "A password manager filled in a field nobody was editing, so it has been put back.": "Bir parola yöneticisi, üzerinde çalışılmayan bir alanı doldurdu; alan eski değerine geri getirildi.",
     "A password must be 6 to 128 characters long.": "Parola 6 ile 128 karakter arasında olmalıdır.",
     "A password, '{var:1}', has been emailed to the user.": "Kullanıcıya '{var:1}' şifresi e-posta ile gönderildi.",
+    "A path runs from one page to another: select a page, then Shift+click the page to go to.": "Yol bir sayfadan başka bir sayfaya gider: bir sayfa seçin, sonra gidilecek sayfaya Shift ile tıklayın.",
     "A patient guide and a help center that search the whole site, and a health letter for e-mail campaigns.": "Bütün sitede arama yapan bir hasta rehberi ve yardım merkezi, e-posta kampanyaları için bir sağlık bülteni.",
     "A paused subscription was resumed and is charged again from next_charge_at": "Duraklatılmış bir abonelik devam ettirildi ve next_charge_at tarihinden itibaren yeniden ücretlendirilir",
     "A payment is needed": "Ödeme gerekiyor",

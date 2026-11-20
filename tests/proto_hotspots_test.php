@@ -815,6 +815,86 @@ function test_proto_hotspots_focus_of_a_frame()
 	pg_assert_same($empty, $out['gone'], 'a frame no longer there, nothing drawn');
 }
 
+// The shortest click path (PX5): breadth first over the arrows, a shared
+// part's links counted on the pages that place it, the fewest clicks and of
+// those the first by the arrows' order; none when no arrow leads there or
+// an end is no page.
+function test_proto_hotspots_path_of_two_pages()
+{
+	$link = function ($node, $label, $tab) {
+		return array('nodeId' => $node, 'source' => 'href', 'href' => '/' . $tab, 'label' => $label, 'mark' => 'tab', 'tab' => $tab, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'home', 'name' => 'home', 'shared' => array(5), 'hotspots' => array($link('a', 'Shop', 'shop'), $link('b', 'About', 'about'), array('nodeId' => 'x', 'source' => 'href', 'href' => 'https://x.org/', 'label' => 'X', 'mark' => 'external', 'tab' => '', 'draft' => false))),
+			array('key' => 'shop', 'name' => 'shop', 'hotspots' => array($link('c', 'Self', 'shop'), $link('d', 'Item', 'item'))),
+			array('key' => 'about', 'name' => 'about', 'hotspots' => array($link('e', 'Item', 'item'))),
+			array('key' => 'item', 'name' => 'item', 'hotspots' => array($link('f', 'Pay', 'pay'))),
+			array('key' => 'pay', 'name' => 'pay', 'hotspots' => array()),
+			array('key' => 'lost', 'name' => 'lost', 'hotspots' => array($link('g', 'Home', 'home'))),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 1, 'loaded' => true, 'hotspots' => array($link('h', 'Cart', 'pay'))),
+		),
+	);
+	$out = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {});'
+		. ' out = { item: H.pathOf(l, "p:home", "p:item"), pay: H.pathOf(l, "p:home", "p:pay"), shopPay: H.pathOf(l, "p:shop", "p:pay"),'
+		. ' back: H.pathOf(l, "p:pay", "p:home"), lost: H.pathOf(l, "p:lost", "p:item"), same: H.pathOf(l, "p:shop", "p:shop"),'
+		. ' shared: H.pathOf(l, "s:5", "p:pay"), gone: H.pathOf(l, "p:home", "p:nope"), none: H.pathOf(null, "p:home", "p:pay") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'frames' => array('p:home', 'p:shop', 'p:item'),
+		'edges' => array('p:home|h0', 'p:shop|h1'),
+		'hops' => array(
+			array('from' => 'p:home', 'to' => 'p:shop', 'edge' => 'p:home|h0', 'via' => ''),
+			array('from' => 'p:shop', 'to' => 'p:item', 'edge' => 'p:shop|h1', 'via' => ''),
+		),
+	), $out['item'], 'two clicks; of two such paths the first by the arrows\' order, a link to itself skipped');
+	pg_assert_same(array(
+		'frames' => array('p:home', 'p:pay'),
+		'edges' => array('s:5|h0'),
+		'hops' => array(array('from' => 'p:home', 'to' => 'p:pay', 'edge' => 's:5|h0', 'via' => 's:5')),
+	), $out['pay'], 'a shared part placed on the page is one click away, through its own arrow');
+	pg_assert_same(array('p:shop', 'p:item', 'p:pay'), $out['shopPay']['frames'], 'a page without the part goes the long way');
+	pg_assert_same(null, $out['back'], 'no arrow leads back: no path');
+	pg_assert_same(array('p:lost', 'p:home', 'p:shop', 'p:item'), $out['lost']['frames'], 'a page nothing leads to still starts a path');
+	pg_assert_same(array('frames' => array('p:shop'), 'edges' => array(), 'hops' => array()), $out['same'], 'a page to itself: no click');
+	pg_assert_same(null, $out['shared'], 'a shared frame is no end');
+	pg_assert_same(null, $out['gone'], 'a frame no longer there is no end');
+	pg_assert_same(null, $out['none'], 'no map, no path');
+}
+
+// The view's shortest path (PX5): Shift+click, Shift+Enter or the bar's
+// button and a click pick the page to go to; pathOf() answers, the core's
+// trail() draws its arrows, the frames are ringed and the pages named at
+// the canvas's foot, "No path" in amber; Esc, Close, another selection and
+// closing the view clear it; a redraw draws it again.
+function test_proto_hotspots_view_shortest_path()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("if (frame && (event.shiftKey || _sdProto.pathPick) && _sdProtoPathMay(frame.getAttribute('data-node'))) {", $source, 'Shift on a page, or a page while the button waits, is a press of its own');
+	pg_assert_contains("if (done.kind === 'path' && !done.moved && event.type === 'pointerup') _sdProtoPathTo(done.to);", $source, 'let go without a move, it asks for the path');
+	pg_assert_contains("if (event.key === 'Enter' && event.shiftKey && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoPathTo(event.target.getAttribute('data-node'));", $source, 'Shift+Enter on a frame does the same');
+	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc clears the path first');
+	pg_assert_contains("tools.appendChild(ui.pathBtn);", $source, 'the button sits in the canvas bar\'s Prototype tools');
+	pg_assert_contains("var found = window.PGProtoHotspots.pathOf(_sdProto.layout, p.from, p.to);", $source, 'the path comes from pathOf()');
+	pg_assert_contains("_sdProto.canvas.trail(found ? found.edges : null);", $source, 'its arrows are the core\'s trail');
+	pg_assert_contains("_sdT('No path from {var:1} to {var:2}: no link leads there.'", $source, '"No path" said plainly');
+	pg_assert_contains("if ((_sdProto.path && _sdProto.path.from !== id) || _sdProto.pathPick) _sdProtoPathClear(true);", $source, 'another selection clears it');
+	pg_assert_contains("_sdProtoPathClear(true);\n        _sdProtoRowDragEnd(false);", $source, 'closing the view clears it');
+	pg_assert_contains("if (_sdProto.path) _sdProtoPathShow(false);", $source, 'a redraw draws it again');
+	pg_assert_contains('<marker id="sd-proto-arrow-path"', $source, 'its arrows have a head of their own');
+	pg_assert_contains('.sd-proto .pgc-edge.pgc-edge-trail .pgc-edge-line { stroke: var(--sd-proto-path); stroke-dasharray: none; marker-end: url(#sd-proto-arrow-path); }', $css, 'drawn in green');
+	pg_assert_contains('.sd-proto .pgc-edge.pgc-edge-trail.sd-proto-from-shared { display: inline; }', $css, 'a shared part\'s arrow on the path is drawn');
+	pg_assert_contains('.sd-proto-pathbar.sd-proto-pathbar-none { border-color: var(--pgc-in); }', $css, '"No path" in amber');
+}
+
 // The view draws only the selected frame's arrows: it passes the core's
 // focus, hears each change to mark the rows, draws the section headings,
 // selects the open tab's frame on opening, keeps "All arrows" per browser,
@@ -2293,7 +2373,7 @@ function test_proto_hotspots_view_zooms_to_a_frame()
 	pg_assert_contains("_sdProto.tap = id ? null : tap;", $source, 'a zoom starts a new pair');
 	pg_assert_contains("_sdProto.canvas.view.zoomTo(item);", $source, 'the core zooms to the frame');
 	pg_assert_contains("if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };", $source, 'the view from before the first zoom is kept');
-	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc goes back first, then closes');
+	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc goes back first (after a shortest path), then closes');
 	pg_assert_contains("if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));", $source, 'Enter on a frame zooms to it');
 	pg_assert_contains("_sdT('All')", $source, 'the "All" control');
 	pg_assert_contains("_sdProtoZoomForget();\n            _sdProto.canvas.view.fit();", $source, 'Fit forgets the zoom');
@@ -2531,7 +2611,7 @@ function test_proto_hotspots_view_search()
 	pg_assert_contains('s.found = window.PGProtoHotspots.searchOf(_sdProto.layout, s.typed, function (item) {', $source, 'the pure matcher with the names the view shows');
 	pg_assert_contains('var dir = window.PGProtoHotspots.searchKey(event);', $source, 'the box\'s keys');
 	pg_assert_contains('_sdProtoZoomTo(item.id);', $source, 'a match is zoomed to');
-	pg_assert_contains("_sdProtoSearchClose(false);\n        _sdProtoRowDragEnd(false);", $source, 'closing the view closes the search');
+	pg_assert_contains("_sdProtoSearchClose(false);\n        _sdProtoPathClear(true);\n        _sdProtoRowDragEnd(false);", $source, 'closing the view closes the search');
 	pg_assert_contains('if (_sdProto.search) _sdProtoSearchRun(true);', $source, 'a redraw searches again');
 	pg_assert_contains('.sd-proto .pgc-node.sd-proto-found-on {', $css, 'the match gone to is seen');
 	pg_assert_contains('.sd-proto-search[hidden] { display: none; }', $css, 'the row hides');
