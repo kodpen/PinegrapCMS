@@ -23,6 +23,8 @@ if (!defined('PG_MCP_ENTRY')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
+
 // Whether a route is offered as a tool at all, whoever asks.
 //
 // Signing in, push registration and the API's own description are about the
@@ -31,12 +33,20 @@ if (!defined('PG_MCP_ENTRY')) {
 // PATCH for servers that drop those verbs; a tool call never travels as that
 // verb, so the original route is the only one needed. A route with no scope
 // is public and is no tool either, nor one that says 'mcp' => false: an
-// address an app polls to stay in step with the screen, not an action.
+// address an app polls to stay in step with the screen, not an action. A
+// route that needs credentials but no scope is a tool only when it says
+// 'mcp' => true: the guide (guide.read), which every caller may read.
 function pg_mcp_route_is_offered($route) {
 
 	$id = isset($route['id']) ? (string)$route['id'] : '';
 
-	if (($id === '') || !empty($route['public']) || !isset($route['scope']) || ($route['scope'] === '')) {
+	if (($id === '') || !empty($route['public']) || !isset($route['scope'])) {
+
+		return false;
+
+	}
+
+	if (($route['scope'] === '') && (!isset($route['mcp']) || ($route['mcp'] !== true))) {
 
 		return false;
 
@@ -65,9 +75,44 @@ function pg_mcp_route_is_offered($route) {
 // What a model is told on top of the route's own description, for the
 // tools where it goes wrong without it: the form writes are addressed by
 // field names it cannot guess, and a rich-text answer keeps only the HTML
-// the field's html_allowed lists. Empty for every other route. The REST
-// document keeps the route's description alone.
+// the field's html_allowed lists. A tool of an area the guide has a topic
+// for ends with "Guide: <topic>." (pg_mcp_tool_guide_line()). Empty for every
+// other route. The REST document keeps the route's description alone.
 function pg_mcp_tool_guidance($route_id) {
+
+	$guidance = pg_mcp_tool_guidance_own($route_id);
+
+	$guide = pg_mcp_tool_guide_line($route_id);
+
+	return trim($guidance . (($guidance !== '' && $guide !== '') ? ' ' : '') . $guide);
+
+}
+
+// "Guide: <topic>." for a route whose area has a listed topic, or ''. The
+// caller holds the tool it is described for, so the topic is listed for them
+// whenever its file is there and its module is on.
+function pg_mcp_tool_guide_line($route_id) {
+
+	static $registry = null;
+
+	static $modules = null;
+
+	if ($registry === null) {
+
+		$registry = pg_agent_guide_registry();
+
+		$modules = pg_agent_guide_modules_on();
+
+	}
+
+	$topic = pg_agent_guide_topic_of_route($registry, pg_agent_guide_listed($registry, array((string)$route_id), $modules), (string)$route_id);
+
+	return ($topic !== '') ? 'Guide: ' . $topic . '.' : '';
+
+}
+
+// The lines a few tools carry for themselves, beside the guide's.
+function pg_mcp_tool_guidance_own($route_id) {
 
 	$fields = 'Read the form\'s fields first with the tool forms_fields (or the resource pinegrap://forms/{id}/fields): an answer is addressed by the field name, the answer to a choice field is one of its option values, and a field with rich_text true takes HTML - only the tags, attributes, style properties, address schemes and image hosts its html_allowed lists are kept (anything else is removed or unwrapped, and class is never kept), up to its max_length characters.';
 
