@@ -32,7 +32,7 @@ $programs_sort_columns = array(
     'opens'   => lang('Opens'),
     'closes'  => lang('Closes'),
     'status'  => lang('Status'),
-    'entries' => lang('Entries'),
+    'entries' => lang('Entries received'),
     'round'   => lang('Round'),
 );
 $programs_sort_default = array('sort' => 'name', 'order' => 'asc');
@@ -64,7 +64,7 @@ foreach (pg_application_program_list($user) as $program) {
             'status' => pg_list_cell($programs_status_pills[$program['status']] ?? '', 'align-middle', array('data-pg-sort-value' => $program['status'])),
             'entries' => pg_list_cell(h(pg_format_number($program['entries'], 0)), 'align-middle', array('data-pg-sort-value' => $program['entries'])),
             'round' => pg_list_cell(h(pg_format_number($program['round'], 0)), 'align-middle', array('data-pg-sort-value' => $program['round'])),
-            'actions' => pg_list_cell('<a class="pg-button pg-button-quiet pg-button-sm" href="' . $url . '">' . h(lang('Open')) . '</a>', 'align-middle text-end'),
+            'actions' => pg_list_cell('<a class="pg-button pg-button-quiet pg-button-sm" href="' . $url . '">' . h(lang('Open the programme')) . '</a>', 'align-middle text-end'),
         ),
     );
 }
@@ -77,7 +77,7 @@ $programs_list = pg_list_table_printed(array(
         'opens' => array('heading' => lang('Opens')),
         'closes' => array('heading' => lang('Closes')),
         'status' => array('heading' => lang('Status')),
-        'entries' => array('heading' => lang('Entries'), 'kind' => 'number'),
+        'entries' => array('heading' => lang('Entries received'), 'kind' => 'number'),
         'round' => array('heading' => lang('Round'), 'kind' => 'number'),
         'actions' => array('heading' => lang('Actions'), 'kind' => 'actions'),
     ),

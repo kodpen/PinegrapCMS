@@ -260,7 +260,7 @@ $ap_criterion_row = function ($r, array $criterion) {
     return '<div class="pg-card-inner-row" data-pg-ap-criterion>'
         . '<input type="hidden" name="rounds[' . $r . '][cid][]" value="' . h($criterion['id'] ?? '') . '">'
         . '<input type="text" class="pg-input flex-grow-1" name="rounds[' . $r . '][cname][]" maxlength="100" value="' . h($criterion['name'] ?? '') . '" aria-label="' . h(lang('Criterion')) . '" placeholder="' . h(lang('Criterion')) . '">'
-        . '<span class="pg-input w-auto"><input type="number" min="1" max="100" step="1" name="rounds[' . $r . '][cweight][]" value="' . h(isset($criterion['weight']) ? (string) $criterion['weight'] : '') . '" aria-label="' . h(lang('Weight')) . '" data-pg-ap-weight><span class="pg-input-end">%</span></span>'
+        . '<span class="pg-input w-auto flex-shrink-0"><input type="number" min="1" max="100" step="1" name="rounds[' . $r . '][cweight][]" value="' . h(isset($criterion['weight']) ? (string) $criterion['weight'] : '') . '" aria-label="' . h(lang('Weight')) . '" data-pg-ap-weight><span class="pg-input-end">%</span></span>'
         . '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-ap-remove aria-label="' . h(lang('Remove')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>'
         . '</div>';
 };
