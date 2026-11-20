@@ -380,3 +380,76 @@ function test_customer_values_report_names_hidden()
 	pg_assert_contains('pg_customer_value_order_names(', $screen);
 	pg_assert_true(strpos($screen, 'validate_ecommerce_report_access()') !== false, 'commerce reports right');
 }
+
+// orders.order_number has no unique index: an old site can hold two orders
+// with one number. A top customer is kept by that number, so a number that
+// stands for more than one order gives no name rather than another buyer's;
+// only a counted order is read.
+function test_customer_values_names_of_a_shared_number()
+{
+	$names = pg_customer_value_order_names_from_rows(array(
+		array('id' => 2, 'order_number' => 1002, 'billing_first_name' => 'Ayşe', 'billing_last_name' => 'Yılmaz', 'billing_company' => ''),
+		array('id' => 9, 'order_number' => 1007, 'billing_first_name' => 'Can', 'billing_last_name' => 'Demir', 'billing_company' => ''),
+		array('id' => 31, 'order_number' => 1007, 'billing_first_name' => 'Elif', 'billing_last_name' => 'Şahin', 'billing_company' => ''),
+		array('id' => 40, 'order_number' => 1010, 'billing_first_name' => '', 'billing_last_name' => '', 'billing_company' => 'Kodpen'),
+	));
+
+	pg_assert_same(array(1002 => array('id' => 2, 'name' => 'Ayşe Yılmaz'), 1010 => array('id' => 40, 'name' => 'Kodpen')), $names);
+
+	list($sql, $params) = pg_customer_value_order_names_query(array(1002, '1007', 0, 1002));
+
+	pg_assert_contains("status IN ('complete', 'exported')", $sql, 'only counted orders');
+	pg_assert_contains('order_number IN (?, ?)', $sql);
+	pg_assert_same(array(1002, 1007), $params);
+}
+
+// An order with no date (order_date 0, as a marketplace order without its
+// modification time is written) is not placed in time: it was counted as a
+// customer last seen in 1970, a "Lost customer", and made that customer's
+// real first order a returning one. The pass's total already left it out,
+// so the screen read more orders than it said there were.
+function test_customer_values_undated_order_left_out()
+{
+	$now = mktime(12, 0, 0, 6, 15, 2026);
+	$summary = _cv_test_summary(array(
+		_cv_test_order(1, 0, 'a@x.com', 5000),
+		_cv_test_order(2, $now - 10 * 86400, 'a@x.com', 3000),
+	), $now);
+
+	pg_assert_same(1, $summary['customers']);
+	pg_assert_same(1, $summary['orders']);
+	pg_assert_same(array(1, 3000), $summary['cells'][0][0], 'one order, ten days old');
+	pg_assert_same(array(0, 0), $summary['cells'][4][0], 'nobody lost');
+	pg_assert_same(array(1, 3000, 0, 0), $summary['months']['2026-06']);
+
+	list($sql) = pg_customer_value_page_query(1700000000, 0, 0, 500, array());
+	pg_assert_contains('(order_date > 0)', $sql, 'the walk reads what the total counts');
+}
+
+// A pass whose summary could not be written ends all the same; it is tried
+// again after the interval, not at the next tick (it was due at once, so a
+// failing write ran the whole rebuild on every tick of the general job).
+function test_customer_values_failed_write_waits()
+{
+	$now = 1800000000;
+	$idle = array('lease' => 0, 'started' => 0, 'done' => 0, 'total' => 0);
+
+	pg_assert_true(pg_customer_value_due($idle, null, $now), 'no summary yet');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('started' => $now - 60)), $now - 10, $now), 'a pass under way goes on');
+	pg_assert_false(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - 600)), null, $now), 'a failed write waits');
+	pg_assert_false(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - 600)), $now - 2 * 86400, $now), 'also with an old summary');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - PG_CUSTOMER_VALUE_INTERVAL)), null, $now), 'tried again after the interval');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('saved' => 1, 'ended' => $now - 600)), $now - 2 * 86400, $now), 'an old summary is due');
+
+	$job = cv_test_function_source('pg_customer_value_job_run');
+	pg_assert_contains("'ended' => time()", $job, 'the end of a pass is kept');
+}
+
+// The source of a function.
+function cv_test_function_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
