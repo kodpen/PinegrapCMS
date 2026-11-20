@@ -2473,6 +2473,78 @@
             .normalize('NFD').replace(/[̀-ͯ]/g, '');
     }
 
+    // The view's search (Ctrl+F): the frames whose name holds the query and
+    // the links whose text holds it, folded as foldWord() folds (case,
+    // marks, the Turkish dotted and dotless i). `label(item)`, optional,
+    // is the name a frame or chip shows (the view's "Untitled page"), else
+    // a frame's stored name and a chip's address (none for a hidden page).
+    // Frames in reading order (top to bottom, then left to right), each
+    // one's name before its links in their rows' order; then the chips.
+    // { query (folded), hits: [{ kind: 'frame' | 'link' | 'chip', frame
+    // (the frame's or chip's id), port ('' but for a link), text (as
+    // shown) }], frames: { id: true } for each frame or chip with a hit }.
+    function searchOf(laid, query, label) {
+        var q = foldWord(str(query)).replace(/\s+/g, ' ').trim();
+        var found = { query: q, hits: [], frames: {} };
+        var shown = (typeof label === 'function') ? label : function (item) {
+            return (item.kind === 'chip') ? (item.mark === 'hidden' ? '' : str(item.href)) : str(item.name);
+        };
+        var reading = function (a, b) { return ((Number(a.y) || 0) - (Number(b.y) || 0)) || ((Number(a.x) || 0) - (Number(b.x) || 0)); };
+        var hit = function (kind, item, port, text) {
+            if (foldWord(text).indexOf(q) < 0) {
+                return;
+            }
+
+            found.hits.push({ kind: kind, frame: String(item.id), port: port, text: text });
+            found.frames[String(item.id)] = true;
+        };
+
+        if (q === '' || !isObject(laid)) {
+            return found;
+        }
+
+        (Array.isArray(laid.frames) ? laid.frames : []).filter(isObject).slice().sort(reading).forEach(function (frame) {
+            hit('frame', frame, '', str(shown(frame)));
+            (Array.isArray(frame.rows) ? frame.rows : []).forEach(function (row) {
+                hit('link', frame, str(row.port), str(rowLabel(row)));
+            });
+        });
+        (Array.isArray(laid.chips) ? laid.chips : []).filter(isObject).slice().sort(reading).forEach(function (chip) {
+            hit('chip', chip, '', str(shown(chip)));
+        });
+
+        return found;
+    }
+
+    // A key in the search box: 1 for the next match (Enter, ArrowDown), -1
+    // for the one before (Shift+Enter, ArrowUp), 0 for anything else or
+    // with Ctrl, Alt or Cmd held.
+    function searchKey(event) {
+        if (!event || event.ctrlKey || event.altKey || event.metaKey) {
+            return 0;
+        }
+
+        if (event.key === 'Enter') {
+            return event.shiftKey ? -1 : 1;
+        }
+
+        return (event.key === 'ArrowDown') ? 1 : ((event.key === 'ArrowUp') ? -1 : 0);
+    }
+
+    // The match after `at` (dir 1) or before it (dir -1) of `total`, round
+    // at either end; the first (or last) when `at` is outside; -1 for none.
+    function searchStep(total, at, dir) {
+        if (!(total > 0)) {
+            return -1;
+        }
+
+        if (!(at >= 0 && at < total)) {
+            return (dir < 0) ? total - 1 : 0;
+        }
+
+        return (at + (dir < 0 ? -1 : 1) + total) % total;
+    }
+
     function foldWords(text) {
         var filler = SUGGEST_FILLER.map(foldWord);
 
@@ -2735,6 +2807,9 @@
         brokenWhy: brokenWhy,
         SUGGEST_FILLER: SUGGEST_FILLER,
         foldWords: foldWords,
+        searchOf: searchOf,
+        searchStep: searchStep,
+        searchKey: searchKey,
         suggest: suggest,
         headingOf: headingOf,
         suggestRows: suggestRows,

@@ -7509,6 +7509,26 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto[hidden] { display: none; }
 /* Its controls are in the canvas bar's Prototype mode (_sdProtoBuild()). */
+/* The search over the map, under the canvas bar (Ctrl+F, _sdProtoSearchBuild()): the box, the
+   count, the match before and after, Close; the frames with a match ringed
+   in yellow, the one gone to more strongly, beside the selection's outline. */
+.sd-proto { --sd-proto-found: #e8c547; }
+.sd-proto-search {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-proto-search[hidden] { display: none; }
+.sd-proto-search-input { flex: 0 1 280px; min-width: 0; }
+.sd-proto-search-count { min-width: 4.5em; font-size: .75rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-proto-search-none .sd-proto-search-input { border-color: var(--pgc-in); }
+.sd-proto-search .sd-vb-btn:last-child { margin-left: auto; }
+@media (max-width: 767.98px) {
+    .sd-proto-search-input { flex: 1 1 auto; }
+}
+.sd-proto .pgc-node.sd-proto-found { box-shadow: 0 0 0 3px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto .pgc-node.sd-proto-found-on { box-shadow: 0 0 0 6px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto-li.sd-proto-found { box-shadow: inset 3px 0 0 var(--sd-proto-found); }
+.sd-proto-li.sd-proto-found-on { box-shadow: inset 3px 0 0 var(--sd-proto-found); background: color-mix(in srgb, var(--sd-proto-found) 14%, transparent); }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
 /* A double-click on a frame zooms to it, never picks up its words. */
