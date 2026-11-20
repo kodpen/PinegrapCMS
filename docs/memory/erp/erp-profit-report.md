@@ -14,10 +14,14 @@ description: ERP profit and loss (includes/erp/profit.php): what counts as reven
 - Purchase invoice lines without a product are costs (a service bought on an invoice), less what went back.
 - Expenses at their cost: net plus the VAT that is not reclaimed (`total_base - tax_base` when `tax_deductible`).
 - A new cost or revenue source goes into `erp_profit_report()` AND its workbook `erp_profit_workbook()`, or the screen and the Excel disagree.
+- An order's fees, deductions and shipping costs (`erp_order_costs`) are not in it: they are seen per order and in Profitability (order-profit.md).
 
 ## How are uninvoiced orders counted?
 - Optional revenue rows: `$options['orders']`. The screen keeps the choice a year in the cookie `pg_erp_profit_orders` (`erp_profit_orders_choice()`); the dashboard card reads the same choice.
 - Only billable orders with `orders.erp_invoice_id = 0`, by order date (`erp_profit_orders_where()`), costed at today's average: an invoiced order is never counted twice; cancelling its invoice empties the link and the order counts again.
+
+## How does order profit count revenue?
+- By this report's order rule: `total + gift_card_discount − tax` (`erp_order_profit_revenue()`), less a refund by its part without tax, which this report does not subtract (`erp-order-profit-rates-revenue.md`).
 
 ## How is a negative margin written?
 - With `erp_profit_margin_text()`: "-%12,5". `erp_percent_text()` puts the percent sign first in Turkish, so a negative number passed to it reads "%-12,5". No revenue gives a dash.

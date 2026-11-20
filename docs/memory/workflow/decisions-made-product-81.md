@@ -19,6 +19,6 @@ description: Decisions list, product part 81 (2026-11-20 on): the Google Cloud T
 - "Evet, plana girsin": each order's costs (product cost, payment fee, marketplace commission and deductions, shipping) are read from the services' real figures where they give them (iyzico, Stripe, Trendyol finance, carrier labels), else from typed rates; net profit and margin on the order with a "sold at a loss" filter; product by channel by period; a break-even price; a bell; API and MCP.
 - Prices never change by themselves.
 - Not chosen: "Evet, önce yalnız yazılan oranlarla" (typed rates only at first, real deductions later), "Hayır, gerek yok" (the period profit and loss report is enough).
-- The plan: `plans/order-profit.md`.
+- Built in 2026.11.0 (#10626 to #10792): `erp/order-profit.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-76.md, docs/memory/plans/connections-merges-build.md

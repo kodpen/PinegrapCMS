@@ -9,7 +9,7 @@ These are phase limits, not bugs: do not report them as missing checks or build 
 - No e-Delivery Note (e-İrsaliye): `erp_waybills` is the internal waybill (erp-internal-waybill.md). The plumbing exists (`erp_edoc_waybill_send()`, the order card's `ewaybill` step, the file manager folder) but no driver implements `send_waybill`, so it reads "not available". Sending comes only with a provider that has a convert-to-e-document call (Paraşüt v4 `shipment_documents` has none).
 - One invoice per order: `orders.erp_invoice_id` holds one; an order is never split over several invoices (the automatic invoice keeps this rule).
 - No payment link on an invoice: the customer sees invoices, what is open and the statement in the "My Invoices" widget (`account_invoices`) and cannot pay from there; the storefront side only reads.
-- No iyzico or marketplace settlement (payout) import: what a gateway or marketplace pays out is not reconciled automatically.
+- No payout reconciliation: what iyzico, Stripe, PayPal or a marketplace pays out is never imported or matched to an invoice, receipt or bank line. An order's fee and Trendyol's deductions are read only as that order's cost rows for its profit, never as a ledger, till or bank move (order-profit.md, architect 2026-11-20, channel message 10189).
 - No bank API: statements come as a file (CSV, XLSX, XLS, ODS) through the bank statement screen.
 - The profit and loss is a management view, not an official income statement: no depreciation, no accruals (erp-profit-report.md).
 - The offline (bank transfer) payment wait is a derived state, not a new order status value (erp-awaiting-transfer-orders.md).

@@ -588,6 +588,7 @@ function pg_audit_view_labels($kind)
             'api_device'   => lang('Device'),
             'oauth_client' => lang('OAuth client'),
             'person'       => lang('Person'),
+            'privacy_rule' => lang('Retention rule'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
@@ -603,6 +604,8 @@ function pg_audit_view_labels($kind)
             'export'  => lang('Record exported'),
             'erase'   => lang('Erased'),
             'merge'   => lang('Records merged'),
+            'approve' => lang('Approved'),
+            'run'     => lang('Rule run'),
         ),
         'source' => array(
             'panel' => lang('Panel'),

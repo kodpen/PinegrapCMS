@@ -10,7 +10,8 @@ module: privacy_retention
 - "Same person" is the exact triple `person_token`, `user_id`, `contact_id`: a line written later with only the token does not supersede one with token and user, so in doubt a line is kept, never removed.
 
 ## What about contacts, form submissions and orders?
-- Not built. If retention for them is added (inactive contacts, form submissions and orders anonymised after N years), it is opt-in and off by default.
+- The Privacy centre's rules, opt-in and off by default: `core/privacy-retention-rules.md`.
+- Erasure lines (`erase` on `person`) and rule runs (`privacy_rule`) stay at least 3 years whatever the years say (`pg_audit_retention_delete_query()`).
 
 ## Who removes them?
 - `job.php` calls `pg_privacy_retention_due()` / `pg_privacy_retention_run(5)` (`includes/fn/privacy_retention.php`): once a day, five seconds a tick, audit lines first (`DELETE … WHERE created_at < cutoff LIMIT 1000` on `idx_created`), then consent ids from `pg_consent_log_trim_query()` deleted by id (MySQL refuses a DELETE whose subquery reads the same table). The state file `data/temp/privacy_retention.json` is written only when both are through, so a backlog goes over the next ticks. A failed statement ends the pass and it is asked again.

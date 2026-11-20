@@ -240,7 +240,7 @@ if ($audit_retention_ready) {
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('years') . '</span>
                                                 <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-ghost text-end" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric"/>
                                             </label>
-                                            <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . '</div>
+                                            <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . ' ' . h(lang(array('string' => 'Erasures and retention rule runs are destruction records: their lines stay at least {var:1} years, whatever is set here.', 'vars' => array($audit_retention_limits['record_years'])))) . '</div>
                                         </div>
                 </div>
             </div>
