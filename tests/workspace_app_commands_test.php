@@ -277,6 +277,20 @@ function test_workspace_app_command_args_read_unresolvable_is_none()
 	pg_assert_same(array_keys(ws_api_command_argument_schema()), array_keys(ws_api_command_present($entry)['args'][0]));
 }
 
+// A definition kept without a usage line (a later change that sent no
+// usage) still shows its arguments in /help and the picker.
+function test_workspace_app_command_entry_usage_from_the_definition()
+{
+	$row = array('id' => 1, 'app_id' => 7, 'name' => 'rapor', 'description' => 'd', 'usage_text' => '', 'app_name' => 'A',
+		'args' => json_encode(array(array('name' => 'day', 'kind' => 'date', 'label' => 'day'), array('name' => 'note', 'kind' => 'text', 'label' => 'note', 'optional' => true))));
+
+	pg_assert_same('/rapor <day> [note]', ws_app_command_entry($row)['usage'], 'written from the labels');
+	pg_assert_same('/rapor <day> [note]', ws_app_command_entry($row)['example']);
+
+	$row['usage_text'] = 'gün';
+	pg_assert_same('/rapor gün', ws_app_command_entry($row)['usage'], 'the application\'s own line wins');
+}
+
 // The words after the command read into values by argument name.
 function test_workspace_app_command_values_by_name()
 {

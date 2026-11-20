@@ -60,3 +60,26 @@ function test_shipment_label_busy_refusal_and_api_answer()
 	pg_assert_same(1, preg_match('/GET_LOCK[^\n]*\n\s*return pg_shipment_label_busy_refusal\(\);/', $source), 'the busy create returns the refusal unmixed');
 	pg_assert_same(array(409, 'label_busy', 'x'), api_order_label_refusal(array('code' => 'busy', 'error' => 'x')));
 }
+
+function test_shipment_label_unclear_create_leaves_the_failed_row()
+{
+	// A label the service may have bought (an unclear answer) is marked on
+	// the address, so the automatic run does not buy it a second time; a
+	// plain refusal, a success and a return label are not.
+	pg_assert_true(pg_shipment_label_unclear_mark_due(array('ok' => false, 'unclear' => true), false));
+	pg_assert_false(pg_shipment_label_unclear_mark_due(array('ok' => false, 'unclear' => false), false));
+	pg_assert_false(pg_shipment_label_unclear_mark_due(array('ok' => true, 'unclear' => false), false));
+	pg_assert_false(pg_shipment_label_unclear_mark_due(array('ok' => false, 'unclear' => true), true));
+
+	// The row names who pressed Create Label; the run's own stays user 0.
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_label_auto.php');
+	pg_assert_same(7, pg_shipment_label_failed_row(12, 34, 'geliver', 1700000000, 7)['user_id']);
+	pg_assert_same(0, pg_shipment_label_failed_row(12, 34, 'geliver', 1700000000)['user_id']);
+
+	// Written inside the address lock, before it is released.
+	$locked = pg_test_function_source('pg_shipment_label_create_locked');
+	$open = strpos($locked, 'pg_shipment_label_open(');
+	$mark = strpos($locked, 'pg_shipment_label_unclear_mark_due(');
+	$insert = strpos($locked, 'INSERT IGNORE INTO shipment_labels');
+	pg_assert_true($open !== false && $mark !== false && $insert !== false && $open < $mark && $mark < $insert, 'the locked part marks an unclear create');
+}

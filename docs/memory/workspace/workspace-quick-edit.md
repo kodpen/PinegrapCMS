@@ -15,11 +15,11 @@ description: A record's fields edited by a person from the record drawer with no
 - `ws_changes_input()` types and bounds the values, runs `ws_change_check()` and drops fields that already hold the value, so a save that changes nothing is refused with "Nothing in it differs…". Then every `from` the drawer sent back is laid against the record as it is now with `ws_quick_edit_moved()` (compared in the field's own shape, so "1250" and 1250 are the same price); a difference answers `stale: true` and nothing is written. A field the drawer does not send `from` for is not checked.
 - The writers run with `ws_change_source(['kind' => 'person', 'name' => …])` and the quiet log flag: the sentences left on a record (an order's cancellation reason, a deleted offer's note) name the person; the activity log gets one line, "{kind} ({name}) was changed in the Workspace: Label: “from” → “to”, …", under the session's username.
 - Each written row is kept in `ws_ai_changes` as `status = 'applied'` with `request_id = 0` and `message_id = 0` (the marker of a person's edit; assistant rows always have a request, scheduled changes keep no row), so the record's history reads the same whoever changed it. The card code never sees these rows because they hang on no message.
-- With `decision` on and a channel the person may post in, a locked `decision` message "{tag} was changed. Label: “from” → “to” · …" is sent in that channel, like an applied proposal's.
+- With `decision` on and a channel the person may post in, a locked `decision` message "{tag} was changed. Label: “from” → “to” · …" is sent in that channel. A contact: its tag alone (`ws_quick_edit_decision_body()`, #10769): lines would show its e-mail to members without the right.
 
 ## How does the drawer draw it?
-- docs/memory/workspace/workspace-quick-edit-drawer.md (the "Fields" section of `openRecord()`, the chip menu item, `saValueInput()`).
+- workspace-quick-edit-drawer.md (the "Fields" section of `openRecord()`, the chip menu item, `saValueInput()`).
 
 ## What else saves through it?
-- The `/price` and `/stock` channel commands (docs/memory/workspace/workspace-record-commands.md). No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
-- A new product or product group (the drawer's new mode, the search box, `/product`) is made by `ws_quick_create_save()` in the same file, written and kept the same way: docs/memory/workspace/workspace-quick-create.md.
+- The `/price` and `/stock` channel commands (workspace-record-commands.md). No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
+- A new product or product group (the drawer's new mode, the search box, `/product`) is made by `ws_quick_create_save()` in the same file, written and kept the same way: workspace-quick-create.md.

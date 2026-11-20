@@ -13,7 +13,8 @@ description: Where an order's profit is seen (#10664): the Profit card of view_o
 - Without it nothing of the ERP is loaded or read, the column and the filter are not drawn, and a "loss" filter kept in the session does nothing.
 
 ## How is it read?
-- Only reads `erp_order_profit` and `erp_order_costs`; nothing on these screens writes them. The list reads the page's profit rows in one query per 1,000 orders (`erp_order_profit_for_orders()`).
+- Only reads `erp_order_profit` and `erp_order_costs`; nothing on these screens writes them.
+- A row counts only while its order is a finished sale (`erp_order_profit_counted_join()`): a cancelled order's row, until the pass's recheck removes it, is left out of the column, the filter and the card (#10792; before, it showed for up to an hour). The list reads the page's profit rows in one query per 1,000 orders (`erp_order_profit_for_orders()`).
 - The filter is `erp_order_profit_filter_sql()`, appended to the list's `$sql_type`, so the counts, the figures over the list and the exports follow it as they follow Order Type.
 - The stored margin (DECIMAL, a string) prints through `erp_profit_margin_text()`, as the profit report prints it. Amounts are the base currency's minor units (orders are charged in it), shown with `erp_money_out()`.
 - The column is not sortable: the sort menu has no profit code.
