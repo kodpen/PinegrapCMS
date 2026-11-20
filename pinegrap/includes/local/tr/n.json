@@ -1967,6 +1967,7 @@
     "No open task is yours. Tasks handed to you show here, the nearest due date first.": "Açık göreviniz yok. Size verilen görevler burada, bitişi en yakın olan üstte görünür.",
     "No open tasks.": "Açık görev yok.",
     "No operations alert was sent in the last seven days.": "Son yedi günde operasyon uyarısı gönderilmedi.",
+    "No option is changed here.": "Burada değiştirilmiş seçenek yok.",
     "No option matches “{var}”.": "“{var}” ile eşleşen seçenek yok.",
     "No order for {var:1} days": "{var:1} gündür sipariş yok",
     "No order has come in from this marketplace yet.": "Bu pazaryerinden henüz sipariş gelmedi.",
