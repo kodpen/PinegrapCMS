@@ -203,3 +203,22 @@ function test_picture_translation_doors_prune_catch_ups()
 	$lost = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_lost');
 	pg_assert_contains('mysqli_affected_rows(', $lost, 'how many rows lost their picture');
 }
+
+// A source in the Recycle Bin loses its rows and pictures at the prune but
+// keeps its texts: restored, its next visit in a language writes a waiting
+// row again (the page pass asks for texts) and it is drawn anew. A source
+// deleted or changed outside the editor loses its texts too.
+function test_picture_translation_doors_binned_keeps_texts()
+{
+	$forget = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_forget');
+	pg_assert_contains('function pg_picture_tr_forget($file_id, $keep_texts = false)', $forget, 'the texts kept on request');
+	pg_assert_contains('!$keep_texts', $forget, 'the uses deleted only when not kept');
+
+	$prune = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_prune');
+	pg_assert_contains("pg_picture_tr_forget(\$file_id, \$reason === 'binned')", $prune, 'the prune keeps a binned source\'s texts');
+
+	$extract = picture_translation_doors_body('includes/translate/extract.php', 'pg_tr_extract_pictures');
+	pg_assert_contains("pg_picture_tr_forget(\$file_id, \$reason === 'binned')", $extract, 'so does the Pictures group\'s read');
+
+	pg_assert_same(array('map' => array(), 'waiting' => array(7)), pg_picture_tr_page_plan(array(array('id' => '7', 'name' => 'a.png', 'state' => null, 'picture' => null, 'has_uses' => '1')), false), 'restored with its texts, a visit writes its waiting row');
+}
