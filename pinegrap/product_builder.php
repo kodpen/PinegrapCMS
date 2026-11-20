@@ -4323,6 +4323,33 @@ function pg_pb_bundle_items_posted()
 
 
 /**
+ * Why the bundle card posted with this save is refused, '' when it is not
+ * (or the card was not posted, or the switch is off): a product inside
+ * another bundle switched on, even with no contents yet, would make a
+ * bundle in a bundle; otherwise the contents are checked.
+ *
+ * @param int $product_id
+ * @return string the reason, in English for lang()
+ */
+function pg_pb_bundle_post_problem($product_id)
+{
+    if (!pg_pb_bundle_posted($product_id) || empty($_POST['bundle'])) {
+        return '';
+    }
+
+    $problem = pg_bundle_switch_on_problem(
+        (string) db_value("SELECT bundle FROM products WHERE id = '" . (int) $product_id . "'") === '1',
+        pg_bundle_is_component($product_id));
+
+    if ($problem !== '') {
+        return $problem;
+    }
+
+    return pg_bundle_items_problem($product_id, pg_bundle_items_normalize(pg_pb_bundle_items_posted(), $product_id));
+}
+
+
+/**
  * One row of the bundle contents table.
  *
  * @param int    $product_id
@@ -7273,21 +7300,10 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
     // A bundle's contents are checked before anything is written: a refused
     // component would otherwise leave the bundle switched on and empty.
-    if (pg_pb_bundle_posted($product_id) && !empty($_POST['bundle'])) {
+    $problem = pg_pb_bundle_post_problem($product_id);
 
-        // Switched on with no contents yet, a product inside another bundle
-        // would still become a bundle in a bundle.
-        $problem = pg_bundle_switch_on_problem(
-            (string) db_value("SELECT bundle FROM products WHERE id = '" . (int) $product_id . "'") === '1',
-            pg_bundle_is_component($product_id));
-
-        if ($problem === '') {
-            $problem = pg_bundle_items_problem($product_id, pg_bundle_items_normalize(pg_pb_bundle_items_posted(), $product_id));
-        }
-
-        if ($problem !== '') {
-            output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
+    if ($problem !== '') {
+        output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // A typed barcode the save would drop (wrong format, another product's,
