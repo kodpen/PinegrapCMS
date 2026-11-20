@@ -4,7 +4,7 @@ description: Plan marketplace-repricer, steps RP1 to RP6: tables, rules and floo
 ---
 
 ## Which steps are there?
-- RP1 (M) first (the owner said yes to poll 186): tables, the rules and the floor.
+- RP1 (M) first (the owner said yes to poll 186): tables, the rules and the floor. Done: #10790 (draft until the architect answers its decision question).
   - Migration step: the three tables (`marketplace-repricer.md`), idempotent helpers; the columns of channel message 10721, checked against the code, in the PR body, asked of the architect before ready.
   - New `includes/fn/marketplace_pricing.php` (pure: the rule pick, rounding, the floor from cost, VAT, commission, fee, shipping and margin); `mp_product_row()` sends the channel price with `listPrice` equal to it; `rule` rows into `product_price_history` on the account's channel (`commerce/product-price-history.md` corrected if its `<code>` names the provider); the floor's rates from the order-profit plan's reader.
   - `tests/marketplace_pricing_test.php`, red first: rule order, rounding endings, a floor with and without a listing commission, a product with no cost, the site price unchanged. Features: R1, R3, R4.
