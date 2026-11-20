@@ -59,7 +59,7 @@ function test_workspace_mail_connect_without_the_microsoft_application()
 
 	$off = ws_mail_connect_form(array('role' => 1), 'f', false);
 	pg_assert_true(strpos($off, '<button') === false, 'no button while the application is not set up');
-	pg_assert_contains('<a href="connections.php#connections-microsoft">' . h(lang('Set up the Microsoft application first')) . '</a>', $off, 'a link to the application');
+	pg_assert_contains('<a href="connections.php?service=microsoft">' . h(lang('Set up the Microsoft application first')) . '</a>', $off, 'a link to the application');
 
 	$on = ws_mail_connect_form(array('role' => 1), 'f', true);
 	pg_assert_contains('<button type="submit" form="pgset_mail_connect"', $on, 'the button once it is set up');
@@ -126,7 +126,7 @@ function test_workspace_mail_connect_google_button()
 
 	$off = ws_mail_connect_form(array('role' => 1), 'f', false, 'google');
 	pg_assert_true(strpos($off, '<button') === false, 'no button while the Google application is not set up');
-	pg_assert_contains('<a href="connections.php#connections-google">' . h(lang('Set up the Google application first')) . '</a>', $off, 'a link to the application');
+	pg_assert_contains('<a href="connections.php?service=google">' . h(lang('Set up the Google application first')) . '</a>', $off, 'a link to the application');
 
 	$on = ws_mail_connect_form(array('role' => 1), 'f', true, 'google');
 	pg_assert_contains('<button type="submit" form="pgset_mail_connect_google"', $on, 'the button submits the Google form');

@@ -132,6 +132,7 @@ description: Generated from the module field of the memory files: each includes/
 - `gift_card_recipients`: [[gift-card-recipient-check]]
 - `github_links`: [[api-github-channel-links]]
 - `google_analytics`: [[google-analytics-card]]
+- `google_cloud`: [[connections-provider-page]]
 - `google_reviews`: [[google-reviews-widget]]
 - `graph_canvas`: [[graph-canvas-core-focus]], [[graph-canvas-core-logic]], [[graph-canvas-core-module]], [[graph-canvas-core-routing]]
 - `guarded_frame`: [[canvas-bridge]], [[canvas-consents]], [[canvas-measures]], [[guarded-frame]]

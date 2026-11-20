@@ -21,6 +21,7 @@ description: How the Design Canvas picks layers: Select's click, Shift, box, Sel
 - Select, Sticker, Warp, Free deformation (off its pins and outline): Select's press. Draw and Redact: a click selects, a drag draws. Text: a text or any other layer is selected (the panel then has nothing to set for a non-text); an empty spot or the picture starts a new text (#9965).
 - Pen, Scissors, Shape builder, Select area: a click is the tool's own work (a point, a cut, a union, a shape); Ctrl or Cmd selects there. Crop, Adjust, Frame, Canvas, Export: a plain click does nothing.
 - Animate: a click on a layer where it shows at the playhead selects it (Shift adds) and keeps the playhead, so the panel shows its motion at that moment; a drag past 3 px drops the playhead and moves the layer at rest. A handle or an empty spot edits at rest; the keyframe press and Record keep their rules (`motionDown()`; `image-editor-keyframes.md`; #9965).
+- A finger keeps a selected layer as far as 22 px outside it in Select, Text and Animate (`M.hitLayer()`'s `picked` option from `pickedReach()`), so a small layer moves by a drag anywhere on it; a layer above still takes the press where it lies (`image-editor-touch.md`, #10500).
 - How it is checked: `tests/image_editor_select_press_test.php` (the pure rule per tool and state, and presses through `onDown` on an editor under Node).
 
 ## Where is the selection used?

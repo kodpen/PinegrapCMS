@@ -583,19 +583,75 @@ function pg_connections_screen_page_id($asked, $rows)
         return '';
     }
 
+    if (pg_connections_screen_provider_page($asked, $rows) !== '') {
+        return $asked;
+    }
+
     return (isset($rows[$asked]['kind']) && ($rows[$asked]['kind'] === 'service')) ? $asked : '';
 }
 
 /**
- * The services whose page holds their account provider's application
- * ("Connection details"), by registry key: that provider's row on the list
- * opens the page instead of its drawer. Pure.
+ * The account provider a page is of when no registry service carries the
+ * page's key (Google, Microsoft: the provider's own page, its application
+ * and every account it connects), else ''. Pure.
  *
- * @return array service key => provider key
+ * @param string $id   a page key
+ * @param array  $rows the screen's rows, id => row with 'kind'
+ * @return string the provider key
+ */
+function pg_connections_screen_provider_page($id, $rows)
+{
+    $providers = pg_connections_screen_page_providers();
+
+    if (!isset($providers[$id]) || isset($rows[$id])) {
+        return '';
+    }
+
+    $row = 'provider_' . $providers[$id];
+
+    return (isset($rows[$row]['kind']) && ($rows[$row]['kind'] === 'provider')) ? $providers[$id] : '';
+}
+
+/**
+ * The services of the registry an account provider serves, among the rows
+ * the user may see: those whose state is read from its accounts and those
+ * covering it as a sign-in provider, in the registry's order. Pure.
+ *
+ * @param string $provider a provider key
+ * @param array  $registry pg_connections_registry()
+ * @param array  $rows     the screen's rows, id => row
+ * @return array list of registry keys
+ */
+function pg_connections_screen_provider_uses($provider, $registry, $rows)
+{
+    $out = array();
+
+    foreach ((array) $registry as $id => $service) {
+
+        $state = isset($service['state']) && is_array($service['state']) ? $service['state'] : array();
+        $by_account = (isset($state['kind'], $state['provider']) && ($state['kind'] === 'account') && ($state['provider'] === $provider));
+        $by_cover = isset($service['covers']['connect']) && in_array($provider, (array) $service['covers']['connect'], true);
+
+        if (($by_account || $by_cover) && isset($rows[$id])) {
+            $out[] = (string) $id;
+        }
+
+    }
+
+    return $out;
+}
+
+/**
+ * The pages that hold an account provider's application ("Connection
+ * details"), by page key: a registry service's page (GitHub) or, where no
+ * service carries the key, the provider's own page (Google, Microsoft).
+ * That provider's row on the list opens the page instead of a drawer. Pure.
+ *
+ * @return array page key => provider key
  */
 function pg_connections_screen_page_providers()
 {
-    return array('github' => 'github');
+    return array('github' => 'github', 'google' => 'google', 'microsoft' => 'microsoft');
 }
 
 /**

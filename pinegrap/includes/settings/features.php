@@ -358,12 +358,12 @@ $pg_settings_cards[] = '
 
         $output_image_upload_cap_field .= '
                             <div class="pg-f-xs">
-                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Design Canvas (MB)') . '</label>
+                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Artifact Canvas (MB)') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">MB</span>
                                     <input type="text" name="image_editor_upload_max_mb" id="image_editor_upload_max_mb" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h(pg_image_editor_upload_max_mb()) . '" />
                                 </label>
-                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the Design Canvas, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
+                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the Artifact Canvas, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
                             </div>';
 
         $output_image_settings_card =

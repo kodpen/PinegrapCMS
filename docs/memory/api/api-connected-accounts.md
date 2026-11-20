@@ -4,7 +4,7 @@ description: The site as an OAuth client (connected accounts, includes/fn/connec
 ---
 
 ## What is the layer?
-- The site connects to an outside account (Google, Microsoft, Dropbox...) as an OAuth client. Model A: each site registers its own application in the provider's console (model B and the connections still to build: `plans/reverse-oauth-leftovers.md`). Screen `connections.php` (Settings › Connections); one return address for every provider and purpose, `connect.php` (`pg_connect_redirect_uri()`). Tables `connect_apps` (one row per provider) and `connect_accounts` (10.72).
+- The site connects to an outside account (Google, Microsoft, Dropbox...) as an OAuth client. Model A: each site registers its own application in the provider's console (model B and the connections still to build: `plans/reverse-oauth-leftovers.md`). Screen `connections.php` (Google's page: `ui/connections-provider-page.md`); one return address for every provider and purpose, `connect.php` (`pg_connect_redirect_uri()`). Tables `connect_apps` (one row per provider) and `connect_accounts` (10.72).
 - The other direction, outside applications connecting to this site: `api-oauth-server.md`. Signing in with a provider: `social-sign-in.md`.
 
 ## How is a provider or a purpose added?
@@ -22,7 +22,7 @@ description: The site as an OAuth client (connected accounts, includes/fn/connec
 - Never read a refresh token. Renewal is locked per connection (`GET_LOCK`), and `invalid_grant` marks the account `reauth`.
 - Tokens a server fetches for itself (Paraşüt, carriers' `client_credentials`): `pg_connect_service_get/put/delete($key)`, sealed in `connect_accounts` as provider `service`, never a file or `config` column.
 - `pg_user_delete()` ends the person's rows via `pg_connect_forget_user()` (revoke, delete): a reused user id must not inherit them.
-- Worked examples (mail, backups, response headers): `api-connected-accounts-usage.md`.
+- Worked examples: `api-connected-accounts-usage.md`.
 
 ## How are an application's options and the Google fallback kept?
 - An option may carry a `pattern` and an `invalid` text in its provider file (Microsoft `tenant`: `pg_connect_tenant_pattern()`). `connections.php` refuses a value that does not fit, and a stored one makes `pg_connect_app()` say `options_valid => false`, so `pg_connect_app_ready()` is false and the card names the problem; `pg_connect_endpoint()` answers `''` for it. An empty tenant is still `common`; a typo never is (#5987: a typo opened a single-tenant app to every account).
