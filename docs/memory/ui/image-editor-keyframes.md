@@ -24,7 +24,7 @@ module: image_editor
   - The tab follows the playhead (`keyFollow()` from the dock's `update()`), except while playing and while a phone's scrub in the sheet is held.
 
 ## What shows on the stage and the tracks?
-- A diamond per key on the layer's lane (the tracks part's `Editor.trackMarks`): a press seeks there and opens the Path tab, a drag moves the key (0.1 s steps, Shift 0.01 s, one change on release), Delete or Backspace on a focused diamond removes it. No tracks on a phone: the Path tab does it.
+- A diamond per key on the layer's lane (the tracks part's `Editor.trackMarks`; a group's keys on its own row, a press picking the group): a press seeks there and opens the Path tab, a drag moves the key (0.1 s steps, Shift 0.01 s, one change on release), Delete or Backspace on a focused diamond removes it. No tracks on a phone: the Path tab does it.
 - `.pgie-keypath` over the stage, under the selection: a dashed line through the selected layer's keyed places, a dot per key, a ring where it is now.
 - The selection boxes follow where their layers show at the playhead (a CSS `translate`) and hide their handles while moved: a handle resizes at rest, which would jump to the pointer.
 - Tried in the sandbox at 1280×800 and 390×844 (touch): drag at 2 s, the path, a diamond moved to 3 s, Delete, undo, the Path tab's fields.
