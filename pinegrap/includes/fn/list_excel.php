@@ -197,6 +197,12 @@ function pg_list_excel_finish()
 
     $path = false;
 
+    // A CSV too big for the memory left, or for one sheet, goes out as it
+    // was: building the workbook would end the request in a fatal error.
+    if ($is_csv && !headers_sent() && !pg_list_excel_fits(pg_list_excel_size($buffer), pg_ini_bytes(@ini_get('memory_limit')), memory_get_usage())) {
+        $is_csv = false;
+    }
+
     if ($is_csv && !headers_sent()) {
         $table = pg_list_excel_table($buffer, $state['types'], defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day');
         $directory = PG_FUNCTIONS_DIR . '/data/temp';
@@ -224,6 +230,78 @@ function pg_list_excel_finish()
     header('X-Content-Type-Options: nosniff');
     readfile($path);
     @unlink($path);
+}
+
+/**
+ * The size of a held-back CSV: its bytes, its rows below the heading and
+ * its cells, the heading's too. The stream is put back at its start.
+ *
+ * @param resource $handle
+ * @return array array('bytes' => int, 'rows' => int, 'cells' => int)
+ */
+function pg_list_excel_size($handle)
+{
+    rewind($handle);
+    $stat = fstat($handle);
+    $bytes = isset($stat['size']) ? (int) $stat['size'] : 0;
+
+    if (fread($handle, 3) !== "\xEF\xBB\xBF") {
+        rewind($handle);
+    }
+
+    $start = ftell($handle);
+    $delimiter = pg_list_excel_delimiter((string) fgets($handle));
+    fseek($handle, $start);
+
+    $escape = (PHP_VERSION_ID >= 70400) ? '' : '\\';
+    $lines = 0;
+    $cells = 0;
+
+    // Counted as pg_list_excel_table() reads them: an empty line is no row.
+    while (($line = fgetcsv($handle, 0, $delimiter, '"', $escape)) !== false) {
+        if (($line === array(null)) || ($line === array(''))) {
+            continue;
+        }
+
+        $lines++;
+        $cells += count($line);
+    }
+
+    rewind($handle);
+
+    return array('bytes' => $bytes, 'rows' => max(0, $lines - 1), 'cells' => $cells);
+}
+
+/**
+ * The memory, in bytes, that pg_list_excel_table() and
+ * pg_xlsx_write_plain() take at most for a CSV of this size: each cell
+ * held as a value and again as XML (measured at up to 140 bytes a cell and 12 a
+ * CSV byte on PHP 8.3), with a margin.
+ *
+ * @param array $size pg_list_excel_size()
+ * @return int
+ */
+function pg_list_excel_need($size)
+{
+    return ((int) $size['cells'] * 200) + ((int) $size['bytes'] * 16);
+}
+
+/**
+ * Whether a CSV can be sent as a workbook: one sheet holds the heading and
+ * 1,048,575 rows, and the build must fit in the memory left.
+ *
+ * @param array $size         pg_list_excel_size()
+ * @param int   $memory_limit bytes, 0 for none (pg_ini_bytes())
+ * @param int   $in_use       bytes already taken
+ * @return bool
+ */
+function pg_list_excel_fits($size, $memory_limit, $in_use)
+{
+    if ((int) $size['rows'] > 1048575) {
+        return false;
+    }
+
+    return ($memory_limit <= 0) || (pg_list_excel_need($size) < ($memory_limit - $in_use));
 }
 
 /**
