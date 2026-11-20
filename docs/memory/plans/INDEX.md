@@ -91,6 +91,7 @@
 - lead-journey-features.md: Plan lead-journey, features J1 to J15: the browser key and the tie, the journey, the interest and fit scores, interests, hot and returning alerts, lead sources, KVKK, API
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- mailboxes-tidy.md: Plan (owner 2026-11-20): Site Settings › Mailboxes tidied: folded parts, a box's drawer in four tabs, a mailbox removed from its drawer, a new box from starting points; MT1 to MT4
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-repricer-features.md: Plan marketplace-repricer, features R1 to R13: channel price rules, own channel price, the floor, buybox reads, the strategies, limits, try-first mode, the log, the report, the API
 - marketplace-repricer-screens.md: Plan marketplace-repricer, how its screens are put together: the Pricing tab of an account's Settings drawer (RP2), the product's marketplace row, the Repricing screen (RP3b)
