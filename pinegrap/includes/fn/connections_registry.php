@@ -542,7 +542,7 @@ function pg_connections_registry()
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'search_console', 'attention' => true),
             'apis' => array('searchconsole.googleapis.com' => 'Google Search Console API', 'siteverification.googleapis.com' => 'Google Site Verification API'),
             'covers' => array('purpose' => array('search_console'))),
-        'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
+        'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
             'state' => array('kind' => 'config', 'names' => array('INDEXNOW_KEY'))),
 
         // Maps and places.

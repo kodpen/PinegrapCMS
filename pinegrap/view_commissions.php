@@ -85,10 +85,12 @@ if ($list_page === false) {
 
 // The status totals of the range, from the commissions alone: a join on the
 // affiliate code counted a commission once per contact holding the code.
+// Affiliates' rows only: a referral's reward is store credit, not money paid
+// out, so it would misstate Paid; the Referrals report sums those.
 $query =
     "SELECT status, SUM(amount) AS total
     FROM commissions
-    WHERE (created_timestamp >= ?) AND (created_timestamp <= ?)
+    WHERE (created_timestamp >= ?) AND (created_timestamp <= ?) AND " . pg_referral_row_sql('affiliate_code', false) . "
     GROUP BY status";
 $result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $status_rows = array();

@@ -60967,6 +60967,293 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Content changes that wait for approval ────────────────────────────
+    // With "Content changes wait for approval" on, a content editor's save
+    // of a live page waits for a designer (includes/fn/content_proposals.php).
+    // The page's tab then says so: the editor's own waiting change, with
+    // Withdraw; the answer to one of their changes (applied, dismissed with
+    // its reason, or stale) until they close it; and, for designers, how
+    // many changes wait, which opens the list where they are applied.
+    // The editor's waiting change is laid on their canvas when the editor
+    // opens, as the page they saved: nothing writes it but a new save.
+    // A tab carries one mark after its name (_pgContentChangeBadge()); a
+    // page whose tab is folded away lends its mark to the chip, "+N" or, at
+    // the strip's narrowest, the Pages button that hides it
+    // (_pgContentClimbHtml()); every list of pages shows it on the row.
+    var _pgCc = { pages: {}, listUrl: '', laid: false, shown: {} };
+
+    function _pgContentChangesStart() {
+        _pgContentChangesLoad(true);
+    }
+
+    // Reads the state of the design's tabs; lay: also lay the editor's
+    // waiting changes on the canvas (only when the editor opens).
+    function _pgContentChangesLoad(lay) {
+        var styleId = _collabStyleId();
+        if (!styleId || _sdComponentOnly()) return;
+        _pgApiPost('content_change_state', { style_id: styleId }).then(function (res) {
+            if (!res || res.status !== 'success') return;
+            _pgCc.pages = (res.pages && typeof res.pages === 'object') ? res.pages : {};
+            _pgCc.listUrl = res.list_url || '';
+            if (lay && !_pgCc.laid) {
+                _pgCc.laid = true;
+                _pages.forEach(function (p) {
+                    var st = _pgCc.pages[p.page_id];
+                    if (st && st.waiting > 0 && st.laid && st.laid.tree) _pgContentLay(p, st.laid.tree, st.laid.fields);
+                });
+            }
+            _pgTabsRender();
+        }).catch(function () {});
+    }
+
+    // Puts a page's tree and settings on its tab as its saved state: the tab
+    // stays clean. A page the editor has already changed is left alone.
+    function _pgContentLay(p, t, fields) {
+        if (!p || !t || _pgPageDirty(p)) return false;
+        _sdTreeObjects(t);
+        _normalizeToggleableShowState(t);
+        var count = reindex(t);
+        Object.keys(fields || {}).forEach(function (k) {
+            if (_PG_PAGE_FIELDS.indexOf(k) !== -1 || _PG_CMT_FIELDS.indexOf(k) !== -1) p[k] = fields[k];
+        });
+        p.tree = t;
+        p.undoStack = [];
+        p.redoStack = [];
+        p.nodeIdCounter = count;
+        if (p.key === _activeKey) {
+            tree = t;
+            undoStack = [];
+            redoStack = [];
+            nodeIdCounter = Math.max(count, _sdIdFloor());
+            selectedNode = null;
+            selectedNodes = [];
+            _pgLoadPageIntoFields(p);
+            updateUndoRedoState();
+            render();
+            renderHtmlTree();
+        }
+        p.baseline = _pgBaselineOf(p);
+        return true;
+    }
+
+    // ── The marks, pure ──
+    // One page's mark from its state: the editor's own waiting change
+    // first, then the answer they have not closed, then (roles 0 and 1)
+    // the number of changes waiting. { kind: 'wait' | 'applied' |
+    // 'dismissed' | 'stale' | 'count', n } or null.
+    function _pgContentMarkOf(st) {
+        if (!st) return null;
+        if (st.waiting > 0) return { kind: 'wait', n: 0 };
+        if (st.answer && st.answer.kind) return { kind: String(st.answer.kind), n: 0 };
+        if (st.count > 0) return { kind: 'count', n: +st.count };
+        return null;
+    }
+
+    // The mark folded pages lend to the chip or button that hides them:
+    // for a designer the sum of the counts; for an editor the most
+    // important mark, cannot be applied before dismissed, applied and
+    // waiting (an editor has no bell, so an answer must reach the strip).
+    function _pgContentClimb(states) {
+        var rank = { stale: 4, dismissed: 3, applied: 2, wait: 1 };
+        var sum = 0, best = null;
+        (states || []).forEach(function (st) {
+            var m = _pgContentMarkOf(st);
+            if (!m) return;
+            if (m.kind === 'count') { sum += m.n; return; }
+            if (rank[m.kind] && (!best || rank[m.kind] > rank[best.kind])) best = m;
+        });
+        return sum > 0 ? { kind: 'count', n: sum } : best;
+    }
+    // ── end of the pure marks ──
+
+    // A mark's markup. attrs: the tab's own mark is a target (data-cc,
+    // role, tabindex); a mark in a list or on a chip is part of its row
+    // or chip. The pill's word hides on a narrow strip; its name stays in
+    // the tip and the aria-label.
+    function _pgContentMarkHtml(m, attrs, extra) {
+        if (!m) return '';
+        var cls = 'sd-tab-cc sd-tab-cc-' + m.kind + (extra ? ' ' + extra : '');
+        if (m.kind === 'wait') {
+            var words = _sdT('Waiting for approval');
+            return '<span class="' + cls + '"' + attrs + ' title="' + esc(words) + '" aria-label="' + esc(words) + '">' +
+                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span><span class="sd-tab-cc-word" aria-hidden="true">' + esc(words) + '</span></span>';
+        }
+        if (m.kind === 'count') {
+            var many = _pgContentMarkName('count', m.n);
+            return '<span class="' + cls + '"' + attrs + ' title="' + esc(many) + '" aria-label="' + esc(many) + '">' +
+                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span><span aria-hidden="true">' + esc(String(m.n)) + '</span></span>';
+        }
+        var icon = { applied: 'bi-check-circle', dismissed: 'bi-x-circle', stale: 'bi-exclamation-triangle' }[m.kind] || 'bi-info-circle';
+        var label = _pgContentMarkName(m.kind);
+        return '<span class="' + cls + '"' + attrs + ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+               '<span class="bi ' + icon + '" aria-hidden="true"></span></span>';
+    }
+
+    // The tab's mark: the editor's waiting change, an answer, or the count.
+    // inList: the same mark on the page's row of a list, a row that is
+    // itself a button, so the mark is not a second one there.
+    function _pgContentChangeBadge(p, inList) {
+        var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
+        return _pgContentMarkHtml(_pgContentMarkOf(st), inList ? '' : ' data-cc="' + esc(p.key) + '" role="button" tabindex="0"');
+    }
+
+    // The mark that climbs to a chip from the pages it hides.
+    function _pgContentClimbHtml(pages) {
+        var states = (pages || []).map(function (p) { return (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null; });
+        return _pgContentMarkHtml(_pgContentClimb(states), '', 'sd-tab-cc-up');
+    }
+
+    // Puts the climbed mark on a chip or button, after its count.
+    function _pgContentClimbOn(el, pages) {
+        if (!el) return;
+        var old = el.querySelector('.sd-tab-cc-up');
+        if (old) old.remove();
+        var html = _pgContentClimbHtml(pages);
+        if (html) el.insertAdjacentHTML('beforeend', html);
+    }
+
+    function _pgContentAnswerLabel(kind) {
+        if (kind === 'applied') return _sdT('Change applied');
+        if (kind === 'dismissed') return _sdT('Change dismissed');
+        return _sdT('Change can no longer be applied');
+    }
+
+    // The name of a mark that shows no words: its title and aria-label.
+    function _pgContentMarkName(kind, n) {
+        if (kind === 'applied') return _sdT('Applied');
+        if (kind === 'dismissed') return _sdT('Dismissed');
+        if (kind === 'stale') return _sdT('Cannot be applied');
+        return (n === 1) ? _sdT('1 waiting change') : _sdT('{var:1} waiting changes', n);
+    }
+
+    // The answer of the open page is shown once when the tab is drawn.
+    function _pgContentAnswerAuto() {
+        var p = _pgActivePage();
+        var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
+        if (!st || st.waiting > 0 || !st.answer || _pgCc.shown[st.answer.id]) return;
+        _pgCc.shown[st.answer.id] = true;
+        setTimeout(function () {
+            var el = document.querySelector('.sd-tab-cc[data-cc="' + p.key + '"]');
+            if (el) _pgContentPop(el, p);
+        }, 0);
+    }
+
+    function _pgContentPopClose() {
+        var old = document.getElementById('sd-cc-pop');
+        if (old) old.remove();
+    }
+
+    // The note under a tab's mark, with its one action.
+    function _pgContentPop(anchor, p) {
+        _pgContentPopClose();
+        var st = _pgCc.pages[p.page_id];
+        if (!st) return;
+        if (!(st.waiting > 0) && !st.answer && st.count > 0) {
+            if (_pgCc.listUrl) window.open(_pgCc.listUrl, '_blank', 'noopener');
+            return;
+        }
+        var pop = document.createElement('div');
+        pop.id = 'sd-cc-pop';
+        pop.className = 'sd-cc-pop';
+        pop.setAttribute('role', 'dialog');
+        var html;
+        if (st.waiting > 0) {
+            html = '<div class="sd-cc-pop-title"><span class="bi bi-hourglass-split" aria-hidden="true"></span> ' + esc(_sdT('Waiting for approval')) + '</div>' +
+                   '<p>' + esc(_sdT('Your change to this page waits for a designer\'s approval. Visitors see the page as it was until it is applied.')) + '</p>' +
+                   (st.laid ? '' : '<p>' + esc(_sdT('A designer changed the page after your change, so it is not shown here. Withdraw it, or make your change again and save.')) + '</p>') +
+                   '<div class="sd-cc-pop-acts"><button type="button" class="sd-vb-btn" data-cc-act="withdraw">' + esc(_sdT('Withdraw')) + '</button></div>';
+        } else {
+            html = '<div class="sd-cc-pop-title">' + esc(_pgContentAnswerLabel(st.answer.kind)) + '</div>' +
+                   '<p>' + esc(st.answer.text || '') + '</p>' +
+                   '<div class="sd-cc-pop-acts"><button type="button" class="sd-vb-btn" data-cc-act="seen">' + esc(_sdT('Close')) + '</button></div>';
+        }
+        pop.innerHTML = html;
+        document.body.appendChild(pop);
+        // A tab the strip does not show (a phone, a folded group): the note
+        // goes under the button that lists every page.
+        var r = anchor.getBoundingClientRect();
+        var all = document.getElementById('sd-tabs-all');
+        if ((!r.width || !anchor.offsetParent) && all && all.offsetParent) r = all.getBoundingClientRect();
+        var left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8));
+        pop.style.left = left + 'px';
+        pop.style.top = (r.bottom + 6) + 'px';
+        pop.querySelector('[data-cc-act]').addEventListener('click', function (e) {
+            var btn = e.currentTarget;
+            btn.disabled = true;
+            if (btn.getAttribute('data-cc-act') === 'withdraw') _pgContentWithdrawAsk(p, st.waiting, btn);
+            else _pgContentSeen(p, st.answer.id);
+        });
+    }
+
+    // Withdrawing cannot be undone: the editor confirms it first.
+    function _pgContentWithdrawAsk(p, id, btn) {
+        var msg = _sdT('Your waiting change to "{var:1}" is withdrawn: no designer will see it, and the page goes back to what is on the site.', p.page_name || '');
+        var go = function (ok) {
+            if (ok) _pgContentWithdraw(p, id, btn);
+            else btn.disabled = false;
+        };
+        if (typeof window.pgConfirm === 'function') {
+            window.pgConfirm({ title: _sdT('Withdraw your waiting change?'), message: msg,
+                               confirmText: _sdT('Withdraw'), cancelText: _sdT('Cancel'), variant: 'warning' }).then(go);
+        } else {
+            go(window.confirm(msg));
+        }
+    }
+
+    function _pgContentWithdraw(p, id, btn) {
+        _pgApiPost('content_change_withdraw', { id: id }).then(function (res) {
+            if (!res || res.status !== 'success') {
+                btn.disabled = false;
+                sdToast(esc((res && res.message) ? res.message : _sdT('Network error.')), 'error', 6000);
+                return;
+            }
+            _pgContentPopClose();
+            if (_pgCc.pages[p.page_id]) _pgCc.pages[p.page_id].waiting = 0;
+            // The page as it is on the site goes back on the canvas, unless
+            // the editor changed it since: their edits stay.
+            var clean = !_pgPageDirty(p);
+            sdToast(esc(clean ? _sdT('Your waiting change was withdrawn. The page is shown as it is on the site.')
+                              : _sdT('Your waiting change was withdrawn. Your edits stay on the canvas until you save or reload.')), 'success', 5000);
+            if (clean) {
+                _pgApiPost('page_load', { page_id: p.page_id }).then(function (r2) {
+                    if (r2 && r2.status === 'success' && r2.page && r2.page.tree) _pgContentLay(p, r2.page.tree, r2.page);
+                    _pgTabsRender();
+                }).catch(function () {});
+            }
+            _pgContentChangesLoad(false);
+        }).catch(function () {
+            btn.disabled = false;
+            sdToast(esc(_sdT('Network error.')), 'error', 5000);
+        });
+    }
+
+    function _pgContentSeen(p, id) {
+        _pgContentPopClose();
+        var st = _pgCc.pages[p.page_id];
+        if (st) st.answer = null;
+        _pgTabsRender();
+        _pgApiPost('content_change_seen', { id: id }).catch(function () {});
+    }
+
+    // The tab's mark opens its note instead of switching tabs: caught on
+    // the way down, before the strip's own handler. A mark on a chip or a
+    // row is part of it: its click opens the chip's list or the page.
+    ['click', 'keydown'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+            if (type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+            var mark = (e.target && e.target.closest) ? e.target.closest('.sd-tab-cc[data-cc]') : null;
+            if (!mark) {
+                if (type === 'click' && !(e.target && e.target.closest && e.target.closest('#sd-cc-pop'))) _pgContentPopClose();
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            var p = _pgPageByKey(mark.getAttribute('data-cc'));
+            if (p) _pgContentPop(mark, p);
+        }, true);
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') _pgContentPopClose(); });
+
     // ========================= META TAGS =========================
     // The design's meta tags (hidden input style_meta_tags, posted with the
     // form) and the open page's (hidden page field page_meta_tags, sent with
@@ -74493,6 +74780,10 @@ const StyleDesigner = (function () {
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
+        // The search (_sdProtoSearchOpen()): searchOf()'s answer, the match
+        // gone to (-1 for none), the view from before the first one, null
+        // when closed.
+        search: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74697,7 +74988,16 @@ const StyleDesigner = (function () {
         ui.play.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Play')));
         ui.play.hidden = true;
         var reload = _sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); });
-        [tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        // Search (Ctrl+F in the view): page names and link texts; the row
+        // opens over the map (_sdProtoSearchBuild()).
+        var mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+        ui.searchBtn = _sdProtoButton('bi-search', _sdT('Search pages and links') + ' (' + (mac ? '⌘F' : 'Ctrl+F') + ')', function () {
+            if (_sdProto.search) _sdProtoSearchClose(true);
+            else _sdProtoSearchOpen();
+        });
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
         tools.appendChild(ui.suggest);
@@ -74755,6 +75055,7 @@ const StyleDesigner = (function () {
         ui.zoomed.appendChild(ui.zoomedName);
         ui.stage.appendChild(ui.zoomed);
         // The stage and, right of it, the selected page's links (F15).
+        ui.root.appendChild(_sdProtoSearchBuild(ui));
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
         ui.list = _sdProtoEl('aside', 'sd-proto-list');
@@ -74923,6 +75224,7 @@ const StyleDesigner = (function () {
         ui.root.addEventListener('wheel', function (event) {
             if (_sdProto.problems && _sdProto.problemsFrame && !_sdProto.problems.contains(event.target)) _sdProtoProblemsClose(false);
         }, { capture: true, passive: true });
+        document.addEventListener('keydown', _sdProtoSearchKey);
         return ui;
     }
 
@@ -74979,6 +75281,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoSearchClose(false);
         _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
@@ -75675,6 +75978,7 @@ const StyleDesigner = (function () {
         _sdProtoLegsSoon();
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         _sdProtoPlayState();
         if (_sdProto.suggest) _sdProtoSuggestArrows();
     }
@@ -75695,6 +75999,7 @@ const StyleDesigner = (function () {
         if (focused !== frameId && !(edge && focused === edge.to)) canvas.focus(frameId);
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         var other = edge ? _sdProto.byId[(canvas.focused() === edge.to) ? frameId : edge.to] : null;
         if (other) canvas.view.reveal(other);
         if (fromCanvas) {
@@ -75977,6 +76282,211 @@ const StyleDesigner = (function () {
 
     // Where Play opens the viewer: the selected page, else the first page
     // the viewer can show; '' for none (_pgPrototypeUrl()).
+    // ── Search (Ctrl+F) ──
+    // A row under the bar: the box, the count, the match before and after,
+    // Close. It finds frames by the name they show and links by their text
+    // (PGProtoHotspots.searchOf(), folded as Suggest targets folds); the
+    // frames with a match are outlined, the links panel's matching rows
+    // marked. Enter or ArrowDown goes to the next match, Shift+Enter or
+    // ArrowUp to the one before: the view zooms to its frame (as a
+    // double-click does) and a link is picked. Esc closes it and puts back
+    // the view from before the first match.
+    function _sdProtoSearchBuild(ui) {
+        var row = _sdProtoEl('div', 'sd-proto-search');
+        row.hidden = true;
+        row.setAttribute('role', 'search');
+        ui.searchInput = _sdProtoEl('input', 'form-control form-control-sm sd-proto-search-input');
+        ui.searchInput.type = 'search';
+        ui.searchInput.id = 'sd-proto-search-input';
+        ui.searchInput.placeholder = _sdT('Search pages and links…');
+        ui.searchInput.setAttribute('aria-label', _sdT('Search pages and links'));
+        ui.searchInput.setAttribute('aria-describedby', 'sd-proto-search-count');
+        ui.searchInput.autocomplete = 'off';
+        ui.searchInput.spellcheck = false;
+        var soon = 0;
+        ui.searchInput.addEventListener('input', function () {
+            clearTimeout(soon);
+            soon = setTimeout(function () { _sdProtoSearchRun(false); }, 120);
+        });
+        ui.searchInput.addEventListener('keydown', function (event) {
+            var dir = window.PGProtoHotspots.searchKey(event);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoSearchClose(true);
+                return;
+            }
+            if (!dir) return;
+            event.preventDefault();
+            clearTimeout(soon);
+            if (!_sdProto.search || _sdProto.search.typed !== ui.searchInput.value) _sdProtoSearchRun(false);
+            _sdProtoSearchGo(dir);
+        });
+        row.appendChild(ui.searchInput);
+        ui.searchCount = _sdProtoEl('span', 'sd-proto-search-count');
+        ui.searchCount.id = 'sd-proto-search-count';
+        ui.searchCount.setAttribute('aria-live', 'polite');
+        row.appendChild(ui.searchCount);
+        // The buttons keep the focus in the box, so a phone's keyboard stays.
+        [['bi-chevron-up', _sdT('Previous match'), -1], ['bi-chevron-down', _sdT('Next match'), 1]].forEach(function (one) {
+            var b = _sdProtoButton(one[0], one[1], function () {
+                _sdProtoSearchGo(one[2]);
+                ui.searchInput.focus({ preventScroll: true });
+            });
+            b.addEventListener('pointerdown', function (event) { event.preventDefault(); });
+            row.appendChild(b);
+        });
+        row.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the search (Esc)'), function () { _sdProtoSearchClose(true); }));
+        ui.searchRow = row;
+        return row;
+    }
+
+    // Ctrl+F (Cmd+F) while the view is open and the pointer or the focus
+    // is in it (or in its zones of the canvas bar) goes to its search; never from the Overview's tree search
+    // (its own listener runs first) or from another text field, and
+    // anywhere else the browser's own find.
+    function _sdProtoSearchKey(event) {
+        var ui = _sdProto.ui;
+        if (!_sdProto.open || !ui || event.defaultPrevented) return;
+        if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || String(event.key).toLowerCase() !== 'f') return;
+        var act = document.activeElement;
+        // The view: the map and its panels, and the canvas bar's Prototype
+        // zones (.sd-bp-pv).
+        var zones = [ui.root].concat(Array.prototype.slice.call(document.querySelectorAll('#sd-bp-bar .sd-bp-pv')));
+        var inside = !!act && zones.some(function (z) { return z.contains(act); });
+        var over = zones.some(function (z) { return z.matches(':hover'); });
+        var typing = !!(act && act !== document.body && act !== ui.searchInput && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName)));
+        if (typing || (!inside && !over)) return;
+        event.preventDefault();
+        _sdProtoSearchOpen();
+    }
+
+    function _sdProtoSearchOpen() {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.open) return;
+        if (!_sdProto.search) {
+            _sdProto.search = { typed: null, found: null, at: -1, from: null };
+            ui.searchRow.hidden = false;
+            ui.searchBtn.setAttribute('aria-expanded', 'true');
+            ui.searchBtn.classList.add('active');
+            _sdProtoSearchRun(false);
+        }
+        ui.searchInput.focus({ preventScroll: true });
+        ui.searchInput.select();
+    }
+
+    // Esc or Close: the marks go, the view from before the first match
+    // comes back (refocus: the focus back on the map; not when the view
+    // closes). The words stay in the box for the next opening.
+    function _sdProtoSearchClose(refocus) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        _sdProto.search = null;
+        ui.searchRow.hidden = true;
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        ui.searchBtn.classList.remove('active');
+        _sdProtoSearchMark();
+        if (s.from && _sdProto.open && _sdProto.canvas) {
+            _sdProto.zoom = s.from.zoom;
+            _sdProto.view = s.from.view;
+            _sdProto.canvas.view.apply();
+            _sdProtoZoomShow();
+        }
+        if (refocus) ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The box's words searched in the map drawn; `keep` (a redraw) stays
+    // on the match gone to while it is still found.
+    function _sdProtoSearchRun(keep) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        var was = (keep && s.found && s.at >= 0) ? s.found.hits[s.at] : null;
+        s.typed = ui.searchInput.value;
+        s.found = window.PGProtoHotspots.searchOf(_sdProto.layout, s.typed, function (item) {
+            return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item);
+        });
+        s.at = -1;
+        if (was) {
+            s.found.hits.forEach(function (h, i) {
+                if (s.at < 0 && h.kind === was.kind && h.frame === was.frame && h.port === was.port) s.at = i;
+            });
+        }
+        _sdProtoSearchMark();
+    }
+
+    // Go to the match after (dir 1) or before (dir -1) the one gone to.
+    function _sdProtoSearchGo(dir) {
+        var s = _sdProto.search;
+        var canvas = _sdProto.canvas;
+        if (!s || !s.found || !canvas) return;
+        s.at = window.PGProtoHotspots.searchStep(s.found.hits.length, s.at, dir);
+        var hit = s.at >= 0 ? s.found.hits[s.at] : null;
+        var item = hit ? _sdProto.byId[hit.frame] : null;
+        if (!item) { _sdProtoSearchMark(); return; }
+        if (!s.from) {
+            var v = _sdProto.view;
+            var z = _sdProto.zoom;
+            s.from = { view: { x: v.x, y: v.y, k: v.k }, zoom: z ? { id: z.id, back: { x: z.back.x, y: z.back.y, k: z.back.k } } : null };
+        }
+        if (hit.kind === 'chip') {
+            canvas.view.reveal(item);
+        } else {
+            _sdProtoZoomTo(item.id);
+            if (canvas.focused() !== item.id) canvas.focus(item.id);
+            if (hit.kind === 'link') {
+                // Picked in place: _sdProtoPick() would move the view to the
+                // link's other end.
+                _sdProto.link = { frame: item.id, port: hit.port };
+                _sdProtoPicked();
+                _sdProtoListDraw();
+                var li = _sdProto.ui.list.querySelector('.sd-proto-li[data-link="' + (item.id + '|' + hit.port).replace(/"/g, '') + '"]');
+                if (li) li.scrollIntoView({ block: 'nearest' });
+            }
+        }
+        _sdProtoSearchMark();
+        canvas.announce(_sdProtoSearchCount() + ': ' + hit.text);
+    }
+
+    // "2 of 5", "5 matches", "No match", or nothing for an empty box.
+    function _sdProtoSearchCount() {
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        if (!found || found.query === '') return '';
+        var n = found.hits.length;
+        if (!n) return _sdT('No match');
+        if (s.at >= 0) return _sdT('{var:1} of {var:2}', [s.at + 1, n]);
+        return n === 1 ? _sdT('1 match') : _sdT('{var:1} matches', n);
+    }
+
+    // The frames with a match outlined, the one gone to more strongly; the
+    // links panel's matching rows marked; the count.
+    function _sdProtoSearchMark() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        var hit = (found && s.at >= 0) ? found.hits[s.at] : null;
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-found, .sd-proto-found-on')).forEach(function (n) {
+            n.classList.remove('sd-proto-found', 'sd-proto-found-on');
+        });
+        ui.searchCount.textContent = _sdProtoSearchCount();
+        ui.searchRow.classList.toggle('sd-proto-search-none', !!(found && found.query !== '' && !found.hits.length));
+        if (!found) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('[data-node]')).forEach(function (n) {
+            var id = n.getAttribute('data-node');
+            if (found.frames[id]) n.classList.add('sd-proto-found');
+            if (hit && hit.frame === id) n.classList.add('sd-proto-found-on');
+        });
+        found.hits.forEach(function (h) {
+            if (h.kind !== 'link') return;
+            Array.prototype.slice.call(ui.list.querySelectorAll('.sd-proto-li[data-link="' + (h.frame + '|' + h.port).replace(/"/g, '') + '"]')).forEach(function (li) {
+                li.classList.add(hit === h ? 'sd-proto-found-on' : 'sd-proto-found');
+            });
+        });
+    }
+
     function _sdProtoPlayUrl() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
@@ -76095,6 +76605,7 @@ const StyleDesigner = (function () {
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
+        if (_sdProto.search) _sdProtoSearchRun(true);
         // The link the key back asked for (_sdProtoBack()), once this
         // drawing is the one of the load it opened.
         var goTo = _sdProto.goTo;
@@ -78801,6 +79312,9 @@ const StyleDesigner = (function () {
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
                 _pgSaveHold = {};
+                // A content editor's save may start, replace or withdraw a
+                // waiting change: the tabs' marks are read again.
+                if (_sdIsContentLevel()) _pgContentChangesLoad(false);
                 var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
                 var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
@@ -79349,6 +79863,7 @@ const StyleDesigner = (function () {
                st.before.map(pick).join('') +
                '<span class="sd-tab-name">' + esc(name) + '</span>' +
                st.after.map(pick).join('') +
+               _pgContentChangeBadge(p) +
                pick(st.end) +
                '</div>';
     }
@@ -79438,6 +79953,7 @@ const StyleDesigner = (function () {
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
         _pgTabsFit();
+        _pgContentAnswerAuto();
     }
 
     // Measures the strip drawn in full and its short forms, asks the plan
@@ -79477,6 +79993,10 @@ const StyleDesigner = (function () {
         tabEls.concat(chipEls).forEach(function (el) { el.classList.remove('sd-tab-folded'); });
         if (moreEl) { moreEl.hidden = false; moreEl.textContent = '+88'; }
         if (groupsEl) { groupsEl.hidden = false; groupsEl.textContent = _sdT('+{n} groups').replace('{n}', '88'); }
+        // Measured with the mark the hidden pages could lend them.
+        var others = _pages.filter(function (q) { return q.key !== _activeKey; });
+        _pgContentClimbOn(moreEl, others);
+        _pgContentClimbOn(groupsEl, others);
         var w = function (el) { return el ? el.getBoundingClientRect().width : 0; };
         var gap = parseFloat(getComputedStyle(list).columnGap) || 0;
         // Two pixels kept back for rounding.
@@ -79488,7 +80008,10 @@ const StyleDesigner = (function () {
             var inner = [].slice.call(box.children).map(w);
             boxExtra = w(box) - inner.reduce(function (a, b) { return a + b; }, 0) - gap * Math.max(0, inner.length - 1);
         }
-        if (groupsEl) groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+        if (groupsEl) {
+            groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+            _pgContentClimbOn(groupsEl, others);
+        }
         var allW = w(groupsEl);
         // The room the icon gives back is measured, not assumed: a toolbar
         // already at its narrowest gives nothing.
@@ -79510,10 +80033,12 @@ const StyleDesigner = (function () {
             moreEl.hidden = !plan.more;
             moreEl.textContent = '+' + plan.hidden.length;
             moreEl.title = _sdT('{n} pages that do not fit').replace('{n}', plan.hidden.length);
+            _pgContentClimbOn(moreEl, plan.hidden.map(_pgPageByKey));
         }
         if (groupsEl) {
             groupsEl.hidden = !(plan.chipMode === 'some' || plan.chipMode === 'one');
             groupsEl.textContent = (plan.chipMode === 'one' ? _sdT('{n} groups') : _sdT('+{n} groups')).replace('{n}', plan.folded.length);
+            _pgContentClimbOn(groupsEl, _pages.filter(function (q) { return plan.folded.indexOf(q.tabGroup && _pgTabGroups[q.tabGroup] ? q.tabGroup : '') !== -1; }));
         }
         list.classList.toggle('sd-strip-nocount', !plan.counts);
         list.classList.toggle('sd-strip-nohead', !plan.headName);
@@ -79545,6 +80070,10 @@ const StyleDesigner = (function () {
             }
         }
         list.setAttribute('data-step', String(plan.step));
+        // At step 6 no chip is left: the pages not open lend their mark to
+        // the Pages button, which carries one at this step only.
+        var allBtn = _pgTabsAllToggle();
+        if (allBtn) _pgContentClimbOn(allBtn, plan.cut ? others : []);
         // As an icon, the design's name is in the button's tip.
         if (designBtn) {
             if (!designBtn.hasAttribute('data-sd-title')) designBtn.setAttribute('data-sd-title', designBtn.title || '');
@@ -79582,6 +80111,7 @@ const StyleDesigner = (function () {
                    (_pgPageDirty(p) ? '<span class="sd-tabs-list-dirty" title="' + esc(_sdT('Unsaved Changes')) + '"></span>' : '') +
                    (holder ? '<span class="bi bi-lock sd-tabs-list-busy" title="' + esc(_sdT('Open for editing by {name}').replace('{name}', holder)) + '"></span>' : '') +
                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                   _pgContentChangeBadge(p, true) +
                    (locked ? '<span class="bi bi-lock-fill sd-tabs-list-lock" aria-hidden="true"></span>' : '') +
                    '</button>';
         };
@@ -79607,7 +80137,9 @@ const StyleDesigner = (function () {
                 rows += '<button type="button" class="sd-tab-popmenu-item" data-group-row="' + esc(id) + '">' +
                         '<span class="sd-tab-color-dot me-3" data-color="' + esc(id ? _pgTabGroups[id].color : 'grey') + '" aria-hidden="true"></span>' +
                         '<span class="sd-tabs-list-name">' + esc(id ? _pgTabGroupLabel(id) : _sdT('Other')) + '</span>' +
-                        '<span class="sd-tabs-list-count">' + n + '</span><span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
+                        '<span class="sd-tabs-list-count">' + n + '</span>' +
+                        _pgContentClimbHtml(id ? _pgTabGroupMembers(id) : _pages.filter(function (p) { return !p.tabGroup; })) +
+                        '<span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
             });
         }
         var m = document.createElement('div');
@@ -79703,6 +80235,7 @@ const StyleDesigner = (function () {
                     '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
                     (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
                     ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    _pgContentChangeBadge(p, true) +
                     (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
@@ -80856,6 +81389,7 @@ const StyleDesigner = (function () {
                (head ? '' : '<span class="sd-tab-group-dot" aria-hidden="true"></span>') +
                '<span class="sd-tab-group-name">' + esc(label) + '</span>' +
                (head ? '' : '<span class="sd-tab-group-count">' + count + '</span>') +
+               (head ? '' : _pgContentClimbHtml(gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; }))) +
                (head && g && editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
                '</div>';
     }
@@ -83679,6 +84213,7 @@ const StyleDesigner = (function () {
         // so an installation whose database has not been upgraded simply gets
         // `ready: false` back and the editor behaves exactly as before.
         _collabStart();
+        _pgContentChangesStart();
 
         // Browser-level guard. `_suppressUnloadWarn` is set by the save and
         // exit paths right before an intentional navigation.

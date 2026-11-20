@@ -79,7 +79,7 @@ function test_picture_group_extraction()
 	pg_assert_contains("case 'pictures':\n            return pg_tr_extract_pictures();", $extract);
 	pg_assert_contains("\$groups = array('catalog', 'forms', 'pictures');", $extract, 'the whole site extracts the pictures');
 	pg_assert_contains('INNER JOIN (SELECT DISTINCT file_id FROM file_translation) ft ON ft.file_id = f.id', $extract, 'only pictures a page showed are read');
-	pg_assert_contains('pg_picture_tr_forget($file_id);', $extract, 'a picture no longer live loses its texts and rows');
+	pg_assert_contains("pg_picture_tr_forget(\$file_id, \$reason === 'binned');", $extract, 'a picture no longer live loses its texts and rows');
 	pg_assert_same(array('owners' => 0, 'segments' => 0), pg_tr_extract_pictures(), 'nothing before the table exists');
 }
 

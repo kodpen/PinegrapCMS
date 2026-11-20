@@ -127,7 +127,7 @@ function api_webhook_event_payloads() {
 		'id'          => array('integer', 'The store credit card (GET /gift-cards/{id}). Its code is never sent.'),
 		'account_id'  => array('integer', 'The customer\'s account.'),
 		'customer_id' => array('integer?', 'The account\'s customer record, null for none.'),
-		'kind'        => array('string', 'How the credit came: gift, points, refund or manual.'),
+		'kind'        => array('string', 'How the credit came: gift, points, refund, manual or referral.'),
 		'reason'      => array('string', 'The note given with it, empty for none.'),
 		'amount'      => array('integer', 'The amount given, in minor units (cents).'),
 		'balance'     => array('integer', 'What is left on the card, in minor units (cents).'),

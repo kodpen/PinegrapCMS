@@ -7,8 +7,10 @@
  * moment (includes/fn/page_bundles.php for the rules, page_bundles_screen.php
  * for what this screen reads). Without an id it lists the bundles and makes
  * a new one; with one it shows a bundle's pages, adds a copy of a live page
- * or a draft, removes a page, sets the name and the publish time, and
- * deletes the bundle, and shares its preview by a prototype link
+ * or a draft, removes a page, sets the name and the publish time,
+ * deletes the bundle, publishes it (or the rest of a partly published one)
+ * and takes it back through the module's dialogs and locked runners, and
+ * shares its preview by a prototype link
  * (includes/fn/prototype_links.php). Designers and administrators.
  *
  * @author      Erdal Güral (Kodpen)
@@ -117,6 +119,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->add_notice(lang('The link was made. Copy its address and send it to the people who should look at the bundle.'));
         } else {
             $liveform->add_notice(lang('The link was revoked: it no longer opens the preview.'));
+        }
+
+        go($self);
+    }
+
+    // Publish (or publish the rest) and Take back run under the bundle's
+    // lock and write their own Site Log lines; the dialogs post what the
+    // person chose and which pages they saw stay as they are.
+    if ($action === 'publish') {
+        $outcome = pg_page_bundle_screen_outcome('publish',
+            pg_page_bundle_publish($bundle, $user, pg_page_bundle_screen_choices(isset($_POST['choice']) ? $_POST['choice'] : array())));
+        if ($outcome['ok']) {
+            $liveform->add_notice($outcome['text']);
+        } else {
+            $liveform->add_error($outcome['text']);
+        }
+
+        go($self);
+    }
+
+    if ($action === 'take_back') {
+        // A page a take-back writes would be put back by the next save of
+        // an editor tab that has it open.
+        require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+        $check = pg_page_bundle_take_back_check($bundle);
+        $open = '';
+
+        foreach ($check['plan']['can'] as $id) {
+            $item = $check['items'][$id];
+            $replacement = (int) $item['live_page_id'] > 0;
+
+            if (!pg_collab_may_edit_page('', $replacement ? (int) $item['live_page_id'] : (int) $item['draft_page_id'])) {
+                $open = $replacement ? (string) $item['live_name'] : (string) $item['draft_name'];
+                break;
+            }
+        }
+
+        if ($open !== '') {
+            $liveform->add_error(lang(array('string' => 'Somebody has {var:1} open in the Page Design Studio. Take the bundle back when they are done.', 'vars' => array($open))));
+            go($self);
+        }
+
+        $outcome = pg_page_bundle_screen_outcome('take_back',
+            pg_page_bundle_take_back($bundle, $user, pg_page_bundle_screen_kept(isset($_POST['kept']) ? $_POST['kept'] : array())));
+        if ($outcome['ok']) {
+            $liveform->add_notice($outcome['text']);
+        } else {
+            $liveform->add_error($outcome['text']);
         }
 
         go($self);
@@ -489,7 +540,40 @@ if ($may_change) {
         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#page_bundle_settings"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Bundle settings')) . '</button>';
 }
 
-$output_buttons .= $output_preview;
+// Publish while the bundle holds drafts ("Publish the rest" once partly
+// published) and Take back once something of it is on the site, each
+// through its dialog built by the module and opened through pgUI.
+$actions = pg_page_bundle_screen_actions($bundle['status']);
+$output_actions = '';
+
+if ($actions['publish'] !== '') {
+    $publish_check = pg_page_bundle_publish_check($bundle, $user);
+
+    if ($publish_check['plan']['pages']) {
+        $output_dialogs .= pg_page_bundle_publish_dialog($bundle, $publish_check, $self);
+        $output_actions .= '
+        <button type="button" class="pg-button pg-button-fill pg-button-sm" data-pg-bundle-dialog="page_bundle_publish_dialog"><i class="bi bi-send" aria-hidden="true"></i>' . h($actions['publish']) . '</button>';
+    }
+}
+
+if ($actions['take_back']) {
+    $output_dialogs .= pg_page_bundle_take_back_dialog($bundle, pg_page_bundle_take_back_check($bundle), $self);
+    $output_actions .= '
+        <button type="button" class="pg-button pg-button-sm" data-pg-bundle-dialog="page_bundle_take_back_dialog"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Take it back')) . '</button>';
+}
+
+if ($output_actions !== '') {
+    $output_dialogs .= '
+<script>
+document.addEventListener("click", function (event) {
+    var button = event.target.closest ? event.target.closest("[data-pg-bundle-dialog]") : null;
+    var dialog = button ? document.getElementById(button.getAttribute("data-pg-bundle-dialog")) : null;
+    if (dialog) pgUI.dialog.show(dialog);
+});
+</script>';
+}
+
+$output_buttons = $output_actions . $output_buttons . $output_preview;
 
 if (pg_page_bundle_may_delete($bundle['status'])) {
     $output_buttons .= '

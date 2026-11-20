@@ -14,7 +14,7 @@ module: content_proposals
 
 ## Where is the count?
 - Above the page list (`view_pages.php`), for roles 0 and 1, while changes wait: "One content change waits for approval." or "N content changes wait for approval." with a link to the list (`pg_content_proposals_waiting_count()`).
-- The count on the page's tab in the Studio is PA3's (architect, message 6485): `style_designer.src.js` was held by other open PRs.
+- The count on the page's tab in the Studio: `content-proposals-editor-side.md` (PA3).
 
 ## Which test guards it?
 - `tests/content_proposals_test.php` (the hour, the lines, the editor's words, the count's wiring), `tests/bell_row_test.php` (the module of each action).

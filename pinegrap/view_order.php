@@ -3072,6 +3072,10 @@ if (!$_POST) {
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)
             VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "'" . (($refund_points_marker !== '') ? ", '" . e($refund_points_marker) . "'" : '') . ", NOW())");
 
+        // A referral's reward, when what is left of the order no longer
+        // counts; read after the refund row above, so it is counted.
+        pg_referral_order_refunded($order_id);
+
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
         log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array(pg_format_number($refund_cents / 100, 2), BASE_CURRENCY_CODE, pg_order_log_number($order_row)))));

@@ -140,6 +140,9 @@
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
 - referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- stock-planning-features.md: Plan stock-planning, features P1 to P14: the daily record, sales speed, season, lead time, supplier, order quantity, states, dead stock, the screen, the supplier order, bell and API
+- stock-planning-steps.md: Plan stock-planning, steps SP1 to SP5: the daily record first (its history starts when it lands), the forecast, the screen and supplier order, the bell and API, close-out
+- stock-planning.md: Plan (owner 2026-11-20, agent channel poll 163): a nightly stock plan per product (days left, run-out day, order quantity, dead stock), its screen, supplier orders, bell and API; SP1 to SP5
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
