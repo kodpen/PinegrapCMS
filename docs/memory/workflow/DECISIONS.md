@@ -437,6 +437,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-80.md: Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
 - decisions-made-product-80.md: When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
 - decisions-made-product-80.md: Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
+- decisions-made-product-81.md: Where are the rules and the earlier parts?
+- decisions-made-product-81.md: Does the Google Cloud Translation key move to Connections? (architect, 2026-11-20, agent channel message 10151, answer to K1's request 1696)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
