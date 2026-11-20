@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-92
-description: Decisions list, product part 92 (2026-11-20 on): text written for an AI agent to read is English only in the panel, the API and MCP, never translated
+description: Decisions list, product part 92 (2026-11-20 on): text written for an AI agent is English only in the panel, the API and MCP, never translated; MCP's own refusals English too
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,5 +19,10 @@ description: Decisions list, product part 92 (2026-11-20 on): text written for a
 ## What does it leave alone?
 - What a person reads: a screen's labels and help lines, a guide a person follows in the panel (the Application Access guides), an answer's translated `message` beside its English `hint` (`decisions-made-product-85.md`). These stay translated (`core/translation-rules.md`).
 - What a person writes for an agent (an agent's own instructions, a channel's memory): the software does not translate it either way.
+
+## In which language is a refusal? (owner, 2026-11-20, in the architect's window)
+- Asked, as a site in Turkish gave an agent one refusal in two languages (the translated `message`, the English `hint`). Offered: only MCP's own refusals in English; all as it is; every refusal in English, the API's too. Owner: "tamamdır uygun gördüğün gibi kalabilir", so the first, the architect's proposal, holds.
+- MCP's own refusal sentences are English: the ones `includes/mcp/tools.php` and `includes/mcp/protocol.php` write themselves, read by an agent only. Plain strings, not through `lang()`.
+- The API's `message` stays translated, with its English `hint` beside it: an application shows it to a person. A refusal MCP passes on from an API route keeps that route's `message`.
 
 Related: docs/memory/workflow/decisions-made-product-85.md, docs/memory/api/api-change-rules.md, docs/memory/workspace/workspace-writing-rules.md
