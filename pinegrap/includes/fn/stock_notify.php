@@ -28,6 +28,15 @@
  * request, so fewer are taken there and the rest wait for the product's
  * next announcement.
  *
+ * The waiting list of a full event date (11.0.247) lives in the same table:
+ * a row with product_id 0 and the event and its date (recurrence_number) is
+ * a request to be told when a place frees (pg_stock_notify_event_request()).
+ * A product's notice reads only rows of its product id, an event's only rows
+ * of product_id 0 (pg_stock_notify_waiting_where()), so neither mails the
+ * other's requests. Places free when a cancelled order gives them back or
+ * staff raise the spots (pg_stock_notify_event_freed()); everyone waiting for
+ * the date is mailed once and nobody's place is held.
+ *
  * A daily pass (pg_stock_notify_trim_daily(), from job.php) removes notices
  * sent a month ago and requests that waited a year; deleting an account or a
  * product removes its rows at once.
@@ -479,7 +488,7 @@ function pg_stock_notify_heard($event, $payload)
 
     try {
         if (pg_stock_notify_ready()
-            && (db_value("SELECT id FROM stock_notify WHERE (product_id = '" . $product_id . "') AND (sent_at = 0) LIMIT 1") !== null)) {
+            && (db_value("SELECT id FROM stock_notify WHERE " . pg_stock_notify_waiting_where('product', $product_id) . " LIMIT 1") !== null)) {
             pg_stock_notify_send($product_id);
         }
     } catch (Throwable $error) {
@@ -659,7 +668,7 @@ function pg_stock_notify_send($product_id)
         "SELECT stock_notify.id, stock_notify.email_address, stock_notify.phone, user.user_email
         FROM stock_notify
         LEFT JOIN user ON (stock_notify.user_id > 0) AND (user.user_id = stock_notify.user_id)
-        WHERE (stock_notify.product_id = '" . $product_id . "') AND (stock_notify.sent_at = 0)
+        WHERE " . pg_stock_notify_waiting_where('product', $product_id) . "
         ORDER BY stock_notify.id
         LIMIT " . $limit);
 
@@ -896,4 +905,453 @@ function pg_stock_notify_trim_daily()
     }
 
     return $removed;
+}
+
+/**
+ * The waiting rows of one product, or of one event's date, as a WHERE
+ * clause on stock_notify. A product's rows are those of its own id, which is
+ * never 0; an event's are pinned to product_id 0, so a product's notice never
+ * reads an event's requests and an event's never reads a product's. Pure.
+ *
+ * @param string $kind       product or event
+ * @param int    $id         the product's or the event's id
+ * @param int    $recurrence the event's date (pg_stock_notify_event_date())
+ * @return string '' for anything else
+ */
+function pg_stock_notify_waiting_where($kind, $id, $recurrence = 0)
+{
+    $id = is_scalar($id) ? (int) $id : 0;
+
+    if ($id <= 0) {
+        return '';
+    }
+
+    if ($kind === 'product') {
+        return "(stock_notify.product_id = '" . $id . "') AND (stock_notify.sent_at = 0)";
+    }
+
+    if ($kind === 'event') {
+        return "(stock_notify.product_id = 0) AND (stock_notify.calendar_event_id = '" . $id . "')"
+            . " AND (stock_notify.recurrence_number = '" . max(0, (int) $recurrence) . "') AND (stock_notify.sent_at = 0)";
+    }
+
+    return '';
+}
+
+/**
+ * Whether the waiting list's columns of 2026.11.0 (11.0.247) are there.
+ *
+ * @return bool
+ */
+function pg_stock_notify_event_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_stock_notify_ready()
+            && pg_schema_has('stock_notify', 'calendar_event_id')
+            && pg_schema_has('stock_notify', 'recurrence_number');
+    }
+
+    return $ready;
+}
+
+/**
+ * Whether the waiting list is offered: it belongs to event tickets, so the
+ * switch Tickets (pg_event_tickets_on()) and the calendars must be on.
+ *
+ * @return bool
+ */
+function pg_stock_notify_event_on()
+{
+    return defined('CALENDARS') && CALENDARS
+        && function_exists('pg_event_tickets_on') && pg_event_tickets_on()
+        && pg_stock_notify_event_ready();
+}
+
+/**
+ * The date an event's places are counted on: its own occurrence for a
+ * recurring event with separate spots, 0 otherwise (the rule of
+ * get_calendar_event() and reserve_calendar_event.php). Pure.
+ *
+ * @param array $event      recurrence, separate_reservations
+ * @param int   $recurrence the occurrence asked for
+ * @return int
+ */
+function pg_stock_notify_event_date(array $event, $recurrence)
+{
+    if (((int) ($event['recurrence'] ?? 0) === 1) && ((int) ($event['separate_reservations'] ?? 0) === 1)) {
+        return max(0, (int) $recurrence);
+    }
+
+    return 0;
+}
+
+/**
+ * What an event's date is for the waiting list: none (it takes no
+ * reservations, its product is gone or off, it has ended), full (its places
+ * are limited and none is left, while its product could be sold) or open
+ * (a reservation can be made). A product out of stock is the product's own
+ * notice, not a place: such a date is none. Pure.
+ *
+ * @param array|null $event get_calendar_event()'s row
+ * @param int        $now
+ * @return string none, full or open
+ */
+function pg_stock_notify_event_state($event, $now)
+{
+    if (!is_array($event) || ((int) ($event['reservations'] ?? 0) !== 1)
+        || ((string) ($event['product_id'] ?? '') === '') || ((int) ($event['product_enabled'] ?? 0) !== 1)
+        || ((int) ($event['published'] ?? 1) !== 1)) {
+        return 'none';
+    }
+
+    $end = strtotime((string) ($event['end_date_and_time'] ?? ''));
+
+    if (($end === false) || ($end < (int) $now)) {
+        return 'none';
+    }
+
+    if (((int) ($event['inventory'] ?? 0) === 1) && ((int) ($event['inventory_quantity'] ?? 0) <= 0) && ((int) ($event['backorder'] ?? 0) !== 1)) {
+        return 'none';
+    }
+
+    if (((int) ($event['limit_reservations'] ?? 0) === 1) && ((int) ($event['number_of_remaining_spots'] ?? 0) <= 0)) {
+        return 'full';
+    }
+
+    return 'open';
+}
+
+/**
+ * What a waiting list request comes to, in the order it is checked. Pure.
+ *
+ * @param bool   $ready   pg_stock_notify_event_on()
+ * @param string $email   pg_stock_notify_email()
+ * @param string $state   pg_stock_notify_event_state()
+ * @param bool   $already the address, or the account, waits for this date
+ * @param int    $waiting the requests the address waits on
+ * @return string added, already, limit, open, event, email, unavailable
+ */
+function pg_stock_notify_event_request_status($ready, $email, $state, $already, $waiting)
+{
+    if (!$ready) {
+        return 'unavailable';
+    }
+
+    if ($email === '') {
+        return 'email';
+    }
+
+    if ($state === 'open') {
+        return 'open';
+    }
+
+    if ($state !== 'full') {
+        return 'event';
+    }
+
+    if ($already) {
+        return 'already';
+    }
+
+    if ((int) $waiting >= PG_STOCK_NOTIFY_PENDING_LIMIT) {
+        return 'limit';
+    }
+
+    return 'added';
+}
+
+/**
+ * The sentence the visitor reads for a waiting list answer.
+ *
+ * @param string $status pg_stock_notify_event_request_status()
+ * @return string
+ */
+function pg_stock_notify_event_status_message($status)
+{
+    switch ($status) {
+        case 'added':
+            return lang('We will send you one e-mail when a place frees on this date. The place goes to whoever orders first.');
+        case 'already':
+            return lang('You are already on the waiting list for this date.');
+        case 'open':
+            return lang('There are places left on this date, so you can reserve now.');
+        case 'event':
+            return lang('Sorry, this date cannot be reserved.');
+        case 'email':
+            return lang('Please enter a valid e-mail address.');
+        case 'limit':
+            return lang('You are already waiting for many products. Please try again later.');
+        case 'unavailable':
+            return lang('The waiting list is not available on this site.');
+    }
+
+    return lang('Something went wrong. Please try again.');
+}
+
+/**
+ * Keeps a request to be told when a place frees on an event's date. One
+ * waiting request per address (or account) and date; the address's
+ * requests for products and dates count together against
+ * PG_STOCK_NOTIFY_PENDING_LIMIT.
+ *
+ * @param int    $event_id
+ * @param int    $recurrence the occurrence asked for
+ * @param string $email      the address typed; '' takes the signed-in
+ *                           account's
+ * @param int    $user_id    the signed-in account, 0 for a guest
+ * @return string pg_stock_notify_event_request_status()
+ */
+function pg_stock_notify_event_request($event_id, $recurrence, $email, $user_id)
+{
+    $event_id = (int) $event_id;
+    $user_id = max(0, (int) $user_id);
+
+    if (!pg_stock_notify_event_on()) {
+        return 'unavailable';
+    }
+
+    if (($email === '') && ($user_id > 0) && defined('USER_EMAIL_ADDRESS')) {
+        $email = (string) USER_EMAIL_ADDRESS;
+    }
+
+    $email = pg_stock_notify_email($email);
+    $state = 'none';
+    $date = 0;
+    $already = false;
+    $waiting = 0;
+
+    if (($email !== '') && ($event_id > 0)) {
+        $event = get_calendar_event($event_id, max(0, (int) $recurrence));
+        $state = pg_stock_notify_event_state($event ? $event : null, time());
+        $date = is_array($event) ? pg_stock_notify_event_date($event, $recurrence) : 0;
+
+        if ($state === 'full') {
+            $already = db_value(
+                "SELECT id FROM stock_notify
+                WHERE " . pg_stock_notify_waiting_where('event', $event_id, $date) . "
+                AND ((email_address = '" . e($email) . "')" . (($user_id > 0) ? " OR (user_id = '" . $user_id . "')" : '') . ")
+                LIMIT 1") !== null;
+
+            $waiting = (int) db_value("SELECT COUNT(*) FROM stock_notify WHERE (email_address = '" . e($email) . "') AND (sent_at = 0)");
+        }
+    }
+
+    $status = pg_stock_notify_event_request_status(true, $email, $state, $already, $waiting);
+
+    if ($status === 'added') {
+        db("INSERT INTO stock_notify (product_id, calendar_event_id, recurrence_number, email_address, user_id, phone, created_at, sent_at)
+            VALUES (0, '" . $event_id . "', '" . $date . "', '" . e($email) . "', '" . $user_id . "', '', UNIX_TIMESTAMP(), 0)");
+    }
+
+    return $status;
+}
+
+/**
+ * The mail of a freed place: its subject (text) and HTML body.
+ *
+ * @param string $name the event's name
+ * @param string $when the date as the visitor reads it
+ * @param string $url  the site's address, '' for none
+ * @return array subject, body
+ */
+function pg_stock_notify_event_mail($name, $when, $url)
+{
+    $name = trim(preg_replace('/[\r\n]+/', ' ', (string) $name));
+    $when = trim(preg_replace('/[\r\n]+/', ' ', (string) $when));
+    $label = ($when !== '') ? $name . ' (' . $when . ')' : $name;
+
+    $body = '<p>' . lang(array('string' => 'Good news: a place has freed for {var:1}, which you asked us about.', 'vars' => array('<strong>' . h($label) . '</strong>'))) . '</p>'
+        . '<p>' . h(lang('No place is held for you: it goes to whoever orders first.')) . '</p>';
+
+    if ((string) $url !== '') {
+        $body .= '<p><a href="' . h($url) . '">' . h(lang('Visit the site')) . '</a></p>';
+    }
+
+    $body .= '<p>' . h(lang('You asked to be told once, so we will not write about this date again.')) . '</p>';
+
+    return array(
+        'subject' => lang(array('string' => 'A place has freed for {var:1}', 'vars' => array($label))),
+        'body'    => $body,
+    );
+}
+
+/**
+ * Mails everyone waiting for an event's date once a place is free there:
+ * each row is claimed first (sent_at stamped by a conditional UPDATE) and
+ * mailed only by the request that claimed it, so two frees at once mail a
+ * request once. One address waiting on two rows (guest and account) gets
+ * one mail. Queued while the general job runs, else a few in the request,
+ * as a product's notice.
+ *
+ * @param int $event_id
+ * @param int $date the date the places are counted on
+ * @return int the mails handed on
+ */
+function pg_stock_notify_event_send($event_id, $date)
+{
+    $event_id = (int) $event_id;
+    $date = max(0, (int) $date);
+
+    if (($event_id <= 0) || !pg_stock_notify_event_ready()) {
+        return 0;
+    }
+
+    $event = get_calendar_event($event_id, $date);
+
+    if (pg_stock_notify_event_state($event ? $event : null, time()) !== 'open') {
+        return 0;
+    }
+
+    $queued = function_exists('pg_mail_job_alive') && pg_mail_job_alive();
+
+    $rows = db_items(
+        "SELECT stock_notify.id, stock_notify.email_address, user.user_email
+        FROM stock_notify
+        LEFT JOIN user ON (stock_notify.user_id > 0) AND (user.user_id = stock_notify.user_id)
+        WHERE " . pg_stock_notify_waiting_where('event', $event_id, $date) . "
+        ORDER BY stock_notify.id
+        LIMIT " . ($queued ? PG_STOCK_NOTIFY_SEND_QUEUED : PG_STOCK_NOTIFY_SEND_INLINE));
+
+    $start = strtotime((string) $event['start_date_and_time']);
+    $when = ($start !== false) ? (function_exists('get_absolute_time') ? get_absolute_time(array('timestamp' => $start, 'size' => 'long')) : date('Y-m-d H:i', $start)) : '';
+    $mail = pg_stock_notify_event_mail((string) $event['name'], (string) $when, URL_SCHEME . HOSTNAME_SETTING . PATH);
+    $mailed = array();
+    $sent = 0;
+
+    foreach ($rows as $row) {
+        if (pg_stock_notify_claim((int) $row['id']) !== 1) {
+            continue;
+        }
+
+        $to = pg_stock_notify_email((string) $row['email_address']);
+
+        if ($to === '') {
+            $to = pg_stock_notify_email((string) $row['user_email']);
+        }
+
+        if (($to === '') || isset($mailed[strtolower($to)])) {
+            continue;
+        }
+
+        $mailed[strtolower($to)] = true;
+
+        email(array(
+            'to'                 => $to,
+            'from_name'          => ORGANIZATION_NAME,
+            'from_email_address' => EMAIL_ADDRESS,
+            'subject'            => $mail['subject'],
+            'format'             => 'html',
+            'body'               => $mail['body'],
+            'queue'              => $queued,
+        ));
+
+        $sent++;
+    }
+
+    return $sent;
+}
+
+/**
+ * Claims one waiting row: stamps sent_at only while it is 0, so of two
+ * senders at once one gets the row.
+ *
+ * @param int $row_id
+ * @return int 1 when this call claimed it
+ */
+function pg_stock_notify_claim($row_id)
+{
+    db("UPDATE stock_notify SET sent_at = UNIX_TIMESTAMP() WHERE (id = '" . (int) $row_id . "') AND (sent_at = 0)");
+
+    return (int) mysqli_affected_rows(db::$con);
+}
+
+/**
+ * Places have freed on these dates (a cancelled order gave them back, staff
+ * raised the spots): those waiting are mailed. One indexed read for a date
+ * nobody waits on. A failure is logged and swallowed: it may never break the
+ * cancel or the save that freed them.
+ *
+ * @param array $dates list of array(calendar_event_id, recurrence_number)
+ * @return int the mails handed on
+ */
+function pg_stock_notify_event_freed(array $dates)
+{
+    if (!$dates || !defined('DB_CONNECTED') || !pg_stock_notify_event_on()) {
+        return 0;
+    }
+
+    $throws = pg_error_throws();
+    pg_error_throws(true);
+    $sent = 0;
+
+    try {
+        foreach ($dates as $date) {
+            $where = pg_stock_notify_waiting_where('event', (int) ($date[0] ?? 0), (int) ($date[1] ?? 0));
+
+            if (($where !== '') && (db_value("SELECT id FROM stock_notify WHERE " . $where . " LIMIT 1") !== null)) {
+                $sent += pg_stock_notify_event_send((int) $date[0], (int) $date[1]);
+            }
+        }
+    } catch (Throwable $error) {
+        error_log('Pinegrap event waiting list: ' . $error->getMessage());
+    } finally {
+        pg_error_throws($throws);
+    }
+
+    return $sent;
+}
+
+/**
+ * The reserve page's line under a full date: "Tell me when a place frees",
+ * an address field (the signed-in visitor's filled in) and a button, posted
+ * to reserve_calendar_event.php with waiting_list=1.
+ *
+ * @param string $action   reserve_calendar_event.php's address
+ * @param string $token    the CSRF field (get_token_field())
+ * @param string $send_to  the page to come back to
+ * @param int    $page_id
+ * @param int    $event_id
+ * @param int    $recurrence
+ * @param string $email    the address to fill in, '' for none
+ * @return string
+ */
+function pg_stock_notify_event_form_html($action, $token, $send_to, $page_id, $event_id, $recurrence, $email)
+{
+    $field = 'pg-waiting-email-' . (int) $event_id . '-' . (int) $recurrence;
+
+    return '<form action="' . h($action) . '" method="post" class="pg-waiting-list d-flex flex-wrap align-items-center gap-2 mt-2">'
+        . $token
+        . '<input type="hidden" name="send_to" value="' . h($send_to) . '">'
+        . '<input type="hidden" name="page_id" value="' . (int) $page_id . '">'
+        . '<input type="hidden" name="calendar_event_id" value="' . (int) $event_id . '">'
+        . '<input type="hidden" name="recurrence_number" value="' . (int) $recurrence . '">'
+        . '<input type="hidden" name="waiting_list" value="1">'
+        . '<input type="hidden" name="require_cookies" value="true">'
+        . '<label for="' . $field . '" class="w-100">' . h(lang('Tell me when a place frees')) . '</label>'
+        . '<input type="email" id="' . $field . '" name="email_address" value="' . h($email) . '" maxlength="100" required autocomplete="email" class="form-control w-auto">'
+        . '<button type="submit" class="btn btn-outline-primary">' . h(lang('Tell me')) . '</button>'
+        . '</form>';
+}
+
+/**
+ * The waiting line for an event's date as a page draws it: '' unless the
+ * waiting list is on and the date is full.
+ *
+ * @param array  $event      get_calendar_event()'s row
+ * @param int    $recurrence the occurrence shown
+ * @param int    $page_id    the page drawn
+ * @param string $send_to    the page to come back to
+ * @return string
+ */
+function pg_stock_notify_event_line(array $event, $recurrence, $page_id, $send_to)
+{
+    if ((pg_stock_notify_event_state($event, time()) !== 'full') || !pg_stock_notify_event_on()) {
+        return '';
+    }
+
+    return pg_stock_notify_event_form_html(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php',
+        get_token_field(), $send_to, $page_id, (int) $event['id'], $recurrence,
+        defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '');
 }
