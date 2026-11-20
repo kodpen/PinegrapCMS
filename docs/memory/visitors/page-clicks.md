@@ -18,7 +18,7 @@ module: page_clicks
 ## How are address and label folded?
 - `pg_page_clicks_fold_url()`: no query or fragment; this site's host by its path, another as `//host/path`; `mailto:`, `tel:`, `sms:` and messaging schemes or hosts (wa.me, t.me, m.me …) keep their kind only (`tel:`), and a kind folds to itself (`telegram:`); a path part over 16 characters with letters and digits and no hyphen becomes `*`; script or unresolved addresses are ''; cut at 255 characters.
 - `pg_page_clicks_fold_label()`: control characters out, white space folded, cut at 60 characters; empty when it holds an e-mail address or seven digits in a row.
-- The server folds the script's folded values again; an element folded alike counts once a beacon; one with neither address nor label is dropped.
+- The server folds the script's values again (only it meets a kind as input); an element folded alike counts once a beacon; one with neither address nor label is dropped.
 
 ## What is the bound?
 - 200 element rows a page and day: the sum of `elements` on the page's three view rows. A known element keeps counting; a new one past it raises the `other` row. Beacons in flight can pass it by a few (accepted, 6041).
@@ -33,8 +33,8 @@ module: page_clicks
 - The switch: `page-clicks-switch.md`. The script (#9946): `page-clicks-script.md`. Visitors section and `GET /reports/page-clicks` (#9913): `ui/visitors-clicks-section.md`. Designer: `page-clicks-designer-layer.md`.
 
 ## What did the bug hunt find? (agent channel message 10214, #10604)
-- Fixed: a beacon counted with the switch off (a cached page keeps the script an hour, a signature a day); the second fold made `telegram:`, `signal:`, `messenger:`, `teams:` '' (an icon link dropped); the script's part could pass 8 KB and lose the view.
-- Read clean: bound, signature, forged body, figures, sweep, API.
+- Fixed: a beacon counted with the switch off (a cached page keeps the script an hour, a signature a day); the second fold made `telegram:`, `signal:`, `messenger:`, `teams:` '' (icon link dropped); the script's part could pass 8 KB and lose the view.
+- Clean: bound, signature, forged body, figures, sweep, API.
 
 ## Tested?
 - `tests/page_clicks_test.php`; the step, record, bound, figures and sweep were run on MariaDB.

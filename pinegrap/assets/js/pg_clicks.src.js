@@ -55,21 +55,6 @@
         'signal.me': 'signal:', 'line.me': 'line:', 'invite.viber.com': 'viber:'
     };
 
-    // Whether a text is one of the kinds a messaging address folds to.
-    function isKind(text) {
-        var lists = [MESSAGING_SCHEMES, MESSAGING_HOSTS];
-
-        for (var i = 0; i < lists.length; i++) {
-            for (var key in lists[i]) {
-                if (has(lists[i], key) && (lists[i][key] === text)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     var LANDMARKS = { header: 'header', nav: 'nav', main: 'main', footer: 'footer', aside: 'aside' };
     var ROLES = { banner: 'header', navigation: 'nav', main: 'main', contentinfo: 'footer', complementary: 'aside' };
 
@@ -112,11 +97,6 @@
 
             if (has(MESSAGING_SCHEMES, name)) {
                 return MESSAGING_SCHEMES[name];
-            }
-
-            // A kind already folded to ("telegram:") stays itself.
-            if (isKind(name + ':')) {
-                return name + ':';
             }
 
             if ((name !== 'http') && (name !== 'https')) {
