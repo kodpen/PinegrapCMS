@@ -23,5 +23,8 @@ description: The tables bound to a canvas (ws_canvas_tables, 11.0.190, #8960): w
 - `rows` answers `not_bound` for a table the canvas does not bind, `forbidden` when the reader may not read it (`ws_wtable_for(…, 'view')`), `invalid` with the query's words (`ws_wtable_query_refusal()`, `workspace/workflow-tables-query.md`).
 - It reads every row (5000 at most), keeps the query's, pages by offset (100 by default, 500 at most), works lookups and rollups out for the reader (`ws_wtable_joined_fill()`) and gives `total`, `next` and, asked, `totals` (`ws_wtable_rows_totals()` over the rows kept).
 
+## How does a data layer read a table?
+- `ws_canvas_data_rows()`: the reader's rights, 5000 rows, no binding check of its own (`platform/image-server-draw-data.md`).
+
 ## What removes bindings?
 - A table's final delete (`ws_wtable_delete_final()`) and a thread's purge (`threads.php`). A deleted message's rows stay but reach nothing: the reach check needs a live page.
