@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-56
-description: Decisions made, product part 56 (2026-11-15): a left cart recovered within 7 days of its last touch; pop-ups built by growing Auto Dialogs, the jQuery dialog gone; Design Canvas on a video in Files
+description: Decisions made, product part 56 (2026-11-15): a left cart recovered within 7 days of its last touch; pop-ups built by growing Auto Dialogs, the jQuery dialog gone; Artifact Canvas on a video in Files
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,4 +21,4 @@ description: Decisions made, product part 56 (2026-11-15): a left cart recovered
 
 ## Is a video edited from Files? (owner, 2026-11-15, agent channel message 5103)
 - He expected it: "tasarım tuvalinde video düzenlenir olacaktı ... bugün dosya yöneticide video düzenle seçeneği yok." The video plan was complete (closed by #9234); only the door from Files was never a step.
-- So Files offers Design Canvas on an MP4 or WebM; a plain video opens as a clip on a new canvas and is saved beside its source (#9775): `ui/image-editor-video-files.md`.
+- So Files offers Artifact Canvas on an MP4 or WebM; a plain video opens as a clip on a new canvas and is saved beside its source (#9775): `ui/image-editor-video-files.md`.

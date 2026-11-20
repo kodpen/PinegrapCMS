@@ -9,7 +9,7 @@ description: Decisions list, product part 75 (2026-11-17): pictures drawn by the
 ## Are translated pictures drawn by themselves? (owner, 2026-11-17, agent channel poll 143, message 9281)
 - He tried picture text translation on dev and wrote in the architect's window: "çeviri çalıştı ancak çeviri ekranından tasarım tuvalini açıp çevir düğmesi bastım da oldu. bunu otomatik yapacak bir sistem geliştirmemiz lazım. lansman sonrası bu özelliği ses getirecek şekilde duyurmayı planlıyorum".
 - Asked with three choices (an open panel draws in the background; the server too with nobody there; it stays a button), he chose "Evet, ayrıca kimse yokken sunucu da çizsin".
-- So a picture saved in the Design Canvas, or one whose translation changed, has its texts translated and its languages drawn with no press: an open panel draws in the background, and with nobody in the panel the server draws the pictures it can (plain text and shapes); the others wait for a panel. The poll told him the server's picture may differ a little from a browser's.
+- So a picture saved in the Artifact Canvas, or one whose translation changed, has its texts translated and its languages drawn with no press: an open panel draws in the background, and with nobody in the panel the server draws the pictures it can (plain text and shapes); the others wait for a panel. The poll told him the server's picture may differ a little from a browser's.
 - It replaces his 2026-11-16 line that only a signed-in person draws (`decisions-made-product-64.md`). Unchanged: the source picture is shown until a language is drawn; a language is drawn only once every text is translated (poll 131); the buttons stay.
 - Built in #10409, #10428, #10433 and #10448: `core/picture-text-auto-draw.md`.
 

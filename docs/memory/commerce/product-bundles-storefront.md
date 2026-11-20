@@ -6,7 +6,7 @@ module: bundles
 
 ## Which catalog tokens does a bundle have?
 - `__is_bundle` (`1`/`0`) and `__bundle_saving_formatted` in `catalog_listing` and `catalog_item_view`, found and not-found maps alike: `_pg_catalog_bundle_values()` (`includes/fn/widgets_catalog.php`).
-- The saving is `pg_bundle_saving()` (`includes/fn/bundles.php`): the components' prices × quantities less the price the visitor pays (an offer included, `round()`), never negative; `''` without a saving, written like `__discount_amount_formatted`.
+- The saving is `pg_bundle_saving()` (`includes/fn/bundles.php`): the components' prices × quantities less the price the visitor pays (an offer included, `round()`), never negative; a component the visitor pays less for alone (offer, account price) counts at that price (#10680); `''` without a saving, written like `__discount_amount_formatted`.
 - The contents come from `pg_bundle_contents_of($ids)`: one query for every bundle on the page (`pg_bundle_ids_among()` first). A switched-off component counts in the saving, is not listed.
 
 ## How do the "Show only when" flags work?

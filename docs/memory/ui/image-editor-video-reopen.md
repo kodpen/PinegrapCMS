@@ -14,10 +14,10 @@ module: image_editor
 - A `data:` picture made the document unstorable (`pg_file_versions_doc_storable()`), so the version kept none and the video opened as a plain file. Save to Files now sends them as a still save does: `saveAnimationFile()` adds `pictures` (`M.animPictures()`: PNG or JPEG `data:` layers without a file, every scene), `pg_image_editor_action_animation()` calls `pg_image_editor_pictures_saved()` before `pg_image_editor_animation_doc_json()`, and the answer's `pictures` repoint the layers (`M.picturesTaken()`, also behind the canvas's `takePictures()`). `pg_image_editor_pictures_saved()` now repoints closed scenes' layers too.
 
 ## How does Files open a video?
-- Design Canvas is offered on every MP4 or WebM in Files since FV1; a saved project opens as itself, a plain video as a new canvas: `image-editor-video-files.md`.
+- Artifact Canvas is offered on every MP4 or WebM in Files since FV1; a saved project opens as itself, a plain video as a new canvas: `image-editor-video-files.md`.
 
 ## Why could a video made on an unsaved canvas not be replaced?
-- It opens as its own canvas, so the editor names the video itself as `file_id`. Action `animation` sent that through `pg_image_editor_file()`, whose picture check refuses an MP4 or WebM ("This file cannot be opened in the Design Canvas."); a GIF passed. Now an animation that names itself as a canvas (`pg_image_editor_animation_file()` with a canvas document) takes its own row, folder and source; the ERP check stays, the bin and edit access are checked on its folder as before.
+- It opens as its own canvas, so the editor names the video itself as `file_id`. Action `animation` sent that through `pg_image_editor_file()`, whose picture check refuses an MP4 or WebM ("This file cannot be opened in the Artifact Canvas."); a GIF passed. Now an animation that names itself as a canvas (`pg_image_editor_animation_file()` with a canvas document) takes its own row, folder and source; the ERP check stays, the bin and edit access are checked on its folder as before.
 
 ## What was tried and what was not?
 - V9 on a sandbox (#8701): clips in two scenes, sounds and a computer picture saved as WebM, the source renamed, reopened, replaced; 390 px.

@@ -133,8 +133,9 @@ $pg_settings_cards[] = '
                         </div>';
 
 // ── SMS ──
-// The account is kept with the connected accounts' applications, the password
-// sealed (includes/fn/sms.php).
+// The switch and the provider it sends through; each provider's account is
+// set up on its page of Connections, and the card shows its connection
+// (includes/fn/sms.php).
 $pg_settings_cards[] = '
                         <div id="pgset-sms" class="pg-set-card">
                             <div class="card">

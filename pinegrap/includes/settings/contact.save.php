@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Communication screen writes: live chat, SMS and
- * the WhatsApp channel. The WhatsApp and İYS accounts are saved on their
- * Connections pages.
+ * Site Settings - what the Communication screen writes: live chat, the SMS
+ * switch and provider, and the WhatsApp channel. The SMS providers', the
+ * WhatsApp and the İYS accounts are saved on their Connections pages.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -112,9 +112,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
 
     // ── SMS ──
     //
-    // Checked before anything is written: a changed account is asked about at
-    // the provider, and a refusal stops the whole category.
-    $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
+    // The switch and the provider it sends through; each provider's account
+    // is saved on its page of Connections. Switching on a provider that is
+    // not connected is refused and stops the whole category.
+    $sms_switch_post = pg_sms_switch_check($_POST, $liveform);
     $sms_messages_post = pg_sms_message_settings_check($_POST, $liveform);
 
     // ── WhatsApp ──
@@ -136,9 +137,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
-    // The SMS account goes to the connected accounts' applications, after the
-    // config row; the test message, when its button was pressed, after that.
-    pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
+    // The SMS switch goes to the connected accounts' applications, after the
+    // config row.
+    pg_sms_switch_save($sms_switch_post, USER_ID);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
     pg_sms_channel_save($sms_channel_post, USER_ID);
     pg_whatsapp_channel_save($whatsapp_channel_post, USER_ID);

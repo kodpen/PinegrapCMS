@@ -746,10 +746,6 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/fn/sms.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/fn/stock_moves.php": {
         "button": 1,
         "tabs": 0

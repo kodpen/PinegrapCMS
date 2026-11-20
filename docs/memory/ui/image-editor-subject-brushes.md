@@ -1,6 +1,6 @@
 ---
 name: image-editor-subject-brushes
-description: The Design Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
+description: The Artifact Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
 module: image_editor
 ---
 

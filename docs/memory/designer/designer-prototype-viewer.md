@@ -8,6 +8,8 @@ module: link_resolve, prototype
 - A design's drafts (`pg_proto_page_set()`: Drafts folder, scheduled until live, not binned) in tab order. Opened from a draft tab's menu ("Preview as prototype", `_pgPrototypeUrl()`: saved tabs of this design; '' for role 3) or `prototype.php?page=<id>` / `?style=<id>`; another page starts at the first draft with a notice.
 - The bar: name, pages, previous/next, hotspots, close, comment. Its buttons stay `btn btn-sm btn-outline`, counted in `tools/check_look_baseline.json` (prototype.php, pg_proto_comments.js): standalone viewer page, not on the panel stylesheet. Moving it to `pg-button` is separate work.
 
+- A click on nothing clickable flashes the page's links for a moment (designer/prototype-viewer-missed-click.md).
+
 ## Who may open it?
 - Person: roles 0-2, `validate_user()`, `validate_area_access($user, 'manager')`. Share link: `prototype.php?link=<token>`, anyone or the team, maybe a password (designer-prototype-share-links.md). get_page.php's private gate is untouched.
 

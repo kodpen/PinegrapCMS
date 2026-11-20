@@ -39,7 +39,7 @@ $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 
 // Every field of the three forms is one value. One posted as an array counts
 // as not given: (string) read it as "Array" and saved that as the template.
-pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'efatura_threshold', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold', 'reset', 'template'));
+pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'efatura_threshold', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold', 'stock_plan', 'stock_plan_safety_days', 'stock_plan_cover_days', 'stock_plan_dead_days', 'reset', 'template'));
 
 // The Site Settings dialog and screens are for role < 3. For them the
 // seller, the accounting rules, the late payment fee and the e-Fatura
@@ -55,6 +55,7 @@ $card_forms = array(
     'rules' => array('#erp_rules', lang('The accounting rules were saved.')),
     'late_fee' => array('#erp_late_fee', lang('The late payment fee terms were saved.')),
     'efatura_threshold' => array('#erp_efatura_threshold', lang('The e-Fatura thresholds were saved.')),
+    'stock_plan' => array('#erp_stock_plan', lang('The Stock Planning settings were saved.')),
 );
 
 foreach ($card_forms as $card => $card_form) {
@@ -324,6 +325,21 @@ $output_seller = '';
 $output_seller_title = '';
 $output_late_fee = '';
 $output_efatura_threshold = '';
+$output_stock_plan = '';
+$stock_plan_fields = $can_site_settings ? '' : erp_settings_stock_plan_fields();
+
+if ($stock_plan_fields !== '') {
+    $output_stock_plan = '
+            <form action="erp_settings.php" method="post" id="erp_stock_plan" class="card my-7">
+                ' . get_token_field() . '
+                <input type="hidden" name="stock_plan" value="1">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Stock Planning') . '</h2>
+                <div class="card-body">
+                    ' . $stock_plan_fields . '
+                    <div class="mt-5"><button type="submit" class="pg-button pg-button-fill"><i class="bi bi-check2" aria-hidden="true"></i>' . lang('Save') . '</button></div>
+                </div>
+            </form>';
+}
 
 if (!$can_site_settings && erp_late_fee_ready()) {
     $output_late_fee = '
@@ -444,6 +460,7 @@ echo pg_page_shell(array(
 ' . $output_cards . '
 ' . $output_late_fee . '
 ' . $output_efatura_threshold . '
+' . $output_stock_plan . '
 
             <form name="form" id="erp_template" action="erp_settings.php" method="post" class="card my-7">
                 ' . get_token_field() . '

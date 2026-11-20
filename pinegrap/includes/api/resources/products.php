@@ -79,6 +79,9 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		'tax_rate'          => ($row['tax_rate'] === null) ? null : (float)$row['tax_rate'],
 		'shippable'         => ((int)$row['shippable'] === 1),
 		'free_shipping'     => ((int)$row['free_shipping'] === 1),
+		// Each unit ordered gives an event ticket with a QR code once the
+		// order is completed and Tickets is on (includes/fn/event_tickets.php).
+		'gives_tickets'     => !empty($row['gives_tickets']),
 		'weight'            => ($row['weight'] > 0) ? (float)$row['weight'] : null,
 		// Customs data declared on labels of parcels sent abroad; null means
 		// none, and the label service's shop default is used.
@@ -321,6 +324,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (pg_event_tickets_product_mark_ready() ? "products.gives_tickets," : "0 AS gives_tickets,") . "
 			" . (pg_product_customs_ready() ? "products.hs_code, products.origin_country," : "'' AS hs_code, '' AS origin_country,") . "
 			" . ltrim(pg_preorder_select_sql('products', pg_product_preorder_ready()), ', ') . ",
 			" . (pg_bundles_ready() ? "products.bundle, products.bundle_pricing, products.bundle_discount_bp," : "0 AS bundle, 'fixed' AS bundle_pricing, 0 AS bundle_discount_bp,") . "
@@ -676,6 +680,7 @@ function api_products_create($params) {
 
 	$product = array_merge($product, api_products_customs_param($params));
 	$product = array_merge($product, api_products_preorder_param($params));
+	$product = array_merge($product, api_products_tickets_param($params));
 
 	// Absent means "follow the tax zone", which is the column default. Present
 	// and empty means the same thing said out loud, and both write NULL.
@@ -855,6 +860,26 @@ function api_products_customs_param($params) {
 	}
 
 	return $values;
+
+}
+
+// The "Gives tickets" mark a write asks for, as the product screen stores
+// it: '1' or '0'. 503 before the 11.0.247 step has added the column.
+function api_products_tickets_param($params) {
+
+	if (!array_key_exists('gives_tickets', $params)) {
+
+		return array();
+
+	}
+
+	if (!pg_event_tickets_product_mark_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	return array('gives_tickets' => $params['gives_tickets'] ? '1' : '0');
 
 }
 
@@ -1320,6 +1345,12 @@ function api_products_update($params) {
 	}
 
 	foreach (api_products_customs_param($params) as $column => $value) {
+
+		$set[] = $column . " = '" . escape($value) . "'";
+
+	}
+
+	foreach (api_products_tickets_param($params) as $column => $value) {
 
 		$set[] = $column . " = '" . escape($value) . "'";
 
@@ -2388,6 +2419,7 @@ function api_product_schema() {
 		'tax_rate'          => 'number?',
 		'shippable'         => 'boolean',
 		'free_shipping'     => 'boolean',
+		'gives_tickets'     => 'boolean',
 		'weight'            => 'number?',
 		// '' in the column (the shop default) answers null.
 		'hs_code'           => 'string?',

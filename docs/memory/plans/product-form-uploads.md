@@ -29,7 +29,7 @@ priority: 6
 - The allowed types and size limit live in `form_fields.rules`, no column. If keeping the file on the cart line needs a column or table of its own, the step states it in its draft and asks in the agent channel before the rest is written; it is never folded into an existing text field.
 - Deleting a shopper's files: the owner chose 30 days after the cart's last touch (poll 162, message 10010); an order's files are never swept. FU5 builds it.
 - The blank labels are their own fix (#10541), not a step of this plan.
-- `cart_action.php` and `includes/fn/order_completion.php` are held by other plans (referral-programme RF1 #10033, event-tickets TK1): an FU step entering them waits for whichever of those is open. Each step stays near 1,000 product lines.
+- `cart_action.php` and `includes/fn/order_completion.php` are held by event-tickets TK1: an FU step entering them waits while it is open. Each step stays near 1,000 product lines.
 
 ## What is built?
 - Features: `product-form-uploads-features.md` (U1 to U16). Steps: `product-form-uploads-steps.md`. Claim as `[plan:product-form-uploads] <step> — <topic>`.

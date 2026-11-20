@@ -1094,7 +1094,8 @@ function pg_proto_frame_comment_mode($link, $ready)
  * the cookie and storage shim and the marks' styles at the start of the
  * head, the helper script at the end of the body. The script outlines the
  * links while the viewer's hotspots switch is on (a message from the
- * viewer), keeps inert links inert, opens a link a script drew later in a
+ * viewer), flashes them for a moment when a click misses (lands on no link,
+ * button or field) while the switch is off, keeps inert links inert, opens a link a script drew later in a
  * new tab, and says why a form does not send (the frame's sandbox stops the
  * submission itself).
  *
@@ -1174,6 +1175,11 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . '.pg-proto-hotspots a[data-pg-proto="prototype"],.pg-proto-hotspots a[data-pg-proto="anchor"]{outline:2px solid rgba(13,110,253,.9)!important;outline-offset:2px;background-color:rgba(13,110,253,.12)!important}'
         . '.pg-proto-hotspots a[data-pg-proto="site"],.pg-proto-hotspots a[data-pg-proto="external"],.pg-proto-hotspots a[data-pg-proto="contact"]{outline:2px dashed rgba(25,135,84,.9)!important;outline-offset:2px}'
         . '.pg-proto-hotspots a[data-pg-proto="broken"],.pg-proto-hotspots a[data-pg-proto="draft"]{outline:2px dashed rgba(220,53,69,.95)!important;outline-offset:2px}'
+        // A missed click flashes the links that lead somewhere (not the
+        // broken ones or other designs' drafts) and fades out.
+        . '.pg-proto-flash a[data-pg-proto]:not([data-pg-proto="broken"]):not([data-pg-proto="draft"]){animation:pg-proto-flash .9s ease-out}'
+        . '@keyframes pg-proto-flash{0%,35%{outline:2px solid rgba(13,110,253,.9);outline-offset:2px;background-color:rgba(13,110,253,.18)}100%{outline:2px solid rgba(13,110,253,0);outline-offset:2px;background-color:rgba(13,110,253,0)}}'
+        . '@media (prefers-reduced-motion:reduce){.pg-proto-flash a[data-pg-proto]:not([data-pg-proto="broken"]):not([data-pg-proto="draft"]){animation:none;outline:2px solid rgba(13,110,253,.9)!important;outline-offset:2px}}'
         . '.pg-proto-toast{position:fixed;left:50%;bottom:16px;z-index:2147483647;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:rgba(33,37,41,.95);color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;pointer-events:none;transform:translate(-50%,12px);transition:opacity .2s,transform .2s}'
         . '.pg-proto-toast-on{opacity:1;transform:translate(-50%,0)}'
         . '@media (prefers-reduced-motion:reduce){.pg-proto-toast{transition:none}}'
@@ -1182,7 +1188,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
 
     $script = '<script id="pg-proto-frame">(function () {'
         . 'var cfg = ' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';'
-        . 'var root = document.documentElement, toastEl = null, toastTimer = 0;'
+        . 'var root = document.documentElement, toastEl = null, toastTimer = 0, flashTimer = 0;'
         . 'function toast(text) {'
         . 'if (!text || !document.body) return;'
         . 'if (!toastEl) { toastEl = document.createElement("div"); toastEl.className = "pg-proto-toast"; toastEl.setAttribute("role", "status"); document.body.appendChild(toastEl); }'
@@ -1194,6 +1200,19 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'if (e.source !== window.parent || !e.data || e.data.pgPrototype !== "hotspots") return;'
         . 'root.classList.toggle("pg-proto-hotspots", !!e.data.on);'
         . '});'
+        // A click that lands on nothing clickable flashes the links of the
+        // page, so a reviewer sees where the prototype goes on. Not while
+        // the hotspots are outlined anyway, nor while selecting text or
+        // placing a comment.
+        . 'function miss(e) {'
+        . 'var t = e.target;'
+        . 'if (e.button !== 0 || root.classList.contains("pg-proto-hotspots")' . ($comments ? ' || pgComment.on' : '') . ') return;'
+        . 'if (!t || !t.closest || t.closest("a, button, input, select, textarea, label, summary, video, audio, [role=button], [role=link], [role=tab], [onclick], [contenteditable]")) return;'
+        . 'try { var sel = window.getSelection(); if (sel && !sel.isCollapsed) return; } catch (err) {}'
+        . 'if (!document.querySelector("a[data-pg-proto]:not([data-pg-proto=broken]):not([data-pg-proto=draft])")) return;'
+        . 'root.classList.remove("pg-proto-flash"); void root.offsetWidth; root.classList.add("pg-proto-flash");'
+        . 'clearTimeout(flashTimer); flashTimer = setTimeout(function () { root.classList.remove("pg-proto-flash"); }, 900);'
+        . '}'
         // The sandbox refuses a submission before any submit event fires, so
         // the note goes with the click or the Enter key that would send it.
         . 'function sends(el) {'
@@ -1227,7 +1246,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'document.addEventListener("click", function (e) {'
         . 'if (sends(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); toast(cfg.forms); return; }'
         . 'var a = (e.target && e.target.closest) ? e.target.closest("a") : null;'
-        . 'if (!a) return;'
+        . 'if (!a) { miss(e); return; }'
         . 'var kind = a.getAttribute("data-pg-proto");'
         . 'if (kind === "prototype" && go(e, a)) { e.preventDefault(); return; }'
         . 'if (kind === "broken" || kind === "draft") { e.preventDefault(); e.stopImmediatePropagation(); toast(cfg[kind]); return; }'

@@ -12,11 +12,11 @@ description: Plan stock-planning, steps SP1 to SP5: the daily record first (its 
   - Migration step: `erp_stock_plan` (PRIMARY `product_id`, a cache rebuilt every night: units a day, season, supplier, lead time and its source, days left, run-out and order-by days, quantity, state, last sale, notice stamp; the types in the PR body, a column outside this list is asked) and `erp_accounts.lead_days` SMALLINT UNSIGNED NOT NULL DEFAULT 0 (0 = not typed), saved by `erp_account_save()`'s whole-row rule.
   - `includes/erp/stock_plan.php`: pure functions for P3 to P10; the night pass fills the plan after the day's row. Open quantities through `erp_purchase_order_quantities()`.
   - Tests: out-of-stock days skipped; season capped and left out on thin sales; lead time median; supplier from invoice, then order; open orders taken off; dead stock; not enough history. Features: P3 to P10.
-- SP3 (M) after SP2: the screen.
+- SP3 (M) after SP2: the screen. Done: #10693.
   - New `erp_stock_plan.php` (`validate_erp_access()`, `pg_screen_toolbar()`), its Accounting menu entry and settings card; the account card's Lead time field.
   - `add_erp_purchase_order.php` and `erp_purchase_order_rows_for_products()` take a quantity per product by POST, which only fills the form; the minimum stock screen keeps its GET `products[]`.
   - No pictures (`workflow/look-pictures-none.md`). Features: P11, P12.
-- SP4 (S) after SP2: the bell and the API.
+- SP4 (S) after SP2: the bell and the API. Done: #10687.
   - `includes/erp/alerts.php` (`erp_alert_low_stock()`), `includes/erp/api.php` (route, `erp_openapi_objects()`), an `includes/erp/api_*.php` reader; `php tools/check_api_schema.php`. Features: P13, P14.
 - SP5 (S) close-out: every P number checked against the code with its PR; `erp/stock-planning.md` written; `erp/erp-alerts.md` updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
