@@ -1701,17 +1701,22 @@ function pg_privacy_erase_audit_row(array $row, $name, $key = null)
  * A table or a find column the site does not have yet is passed over, and
  * only the replaced columns it has are written.
  *
- * @param array $scope  see pg_privacy_erase_scope()
- * @param bool  $apply  false for the dry run
+ * @param array      $scope  see pg_privacy_erase_scope()
+ * @param bool       $apply  false for the dry run
+ * @param array|null $only   the entries to run (a retention rule's), null for all
  * @return array  key => action, rows (the rows found), for the entries
  *                with rows only
  */
-function pg_privacy_erase_run(array $scope, $apply)
+function pg_privacy_erase_run(array $scope, $apply, $only = null)
 {
     $name = lang('Deleted customer');
     $result = array();
 
     foreach (pg_privacy_erase_tables() as $key => $spec) {
+        if (is_array($only) && !in_array($key, $only, true)) {
+            continue;
+        }
+
         $table = isset($spec['table']) ? $spec['table'] : $key;
 
         if (!pg_schema_has($table)) {

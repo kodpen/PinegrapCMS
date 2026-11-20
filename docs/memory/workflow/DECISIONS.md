@@ -493,6 +493,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-91.md: Where are the rules and the earlier parts?
 - decisions-made-product-91.md: Under which consent does a satisfaction survey go? (owner, 2026-11-20, agent channel poll 198, channel message 10840)
 - decisions-made-product-91.md: What of a jury's evaluation goes into a person's export? (owner, 2026-11-20, agent channel poll 200, channel message 10842)
+- decisions-made-product-92.md: Where are the rules and the earlier parts?
+- decisions-made-product-92.md: In which language is text written for an agent? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-92.md: What does it cover?
+- decisions-made-product-92.md: What does it leave alone?
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -1093,6 +1097,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, Starters, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 - designer/widget-lists-checkout.md: The express order's lists (W24a): applied offers, offer suggestions, applied gift cards, recipients with their cart lines; family checkout, key, tokens, where rows are read, the editor starters
 - erp/erp-isbasi-invoice-payload.md: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes.
+- erp/erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live.
 - erp/erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
 - erp/erp-order-overview.md: Start file for the erp-order-* files: an order's ERP documents (invoice, cancel, refund), its charges and VAT, and its cost rows and net profit, which file holds each part
 - erp/erp-order-profit-break-even-bell.md: Break-even price per product and channel and the "Sold at a loss" bell (#10736): the formula, the 90 and 30 days, once per product and channel, the state in config_text, where each is shown
@@ -1106,6 +1111,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp/erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp/erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
+- erp/order-profit.md: Order profit (2026.11.0, #10626 to #10792): each order's costs, net profit and margin; the features N1 to N14 with the PR and file of each, what differs from the plan, what was left out
 - platform/activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
 - platform/auto-dialog-browser-dialog.md: Auto dialogs on the site: the browser's <dialog> in place of jQuery UI, software.open_dialog() as its wrapper, the pick in the browser (cookie, sessionStorage), a page cached for all
 - platform/auto-dialog-pop-ups.md: Start file for pop-ups (Auto Dialogs): the owner's decision, the browser's <dialog>, consent wait, Opening card, designed content, Pop-ups blocks, counts, cart touch; which file holds what

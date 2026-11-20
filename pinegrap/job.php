@@ -933,6 +933,27 @@ if (pg_privacy_retention_due()) {
     }
 }
 
+// The retention rules of Contacts › Privacy centre
+// (includes/fn/privacy_retention.php): each rule switched on and approved
+// after its dry run goes through its rows at night, at the interval the shop
+// picked, five seconds a tick; a finished pass writes its own audit line.
+if (pg_privacy_rules_due()) {
+
+    $privacy_rules = pg_privacy_rules_run(5);
+    $privacy_rules_changed = 0;
+
+    foreach ($privacy_rules as $privacy_rule_counts) {
+        $privacy_rules_changed += (int) $privacy_rule_counts['changed'];
+    }
+
+    if ($privacy_rules_changed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job applied the retention rules to {var:1} record(s)',
+            'vars'   => array(pg_format_number($privacy_rules_changed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Cancelled appointment bookings past 400 days since their last change
 // (includes/fn/booking_retention.php): once a day, five seconds a tick until
 // the pass is through. Nothing to do on a site without the booking tables; a

@@ -21,7 +21,7 @@
 - api-campaign-create.md: POST /campaigns (plain-text draft) and POST /campaigns/{id}/schedule through the create screen's recipient pick and insert (fn/email_campaign_create.php); why HTML is not offered
 - api-campaign-profiles.md: /campaigns/profiles CRUD (PR #6353): write path shared with the profile screens, owner-based access checks, partial updates, schedule time, refusals, user-role rows
 - api-catalogue-writes.md: External API writes to products, groups, pages and key codes: the screen's create function, list fields that replace, barcode, SEO rescoring, Recycle Bin deletes, key code vs offer code
-- api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open [decision: here]
+- api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open [decision: decisions-made-product-92.md]
 - api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
 - api-connected-accounts-github.md: GitHub in connected accounts (model A, no OpenID): identity from /user, a token that does not end, comma scopes, revoke and Check, the channel_links purpose with admin:repo_hook only
 - api-connected-accounts-usage.md: Connected accounts at work: mail through Gmail or Microsoft 365, cloud backups to Drive, OneDrive or Dropbox, a Connect button inside a settings form, response headers, what api_http_request() refuses

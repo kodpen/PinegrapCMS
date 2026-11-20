@@ -75,6 +75,27 @@ function test_booking_customer_split()
 	pg_assert_same(array(5, 7, 4), $ids($split['past']), 'latest first; cancelled ones are past; holds are left out');
 }
 
+// A hold given back is cancelled with its hold_until kept (Back at the
+// deposit's payment, or a hold that ran out and was taken): it never was a
+// booking of the member's, so My bookings leaves it out, as the reader does.
+function test_booking_customer_split_leaves_out_given_back_holds()
+{
+	$now = 1800000000;
+	$rows = array(
+		array('id' => 1, 'status' => 'cancelled', 'hold_until' => $now - 60, 'start_at' => $now + 7200, 'end_at' => $now + 9000),
+		array('id' => 2, 'status' => 'cancelled', 'hold_until' => 0, 'start_at' => $now + 3600, 'end_at' => $now + 5400),
+		array('id' => 3, 'status' => 'cancelled', 'hold_until' => '1799999000', 'start_at' => $now - 86400, 'end_at' => $now - 84600),
+	);
+
+	$split = pg_booking_customer_split($rows, $now);
+	pg_assert_same(array(), $split['upcoming']);
+	pg_assert_same(array(2), array_column($split['past'], 'id'), 'a booking cancelled by someone stays; given-back holds are left out');
+
+	$reflection = new ReflectionFunction('pg_booking_customer_rows');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains("bookings.hold_until = 0", $source, 'the latest 50 are counted without the given-back holds');
+}
+
 function test_booking_manage_months()
 {
 	// 2026-11-20 12:00 in Istanbul (UTC+3).
