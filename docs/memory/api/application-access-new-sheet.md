@@ -4,9 +4,9 @@ description: Application Access's New application sheet: a drawer in three steps
 ---
 
 ## What does "New application" open?
-- A drawer `#api_new` (`min(760px, 100%)`) drawn by `api_app_new_view()` (`includes/api/app_new_view.php`), with a step line (Bootstrap `.stepper-horizontal`, `ui/step-rail.md`): 1 What connects, 2 Details and permissions, 3 Connect. Since #10745.
-- Step 1: one choice card per starting point (`name="start"`), the first picked. Next goes to step 2; Back and Change return to step 1 and keep what was typed. Nothing is written before Create.
-- Step 2: the picked card's icon, title and "Acts as" line, Name, Description, the automation note, the permission rows, and a closed "Advanced" with Allowed addresses and Requests per minute.
+- A drawer `#api_new` (`min(760px, 100%)`) drawn by `api_app_new_view()` (`includes/api/app_new_view.php`) to the owner's drawing `plans/app-access-redraw/app-new.html` (yes in poll 188), with a step line (Bootstrap `.stepper-horizontal`, `ui/step-rail.md`): 1 What connects, 2 Details and permissions, 3 Connect. Since #10745.
+- Step 1: one choice card per starting point (`name="start"`), the first picked: a `pg-icon-tile` in the card's tone, title, a "Set up already" pill or nothing, what it is for, "Acts as: <b>…</b>" and "Key and secret" or "No secret"; under the cards the note on why "Acts as" matters. Continue goes to step 2; Back and Change return to step 1 and keep what was typed. Nothing is written before Create.
+- Step 2: the head takes the picked card's tile and title with Change; Application name and Description side by side, the automation note, the permission rows, and a closed "Advanced" (IP list and rate limit). The footer: Back, "Nothing is saved before Create.", Create.
 - Step 3 is still the one-time sheet the page shows after Create (secret, team devices or OAuth sheet); it joins the guides with AA3 of the redraw plan.
 
 ## Which starting points are there and what do they tick?

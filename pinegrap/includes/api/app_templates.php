@@ -73,8 +73,9 @@ function api_app_template_safe_choices($choices, $groups, $money_scopes) {
 
 // The starting points of New application, id => card, in the order the sheet
 // shows them. Each card:
-//   id, icon (a Bootstrap icon class), title, text (what it is for), acts_as
-//   (the "Acts as" line), kind (api_apps.kind it makes: server, device or
+//   id, icon (a Bootstrap icon class), tone (the icon tile's .pg-tone-*),
+//   title, text (what it is for), acts_as (who the connection acts as, the
+//   value after "Acts as:"), kind (api_apps.kind it makes: server, device or
 //   oauth), secret (whether the application is given one), choices (group
 //   key => 'read' or 'write', the rows ticked), guide (the connection guide
 //   of the sheet's last step), existing (the application the card opens
@@ -103,10 +104,11 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 	$cards = array(
 
 		'signin' => array(
-			'icon'    => 'bi-person-check',
+			'icon'    => 'bi-stars',
+			'tone'    => 'violet',
 			'title'   => lang('AI assistant with sign-in'),
-			'text'    => lang('Claude, ChatGPT or another MCP client. A person signs in on this site and agrees to what it may do; there is no secret.'),
-			'acts_as' => lang('Acts as: the person who signs in'),
+			'text'    => lang('Claude, ChatGPT or another MCP client. A person signs in on the site and agrees to what it may do.'),
+			'acts_as' => lang('the person who signs in'),
 			'kind'    => 'oauth',
 			'choices' => array(),
 			'guide'   => 'mcp_signin',
@@ -118,9 +120,10 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 
 		'automation' => array(
 			'icon'    => 'bi-lightning-charge',
+			'tone'    => 'amber',
 			'title'   => lang('Automation platform'),
-			'text'    => lang('An automation platform connects to the site with this application. The permissions the platform uses are ticked.'),
-			'acts_as' => lang('Acts as: the application, with the rights of the account that creates it'),
+			'text'    => lang('For ready-made tools that build flows. It listens to order, form and contact events, and opens and updates records.'),
+			'acts_as' => lang('the application itself'),
 			'kind'    => 'server',
 			'choices' => api_app_start_choices($contract_scopes, $groups),
 			'guide'   => 'key_secret'
@@ -128,19 +131,21 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 
 		'own' => array(
 			'icon'    => 'bi-code-slash',
+			'tone'    => 'blue',
 			'title'   => lang('Own integration'),
-			'text'    => lang('A server or a script calls the API with a key and a secret. No permission comes ticked; choose what it may reach.'),
-			'acts_as' => lang('Acts as: the application, with the rights of the account that creates it'),
+			'text'    => lang('A server or a script that works with a key and a secret. No permission comes ticked; you choose.'),
+			'acts_as' => lang('the application itself'),
 			'kind'    => 'server',
 			'choices' => array(),
 			'guide'   => 'key_secret'
 		),
 
 		'reporting' => array(
-			'icon'    => 'bi-graph-up',
+			'icon'    => 'bi-bar-chart-line',
+			'tone'    => 'gray',
 			'title'   => lang('Read-only reporting'),
-			'text'    => lang('An integration that only reads, such as a report or a dashboard. Every read is ticked and no write.'),
-			'acts_as' => lang('Acts as: the application, with the rights of the account that creates it'),
+			'text'    => lang('Reads everything, changes nothing. For reporting, backup and monitoring tools.'),
+			'acts_as' => lang('the application itself'),
 			'kind'    => 'server',
 			'choices' => $reads,
 			'guide'   => 'key_secret'
@@ -148,9 +153,10 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 
 		'devices' => array(
 			'icon'    => 'bi-phone',
+			'tone'    => 'rose',
 			'title'   => lang('Mobile app and team devices'),
-			'text'    => lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions are the most any device may reach.'),
-			'acts_as' => lang('Acts as: the staff member who signs in'),
+			'text'    => lang('Staff sign in with their own panel account. The permissions are the most a device may reach.'),
+			'acts_as' => lang('the person who signs in'),
 			'kind'    => 'device',
 			'choices' => array(),
 			'guide'   => 'devices'

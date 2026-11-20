@@ -278,7 +278,7 @@ function test_api_app_automation_texts_name_no_platform()
 		pg_assert_false(stripos($panel, $name) !== false, $name . ' is not named');
 	}
 
-	pg_assert_contains("lang('An automation platform connects to the site with this application. The permissions the platform uses are ticked.')", $panel);
+	pg_assert_contains("lang('For ready-made tools that build flows. It listens to order, form and contact events, and opens and updates records.')", $panel);
 }
 
 // Every event row of "New subscription" carries the label of the part of the

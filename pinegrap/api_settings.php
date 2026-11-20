@@ -2106,9 +2106,12 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 .api-start { display: grid; gap: 8px; }
 @media (min-width: 768px) { .api-start { grid-template-columns: 1fr 1fr; } }
 .api-start .form-field-card { margin-bottom: 0; }
-.api-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.api-start-icon { display: inline-flex; align-items: center; justify-content: center; flex: none;
-	width: 32px; height: 32px; border-radius: 8px; background: var(--pg-bg-2); }
+.api-start-head { display: flex; align-items: center; gap: 8px; }
+.api-start-head .pg-pill { margin-left: auto; }
+.api-start-acts { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--pg-border-color);
+	font-size: var(--pg-text-count); }
+.api-start-acts .bi { margin-right: 4px; }
+.api-new-advanced { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 12px; }
 .api-new-advanced summary { cursor: pointer; }
 /* The Events tab\'s "New subscription" and "Send a sample" boxes. */
 .api-hook-form, .api-hook-sample { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color);
@@ -3156,6 +3159,14 @@ echo '
 		backButton.hidden = (number !== 2);
 		nextButton.hidden = (number !== 1);
 		createButton.hidden = (number !== 2);
+		document.getElementById("n_cancel").hidden = (number !== 1);
+		document.getElementById("n_hint_1").hidden = (number !== 1);
+		document.getElementById("n_hint_2").hidden = (number !== 2);
+		document.getElementById("n_head_pick").hidden = (number !== 1);
+		document.getElementById("n_head_chosen").hidden = (number !== 2);
+		var card = (number === 2) ? pickedCard() : null;
+		document.getElementById("n_head_tile").className = "pg-icon-tile pg-icon-tile-lg pg-tone-" + (card ? card.tone : "blue");
+		document.getElementById("n_head_icon").className = "bi " + (card ? card.icon : "bi-plug");
 		document.querySelectorAll("#n_steps .stepper-item").forEach(function (item) {
 			var step = parseInt(item.dataset.step, 10);
 			item.classList.toggle("active", step <= number);
@@ -3173,7 +3184,7 @@ echo '
 
 	function syncNext() {
 		var card = pickedCard();
-		nextButton.textContent = (card && card.existing) ? nextButton.dataset.open : nextButton.dataset.next;
+		nextButton.querySelector(".pg-btn-label").textContent = (card && card.existing) ? nextButton.dataset.open : nextButton.dataset.next;
 	}
 
 	document.querySelectorAll("#api_new input[name=\'start\']").forEach(function (radio) {
@@ -3188,10 +3199,7 @@ echo '
 			return;
 		}
 		document.getElementById("n_kind").value = card.kind;
-		document.getElementById("n_chosen_icon").className = "bi " + card.icon;
 		document.getElementById("n_chosen_title").textContent = card.title;
-		document.getElementById("n_chosen_acts").textContent = card.acts_as;
-		createButton.textContent = card.secret ? createButton.dataset.server : createButton.dataset.device;
 		document.getElementById("n_start_note").classList.toggle("d-none", card.id !== "automation");
 		// A new starting point ticks its own rows; coming back to the same
 		// one keeps what was changed by hand.

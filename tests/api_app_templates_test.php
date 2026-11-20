@@ -89,7 +89,7 @@ function test_api_app_templates_shape()
 	foreach ($cards as $id => $card) {
 		pg_assert_same($id, $card['id'], $id . ': id');
 
-		foreach (array('icon', 'title', 'text', 'acts_as', 'guide') as $field) {
+		foreach (array('icon', 'tone', 'title', 'text', 'acts_as', 'guide') as $field) {
 			pg_assert_true(is_string($card[$field]) && $card[$field] !== '', $id . ': ' . $field);
 		}
 

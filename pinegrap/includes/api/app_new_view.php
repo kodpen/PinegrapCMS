@@ -39,11 +39,17 @@ function api_app_new_steps_html($current) {
 
 }
 
-// One starting point as a choice card. A card that opens an application
-// already there (the site's one OAuth application) carries its id.
+// One starting point as a choice card: its icon tile, title, a badge or
+// nothing, what it is for, who it acts as and whether a secret comes with
+// it. A card that opens an application already there (the site's one OAuth
+// application) carries its id.
 function api_app_new_card_html($card, $checked) {
 
 	$id = 'n_start_' . $card['id'];
+
+	$secret = $card['secret']
+		? '<i class="bi bi-key" aria-hidden="true"></i>' . lang('Key and secret')
+		: '<i class="bi bi-shield-check" aria-hidden="true"></i>' . lang('No secret');
 
 	return '
 				<div class="form-field form-field-card api-start-card">
@@ -51,12 +57,15 @@ function api_app_new_card_html($card, $checked) {
 						. ' data-kind="' . h($card['kind']) . '" data-existing="' . (int)$card['existing'] . '"'
 						. ' aria-describedby="' . $id . '_help ' . $id . '_acts"' . ($checked ? ' checked' : '') . '>
 					<label class="api-start-head" for="' . $id . '">
-						<span class="api-start-icon" aria-hidden="true"><i class="bi ' . h($card['icon']) . '"></i></span>
-						<span class="small fw-bold">' . h($card['title']) . '</span>'
-						. (($card['badge'] !== '') ? ' <span class="pg-pill pg-tone-green">' . h($card['badge']) . '</span>' : '') . '
+						<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><i class="bi ' . h($card['icon']) . '"></i></span>
+						<span class="fw-bold">' . h($card['title']) . '</span>'
+						. (($card['badge'] !== '') ? ' <span class="pg-pill pg-tone-teal">' . h($card['badge']) . '</span>' : '') . '
 					</label>
 					<div class="form-text mt-1" id="' . $id . '_help">' . h($card['text']) . '</div>
-					<div class="form-text mt-1 fg-2" id="' . $id . '_acts"><i class="bi bi-person-badge me-1" aria-hidden="true"></i>' . h($card['acts_as']) . '</div>
+					<div class="api-start-acts" id="' . $id . '_acts">
+						<div>' . lang('Acts as:') . ' <b>' . h($card['acts_as']) . '</b></div>
+						<div class="fg-2">' . $secret . '</div>
+					</div>
 				</div>';
 
 }
@@ -87,8 +96,16 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 		<input type="hidden" name="kind" id="n_kind" value="">
 
 		<div class="drawer-header pb-1 d-block">
-			<div class="d-flex align-items-start">
-				<h5 class="drawer-title mb-0" id="api_new_title">' . lang('New Application') . '</h5>
+			<div class="d-flex align-items-start gap-3">
+				<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" id="n_head_tile" aria-hidden="true"><i class="bi bi-plug" id="n_head_icon"></i></span>
+				<div class="flex-grow-1 min-width-0">
+					<h5 class="drawer-title mb-0" id="api_new_title">' . lang('New Application') . '</h5>
+					<p class="small fg-2 mb-0 mt-1" id="n_head_pick">' . lang('What connects to this site? Pick one and the rest is prepared for it.') . '</p>
+					<p class="small fg-2 mb-0 mt-1" id="n_head_chosen" hidden>
+						<span id="n_chosen_title"></span> &middot;
+						<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="n_change">' . lang('Change') . '</button>
+					</p>
+				</div>
 				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 		</div>
@@ -98,38 +115,37 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 		<div class="drawer-body flex-grow-1 overflow-auto">
 
 			<fieldset id="n_step_1" data-step="1">
-				<legend class="form-label pg-field-label">' . lang('What connects to this site?') . '</legend>
+				<legend class="visually-hidden">' . lang('What connects to this site?') . '</legend>
 				<div class="api-start">' . $card_html . '
+				</div>
+				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
+					<i class="bi bi-info-circle me-1" aria-hidden="true"></i><b>' . lang('Why does "Acts as" matter?') . '</b>
+					' . lang('A connection made by signing in writes as the person who signed in. A key writes as the application itself.') . '
 				</div>
 			</fieldset>
 
 			<div id="n_step_2" data-step="2" hidden>
-				<div class="d-flex align-items-center gap-3 mb-5">
-					<span class="api-start-icon" aria-hidden="true"><i class="bi" id="n_chosen_icon"></i></span>
-					<div class="flex-grow-1 min-width-0">
-						<b class="d-block small" id="n_chosen_title"></b>
-						<span class="d-block small fg-2" id="n_chosen_acts"></span>
+				<div class="row g-5 mb-5">
+					<div class="col-12 sm:col-6 form-field">
+						<label class="form-label pg-field-label" for="n_name">' . lang('Application name') . '</label>
+						<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
+							placeholder="' . lang('For example: marketplace sync') . '">
 					</div>
-					<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="n_change">' . lang('Change') . '</button>
-				</div>
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="n_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
-						placeholder="' . lang('For example: marketplace sync') . '">
-				</div>
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="n_description">' . lang('Description') . '</label>
-					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
-				</div>
-				<div class="alert theme-primary py-3 px-5 small mb-5 d-none" id="n_start_note" role="status">
-					<i class="bi bi-magic me-1" aria-hidden="true"></i>' . h($start_note) . '
+					<div class="col-12 sm:col-6 form-field">
+						<label class="form-label pg-field-label" for="n_description">' . lang('Description') . ' <span class="fg-2 fw-normal">' . lang('optional') . '</span></label>
+						<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500"
+							placeholder="' . h(lang('What is it used for?')) . '">
+					</div>
 				</div>
 				<div role="group" aria-labelledby="n_scope_title" class="mb-5">
-					<div class="form-label pg-field-label" id="n_scope_title">' . lang('Permissions') . '</div>
+					<div class="form-label pg-field-label" id="n_scope_title"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . lang('Permissions') . '</div>
+					<div class="alert theme-primary py-3 px-5 small mb-3 d-none" id="n_start_note" role="status">
+						<i class="bi bi-magic me-1" aria-hidden="true"></i>' . h($start_note) . '
+					</div>
 					' . $permission_rows . '
 				</div>
 				<details class="api-new-advanced" id="n_advanced">
-					<summary class="small fw-bold">' . lang('Advanced') . '</summary>
+					<summary class="small"><i class="bi bi-sliders me-1" aria-hidden="true"></i><b>' . lang('Advanced') . '</b> <span class="small fg-2">' . lang('IP list and rate limit') . '</span></summary>
 					<div class="form-field mt-3 mb-5">
 						<label class="form-label pg-field-label" for="n_ip">' . lang('Allowed addresses') . '</label>
 						<input type="text" class="form-control form-control-sm" name="ip_allowlist" id="n_ip" maxlength="500" aria-describedby="n_ip_help">
@@ -147,14 +163,15 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 
 		</div>
 
-		<div class="drawer-footer border-top p-5 d-flex gap-3">
-			<button type="button" class="pg-button pg-button-quiet" id="n_back" hidden>' . lang('Back') . '</button>
+		<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">
+			<button type="button" class="pg-button pg-button-ghost" id="n_back" hidden><i class="bi bi-arrow-left" aria-hidden="true"></i>' . lang('Back') . '</button>
+			<span class="small fg-2" id="n_hint_1"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('The choice is only a start; the permissions can be changed in the next step.') . '</span>
 			<span class="flex-grow-1"></span>
-			<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
+			<span class="small fg-2" id="n_hint_2" hidden>' . lang('Nothing is saved before Create.') . '</span>
+			<button type="button" class="pg-button pg-button-ghost" id="n_cancel" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
 			<button type="button" class="pg-button pg-button-fill" id="n_next"
-				data-next="' . h(lang('Next')) . '" data-open="' . h(lang('Open it')) . '">' . lang('Next') . '</button>
-			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden
-				data-server="' . h(lang('Create and show the secret')) . '" data-device="' . h(lang('Create')) . '">' . lang('Create and show the secret') . '</button>
+				data-next="' . h(lang('Continue')) . '" data-open="' . h(lang('Open it')) . '"><span class="pg-btn-label">' . lang('Continue') . '</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden>' . lang('Create') . '</button>
 		</div>
 	</form>
 </dialog>';
