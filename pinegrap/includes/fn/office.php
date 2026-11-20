@@ -2207,8 +2207,6 @@ function pg_office_ods_sheets($path, &$refused = null)
         return array();
     }
 
-    pg_office_zip_stream();
-
     $reader = new XMLReader();
 
     if (($size <= 0) || !$reader->open(pg_zip_entry_uri($path, 'content.xml', $size), null, LIBXML_NONET)) {
