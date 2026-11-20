@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Application Access: the New application sheet in three steps</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="../panel-design-language/boards.css">
+</head>
+<body>
+<div class="stage">
+<h1 class="sheet-title">Uygulama Erişimi › Yeni uygulama</h1>
+<p class="sheet-sub">Küçük pencere yerine düzenleme çekmecesi genişliğinde üç adımlı bir sayfa. Geri dönünce yazılanlar durur; 2. adımın sonundaki Oluştur'a kadar hiçbir şey kaydedilmez.</p>
+
+<div class="boards">
+
+<!-- step 1 -->
+<div class="board">
+<p class="cap"><b><i>1</i>Ne bağlanacak?</b>Hazır başlangıçlar: simge, ad, ne işe yaradığı ve kimin adına çalıştığı.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-blue"><i class="bi bi-plug"></i></span><div><h2>Yeni uygulama</h2><p>Siteye ne bağlanacak? Birini seç, gerisini ona göre hazırlayalım.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+  <div class="steps">
+    <span class="s on"><span class="n">1</span>Ne bağlanacak</span><span class="ln"></span>
+    <span class="s"><span class="n">2</span>Ayrıntılar ve izinler</span><span class="ln"></span>
+    <span class="s"><span class="n">3</span>Bağlan</span>
+  </div>
+  <div class="db">
+    <div class="pick">
+      <div class="spc">
+        <div class="hd"><span class="tile lg t-violet"><i class="bi bi-stars"></i></span><b>Oturum açan yapay zekâ asistanı</b><span class="st t-teal">Kurulu</span></div>
+        <p>Claude, ChatGPT ya da başka bir MCP istemcisi. Kişi sitede oturum açar ve neye izin verdiğini onaylar.</p>
+        <div class="as">Kimin adına: <b>oturum açan kişi</b><span class="k"><i class="bi bi-shield-check"></i>Gizli anahtar yok</span></div>
+      </div>
+      <div class="spc on">
+        <div class="hd"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><b>Kanalda ajan</b><span class="rd"><i class="bi bi-check"></i></span></div>
+        <p>Kanalda @adıyla çağrılınca kendi adına yanıt veren yapay zekâ oturumu. Ajanı ve kanal satırlarını da kurar.</p>
+        <div class="as">Kimin adına: <b>uygulamanın kendisi</b><span class="k"><i class="bi bi-key"></i>Anahtar ve gizli anahtar</span></div>
+      </div>
+      <div class="spc">
+        <div class="hd"><span class="tile lg t-amber"><i class="bi bi-lightning-charge"></i></span><b>Otomasyon platformu</b><span class="rd"></span></div>
+        <p>Akış kuran hazır araçlar için. Sipariş, form ve kişi olaylarını dinler; kayıt açar ve günceller.</p>
+        <div class="as">Kimin adına: <b>uygulamanın kendisi</b><span class="k"><i class="bi bi-key"></i>Anahtar ve gizli anahtar</span></div>
+      </div>
+      <div class="spc">
+        <div class="hd"><span class="tile lg t-blue"><i class="bi bi-code-slash"></i></span><b>Kendi entegrasyonum</b><span class="rd"></span></div>
+        <p>Anahtar ve gizli anahtarla çalışan bir sunucu ya da betik. Hiçbir izin seçili gelmez; sen seçersin.</p>
+        <div class="as">Kimin adına: <b>uygulamanın kendisi</b><span class="k"><i class="bi bi-key"></i>Anahtar ve gizli anahtar</span></div>
+      </div>
+      <div class="spc">
+        <div class="hd"><span class="tile lg"><i class="bi bi-bar-chart-line"></i></span><b>Salt okunur raporlama</b><span class="rd"></span></div>
+        <p>Her şeyi okur, hiçbir şeyi değiştirmez. Raporlama, yedekleme ve izleme araçları için.</p>
+        <div class="as">Kimin adına: <b>uygulamanın kendisi</b><span class="k"><i class="bi bi-key"></i>Anahtar ve gizli anahtar</span></div>
+      </div>
+      <div class="spc">
+        <div class="hd"><span class="tile lg t-rose"><i class="bi bi-phone"></i></span><b>Mobil uygulama ve ekip cihazları</b><span class="rd"></span></div>
+        <p>Ekip kendi panel hesabıyla oturum açar. İzinler, bir cihazın en çok erişebileceği sınırdır.</p>
+        <div class="as">Kimin adına: <b>oturum açan kişi</b><span class="k"><i class="bi bi-shield-check"></i>Gizli anahtar yok</span></div>
+      </div>
+    </div>
+    <div class="note info mt" style="margin-top:16px"><i class="bi bi-info-circle"></i><div><b style="font-weight:600">"Kimin adına" neden önemli?</b><small>Oturum açarak kurulan bağlantı o kişi olarak yazar. Kanalda kendi adıyla (@console gibi) yanıt verecek bir ajan için "Kanalda ajan"ı seç.</small></div></div>
+  </div>
+  <div class="df"><span class="hint"><i class="bi bi-arrow-left-right"></i>Seçim yalnız başlangıçtır; izinleri sonraki adımda değiştirirsin.</span><span class="sp"></span><button class="btn ghost">İptal</button><button class="btn fill">Devam<i class="bi bi-arrow-right"></i></button></div>
+</div>
+</div>
+
+<!-- step 2 -->
+<div class="board">
+<p class="cap"><b><i>2</i>Ayrıntılar ve izinler</b>Yalnız seçilen başlangıcın istediği alanlar; izin seçici toplu düğmeleriyle.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div><h2>Yeni uygulama</h2><p>Kanalda ajan · <span style="color:var(--accent);font-weight:550">Değiştir</span></p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+  <div class="steps">
+    <span class="s done"><span class="n"><i class="bi bi-check"></i></span>Ne bağlanacak</span><span class="ln"></span>
+    <span class="s on"><span class="n">2</span>Ayrıntılar ve izinler</span><span class="ln"></span>
+    <span class="s"><span class="n">3</span>Bağlan</span>
+  </div>
+  <div class="db">
+    <div class="row2">
+      <div><label class="lab">Uygulamanın adı</label><div class="in">Claude Console ajanı</div></div>
+      <div><label class="lab">Açıklama <em>isteğe bağlı</em></label><div class="in"><span class="ph">Ne için kullanılıyor?</span></div></div>
+    </div>
+
+    <div class="gl"><i class="bi bi-robot"></i>Ajan</div>
+    <div class="row2">
+      <div><label class="lab">Çağrı adı</label><div class="in"><i class="bi bi-at"></i>console</div></div>
+      <div><label class="lab">Görünen ad</label><div class="in">Console</div></div>
+    </div>
+    <div class="mt"><label class="lab">Kanallar <em>ajan bu kanallarda @console yazılınca uyanır</em></label>
+      <div class="in tags"><span class="tag"><i class="bi bi-hash"></i>pinegrap-geliştirme<i class="bi bi-x"></i></span><span class="tag"><i class="bi bi-hash"></i>destek<i class="bi bi-x"></i></span><span class="ph" style="font-size:13px;margin-left:4px">Kanal ara…</span></div>
+    </div>
+
+    <div class="gl"><i class="bi bi-shield-lock"></i>İzinler</div>
+    <div class="pkbar">
+      <div class="in"><i class="bi bi-search"></i><span class="ph">İzin ara</span></div>
+      <span class="cnt"><b>9</b> / 23 seçili</span>
+      <button class="btn sm">Hepsi</button><button class="btn sm">Hiçbiri</button><button class="btn sm">Hepsini oku</button><button class="btn sm">Hepsini yaz</button>
+    </div>
+
+    <div class="pkah"><span class="tile t-teal"><i class="bi bi-chat-dots"></i></span>Workspace <em>3 / 3 seçili</em><button class="ib sm"><i class="bi bi-three-dots"></i></button></div>
+    <div class="pkrows">
+      <div class="pkrow"><div class="t"><b>Kanallar ve mesajlar</b><small>Kanalları ve mesajları okur; mesaj yazar, yanıt verir.</small></div><div class="seg sm"><span>Yok</span><span>Oku</span><span class="on w">Yaz</span></div></div>
+      <div class="pkrow"><div class="t"><b>Görevler ve notlar</b><small>Görevleri ve notları okur; görev açar, günceller.</small></div><div class="seg sm"><span>Yok</span><span>Oku</span><span class="on w">Yaz</span></div></div>
+      <div class="pkrow"><div class="t"><b>Dosyalar</b><small>Kanala eklenen dosyaları okur.</small></div><div class="seg sm"><span>Yok</span><span class="on r">Oku</span></div></div>
+    </div>
+
+    <div class="pkah"><span class="tile t-blue"><i class="bi bi-bag"></i></span>Mağaza <em>2 / 7 seçili</em><button class="ib sm"><i class="bi bi-three-dots"></i></button></div>
+    <div class="pkrows">
+      <div class="pkrow"><div class="t"><b>Ürünler</b><small>Ürünleri, fiyatları ve görselleri okur ya da değiştirir.</small></div><div class="seg sm"><span>Yok</span><span class="on r">Oku</span><span>Yaz</span></div></div>
+      <div class="pkrow"><div class="t"><b>Siparişler <span class="mny"><i class="bi bi-cash-coin"></i>Para hareketi</span></b><small>Siparişleri okur; durum değiştirir, iade başlatır.</small></div><div class="seg sm"><span>Yok</span><span class="on r">Oku</span><span>Yaz</span></div></div>
+      <div class="pkrow"><div class="t"><b>Stok</b><small>Stok sayılarını değiştirir.</small></div><div class="seg sm"><span class="on">Yok</span><span>Yaz</span></div></div>
+      <div class="pkrow"><div class="t"><b>Hediye kartları <span class="mny"><i class="bi bi-cash-coin"></i>Para hareketi</span></b><small>Kartları okur; kart açar, bakiye yükler.</small></div><div class="seg sm"><span class="on">Yok</span><span>Oku</span><span>Yaz</span></div></div>
+    </div>
+
+    <div class="pkrows" style="margin-top:14px">
+      <div class="pkah shut"><span class="tile t-violet"><i class="bi bi-file-earmark-text"></i></span>İçerik <em>2 / 6 seçili</em><i class="bi bi-chevron-down" style="margin-left:auto;color:var(--fg3)"></i></div>
+      <div class="pkah shut"><span class="tile t-rose"><i class="bi bi-palette"></i></span>Tasarım <em>0 / 2 seçili</em><i class="bi bi-chevron-down" style="margin-left:auto;color:var(--fg3)"></i></div>
+      <div class="pkah shut"><span class="tile t-amber"><i class="bi bi-calculator"></i></span>Muhasebe <em>0 / 2 seçili</em><i class="bi bi-chevron-down" style="margin-left:auto;color:var(--fg3)"></i></div>
+      <div class="pkah shut"><span class="tile"><i class="bi bi-globe2"></i></span>Site <em>2 / 3 seçili</em><i class="bi bi-chevron-down" style="margin-left:auto;color:var(--fg3)"></i></div>
+    </div>
+
+    <div class="fold mt"><i class="bi bi-sliders"></i>Gelişmiş <small>IP listesi ve hız sınırı</small><i class="bi bi-chevron-down"></i></div>
+  </div>
+  <div class="df"><button class="btn ghost"><i class="bi bi-arrow-left"></i>Geri</button><span class="sp"></span><span class="hint">Oluştur'a kadar hiçbir şey kaydedilmez.</span><button class="btn fill">Oluştur</button></div>
+</div>
+</div>
+
+<!-- step 3 -->
+<div class="board">
+<p class="cap"><b><i>3</i>Bağlan</b>Bir kez gösterilen anahtarlar, seçilen başlangıcın rehberiyle tek yerde: ne kopyalanır, nereye konur, nasıl denenir.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div><h2>Claude Console ajanı</h2><p>Kanalda ajan · <span class="asline">Kimin adına: <b>uygulamanın kendisi (@console)</b></span></p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+  <div class="steps">
+    <span class="s done"><span class="n"><i class="bi bi-check"></i></span>Ne bağlanacak</span><span class="ln"></span>
+    <span class="s done"><span class="n"><i class="bi bi-check"></i></span>Ayrıntılar ve izinler</span><span class="ln"></span>
+    <span class="s on"><span class="n">3</span>Bağlan</span>
+  </div>
+  <div class="db">
+    <div class="note ok"><i class="bi bi-check-circle"></i><div><b style="font-weight:600">Uygulama, ajan ve 2 kanal satırı kuruldu.</b><small>Bir parça kurulamazsa burada hangisinin kaldığı ve nereden tamamlanacağı yazar; kurulanlar durur.</small></div></div>
+    <div class="note mt"><i class="bi bi-exclamation-triangle"></i><div>Gizli anahtar ve belirteç <b style="font-weight:600">yalnız şimdi</b> gösterilir. Kaybedersen yenisini üretirsin.</div></div>
+
+    <div class="nst"><span class="n">1</span><div class="c"><b>Anahtarı ve gizli anahtarı ajanın ortamına koy</b><p>İki ortam değişkeni. Tek belirteç isteyen bir istemcide alttaki satırı kullan.</p>
+      <div class="kvs">
+        <div class="kv"><span class="k">PINEGRAP_KEY<small>Anahtar</small></span><span class="v">pk_7f3a91c2d45e8b06</span><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+        <div class="kv"><span class="k">PINEGRAP_SECRET<small>Gizli anahtar</small></span><span class="v">••••••••••••••••••••••••</span><button class="ib sm"><i class="bi bi-eye"></i></button><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+        <div class="kv"><span class="k">Tek belirteç<small>Authorization: Bearer</small></span><span class="v">pgt_7f3a91c2d45e8b06.••••••••••••</span><button class="ib sm"><i class="bi bi-eye"></i></button><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+      </div>
+    </div></div>
+
+    <div class="nst"><span class="n">2</span><div class="c"><b>Başlangıç metnini ajanın ilk talimatı yap</b><p>Ajan talimatlarını siteden kendisi okur; bu metin ona yalnız nereye bakacağını söyler.</p>
+      <div class="code">Sen ornek.com sitesinin Workspace'inde @console adlı ajansın.
+HTTP Basic ile bağlan: PINEGRAP_KEY ve PINEGRAP_SECRET.
+1. GET https://ornek.com/pinegrap/integration.php/workspace/agent-instructions
+2. Oradaki talimatları izle; istek kuyruğunu bekle.<button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+    </div></div>
+
+    <div class="nst"><span class="n">3</span><div class="c"><b>Dene</b><p>Kanalda <b style="color:var(--fg);font-weight:600">@console merhaba</b> yaz. Ajan bağlandıysa birkaç saniyede kendi adıyla yanıt verir.</p>
+      <div class="rows"><div class="rw"><span class="tile t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>@console</b><small>#pinegrap-geliştirme, #destek</small></div><span class="st t-amber">Henüz görülmedi</span><button class="btn quiet sm">Yeniden bak</button></div></div>
+    </div></div>
+
+    <div class="fold" style="margin-top:18px"><i class="bi bi-journal-text"></i>Başka bir yolla mı bağlanacaksın? <small>Tek belirteç, Claude Console, API belgesi</small><i class="bi bi-chevron-down"></i></div>
+  </div>
+  <div class="df"><span class="ckrow" style="display:flex;align-items:center;gap:9px;font-size:13px"><span class="ck on"><i class="bi bi-check"></i></span>Gizli anahtarı kopyaladım</span><span class="sp"></span><button class="btn fill">Kapat</button></div>
+</div>
+</div>
+
+</div>
+
+<div class="legend">
+  <span><b>Toplu düğmeler:</b> Hepsi, Hiçbiri, Hepsini oku, Hepsini yaz. Her alanın ⋯ menüsünde aynı dördü o alan için var.</span>
+  <span><b>Hepsini yaz</b> para hareketi olan satırları da seçer ve kaç tane seçtiğini söyler.</span>
+  <span><b>Satır denetimi:</b> Yok / Oku / Yaz; tek düzeyi olan izin yalnız o düzeyi gösterir.</span>
+</div>
+</div>
+</body>
+</html>

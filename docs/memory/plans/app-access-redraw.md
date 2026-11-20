@@ -35,4 +35,4 @@ priority: 8
 - The screen inside Connections, permissions by single route, a key that expires by date, more than one OAuth app. Each is a later yes.
 
 ## Whose look?
-- No pictures (`workflow/look-pictures-none.md`): built by the recipes, seen on dev; the owner sees it there.
+- The owner asked to see both screens first: drawn in `plans/app-access-redraw/` (`app-new`, `app-edit`, HTML and JPG), asked in polls 188 and 189 (channel messages 10735, 10736). Until his yes AA1 #10745 stays a draft; the screens of AA1, AA2, AA3 and AA5 follow the drawings.

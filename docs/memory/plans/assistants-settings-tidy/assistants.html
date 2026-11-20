@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Site Settings: Assistants and agents as folded rows, Claude's set-up in a drawer</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="../panel-design-language/boards.css">
+<style>
+.boards { grid-auto-columns: auto; }
+.legend { max-width: 1790px; gap: 8px 26px; }
+.dlg { position: relative; display: flex; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.dlg.set { flex-direction: row; width: 1240px; height: 880px; }
+.rail { flex: none; width: 232px; padding: 18px 12px; border-right: 1px solid var(--line); background: var(--menu); }
+.rail .rt { margin: 2px 10px 14px; font: 650 17px/1.3 Inter, sans-serif; letter-spacing: -.015em; }
+.rail .in { height: 32px; font-size: 13px; border-radius: 9px; padding: 0 10px; margin-bottom: 6px; }
+.rail .rg { margin: 16px 10px 6px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.rail .ri { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--fg2); }
+.rail .ri i { font-size: 15px; }
+.rail .ri.on { color: var(--fg); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.rail .ri.on i { color: var(--accent); }
+.pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pane .scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px 24px 0; }
+.frow { display: flex; align-items: center; gap: 13px; padding: 11px 16px; }
+.frow .t { flex: 1; min-width: 0; }
+.frow .t b { display: block; font-weight: 600; font-size: 14px; }
+.frow .t small { display: block; font-size: 13px; color: var(--fg2); margin-top: 1px; }
+.frow > i { color: var(--fg3); }
+.fitem + .fitem { border-top: 1px solid var(--line); }
+.fitem.open { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.fbody { padding: 2px 16px 18px 63px; }
+.fbody .help { margin: 0 0 14px; font-size: 13px; color: var(--fg2); }
+.g3 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.acts { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.drawer { width: 520px; height: 880px; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+</style>
+</head>
+<body>
+<div class="stage">
+<h1 class="sheet-title">Site Ayarları › Asistanlar ve ajanlar</h1>
+<p class="sheet-sub">Bugün yedi kart alt alta ve hepsi açık; Claude'un kurulum anlatımı sayfayı uzatıyor. Yeni hâli: her bölüm tek satır, durumu satırında yazar, aynı anda yalnız biri açılır. Pencere yeni boyutunda çizildi (1240 × 880).</p>
+
+<div class="boards">
+
+<div class="board">
+<p class="cap"><b><i>A</i>Katlanmış satırlar</b>Simge, ad, tek satır durum, durum etiketi. Tıklayınca açılır; arama sonucu, kaydın işaret ettiği alan ya da ilgi isteyen bölüm kendiliğinden açılır.</p>
+<section class="dlg set">
+  <nav class="rail">
+    <div class="rt">Ayarlar</div>
+    <div class="in"><i class="bi bi-search"></i><span class="ph">Ayarlarda ara</span><kbd class="end">Ctrl K</kbd></div>
+    <div class="rg">Site</div>
+    <div class="ri"><i class="bi bi-sliders"></i>Genel</div>
+    <div class="ri"><i class="bi bi-palette"></i>Görünüm</div>
+    <div class="ri"><i class="bi bi-bell"></i>Bildirimler</div>
+    <div class="ri"><i class="bi bi-envelope"></i>E-posta</div>
+    <div class="ri"><i class="bi bi-shield-lock"></i>Güvenlik</div>
+    <div class="rg">Çalışma Alanı</div>
+    <div class="ri"><i class="bi bi-chat-square-text"></i>Genel</div>
+    <div class="ri on"><i class="bi bi-stars"></i>Asistanlar ve ajanlar</div>
+    <div class="ri"><i class="bi bi-people"></i>Üyeler ve misafirler</div>
+    <div class="rg">Modüller</div>
+    <div class="ri"><i class="bi bi-bag"></i>Ticaret</div>
+    <div class="ri"><i class="bi bi-receipt"></i>Ön Muhasebe</div>
+    <div class="rg">Sistem</div>
+    <div class="ri"><i class="bi bi-arrow-repeat"></i>Güncelleme</div>
+    <div class="ri"><i class="bi bi-code-slash"></i>Gelişmiş</div>
+  </nav>
+  <div class="pane">
+    <div class="dh"><div><h2>Asistanlar ve ajanlar</h2><p>Çalışma Alanı'nda kim yanıt verir, nasıl bağlanır.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+    <div class="scroll">
+      <div class="rows">
+        <div class="fitem open">
+          <div class="frow"><span class="tile lg t-violet"><i class="bi bi-stars"></i></span><div class="t"><b>Claude</b><small>Hazır · son çalışma 14:05</small></div><span class="st t-teal">Hazır</span><i class="bi bi-chevron-up"></i></div>
+          <div class="fbody">
+            <p class="help">Kanalda @claude yazılınca claude.ai'daki rutininiz yanıt verir. <span style="color:var(--accent);font-weight:550">Nasıl çalışır?</span></p>
+            <div class="g3">
+              <div><label class="lab">Uygulama</label><div class="in">Claude bağlantısı<i class="bi bi-chevron-down end"></i></div><div class="help">Siteye kimin, hangi izinle bağlandığını tutan kayıt. <span style="color:var(--accent);font-weight:550">Uygulama Erişimi</span></div></div>
+              <div><label class="lab">Özet kanalı</label><div class="in"><i class="bi bi-hash"></i>genel<i class="bi bi-chevron-down end"></i></div><div class="help">Claude günlük özetini bu kanala yazar.</div></div>
+              <div><label class="lab">Rutin adresi</label><div class="in"><span style="overflow:hidden;text-overflow:ellipsis">https://claude.ai/api/routines/rt_81c4…</span></div></div>
+              <div><label class="lab">Belirteç</label><div class="in">••••••••••••••••<i class="bi bi-eye end"></i></div></div>
+            </div>
+            <div class="acts"><button class="btn quiet"><i class="bi bi-play"></i>Dene</button><button class="btn quiet"><i class="bi bi-box-arrow-up-right"></i>claude.ai'da kur</button><span class="hint" style="margin-left:6px">Claude hazır değilken bu düğme "Kurulumu tamamla" yazar.</span></div>
+          </div>
+        </div>
+        <div class="fitem"><div class="frow"><span class="tile lg t-blue"><i class="bi bi-cpu"></i></span><div class="t"><b>Pinegrap AI</b><small>Açık · lisans geçerli</small></div><span class="st t-teal">Hazır</span><i class="bi bi-chevron-down"></i></div></div>
+        <div class="fitem"><div class="frow"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>Ajanlar</b><small>3 ajan · 1 henüz görülmedi</small></div><span class="st t-amber">1 bekliyor</span><i class="bi bi-chevron-down"></i></div></div>
+        <div class="fitem"><div class="frow"><span class="tile lg t-amber"><i class="bi bi-hdd-network"></i></span><div class="t"><b>MCP sunucuları</b><small>2 sunucu · 1 oturum açma istiyor</small></div><span class="st t-amber">Oturum gerekli</span><i class="bi bi-chevron-down"></i></div></div>
+        <div class="fitem"><div class="frow"><span class="tile lg t-rose"><i class="bi bi-mic"></i></span><div class="t"><b>Ses</b><small>Sesli mesaj yazıya çevrilmiyor</small></div><span class="st">Kapalı</span><i class="bi bi-chevron-down"></i></div></div>
+        <div class="fitem"><div class="frow"><span class="tile lg"><i class="bi bi-easel"></i></span><div class="t"><b>Tuval şablonları</b><small>6 şablon</small></div><i class="bi bi-chevron-down"></i></div></div>
+        <div class="fitem"><div class="frow"><span class="tile lg"><i class="bi bi-collection"></i></span><div class="t"><b>Toplu değişiklikler</b><small>Toplu silme kapalı</small></div><i class="bi bi-chevron-down"></i></div></div>
+      </div>
+    </div>
+    <div class="df"><span class="sp"></span><button class="btn ghost">Geri al</button><button class="btn fill">Kaydet</button></div>
+  </div>
+</section>
+</div>
+
+<div class="board">
+<p class="cap"><b><i>B</i>Çekmece: claude.ai'da kur</b>Uzun kurulum anlatımı sayfadan çıkar, pencerenin içinde açılan çekmeceye numaralı adımlar olarak girer.</p>
+<section class="drawer">
+  <div class="dh"><span class="tile lg t-violet"><i class="bi bi-stars"></i></span><div><h2>claude.ai'da kur</h2><p>Beş adım; her değerin yanında Kopyala var.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+  <div class="db">
+    <div class="nst" style="margin-top:4px"><span class="n">1</span><div class="c"><b>Bağlayıcıyı ekle</b><p>claude.ai › Ayarlar › Bağlayıcılar'da "Özel bağlayıcı ekle"ye bas, sitenin adresini yapıştır.</p>
+      <div class="kvs"><div class="kv"><span class="k" style="width:60px">Adres</span><span class="v">https://ornek.com/pinegrap/mcp.php</span><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div></div></div></div>
+    <div class="nst"><span class="n">2</span><div class="c"><b>Oturum aç ve izin ver</b><p>Açılan sayfada panel hesabınla oturum aç, istenen izinleri onayla.</p></div></div>
+    <div class="nst" style="margin-top:8px"><span class="n">3</span><div class="c"><b>Rutini oluştur</b><p>claude.ai'da yeni bir rutin aç, talimat olarak bu metni ver.</p>
+      <div class="code" style="padding-right:104px">ornek.com sitesinin Çalışma Alanı'nda
+bekleyen istekleri oku, her birini
+yanıtla ve bitir.<button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div></div></div>
+    <div class="nst"><span class="n">4</span><div class="c"><b>Rutin adresini ve belirteci buraya yapıştır</b><p>Rutinin "API ile çalıştır" bölümündeki adres ve belirteç, bu çekmecenin arkasındaki iki alana girer.</p></div></div>
+    <div class="nst" style="margin-top:8px"><span class="n">5</span><div class="c"><b>Dene</b><p>Kaydet, sonra "Dene"ye bas. Claude yanıt verirse satırın durumu "Hazır" olur.</p></div></div>
+    <div class="note info" style="margin-top:18px"><i class="bi bi-info-circle"></i><div><small>Bu bağlantı kanalda @claude olarak yanıt verir. Kendi adıyla yanıt veren başka bir ajan için Ajanlar satırını ya da Uygulama Erişimi'ndeki "Kanalda ajan"ı kullan.</small></div></div>
+  </div>
+  <div class="df"><span class="sp"></span><button class="btn quiet">Kapat</button></div>
+</section>
+</div>
+
+</div>
+
+<div class="legend">
+  <span><b>Uygulama açıklaması</b> yalnız bir kez, onu ilk isteyen satırda yazar; öbür satırlarda yinelenmez.</span>
+  <span><b>Sıra:</b> Claude, Pinegrap AI, Ajanlar, MCP sunucuları, Ses, Tuval şablonları, Toplu değişiklikler.</span>
+  <span><b>MCP sunucuları</b> burada kalır; Bağlantılar'daki Yönet bu satırı açar.</span>
+  <span><b>Ajanlar</b> satırındaki "Ajan ekle", "Bir uygulamadan başla" seçeneğiyle Uygulama Erişimi'ne götürür.</span>
+</div>
+</div>
+</body>
+</html>

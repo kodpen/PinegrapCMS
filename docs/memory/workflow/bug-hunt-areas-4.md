@@ -14,4 +14,10 @@ description: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens h
   - Not touched: the Translations screen's files (held by S6c #10547), `view_folder_and_files_f.php` (#10542), the Artifact Canvas scripts. Decided, no fault: `core/picture-text-overview.md`.
 - What the two hunts found is written by their own PRs.
 
+## Which five areas were given on the afternoon of 2026-11-20?
+- K1, event tickets and the door (channel message 10668): hunted in #10754; left open #10755 (a repeating event with shared places, asked in poll 195) and #10756 (a refunded return voids its tickets: decided, channel message 10785).
+- K2 (channel message 10776): product form uploads (`includes/fn/product_form_uploads.php`, their door in `get_file.php`, the upload part of `cart_action.php` and `express_order.php`, the sweep, the order's readers); the click and scroll map (`page_clicks.php`, `includes/fn/page_clicks.php`, `includes/visitors/clicks.php`, the nightly rollup, the designer's layer).
+- K1 (channel message 10779): the channel commands' server side (`includes/workspace/commands.php`, `command_registry.php`, `app_commands.php`, `quick_edit.php`, `changes.php`; not `api.php`, not `workspace.js`); the place map (`places.php`, `place_coordinates.php`, `includes/fn/places.php`, `place_map.php`, `place_list.php`, `place_tiles.php`).
+- What each hunt found is written by its own PR.
+
 Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-3.md

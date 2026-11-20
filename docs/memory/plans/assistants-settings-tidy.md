@@ -24,6 +24,6 @@ priority: 8
 - `assistants-settings-tidy-steps.md` (AT1 to AT4). Claim as `[plan:assistants-settings-tidy] <step> — <topic>`.
 
 ## What binds it?
-- The dialog's contract (`ui/settings-card-save-rules.md`, `ui/settings-modal-drawer.md`): no form of its own in the pane, a standing form in a drawer, never a second dialog. Look A's recipes (`ui/look-new-parts.md`). No pictures (`workflow/look-pictures-none.md`): seen on dev.
+- The dialog's contract (`ui/settings-card-save-rules.md`, `ui/settings-modal-drawer.md`): no form of its own in the pane, a standing form in a drawer, never a second dialog. Look A's recipes (`ui/look-new-parts.md`). The owner asked to see the tab first: drawn in `plans/assistants-settings-tidy/assistants.html` (and JPG), asked in poll 190 (channel message 10740); AT1 to AT3 follow the drawing after his yes.
 - `backend.src.css` and `backend.src.js`: never two PRs in one at once (SZ1 first, then AT1).
 - `Decision:` the owner's words in the architect's window, 2026-11-20.
