@@ -61,6 +61,7 @@
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
 - decisions-made-panel-11.md: Decisions list, panel part 11 (2026-11-20 on): the Site Settings dialog wider and taller, the Assistants and agents category tidied
+- decisions-made-panel-12.md: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to three drawings: Application Access New application (poll 188), Edit application (poll 189), Assistants and agents (poll 190)
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
@@ -193,6 +194,10 @@
 - decisions-made-schema-38.md: Decisions list, schema part 38 (2026-11-20 on): the three tables of the supplier feed: supplier_feeds, supplier_feed_items, supplier_feed_runs; no column on products
 - decisions-made-schema-39.md: Decisions list, schema part 39 (2026-11-20 on): the three tables of the marketplace repricer: marketplace_price_rules, marketplace_price_state, marketplace_price_log
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
+- decisions-made-schema-40.md: Decisions list, schema part 40 (2026-11-20 on): customer_rhythm (one row per customer, poll 191) and shipment_problems (a problem found on a parcel, poll 192), their columns
+- decisions-made-schema-41.md: Decisions list, schema part 41 (2026-11-20 on): pick and pack's four tables (product_bins, pick_waves, pick_wave_orders, order_packs) and the "Packing only" right user.manage_packing (poll 193)
+- decisions-made-schema-42.md: Decisions list, schema part 42 (2026-11-20 on): the visitor journey's four tables (lead_browsers, lead_visits, contact_journey, contact_scores), marketing consent, 13 months, tying back (poll 194)
+- decisions-made-schema-43.md: Decisions list, schema part 43 (2026-11-20 on): a repeating event with shared places gives a series ticket checked in once per date; the event_ticket_checkins table (poll 195, bug #10755)
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace

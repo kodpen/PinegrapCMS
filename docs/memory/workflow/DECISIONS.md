@@ -33,6 +33,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-11.md: Where are the rules and the earlier parts?
 - decisions-made-panel-11.md: Is the Site Settings dialog bigger? (owner, 2026-11-20, in the architect's window)
 - decisions-made-panel-11.md: Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
+- decisions-made-panel-12.md: Where are the rules and the earlier parts?
+- decisions-made-panel-12.md: Is New application drawn in three steps? (owner, 2026-11-20, agent channel poll 188, channel message 10735)
+- decisions-made-panel-12.md: Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
+- decisions-made-panel-12.md: Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
+- decisions-made-panel-12.md: What do the three have in common?
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -598,6 +603,32 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-39.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
+- decisions-made-schema-40.md: Where are the rules and the earlier parts?
+- decisions-made-schema-40.md: Does customer rhythm get a table? (owner, 2026-11-20, agent channel poll 191, channel message 10744)
+- decisions-made-schema-40.md: Which columns does customer_rhythm have? (architect, 2026-11-20)
+- decisions-made-schema-40.md: Does the delivery tower get a table? (owner, 2026-11-20, agent channel poll 192, channel message 10745)
+- decisions-made-schema-40.md: Which columns does shipment_problems have? (architect, 2026-11-20)
+- decisions-made-schema-40.md: What else holds for both?
+- decisions-made-schema-41.md: Where are the rules and the earlier parts?
+- decisions-made-schema-41.md: Does pick and pack get tables and a right? (owner, 2026-11-20, agent channel poll 193, channel message 10746)
+- decisions-made-schema-41.md: Which columns does product_bins have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does pick_waves have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does pick_wave_orders have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does order_packs have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: What is the right's column? (architect, 2026-11-20)
+- decisions-made-schema-41.md: What else holds?
+- decisions-made-schema-42.md: Where are the rules and the earlier parts?
+- decisions-made-schema-42.md: Does the visitor journey get tables? (owner, 2026-11-20, agent channel poll 194, channel message 10747)
+- decisions-made-schema-42.md: Which columns does lead_browsers have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does lead_visits have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does contact_journey have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does contact_scores have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: What else holds?
+- decisions-made-schema-43.md: Where are the rules and the earlier parts?
+- decisions-made-schema-43.md: What does a ticket of a repeating event with shared places stand for? (owner, 2026-11-20, agent channel poll 195, channel message 10784)
+- decisions-made-schema-43.md: Which columns does event_ticket_checkins have? (architect, 2026-11-20)
+- decisions-made-schema-43.md: How does a series ticket behave? (architect, 2026-11-20, channel message 10806)
+- decisions-made-schema-43.md: Who builds it?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
