@@ -4,11 +4,11 @@ description: Plan stock-planning, features P1 to P14: the daily record, sales sp
 ---
 
 ## What is recorded every day?
-- (P1) For every tracked product, one row a day: the units sold that day and the stock when the night pass runs. Units come from complete and exported orders of every type (web, marketplace, counter) and ERP sales invoices with `order_id = 0`; a bundle counts as its components; carts and cancelled orders never count.
-- (P2) On its first run the pass fills the sold units of the past 365 days from the same sources; their stock stays unknown. Rows older than 400 days are deleted.
+- (P1) Per tracked product and day, a row only when it sold or its stock was 0 at the night pass: the units sold and that stock. Units come from complete and exported orders of every type (web, marketplace, counter) and ERP sales invoices with `order_id = 0`; a bundle counts as its components; carts and cancelled orders never count; a return is not taken off. Each night recounts the last 14 days' units (a late marketplace order, a later cancel); a past day's stock is never rewritten.
+- (P2) On its first run the pass fills the sold units of the past 365 days, their stock unknown, and keeps the day the record began in a setting. Rows older than 400 days are deleted. With the Accounting module off nothing is written.
 
 ## How is the speed read?
-- (P3) Units a day: the units of the last 56 days on which the product was in stock at the day's start (a day of unknown stock counts as in stock), divided by those days. Under 14 such days, or no sale in them: "Not enough history", and the product stays on its minimum stock.
+- (P3) Units a day: the units of the last 56 days on which the product was in stock, divided by those days. After the record began a day with no row was in stock and sold nothing; a day before it counts as in stock. Under 14 such days, or no sale in them: "Not enough history", and the product stays on its minimum stock.
 - (P4) Season: last year's units in the coming 56 days over last year's units in the 56 days before, between 0.5 and 2, only when both windows sold at least 10 units.
 
 ## Who supplies it and how long does it take?
@@ -23,6 +23,6 @@ description: Plan stock-planning, features P1 to P14: the daily record, sales sp
 
 ## Where is it seen and used?
 - (P11) Accounting › Stock Planning: the states as filters, a supplier filter, the columns of P7 to P10, the total value of dead stock, the date the record began. Settings: safety days, cover days, dead-stock days.
-- (P12) Per supplier, New purchase order opens the existing form with that supplier and the plan's quantities; the person changes and saves it.
+- (P12) Per supplier, New purchase order opens the existing form with that supplier and the plan's quantities, sent by POST, which only fills the form; the person changes and saves it.
 - (P13) The low-stock bell (its switch stays) says for a planned product "runs out in X days, order by Y" once per drop; a product without history keeps today's minimum notice.
 - (P14) `GET /erp/stock-plan` with state, supplier and product filters, and its MCP tool.

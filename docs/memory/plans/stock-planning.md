@@ -21,8 +21,12 @@ priority: 6
 - Nothing is ordered for the merchant: the press opens New purchase order filled in; nothing is saved or mailed until a person saves it.
 - The plan only reads stock and sales; it never changes a count. A bundle is never planned; its components carry its sales.
 
-## Which numbers does it start with?
-- Settings in Accounting: safety days 7, an order covering 30 days after the goods come, dead stock after 90 days without a sale (the poll's 90). The first two are proposals: the architect decides whether the owner is asked.
+## What did the architect decide? (2026-11-20, agent channel message 10139)
+- No question for the owner. Settings in Accounting, each the owner may change: safety 7 days and cover 30 days (the architect's), dead stock 90 days (the poll's).
+- `erp_stock_days` is written sparse; `erp_stock_plan` is a cache rebuilt every night; `erp_accounts.lead_days`. Columns in the steps; a column outside them is asked.
+- History: accepted; priority stays 6. The 365 days of sales let the forecast run from the first night; each night of delay loses only that day's stock.
+- The press: the quantities reach the form by POST, which only fills it; the minimum stock screen's GET stays. Supplier: no link table.
+- With the Accounting module off the job writes nothing.
 
 ## What is built?
 - Features: `stock-planning-features.md` (P1 to P14). Steps: `stock-planning-steps.md`. Claim as `[plan:stock-planning] <step> — <topic>`.
@@ -31,4 +35,4 @@ priority: 6
 - Sending an order by itself, supplier price lists and pack sizes, a plan per stock location, untracked products, a learned model. Each is a later yes.
 
 ## Whose look?
-- The owner's: the Stock Planning screen and its settings (SP3).
+- No pictures (`workflow/look-pictures-none.md`): the owner sees the Stock Planning screen on dev after SP3 lands.
