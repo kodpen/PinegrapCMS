@@ -192,7 +192,9 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
         $state['id'] = (int) $order['id'];
         $state['done']++;
 
-        if (!pg_customer_value_order_counts($order)) {
+        // An order with no date cannot be placed in a month or an age; the
+        // pass's total leaves it out too.
+        if (((int) $order['order_date'] <= 0) || !pg_customer_value_order_counts($order)) {
             continue;
         }
 
@@ -549,7 +551,8 @@ function pg_customer_value_summary()
 
 /**
  * The read of one page of orders after the place ($date, $id), in date
- * order on the order_date index, up to the pass's start. A column the site
+ * order on the order_date index, up to the pass's start; an order with no
+ * date is left out, as the pass's total leaves it. A column the site
  * does not have yet reads as its default. Pure.
  *
  * @param int   $until
@@ -569,7 +572,7 @@ function pg_customer_value_page_query($until, $date, $id, $limit, $present)
     }
 
     $sql = 'SELECT ' . implode(', ', $columns) . ' FROM orders'
-        . " WHERE (status IN ('complete', 'exported')) AND (order_date <= ?)"
+        . " WHERE (status IN ('complete', 'exported')) AND (order_date > 0) AND (order_date <= ?)"
         . ' AND (order_date >= ?) AND ((order_date > ?) OR (id > ?))'
         . ' ORDER BY order_date, id LIMIT ' . max(1, (int) $limit);
 

@@ -402,3 +402,26 @@ function test_customer_values_names_of_a_shared_number()
 	pg_assert_contains('order_number IN (?, ?)', $sql);
 	pg_assert_same(array(1002, 1007), $params);
 }
+
+// An order with no date (order_date 0, as a marketplace order without its
+// modification time is written) is not placed in time: it was counted as a
+// customer last seen in 1970, a "Lost customer", and made that customer's
+// real first order a returning one. The pass's total already left it out,
+// so the screen read more orders than it said there were.
+function test_customer_values_undated_order_left_out()
+{
+	$now = mktime(12, 0, 0, 6, 15, 2026);
+	$summary = _cv_test_summary(array(
+		_cv_test_order(1, 0, 'a@x.com', 5000),
+		_cv_test_order(2, $now - 10 * 86400, 'a@x.com', 3000),
+	), $now);
+
+	pg_assert_same(1, $summary['customers']);
+	pg_assert_same(1, $summary['orders']);
+	pg_assert_same(array(1, 3000), $summary['cells'][0][0], 'one order, ten days old');
+	pg_assert_same(array(0, 0), $summary['cells'][4][0], 'nobody lost');
+	pg_assert_same(array(1, 3000, 0, 0), $summary['months']['2026-06']);
+
+	list($sql) = pg_customer_value_page_query(1700000000, 0, 0, 500, array());
+	pg_assert_contains('(order_date > 0)', $sql, 'the walk reads what the total counts');
+}
