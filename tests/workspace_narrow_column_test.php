@@ -107,3 +107,18 @@ function test_workspace_narrow_poll_row_picture_above_words()
 	// panel: they take a line of their own under it.
 	pg_assert_true(strpos($rule, 'flex-basis: 100%') !== false, 'the words of a row with a picture take the whole width');
 }
+
+function test_workspace_narrow_message_table_fits_its_frame()
+{
+	$css = workspace_narrow_css();
+	$frame = workspace_narrow_rule($css, '.ws-table-wrap');
+	$narrow = workspace_narrow_container($css, 'ws-table (max-width: 30rem)');
+
+	// The frame scrolls a table of many columns; in a narrow column a long
+	// path or address in a cell breaks, so a table of a few columns fits.
+	pg_assert_true(strpos($frame, 'overflow-x: auto') !== false, 'the frame scrolls sideways');
+	pg_assert_true(strpos($frame, 'container: ws-table / inline-size') !== false, 'the frame is its own container');
+	pg_assert_true(strpos($narrow, 'overflow-wrap: anywhere') !== false, 'a cell breaks a long word in a narrow frame');
+	pg_assert_true(strpos($narrow, '.ws-table-wrap .ws-table code') !== false, 'code in a cell breaks too');
+	pg_assert_true(strpos($narrow, 'min-width: 6rem') !== false, 'a cell keeps room for an ordinary word');
+}

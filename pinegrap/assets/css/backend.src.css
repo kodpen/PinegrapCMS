@@ -15546,9 +15546,15 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-msg-body .ws-checklist + .ws-text {
   margin-top: .3rem;
 }
+/* The frame scrolls sideways on its own and is a named container: in a
+   narrow column (a phone, the discussion panel) the cells below break a
+   long word, path or address, so a table of a few columns fits the frame
+   instead of running past it. */
 .ws-table-wrap {
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  container: ws-table / inline-size;
   margin: .15rem 0 .3rem;
 }
 .ws-table-wrap .table.ws-table {
@@ -15564,6 +15570,20 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   max-width: 24rem;
   overflow-wrap: normal;
   vertical-align: top;
+}
+/* max-width above does not bound a table cell: a word wider than the
+   column would widen the table past the frame. Up to 30rem every cell
+   breaks it, and keeps 6rem so an ordinary word is not split; a table of
+   two or three columns fits the frame, one of more scrolls in it. Code is
+   named too: Bootstrap gives it its own overflow-wrap. */
+@container ws-table (max-width: 30rem) {
+  .ws-table-wrap .ws-table > :not(caption) > * > * {
+    min-width: 6rem;
+  }
+  .ws-table-wrap .ws-table > :not(caption) > * > *,
+  .ws-table-wrap .ws-table code {
+    overflow-wrap: anywhere;
+  }
 }
 .ws-table thead th {
   background: var(--pg-bg-1);
