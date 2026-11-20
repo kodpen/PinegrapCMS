@@ -534,7 +534,7 @@ function pg_connections_registry()
             'covers' => array('purpose' => array('notes'))),
 
         // Analytics and search.
-        'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
+        'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'google_analytics', 'attention' => true),
             'apis' => array('analyticsadmin.googleapis.com' => 'Google Analytics Admin API', 'analyticsdata.googleapis.com' => 'Google Analytics Data API'),
             'covers' => array('purpose' => array('google_analytics'))),

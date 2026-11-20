@@ -60,7 +60,7 @@ function test_settings_input_keyboards_web_addresses_and_hosts()
 		array('includes/settings/commerce.php', 'product_feed_seller_url'),
 		array('includes/settings/commerce.php', 'product_feed_privacy_policy_url'),
 		array('includes/settings/commerce.php', 'product_feed_terms_url'),
-		array('includes/settings/privacy.php', 'stats_url'),
+		array('connections.php', 'stats_url'),
 		array('includes/settings/general.php', 'hostname'),
 		array('includes/settings/general.php', 'proxy_address'),
 		array('includes/settings/maintenance.php', 'backup_ftp_host'),

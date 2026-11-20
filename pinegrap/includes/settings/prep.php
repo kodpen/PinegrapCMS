@@ -243,7 +243,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $waf_allow_ai_search      = isset($row['waf_allow_ai_search']) ? (int)$row['waf_allow_ai_search'] : 1;
     $tracking_code_duration = $row['tracking_code_duration'];
     $pay_per_click_flag = $row['pay_per_click_flag'];
-    $stats_url = $row['stats_url'];
     $google_analytics = $row['google_analytics'];
     $google_analytics_web_property_id = $row['google_analytics_web_property_id'];
     $cookie_consent = (int) ($row['cookie_consent'] ?? 0);
@@ -2293,14 +2292,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             . '</div>';
     }
 
-    // if Google Analytics is enabled, check it and display the related rows
-    if ($google_analytics == 1) {
-        $google_analytics_checked = ' checked="checked"';
-        
-    // else, do not check it and hide the related rows
-    } else {
-        $google_analytics_checked = '';
-    }
 
     if ($advanced_visual_effects == 1) {
         $advanced_visual_effects_checked = ' checked="checked"';
