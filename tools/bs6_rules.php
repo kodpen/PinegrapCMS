@@ -806,6 +806,7 @@ function bs6_site_functions()
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
 		'includes/fn/site_push_order.php' => array('pg_site_push_order_button_html'),
 		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),
+		'includes/fn/stock_notify.php' => array('pg_stock_notify_event_form_html'),
 	);
 }
 
