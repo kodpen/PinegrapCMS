@@ -348,3 +348,14 @@ function test_bundle_saving_at_the_visitors_component_prices()
 	pg_assert_same(550, pg_bundle_saving($components, 2000, array(8 => 600)), 'a dearer figure is not the visitor\'s price');
 	pg_assert_same(550, pg_bundle_saving($components, 2000, array()), 'no visitor prices: their own');
 }
+
+// The field asks for a percentage, so a typed per cent sign is read, not
+// taken as no discount at all.
+function test_bundle_discount_bp_from_input_with_the_sign()
+{
+	pg_assert_same(1000, pg_bundle_discount_bp_from_input('10%'));
+	pg_assert_same(1250, pg_bundle_discount_bp_from_input('%12,5'));
+	pg_assert_same(500, pg_bundle_discount_bp_from_input(' 5 % '));
+	pg_assert_same(0, pg_bundle_discount_bp_from_input('%'));
+	pg_assert_same(0, pg_bundle_discount_bp_from_input('10%%5'), 'two signs are no number');
+}

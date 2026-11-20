@@ -227,15 +227,17 @@ function pg_bundle_price($pricing, $own_price, $components, $discount_bp)
 }
 
 /**
- * A discount typed as a percentage ("12.5", "12,5") in basis points, 0 for
- * anything that is not a number from 0 to 100.
+ * A discount typed as a percentage ("12.5", "12,5", "10 %", "%10") in basis
+ * points, 0 for anything that is not a number from 0 to 100. One per cent
+ * sign before or after the number is read as part of it.
  *
  * @param mixed $value
  * @return int
  */
 function pg_bundle_discount_bp_from_input($value)
 {
-    $value = str_replace(',', '.', trim((string) $value));
+    $value = trim(preg_replace('/^\s*%|%\s*$/', '', (string) $value, 1));
+    $value = str_replace(',', '.', $value);
 
     if (($value === '') || !is_numeric($value)) {
         return 0;
