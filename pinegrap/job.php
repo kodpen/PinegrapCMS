@@ -978,6 +978,18 @@ if (pg_price_history_offer_pass_due()) {
     pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
 }
 
+// A marketplace account whose price rules changed gets its listings queued
+// again, a batch a statement, five seconds a tick until it is through
+// (includes/fn/marketplace_pricing_settings.php). A tick with nothing owed
+// reads one small file.
+if (ECOMMERCE) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
+
+    if (mp_pricing_requeue_due()) {
+        mp_pricing_requeue_run(MP_PRICING_REQUEUE_BUDGET);
+    }
+}
+
 // Product price history rows older than thirteen months
 // (pg_price_history_trim_run()): once a day, five seconds a tick until the
 // pass is through. Each product and channel keeps the newest row before that
