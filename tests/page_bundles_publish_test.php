@@ -551,3 +551,14 @@ function test_page_bundle_used_replacements()
 	pg_assert_contains('pg_page_bundle_used_replacements(', pg_test_function_source('pg_page_bundle_publish_locked'),
 		'the publish reads them after its run');
 }
+
+// A failed query while a page is taken back is a page that failed, as in a
+// publish (#10047): output_error() throws, the other pages are still tried
+// and the bundle stays published to try again, instead of the request
+// ending part-way with some pages back and the rest not tried.
+function test_page_bundle_take_back_query_failure_is_a_failed_page()
+{
+	$locked = pg_test_function_source('pg_page_bundle_take_back_locked');
+	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $locked, 'output_error() throws while pages come back');
+	pg_assert_contains('pg_page_bundle_publish_ops(', $locked, 'a throw from a page is that page failing');
+}
