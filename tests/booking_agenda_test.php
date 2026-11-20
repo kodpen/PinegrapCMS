@@ -289,6 +289,51 @@ function test_booking_agenda_ws_busy_holds_yearly_holidays()
 	pg_assert_contains("pg_schema_has('ws_events', 'yearly')", $source, 'the agenda reads ws_events.yearly where it exists');
 }
 
+// Bookings › New booking offers only the starts its save would take: a
+// booked row keeps its service's buffers, and the larger of the two sides
+// counts, in either order (#10805).
+function test_booking_agenda_free_slots_keep_the_booked_buffers()
+{
+	$zone = 'Europe/Istanbul';
+	$now = booking_agenda_test_at('2026-11-01 12:00', $zone);
+	$nine = booking_agenda_test_at('2026-11-02 09:00', $zone);
+	$staff = array('hours' => array('1' => array(array('09:00', '17:00'))));
+	$times = function (array $slots) use ($zone) {
+		$out = array();
+		foreach ($slots as $start) {
+			$out[] = (new DateTime('@' . $start))->setTimezone(new DateTimeZone($zone))->format('H:i');
+		}
+		return $out;
+	};
+
+	// A (60 minutes, 30 after) booked first at 09:00, then B (30 minutes) looked for.
+	$a_row = array('start_at' => $nine, 'end_at' => $nine + 3600, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => '0', 'buffer_after' => '30');
+	$b = array('length_minutes' => 30, 'buffer_before' => 0, 'buffer_after' => 0);
+	$free = $times(pg_booking_agenda_free_from_rows($b, $staff, '2026-11-02', array($a_row), array(), $now, $zone));
+	pg_assert_false(in_array('10:00', $free, true), 'B at 10:00 is within A\'s buffer after');
+	pg_assert_true(in_array('10:30', $free, true), 'B at 10:30 is offered');
+
+	// B booked first at 10:00, then C (60 minutes, 40 before) looked for.
+	$b_row = array('start_at' => $nine + 3600, 'end_at' => $nine + 5400, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => '20', 'buffer_after' => '0');
+	$c = array('length_minutes' => 60, 'buffer_before' => 40, 'buffer_after' => 0);
+	$free = $times(pg_booking_agenda_free_from_rows($c, $staff, '2026-11-02', array($b_row), array(), $now, $zone));
+	pg_assert_false(in_array('09:00', $free, true), 'C at 09:00 ends inside B\'s buffer before');
+	pg_assert_false(in_array('11:00', $free, true), 'C at 11:00 is within its own 40 minutes before');
+	pg_assert_true(in_array('12:00', $free, true), 'C at 12:00 is offered');
+
+	// The larger buffer, not the sum: B before 20, a 30-minute service with 30 after.
+	$d = array('length_minutes' => 30, 'buffer_before' => 0, 'buffer_after' => 30);
+	$free = $times(pg_booking_agenda_free_from_rows($d, $staff, '2026-11-02', array($b_row), array(), $now, $zone));
+	pg_assert_true(in_array('09:00', $free, true), 'D at 09:00 ends 30 minutes before B: 30, not 50');
+
+	// The day's query reads each booking with its service's buffers.
+	$reflection = new ReflectionFunction('pg_booking_agenda_free_slots');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains('COALESCE(booking_services.buffer_before, 0) AS buffer_before', $source, 'the bookings carry their buffer before');
+	pg_assert_contains('COALESCE(booking_services.buffer_after, 0) AS buffer_after', $source, 'the bookings carry their buffer after');
+	pg_assert_contains('LEFT JOIN booking_services ON booking_services.id = bookings.service_id', $source, 'joined to their service');
+}
+
 function test_booking_agenda_list_columns_and_row()
 {
 	$columns = pg_booking_agenda_list_columns();
