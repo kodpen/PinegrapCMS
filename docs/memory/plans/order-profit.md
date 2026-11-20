@@ -34,4 +34,4 @@ priority: 6
 - Payout reconciliation, n11 and PayTR real fees (typed rates), repricing, advertising costs. Each is a later yes.
 
 ## Whose look?
-- The owner's: the order's Profit card and the Profitability screen (NP5).
+- No pictures (`workflow/look-pictures-none.md`): the owner sees the order's Profit card and the Profitability screen on dev after NP5 lands.

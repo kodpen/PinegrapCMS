@@ -16,7 +16,7 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
   - `includes/api/outbound/connectors/trendyol.php` (a paged finance read; endpoints from Trendyol's document, written into `commerce/trendyol-api-facts.md`), its pass; tests on recorded answers. Feature: N4.
 - NP5 (M) after NP1: the screens.
   - `view_order.php` (the Profit card in `pg_order_view_card_column()`), `view_orders.php` and `includes/fn/commerce_list.php` (column, filter), new `erp_profitability.php` with its menu entry, settings card and workbook.
-  - Pictures at 1440 and 390, light and dark, to the owner. Features: N9, N10, N11.
+  - No pictures (`workflow/look-pictures-none.md`). Features: N9, N10, N11.
 - NP6 (S) after NP5: break-even, bell, API.
   - `includes/erp/order_profit.php`, `includes/erp/alerts.php`, `includes/erp/api.php` and a reader; `php tools/check_api_schema.php`. Features: N12, N13, N14.
 - NP7 (S) close-out: every N number checked against the code with its PR; `erp/order-profit.md` written; `erp/erp-profit-report.md` and `erp/erp-not-built-on-purpose.md` updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
