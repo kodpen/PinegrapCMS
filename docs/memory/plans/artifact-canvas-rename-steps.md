@@ -6,7 +6,7 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
 ## Which steps are there?
 - AC1 (S) The drawing. Done: #10516 (`pg_menu_icon()`, `tests/design_canvas_icon_test.php`, `ui/design-canvas-icon.md`).
 
-- AC2 (M) The name; may run beside AC1. Cut in two: AC2a (done, #10517) and AC2b (done, #PR).
+- AC2 (M) The name; may run beside AC1. Cut in two: AC2a (done, #10517) and AC2b (done, #10669).
   - AC2a, done (#10517): the panel files of the list below but the held ones, their unused old keys removed; `tests/artifact_canvas_name_test.php`.
   - AC2b, done (#PR): `includes/fn/image_editor.php`, `assets/js/style_designer.src.js`, `get_page_content.php` with both `frontend` twins; every `Design Canvas` key removed; in `tests/artifact_canvas_name_test.php`. Comments in files AC2a did not touch go with AC5.
   - Every text with "Design Canvas" (`grep -rn 'Design Canvas' pinegrap tests`): `lang()`, `_sdT()`, the `lang(array('string' => …))` forms, the plain strings of `includes/fn/system_status.php`. Turkish with `php tools/tr_add.php` (`core/lang-files.md`).
