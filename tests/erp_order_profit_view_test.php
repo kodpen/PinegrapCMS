@@ -58,6 +58,23 @@ function test_erp_order_profit_view_filter()
 	pg_assert_same('', erp_order_profit_filter_sql(''), 'no filter by default');
 	pg_assert_same('', erp_order_profit_filter_sql('any'), 'any is no filter');
 	pg_assert_true(strpos(erp_order_profit_filter_sql('loss'), 'erp_order_profit.net < 0') !== false, 'sold at a loss reads net below zero');
+	pg_assert_true(strpos(erp_order_profit_filter_sql('loss'), erp_order_profit_counted_join()) !== false,
+		'a cancelled order is not sold at a loss while its profit row waits for the pass');
+}
+
+// A profit row counts only while its order is a finished sale: a cancelled
+// order's row, until the pass removes it, is read nowhere.
+function test_erp_order_profit_view_counted_join()
+{
+	$join = erp_order_profit_counted_join();
+
+	pg_assert_true(strpos($join, 'erp_order_profit.order_id') !== false, 'joined on the order');
+
+	foreach (erp_order_billable_statuses() as $status) {
+		pg_assert_true(strpos($join, "'" . $status . "'") !== false, 'status ' . $status . ' counts');
+	}
+
+	pg_assert_true(strpos($join, "'cancelled'") === false, 'a cancelled order does not count');
 }
 
 function test_erp_order_profit_view_margin_text()
