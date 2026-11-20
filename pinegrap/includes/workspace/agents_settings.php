@@ -149,10 +149,11 @@ function ws_agents_settings_check($viewer, $id, $input)
 
     // A provider with a connection takes no key on the form: a typed one is
     // not stored, only the box that gives up the assistant's own key counts.
+    // A key kept for another provider is dropped with a provider change.
     $connected = ($check['values']['kind'] === 'model') && function_exists('pg_ai_connection_known') && pg_ai_connection_known($check['values']['provider']);
 
-    if ($connected && is_string($key) && ($key !== '')) {
-        $key = null;
+    if (($check['values']['kind'] === 'model') && function_exists('pg_ai_connection_agent_key')) {
+        $key = pg_ai_connection_agent_key($current, $check['values']['provider'], $key);
     }
 
     // Without a key of its own an assistant uses its provider's connection.

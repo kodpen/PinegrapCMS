@@ -253,7 +253,8 @@ function ws_voice_provider_name($url)
  * @param bool $fresh read config again
  * @return array enabled, url (the entered one, may be ''), model, key_set
  *               (its own or OpenAI's connection), error, hold_until,
- *               provider, service (ws_voice_service()), own_key, connected
+ *               provider, service (ws_voice_service()), own_key, connected,
+ *               openai_connected (OpenAI's connection, whatever the service)
  */
 function ws_voice_config($fresh = false)
 {
@@ -262,7 +263,7 @@ function ws_voice_config($fresh = false)
     if (!ws_voice_schema_ready()) {
         return array(
             'enabled' => false, 'url' => '', 'model' => '', 'key_set' => false, 'error' => '', 'hold_until' => 0,
-            'provider' => ws_voice_provider_name(''), 'service' => 'openai', 'own_key' => false, 'connected' => false,
+            'provider' => ws_voice_provider_name(''), 'service' => 'openai', 'own_key' => false, 'connected' => false, 'openai_connected' => false,
         );
     }
 
@@ -271,7 +272,8 @@ function ws_voice_config($fresh = false)
         $url = pg_config_text('ws_voice_url');
         $service = ws_voice_service($url);
         $own_key = (strpos(pg_config_text('ws_voice_key'), ':') !== false);
-        $connected = ($service === 'openai') && function_exists('pg_ai_connection_ready') && pg_ai_connection_ready('openai');
+        $openai_connected = function_exists('pg_ai_connection_ready') && pg_ai_connection_ready('openai');
+        $connected = ($service === 'openai') && $openai_connected;
 
         $config = array(
             'enabled'    => ((int) ($row['ws_voice_enabled'] ?? 0) === 1),
@@ -284,6 +286,7 @@ function ws_voice_config($fresh = false)
             'service'    => $service,
             'own_key'    => $own_key,
             'connected'  => $connected,
+            'openai_connected' => $openai_connected,
         );
     }
 
@@ -522,6 +525,27 @@ function ws_voice_settings_input($post, $prefix = '')
 }
 
 /**
+ * A posted card read against what is stored: a provider change without a
+ * typed key removes the stored key, so a key of one service is never sent
+ * to the other (an OpenAI key to a custom address, or another service's key
+ * to OpenAI). Pure.
+ *
+ * @param array $input  ws_voice_settings_input()
+ * @param array $stored service (ws_voice_config()); without it nothing changes
+ * @return array the input
+ */
+function ws_voice_settings_for_stored($input, $stored)
+{
+    $was = (string) ($stored['service'] ?? '');
+
+    if (($was !== '') && ($was !== (string) ($input['service'] ?? '')) && ((string) $input['key'] === '')) {
+        $input['key_clear'] = true;
+    }
+
+    return $input;
+}
+
+/**
  * Every refusal of a posted card, by the field it is for (url, model,
  * key, speech_url, speech_model, speech_voice, speech_key), in the card's
  * order. Pure; whether the site can seal a key is asked by the write.
@@ -538,8 +562,12 @@ function ws_voice_settings_check($input, $stored = array())
 {
     $refused = array();
 
+    // OpenAI's connection is read whatever the stored service, so a Save
+    // that picks OpenAI and turns the switch on is judged by it.
+    $openai_connected = array_key_exists('openai_connected', $stored) ? !empty($stored['openai_connected']) : !empty($stored['connected']);
+
     if ($input['enabled'] && $stored && empty($stored['enabled']) && (($input['service'] ?? '') === 'openai')
-        && empty($stored['connected']) && !(!empty($stored['own_key']) && empty($input['key_clear']))) {
+        && !$openai_connected && !(!empty($stored['own_key']) && empty($input['key_clear']))) {
         $refused['enabled'] = lang(array('string' => 'Connect {var:1} in Connections first.', 'vars' => 'OpenAI'));
     }
 
@@ -683,8 +711,8 @@ function ws_voice_settings_post($viewer, $liveform)
         return;
     }
 
-    $input = ws_voice_settings_input($_POST);
-    $refused = ws_voice_settings_check($input, ws_voice_config(true));
+    $input = ws_voice_settings_for_stored(ws_voice_settings_input($_POST), ws_voice_config(true));
+    $refused = ws_voice_settings_check($input, ws_voice_config());
 
     if ($refused) {
         $liveform->add_error(reset($refused));
@@ -1146,13 +1174,14 @@ function ws_voice_speech_config($fresh = false)
         $url = pg_config_text('ws_voice_speech_url');
         $base = ($url !== '') ? $url : (($transcripts['url'] !== '') ? $transcripts['url'] : ws_voice_default_url());
         $own_key = (strpos(pg_config_text('ws_voice_speech_key'), ':') !== false);
+        $on_connection = function_exists('pg_ai_connection_voice_speech_on_connection') && pg_ai_connection_voice_speech_on_connection($url, $transcripts['url']);
 
         $config = array(
             'enabled'  => (pg_config_text('ws_voice_speech_enabled') === '1'),
             'url'      => $url,
             'base'     => $base,
             'own_key'  => $own_key,
-            'key_set'  => $own_key || $transcripts['key_set'],
+            'key_set'  => $own_key || ($on_connection ? pg_ai_connection_ready('openai') : $transcripts['key_set']),
             'model'    => pg_config_text('ws_voice_speech_model'),
             'voice'    => pg_config_text('ws_voice_speech_voice'),
             'error'    => pg_config_text('ws_voice_speech_error'),
@@ -1165,8 +1194,9 @@ function ws_voice_speech_config($fresh = false)
 
 /**
  * The key the speech service is called with: the service's own when one is
- * stored, else the transcripts' (ws_voice_key()). Empty when neither can be
- * read.
+ * stored; else OpenAI's connection when the speech has an OpenAI address of
+ * its own beside another transcripts service; else the transcripts'
+ * (ws_voice_key()). Empty when none can be read.
  *
  * @return string
  */
@@ -1175,6 +1205,11 @@ function ws_voice_speech_key()
     $sealed = ws_voice_schema_ready() ? pg_config_text('ws_voice_speech_key') : '';
 
     if (($sealed === '') || (strpos($sealed, ':') === false)) {
+        if (ws_voice_schema_ready() && function_exists('pg_ai_connection_voice_speech_on_connection')
+            && pg_ai_connection_voice_speech_on_connection(pg_config_text('ws_voice_speech_url'), pg_config_text('ws_voice_url'))) {
+            return pg_ai_connection_key('openai');
+        }
+
         return ws_voice_key();
     }
 
