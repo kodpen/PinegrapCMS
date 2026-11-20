@@ -132,3 +132,36 @@ function test_api_field_errors_json_list_body()
 	pg_assert_false(api_json_body_is_list('{"0":"a"}', array(0 => 'a')), 'object with a numeric key');
 	pg_assert_false(api_json_body_is_list('{"name":"Pen"}', array('name' => 'Pen')), 'object');
 }
+
+// A parameter the route reads from the query is taken from the body as well:
+// the body is merged over the query (api_request_input()), so its value is
+// read. Refusing it as a field the endpoint "does not take" named a field it
+// does take: DELETE /products/12 with {"permanent": true} answered 422.
+function test_api_field_errors_query_param_in_body_is_no_unknown_field()
+{
+	$route = array(
+		'id'     => 'things.delete',
+		'method' => 'DELETE',
+		'path'   => '/things/{id}',
+		'path_values' => array('id' => '12'),
+		'params' => array(
+			array('name' => 'id', 'in' => 'path', 'type' => 'int', 'required' => true),
+			array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'default' => false),
+		),
+	);
+
+	$input = array('permanent' => true);
+
+	$checked = api_validate_collect($route, $input, array_keys($input));
+
+	pg_assert_same(array(), $checked['errors'], 'no refusal');
+	pg_assert_same(true, $checked['values']['permanent'], 'the value is read');
+
+	// A path parameter's name in the body is still refused: the address
+	// says which record, and a body value is never read for it.
+	$input = array('id' => 13);
+
+	$checked = api_validate_collect($route, $input, array_keys($input));
+
+	pg_assert_same(array('id:unknown_field'), api_field_errors_test_pairs($checked['errors']), 'path name refused');
+}

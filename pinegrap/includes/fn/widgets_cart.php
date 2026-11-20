@@ -1296,6 +1296,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                         (string)$r['form_quantity_type'],
                         $cart_form_name !== '' ? (string)lang($cart_form_name) : ''
                     );
+                    // A field the last save refused shows its message.
+                    $form_blocks = _pg_cart_item_form_mark_errors($form_blocks, $_pg_cart_lf_snapshot->field_errors());
                     $form_data_html = _pg_render_cart_item_form_html((int)$r['item_id'], $form_blocks, $cart_form_id);
                 }
 
@@ -1574,9 +1576,11 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // form-data inputs (rendered by _pg_render_cart_item_form_data) can use
     // HTML5 form="..." to bind to the cart-update form even when the inputs
     // sit nested under a different parent element.
+    // multipart: a product form's File Upload field sends its file with the
+    // update (cart_action.php).
     $update_form_html = '<form id="' . $cart_form_id . '" method="post" action="'
                       . h($cart_action_url)
-                      . '" class="pg-cart-update-form" style="display:none">'
+                      . '" enctype="multipart/form-data" class="pg-cart-update-form" style="display:none">'
                       . get_token_field()
                       . '<input type="hidden" name="send_to" value="' . h($request_uri) . '">'
                       . '<input type="hidden" name="page_id" value="' . (isset($_pg_cart_pid) ? (int)$_pg_cart_pid : 0) . '">'
@@ -3649,7 +3653,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             '<div class="container py-4 pg-eo-wrap">'
             . $eo_auto_upsell
             . $eo_auto_applied
-            . '<form id="' . h($form_id) . '" method="post" action="' . h($eo_action_url) . '" class="pg-eo-form" data-pg-eo-form="1" data-pg-eo-widget-id="' . (int)$widget_id . '">'
+            . '<form id="' . h($form_id) . '" method="post" action="' . h($eo_action_url) . '" enctype="multipart/form-data" class="pg-eo-form" data-pg-eo-form="1" data-pg-eo-widget-id="' . (int)$widget_id . '">'
             . $token_field
             . '<input type="hidden" name="page_id" value="' . (int)$_eo_page_id . '">'
             . '<input type="hidden" name="current_url" value="' . h($request_uri) . '">'
@@ -3678,7 +3682,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         . $notices_html
         . $eo_mono_upsell
         . $eo_mono_applied
-        . '<form id="' . h($form_id) . '" method="post" action="' . h($eo_action_url) . '" class="pg-eo-form" data-pg-eo-form="1" data-pg-eo-widget-id="' . (int)$widget_id . '">'
+        . '<form id="' . h($form_id) . '" method="post" action="' . h($eo_action_url) . '" enctype="multipart/form-data" class="pg-eo-form" data-pg-eo-form="1" data-pg-eo-widget-id="' . (int)$widget_id . '">'
         . $token_field
         . '<input type="hidden" name="page_id" value="' . (int)$_eo_page_id . '">'
         . '<input type="hidden" name="current_url" value="' . h($request_uri) . '">'
@@ -3751,6 +3755,18 @@ if (!class_exists('pg_liveform_snapshot')) {
         public function check_field_error($field)
         {
             return !empty($this->fields[$field]['error']);
+        }
+
+        // Each failed field's message as text: field name => message.
+        public function field_errors()
+        {
+            $out = array();
+            foreach ($this->fields as $field => $f) {
+                if (!is_array($f) || empty($f['error']) || !isset($f['error_message']) || (string)$f['error_message'] === '') continue;
+                $out[$field] = function_exists('pg_liveform_message_text')
+                    ? (string)pg_liveform_message_text($f['error_message']) : (string)$f['error_message'];
+            }
+            return $out;
         }
     }
 }

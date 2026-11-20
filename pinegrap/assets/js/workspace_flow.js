@@ -7658,6 +7658,15 @@
         var group = config.recipient === 'group';
         var ways = [['typed', t('fl_email_typed')], ['record_person', t('fl_email_person')]];
 
+        // A group's campaign takes no BCC (one copy for every contact), so
+        // its field is not drawn: a BCC kept from before, or typed before
+        // the recipient was switched to a group, is emptied, or the box
+        // could not be saved for a field nobody sees.
+        if (group && config.bcc && (state.edit || state.form)) {
+            config.bcc = '';
+            refreshNode(node);
+        }
+
         // A contact group while the person may send campaigns to one, or
         // when the box writes to one already.
         if (group || (mailGroups().length > 0)) {
@@ -7705,16 +7714,16 @@
             box.appendChild(el('div', 'form-text mb-5', t('fl_email_page', config.page_id)));
         }
 
-        emailSenderFields(box, node);
+        emailSenderFields(box, node, group);
     }
 
     // An e-mail box's own sender, as a campaign's: From name and address,
-    // Reply-to and BCC, each empty for the site's own. Folded away until one
-    // is set.
-    function emailSenderFields(box, node) {
+    // Reply-to and BCC, each empty for the site's own; no BCC for a contact
+    // group. Folded away until one is set.
+    function emailSenderFields(box, node, group) {
         var config = node.config;
         var keys = [['from_name', t('fl_email_from_name'), t('fl_email_from_name_help')], ['from_email', t('fl_email_from_email'), t('fl_email_from_email_help')],
-            ['reply_to', t('fl_email_reply_to'), ''], ['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]];
+            ['reply_to', t('fl_email_reply_to'), '']].concat(group ? [] : [['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]]);
         var fold = el('details', 'mb-5');
         var summary = el('summary', 'small fw-semibold mb-3', t('fl_email_sender'));
 

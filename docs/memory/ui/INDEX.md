@@ -85,6 +85,7 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection; the SMS providers wait for their own step
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
@@ -272,7 +273,7 @@
 - image-editor-area-pixels.md: What a Design Canvas selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The Design Canvas's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 - image-editor-artboard.md: The Design Canvas's board (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
-- image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
+- image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab [decision: decisions-made-product-80.md]
 - image-editor-builder.md: The Design Canvas's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 - image-editor-callers.md: Who opens the Design Canvas and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
@@ -288,11 +289,11 @@
 - image-editor-encode.md: The Design Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Design Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
-- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md]
+- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md, decisions-made-product-80.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-groups-look.md: Design Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
-- image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
+- image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The Design Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
@@ -317,7 +318,7 @@
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Design Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
-- image-editor-select.md: How the Design Canvas picks layers: Select's click, Shift, box, Select all, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
+- image-editor-select.md: How the Design Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Design Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Design Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -326,7 +327,7 @@
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The Design Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The Design Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
-- image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()) for points and a selected layer, the phone's nudge arrows, a typed text Animate did not pick [decision: here]
+- image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick [decision: here]
 - image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
 - image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features [decision: here]
 - image-editor-upload.md: Large files in the Design Canvas (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp

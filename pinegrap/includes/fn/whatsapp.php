@@ -297,32 +297,61 @@ function pg_whatsapp_settings_refusal()
 }
 
 /**
- * The fields of the WhatsApp card, for the signed-in person.
+ * The WhatsApp card of Site Settings › Communication: the account is set up
+ * on WhatsApp's page of Connections, so the card shows the connection, leads
+ * there and keeps the Workspace's Conversations field, which is the site's
+ * own setting.
  *
  * @return string
  */
 function pg_whatsapp_settings_fields()
 {
-    $number = '';
-
-    if (defined('USER_CONTACT_ID') && USER_CONTACT_ID) {
-        $mobile = (string) db_value("SELECT mobile_phone FROM contacts WHERE id = '" . (int) USER_CONTACT_ID . "'");
-        $digits = pg_sms_number($mobile);
-        $number = ($digits !== '') ? '+' . $digits : '';
-    }
-
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
 
-    return pg_whatsapp_settings_html(pg_whatsapp_app(), array(
-        'refusal'      => pg_whatsapp_settings_refusal(),
-        'webhook_url'  => pg_whatsapp_webhook_url(),
-        'test_to'      => $number,
-        'channel_html' => pg_whatsapp_channel_field(defined('USER_ID') ? (int) USER_ID : 0),
-    ));
+    return pg_whatsapp_settings_card_html(pg_whatsapp_app(), pg_whatsapp_channel_field(defined('USER_ID') ? (int) USER_ID : 0));
 }
 
 /**
- * A numbered step's heading cell: the name and what to do at Meta.
+ * The card's markup: the connection's state, "Manage in Connections" and the
+ * Conversations field. No account field and no secret.
+ *
+ * @param array  $app          pg_whatsapp_app()
+ * @param string $channel_html the Workspace's Channel field, '' for none
+ * @return string
+ */
+function pg_whatsapp_settings_card_html($app, $channel_html)
+{
+    $connected = $app['enabled'] && pg_whatsapp_app_complete($app);
+    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/connections.php?service=whatsapp';
+
+    $line = $connected
+        ? lang('Messages go out through the site\'s own WhatsApp Business account. The account is kept on WhatsApp\'s page of Connections.')
+        : lang('WhatsApp needs the site\'s own WhatsApp Business account on Meta\'s Cloud API. The account is set up on WhatsApp\'s page of Connections.');
+
+    $html = '
+                                        <div id="pgsub-whatsapp-connection" class="col-12">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'WhatsApp'))) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
+
+    if ((string) $channel_html !== '') {
+        $html .= '
+                                        <div class="col-12">
+                                            <h6>' . h(lang('Conversations')) . '</h6>
+                                            <div class="form-text">' . h(lang('Where customers\' WhatsApp messages are read and handled in the Workspace.')) . '</div>
+                                        </div>' . $channel_html;
+    }
+
+    return $html;
+}
+
+/**
+ * A numbered step's heading: the name and what to do at Meta.
  *
  * @param int    $number
  * @param string $title
@@ -332,10 +361,10 @@ function pg_whatsapp_settings_fields()
 function pg_whatsapp_settings_step($number, $title, $help)
 {
     return '
-                                                        <div class="col-12">
-                                                            <h6>' . (int) $number . '. ' . h($title) . '</h6>
-                                                            <div class="form-text">' . $help . '</div>
-                                                        </div>';
+				<div>
+					<h3 class="pg-field-label mb-1">' . (int) $number . '. ' . h($title) . '</h3>
+					<div class="pg-field-help mt-0">' . $help . '</div>
+				</div>';
 }
 
 /**
@@ -351,15 +380,15 @@ function pg_whatsapp_settings_link($label, $url)
 }
 
 /**
- * The card's markup: the switch and, under it, the warning, the state of the
- * connection, the five numbered steps of the setup and the test message. No
- * secret is drawn back.
+ * The fields of "Connection details" on WhatsApp's page of Connections: the
+ * switch and, under it, the warning, the state of the connection, the five
+ * numbered steps of the setup and the test message, with the page's buttons.
+ * Drawn inside the page's form; no secret is drawn back.
  *
  * @param array $app     pg_whatsapp_app()
  * @param array $context refusal (pg_whatsapp_settings_refusal()), webhook_url,
  *                       test_to (the signed-in person's mobile number, '' for
- *                       none), channel_html (the Workspace's Channel field,
- *                       optional: drawn as step 6 when given)
+ *                       none)
  * @return string
  */
 function pg_whatsapp_settings_html($app, $context)
@@ -378,111 +407,84 @@ function pg_whatsapp_settings_html($app, $context)
     $token_placeholder = ($app['token'] !== '') ? $stored : '';
 
     $html = '
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="whatsapp_enabled" id="whatsapp_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#whatsapp_row"/></div>
-                                                <label class="" for="whatsapp_enabled">' . lang('Send WhatsApp messages') . '</label><div class="form-text">' . lang('Messages through the site\'s own WhatsApp Business account on Meta\'s Cloud API: templates WhatsApp approved, to one person at a time. E-mails go out as before. To remove the account from this site, switch WhatsApp off and empty the App ID.') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0" id="whatsapp_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">';
+				<div>
+					<div class="d-flex align-items-center gap-3">
+						<input type="checkbox" class="pg-switch" role="switch" name="whatsapp_enabled" value="1" id="whatsapp_enabled"' . ($enabled ? ' checked' : '') . '>
+						<label class="pg-text-2" for="whatsapp_enabled">' . h(lang('Send WhatsApp messages')) . '</label>
+					</div>
+					<div class="pg-field-help">' . h(lang('Messages through the site\'s own WhatsApp Business account on Meta\'s Cloud API: templates WhatsApp approved, to one person at a time. E-mails go out as before. To remove the account from this site, switch WhatsApp off and empty the App ID.')) . '</div>
+				</div>';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h($warning) . '</div>';
     }
 
     if ($enabled && pg_whatsapp_app_complete($app) && ($app['checked'] > 0) && ($app['display_phone_number'] !== '')) {
         $html .= '
-                                                        <div class="col-12 form-text">' . lang(array(
-                                                            'string' => 'Connected: {var:1}, {var:2}, quality {var:3}. Checked with Meta on {var:4}.',
-                                                            'vars'   => array(h($app['verified_name']), h($app['display_phone_number']), h(pg_whatsapp_quality_label($app['quality_rating'])), h(date('Y-m-d H:i', $app['checked']))))) . '</div>';
+				<p class="pg-text-2 mb-0">' . lang(array(
+                    'string' => 'Connected: {var:1}, {var:2}, quality {var:3}. Checked with Meta on {var:4}.',
+                    'vars'   => array(h($app['verified_name']), h($app['display_phone_number']), h(pg_whatsapp_quality_label($app['quality_rating'])), h(date('Y-m-d H:i', $app['checked']))))) . '</p>';
     } elseif ($enabled && pg_whatsapp_app_complete($app)) {
         $html .= '
-                                                        <div class="col-12 form-text">' . lang('Saved without being checked with Meta. The test message below shows whether it works.') . '</div>';
+				<p class="pg-text-2 mb-0">' . h(lang('Saved without being checked with Meta. The test message below shows whether it works.')) . '</p>';
     }
+
+    $field = function ($id, $label, $input) {
+        return '
+				<div>
+					<label class="pg-field-label" for="' . h($id) . '">' . h($label) . '</label>
+					' . $input . '
+				</div>';
+    };
 
     $html .= pg_whatsapp_settings_step(1, lang('Meta app'), lang(array(
         'string' => 'In {var:1}, create an app of the Business type and add WhatsApp to it. Copy its App ID and App secret from App settings › Basic.',
         'vars'   => array(pg_whatsapp_settings_link('Meta for Developers', 'https://developers.facebook.com/apps/')))));
 
-    $html .= '
-                                                        <div class="pg-f-sm">
-                                                            <label for="whatsapp_app_id" class="form-label">' . lang('App ID') . '</label>
-                                                            <input type="text" name="whatsapp_app_id" id="whatsapp_app_id" class="form-control" value="' . h($app['app_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="whatsapp_app_secret" class="form-label">' . lang('App Secret') . '</label>
-                                                            <input type="password" name="whatsapp_app_secret" id="whatsapp_app_secret" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $secret_placeholder . '/>
-                                                        </div>';
+    $html .= $field('whatsapp_app_id', lang('App ID'), '<input type="text" class="pg-input font-monospace" name="whatsapp_app_id" id="whatsapp_app_id" value="' . h($app['app_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false">')
+        . $field('whatsapp_app_secret', lang('App Secret'), '<input type="password" class="pg-input" name="whatsapp_app_secret" id="whatsapp_app_secret" value="" maxlength="255" autocomplete="new-password"' . $secret_placeholder . '>');
 
     $html .= pg_whatsapp_settings_step(2, lang('Permanent access token'), lang(array(
         'string' => 'In {var:1} › System users, add a system user and assign it the app and the WhatsApp account. Then press Generate token: choose the app, Never as the expiry, and the permissions whatsapp_business_messaging, whatsapp_business_management and business_management.',
         'vars'   => array(pg_whatsapp_settings_link(lang('Business settings'), 'https://business.facebook.com/settings/system-users')))));
 
-    $html .= '
-                                                        <div class="pg-f-lg">
-                                                            <label for="whatsapp_token" class="form-label">' . lang('Access Token') . '</label>
-                                                            <input type="password" name="whatsapp_token" id="whatsapp_token" class="form-control" value="" maxlength="4096" autocomplete="new-password"' . $token_placeholder . '/>
-                                                        </div>';
+    $html .= $field('whatsapp_token', lang('Access Token'), '<input type="password" class="pg-input" name="whatsapp_token" id="whatsapp_token" value="" maxlength="4096" autocomplete="new-password"' . $token_placeholder . '>');
 
-    $html .= pg_whatsapp_settings_step(3, lang('Phone number'), lang('In the app\'s WhatsApp › API Setup, add and verify the business number messages go out from, then copy its Phone number ID (not the number itself).'));
+    $html .= pg_whatsapp_settings_step(3, lang('Phone number'), h(lang('In the app\'s WhatsApp › API Setup, add and verify the business number messages go out from, then copy its Phone number ID (not the number itself).')));
 
-    $html .= '
-                                                        <div class="pg-f-sm">
-                                                            <label for="whatsapp_phone_number_id" class="form-label">' . lang('Phone Number ID') . '</label>
-                                                            <input type="text" name="whatsapp_phone_number_id" id="whatsapp_phone_number_id" class="form-control" value="' . h($app['phone_number_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false"/>
-                                                        </div>';
+    $html .= $field('whatsapp_phone_number_id', lang('Phone Number ID'), '<input type="text" class="pg-input font-monospace" name="whatsapp_phone_number_id" id="whatsapp_phone_number_id" value="' . h($app['phone_number_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false">');
 
-    $html .= pg_whatsapp_settings_step(4, lang('WhatsApp Business account'), lang('On the same page, copy the WhatsApp Business Account ID. Saving with WhatsApp switched on checks the four steps with Meta.'));
+    $html .= pg_whatsapp_settings_step(4, lang('WhatsApp Business account'), h(lang('On the same page, copy the WhatsApp Business Account ID. Saving with WhatsApp switched on checks the four steps with Meta.')));
 
-    $html .= '
-                                                        <div class="pg-f-sm">
-                                                            <label for="whatsapp_account_id" class="form-label">' . lang('WhatsApp Business Account ID') . '</label>
-                                                            <input type="text" name="whatsapp_account_id" id="whatsapp_account_id" class="form-control" value="' . h($app['account_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false"/>
-                                                        </div>';
+    $html .= $field('whatsapp_account_id', lang('WhatsApp Business Account ID'), '<input type="text" class="pg-input font-monospace" name="whatsapp_account_id" id="whatsapp_account_id" value="' . h($app['account_id']) . '" maxlength="25" inputmode="numeric" autocomplete="off" spellcheck="false">');
 
     if ($app['verify_token'] === '') {
-        $html .= pg_whatsapp_settings_step(5, lang('Webhook'), lang('The callback URL and verify token to enter in the app appear here once the account is saved.'));
+        $html .= pg_whatsapp_settings_step(5, lang('Webhook'), h(lang('The callback URL and verify token to enter in the app appear here once the account is saved.')));
     } else {
-        $https = (strncmp((string) $context['webhook_url'], 'https://', 8) === 0);
         $help = lang('In the app\'s WhatsApp › Configuration, enter this callback URL and verify token, press Verify and save, then subscribe to the fields messages and message_template_status_update. Delivery reports, template approvals and replies then reach this site.');
 
-        if (!$https) {
+        if (strncmp((string) $context['webhook_url'], 'https://', 8) !== 0) {
             $help .= ' ' . lang('Meta calls only an https address: this site needs a certificate first.');
         }
 
-        $html .= pg_whatsapp_settings_step(5, lang('Webhook'), $help) . '
-                                                        <div class="col-12">
-                                                            <label for="whatsapp_webhook_url" class="form-label">' . lang('Callback URL') . '</label>
-                                                            <input type="text" id="whatsapp_webhook_url" class="form-control" value="' . h($context['webhook_url']) . '" readonly="readonly"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="whatsapp_verify_token" class="form-label">' . lang('Verify Token') . '</label>
-                                                            <input type="text" id="whatsapp_verify_token" class="form-control" value="' . h($app['verify_token']) . '" readonly="readonly"/>
-                                                        </div>';
-    }
-
-    if ((string) ($context['channel_html'] ?? '') !== '') {
-        $html .= pg_whatsapp_settings_step(6, lang('Conversations'), lang('Where customers\' WhatsApp messages are read and handled in the Workspace.')) . $context['channel_html'];
+        $html .= pg_whatsapp_settings_step(5, lang('Webhook'), h($help))
+            . $field('whatsapp_webhook_url', lang('Callback URL'), '<input type="text" class="pg-input font-monospace" id="whatsapp_webhook_url" value="' . h($context['webhook_url']) . '" readonly="readonly">')
+            . $field('whatsapp_verify_token', lang('Verify Token'), '<input type="text" class="pg-input font-monospace" id="whatsapp_verify_token" value="' . h($app['verify_token']) . '" readonly="readonly">');
     }
 
     $html .= '
-                                                        <div class="pg-f-sm">
-                                                            <label for="whatsapp_test_to" class="form-label">' . lang('Test Number') . '</label>
-                                                            <input type="tel" name="whatsapp_test_to" id="whatsapp_test_to" class="form-control" value="' . h($context['test_to']) . '" maxlength="30" autocomplete="off" inputmode="tel"/>
-                                                            <div class="form-text">' . lang(array(
-                                                                'string' => 'A mobile number with WhatsApp, yours to begin with. The test is Meta\'s sample template {var:1} in English, which a new WhatsApp Business account has; it goes out at once and Meta charges it.',
-                                                                'vars'   => array('<code>' . h(PG_WHATSAPP_TEST_TEMPLATE) . '</code>'))) . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <button type="submit" name="whatsapp_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>';
+				<div>
+					<label class="pg-field-label" for="whatsapp_test_to">' . h(lang('Test Number')) . '</label>
+					<input type="tel" class="pg-input" name="whatsapp_test_to" id="whatsapp_test_to" value="' . h($context['test_to']) . '" maxlength="30" autocomplete="off" inputmode="tel">
+					<div class="pg-field-help">' . lang(array(
+                        'string' => 'A mobile number with WhatsApp, yours to begin with. The test is Meta\'s sample template {var:1} in English, which a new WhatsApp Business account has; it goes out at once and Meta charges it.',
+                        'vars'   => array('<code>' . h(PG_WHATSAPP_TEST_TEMPLATE) . '</code>'))) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="whatsapp_test" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . h(lang('Save and send a test message')) . '</button>
+				</div>';
 
     return $html;
 }

@@ -90,6 +90,48 @@ function test_workspace_flow_mail_group_records_box_before()
 
 }
 
+// A group e-mail takes no BCC: on a campaign it would get one copy for every
+// contact. Every write refuses group + BCC with a reason; a typed recipient
+// keeps its BCC.
+function test_workspace_flow_mail_group_no_bcc()
+{
+	$group = ws_step_config_normalize('email', array('recipient' => 'group', 'group_id' => 7, 'subject' => 'S', 'body' => 'B', 'bcc' => 'copy@example.com'));
+	$empty = ws_step_config_normalize('email', array('recipient' => 'group', 'group_id' => 7, 'subject' => 'S', 'body' => 'B', 'bcc' => ''));
+	$typed = ws_step_config_normalize('email', array('to' => 'a@example.com', 'subject' => 'S', 'body' => 'B', 'bcc' => 'copy@example.com'));
+
+	pg_assert_same('copy@example.com', $group['bcc'], 'kept as written, so the refusal sees it');
+	pg_assert_true(ws_flow_mail_group_bcc_problem($group, 'Mail') !== '', 'group + BCC refused');
+	pg_assert_same('', ws_flow_mail_group_bcc_problem($empty, 'Mail'), 'group, no BCC');
+	pg_assert_same('', ws_flow_mail_group_bcc_problem($typed, 'Mail'), 'typed recipient + BCC');
+
+	// The publish check (and the problems the canvas lists).
+	pg_assert_same(1, count(ws_step_config_problems('email', $group, 'Mail')), 'publish refused');
+	pg_assert_same(array(), ws_step_config_problems('email', $empty, 'Mail'));
+	pg_assert_same(array(), ws_step_config_problems('email', $typed, 'Mail'));
+
+	// The save: the canvas's, the API's and the assistant's draft all go
+	// through ws_flow_save_check().
+	$graph = array('nodes' => array(array('id' => 'mail', 'kind' => 'email', 'config' => $group)), 'edges' => array());
+	pg_assert_true(ws_flow_mail_group_bcc_refusal($graph) !== '', 'a graph with group + BCC');
+	$graph['nodes'][0]['config'] = $empty;
+	pg_assert_same('', ws_flow_mail_group_bcc_refusal($graph));
+	$graph['nodes'][0]['config'] = $typed;
+	pg_assert_same('', ws_flow_mail_group_bcc_refusal($graph));
+	pg_assert_contains('ws_flow_mail_group_bcc_refusal($graph)', workspace_flow_mail_group_test_source('ws_flow_save_check'));
+}
+
+// Run time does not refuse a published group + BCC box: it sends, as it
+// did, without the BCC. Only the writes refuse.
+function test_workspace_flow_mail_group_bcc_not_at_run()
+{
+	foreach (array('ws_flow_mail_group_refusal_for', 'ws_step_check', 'ws_flow_mail_group_do', 'ws_flow_mail_group_try') as $function) {
+		pg_assert_false(strpos(workspace_flow_mail_group_test_source($function), 'ws_flow_mail_group_bcc_') !== false, $function . ' does not refuse a BCC');
+	}
+
+	$campaign = workspace_flow_mail_group_test_source('ws_flow_mail_group_campaign');
+	pg_assert_false(stripos($campaign, 'bcc') !== false, 'the campaign carries no BCC');
+}
+
 // A group send is one campaign, made through the campaigns' own path with
 // the group included: one campaign row and its recipient rows, sent now.
 function test_workspace_flow_mail_group_one_campaign()
@@ -211,4 +253,9 @@ function test_workspace_flow_mail_group_canvas()
 	pg_assert_contains("group_id: 0, records: ''", $js);
 	pg_assert_contains("if (config.recipient === 'group') {\n                return mailGroupMeta(config);", $js);
 	pg_assert_same(array(), ws_flow_mail_groups(array('id' => 5, 'role' => 3)));
+
+	// No BCC field for a group, and a BCC kept from before is emptied when
+	// the box is opened or switched to a group.
+	pg_assert_contains("if (group && config.bcc && (state.edit || state.form)) {\n            config.bcc = '';", $js);
+	pg_assert_contains("concat(group ? [] : [['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]])", $js);
 }

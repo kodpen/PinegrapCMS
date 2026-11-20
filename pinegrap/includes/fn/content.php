@@ -1195,7 +1195,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
             spacing_above,
 
-            spacing_below
+            spacing_below,
+
+            rules
 
             $sql_custom_form_fields
 
@@ -1582,17 +1584,36 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                     </tr>';
                 break;
             case 'file upload':
+                $file_attributes = array(
+                    'type' => 'file',
+                    'name' => $html_field_name,
+                    'size' => $field['size'],
+                    'class' => 'software_input_file',
+                    'required' => $required
+                );
+                $output_kept_file = '';
+                // A product form in a cart shows the file the line's answer
+                // keeps (a save without a new file keeps it) and offers only
+                // the types the field takes.
+                if ($form_type == 'product') {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+                    $accept = pg_pfu_accept_attribute(pg_pfu_rule_clean($field['rules'] ?? null));
+                    if ($accept !== '') {
+                        $file_attributes['accept'] = $accept;
+                    }
+                    if ($order_item_id) {
+                        $output_kept_file = pg_pfu_kept_file_html(pg_pfu_stored_file($order_item_id, $quantity_number, $field['id']), $html_field_name, OUTPUT_PATH);
+                        // A kept file answers a required field already.
+                        if ($output_kept_file !== '') {
+                            $file_attributes['required'] = '';
+                        }
+                    }
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
+                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
-                        <td style="vertical-align: top">' . $liveform->output_field(array(
-                                'type' => 'file',
-                                'name' => $html_field_name,
-                                'size' => $field['size'],
-                                'class' => 'software_input_file',
-                                'required' => $required
-                            )) . '</td>
+                        <td style="vertical-align: top">' . $output_kept_file . $liveform->output_field($file_attributes) . '</td>
 
                     </tr>';
                 $form_info['file_upload_exists'] = true;

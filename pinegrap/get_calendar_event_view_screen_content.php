@@ -190,7 +190,8 @@ function get_calendar_event_view_screen_content($properties)
                     ($calendar_event['limit_reservations'] == 1)
                     && ($calendar_event['number_of_remaining_spots'] == 0)
                 ) {
-                    $output_no_remaining_spots_message = $calendar_event['no_remaining_spots_message'];
+                    $output_no_remaining_spots_message = $calendar_event['no_remaining_spots_message']
+                        . pg_stock_notify_event_line($calendar_event, (int) $recurrence_number, (int) $current_page_id, get_request_uri());
                 }
                 
                 // if inventory is enabled for product and the inventory quantity is 0 and product is not allowed to be backordered, then output out of stock message

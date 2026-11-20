@@ -374,6 +374,7 @@
 - designer-content-roles-translations.md: What a content-level editor (manager, user) may do with translations and drafts in the designer: the Translate section, translations_action.php limits for role 3, a text's page scope, draft state.
 - designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome. [decision: here]
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
+- designer-corner-box.md: Style › Border and corner's corners as one drawing (DP7b, #10633): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
@@ -587,6 +588,7 @@
 - page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered [decision: decisions-made-product.md]
 - page-schedule-editor-and-list.md: Page schedule in the designer: Page Settings boxes and the Draft switch (forced state vs own choice), tab badge, where a tab takes the stored times, designs list badge and chips
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves [decision: here]
+- page-tab-link-counts.md: A page tab's tip on the Page Design Studio's page strip lists its outgoing, incoming and broken link counts, counted from the Prototype view's own data (tabCounts()); when, words, what shows none [decision: here]
 - page-type-pane-in-designer.md: Designer settings Page Type pane: a classic page's type fields, Layout Type and form editor links via edit_page.php?properties=1 (JSON), rights shared with edit_page.php.
 - paging-list-canvas-line.md: The Page links list on the designer canvas (CB2b, #9765): one item of the pagination's line beside Previous and Next; a loop area in a nowrap flex row shares its line
 - palette-block-info.md: Blocks hover card: the one-line description of every ready-made block (core in _sdBlockInfo, family in its item's desc), how a line is written, the test that holds a new block to it
@@ -623,6 +625,7 @@
 - prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge [decision: decisions-made-product-57.md]
 - prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing [decision: here]
 - prototype-search.md: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back [decision: here]
+- prototype-shortest-path.md: The Prototype view's shortest click path (PX5, #10644): Shift+click, Shift+Enter or the bar's path button picks the page to go to; pathOf(), the core's trail(), "No path", Esc [decision: here]
 - prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes [decision: decisions-made-product-57.md]
 - prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes(), _sdProtoThumb()): the page picture's loading state and fallback, and the 84 floor of a shared part's height
 - prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md, decisions-made-product-63.md, decisions-made-product-72.md, decisions-made-product-78.md]

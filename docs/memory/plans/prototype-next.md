@@ -17,7 +17,7 @@ description: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to
 - PX2 (M), done: #10505. A row of the links panel dragged onto a frame or chip writes that link's target as an arrow does (`_sdProtoConnect()`, K1 to K4; designer/prototype-row-drag.md).
 - PX3 (S), done: #10531. The words read as the amber count (F29); it is a button listing its frame's links without a target, each opened in the links panel at its target box; "No link leads here" stays (designer/prototype-badge-list.md).
 - PX4 (M), done: #10561. Ctrl+F (or the bar's magnifier) in the view searches frame names and link texts with the Suggest targets fold; Enter and the arrows zoom to each match, Esc goes back; the tree search and other text fields keep their Ctrl+F (designer/prototype-search.md).
-- PX5 (M) after PX4: today one frame is selected at a time (the core's `focus`); the path runs over the tab-to-tab arrows.
+- PX5 (M), done: #10644. Shift+click, Shift+Enter or the bar's path button picks the page to go to; `pathOf()` (breadth first, a shared part's links on the pages placing it) and the core's `trail()` draw it, "No path" said plainly, Esc clears it (designer/prototype-shortest-path.md).
 - PX6 (M) after PX5: the misses are drawn in the prototype viewer's frame (`designer/designer-prototype-viewer.md`). The bar's Play already opens the viewer at the selected page (`_sdProtoPlayUrl()`); PX6 checks what is left of its second half.
 - One step at a time: each waits for the merge of the one before it, as they share the view's code.
 

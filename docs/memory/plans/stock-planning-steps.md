@@ -4,7 +4,7 @@ description: Plan stock-planning, steps SP1 to SP5: the daily record first (its 
 ---
 
 ## Which steps are there?
-- SP1 (M) first, soon: the history starts the night it lands.
+- SP1 (M) first, soon: the history starts the night it lands. Done: #10612.
   - Migration step in 2026.11.0, idempotent helpers: `erp_stock_days` (`product_id` INT UNSIGNED, `day` DATE, `sold` INT UNSIGNED NOT NULL DEFAULT 0, `stock` INT UNSIGNED NULL for unknown; PRIMARY (`product_id`, `day`), KEY `idx_day` for the pruning).
   - New: `includes/erp/stock_plan.php` (a day's units per product from the four sources and components; the night pass), `erp_stock_plan_job.php` (a `pg_cron_jobs()` entry, `pg_cron_ran()`, in `JOB_DISPATCH`; resumable with `pg_cron_time_left()`), `tests/erp_stock_plan_test.php`.
   - Tests, red first: each source counted; carts and cancelled not; an order's own ERP invoice not counted twice; a bundle as its components; the day by the site's time zone; sparse rows; the 14-day recount keeping past stock; the 365-day fill once; nothing with Accounting off. Features: P1, P2.

@@ -18,6 +18,12 @@
 
 include('init.php');
 
+// A cart with a File Upload field posts multipart: a body over post_max_size
+// arrives empty and would read as a missing token.
+pg_upload_refuse_discarded_body();
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
 validate_token_field();
 require_cookies();
 initialize_order();
@@ -561,10 +567,6 @@ foreach ($order_items as $order_item) {
         
         // if the order item has a form, then save form data
         if ($order_item['form'] == 1) {
-            // delete existing form data for this order item, so that we can easily insert new data
-            $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
-            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
-            
             // get fields for this product form
             $query =
                 "SELECT
@@ -573,6 +575,8 @@ foreach ($order_items as $order_item) {
                     label,
                     type,
                     required,
+                    upload_folder_id,
+                    rules,
                     wysiwyg,
                     multiple
                 FROM form_fields
@@ -602,12 +606,31 @@ foreach ($order_items as $order_item) {
             } elseif ($order_item['form_quantity_type'] == 'One Form per Product') {
                 $number_of_forms = 1;
             }
+
+            // The line's answers are written again below; its File Upload
+            // answers stay (a save without a new file keeps the stored one),
+            // but not those of units above the new number of forms.
+            $pg_file_field_ids = array();
+
+            foreach ($form_fields as $form_field) {
+                if ($form_field['type'] == 'file upload') {
+                    $pg_file_field_ids[] = $form_field['id'];
+                }
+            }
+
+            pg_pfu_cart_reset($order_item['id'], $pg_file_field_ids, $number_of_forms);
             
             // create loop in order to loop through all forms for order item
             for ($quantity_number = 1; $quantity_number <= $number_of_forms; $quantity_number++) {
                 // loop through all form fields, so that we can save form data
                 foreach ($form_fields as $form_field) {
                     $html_field_name = 'order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_form_field_' . $form_field['id'];
+
+                    // A file is checked, placed or kept on its own path.
+                    if ($form_field['type'] == 'file upload') {
+                        pg_pfu_cart_save_file($liveform, $html_field_name, $form_field, $_SESSION['ecommerce']['order_id'] ?? 0, $order_item['id'], $quantity_number, isset($_POST['submit_checkout']));
+                        continue;
+                    }
 
                     // Only a check box group or a multi-select keeps a list; any other field
                     // posted as an array counts as not given.

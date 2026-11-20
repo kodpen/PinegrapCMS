@@ -395,6 +395,13 @@ function pg_parasut_credentials_for_save()
         $liveform->mark_error($erp_settings_saved['field'], h($erp_settings_saved['error']));
     }
 
+    // The daily stock record starts the night the module is on: its job joins
+    // the general job's list when the general job runs the jobs.
+    if ((post_value('erp_enabled') == 1) && defined('PG_ERP_ENTRY')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+        erp_stock_plan_job_switch_on();
+    }
+
     // A Paraşüt authorization code is exchanged by the card's Connect button;
     // one pasted and saved with the page is exchanged here as well, after the
     // boxes above are written, instead of being dropped without a word. A

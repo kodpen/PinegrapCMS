@@ -782,10 +782,6 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/fn/whatsapp.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/forms/approve_affiliate_form.php": {
         "button": 1,
         "tabs": 0
