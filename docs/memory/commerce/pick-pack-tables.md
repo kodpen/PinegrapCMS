@@ -22,5 +22,5 @@ description: Pick and pack's four tables and their keys, the reserved `lines` co
 ## What is the "Packing only" right?
 - `user.manage_packing` TINYINT UNSIGNED NOT NULL DEFAULT 0, same step. Read for role 3 only; roles 0-2 and the orders right have the screens already. With it alone: the Pick waves and Pack screens only, no price, total, customer e-mail or other Orders screen (PP3 and PP4 gate on it; PP1b gates nothing).
 - On every role-3 ladder (`welcome.php`, `get_page.php`, `includes/fn/content.php`, `set_password.php`, `reset_password.php`, the new-user and import set-password link), read behind `pg_user_has_packing_column()` (`includes/authentication.php`); saved with `pg_user_packing_sql()`.
-- Drawn by `pg_user_permission_ui()` as a row of its own after Commerce, not behind its gate, only when the store is on and the column exists: label "Packing only", one line "The Pick waves and Pack screens only, with no prices or customer e-mail.", nothing to pick (as Visitor Reports).
+- Drawn by `pg_user_permission_ui()` as a row of its own after Commerce, not behind its gate, only when the store is on and the column exists: label "Packing only", one line "The Pick waves and Pack screens only, no prices or customer e-mail", nothing to pick (as Visitor Reports).
 - Tests: `tests/pick_pack_schema_test.php`.

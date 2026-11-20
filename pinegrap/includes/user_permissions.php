@@ -471,7 +471,7 @@ function pg_user_permission_ui($config)
 			'icon'        => 'bi-box-seam',
 			'color'       => '#ffb74d',
 			'title'       => lang('Packing only'),
-			'description' => lang('The Pick waves and Pack screens only, with no prices or customer e-mail.'),
+			'description' => lang('The Pick waves and Pack screens only, no prices or customer e-mail'),
 			'panel_lead'  => '',
 			'gate_field'  => 'manage_packing',
 			'gate_value'  => '1',
