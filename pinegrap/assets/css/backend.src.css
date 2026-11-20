@@ -29256,6 +29256,54 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
 .pg-card-inner-row + .pg-card-inner-row {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
+/* A folded row (includes/settings/fold.php) inside an inner card, under
+   plain rows: Application Access's Advanced in the drawer's summary. */
+.pg-card-inner > .pg-card-inner-row + .pg-set-fold-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+/* Facts: a few figures read at a glance at the top of a drawer, each a
+   small label over its value. Two columns on a phone. */
+.pg-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.pg-fact {
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface-1);
+}
+.pg-fact > small {
+  display: block;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+}
+.pg-fact > b {
+  display: block;
+  overflow: hidden;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  .pg-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Numbered steps a person follows (a connection guide): Bootstrap's
+   stepper with small grey numbers, each step as tall as its text and
+   values, and no line between them. */
+.stepper.pg-steps {
+  --bs-stepper-size: 1.5rem;
+  --bs-stepper-gap: 1rem;
+  --bs-stepper-text-gap: .75rem;
+  --bs-stepper-font-size: var(--pg-text-meta);
+  --bs-stepper-align-items: start;
+  grid-auto-rows: auto;
+}
+.pg-steps > .stepper-item { grid-template-columns: var(--bs-stepper-size) minmax(0, 1fr); }
+.pg-steps > .stepper-item::after { display: none; }
 /* Floating bar (the save bar's surface), also an add or edit screen's
    save bar. */
 .pg-floatbar,

@@ -20,7 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 function api_settings_theme_source()
 {
 	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/api_settings.php')
-		. (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
+		. (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php')
+		. (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_drawer_view.php');
 }
 
 function api_settings_theme_style()
@@ -94,12 +95,12 @@ function test_api_settings_theme_dialogs_named()
 	pg_assert_contains('id="api_new" aria-labelledby="api_new_title"', $source);
 	pg_assert_contains('<h5 class="drawer-title mb-0" id="api_new_title">', $source);
 
-	foreach (array('api_sheet_oauth', 'api_sheet_device', 'api_sheet_secret') as $id) {
-		pg_assert_contains('id="' . $id . '" aria-labelledby="' . $id . '_title" open>', $source);
-		pg_assert_contains('<h5 class="dialog-title" id="' . $id . '_title">', $source);
-	}
+	// The one-time values are step 3 of the New application sheet, not a
+	// dialog of their own.
+	pg_assert_contains('<div id="n_step_3" data-step="3">', $source, 'step 3 holds what Create made');
+	pg_assert_true(strpos($source, 'api_sheet_secret') === false, 'no separate one-time dialog is left');
 
-	pg_assert_true(preg_match_all('/<dialog\b[^>]*>/', $source, $matches) >= 5, 'dialogs not found');
+	pg_assert_true(preg_match_all('/<dialog\b[^>]*>/', $source, $matches) >= 2, 'dialogs not found');
 	foreach ($matches[0] as $tag) {
 		pg_assert_contains('aria-labelledby="', $tag);
 	}

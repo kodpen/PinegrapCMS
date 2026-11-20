@@ -308,6 +308,7 @@
     "Kısmi Ödendi": "Kısmi Ödendi",
     "keep as written": "olduğu gibi",
     "key": "anahtar",
+    "key and secret": "anahtar ve gizli anahtar",
     "key code": "anahtar kod",
     "key code ({var:1}) was changed on the key code list: {var:2} from \"{var:3}\" to \"{var:4}\"": "anahtar kod ({var:1}) anahtar kodlar listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
     "key code ({var:1}) was created because a custom form, that grants an offer, was submitted": "anahtar kodu ({var:1}), teklif veren özel bir form gönderildiği için oluşturuldu",

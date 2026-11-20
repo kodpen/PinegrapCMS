@@ -64,10 +64,15 @@ function test_api_settings_summary_counts_every_row_once()
 	pg_assert_contains("\$summary_failures += \$stats['failures'];", $loop);
 }
 
+function api_settings_drawer_view_source()
+{
+	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_drawer_view.php');
+}
+
 function api_settings_drawer_tab_source($tab)
 {
-	$source = api_settings_layout_source();
-	$pane = substr($source, (int) strpos($source, 'id="' . $tab . '">'));
+	$source = api_settings_drawer_view_source();
+	$pane = substr($source, (int) strpos($source, 'id="' . $tab . '"'));
 
 	return substr($pane, 0, (int) strpos($pane, '<div class="tab-pane fade"', 10));
 }
@@ -78,20 +83,23 @@ function test_api_settings_drawer_general_fields_are_form_fields()
 
 	pg_assert_contains('<label class="form-label pg-field-label" for="d_name">', $general, 'the Name label names its box');
 	pg_assert_contains('<label class="form-label pg-field-label" for="d_description">', $general, 'the Description label names its box');
-	foreach (array('id="d_secret_block"', 'id="d_nosecret_block"', 'id="d_device_block"', 'id="d_auth_block"') as $block) {
-		pg_assert_true(preg_match('/<div class="form-field mb-5[^"]*" ' . preg_quote($block, '/') . '>/', $general) === 1, $block . ' is a form field');
+	pg_assert_true(substr_count($general, '<div class="col-12 sm:col-6 form-field">') >= 2, 'name and description stack on a phone and pair from sm');
+	foreach (array('id="d_secret_block"', 'id="d_nosecret_block"', 'id="d_key_row"') as $block) {
+		pg_assert_true(preg_match('/<div class="pg-card-inner-row[^"]*" ' . preg_quote($block, '/') . '>/', $general) === 1, $block . ' is a row of an inner card');
 	}
-	pg_assert_true(strpos($general, '<div class="mb-5">') === false, 'no bare stacked block is left on the General tab');
+	pg_assert_true(strpos($general, '<div class="mb-5">') === false, 'no bare stacked block is left on the Overview tab');
 }
 
-function test_api_settings_drawer_security_fields_are_form_fields()
+function test_api_settings_drawer_advanced_fields_are_form_fields()
 {
-	$security = api_settings_drawer_tab_source('d_security');
+	$advanced = api_settings_drawer_view_source();
+	$advanced = substr($advanced, (int) strpos($advanced, 'function api_app_drawer_advanced_html('));
+	$advanced = substr($advanced, 0, (int) strpos($advanced, "\n}\n"));
 
-	pg_assert_contains('<label class="form-label pg-field-label" for="d_ip">', $security, 'the address list label names its box');
-	pg_assert_contains('<label class="form-label pg-field-label" for="d_rate">', $security, 'the rate label names its box');
-	pg_assert_true(substr_count($security, '<div class="col-12 sm:col-6 form-field">') === 2, 'the expiry and the rate stack on a phone and pair from sm');
-	pg_assert_true(strpos($security, '<div class="col-6">') === false, 'no fixed half column is left');
+	pg_assert_contains('<label class="form-label pg-field-label" for="d_ip">', $advanced, 'the address list label names its box');
+	pg_assert_contains('<label class="form-label pg-field-label" for="d_rate">', $advanced, 'the rate label names its box');
+	pg_assert_true(substr_count($advanced, '<div class="col-12 sm:col-6 form-field">') === 2, 'the expiry and the rate stack on a phone and pair from sm');
+	pg_assert_true(strpos($advanced, '<div class="col-6">') === false, 'no fixed half column is left');
 }
 
 function api_settings_new_dialog_source()
@@ -124,15 +132,12 @@ function test_api_settings_new_dialog_kind_is_a_named_choice_group()
 	pg_assert_contains('id="n_scope_title"', $dialog);
 }
 
-function test_api_settings_sheets_and_guide_boxes_are_form_fields()
+function test_api_settings_sheets_and_guide_boxes_are_labelled()
 {
-	$source = api_settings_layout_source();
+	$source = api_settings_drawer_view_source();
 
-	foreach (array('nc_login_label', 'nc_key_label', 'nc_secret_label') as $label) {
-		pg_assert_true(preg_match('/<div class="form-field mb-5">\s*<label class="form-label pg-field-label" id="' . $label . '">/', $source) === 1, $label . ' sits in a form field');
-	}
-	pg_assert_true(strpos($source, '<div class="api-secret-box mb-5">') === false, 'no sheet box carries its own spacing');
-	foreach (array('_mcp_label', '_mcp_short_label', '_meta_label') as $label) {
-		pg_assert_true(preg_match('/<div class="form-field mb-5">\s*<label class="form-label pg-field-label" id="\' \. \$id_prefix \. \'' . $label . '">/', $source) === 1, 'guide ' . $label . ' sits in a form field');
-	}
+	pg_assert_contains('<div class="pg-list-row-title" id="\' . $id . \'_label">\' . h($label) . \'</div>', $source, 'each one-time value is named by its row');
+	pg_assert_contains('api_app_value_box($id, $value, $id . \'_label\', $masked)', $source, 'and its Copy button says what it copies');
+	pg_assert_contains('<div class="pg-list-row-title"\' . (($step[\'value_id\'] !== \'\') ? \' id="\' . $id . \'_label"\' : \'\') . \'>', $source, 'a guide step with a value names it');
+	pg_assert_true(strpos($source, '<div class="api-secret-box mb-5">') === false, 'no value box carries its own spacing');
 }

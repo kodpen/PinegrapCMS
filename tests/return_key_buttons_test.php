@@ -46,16 +46,17 @@ function return_key_buttons_test_first_submit($form)
 
 function test_return_key_buttons_api_drawer_starts_with_a_nameless_submit()
 {
-	$form = return_key_buttons_test_form('api_settings.php', 'api_drawer');
+	$form = return_key_buttons_test_form('includes/api/app_drawer_view.php', 'api_drawer');
 	list($at, $button) = return_key_buttons_test_first_submit($form);
 
 	pg_assert_true($at !== false, 'the API application drawer has a submit button');
 	pg_assert_false(strpos($button, 'name=') !== false, 'the first submit button of the API drawer has no name, so Return posts api_action=update');
 	pg_assert_contains('visually-hidden', $button, 'the first submit button of the API drawer is hidden');
 
-	$rotate = strpos($form, 'id="d_rotate"');
+	// The Overview tab, with Issue a new one, is drawn inside the form after it.
+	$overview = strpos($form, 'api_app_drawer_overview_html(');
 
-	pg_assert_true(($rotate !== false) && ($at < $rotate), 'the hidden submit button stands before Issue a new secret');
+	pg_assert_true(($overview !== false) && ($at < $overview), 'the hidden submit button stands before Issue a new one');
 }
 
 function test_return_key_buttons_marketplace_drawer_starts_with_a_nameless_submit()
