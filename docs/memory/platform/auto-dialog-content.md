@@ -24,7 +24,7 @@ module: auto_dialogs
 
 ## Who can set it?
 - The API since #10450 (`api/api-design-dialogs-regions.md`).
-- The Create and Edit screens since PU6b (PR number in `plans/auto-dialog-popups-steps.md`): "What does it show?" (An address / A designed pop-up) and, for a designed one, Shared Component (every component that is no system widget, `pg_auto_dialog_component_rows()`).
+- The Create and Edit screens since PU6b (#10530): "What does it show?" (An address / A designed pop-up) and, for a designed one, Shared Component (every component that is no system widget, `pg_auto_dialog_component_rows()`).
 - Asked only with the columns and at least one visual design (`pg_auto_dialog_form_content_asked()`); a site with no visual design gets no question, keeps the address kind and saves with `$content` null (columns as stored).
 - The URL is required only with the address kind (`pg_auto_dialog_form_url_required()`); a URL typed with a designed pop-up is still checked and kept. The component sent is checked by `pg_auto_dialog_form_content_problems()`; with the address kind the chosen component is kept too.
 - Links under the select, in a new tab: "Open in the visual designer" (`edit_system_style.php?component=<id>`, follows the select, hidden with none) and "Design a new pop-up" (the lowest visual design's id, only for `pg_designer_is_full()`); `pg_auto_dialog_form_designer_links()`.
