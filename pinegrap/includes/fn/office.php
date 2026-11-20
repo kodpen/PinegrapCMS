@@ -626,7 +626,15 @@ function pg_office_xlsx_date_styles($zip, &$refused = null)
 {
     $dates = array();
     $refused = '';
-    $styles = pg_office_xml($zip, 'xl/styles.xml', $status);
+    // Where the workbook's relationships name it (xl/Styles2.xml from some
+    // writers), as Excel and PHPExcel find it; none at all is no dates.
+    $part = pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml');
+
+    if ($part === '') {
+        return $dates;
+    }
+
+    $styles = pg_office_xml($zip, $part, $status);
     pg_office_refuse($refused, $status);
 
     if ($styles === null) {

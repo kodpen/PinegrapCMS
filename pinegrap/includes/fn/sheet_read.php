@@ -263,7 +263,7 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     }
 
     $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
-    $zero_styles = ($refused === '') ? pg_sheet_xlsx_zero_styles($zip) : array();
+    $zero_styles = ($refused === '') ? pg_sheet_xlsx_zero_styles($zip, pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml')) : array();
     $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook_xml);
     $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
