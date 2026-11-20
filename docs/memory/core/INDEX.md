@@ -174,6 +174,7 @@
 - privacy-centre-screen.md: Contacts › Privacy centre (privacy_centre.php, KV2): the inventory and transfers on screen, the Excel with the VERBİS columns, the PDF with the destruction records, the Site Settings link card
 - privacy-inventory.md: Personal data inventory (privacy_inventory.php): the catalogue beside the erase table list, live counts, transfers from the registry rows' country and data, the tests
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
+- privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer (the Answer tab is KV4b) [decision: here]
 - privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.

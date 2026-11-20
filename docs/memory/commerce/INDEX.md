@@ -115,6 +115,8 @@
 - customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
+- delivery-tower-passes.md: Delivery tower passes from the general job: the nightly measured-times summary (config_text, cursor in data/temp), the hourly problem pass, the lock, the time budget, the 100k-parcel timing
+- delivery-tower-problems-table.md: The shipment_problems table (step 11.0.259): one row per problem found on a parcel, its columns, the unique open-row key, who writes and closes rows, order deletion
 - delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
@@ -166,6 +168,7 @@
 - marketplace-order-status-sync.md: Marketplace package status rules: first sight, fill-only dates, tracking once, cancel without refund or customer e-mail, stock restore, cancellations first, auto-accept only Created.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
+- marketplace-pricing-tab.md: Marketplaces › Settings drawer › Pricing tab and the Products in this shop row's own price and strategy (repricer RP2): what is stored, when nothing is written, the one-time requeue by the general job [decision: here]
 - marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
@@ -409,6 +412,7 @@
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
 - supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
 - supplier-feed-readers.md: Supplier feed tables (11.0.255) and readers: format from the first bytes, record path, XML/CSV/JSON with a resumable cursor, flat keys, the field proposal (SF1, PR #10771)
+- supplier-feed-screen.md: Products › Supplier feeds (SF2): the list, Add and Edit supplier feed, the encrypted sign-in, the first read into the Fields mapping, the test pull; what each button writes [decision: here]
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]

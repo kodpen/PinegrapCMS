@@ -1,10 +1,10 @@
 ---
 name: feedback-store
-description: Satisfaction survey tables feedback_surveys and feedback_responses (11.0.260, FD1b): defaults, NULL token_hash, person_hash of a number, personal data erasure, export and inventory of the answers
+description: Satisfaction survey tables feedback_surveys and feedback_responses (11.0.263, FD1b): defaults, NULL token_hash, person_hash of a number, personal data erasure, export and inventory of the answers
 ---
 
 ## Which tables hold the satisfaction surveys?
-- `feedback_surveys` (a survey's settings) and `feedback_responses` (one row per sent survey), made by `upgrade_2026_11_0_feedback_surveys()` (11.0.260) and listed in `get_tables()`. Columns and keys: `workflow/decisions-made-schema-45.md`; `tests/feedback_store_test.php` pins every line of both CREATE TABLE statements.
+- `feedback_surveys` (a survey's settings) and `feedback_responses` (one row per sent survey), made by `upgrade_2026_11_0_feedback_surveys()` (11.0.263) and listed in `get_tables()`. Columns and keys: `workflow/decisions-made-schema-45.md`; `tests/feedback_store_test.php` pins every line of both CREATE TABLE statements.
 - Defaults chosen in the step: `kind` 1 (NPS); every other number 0, text '', TEXT NULL. A new survey is off (`enabled` 0).
 
 ## Why is token_hash NULL and not ''?

@@ -44,6 +44,7 @@ require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/labels.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/invoice_push.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
 
 // The public address of an order's invoice (includes/erp/invoice_public_link.php),
 // which the invoice link form offers.
@@ -72,7 +73,8 @@ if ($_POST) {
 	// (provider[]=x) stopped the request in trim(), and account_id[]=x or
 	// group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'unit_ids' => 1, 'claim_files' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'unit_ids' => 1, 'claim_files' => 1,
+		'pr_rule_scope' => 1, 'pr_rule_percent' => 1, 'pr_rule_fixed' => 1, 'pr_rule_rounding' => 1));
 
 	if ($mp_settings_lists) {
 
@@ -219,6 +221,23 @@ if ($_POST) {
 
 		$preparing_day = max(1, min(30, $preparing_day));
 
+		// The Pricing tab, read with the rest of the drawer so a refused
+		// figure keeps the whole save back. A drawer drawn before the tables
+		// were there posts no pr_step and leaves the rules alone.
+		$mp_pricing = null;
+
+		if (isset($_POST['pr_step']) && mp_pricing_ready()) {
+
+			$mp_pricing = mp_pricing_settings_parse($_POST, array_keys(mp_pricing_settings_categories()));
+
+			foreach ($mp_pricing['errors'] as $field => $message) {
+
+				$liveform->mark_error($field, h($message));
+
+			}
+
+		}
+
 		if ($liveform->check_form_errors() == false) {
 
 			$credentials = mp_settings_credentials_from_post($account['provider']);
@@ -278,6 +297,31 @@ if ($_POST) {
 			)), $user['username']);
 
 			$liveform->add_notice(lang('Saved.'));
+
+			if ($mp_pricing !== null) {
+
+				// Left at its defaults with no rule, the tab keeps no row: the
+				// account sends the site price, as before any rule.
+				$stored_rules = mp_pricing_account_rules($account_id);
+
+				$new_rules = mp_pricing_settings_is_default($mp_pricing['rules']) ? array() : $mp_pricing['rules'];
+
+				if ($stored_rules || $new_rules) {
+
+					if (!mp_pricing_settings_save($account_id, $new_rules, (int)$user['id'])) {
+
+						$liveform->add_warning(h(lang('The pricing could not be saved. Try again.')));
+
+					} elseif (mp_pricing_settings_changed($stored_rules, $new_rules)
+						&& ($status === 'active') && !empty($_POST['push_price']) && mp_pricing_requeue_request($account_id)) {
+
+						$liveform->add_notice(lang('Prices are sent again in the background.'));
+
+					}
+
+				}
+
+			}
 
 			if (!empty($credentials['webhook_id']) && ($status !== 'active' || empty($_POST['pull_orders']))) {
 
@@ -1772,6 +1816,260 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 
 }
 
+// A stored figure in hundredths for a box: 1250 reads 12,5. Zero is an
+// empty box when $blank_zero, so its placeholder shows.
+function mp_settings_pr_figure($hundredths, $blank_zero = false) {
+
+	$hundredths = (int) $hundredths;
+
+	if ($blank_zero && ($hundredths === 0)) {
+
+		return '';
+
+	}
+
+	$decimals = ($hundredths % 100 === 0) ? 0 : (($hundredths % 10 === 0) ? 1 : 2);
+
+	return pg_format_number($hundredths / 100, $decimals);
+
+}
+
+// The rounding endings as a segmented control of radios.
+function mp_settings_pr_rounding_seg($name, $current) {
+
+	$labels = array('none' => lang('None'), 'whole' => lang('Whole'), '90' => ',90', '99' => ',99');
+
+	$out = '<span class="pg-seg" role="radiogroup" aria-label="' . h(lang('Rounding')) . '">';
+
+	foreach ($labels as $value => $label) {
+
+		$out .= '<label class="pg-seg-item"><input type="radio" class="visually-hidden" name="' . h($name) . '" value="' . h($value) . '"'
+			. ((mp_pricing_rounding($current) === $value) ? ' checked' : '') . '>' . h($label) . '</label>';
+
+	}
+
+	return $out . '</span>';
+
+}
+
+// One rule line of the Pricing tab: what it covers, its percent, fixed
+// amount and rounding, and its Remove. $index is the line's place in the
+// posted lists ('' in the template the Add a rule button copies).
+function mp_settings_pr_rule_row($index, $rule, $categories, $brands, $error = '') {
+
+	$id = 'pr_rule_' . ($index === '' ? '__' : (int) $index);
+
+	$scope = '';
+
+	if ($rule) {
+
+		$scope = ((int) $rule['scope'] === MP_PRICING_SCOPE_CATEGORY)
+			? 'c:' . (int) $rule['scope_id'] : 'b:' . (string) $rule['scope_key'];
+
+	}
+
+	$options = '<option value="">' . h(lang('Choose a category or brand')) . '</option>';
+
+	if ($categories) {
+
+		$options .= '<optgroup label="' . h(lang('Categories')) . '">';
+
+		foreach ($categories as $category_id => $category_name) {
+
+			$value = 'c:' . (int) $category_id;
+
+			$options .= '<option value="' . h($value) . '"' . (($value === $scope) ? ' selected' : '') . '>' . h($category_name) . '</option>';
+
+		}
+
+		$options .= '</optgroup>';
+
+	}
+
+	// A stored brand no product carries any more stays choosable.
+	if (($scope !== '') && (strpos($scope, 'b:') === 0) && !in_array(substr($scope, 2), $brands, true)) {
+
+		$brands[] = substr($scope, 2);
+
+	}
+
+	if ($brands) {
+
+		$options .= '<optgroup label="' . h(lang('Brands')) . '">';
+
+		foreach ($brands as $brand) {
+
+			$value = 'b:' . $brand;
+
+			$options .= '<option value="' . h($value) . '"' . (($value === $scope) ? ' selected' : '') . '>' . h($brand) . '</option>';
+
+		}
+
+		$options .= '</optgroup>';
+
+	}
+
+	$roundings = '';
+
+	foreach (array('none' => lang('None'), 'whole' => lang('Whole'), '90' => ',90', '99' => ',99') as $value => $label) {
+
+		$roundings .= '<option value="' . h($value) . '"' . (($rule && (mp_pricing_rounding($rule['rounding']) === $value)) ? ' selected' : '') . '>' . h($label) . '</option>';
+
+	}
+
+	return '
+				<div class="pg-list-row mp-pr-rule" data-mp-rule>
+					<div class="pg-list-row-main">
+						<div class="pg-list-row-head">
+							<label class="visually-hidden" for="' . $id . '_scope">' . h(lang('Category or brand')) . '</label>
+							<select class="pg-input mp-pr-grow" id="' . $id . '_scope" name="pr_rule_scope[]"'
+								. (($error !== '') ? ' aria-invalid="true" aria-describedby="' . $id . '_error"' : '') . '>' . $options . '</select>
+							<button type="button" class="pg-button pg-button-danger pg-button-sm" data-mp-rule-remove>' . h(lang('Remove')) . '</button>
+						</div>
+						<div class="mp-pr-line">
+							<div><label class="pg-field-label" for="' . $id . '_percent">' . h(lang('Percent')) . '</label>
+								<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="' . $id . '_percent" name="pr_rule_percent[]" placeholder="0" value="'
+									. h($rule ? mp_settings_pr_figure($rule['percent'], true) : '') . '"><span class="pg-input-end">%</span></span></div>
+							<div><label class="pg-field-label" for="' . $id . '_fixed">' . h(lang('Fixed amount')) . '</label>
+								<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="' . $id . '_fixed" name="pr_rule_fixed[]" placeholder="0" value="'
+									. h($rule ? mp_settings_pr_figure($rule['fixed'], true) : '') . '"><span class="pg-input-end">' . BASE_CURRENCY_SYMBOL . '</span></span></div>
+							<div><label class="pg-field-label" for="' . $id . '_rounding">' . h(lang('Rounding')) . '</label>
+								<select class="pg-input" id="' . $id . '_rounding" name="pr_rule_rounding[]">' . $roundings . '</select></div>
+						</div>'
+						. (($error !== '') ? '<div class="pg-field-help pg-field-error" id="' . $id . '_error">' . h($error) . '</div>' : '') . '
+					</div>
+				</div>';
+
+}
+
+// The Settings drawer's Pricing tab: the channel price, the rules by
+// category or brand and the robot's settings (2026.11.0). $rules are the
+// account's rows (or the posted ones of a refused save), $errors the
+// refused fields.
+function mp_settings_pricing_pane($account, $rules, $errors) {
+
+	$own = mp_pricing_account_row($rules);
+
+	$own = is_array($own) ? $own : mp_pricing_settings_parse(array(), array())['rules'][0];
+
+	$categories = mp_pricing_settings_categories();
+
+	$brands = mp_pricing_settings_brands();
+
+	$field_error = function ($field) use ($errors) {
+
+		return isset($errors[$field])
+			? array(' aria-invalid="true" aria-describedby="' . $field . '_error"',
+				'<div class="pg-field-help pg-field-error" id="' . $field . '_error">' . h($errors[$field]) . '</div>')
+			: array('', '');
+
+	};
+
+	$rows = '';
+
+	$index = 0;
+
+	foreach ((array) $rules as $rule) {
+
+		if ((int) $rule['scope'] === MP_PRICING_SCOPE_ACCOUNT) {
+
+			continue;
+
+		}
+
+		$rows .= mp_settings_pr_rule_row($index, $rule, $categories, $brands, isset($errors['pr_rule_' . $index]) ? $errors['pr_rule_' . $index] : '');
+
+		$index++;
+
+	}
+
+	// The step's unit, once its column is there (11.0.259): Amount or Percent
+	// as segments over the one field, whose end follows the choice.
+	$percent_step = mp_pricing_step_unit_ready() && ((int) ($own['step_unit'] ?? 0) === MP_PRICING_STEP_PERCENT);
+
+	$unit_seg = '';
+
+	if (mp_pricing_step_unit_ready()) {
+
+		$unit_seg = '<span class="pg-seg mb-2" role="radiogroup" aria-label="' . h(lang('Step')) . '">';
+
+		foreach (array('amount' => lang('Amount'), 'percent' => lang('Percent')) as $value => $label) {
+
+			$unit_seg .= '<label class="pg-seg-item"><input type="radio" class="visually-hidden" name="pr_step_unit" value="' . $value . '" data-mp-step-unit'
+				. ((($value === 'percent') === $percent_step) ? ' checked' : '') . '>' . h($label) . '</label>';
+
+		}
+
+		$unit_seg .= '</span>';
+
+	}
+
+	// Advanced opens by itself when its field holds other than its default
+	// or was refused.
+	$advanced_open = isset($errors['pr_grow']) || ((int) $own['grow_cap'] !== 1000);
+
+	$percent = $field_error('pr_percent');
+	$fixed = $field_error('pr_fixed');
+	$step = $field_error('pr_step');
+	$margin = $field_error('pr_margin');
+	$grow = $field_error('pr_grow');
+
+	return '
+			<div class="mp-pr" id="mp_pane_pricing" data-mp-pane="pricing" role="tabpanel" aria-labelledby="mp_tab_pricing" hidden>'
+			. (empty($account['push_price']) ? '
+			<p class="pg-text-2">' . h(lang('This account sends no prices. Switch on Send prices on the Connection tab for these to go out.')) . '</p>' : '') . '
+			<fieldset class="mb-7">
+				<legend class="pg-title-status mb-2">' . h(lang('Channel price')) . '</legend>
+				<p class="pg-field-help mb-4">' . h(lang('The site price with VAT, changed by these.')) . '</p>
+				<div class="mp-pr-line mb-4">
+					<div><label class="pg-field-label" for="pr_percent">' . h(lang('Percent')) . '</label>
+						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_percent" name="pr_percent" placeholder="0" value="'
+							. h(mp_settings_pr_figure($own['percent'], true)) . '"' . $percent[0] . '><span class="pg-input-end">%</span></span>' . $percent[1] . '</div>
+					<div><label class="pg-field-label" for="pr_fixed">' . h(lang('Fixed amount')) . '</label>
+						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_fixed" name="pr_fixed" placeholder="0" value="'
+							. h(mp_settings_pr_figure($own['fixed'], true)) . '"' . $fixed[0] . '><span class="pg-input-end">' . BASE_CURRENCY_SYMBOL . '</span></span>' . $fixed[1] . '</div>
+				</div>
+				<div class="pg-field-label">' . h(lang('Rounding')) . '</div>
+				' . mp_settings_pr_rounding_seg('pr_rounding', $own['rounding']) . '
+			</fieldset>
+			<fieldset class="mb-7">
+				<legend class="pg-title-status mb-2">' . h(lang('Rules by category or brand')) . '</legend>
+				<p class="pg-field-help mb-4">' . h(lang('A product takes the most specific rule: its category first, then its brand, then the channel price above.')) . '</p>
+				<div class="mp-pr-rules" data-mp-rules>' . $rows . '</div>
+				<button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-mp-rule-add>
+					<i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a rule')) . '</span></button>
+				<template id="mp_pr_rule_template">' . mp_settings_pr_rule_row('', null, $categories, $brands) . '</template>
+			</fieldset>
+			<fieldset>
+				<legend class="pg-title-status mb-4">' . h(lang('Robot')) . '</legend>
+				<div class="mp-pr-switch mb-5">
+					<input type="checkbox" class="pg-switch" id="pr_try" name="pr_try" value="1" aria-describedby="pr_try_help"'
+						. (((int) $own['robot'] !== MP_PRICING_ROBOT_ON) ? ' checked' : '') . '>
+					<div><label class="pg-text-2" for="pr_try">' . h(lang('Try first')) . '</label>
+						<div class="pg-field-help" id="pr_try_help">' . h(lang('Writes what it would send to the log and sends nothing')) . '</div></div>
+				</div>
+				<div class="mp-pr-line mb-4">
+					<div><label class="pg-field-label" for="pr_step">' . h(lang('Step')) . '</label>'
+						. $unit_seg . '
+						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_step" name="pr_step" value="'
+							. h(mp_settings_pr_figure($own['step'])) . '"' . $step[0] . '><span class="pg-input-end" data-mp-step-end data-mp-amount="'
+							. h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8')) . '">' . ($percent_step ? '%' : BASE_CURRENCY_SYMBOL) . '</span></span>' . $step[1] . '</div>
+					<div><label class="pg-field-label" for="pr_margin">' . h(lang('Minimum margin')) . '</label>
+						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_margin" name="pr_margin" value="'
+							. h(mp_settings_pr_figure($own['min_margin'])) . '"' . $margin[0] . '><span class="pg-input-end">%</span></span>' . $margin[1] . '</div>
+				</div>
+				<button type="button" class="pg-gather-toggle" aria-expanded="' . ($advanced_open ? 'true' : 'false') . '" aria-controls="mp_pr_advanced" data-mp-fold>'
+					. h(lang('Advanced')) . '<span class="bi ' . ($advanced_open ? 'bi-chevron-up' : 'bi-chevron-down') . '" aria-hidden="true"></span></button>
+				<div id="mp_pr_advanced" class="mt-3"' . ($advanced_open ? '' : ' hidden') . '>
+					<label class="pg-field-label" for="pr_grow">' . h(lang('Grow while winning: at most over the channel price')) . '</label>
+					<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_grow" name="pr_grow" value="'
+						. h(mp_settings_pr_figure($own['grow_cap'])) . '"' . $grow[0] . '><span class="pg-input-end">%</span></span>' . $grow[1] . '
+				</div>
+			</fieldset>
+			</div>';
+
+}
+
 /* ---------------------------------------------------------------------------
    Reads
    --------------------------------------------------------------------------- */
@@ -1958,6 +2256,14 @@ echo pg_page_shell(array(
 /* The webhook sentence keeps its icon on its first line; the button wraps below. */
 .mp-webhook-text { flex: 1 1 12rem; min-width: 0; }
 .mp-fail-name { flex: 1 1 150px; min-width: 0; }
+/* The Settings drawer\'s Pricing tab: fields side by side that wrap on a
+   phone, a rule line\'s category or brand taking the room its Remove leaves. */
+.mp-pr-line { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.mp-pr-narrow { width: 140px; }
+.mp-pr-grow { flex: 1 1 auto; min-width: 0; }
+.mp-pr-rule .pg-list-row-head { gap: 8px; }
+.mp-pr-rule .mp-pr-line { margin-top: 8px; }
+.mp-pr-switch { display: flex; gap: 10px; align-items: flex-start; }
 .mp-fail .mp-err { flex: 1 1 100%; }
 @media (min-width: 768px) { .mp-fail .mp-err { flex: 1 1 0; min-width: 0; } }
 }</style>
@@ -2868,6 +3174,33 @@ if ($selected) {
 
 	}
 
+	// The Pricing tab, once the repricer's tables are there. A refused save
+	// draws what was posted and opens on the tab holding the refused field.
+	$pricing_tabs = '';
+
+	$pricing_pane = '';
+
+	$pricing_open = false;
+
+	if (mp_pricing_ready()) {
+
+		$pricing_refused = ($mp_refused === 'update') && isset($mp_pricing) && is_array($mp_pricing);
+
+		$pricing_errors = $pricing_refused ? $mp_pricing['errors'] : array();
+
+		$pricing_open = (bool) $pricing_errors;
+
+		$pricing_pane = mp_settings_pricing_pane($edit,
+			$pricing_refused ? $mp_pricing['rules'] : mp_pricing_account_rules($selected_id), $pricing_errors);
+
+		$pricing_tabs = '
+			<div class="pg-seg mb-6" role="tablist" aria-label="' . h(lang('Settings')) . '">
+				<button type="button" class="pg-seg-item" role="tab" id="mp_tab_connection" aria-controls="mp_pane_connection" data-mp-tab="connection" aria-selected="' . ($pricing_open ? 'false' : 'true') . '">' . h(lang('Connection')) . '</button>
+				<button type="button" class="pg-seg-item" role="tab" id="mp_tab_pricing" aria-controls="mp_pane_pricing" data-mp-tab="pricing" aria-selected="' . ($pricing_open ? 'true' : 'false') . '">' . h(lang('Pricing')) . '</button>
+			</div>';
+
+	}
+
 	echo '
 <dialog class="drawer drawer-end" id="mp_drawer" aria-labelledby="mp_drawer_title" style="width:min(480px,100%)">
 	<form method="post" action="marketplace_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
@@ -2883,7 +3216,8 @@ if ($selected) {
 			<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 		</div>
 		<div class="drawer-body">
-			' . (($mp_refused === 'update') ? $mp_form_errors : '') . '
+			' . (($mp_refused === 'update') ? $mp_form_errors : '') . $pricing_tabs . '
+			<div data-mp-pane="connection"' . ($pricing_tabs !== '' ? ' id="mp_pane_connection" role="tabpanel" aria-labelledby="mp_tab_connection"' : '') . '>
 			<fieldset class="mb-7">
 			<legend class="fs-md fw-semibold mb-4">' . lang('Connection') . '</legend>
 			<div class="form-field mb-5">
@@ -2968,6 +3302,7 @@ if ($selected) {
 					'vars'   => array(mp_provider_name($selected['provider']))
 				))) . '</label>
 			</div>' : '') . '
+			</div>' . $pricing_pane . '
 		</div>
 		<div class="drawer-footer border-top p-5 d-flex gap-3">
 			<button type="button" class="pg-button pg-button-ghost flex-grow-1" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
@@ -3013,6 +3348,174 @@ echo '
 		provider.addEventListener(\'change\', showFields);
 
 		showFields();
+
+	}
+
+	// The Settings drawer: its tabs show one pane at a time under the one
+	// Save; Add a rule copies the template line, a line\'s Remove takes it
+	// away until the next Save; Advanced folds open and shut.
+	var drawer = document.getElementById("mp_drawer");
+
+	if (drawer) {
+
+		var tabs = drawer.querySelectorAll("[data-mp-tab]");
+
+		var showTab = function (name) {
+
+			for (var i = 0; i < tabs.length; i++) {
+
+				tabs[i].setAttribute("aria-selected", (tabs[i].getAttribute("data-mp-tab") === name) ? "true" : "false");
+
+			}
+
+			var panes = drawer.querySelectorAll("[data-mp-pane]");
+
+			for (var j = 0; j < panes.length; j++) {
+
+				panes[j].hidden = (panes[j].getAttribute("data-mp-pane") !== name);
+
+			}
+
+		};
+
+		if (tabs.length) {
+
+			var chosen = drawer.querySelector("[data-mp-tab][aria-selected=\"true\"]");
+
+			showTab(chosen ? chosen.getAttribute("data-mp-tab") : "connection");
+
+		}
+
+		var added = 0;
+
+		drawer.addEventListener("click", function (event) {
+
+			var target = event.target.closest ? event.target : null;
+
+			if (!target) {
+
+				return;
+
+			}
+
+			var tab = target.closest("[data-mp-tab]");
+
+			if (tab) {
+
+				showTab(tab.getAttribute("data-mp-tab"));
+
+				return;
+
+			}
+
+			var add = target.closest("[data-mp-rule-add]");
+
+			var rules = drawer.querySelector("[data-mp-rules]");
+
+			var template = document.getElementById("mp_pr_rule_template");
+
+			if (add && rules && template) {
+
+				var line = template.content.firstElementChild.cloneNode(true);
+
+				var prefix = "pr_rule_n" + (++added);
+
+				var named = line.querySelectorAll("[id], [for]");
+
+				for (var k = 0; k < named.length; k++) {
+
+					if (named[k].id) {
+
+						named[k].id = named[k].id.replace("pr_rule___", prefix);
+
+					}
+
+					if (named[k].htmlFor) {
+
+						named[k].htmlFor = named[k].htmlFor.replace("pr_rule___", prefix);
+
+					}
+
+				}
+
+				rules.appendChild(line);
+
+				line.querySelector("select").focus();
+
+				return;
+
+			}
+
+			var remove = target.closest("[data-mp-rule-remove]");
+
+			if (remove) {
+
+				var row = remove.closest("[data-mp-rule]");
+
+				if (row) {
+
+					row.parentNode.removeChild(row);
+
+				}
+
+				var again = drawer.querySelector("[data-mp-rule-add]");
+
+				if (again) {
+
+					again.focus();
+
+				}
+
+				return;
+
+			}
+
+			var fold = target.closest("[data-mp-fold]");
+
+			if (fold) {
+
+				var box = document.getElementById(fold.getAttribute("aria-controls"));
+
+				var open = (fold.getAttribute("aria-expanded") !== "true");
+
+				fold.setAttribute("aria-expanded", open ? "true" : "false");
+
+				if (box) {
+
+					box.hidden = !open;
+
+				}
+
+				var chevron = fold.querySelector(".bi");
+
+				if (chevron) {
+
+					chevron.className = "bi " + (open ? "bi-chevron-up" : "bi-chevron-down");
+
+				}
+
+			}
+
+		});
+
+		// The step box ends in the currency or % as its unit is chosen.
+		drawer.addEventListener("change", function (event) {
+
+			if (!event.target.matches || !event.target.matches("[data-mp-step-unit]")) {
+
+				return;
+
+			}
+
+			var end = drawer.querySelector("[data-mp-step-end]");
+
+			if (end) {
+
+				end.textContent = (event.target.value === "percent") ? "%" : end.getAttribute("data-mp-amount");
+
+			}
+
+		});
 
 	}
 

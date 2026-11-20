@@ -960,6 +960,17 @@ function pg_privacy_erase_tables()
         'cart_quotes' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'contact_id' => 0,
         )),
+        // A request about the person's data stays as the record that it was
+        // answered (its kind, dates and status); whom it came from and what
+        // was written go. The closed-requests rule finds it by id.
+        'privacy_requests' => array('find' => array('id' => 'request_ids', 'contact_id' => 'contact_ids', 'user_id' => 'user_ids', 'email' => 'emails'), 'action' => 'anonymise', 'fields' => array(
+            'name'       => '{name}',
+            'email'      => '{token}',
+            'message'    => '',
+            'answer'     => '',
+            'contact_id' => 0,
+            'user_id'    => 0,
+        )),
         // The trail's lines about the person: the field list's columns are
         // replaced inside before_json and after_json
         // (_pg_privacy_erase_apply_audit_log()); who did what and when stays.
@@ -1121,6 +1132,7 @@ function pg_privacy_erase_labels()
         'ws_events'                    => lang('Customer visits'),
         'ws_personal_plans'            => lang('Roadmaps'),
         'cart_quotes'                  => lang('Cart quotes'),
+        'privacy_requests'             => lang('Privacy requests'),
         'audit_log'                    => lang('Audit trail'),
         'record_revisions'             => lang('Item revisions'),
         'files'                        => lang('Uploaded files'),
@@ -1267,6 +1279,7 @@ function pg_privacy_erase_scope(array $found)
         'wtable_row_ids'   => array(),
         'wtable_bin_ids'   => array(),
         'application_entry_ids' => array(),
+        'request_ids'      => array(),
         'feedback_hashes'  => array(),
     );
 

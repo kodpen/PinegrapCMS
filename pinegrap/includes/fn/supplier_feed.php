@@ -115,38 +115,72 @@ function pg_supplier_feed_format_detect_file($file)
  */
 function pg_supplier_feed_record_path($file, $format)
 {
+    $paths = pg_supplier_feed_record_paths($file, $format);
+
+    return ($paths === array()) ? null : $paths[0];
+}
+
+/**
+ * Every place records could sit in an XML or JSON feed, the one
+ * pg_supplier_feed_record_path() picks first; the feed screen offers the
+ * rest. XML: the elements that hold others and occur more than once, the
+ * shallower first, then the more frequent; with none, the deepest element
+ * holding others. JSON: the lists holding objects, the one with the most
+ * first, the shallower on a tie. array('') for CSV, array() when nothing is
+ * found.
+ *
+ * @param string $file
+ * @param string $format 'xml', 'json' or 'csv'
+ * @return array list of paths
+ */
+function pg_supplier_feed_record_paths($file, $format)
+{
     if ($format === 'xml') {
-        return pg_supplier_feed_xml_record_path($file);
+        return pg_supplier_feed_xml_record_paths($file);
     }
 
     if ($format === 'json') {
         $data = pg_supplier_feed_json_load($file, $error);
 
         if ($error !== '') {
-            return null;
+            return array();
         }
 
-        $best = null;
-        pg_supplier_feed_json_find_list($data, '', 0, $best);
+        $lists = array();
+        pg_supplier_feed_json_find_list($data, '', 0, $lists);
 
-        return ($best === null) ? null : $best['path'];
+        usort($lists, function ($a, $b) {
+            if ($a['count'] !== $b['count']) {
+                return ($a['count'] > $b['count']) ? -1 : 1;
+            }
+
+            return $a['depth'] - $b['depth'];
+        });
+
+        $paths = array();
+
+        foreach ($lists as $list) {
+            $paths[] = (string) $list['path'];
+        }
+
+        return $paths;
     }
 
-    return '';
+    return array('');
 }
 
 /**
- * The XML half of pg_supplier_feed_record_path().
+ * The XML half of pg_supplier_feed_record_paths().
  *
  * @param string $file
- * @return string|null
+ * @return array
  */
-function pg_supplier_feed_xml_record_path($file)
+function pg_supplier_feed_xml_record_paths($file)
 {
     $reader = pg_supplier_feed_xml_open($file);
 
     if ($reader === null) {
-        return null;
+        return array();
     }
 
     $stack = array();
@@ -173,48 +207,58 @@ function pg_supplier_feed_xml_record_path($file)
 
     $reader->close();
 
-    $best = null;
-    $best_depth = 0;
-    $best_count = 0;
+    $repeated = array();
 
     foreach ($counts as $path => $count) {
-        if (!isset($parents[$path]) || ($count < 2)) {
-            continue;
-        }
-
-        $depth = substr_count($path, '/');
-
-        if (($best === null) || ($depth < $best_depth) || (($depth === $best_depth) && ($count > $best_count))) {
-            $best = $path;
-            $best_depth = $depth;
-            $best_count = $count;
+        if (isset($parents[$path]) && ($count >= 2)) {
+            $repeated[] = array('path' => (string) $path, 'count' => $count, 'depth' => substr_count((string) $path, '/'));
         }
     }
 
-    if ($best !== null) {
-        return (string) $best;
+    usort($repeated, function ($a, $b) {
+        if ($a['depth'] !== $b['depth']) {
+            return $a['depth'] - $b['depth'];
+        }
+
+        if ($a['count'] !== $b['count']) {
+            return ($a['count'] > $b['count']) ? -1 : 1;
+        }
+
+        return strcmp($a['path'], $b['path']);
+    });
+
+    $paths = array();
+
+    foreach ($repeated as $candidate) {
+        $paths[] = $candidate['path'];
+    }
+
+    if ($paths !== array()) {
+        return $paths;
     }
 
     // One record only: the deepest element holding others.
+    $best = null;
+
     foreach (array_keys($parents) as $path) {
         if (($best === null) || (substr_count((string) $path, '/') > substr_count($best, '/'))) {
             $best = (string) $path;
         }
     }
 
-    return $best;
+    return ($best === null) ? array() : array($best);
 }
 
 /**
- * Walks decoded JSON for the list holding the most objects.
+ * Walks decoded JSON for the lists holding objects.
  *
- * @param mixed      $node
- * @param string     $path
- * @param int        $depth
- * @param array|null $best array('path', 'count', 'depth'), updated in place
+ * @param mixed  $node
+ * @param string $path
+ * @param int    $depth
+ * @param array  $lists list of array('path', 'count', 'depth'), added to
  * @return void
  */
-function pg_supplier_feed_json_find_list($node, $path, $depth, &$best)
+function pg_supplier_feed_json_find_list($node, $path, $depth, &$lists)
 {
     if (!is_array($node) || ($depth > 8)) {
         return;
@@ -229,15 +273,15 @@ function pg_supplier_feed_json_find_list($node, $path, $depth, &$best)
             }
         }
 
-        if (($objects > 0) && (($best === null) || ($objects > $best['count']) || (($objects === $best['count']) && ($depth < $best['depth'])))) {
-            $best = array('path' => $path, 'count' => $objects, 'depth' => $depth);
+        if ($objects > 0) {
+            $lists[] = array('path' => $path, 'count' => $objects, 'depth' => $depth);
         }
 
         return;
     }
 
     foreach ($node as $key => $child) {
-        pg_supplier_feed_json_find_list($child, ($path === '') ? (string) $key : $path . '/' . $key, $depth + 1, $best);
+        pg_supplier_feed_json_find_list($child, ($path === '') ? (string) $key : $path . '/' . $key, $depth + 1, $lists);
     }
 }
 

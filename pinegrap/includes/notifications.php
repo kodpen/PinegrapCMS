@@ -233,6 +233,12 @@ function pg_notification_visible($notification, $rights)
 		return ((int) $rights['role'] === 0);
 	}
 
+	// A privacy request's 30 days ending (includes/fn/privacy_requests.php):
+	// for whoever opens the Privacy centre, manager and above.
+	if ($action == 'privacy_request') {
+		return ($rights['role'] < 3);
+	}
+
 	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
 	// System Status and may open the screens it points at: backups, the
 	// scheduled jobs, the software update - manager and above.
@@ -945,6 +951,17 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['title']       = h(lang('E-mail campaign profiles were turned into flows'));
 		$display['description'] = h(lang(array('string' => 'Flows made: {var:1}. The report is on the E-mail Campaign Profiles screen.', 'vars' => (int) ($notification['title'] ?? 0))));
 		$display['url']         = 'view_email_campaign_profiles.php#profile-flows';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'privacy_request') {
+
+		// title holds the request's id, order_total the days left (7 or 2).
+		$display['title']       = h(lang(array('string' => 'A privacy request ends within {var:1} days', 'vars' => array((int) ($notification['order_total'] ?? 0)))));
+		$display['short']       = lang('Privacy request ending');
+		$display['description'] = h(lang('Answer it from Contacts › Privacy centre › Requests.'));
+		$display['url']         = 'privacy_centre.php?view=requests&request=' . (int) ($notification['title'] ?? 0);
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;

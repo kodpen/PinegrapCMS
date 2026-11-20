@@ -25,8 +25,9 @@ require_once PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php';
 // Runs $script with the model as M, L(id, grp, n) a 10 x 10 box at x =
 // 10 * n and near(v) a number rounded to 3 places; with $editor the core,
 // layers, actions and keyframes parts loaded and fake() a bare editor on
-// those layers. Answers the script's JSON, null without Node.
-function image_editor_groups_fx_node($script, $editor = false)
+// those layers; $more names further parts loaded after them ('_record').
+// Answers the script's JSON, null without Node.
+function image_editor_groups_fx_node($script, $editor = false, $more = array())
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -54,7 +55,7 @@ function image_editor_groups_fx_node($script, $editor = false)
 		. 'function box(l) { return [near(l.x), near(l.y), near(l.w), near(l.h), near(l.rot || 0)]; }' . "\n";
 
 	if ($editor) {
-		foreach (array('', '_layers', '_menu', '_actions', '_motion', '_tracks', '_keyframes') as $part) {
+		foreach (array_merge(array('', '_layers', '_menu', '_actions', '_motion', '_tracks', '_keyframes'), $more) as $part) {
 			$head .= 'require(' . json_encode($js . 'pg_image_editor' . $part . '.js') . ');' . "\n";
 		}
 

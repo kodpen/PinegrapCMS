@@ -134,6 +134,10 @@
 
         body.appendChild(el('p', { class: 'pgie-note', text: groupOfKey(l.id) ? t('keysGroupNote') : t('keysNote') }));
 
+        if (groupOfKey(l.id)) {
+            this.groupOwnLine(body, groupOfKey(l.id));
+        }
+
         if (keys.length) {
             list = el('div', { class: 'pgie-chips pgie-keylist', role: 'group', 'aria-label': t('keysList') });
 
@@ -169,6 +173,32 @@
         if (!groupOfKey(l.id) && this.attachOffer) {
             this.attachField(body, l);
         }
+    };
+
+    // A picked group whose members move on keys of their own: one line
+    // saying so and a quiet button removing those keys (one undo step);
+    // nothing otherwise.
+    Editor.prototype.groupOwnLine = function (body, gid) {
+        var self = this;
+
+        if (!M.groupOwnPaths(this.doc.layers, gid).length) {
+            return;
+        }
+
+        body.appendChild(el('p', { class: 'pgie-note pgie-grpown' }, [
+            el('span', { text: t('keysGroupOwn') }),
+            el('button', { type: 'button', class: 'pgie-link', text: t('keysGroupDrop'), onclick: function () {
+                self.dropGroupPaths(gid);
+            } })
+        ]));
+    };
+
+    // The members' own keys of group gid removed, one undo step; the
+    // group's keys and their other motion stay (M.groupDropPaths()).
+    Editor.prototype.dropGroupPaths = function (gid) {
+        this.change(function (doc) {
+            doc.layers = M.groupDropPaths(doc.layers, gid);
+        });
     };
 
     // Attach to: the layer or group whose move, turn and size layer l
@@ -435,8 +465,11 @@
 
         e.preventDefault();
 
-        if ((this.sel.length !== 1) || (this.sel[0] !== l.id)) {
-            this.sel = [l.id];
+        // A group's diamond (its row on the tracks) picks the group.
+        var ids = groupOfKey(l.id) ? M.groupMembers(this.doc.layers, groupOfKey(l.id)) : [l.id];
+
+        if ((this.sel.length !== ids.length) || ids.some(function (id) { return self.sel.indexOf(id) < 0; })) {
+            this.sel = ids;
         }
 
         this.motionTab = 'keys';
