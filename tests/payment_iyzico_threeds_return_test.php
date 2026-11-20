@@ -612,3 +612,15 @@ function test_payment_iyzico_threeds_return_in_the_protected_currency()
 		pg_assert_same(lang(array('string' => 'Iyzipay payment {var:1} does not match order #{var:2}: the order totals {var:3}, the payment was started for {var:4}, iyzico took {var:5} (expected {var:6}).', 'vars' => array('24680', 438, '107.14', '107.14', pg_payment_decimal($cents), '3.28'))), $answer['log'][0], 'paid ' . $paid);
 	}
 }
+
+// The 3-D Secure return answers iyzico's fee as the direct payment does.
+function test_payment_iyzico_threeds_return_fee()
+{
+	payment_iyzico_test_http(array('/payment/3dsecure/auth' => payment_iyzico_threeds_return_test_paid(array(
+		'currency' => 'TRY', 'iyziCommissionRateAmount' => 2.75, 'iyziCommissionFee' => 0.25))));
+	$answer = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post(), array('installment' => 3), $store);
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(300, $answer['fee']);
+	pg_assert_same('', $answer['fee_currency']);
+}

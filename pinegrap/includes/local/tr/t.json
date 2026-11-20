@@ -5840,6 +5840,7 @@
     "The payment could not be started. Please try again later.": "Ödeme başlatılamadı. Lütfen daha sonra tekrar deneyin.",
     "The payment could not be taken with this card right now. Please try another card or contact us.": "Ödeme şu anda bu kartla alınamadı. Lütfen başka bir kartla deneyin veya bizimle iletişime geçin.",
     "The payment could not be verified. Please try again.": "Ödeme doğrulanamadı. Lütfen yeniden deneyin.",
+    "The payment fee of order #{var:1} ({var:2} minor units of {var:3}) could not be converted into {var:4}: no exchange rate. The typed rate stays.": "#{var:1} numaralı siparişin ödeme komisyonu ({var:3} cinsinden {var:2} alt birim) {var:4} para birimine çevrilemedi: kur yok. Girilen oran geçerli kalır.",
     "The payment has been cancelled and {var:1} invoice(s) reopened.": "Ödeme iptal edildi ve {var:1} fatura yeniden açıldı.",
     "The payment has been cancelled.": "Ödeme iptal edildi.",
     "The payment has been refunded for order(s) {var:1}.": "{var:1} numaralı sipariş(ler)in ödemesi iade edildi.",

@@ -2142,3 +2142,29 @@ function pg_gateway_secret_for_save($posted, $stored, $old_key, $new_key, $width
 
     return pg_gateway_secret_seal($plain, $new_key);
 }
+
+/**
+ * Keep the fee a payment service named for an order's payment as the order's
+ * payment cost in the Accounting module (erp_order_profit_record_fee()). Only
+ * with the module on: off, nothing is loaded, read or written.
+ *
+ * @param int   $order_id
+ * @param array $answer  pg_payment_answer() of the operation that took the payment
+ * @return bool  whether the cost row was written
+ */
+function pg_payment_fee_record($order_id, $answer)
+{
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !is_array($answer) || !isset($answer['fee']) || !is_int($answer['fee'])) {
+        return false;
+    }
+
+    // The gate every file under includes/erp/ checks; the ERP bootstrap
+    // defines it the same way.
+    if (!defined('PG_ERP_ENTRY')) {
+        define('PG_ERP_ENTRY', true);
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit.php');
+
+    return erp_order_profit_record_fee((int) $order_id, $answer, true);
+}

@@ -3548,6 +3548,12 @@ function submit_order($type) {
         exit();
     }
 
+    // The fee the payment service kept becomes the order's payment cost in
+    // the Accounting module, in place of the method's typed rate.
+    if (($payment_driver !== '') && ($payment_answer['fee'] !== null)) {
+        pg_payment_fee_record((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_answer);
+    }
+
     // A payment driver that runs subscriptions itself (recurring mode
     // 'store') gets a subscription per paid recurring line, charged later
     // from the card its payment stored; a line that got none is logged.
