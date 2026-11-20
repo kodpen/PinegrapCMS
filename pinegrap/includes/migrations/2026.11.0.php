@@ -234,6 +234,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
+	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_event_tickets();           // 11.0.246
 
 }
@@ -2640,7 +2641,10 @@ function upgrade_2026_11_0_comment_record_counts_progress_save() {
 // sign-in throttle, whose address bucket would lock sign-in. expires_at is 0
 // for a team link that runs for good; created_*, revoked_* (0: not revoked),
 // uses and last_used_at are unix times and counters like the other token
-// links. style_id has a key: the editor lists a design's links.
+// links. style_id has a key: the editor lists a design's links. bundle_id
+// is 0 for a design's link and the release bundle (page_bundle) whose preview
+// the link shares otherwise, with style_id 0 (11.0.244 adds it where this
+// step already ran).
 function upgrade_2026_11_0_prototype_links() {
 
 	install_create_table('prototype_links', "CREATE TABLE prototype_links (
@@ -2661,9 +2665,11 @@ function upgrade_2026_11_0_prototype_links() {
 		revoked_by             INT UNSIGNED NOT NULL DEFAULT 0,
 		uses                   INT UNSIGNED NOT NULL DEFAULT 0,
 		last_used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		bundle_id              INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uk_token (token_hash),
-		KEY idx_style (style_id)
+		KEY idx_style (style_id),
+		KEY idx_bundle (bundle_id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
@@ -7860,12 +7866,31 @@ function upgrade_2026_11_0_ws_calls() {
 
 }
 
+// A release bundle's preview shared by a prototype link (2026.11.0,
+// 11.0.244; includes/fn/prototype_links.php, the Bundles screen's Share the
+// preview). prototype_links.bundle_id is the bundle (page_bundle.id), 0 for
+// a design's link, which stays as it was; idx_bundle gives a bundle's links
+// on the Bundles screen and their revoke when the bundle is deleted. The
+// table's own step (11.0.35) creates both on a database that has not run it.
+function upgrade_2026_11_0_prototype_link_bundles() {
+
+	if (!install_table_exists('prototype_links')) {
+
+		return;
+
+	}
+
+	install_add_column('prototype_links', 'bundle_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('prototype_links', 'idx_bundle', "INDEX idx_bundle (bundle_id)");
+
+}
+
 // Event tickets (11.0.246, includes/fn/event_tickets.php): one event_tickets
 // row per unit of a completed order line that gives tickets (a calendar
 // event's reservation, or a product marked "Gives tickets"), and that mark
 // on the product. A ticket keeps its order line and unit (unique, so a line
 // is never ticketed twice), the product, the event and its date, the salt
-// its code is drawn from under the site's key and only the code's hash
+// its code is drawn from under the tickets' own key and only the code's hash
 // (unique, the door's lookup), and its state: valid, used (when, by whom)
 // or void (when). products.gives_tickets is added in place where the server
 // allows it, so a large catalogue is not copied. No backfill: orders

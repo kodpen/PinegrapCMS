@@ -155,6 +155,7 @@
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no legacy binary forms, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: here]
+- office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
@@ -191,6 +192,7 @@
 - share-card-address.md: The share card (og:image drawn from the title, logo and site name): its address and signature, the order file, the draw under a lock, the 404 cases, the sweep
 - share-card-page.md: The share card's switch and colours in Site Settings, SEO, Social Sharing, which pages print a card as og:image, the sample and the record warning
 - share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out [decision: here]
+- sheet-import-upload.md: How the CSV-only importers take .xlsx, .ods and .xls (pg_sheet_import_upload(), OS2a #10523): upload turned into a CSV file, the sheet question, refusal texts
 - sheet-reader-differences.md: The importers' sheet reader (sheet-reader.md): what its .xls subclasses fix in excel_reader2.php, where it reads otherwise than PHPExcel on purpose, its cell-by-cell test
 - sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.

@@ -13,6 +13,7 @@ description: The Auto Dialogs list, Create and Edit screens in look A (PU5, #990
 ## What do Create and Edit show?
 - Heading, description and breadcrumb (All Auto Dialogs › Create Auto Dialog, or › the pop-up's name) are passed to `pg_page_shell()`; the template draws no heading, breadcrumb or `[name]` of its own.
 - Field spans (`look-field-widths.md`): Name and URL the whole row; Only on Page at 6 in its own column (`md:col-6`), so its help line stays under it (architect, 6091; not `pg-field-span-6`, whose help runs the row); width, height, delay and frequency 3 each; Opens 6 with the scroll share 3 beside it; Shown To and Place 6 each.
+- Since PU6b, under Name: What does it show? and Shared Component at 6 each (`md:col-6`); the URL row and the component row swap with `d-none` by kind (`platform/auto-dialog-content.md`).
 - Status column on edit: Status (the Enabled switch), Last 30 Days (three stand-alone figures in `.pg-figures` with `--pg-figures: 3`; two a row on a phone, as the recipe does), Summary (adds Opens, Shown To, Place: the selects' chosen option, kept by a change listener).
 - Save bar: `bi-plus-circle` / `bi-floppy` and `bi-trash` icons.
 - Turkish: Centre is its own key "In the centre" (Ortada); Scrolled reads Kaydırma oranı, Shown To Kime gösterilir.

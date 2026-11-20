@@ -19,7 +19,7 @@
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
-- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named: one per coordinator at a time; since 2026-11-19 it fixes what it finds in its own PR and opens a bug issue only for the rest [decision: here]
+- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]
@@ -29,7 +29,7 @@
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs [decision: here]
 - coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task [decision: here]
-- coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working, a session waiting on someone else does not count, when fewer; no count from the quota
+- coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working; a ready PR or a session waiting on someone else does not count; when fewer; no count from the quota
 - coordinator.md: Coordinator session: one per account, keeps its worker sessions on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect [decision: decisions-made-workspace-14.md]
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
@@ -124,7 +124,7 @@
 - decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): Prototype view edits links; Incoming e-mail pinned and as a card; Gmail read by a connected account; Google set-up guidance
 - decisions-made-product-79.md: Decisions list, product part 79 (2026-11-19 on): the own Office code replaces PHPExcel and grows to full scope: more previews, wider editing, shared Excel export and import
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
-- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups and a layer attached to another; the phone's Workspace writing box with the field on top
+- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups; the phone's Workspace writing box; a File Upload field in product forms and the sweep of unordered carts' files
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits

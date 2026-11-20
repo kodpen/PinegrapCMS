@@ -210,7 +210,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_login_throttle . "
             " . $sql_form_limits . "
             oauth_google_enabled = '" . escape(post_value('oauth_google_enabled')) . "',
-            oauth_google_client_id = '" . escape(trim(post_value('oauth_google_client_id'))) . "',
             registration_contact_group_id = '" . escape(post_value('registration_contact_group_id')) . "',
             registration_email_address = '" . escape(post_value('registration_email_address')) . "',
             member_id_label = '" . escape(post_value('member_id_label')) . "',
@@ -412,40 +411,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
-    // Google client secret: stored encrypted (AES-256-CBC + IV) but written
-    // as shown - the field carries the current value like the other API
-    // secrets on this screen, so whatever is in the field on save is the
-    // truth. Clearing the field clears the stored secret. Each encryption
-    // takes a new random IV, so the stored secret is compared first and an
-    // unchanged one is left as it is: re-encrypting it would change both
-    // columns and log "changed" in the audit trail on every save.
-    $oauth_google_secret_input = trim(post_value('oauth_google_client_secret'));
-    $oauth_google_secret_stored = db_item("SELECT oauth_google_client_secret, oauth_google_secret_iv FROM config LIMIT 1");
-    $oauth_google_secret_was = (is_array($oauth_google_secret_stored) && ((string) $oauth_google_secret_stored['oauth_google_client_secret'] !== ''))
-        ? decode_ssl_keys($oauth_google_secret_stored['oauth_google_client_secret'], $oauth_google_secret_stored['oauth_google_secret_iv'])
-        : '';
-    $oauth_google_secret_empty = !is_array($oauth_google_secret_stored)
-        || (((string) $oauth_google_secret_stored['oauth_google_client_secret'] === '') && ((string) $oauth_google_secret_stored['oauth_google_secret_iv'] === ''));
-    // A stored value that no longer decrypts reads as '' and is still
-    // cleared when the field is empty.
-    $oauth_google_secret_write = ($oauth_google_secret_input !== $oauth_google_secret_was)
-        || (($oauth_google_secret_input === '') && !$oauth_google_secret_empty);
-    if (!$oauth_google_secret_write) {
-        // Unchanged: both columns stay as they are.
-    } elseif ($oauth_google_secret_input !== '') {
-        list($oauth_google_secret_enc, $oauth_google_secret_iv) = encrypt_string_with_iv($oauth_google_secret_input);
-        $query = "UPDATE config SET oauth_google_client_secret = ?, oauth_google_secret_iv = ?";
-        db_q($query, array((string) $oauth_google_secret_enc, (string) $oauth_google_secret_iv)) or output_error('Query failed.');
-    } else {
-        db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
-    }
-
     // The Encryption Key card: a new key in config.php, then the values the
     // re-seal registry lists sealed again with it. Last, after every write
-    // above: those that seal a value (Apple's application, the CAPTCHA keys,
-    // the Google client secret) seal it with the ENCRYPTION_KEY constant,
-    // which holds the old key in this request, and the re-seal then carries
-    // them to the new one with the rest.
+    // above: those that seal a value (Apple's application, the CAPTCHA keys)
+    // seal it with the ENCRYPTION_KEY constant, which holds the old key in
+    // this request, and the re-seal then carries them to the new one with
+    // the rest.
     if (post_value('ecommerce_reset_encryption_key') == 1) {
     
         // if OpenSSL is disabled, then output error

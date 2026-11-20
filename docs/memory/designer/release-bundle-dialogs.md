@@ -6,7 +6,7 @@ module: page_bundles
 
 ## Where are they built?
 - `pg_page_bundle_publish_dialog($bundle, $check, $url)` and `pg_page_bundle_take_back_dialog($bundle, $check, $url)` return the `<dialog>` (look A rows and pills, Bootstrap 6). They post `action=publish` with `choice[item id]`, or `action=take_back` with `kept[]`, and `bundle_id`.
-- The Bundles screen prints them, opens them with `pgUI.dialog`, checks the token and calls `pg_page_bundle_publish()` / `pg_page_bundle_take_back()`.
+- No screen prints them yet: RB3 (#9999) built them but `page_bundles.php` has no Publish or Take back (bug #10557). The screen is to print them, open them with `pgUI.dialog`, check the token and call the locked runners of `pg_page_bundle_publish()` / `pg_page_bundle_take_back()`.
 
 ## How does the "changed since" choice work?
 - A pair of `btn-check` radios per row, "Replace anyway" and "Leave out"; neither comes chosen and the chosen one shows pressed.

@@ -163,3 +163,72 @@ function test_auto_dialog_script_shows_designed_content()
 		pg_assert_contains($needle, $min, 'frontend.min.js: ' . $needle);
 	}
 }
+
+function test_auto_dialog_screens_ask_what_it_shows_only_with_a_visual_design()
+{
+	pg_assert_true(pg_auto_dialog_form_asks_content(true, array(4)), 'columns and a design');
+	pg_assert_false(pg_auto_dialog_form_asks_content(true, array()), 'a site with no visual design keeps the address kind');
+	pg_assert_false(pg_auto_dialog_form_asks_content(true, array(0)), 'no real design id');
+	pg_assert_false(pg_auto_dialog_form_asks_content(false, array(4)), 'the columns not added yet');
+	pg_assert_same(array('url', 'component'), array_values(pg_auto_dialog_form_content_kinds()), 'the address first, then a designed pop-up');
+	pg_assert_same(pg_auto_dialog_content_choices(), array_values(pg_auto_dialog_form_content_kinds()), 'the kinds the reader takes');
+}
+
+function test_auto_dialog_url_is_asked_only_with_the_address_kind()
+{
+	pg_assert_true(pg_auto_dialog_form_url_required(null), 'the screen does not ask');
+	pg_assert_true(pg_auto_dialog_form_url_required('url'), 'an address');
+	pg_assert_true(pg_auto_dialog_form_url_required(''), 'blank is the address');
+	pg_assert_true(pg_auto_dialog_form_url_required(array('component')), 'a list is no kind');
+	pg_assert_false(pg_auto_dialog_form_url_required('component'), 'a designed pop-up');
+	pg_assert_false(pg_auto_dialog_form_url_required(' Component '), 'read case-blind');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/auto_dialog_form.php');
+	pg_assert_contains('pg_auto_dialog_form_url_required($asked ? $liveform->get_field_value(\'content\') : null)', $source, 'the save asks for the URL by kind');
+	pg_assert_contains('pg_auto_dialog_form_content_problems(pg_auto_dialog_form_content_sent($liveform))', $source, 'and checks the component sent');
+}
+
+function test_auto_dialog_form_content_values_leave_the_columns_when_not_asked()
+{
+	pg_assert_same(null, pg_auto_dialog_form_content_values(array('content' => 'component', 'component_id' => '7'), false), 'not asked: as stored');
+	pg_assert_same(array('content' => 'component', 'component_id' => 7), pg_auto_dialog_form_content_values(array('content' => 'component', 'component_id' => '7'), true), 'a designed pop-up');
+	pg_assert_same(array('content' => 'url', 'component_id' => 7), pg_auto_dialog_form_content_values(array('content' => 'url', 'component_id' => '7'), true), 'an address keeps the component chosen');
+	pg_assert_same(array('content' => 'url', 'component_id' => 0), pg_auto_dialog_form_content_values(array('content' => '', 'component_id' => ''), true), 'blank is the address');
+	pg_assert_same(array('content' => '', 'component_id' => ''), pg_auto_dialog_form_content_sent(array()), 'nothing sent');
+}
+
+function test_auto_dialog_form_component_options_escape_the_names()
+{
+	$options = pg_auto_dialog_form_component_options(array(
+		array('id' => '3', 'name' => 'Offer <b>'),
+		array('id' => '5', 'name' => 'Offer <b>'),
+		array('id' => '0', 'name' => 'none'),
+	));
+
+	pg_assert_same(array('' ), array_slice(array_values($options), 0, 1), 'a blank prompt first');
+	pg_assert_same(3, count($options), 'two components, a name used twice kept twice, no id 0');
+	pg_assert_same(array('label' => 'Offer &lt;b&gt;', 'value' => '3'), $options['c3'], 'the name escaped');
+	pg_assert_same('5', $options['c5']['value'], 'the second one');
+}
+
+function test_auto_dialog_form_designer_links()
+{
+	pg_assert_same(array('open' => 'edit_system_style.php?component=7', 'new' => 'edit_system_style.php?id=4'), pg_auto_dialog_form_designer_links('7', array(9, 4), true), 'open the chosen one, design a new one in the first design');
+	pg_assert_same(array('open' => '', 'new' => ''), pg_auto_dialog_form_designer_links(0, array(4), false), 'none chosen; a manager gets no new link');
+	pg_assert_same('', pg_auto_dialog_form_designer_links(7, array(), true)['new'], 'no design, no new link');
+}
+
+function test_auto_dialog_screens_draw_what_it_shows()
+{
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_auto_dialog.php');
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_auto_dialog.php');
+
+	pg_assert_contains("lang('What does it show?')", $template, 'the question');
+	pg_assert_contains('$content_asked = pg_auto_dialog_form_content_asked();', $template, 'asked only with a visual design');
+	pg_assert_contains('pg_auto_dialog_form_component_options(pg_auto_dialog_component_rows())', $template, 'the shared components offered');
+	pg_assert_contains('pg_designer_is_full($user)', $template, 'the new link for those who may design');
+	pg_assert_contains('data-pg-auto-dialog-shows="url"', $template, 'the URL row follows the kind');
+	pg_assert_contains('url.required = !designed;', $template, 'the URL required only with the address');
+	pg_assert_contains("assign_field_value('content', \$content['content'])", $edit, 'the edit screen loads the kind');
+	pg_assert_contains("assign_field_value('component_id'", $edit, 'and the component');
+}

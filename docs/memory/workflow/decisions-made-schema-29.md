@@ -18,6 +18,6 @@ description: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tab
 ## Does `prototype_links` get a column for a release bundle's share link? (owner, 2026-11-20, poll 159, channel message 9931)
 - "Evet, eklensin", to: `bundle_id` (INT, default 0: not tied to a bundle) on `prototype_links`, a table the open version 2026.11.0 added; existing links do not change.
 - Not chosen: no share link for a bundle's preview.
-- The architect's reading, not his words: INT UNSIGNED NOT NULL DEFAULT 0 with KEY `idx_bundle`, written into the table's CREATE of step 11.0.35 and added by `install_add_column()` where that step already ran; RB6 of `plans/release-bundle-steps.md`.
+- The architect's reading, not his words: INT UNSIGNED NOT NULL DEFAULT 0 with KEY `idx_bundle`, written into the table's CREATE of step 11.0.35 and added by `install_add_column()` where that step already ran; RB6 #10518 (`designer/release-bundle-share-link.md`).
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/release/released-vs-open-version.md
