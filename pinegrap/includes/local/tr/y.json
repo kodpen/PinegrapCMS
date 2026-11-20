@@ -493,6 +493,7 @@
     "You may not change quote templates.": "Teklif şablonlarını değiştiremezsiniz.",
     "You may not change this record.": "Bu kaydı değiştiremezsiniz.",
     "You may not change this task.": "Bu görevi değiştiremezsiniz.",
+    "You may not check in this ticket": "Bu bilette giriş yapamazsınız",
     "You may not create this kind of record.": "Bu türde kayıt oluşturamazsınız.",
     "You may not delete pages.": "Sayfa silme yetkiniz yok.",
     "You may not delete this page style because it is being used by at least one folder or page.": "En az bir klasör veya sayfa tarafından kullanıldığı için bu sayfa stilini silemezsiniz.",
