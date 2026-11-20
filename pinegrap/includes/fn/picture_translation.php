@@ -362,8 +362,38 @@ function pg_picture_tr_translations_removed($language)
 }
 
 /**
+ * Whether a file holds its newest version's pixels and that version holds a
+ * document, with what it needs handed in. Bytes on this disk are compared
+ * with the version. A file whose bytes are only in the object store is not
+ * fetched by a pass over many files: the size of the version reads as held,
+ * since a door that changes the bytes (rotate, optimize, an upload over it)
+ * writes them to the disk first. Pure.
+ *
+ * @param array|null $newest  the newest file_versions row (size, doc_json)
+ * @param string     $path    the file's bytes on this disk, '' when none
+ * @param int|null   $stored  the files row's size when its bytes are only in
+ *                            the object store, else null
+ * @param callable   $matches (row, path) => whether the bytes are the version's
+ * @return bool
+ */
+function pg_picture_tr_holds_version($newest, $path, $stored, $matches)
+{
+    if (!is_array($newest) || (pg_picture_tr_row_doc($newest) === null)) {
+        return false;
+    }
+
+    if ((string) $path !== '') {
+        return (bool) call_user_func($matches, $newest, (string) $path);
+    }
+
+    return ($stored !== null) && isset($newest['size']) && ((int) $stored === (int) $newest['size']);
+}
+
+/**
  * Whether a file's newest version holds a document and the file still holds
  * that version's pixels (not rotated, optimized or uploaded over since).
+ * Nothing is fetched from the object store: the daily prune asks it of every
+ * translated picture.
  *
  * @param int    $file_id
  * @param string $name the file's stored name
@@ -372,9 +402,18 @@ function pg_picture_tr_translations_removed($language)
 function pg_picture_tr_live($file_id, $name)
 {
     $newest = pg_file_versions_ready() ? pg_file_versions_newest($file_id) : null;
+    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $name);
+    $stored = null;
 
-    return $newest && (pg_picture_tr_row_doc($newest) !== null)
-        && pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename((string) $name));
+    // Moved to the object store, the file is no longer on this disk: its
+    // cached copy, else its size.
+    if ($newest && !is_file($path)) {
+        $row = db_item("SELECT id, name, type, size" . (pg_file_storage_ready() ? ', storage, storage_key' : '') . " FROM files WHERE id = '" . (int) $file_id . "' LIMIT 1");
+        $path = is_array($row) ? pg_file_present_path($row) : '';
+        $stored = (($path === '') && is_array($row) && (pg_file_storage($row) === 's3')) ? (int) $row['size'] : null;
+    }
+
+    return pg_picture_tr_holds_version($newest, $path, $stored, 'pg_file_versions_matches_file');
 }
 
 /**
@@ -1451,8 +1490,15 @@ function pg_picture_tr_live_doc($file_id, $name)
 {
     $newest = pg_file_versions_ready() ? pg_file_versions_newest((int) $file_id) : null;
     $json = $newest ? (string) $newest['doc_json'] : '';
+    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $name);
 
-    if (($json === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename((string) $name))) {
+    // A file moved to the object store is read through its cached copy, as
+    // the Design Canvas opens it (pg_image_editor_file()).
+    if (($json !== '') && !is_file($path)) {
+        $path = pg_file_local_copy((int) $file_id);
+    }
+
+    if (($json === '') || ($path === '') || !pg_file_versions_matches_file($newest, $path)) {
         return null;
     }
 
