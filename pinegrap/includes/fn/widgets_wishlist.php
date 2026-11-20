@@ -116,7 +116,8 @@ function pg_wishlist_widget_row_flags($row, $ctx)
  *                   (pg_sw_entity_select()); wishlist_items.added_at
  * @param array $ctx base_path, detail_prefix (the detail page's address and
  *                   a slash, '' for none), currency_symbol, discounted,
- *                   date_format
+ *                   references (product id => pg_price_reference_page()
+ *                   entry), date_format
  * @return array
  */
 function pg_wishlist_widget_row_values($row, $ctx)
@@ -148,6 +149,11 @@ function pg_wishlist_widget_row_values($row, $ctx)
         '__out_of_stock_label'       => pg_wishlist_widget_can_add($row) ? '' : (string)lang('Out of stock'),
         '__added_date'               => ($added > 0) ? _pg_sw_short_date($added, isset($ctx['date_format']) ? (string)$ctx['date_format'] : 'Y-m-d') : '',
     );
+
+    // The price before an offer's discount, as the catalog cards show it
+    // beside the struck price (the reference price rule).
+    $references = (isset($ctx['references']) && is_array($ctx['references'])) ? $ctx['references'] : array();
+    $values += pg_price_reference_tokens(isset($references[$pid]) ? $references[$pid] : null, $symbol);
 
     // The product's allow-listed values (widgets_entity_fields.php).
     $values += pg_sw_entity_values('product', $row, array('currency_symbol' => $symbol));
@@ -438,7 +444,8 @@ function pg_wishlist_widget_background()
 // catalog cards' ^^__id^^, ^^__name^^, ^^__short_description^^,
 // ^^__detail_url^^, ^^__image_url^^, ^^__image_alt^^, ^^__price^^,
 // ^^__price_formatted^^, ^^__original_price_formatted^^,
-// ^^__discount_percent^^, ^^__out_of_stock_label^^; and ^^__added_date^^
+// ^^__discount_percent^^, ^^__reference_price^^, ^^__reference_label^^,
+// ^^__out_of_stock_label^^; and ^^__added_date^^
 // (the day it was saved). Row flags: item_in_stock (it can go to the cart),
 // item_out_of_stock, item_has_discount. Row actions (a component button or a
 // <button>): wishlist_remove, wishlist_add_to_cart (left out for a product
@@ -511,6 +518,16 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
 
     $detail_name = pg_sw_catalog_detail_page_name(0);
     $discounted  = ($rows && function_exists('get_discounted_product_prices')) ? get_discounted_product_prices() : array();
+    if (!is_array($discounted)) $discounted = array();
+
+    // The price before the discount of every row, read once for the list
+    // (pg_price_reference_page()), as the catalog listing reads its page.
+    $reference_items = array();
+    foreach ($rows as $row) {
+        $shown = pg_wishlist_widget_price($row, array('discounted' => $discounted));
+        $reference_items[(int)$row['id']] = array('price' => $shown, 'reduced' => $shown < (int)$row['price']);
+    }
+    $references = ($reference_items && function_exists('pg_price_reference_page')) ? pg_price_reference_page($reference_items) : array();
 
     _pg_inject_messages_node($tree, 'catalog_detail');
 
@@ -525,7 +542,8 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
         'base_path'       => $base_path,
         'detail_prefix'   => ($detail_name !== '') ? $base_path . encode_url_path($detail_name) . '/' : '',
         'currency_symbol' => defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$',
-        'discounted'      => is_array($discounted) ? $discounted : array(),
+        'discounted'      => $discounted,
+        'references'      => is_array($references) ? $references : array(),
         'date_format'     => pg_sw_default_date_format('date'),
     ));
 

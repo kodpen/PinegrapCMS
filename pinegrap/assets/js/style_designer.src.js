@@ -44064,6 +44064,8 @@ const StyleDesigner = (function () {
             ['__price_formatted',          _sdT('Price (with symbol)')],
             ['__original_price_formatted', _sdT('Original price (with symbol, to be struck through)')],
             ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')],
+            ['__reference_price',          _sdT('Price before the discount (the reference price rule, with symbol)')],
+            ['__reference_label',          _sdT('Reference price label (e.g. lowest price of the last 30 days)')],
             ['__image_url',                _sdT('Image URL')],
             ['__image_alt',                _sdT('Image alt text')],
             ['__out_of_stock_label',       _sdT('Out of stock label')],

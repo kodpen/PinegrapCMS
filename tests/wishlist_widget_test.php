@@ -160,6 +160,32 @@ function test_wishlist_widget_row_values_discount()
 	pg_assert_same('25', $v['__discount_percent'], 'percent saved');
 }
 
+// An offer's discount shows the price before it as the catalog cards show
+// it: the reference price rule's amount and label (pg_price_reference_page()),
+// read once for the list; none without a reference.
+function test_wishlist_widget_row_values_reference_price()
+{
+	$ref = array('kind' => 'lowest', 'price' => 1800, 'days' => 30);
+	$v = pg_wishlist_widget_row_values(wishlist_widget_test_row(11), wishlist_widget_test_ctx(array(
+		'discounted' => array(11 => 1500),
+		'references' => array(11 => $ref),
+	)));
+
+	pg_assert_same(pg_price_reference_tokens($ref, '$'), array('__reference_price' => $v['__reference_price'], '__reference_label' => $v['__reference_label']), 'the reference amount and label');
+	pg_assert_true($v['__reference_price'] !== '', 'an amount');
+
+	$v = pg_wishlist_widget_row_values(wishlist_widget_test_row(11), wishlist_widget_test_ctx());
+	pg_assert_same('', $v['__reference_price'], 'no reference: no amount');
+	pg_assert_same('', $v['__reference_label'], 'no reference: no label');
+
+	$source = wishlist_widget_test_function_source('_render_system_widget_wishlist');
+	pg_assert_contains('pg_price_reference_page(', $source, 'the renderer reads the references for the list');
+
+	$palette = wishlist_widget_test_js_between('var SW_WISHLIST_TOKEN_GROUPS = [', "\n    ];");
+	pg_assert_contains("['__reference_price'", $palette, 'reference price offered');
+	pg_assert_contains("['__reference_label'", $palette, 'reference label offered');
+}
+
 // No picture, no detail page, no date: empty where the catalog leaves them
 // empty, '#' for the address as the catalog writes it.
 function test_wishlist_widget_row_values_missing()
