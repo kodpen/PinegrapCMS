@@ -7326,6 +7326,8 @@
     "The style's frame is split into {var:1} shared components: what comes before and after the page content.": "Stilin çerçevesi {var:1} paylaşılan bileşene bölünür: sayfa içeriğinden önce ve sonra gelenler.",
     "The style's head loads stylesheets after its theme {var:1}. The design loads the theme after all of its stylesheets, so where both set the same rule the theme now wins.": "Stilin head bölümü, {var:1} temasından sonra stil dosyaları yüklüyor. Tasarım temayı tüm stil dosyalarından sonra yükler; ikisi aynı kuralı belirlediğinde artık tema kazanır.",
     "The style's pages now use the design \"{var:1}\"; the style itself stays as it was.": "Stilin sayfaları artık \"{var:1}\" tasarımını kullanıyor; stilin kendisi olduğu gibi kalıyor.",
+    "The styles of this workbook are too large to change here.": "Bu çalışma kitabının stilleri burada değiştirilemeyecek kadar büyük.",
+    "The styles of this workbook could not be read, so its cells are not formatted here.": "Bu çalışma kitabının stilleri okunamadı, bu yüzden hücreleri burada biçimlendirilmez.",
     "The stylesheet is too large.": "Stil dosyası çok büyük.",
     "The stylists, nail artist and skin therapist of the salon, what each does best and the days they are in.": "Salonun kuaförleri, tırnak uzmanı ve cilt bakım uzmanı; her birinin en iyi yaptığı iş ve çalıştığı günler.",
     "The stylists, therapists and front desk of the salon, and how to reach them.": "Salonun kuaförleri, terapistleri ve resepsiyonu; onlara nasıl ulaşılır.",

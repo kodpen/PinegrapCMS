@@ -42,7 +42,7 @@ function office_format_test_parts($sheet1 = null, $styles = null)
 	if ($sheet1 === null) {
 		$sheet1 = $head . '<dimension ref="A1:B4"/><cols><col min="4" max="4" width="12" style="1" customWidth="1"/></cols><sheetData>'
 			. '<row r="1"><c r="A1" t="inlineStr"><is><t>Ad</t></is></c></row>'
-			. '<row r="2" spans="1:2"><c r="A2"><v>10</v></c><c r="B2" s="1"><v>2</v></c></row>'
+			. '<row r="2" spans="1:2"><c r="A2"><v>46343</v></c><c r="B2" s="1"><v>2</v></c></row>'
 			. '<row r="4"><c r="A4"><f>A2*2</f><v>20</v></c></row>'
 			. '</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>';
 	}
@@ -156,7 +156,7 @@ function test_office_format_sheet()
 	$out = pg_office_xlsx_format_sheet($parts['xl/worksheets/sheet1.xml'], array(2, 0, 4, 3), $restyle);
 	pg_assert_true($out['ok'], 'formatted: ' . $out['error']);
 	pg_assert_contains('<row r="1"><c r="A1" t="inlineStr"><is><t>Ad</t></is></c></row>', $out['xml'], 'a row outside the range carried as it was');
-	pg_assert_contains('<row r="2" spans="1:4"><c r="A2" s="2"><v>10</v></c><c r="B2" s="3"><v>2</v></c><c r="C2" s="2"/><c r="D2" s="3"/></row>', $out['xml'], 'cells restyled, new ones made from the column\'s style');
+	pg_assert_contains('<row r="2" spans="1:4"><c r="A2" s="2"><v>46343</v></c><c r="B2" s="3"><v>2</v></c><c r="C2" s="2"/><c r="D2" s="3"/></row>', $out['xml'], 'cells restyled, new ones made from the column\'s style');
 	pg_assert_contains('<row r="3"><c r="A3" s="2"/><c r="B3" s="2"/><c r="C3" s="2"/><c r="D3" s="3"/></row><row r="4">', $out['xml'], 'a row the sheet did not have, in its place');
 	pg_assert_contains('<c r="A4" s="2"><f>A2*2</f><v>20</v></c>', $out['xml'], 'a formula cell keeps its formula and its result');
 
@@ -184,7 +184,7 @@ function test_office_format_save_and_read_back()
 
 	$book = pg_office_read($path, 'liste.xlsx', true);
 	pg_assert_true($book['ok'], 'read back: ' . $book['error']);
-	pg_assert_same('1900-01-10', $book['sheets'][0]['rows'][1]['cells'][0], 'the number now shows as a date');
+	pg_assert_same('2026-11-17', $book['sheets'][0]['rows'][1]['cells'][0], 'the number now shows as a date');
 
 	$zip = new ZipArchive();
 	$zip->open($path);
@@ -194,7 +194,7 @@ function test_office_format_save_and_read_back()
 	}
 
 	pg_assert_contains('<row r="4"><c r="A4"><f>A2*2</f><v>20</v></c></row>', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'formula results stay: no value changed');
-	pg_assert_contains('<c r="A2" s="2"><v>10</v></c><c r="B2" s="3"><v>2</v></c>', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'each style its own new one');
+	pg_assert_contains('<c r="A2" s="2"><v>46343</v></c><c r="B2" s="3"><v>2</v></c>', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'each style its own new one');
 	pg_assert_same(count($parts), $zip->numFiles, 'no part added or lost');
 	$zip->close();
 	unlink($path);
