@@ -9,7 +9,8 @@ description: How a settings pane, a form drawer and a connect row are put togeth
 
 ## How is a settings pane laid out?
 - A purpose line, then the parts as folded rows: icon tile, name, one line of state in the person's words, a state pill, a chevron; one row open at a time. Never several open cards one under another.
-- A list of things (mailboxes, agents, servers) is list rows with each thing's state and actions; "Add" is the pane's one filled button.
+- A list of things (mailboxes, agents, servers) is list rows with each thing's state and actions. In a Site Settings pane the dialog's Save is the one filled button, so "Add …" is quiet with a plus; on a list screen of its own "Add …" is the filled one.
+- An opened row holding fields ends above the dialog's foot: one column, what is rarely changed in one fold, a long list or a guide in the part's drawer (`workflow/screen-description-checks.md`).
 
 ## How is a form in a drawer or dialog laid out?
 - By what the person came to do: more than about eight fields are split into tabs (the segmented control) or groups under a group label; what few people change sits folded under "Advanced".
@@ -24,6 +25,7 @@ description: How a settings pane, a form drawer and a connect row are put togeth
 ## How is a state shown?
 - In the same words on every screen that shows the thing: an account connected on Connections reads connected wherever it is named, or the line says what is still missing and leads to it.
 - "Not connected" is followed by the button that connects.
+- The pill's tone follows the state, and the word changes with it: never connected "Not connected" grey; waiting for the person (a sign-in, a renewal) says what it waits for, amber; tried and failed "Failed" rose; working "Connected" or "Ready" teal.
 
 ## What stays the parts' own rule?
 - Buttons, tabs, fields, pills and their ranks: `look-new-parts.md`, `look-marketplace-ranks.md`. Widths: `look-page-widths.md`.
