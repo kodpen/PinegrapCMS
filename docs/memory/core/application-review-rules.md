@@ -5,7 +5,7 @@ module: application_review
 ---
 
 ## Where are the rules?
-- `includes/fn/application_review.php`, no database, tested in `tests/application_review_test.php` (#PR_AR1A). The store, screens and API of plan `application-review` call it.
+- `includes/fn/application_review.php`, no database, tested in `tests/application_review_test.php` (#10809). The store, screens and API of plan `application-review` call it.
 
 ## How is eligibility checked?
 - `pg_application_eligibility($rules, $answers)`: rule types `file` (a non-empty answer), `range` (`min`/`max`, both ends included), `choice` (`values`; a multi-choice answer passes when one value is listed). An unknown type is skipped.

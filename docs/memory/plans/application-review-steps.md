@@ -4,7 +4,7 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 ---
 
 ## Which steps are there?
-- AR1a (S) first, no schema: new `includes/fn/application_review.php`, pure: eligibility rules, weighted sums, the mean, the leniency correction, the spread flag, balanced assignment, the shortlist cut. `tests/application_review_test.php` red first: a strict and a lenient reviewer, a reviewer with 4 scores, a pool of one, a conflict, a tie at the cut-off. Features: V3, V5, V6, V11 to V13 (the rules).
+- AR1a (S) first, no schema. Done (#10809, `core/application-review-rules.md`): new `includes/fn/application_review.php`, pure: eligibility rules, weighted sums, the mean, the leniency correction, the spread flag, balanced assignment, the shortlist cut. `tests/application_review_test.php` red first: a strict and a lenient reviewer, a reviewer with 4 scores, a pool of one, a conflict, a tie at the cut-off. Features: V3, V5, V6, V11 to V13 (the rules).
 
 - AR1b (M) after AR1a (the owner said yes to poll 199, message 10845): the four tables as a migration step in the open version, the columns of `decisions-made-schema-44.md`, in the PR body, asked of the architect before ready; the erase of the four tables; the export of state, decision, combined and criterion scores, never jurors' notes or names (poll 200, `decisions-made-product-91.md`); their tests; the `audit_log` entity type. Features: V16 (privacy).
 
