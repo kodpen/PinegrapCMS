@@ -425,7 +425,9 @@ function ws_note($note_id)
 
 /**
  * What the person may do with a note: it is theirs, they may change it, they
- * may read it, or nothing at all. Being staff gives nothing here.
+ * may read it, or nothing at all. Being staff gives nothing here. A channel
+ * share with can_edit lets whoever may post in that channel change it; one
+ * who may only read the channel reads it.
  *
  * @param array      $viewer
  * @param array      $note
@@ -443,23 +445,59 @@ function ws_note_access($viewer, $note, $shares = null)
         return 'owner';
     }
 
-    $access = '';
-
     if ($shares === null) {
         $shares = db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
     }
 
+    // Posting is asked only of a channel whose share lets its posters edit.
+    $reach = function ($channel_id, $need) use ($viewer) {
+        $channel = ws_channel($channel_id);
+
+        if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+            return '';
+        }
+
+        return (($need === 'post') && ws_can_post_channel($viewer, $channel)) ? 'post' : 'read';
+    };
+
+    return ws_note_access_of((int) $viewer['id'], $note, (array) $shares, $reach);
+}
+
+/**
+ * ws_note_access() on rows given: pure but for $reach.
+ *
+ * @param int      $viewer_id
+ * @param array    $note   user_id
+ * @param array[]  $shares ws_note_shares rows: user_id, channel_id, can_edit
+ * @param callable $reach  (channel_id, need: read | post) => '' | read | post,
+ *                         the person's reach in that channel
+ * @return string owner | edit | view | ''
+ */
+function ws_note_access_of($viewer_id, $note, $shares, $reach)
+{
+    if ((int) $note['user_id'] === (int) $viewer_id) {
+        return 'owner';
+    }
+
+    $access = '';
+
     foreach ((array) $shares as $share) {
-        if ((int) $share['user_id'] === (int) $viewer['id']) {
-            if (!empty($share['can_edit'])) {
+        $editable = !empty($share['can_edit']);
+
+        if ((int) ($share['user_id'] ?? 0) === (int) $viewer_id) {
+            if ($editable) {
                 return 'edit';
             }
 
             $access = 'view';
-        } elseif (((int) $share['channel_id'] > 0) && ($access === '')) {
-            $channel = ws_channel($share['channel_id']);
+        } elseif (((int) ($share['channel_id'] ?? 0) > 0) && ($editable || ($access === ''))) {
+            $got = (string) $reach((int) $share['channel_id'], $editable ? 'post' : 'read');
 
-            if ($channel && ws_can_read_channel($viewer, $channel)) {
+            if ($editable && ($got === 'post')) {
+                return 'edit';
+            }
+
+            if ($got !== '') {
                 $access = 'view';
             }
         }
