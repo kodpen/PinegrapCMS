@@ -17447,9 +17447,8 @@ a.ws-chip-message:hover,
 @media (pointer: coarse) {
   .ws-emoji-search,
   #ws-poll-form .form-control,
-  #ws-poll-form .form-select,
   .ws-code-edit {
-    font-size: 16px;
+    font-size: var(--pg-text-field-touch);
   }
 }
 
@@ -28655,6 +28654,8 @@ select.pg-list-table-field option.private {
   /* A figure's value (the report's figure, a figure card), and on a phone. */
   --pg-text-figure: 1.625rem;
   --pg-text-figure-sm: 1.3125rem;
+  /* A field on a touch screen: iOS Safari zooms the page in on a smaller one. */
+  --pg-text-field-touch: 16px;
   --pg-weight-regular: var(--bs-font-weight-normal);
   --pg-weight-medium: var(--bs-font-weight-medium);
   --pg-weight-strong: 550;
