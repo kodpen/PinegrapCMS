@@ -328,6 +328,7 @@
     "Map of places: the list's collection needs two number fields named latitude and longitude and an address field.": "Yerler haritası: listenin koleksiyonunda latitude ve longitude adlı iki sayı alanı ve bir adres alanı gerekir.",
     "Map of places: the page is not open to everyone, so it shows no places.": "Yerler haritası: sayfa herkese açık olmadığı için yer göstermez.",
     "Map of places: this page has no form list. Add a form list of a collection to the page.": "Yerler haritası: bu sayfada form listesi yok. Sayfaya bir koleksiyonun form listesini ekleyin.",
+    "Map of places: this page holds no Map of places block, so it gives no places.": "Yerler haritası: bu sayfada Yerler haritası bloğu olmadığı için yer vermez.",
     "Map of the Old Town": "Eski Şehir Haritası",
     "Map of the beaches": "Plajların haritası",
     "Map of the zoo with its numbered habitats and the step-free loop": "Numaralı yaşam alanları ve basamaksız turuyla hayvanat bahçesinin haritası",

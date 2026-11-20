@@ -324,7 +324,8 @@ function test_place_list_request_names_no_field()
 
 	pg_assert_same(0, preg_match('/\$_(GET|POST|REQUEST|COOKIE)\b/', $fn), 'the module reads no request value');
 	pg_assert_contains("pg_place_list_for_page((int) (\$_GET['page'] ?? 0))", $endpoint, 'the endpoint passes the page id alone');
-	pg_assert_contains('pg_place_list_saved_choice(json_decode((string) pg_page_tree_json(', $fn, 'the choice comes from the saved page');
+	pg_assert_contains('$tree = (string) pg_page_tree_json((int) $page_id);', $fn, 'the choice comes from the saved page');
+	pg_assert_contains('pg_place_list_saved_choice(json_decode($tree, true))', $fn);
 }
 
 // The block's panel keeps the choice on the block, under the server's name,
@@ -353,4 +354,40 @@ function test_place_list_item_reads_a_decimal_comma()
 	pg_assert_same(null, $bad['lat'], 'two commas name no number');
 	pg_assert_same(null, $bad['lng'], 'no point without both');
 	pg_assert_same(null, pg_place_list_item(array('id' => 9), array(2 => 'x', 3 => '-90,5', 4 => '1'), $roles, '')['lat'], 'still in range');
+}
+
+// places.php answers only for a page that holds the block: another public
+// page with a public form list gives no addresses and phones its list may
+// not show. A block inside a shared component the page names, or one inside
+// that, counts.
+function test_place_list_page_must_hold_the_block()
+{
+	$asked = array();
+	$shared = array(
+		5 => json_encode(array('type' => 'root', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 6))))),
+		6 => json_encode(place_list_test_tree(null)),
+		7 => json_encode(array('type' => 'root', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 7))))),
+	);
+	$load = function ($ids) use ($shared, &$asked) {
+		$asked[] = $ids;
+		return array_intersect_key($shared, array_flip($ids));
+	};
+	$ref = function ($sid) {
+		return json_encode(array('type' => 'root', 'children' => array(array('type' => 'semantic', 'props' => array('tag' => 'div')), array('type' => 'shared_ref', 'props' => array('sharedId' => $sid)))));
+	};
+
+	pg_assert_true(pg_place_list_tree_holds_block(json_encode(place_list_test_tree(array('name' => 'Branch'))), $load), 'the block on the page');
+	pg_assert_same(array(), $asked, 'no shared component read for a block on the page');
+	pg_assert_false(pg_place_list_tree_holds_block(json_encode(array('type' => 'root', 'children' => array(array('type' => 'semantic', 'props' => array('tag' => 'div'))))), $load), 'a page without the block');
+	pg_assert_false(pg_place_list_tree_holds_block('', $load), 'no tree');
+	pg_assert_true(pg_place_list_tree_holds_block($ref(6), $load), 'in a shared component');
+	pg_assert_true(pg_place_list_tree_holds_block($ref(5), $load), 'in a shared component inside another');
+	pg_assert_false(pg_place_list_tree_holds_block($ref(7), $load), 'a component naming itself ends');
+	pg_assert_false(pg_place_list_tree_holds_block($ref(99), $load), 'a missing component');
+
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	$start = strpos($fn, 'function pg_place_list_for_page(');
+	$body = substr($fn, $start, strpos($fn, "\n}\n", $start) - $start);
+	pg_assert_true(strpos($body, 'pg_place_list_tree_holds_block(') !== false && strpos($body, 'pg_place_list_tree_holds_block(') < strpos($body, 'db_items(pg_place_list_records_sql('), 'the answer asks before any record is read');
+	pg_assert_contains('Map of places block', pg_place_list_reason_text('block'));
 }

@@ -234,6 +234,86 @@ function pg_place_list_saved_choice($tree)
 }
 
 /**
+ * Whether a saved page tree holds the "Map of places" block, in its own
+ * nodes or in a shared component it names (and those they name, a few
+ * levels deep). places.php answers only for such a page: another public
+ * page with a public form list would hand out the addresses and phones its
+ * list may not show. Any mention of the block's mark counts, so a block in
+ * an HTML element is not refused. Pure apart from $load.
+ *
+ * @param string   $tree_json pg_page_tree_json()
+ * @param callable $load      list of shared component ids => array(id => tree_json)
+ * @param int      $depth     levels of shared components read
+ * @return bool
+ */
+function pg_place_list_tree_holds_block($tree_json, $load, $depth = 4)
+{
+    $seen = array();
+    $trees = array((string) $tree_json);
+
+    for ($level = 0; $trees; $level++) {
+        $ids = array();
+
+        foreach ($trees as $json) {
+            $json = (string) $json;
+
+            if (stripos($json, 'data-pg-map') !== false) {
+                return true;
+            }
+
+            $walk = function ($node) use (&$walk, &$ids, &$seen) {
+                if (!is_array($node)) {
+                    return;
+                }
+
+                if (isset($node['type']) && ($node['type'] === 'shared_ref')) {
+                    $sid = isset($node['props']['sharedId']) ? (int) $node['props']['sharedId'] : 0;
+
+                    if (($sid > 0) && !isset($seen[$sid])) {
+                        $seen[$sid] = true;
+                        $ids[] = $sid;
+                    }
+
+                    return;
+                }
+
+                if (!empty($node['children']) && is_array($node['children'])) {
+                    foreach ($node['children'] as $child) {
+                        $walk($child);
+                    }
+                }
+            };
+            $walk(($json !== '') ? json_decode($json, true) : null);
+        }
+
+        if (!$ids || ($level >= $depth)) {
+            return false;
+        }
+
+        $trees = array_values((array) call_user_func($load, $ids));
+    }
+
+    return false;
+}
+
+/**
+ * The tree_json of shared components, by id.
+ *
+ * @param array $ids
+ * @return array id => tree_json
+ */
+function pg_place_list_shared_trees($ids)
+{
+    $trees = array();
+
+    foreach ((array) db_items("SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', array_map('intval', $ids)) . ")") as $row) {
+        $trees[(int) $row['id']] = (string) $row['tree_json'];
+    }
+
+    return $trees;
+}
+
+/**
  * Whether a field may hold a part: a coordinate a number field, the others
  * a plain text box or text area (or a number). Pure.
  *
@@ -378,7 +458,7 @@ function pg_place_list_page_reason($page_found, $access, $binned, $list, $public
 /**
  * The note a designer is shown for an empty answer or a cut list.
  *
- * @param string $reason page, list, fields, cut
+ * @param string $reason page, list, block, fields, cut
  * @return string
  */
 function pg_place_list_reason_text($reason)
@@ -392,6 +472,8 @@ function pg_place_list_reason_text($reason)
             return lang(array('string' => 'Map of places: the list has more than {var:1} records, so only the first {var:1} are shown and "Near me" is not offered. Narrow the list with its filters.', 'vars' => array((string) PG_PLACE_LIST_MAX)));
         case 'page':
             return lang('Map of places: the page is not open to everyone, so it shows no places.');
+        case 'block':
+            return lang('Map of places: this page holds no Map of places block, so it gives no places.');
     }
 
     return '';
@@ -530,7 +612,13 @@ function pg_place_list_for_page($page_id)
         }
     }
 
-    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode((string) pg_page_tree_json((int) $page_id), true)));
+    $tree = (string) pg_page_tree_json((int) $page_id);
+
+    if (!pg_place_list_tree_holds_block($tree, 'pg_place_list_shared_trees')) {
+        return array('reason' => 'block') + $empty;
+    }
+
+    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode($tree, true)));
 
     if ($roles === null) {
         return array('reason' => 'fields') + $empty;
