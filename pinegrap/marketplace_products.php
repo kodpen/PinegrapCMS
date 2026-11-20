@@ -859,7 +859,7 @@ function mp_products_pricing_html($account, $row) {
 			. pg_format_money($channel['price'] / 100, BASE_CURRENCY_SYMBOL) . '</b>'
 			. ($channel['own'] ? '' : ' <span class="pg-text-meta">' . h($channel['rule'] ? lang('by the rules') : lang('the site price')) . '</span>') . '</span>'
 		. '<span class="pg-text-meta">' . (($floor !== null)
-			? h(lang('Floor')) . ': <span class="pg-tabular">' . pg_format_money($floor / 100, BASE_CURRENCY_SYMBOL) . '</span>'
+			? h(lang('Floor price')) . ': <span class="pg-tabular">' . pg_format_money($floor / 100, BASE_CURRENCY_SYMBOL) . '</span>'
 			: h(lang('No floor: no cost is known'))) . '</span>'
 		. $watch
 		. '</div>'
@@ -882,7 +882,7 @@ function mp_products_repricing_change_html($change) {
 		. pg_format_money($change['new_price'] / 100, BASE_CURRENCY_SYMBOL) . '</span> '
 		. '<span class="pg-pill pg-tone-' . mp_repricing_reason_tone($change['reason']) . '">' . h(mp_repricing_reason_label($change['reason'])) . '</span> '
 		. ($change['sent'] ? '' : '<span class="pg-pill pg-tone-gray">' . h(lang('Try first')) . '</span> ')
-		. get_relative_time(array('timestamp' => $change['at']));
+		. '<span class="pg-text-meta">' . get_relative_time(array('timestamp' => $change['at'])) . '</span>';
 
 }
 
@@ -1601,7 +1601,7 @@ function mp_products_repricing_products($account, $listings) {
 		. '<th scope="col" class="text-end">' . h(lang('Buybox price')) . '</th>'
 		. '<th scope="col">' . h(lang('Rank')) . '</th>'
 		. '<th scope="col">' . h(lang('Strategy')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('Floor')) . '</th>'
+		. '<th scope="col" class="text-end">' . h(lang('Floor price')) . '</th>'
 		. '<th scope="col">' . h(lang('Last change')) . '</th>'
 		. '</tr></thead><tbody>';
 
@@ -1687,9 +1687,9 @@ function mp_products_repricing_view($account, $part, $card, $search, $page, $per
 	if ($data['try_first']) {
 
 		echo '
-	<div class="pg-card pg-card-inner-row mb-5">
+	<div class="pg-card pg-card-inner-row mpr-try mb-5">
 		<span class="pg-icon-tile pg-tone-amber" aria-hidden="true"><i class="bi bi-eye"></i></span>
-		<div class="flex-grow-1"><strong class="pg-list-row-title">' . h(lang('Try first is on: nothing is sent')) . '</strong>
+		<div class="mpr-try-text"><strong class="pg-list-row-title">' . h(lang('Try first is on: nothing is sent')) . '</strong>
 			<div class="pg-text-meta">' . h(lang('The robot writes what it would send to the log.')) . '</div></div>
 		<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_settings.php?account=' . $account_id . '&amp;settings=pricing">'
 			. '<i class="bi bi-sliders" aria-hidden="true"></i>' . h(lang('Pricing')) . '</a>
@@ -2110,6 +2110,9 @@ a.mpp-title:hover { text-decoration: underline; }
 /* The lists of the repricing view scroll sideways on a narrow screen. */
 .mpr-scroll { overflow-x: auto; border-top: 1px solid var(--pg-border-color); }
 .mpr-table th, .mpr-table td { white-space: nowrap; }
+.mpr-table td { font-size: var(--pg-text-base); }
+.mpr-try { flex-wrap: wrap; }
+.mpr-try-text { flex: 1 1 14rem; min-width: 0; }
 .mpr-title { color: inherit; font-weight: var(--pg-weight-strong); }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
