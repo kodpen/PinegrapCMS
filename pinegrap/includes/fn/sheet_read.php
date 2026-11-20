@@ -221,7 +221,7 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
     $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook_xml);
-    $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+    $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
     $zip->close();
     unset($workbook_xml);
 
@@ -324,6 +324,35 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     if (pg_zip_entry_overran()) {
         $error = 'read';
     }
+}
+
+/**
+ * A workbook-level part of a .xlsx (its shared strings, its styles) where
+ * the workbook's relationships name it, as Excel and PHPExcel find it; the
+ * usual name when they name none that is in the package; '' when there is
+ * neither. Writers other than Excel and LibreOffice name these parts
+ * otherwise (xl/SharedStrings.xml, xl/strings/Shared.xml).
+ *
+ * @param ZipArchive $zip
+ * @param string     $type    the relationship type's last segment, in lower case (sharedstrings, styles)
+ * @param string     $default the usual part name (xl/sharedStrings.xml)
+ * @return string
+ */
+function pg_sheet_xlsx_part($zip, $type, $default)
+{
+    foreach (pg_office_rels($zip, 'xl/_rels/workbook.xml.rels') as $relationship) {
+        if (($relationship['type'] !== $type) || $relationship['external']) {
+            continue;
+        }
+
+        $part = pg_office_part_name('xl/', $relationship['target']);
+
+        if ($zip->locateName($part) !== false) {
+            return $part;
+        }
+    }
+
+    return ($zip->locateName($default) !== false) ? $default : '';
 }
 
 /**
@@ -782,25 +811,24 @@ function pg_sheet_ods_time_serial($text)
  */
 function pg_sheet_xls_rows($path, $sheet, &$error)
 {
-    $book = pg_sheet_xls_load($path, $sheet);
+    $reader = pg_sheet_xls_load($path, $sheet);
 
-    if (!is_array($book)) {
-        $error = ($book === 'sheet') ? 'sheet' : 'read';
+    if (!is_object($reader)) {
+        $error = ($reader === 'sheet') ? 'sheet' : 'read';
         return;
     }
 
-    foreach ($book as $number => $row) {
-        yield $number => $row;
-    }
+    yield from $reader->pg_each_row();
 }
 
 /**
- * The cells of one .xls sheet, row number => row (pg_sheet_rows()), or
- * 'read' when the file could not be read, 'sheet' when it has no such sheet.
+ * One .xls sheet read, its cells held compactly by the reader
+ * (Pg_Sheet_Xls_Reader::pg_each_row() gives the rows), or 'read' when the
+ * file could not be read, 'sheet' when it has no such sheet.
  *
  * @param string $path
  * @param int    $sheet
- * @return array|string
+ * @return Pg_Sheet_Xls_Reader|string
  */
 function pg_sheet_xls_load($path, $sheet)
 {
@@ -824,5 +852,8 @@ function pg_sheet_xls_load($path, $sheet)
         return 'read';
     }
 
-    return $reader->pg_rows();
+    $error = $reader->pg_error();
+    $reader->pg_release();
+
+    return ($error === '') ? $reader : $error;
 }

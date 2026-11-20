@@ -309,7 +309,9 @@ function pg_products_import_xlsx_date_styles($zip)
 {
     $dates = array();
 
-    $styles = $zip->getFromName('xl/styles.xml');
+    // Where the workbook's relationships name it (pg_sheet_xlsx_part()).
+    $part = pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml');
+    $styles = ($part === '') ? false : $zip->getFromName($part);
 
     if ($styles === false) {
         return $dates;
@@ -418,7 +420,7 @@ function pg_products_import_xlsx_to_csv($source_path, &$error, $sheet = 0)
 
     $date_styles = pg_products_import_xlsx_date_styles($zip);
 
-    $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+    $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
 
     $zip->close();
 

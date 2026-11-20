@@ -282,7 +282,13 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
     /** @var string the code page of a BIFF5/7 workbook's text, as iconv names it */
     public $pg_codepage = 'CP1252';
 
-    /** @var array row => column => cell, the cells the library gives no type for (0-based) */
+    /**
+     * @var array row => column => cell (0-based), each as its type letter
+     * and value in one string (s, n, d, b or e, pg_sheet_rows()) or null for
+     * an empty formula result: about a tenth of the memory of the library's
+     * own cell, formatted text and details. The cells the walk types come
+     * first; the library's addcell() fills in the rest.
+     */
     public $pg_cells = array();
 
     /**
@@ -314,6 +320,14 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
         $pos = 0;
         $ended = false;
         $version = ($length >= 6) ? (ord($data[4]) | (ord($data[5]) << 8)) : 0;
+        // The shared string table and its CONTINUE records, read here: the
+        // library loses its place in a string whose formatting runs or
+        // phonetic data a CONTINUE record cuts (and refuses the file), and
+        // keeps only the last character of a string that goes on two bytes
+        // a character after a split.
+        $sst_at = -1;
+        $sst = array();
+        $in_sst = false;
 
         while ($pos + 4 <= $length) {
             $code = ord($data[$pos]) | (ord($data[$pos + 1]) << 8);
@@ -328,6 +342,16 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
             if ($code === SPREADSHEET_EXCEL_READER_TYPE_EOF) {
                 $ended = true;
                 break;
+            }
+
+            if ($code === SPREADSHEET_EXCEL_READER_TYPE_SST) {
+                $sst_at = ($sst_at < 0) ? $pos : $sst_at;
+                $sst[] = $record;
+                $in_sst = true;
+            } elseif (($code === SPREADSHEET_EXCEL_READER_TYPE_CONTINUE) && $in_sst) {
+                $sst[] = $record;
+            } else {
+                $in_sst = false;
             }
 
             if (($code === 0x42) && ($size >= 2)) {
@@ -354,7 +378,128 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
             return false;
         }
 
+        if ($sst_at >= 0) {
+            $this->sst = $this->pg_shared_strings($sst);
+            // The library passes over a record it does not know: the table
+            // is not read a second time.
+            $this->data[$sst_at] = "\xFF";
+            $this->data[$sst_at + 1] = "\xFF";
+        }
+
         return parent::_parse();
+    }
+
+    /**
+     * The shared string table (SST) as UTF-8 strings, from its record and
+     * the CONTINUE records after it.
+     *
+     * A string's head (character count, option flags, run and phonetic
+     * counts) is never split; its characters may be, and the part in the
+     * next record starts with an option byte saying whether it is one or two
+     * bytes a character; its formatting runs and phonetic data may be split
+     * anywhere, with no byte added.
+     *
+     * @param string[] $records the SST record's data, then each CONTINUE's
+     * @return string[]
+     */
+    public function pg_shared_strings($records)
+    {
+        $records = array_values($records);
+        $strings = array();
+
+        if (!isset($records[0]) || (strlen($records[0]) < 8)) {
+            return $strings;
+        }
+
+        $unique = unpack('V', substr($records[0], 4, 4));
+        $unique = (int) $unique[1];
+        $record = 0;
+        $pos = 8;
+        $count = count($records);
+
+        // Bytes taken across records with no option byte between them.
+        $take = function ($bytes) use (&$records, &$record, &$pos, $count) {
+            $out = '';
+
+            while ($bytes > 0) {
+                if ($pos >= strlen($records[$record])) {
+                    if (++$record >= $count) {
+                        return null;
+                    }
+
+                    $pos = 0;
+                    continue;
+                }
+
+                $part = substr($records[$record], $pos, $bytes);
+                $out .= $part;
+                $pos += strlen($part);
+                $bytes -= strlen($part);
+            }
+
+            return $out;
+        };
+
+        for ($index = 0; $index < $unique; $index++) {
+            $head = $take(3);
+
+            if ($head === null) {
+                break;
+            }
+
+            $chars = ord($head[0]) | (ord($head[1]) << 8);
+            $flags = ord($head[2]);
+            $runs = 0;
+            $phonetic = 0;
+
+            if ($flags & 0x08) {
+                $runs = $take(2);
+                $runs = ($runs === null) ? 0 : (ord($runs[0]) | (ord($runs[1]) << 8));
+            }
+
+            if ($flags & 0x04) {
+                $phonetic = $take(4);
+                $phonetic = ($phonetic === null) ? 0 : (ord($phonetic[0]) | (ord($phonetic[1]) << 8) | (ord($phonetic[2]) << 16) | (ord($phonetic[3]) << 24));
+            }
+
+            $wide = ($flags & 0x01) !== 0;
+            $utf16 = '';
+
+            while ($chars > 0) {
+                if ($pos >= strlen($records[$record])) {
+                    // The characters go on in the next record, after its
+                    // option byte.
+                    if ((++$record >= $count) || ($records[$record] === '')) {
+                        break 2;
+                    }
+
+                    $wide = (ord($records[$record][0]) & 0x01) !== 0;
+                    $pos = 1;
+                    continue;
+                }
+
+                $room = strlen($records[$record]) - $pos;
+                $n = min($chars, $wide ? (int) floor($room / 2) : $room);
+
+                if ($n < 1) {
+                    // Half a two-byte character left: a damaged table.
+                    break 2;
+                }
+
+                $part = substr($records[$record], $pos, $wide ? $n * 2 : $n);
+                $utf16 .= $wide ? $part : implode("\0", str_split($part)) . "\0";
+                $pos += strlen($part);
+                $chars -= $n;
+            }
+
+            $strings[] = $this->pg_convert($utf16, 'UTF-16LE');
+
+            if (($runs * 4 + $phonetic > 0) && ($take($runs * 4 + $phonetic) === null)) {
+                break;
+            }
+        }
+
+        return $strings;
     }
 
     /**
@@ -420,8 +565,8 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
                 case SPREADSHEET_EXCEL_READER_TYPE_BOOLERR:
                     if ($size >= 8) {
                         $this->pg_cells[$row][$column] = (ord($record[7]) === 0)
-                            ? array('t' => 'b', 'v' => (ord($record[6]) !== 0) ? '1' : '0')
-                            : array('t' => 'e', 'v' => $this->pg_error_text(ord($record[6])));
+                            ? ('b' . ((ord($record[6]) !== 0) ? '1' : '0'))
+                            : ('e' . $this->pg_error_text(ord($record[6])));
                     }
                     break;
 
@@ -438,9 +583,9 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
                             // Text, in the STRING record that follows.
                             $formula_at = array($row, $column);
                         } elseif ($kind === 1) {
-                            $this->pg_cells[$row][$column] = array('t' => 'b', 'v' => (ord($record[8]) !== 0) ? '1' : '0');
+                            $this->pg_cells[$row][$column] = 'b' . ((ord($record[8]) !== 0) ? '1' : '0');
                         } elseif ($kind === 2) {
-                            $this->pg_cells[$row][$column] = array('t' => 'e', 'v' => $this->pg_error_text(ord($record[8])));
+                            $this->pg_cells[$row][$column] = 'e' . $this->pg_error_text(ord($record[8]));
                         } elseif ($kind === 3) {
                             $this->pg_cells[$row][$column] = null;
                         }
@@ -449,13 +594,13 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
 
                 case SPREADSHEET_EXCEL_READER_TYPE_STRING:
                     if ($formula_at !== null) {
-                        $this->pg_cells[$formula_at[0]][$formula_at[1]] = array('t' => 's', 'v' => $biff8 ? $this->pg_unicode($record, 0, false) : $this->pg_bytes(substr($record, 2, ord($record[0]) | (ord($record[1]) << 8))));
+                        $this->pg_cells[$formula_at[0]][$formula_at[1]] = 's' . ($biff8 ? $this->pg_unicode($record, 0, false) : $this->pg_bytes(substr($record, 2, ord($record[0]) | (ord($record[1]) << 8))));
                         $formula_at = null;
                     }
                     break;
 
                 case SPREADSHEET_EXCEL_READER_TYPE_LABEL:
-                    $this->pg_cells[$row][$column] = array('t' => 's', 'v' => $biff8 ? $this->pg_unicode($record, 6, false) : $this->pg_bytes(substr($record, 8, ord($record[6]) | (ord($record[7]) << 8))));
+                    $this->pg_cells[$row][$column] = 's' . ($biff8 ? $this->pg_unicode($record, 6, false) : $this->pg_bytes(substr($record, 8, ord($record[6]) | (ord($record[7]) << 8))));
                     break;
             }
 
@@ -560,12 +705,36 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
     }
 
     /**
-     * The cells read, row number => row (pg_sheet_rows()), or 'read' when
-     * the file could not be read, 'sheet' when it has no such worksheet.
+     * A cell the library read, kept in pg_cells unless the walk typed it
+     * first. The library's own cell, its formatted text and its details are
+     * not kept.
      *
-     * @return array|string
+     * @param int        $row    0-based
+     * @param int        $col    0-based
+     * @param mixed      $string what the library holds for it
+     * @param array|null $info   its details (raw value, xfIndex)
+     * @return void
      */
-    public function pg_rows()
+    public function addcell($row, $col, $string, $info = null)
+    {
+        if (isset($this->pg_cells[$row]) && array_key_exists($col, $this->pg_cells[$row])) {
+            return;
+        }
+
+        $cell = $this->pg_cell($string, (array) $info);
+
+        if ($cell !== null) {
+            $this->pg_cells[$row][$col] = $cell['t'] . $cell['v'];
+        }
+    }
+
+    /**
+     * Why the sheet cannot be given: 'read' when the file could not be read,
+     * 'sheet' when it has no such worksheet, '' when it was read.
+     *
+     * @return string
+     */
+    public function pg_error()
     {
         if ($this->pg_broken || ($this->_ole->error !== 0)) {
             return 'read';
@@ -576,52 +745,65 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
             return ($this->pg_worksheets > 0) ? 'sheet' : 'read';
         }
 
-        $sheet = isset($this->sheets[$this->pg_found]) ? $this->sheets[$this->pg_found] : array();
-        $cells = isset($sheet['cells']) ? (array) $sheet['cells'] : array();
-        $info = isset($sheet['cellsInfo']) ? (array) $sheet['cellsInfo'] : array();
-
-        // The cells the library read and those it could not type, together.
-        foreach ($this->pg_cells as $row => $columns) {
-            foreach ($columns as $column => $cell) {
-                $cells[$row + 1][$column + 1] = $cell;
-                $info[$row + 1][$column + 1]['pg'] = true;
-            }
-        }
-
-        ksort($cells);
-        $out = array();
-
-        foreach ($cells as $number => $columns) {
-            $row = array();
-            ksort($columns);
-
-            foreach ($columns as $column => $value) {
-                $details = isset($info[$number][$column]) ? $info[$number][$column] : array();
-                $cell = isset($details['pg']) ? $value : $this->pg_cell($value, $details);
-
-                if (($cell === null) || ($column < 1)) {
-                    continue;
-                }
-
-                while (count($row) < $column - 1) {
-                    $row[] = null;
-                }
-
-                $row[$column - 1] = $cell;
-            }
-
-            if (!empty($row)) {
-                ksort($row);
-                $out[(int) $number] = $row;
-            }
-        }
-
-        return $out;
+        return '';
     }
 
     /**
-     * A cell the library read: a number (with its raw value and format) or
-     * text.
+     * The workbook's bytes and what only the read needed, let go once the
+     * sheet is read: only pg_cells is kept.
+     *
+     * @return void
+     */
+    public function pg_release()
+    {
+        $this->data = '';
+        $this->sst = array();
+        $this->sheets = array();
+        $this->_ole->data = '';
+        $this->_ole->entry = '';
+        $this->_ole->bigBlockChain = array();
+        $this->_ole->smallBlockChain = array();
+    }
+
+    /**
+     * The rows read, row number => row (pg_sheet_rows()), each made when it
+     * is given.
+     *
+     * @return Generator
+     */
+    public function pg_each_row()
+    {
+        ksort($this->pg_cells);
+
+        foreach (array_keys($this->pg_cells) as $index) {
+            $columns = $this->pg_cells[$index];
+            ksort($columns);
+            $row = array();
+
+            foreach ($columns as $column => $packed) {
+                if (($packed === null) || ($packed === '')) {
+                    continue;
+                }
+
+                while (count($row) < $column) {
+                    $row[] = null;
+                }
+
+                $row[$column] = array('t' => $packed[0], 'v' => (string) substr($packed, 1));
+            }
+
+            // Given rows are let go as the walk goes on.
+            unset($this->pg_cells[$index]);
+
+            if (!empty($row)) {
+                yield ((int) $index + 1) => $row;
+            }
+        }
+    }
+
+    /**
+     * A cell the library read: a number (with its raw value and cell
+     * style) or text.
      *
      * @param mixed $value   what the library holds for it
      * @param array $details its cellsInfo
