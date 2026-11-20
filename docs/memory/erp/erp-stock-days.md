@@ -3,7 +3,7 @@ name: erp-stock-days
 description: Daily stock record behind Stock Planning (erp_stock_days, 11.0.249): which sales count, bundles as components, sparse rows, night pass, 14-day recount, 365-day fill
 ---
 
-## What is recorded? (SP1 of plan stock-planning, PR #PRNUM)
+## What is recorded? (SP1 of plan stock-planning, PR #10612)
 - `erp_stock_days` (`product_id`, `day` DATE, `sold`, `stock` NULL = unknown; PRIMARY (`product_id`, `day`), `idx_day`), step 11.0.249 `upgrade_2026_11_0_erp_stock_days()`.
 - Per stock-tracked product (`inventory = 1`, not a bundle) and site day, a row only when it sold or its stock was 0 at the night pass. A day with no row after the record began was in stock and sold nothing.
 - Units: `orders` at `status IN ('complete','exported')` of every `type` by `order_date`, and sales invoices (`direction = 'sales'`, `doc_type = 'invoice'`, issued/partially paid/paid) with `order_id = 0` by `issue_date`. An order's own invoice is the order. Carts, cancelled orders, drafts and cancelled invoices never count; a return is not taken off.
