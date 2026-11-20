@@ -47,19 +47,16 @@ if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
         if ($requests_action === 'save') {
             pg_privacy_request_save($requests_request, array('assigned_user_id' => (int) ($_POST['assigned_user_id'] ?? 0), 'verified' => !empty($_POST['verified'])));
             $liveform->add_notice(lang('The request was saved.'));
-        } elseif (in_array($requests_action, array('send', 'refuse'), true)) {
-            $requests_text = is_string($_POST[($requests_action === 'refuse') ? 'reason' : 'answer'] ?? null) ? $_POST[($requests_action === 'refuse') ? 'reason' : 'answer'] : '';
-            $requests_sent = pg_privacy_request_send($requests_request, $requests_text, $requests_operator, $requests_action === 'refuse');
+        } elseif ($requests_action === 'refuse') {
+            $requests_sent = pg_privacy_request_send($requests_request, is_string($_POST['reason'] ?? null) ? $_POST['reason'] : '', $requests_operator, true);
             $requests_errors = array(
-                'open'       => lang('This request is already closed.'),
-                'empty'      => ($requests_action === 'refuse') ? lang('Write why the request is refused.') : lang('Write the answer.'),
-                'unverified' => lang('Check who asks first, in step 1.'),
-                'mail'       => lang('The e-mail could not be sent. Nothing was erased; try again.'),
-                'refused'    => lang('You may not erase this person: they hold a role equal to or above yours.'),
+                'open'  => lang('This request is already closed.'),
+                'empty' => lang('Write why the request is refused.'),
+                'mail'  => lang('The e-mail could not be sent. Nothing was erased; try again.'),
             );
 
             if ($requests_sent === 'ok') {
-                $liveform->add_notice(($requests_action === 'refuse') ? lang('The request was refused and the reason sent.') : lang('The answer was sent.'));
+                $liveform->add_notice(lang('The request was refused and the reason sent.'));
             } else {
                 $liveform->add_error($requests_errors[$requests_sent] ?? lang('The request could not be saved.'));
             }
@@ -105,7 +102,7 @@ $requests_drawers = pg_privacy_request_add_drawer(isset($_GET['add']));
 $requests_open = $requests_ready ? pg_privacy_request_get((int) ($_GET['request'] ?? 0)) : null;
 
 if ($requests_open !== null) {
-    $requests_drawers .= pg_privacy_request_drawer($requests_open, $requests_labels, $requests_operator, $requests_now);
+    $requests_drawers .= pg_privacy_request_drawer($requests_open, $requests_labels, $requests_now);
 }
 
 echo
@@ -122,7 +119,7 @@ pg_page_shell(array(
     ' . $liveform->output_notices() . '
     ' . pg_privacy_centre_views('requests', $requests_counts['open']) . '
     ' . pg_screen_toolbar(array(
-        'primary' => $requests_ready ? '<button type="button" class="pg-button pg-button-fill" data-privacy-drawer="privacy-request-add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a request')) . '</button>' : '',
+        'primary' => $requests_ready ? '<button type="button" class="pg-button pg-button-fill" data-privacy-drawer="privacy_request_add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a request')) . '</button>' : '',
         'search'  => $requests_filters,
     )) . '
     ' . ($requests_ready ? $requests_ending . pg_list_table_html($requests_list['source'], $requests_list['page'], lang('Requests')) : '<p class="pg-text-2">' . h(lang('The request box comes with the software update that adds its table.')) . '</p>') . '
@@ -131,43 +128,44 @@ pg_page_shell(array(
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 <script>
 (function () {
-    // A drawer opened by its button, or with the screen when it carries
-    // data-open; its tabs and its numbered steps show one part at a time.
+    var phone = window.matchMedia("(max-width: 575.98px)");
+
+    // A drawer opens through pgUI, from the right or, on a phone, as a
+    // sheet from the bottom; one carrying data-open opens with the screen.
     var open = function (drawer) {
-        if (drawer && window.pgUI) { pgUI.drawer.show(drawer); }
+        if (!drawer || !window.pgUI) { return; }
+        drawer.classList.toggle("drawer-end", !phone.matches);
+        drawer.classList.toggle("drawer-bottom", phone.matches);
+        pgUI.drawer.show(drawer);
+    };
+
+    var select = function (tab) {
+        tab.closest("[role=tablist]").querySelectorAll("[role=tab]").forEach(function (item) {
+            var on = (item === tab);
+            item.setAttribute("aria-selected", on ? "true" : "false");
+            item.tabIndex = on ? 0 : -1;
+            document.getElementById(item.getAttribute("aria-controls")).hidden = !on;
+        });
+        tab.focus();
     };
 
     document.addEventListener("click", function (event) {
         var opener = event.target.closest("[data-privacy-drawer]");
-        var tab = event.target.closest("[data-privacy-tab]");
+        var tab = event.target.closest("#privacy_request [role=tab]");
 
-        if (opener) {
-            open(document.getElementById(opener.getAttribute("data-privacy-drawer")));
-        }
-
-        if (tab) {
-            var drawer = tab.closest("dialog");
-            drawer.querySelectorAll("[data-privacy-tab]").forEach(function (item) {
-                item.setAttribute("aria-pressed", item === tab ? "true" : "false");
-            });
-            drawer.querySelectorAll("[data-privacy-pane]").forEach(function (pane) {
-                pane.hidden = pane.getAttribute("data-privacy-pane") !== tab.getAttribute("data-privacy-tab");
-            });
-            drawer.querySelectorAll("[data-privacy-foot]").forEach(function (foot) {
-                foot.hidden = tab.getAttribute("data-privacy-tab") === "answer";
-            });
-        }
+        if (opener) { open(document.getElementById(opener.getAttribute("data-privacy-drawer"))); }
+        if (tab) { select(tab); }
     });
 
-    // A step of the answer opens alone.
-    document.addEventListener("toggle", function (event) {
-        var step = event.target;
-        if (step.matches && step.matches("details[data-privacy-step]") && step.open) {
-            step.parentNode.querySelectorAll("details[data-privacy-step]").forEach(function (other) {
-                if (other !== step) { other.open = false; }
-            });
-        }
-    }, true);
+    // Left and Right move between the tabs.
+    document.addEventListener("keydown", function (event) {
+        var tab = event.target.closest ? event.target.closest("#privacy_request [role=tab]") : null;
+        if (!tab || ((event.key !== "ArrowLeft") && (event.key !== "ArrowRight"))) { return; }
+        var tabs = Array.prototype.slice.call(tab.parentNode.querySelectorAll("[role=tab]"));
+        var next = tabs.indexOf(tab) + ((event.key === "ArrowRight") ? 1 : -1);
+        select(tabs[(next + tabs.length) % tabs.length]);
+        event.preventDefault();
+    });
 
     document.querySelectorAll("dialog[data-open]").forEach(open);
 })();

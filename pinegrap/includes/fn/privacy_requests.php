@@ -235,30 +235,6 @@ function pg_privacy_request_from_input(array $input, $now, $operator_id)
 }
 
 /**
- * The answer's text as the kind's template, for staff to change. Pure but
- * for the words.
- *
- * @param string $kind
- * @param string $name
- * @param string $site
- * @return string
- */
-function pg_privacy_request_answer_template($kind, $name, $site)
-{
-    $texts = array(
-        'information' => lang('You asked which personal data we keep about you. The personal data we keep about you is listed below. Ask us if anything is unclear.'),
-        'correction'  => lang('You asked us to correct your personal data. We have made the correction you asked for.'),
-        'erasure'     => lang('You asked us to erase your personal data. We have erased it, except for the records the law obliges us to keep, such as invoices.'),
-        'objection'   => lang('You objected to how we use your personal data. We have looked at your objection and answer it below.'),
-        'other'       => lang('We have looked at your request about your personal data and answer it below.'),
-    );
-
-    $hello = ($name !== '') ? lang(array('string' => 'Hello {var:1},', 'vars' => array($name))) : lang('Hello,');
-
-    return $hello . "\n\n" . ($texts[$kind] ?? $texts['other']) . "\n\n" . $site;
-}
-
-/**
  * The fields of a request an audit line keeps: no address, name or text.
  * Pure.
  *
@@ -458,48 +434,6 @@ function pg_privacy_request_save(array $request, array $input)
     }
 
     return _pg_privacy_request_write($request, $changes, 'update');
-}
-
-/**
- * What answering would hand over or remove: the export's sections
- * (information) or the erase dry run's tables (erasure), as label => count.
- *
- * @param array $request
- * @param array $operator  role, id
- * @return array  status (pg_privacy_export_build()'s or pg_privacy_erase()'s), lines
- */
-function pg_privacy_request_gather(array $request, array $operator)
-{
-    $input = array('email' => (string) $request['email'], 'contact_id' => (int) $request['contact_id'], 'user_id' => (int) $request['user_id']);
-
-    if ($request['kind'] === 'erasure') {
-        $result = pg_privacy_erase($input, $operator, false);
-        $labels = pg_privacy_erase_labels();
-        $kept = pg_privacy_rules_never_entries();
-        $lines = array('go' => array(), 'kept' => array());
-
-        foreach ($result['tables'] as $key => $done) {
-            $lines[(in_array($key, $kept, true) && ($done['action'] === 'anonymise')) ? 'kept' : 'go'][$labels[$key] ?? $key] = (int) $done['rows'];
-        }
-
-        return array('status' => $result['status'], 'lines' => $lines);
-    }
-
-    if ($request['kind'] !== 'information') {
-        return array('status' => 'none', 'lines' => array());
-    }
-
-    $result = pg_privacy_export_build($input, $operator, array('site' => (string) HOSTNAME_SETTING, 'prepared_by' => ''));
-    $labels = pg_privacy_export_sections();
-    $lines = array();
-
-    foreach (($result['document'] !== null) ? pg_privacy_export_counts($result['document']) : array() as $key => $count) {
-        if ($count > 0) {
-            $lines[$labels[$key] ?? $key] = $count;
-        }
-    }
-
-    return array('status' => $result['status'], 'lines' => array('go' => $lines, 'kept' => array()));
 }
 
 /**
@@ -727,30 +661,40 @@ function pg_privacy_centre_views($active, $open)
 }
 
 /**
- * A drawer's frame: head, body, foot.
+ * A request's drawer, and the drawer that adds one: Bootstrap 6's drawer
+ * built as Application Access' #api_new, opened through pgUI.
  *
  * @param string $id
- * @param string $head  markup of the title block
- * @param string $body
- * @param string $foot
- * @param bool   $open  opened with the screen
+ * @param string $head   markup under the title (a line, a pill)
+ * @param string $title
+ * @param string $body   the form's fields and panes
+ * @param string $foot   the buttons
+ * @param string $tabs   the tab strip, '' for none
+ * @param bool   $open   opened with the screen
  * @return string
  */
-function _pg_privacy_request_drawer_frame($id, $head, $body, $foot, $open)
+function _pg_privacy_request_drawer_frame($id, $title, $head, $tabs, $body, $foot, $open)
 {
     return '
-    <dialog class="drawer drawer-end privacy-request-drawer" id="' . h($id) . '" aria-labelledby="' . h($id) . '-title"' . ($open ? ' data-open="1"' : '') . '>
-        <div class="drawer-header">
-            <div class="pg-look-grow">' . $head . '</div>
-            <button type="button" class="pg-icon-button" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-        </div>
-        <div class="drawer-body">' . $body . '</div>
-        ' . (($foot !== '') ? '<div class="drawer-footer">' . $foot . '</div>' : '') . '
+    <dialog class="drawer drawer-end" id="' . h($id) . '" aria-labelledby="' . h($id) . '_title" style="width:min(480px,100%)"' . ($open ? ' data-open="1"' : '') . '>
+        <form method="post" action="privacy_centre.php?view=requests" class="d-flex flex-column h-100">
+            ' . get_token_field() . '<input type="hidden" name="view" value="requests">
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="' . h($id) . '_title">' . h($title) . '</h5>
+                    <p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . $head . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            ' . (($tabs !== '') ? '<div class="px-5 pt-3 pb-3 border-bottom">' . $tabs . '</div>' : '') . '
+            <div class="drawer-body flex-grow-1 overflow-auto">' . $body . '</div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">' . $foot . '</div>
+        </form>
     </dialog>';
 }
 
 /**
- * A labelled field of a drawer's form.
+ * A labelled field of a drawer.
  *
  * @param string $id
  * @param string $label
@@ -760,8 +704,8 @@ function _pg_privacy_request_drawer_frame($id, $head, $body, $foot, $open)
  */
 function _pg_privacy_request_field($id, $label, $control, $help = '')
 {
-    return '<div class="mb-5"><label class="pg-field-label" for="' . h($id) . '">' . h($label) . '</label>' . $control
-        . (($help !== '') ? '<p class="pg-field-help">' . h($help) . '</p>' : '') . '</div>';
+    return '<div class="form-field mb-5"><label class="form-label pg-field-label" for="' . h($id) . '">' . h($label) . '</label>' . $control
+        . (($help !== '') ? '<div class="form-text">' . h($help) . '</div>' : '') . '</div>';
 }
 
 /**
@@ -778,123 +722,69 @@ function pg_privacy_request_add_drawer($open)
         $kinds .= '<option value="' . h($key) . '">' . h($label) . '</option>';
     }
 
-    $body = '<form method="post" id="privacy-request-add-form" action="privacy_centre.php?view=requests">' . get_token_field() . '
-            <input type="hidden" name="view" value="requests"><input type="hidden" name="action" value="add">
-            ' . _pg_privacy_request_field('privacy-request-kind', lang('Kind'), '<select class="pg-input" id="privacy-request-kind" name="kind">' . $kinds . '</select>') . '
-            ' . _pg_privacy_request_field('privacy-request-email', lang('E-mail address'), '<input type="email" class="pg-input" id="privacy-request-email" name="email" maxlength="100" required>', lang('The answer goes to this address.')) . '
-            ' . _pg_privacy_request_field('privacy-request-name', lang('Name'), '<input type="text" class="pg-input" id="privacy-request-name" name="name" maxlength="100">') . '
-            ' . _pg_privacy_request_field('privacy-request-message', lang('What the person asks'), '<textarea class="pg-input" id="privacy-request-message" name="message" rows="5"></textarea>') . '
-        </form>';
+    $body = '<input type="hidden" name="action" value="add">'
+        . _pg_privacy_request_field('privacy_request_add_kind', lang('Kind'), '<select class="pg-input" id="privacy_request_add_kind" name="kind">' . $kinds . '</select>')
+        . _pg_privacy_request_field('privacy_request_add_email', lang('E-mail address'), '<input type="email" class="pg-input" id="privacy_request_add_email" name="email" maxlength="100" required>', lang('The answer goes to this address.'))
+        . _pg_privacy_request_field('privacy_request_add_name', lang('Name'), '<input type="text" class="pg-input" id="privacy_request_add_name" name="name" maxlength="100">')
+        . _pg_privacy_request_field('privacy_request_add_message', lang('What the person asks'), '<textarea class="pg-input" id="privacy_request_add_message" name="message" rows="5"></textarea>');
 
-    $foot = '<button type="submit" form="privacy-request-add-form" class="pg-button pg-button-fill">' . h(lang('Add')) . '</button>'
-        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>';
+    $foot = '<span class="flex-grow-1"></span>'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" class="pg-button pg-button-fill">' . h(lang('Add')) . '</button>';
 
-    return _pg_privacy_request_drawer_frame('privacy-request-add', '<h2 class="pg-title-status mb-0" id="privacy-request-add-title">' . h(lang('Add a request')) . '</h2><div class="pg-text-meta">' . h(lang('A request that came by e-mail, phone or post. Its 30 days start today.')) . '</div>', $body, $foot, $open);
+    return _pg_privacy_request_drawer_frame('privacy_request_add', lang('Add a request'), h(lang('A request that came by e-mail, phone or post. Its 30 days start today.')), '', $body, $foot, $open);
 }
 
 /**
- * A numbered step of "Prepare the answer".
- *
- * @param int    $number
- * @param string $title
- * @param string $state  done | current | later
- * @param string $body
- * @return string
- */
-function _pg_privacy_request_step($number, $title, $state, $body)
-{
-    $mark = ($state === 'done') ? '<i class="bi bi-check-lg" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Done')) . '</span>' : (int) $number;
-
-    return '<details class="pg-card pg-look-pad mb-3 privacy-request-step is-' . $state . '" data-privacy-step' . (($state === 'current') ? ' open' : '') . '>
-            <summary class="d-flex align-items-center gap-3"><span class="pg-count">' . $mark . '</span><strong class="pg-list-row-title">' . h($title) . '</strong></summary>
-            <div class="pt-4">' . $body . '</div>
-        </details>';
-}
-
-/**
- * A request's drawer: the person, the kind and the due pill; tabs Request,
- * Answer (the numbered steps) and History; Save and Refuse at the foot.
+ * A request's drawer: the person, the kind and the due pill; tabs Request
+ * and History; Refuse, Cancel and Save at the foot. A closed request shows
+ * its fields as plain text with Close only.
  *
  * @param array $request
- * @param array $labels    pg_privacy_request_labels()
- * @param array $operator  role, id
+ * @param array $labels   pg_privacy_request_labels()
  * @param int   $now
  * @return string
  */
-function pg_privacy_request_drawer(array $request, array $labels, array $operator, $now)
+function pg_privacy_request_drawer(array $request, array $labels, $now)
 {
     $id = (int) $request['id'];
     $open = ($request['status'] === 'open');
-    $form = 'privacy-request-' . $id . '-form';
-    $hidden = get_token_field() . '<input type="hidden" name="view" value="requests"><input type="hidden" name="request" value="' . $id . '">';
-    $person = ($request['name'] !== '') ? $request['name'] : $request['email'];
-    $verified = ((int) $request['verified_at'] > 0);
-
-    // Request: the text, how it came, the proof, who handles it, status.
-    $handlers = '<option value="0">' . h(lang('Nobody yet')) . '</option>';
+    $handler = '';
 
     foreach (pg_privacy_request_handlers() as $user_id => $username) {
-        $handlers .= '<option value="' . $user_id . '"' . (((int) $request['assigned_user_id'] === $user_id) ? ' selected' : '') . '>' . h($username) . '</option>';
+        if ((int) $request['assigned_user_id'] === $user_id) {
+            $handler = $username;
+        }
     }
+
+    $time = function ($at) {
+        return ((int) $at > 0) ? h(get_absolute_time(array('timestamp' => (int) $at, 'format' => 'plain_text'))) : '–';
+    };
 
     $facts = '<dl class="pg-kv mb-5">'
         . '<dt>' . h(lang('E-mail address')) . '</dt><dd>' . h($request['email']) . '</dd>'
         . '<dt>' . h(lang('Came from')) . '</dt><dd>' . h($labels['sources'][$request['source']] ?? $request['source']) . '</dd>'
         . '<dt>' . h(lang('Address')) . '</dt><dd>' . h(($request['source'] === 'staff') ? lang('Typed in by staff') : lang('Proven by its link')) . '</dd>'
-        . '<dt>' . h(lang('Received')) . '</dt><dd>' . h(get_absolute_time(array('timestamp' => (int) $request['received_at'], 'format' => 'plain_text'))) . '</dd>'
+        . '<dt>' . h(lang('Received')) . '</dt><dd>' . $time($request['received_at']) . '</dd>'
         . '<dt>' . h(lang('Status')) . '</dt><dd>' . h($labels['statuses'][$request['status']] ?? $request['status']) . '</dd>'
-        . '</dl>';
+        . ($open ? '' : '<dt>' . h(lang('Handled by')) . '</dt><dd>' . h($handler) . '</dd>'
+            . '<dt>' . h(lang('Result')) . '</dt><dd>' . h($labels['results'][$request['result']] ?? '') . ' · ' . $time($request['closed_at']) . '</dd>')
+        . '</dl>'
+        . '<h6 class="pg-title-status">' . h(lang('What the person asks')) . '</h6><p class="pg-text-2 text-break">' . nl2br(h((string) $request['message'])) . '</p>';
 
-    $request_pane = $facts
-        . '<h3 class="pg-title-status">' . h(lang('What the person asks')) . '</h3><p class="pg-text-2 text-break">' . nl2br(h((string) $request['message'])) . '</p>'
-        . ($open ? '<form method="post" id="' . $form . '" action="privacy_centre.php?view=requests">' . $hidden . '<input type="hidden" name="action" value="save"><input type="hidden" name="verified" value="' . ($verified ? '1' : '') . '">'
-            . _pg_privacy_request_field('privacy-request-' . $id . '-handler', lang('Handled by'), '<select class="pg-input" id="privacy-request-' . $id . '-handler" name="assigned_user_id">' . $handlers . '</select>', lang('Reminders at 7 and 2 days go to this person.'))
-            . '</form>' : '');
+    if ($open) {
+        $handlers = '<option value="0">' . h(lang('Nobody yet')) . '</option>';
 
-    // Answer: the numbered steps, or the answer sent.
-    if (!$open) {
-        $answer_pane = '<p class="pg-text-2">' . h($labels['results'][$request['result']] ?? '') . ' · ' . h(get_absolute_time(array('timestamp' => (int) $request['closed_at'], 'format' => 'plain_text'))) . '</p>'
-            . '<div class="pg-card pg-look-pad text-break">' . nl2br(h((string) $request['answer'])) . '</div>';
-    } else {
-        $gather = ($verified && in_array($request['kind'], array('information', 'erasure'), true)) ? pg_privacy_request_gather($request, $operator) : array('status' => 'none', 'lines' => array());
-        $list = function (array $lines) {
-            $html = '<dl class="pg-kv">';
-
-            foreach ($lines as $label => $count) {
-                $html .= '<dt>' . h($label) . '</dt><dd>' . pg_format_number($count, 0) . '</dd>';
-            }
-
-            return $html . '</dl>';
-        };
-
-        if ($request['kind'] === 'information') {
-            $gather_body = $gather['lines'] ? '<p class="pg-text-2">' . h(lang('The personal data export finds these records; list them in the answer or send the export.')) . '</p>' . $list($gather['lines']['go'])
-                . '<p class="mt-3"><a class="pg-button pg-button-quiet pg-button-sm" href="privacy_export.php?email=' . h(rawurlencode($request['email'])) . '">' . h(lang('Open the personal data export')) . '</a></p>'
-                : '<p class="pg-text-2">' . h(lang('No record of this person was found.')) . '</p>';
-        } elseif ($request['kind'] === 'erasure') {
-            $gather_body = ($gather['status'] === 'refused') ? '<p class="pg-text-2">' . h(lang('You may not erase this person: they hold a role equal to or above yours.')) . '</p>'
-                : ($gather['lines'] && $gather['lines']['go'] ? '<h4 class="pg-title-status">' . h(lang('What will go')) . '</h4>' . $list($gather['lines']['go']) : '<p class="pg-text-2">' . h(lang('No record of this person was found.')) . '</p>')
-                . ($gather['lines'] && $gather['lines']['kept'] ? '<h4 class="pg-title-status mt-4">' . h(lang('What the law keeps')) . '</h4>' . $list($gather['lines']['kept']) : '');
-        } else {
-            $gather_body = '<p class="pg-text-2">' . h(lang('Look into the request in the records it names; nothing is gathered for this kind.')) . '</p>';
+        foreach (pg_privacy_request_handlers() as $user_id => $username) {
+            $handlers .= '<option value="' . $user_id . '"' . (((int) $request['assigned_user_id'] === $user_id) ? ' selected' : '') . '>' . h($username) . '</option>';
         }
 
-        $site = (defined('ORGANIZATION_NAME') && (trim((string) ORGANIZATION_NAME) !== '')) ? (string) ORGANIZATION_NAME : (string) HOSTNAME_SETTING;
-        $erase = ($request['kind'] === 'erasure');
-        $send_form = 'privacy-request-' . $id . '-send';
-        $write = _pg_privacy_request_field('privacy-request-' . $id . '-answer', lang('The e-mail'), '<textarea class="pg-input" id="privacy-request-' . $id . '-answer" name="answer" form="' . $send_form . '" rows="9" required>' . h(pg_privacy_request_answer_template($request['kind'], (string) $request['name'], $site)) . '</textarea>', lang('Change the text as you need; it is kept with the request.'));
-        $send = '<form method="post" id="' . $send_form . '" action="privacy_centre.php?view=requests"' . ($erase ? ' data-pg-confirm="' . h(lang('The person\'s data is erased after the e-mail has gone. This cannot be undone.')) . '" data-pg-confirm-title="' . h(lang('Erase and send')) . '" data-pg-confirm-ok="' . h(lang('Erase and send')) . '"' : '') . '>' . $hidden . '<input type="hidden" name="action" value="send">'
-            . '<p class="pg-text-2">' . h($erase ? lang('The e-mail goes first; the person\'s data is erased right after it.') : lang('The e-mail goes to the address of the request.')) . '</p>'
-            . '<button type="submit" class="pg-button ' . ($erase ? 'pg-button-danger' : 'pg-button-fill') . '"' . ($verified ? '' : ' disabled') . '>' . h($erase ? lang('Erase and send') : lang('Send the answer')) . '</button></form>';
-
-        $check = '<form method="post" action="privacy_centre.php?view=requests">' . $hidden . '<input type="hidden" name="action" value="save"><input type="hidden" name="assigned_user_id" value="' . (int) $request['assigned_user_id'] . '">'
-            . '<p class="pg-text-2">' . h(($request['source'] === 'staff') ? lang('The request was typed in by staff: make sure it comes from the person whose data it is.') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.')) . '</p>'
-            . '<div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" id="privacy-request-' . $id . '-verified" name="verified" value="1"' . ($verified ? ' checked' : '') . ' onchange="this.form.submit()"><label class="pg-text-2" for="privacy-request-' . $id . '-verified">' . h(lang('I checked who asks')) . '</label></div></form>';
-
-        $answer_pane = _pg_privacy_request_step(1, lang('Check who asks'), $verified ? 'done' : 'current', $check)
-            . _pg_privacy_request_step(2, lang('Gather'), $verified ? 'current' : 'later', $gather_body)
-            . _pg_privacy_request_step(3, lang('Write the answer'), 'later', $write)
-            . _pg_privacy_request_step(4, lang('Send'), 'later', $send);
+        $facts .= _pg_privacy_request_field('privacy_request_handler', lang('Handled by'), '<select class="pg-input" id="privacy_request_handler" name="assigned_user_id">' . $handlers . '</select>', lang('Reminders at 7 and 2 days go to this person.'))
+            . '<div class="form-field mb-5"><div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" id="privacy_request_verified" name="verified" value="1"' . (((int) $request['verified_at'] > 0) ? ' checked' : '') . '><label class="pg-text-2" for="privacy_request_verified">' . h(lang('I checked who asks')) . '</label></div>'
+            . '<div class="form-text">' . h(($request['source'] === 'staff') ? lang('The request was typed in by staff: make sure it comes from the person whose data it is.') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.')) . '</div></div>'
+            . _pg_privacy_request_field('privacy_request_reason', lang('Why it is refused'), '<textarea class="pg-input" id="privacy_request_reason" name="reason" rows="3"></textarea>', lang('Only when you refuse: the reason is sent to the person.'));
+    } elseif ((string) $request['answer'] !== '') {
+        $facts .= '<h6 class="pg-title-status">' . h(lang('The answer sent')) . '</h6><p class="pg-text-2 text-break">' . nl2br(h((string) $request['answer'])) . '</p>';
     }
 
     // History: the request's audit lines, newest first.
@@ -906,26 +796,25 @@ function pg_privacy_request_drawer(array $request, array $labels, array $operato
             . '<div class="pg-list-row-text">' . h((string) $line['actor_name']) . '</div></div></div>';
     }
 
-    $tabs = '<div class="pg-seg mb-5" role="group" aria-label="' . h(lang('Request')) . '">';
+    $tabs = '<span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">';
+    $panes = array('request' => array(lang('Request'), $facts), 'history' => array(lang('History'), ($history !== '') ? '<div class="pg-look-rows">' . $history . '</div>' : '<p class="pg-text-2">' . h(lang('No step yet.')) . '</p>'));
+    $body = '<input type="hidden" name="request" value="' . $id . '">';
 
-    foreach (array('request' => lang('Request'), 'answer' => lang('Answer'), 'history' => lang('History')) as $key => $label) {
-        $tabs .= '<button type="button" class="pg-seg-item" data-privacy-tab="' . $key . '" aria-pressed="' . (($key === 'request') ? 'true' : 'false') . '">' . h($label) . '</button>';
+    foreach ($panes as $key => $pane) {
+        $first = ($key === 'request');
+        $tabs .= '<button type="button" class="pg-seg-item" role="tab" id="privacy_request_tab_' . $key . '" aria-selected="' . ($first ? 'true' : 'false') . '" aria-controls="privacy_request_pane_' . $key . '"' . ($first ? '' : ' tabindex="-1"') . '>' . h($pane[0]) . '</button>';
+        $body .= '<div role="tabpanel" id="privacy_request_pane_' . $key . '" aria-labelledby="privacy_request_tab_' . $key . '"' . ($first ? '' : ' hidden') . '>' . $pane[1] . '</div>';
     }
 
-    $body = $tabs . '</div>'
-        . '<div data-privacy-pane="request">' . $request_pane . '</div>'
-        . '<div data-privacy-pane="answer" hidden>' . $answer_pane . '</div>'
-        . '<div data-privacy-pane="history" hidden>' . (($history !== '') ? '<div class="pg-look-rows">' . $history . '</div>' : '<p class="pg-text-2">' . h(lang('No step yet.')) . '</p>') . '</div>';
+    $foot = $open
+        ? '<button type="submit" name="action" value="refuse" class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The reason is sent to the person and the request is closed.')) . '">' . h(lang('Refuse')) . '</button>'
+            . '<span class="flex-grow-1"></span>'
+            . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
+            . '<button type="submit" name="action" value="save" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>'
+        : '<span class="flex-grow-1"></span><button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Close')) . '</button>';
 
-    $refuse = '<form method="post" action="privacy_centre.php?view=requests" class="d-flex gap-3 align-items-end pg-look-grow" data-pg-confirm="' . h(lang('The reason is sent to the person and the request is closed.')) . '" data-pg-confirm-title="' . h(lang('Refuse')) . '" data-pg-confirm-ok="' . h(lang('Refuse')) . '">' . $hidden . '<input type="hidden" name="action" value="refuse">'
-        . '<input type="text" class="pg-input" name="reason" required aria-label="' . h(lang('Why it is refused')) . '" placeholder="' . h(lang('Why it is refused')) . '">'
-        . '<button type="submit" class="pg-button pg-button-danger">' . h(lang('Refuse')) . '</button></form>';
+    $person = ($request['name'] !== '') ? $request['name'] : $request['email'];
+    $head = h($labels['kinds'][$request['kind']] ?? $request['kind']) . ' ' . pg_privacy_request_due_pill($request, $now);
 
-    $foot = $open ? '<div class="d-flex flex-wrap gap-3 w-100" data-privacy-foot><button type="submit" form="' . $form . '" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>'
-        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>' . $refuse . '</div>' : '';
-
-    $head = '<h2 class="pg-title-status mb-0" id="privacy-request-' . $id . '-title">' . h($person) . '</h2>'
-        . '<div class="pg-text-meta d-flex align-items-center gap-3">' . h($labels['kinds'][$request['kind']] ?? $request['kind']) . ' ' . pg_privacy_request_due_pill($request, $now) . '</div>';
-
-    return _pg_privacy_request_drawer_frame('privacy-request-' . $id, $head, $body, $foot, true);
+    return _pg_privacy_request_drawer_frame('privacy_request', $person, $head, $tabs . '</span>', $body, $foot, true);
 }

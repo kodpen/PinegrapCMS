@@ -1,6 +1,6 @@
 ---
 name: privacy-requests
-description: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer and "Prepare the answer"
+description: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer (the Answer tab is KV4b)
 module: privacy_requests
 ---
 
@@ -15,13 +15,13 @@ module: privacy_requests
 
 ## How is the screen built?
 - `privacy_centre.php?view=requests` loads `includes/privacy_centre_requests.php`: segments Inventory / Requests (open count), the toolbar's fill "Add a request", filters Open, Answered, All; a line "N requests end within 7 days" filters to them (`filter=ending`). The list is a printed list table (`privacy_requests`).
-- `?request=<id>` opens that request's drawer: head (person, kind, due pill), tabs Request, Answer, History; foot Save (handler), Cancel, Refuse (danger, a reason, `data-pg-confirm`). Answer: four numbered steps, one open at a time. A closed request shows its sent answer read-only.
-- Due pill: days left grey, amber from 7, red (rose) from 2 and overdue.
+- `?request=<id>` opens `dialog#privacy_request` (architect, channel message 11006, built as Application Access' `#api_new`): 480 px from the right, a bottom sheet under 576 px, through pgUI; one form. Head: person, kind, due pill. Tabs (`role=tab`, `aria-selected`, Left/Right): Request, History. Foot: Refuse (danger, left, a reason field, a confirm), Cancel, Save last. Closed: plain text and Close only.
+- Request holds the handler, "I checked who asks" (`verified_at`) and the refusal reason. The drawer is the "Drawer" section of Design examples.
+- Due pill: days left grey, amber from 7, rose from 2 and overdue.
 
 ## What does answering do?
-- Gather: information reads the export's section counts (`pg_privacy_export_build()`), erasure the erase dry run (what goes, and the ERP and legal entries anonymised as "what the law keeps").
-- Send (`pg_privacy_request_send()`): the e-mail first; for an erasure, the erase runs after the mail has gone and the answer is written back into the anonymised row. `email()` has no attachment, so the export is not attached: the answer lists the counts and the export screen is linked.
-- Refuse sends the reason the same way and closes the request.
+- The Answer tab ("Prepare the answer", numbered steps) is KV4b. `pg_privacy_request_send()` is built: the e-mail first; for an erasure, the erase runs after the mail has gone and the answer is written back into the anonymised row. Refuse uses it to send the reason and close the request.
+- `email()` takes no attachment: an information answer cannot carry the export file.
 
 ## How does the erasure treat it?
 - `pg_privacy_erase_tables()` `privacy_requests`: anonymise (name, email as token, message, answer, contact and user links), found by `request_ids`, `contact_ids`, `user_ids`, `emails`. The inventory line keeps it under `closed_requests`; the rule `requests` anonymises closed ones after 3 years (`privacy-retention-rules.md`).
