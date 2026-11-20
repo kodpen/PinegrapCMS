@@ -1132,16 +1132,15 @@ function pg_whatsapp_queue_row($to, $template, $options, $now)
  * Components that hold PG_WHATSAPP_OFFER_PLACEHOLDER get the template's
  * offer code here: the offer's own code, or a single-use key made for this
  * number (its id into key_code_id), so a retry sends the same code. A key
- * sent to a left cart (options order_id, else the contact_id's left cart)
- * is a touch of it (pg_cart_recovery_whatsapp_key_sent()).
+ * becomes a touch of the contact's left cart when the message is sent
+ * (pg_whatsapp_queue_sent_touch()), not here.
  *
  * db_q() rather than db(): a request that only wanted to send a message must
  * not end because the queue refused a row.
  *
  * @param string $to
  * @param array  $template pg_whatsapp_queue_row()
- * @param array  $options  pg_whatsapp_queue_row(); order_id, the left cart
- *                         the message is about (0 or missing for none)
+ * @param array  $options  pg_whatsapp_queue_row()
  * @return array ok, row (the queue's id), duplicate (a message with this
  *               reference was already queued; row is that one), error
  */
@@ -1219,15 +1218,7 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
         $values);
 
     if ($result !== false) {
-        $queued = (int) mysqli_insert_id(db::$con);
-
-        // A single-use key sent to a left cart is a touch of that cart.
-        if (($row['key_code_id'] > 0) && function_exists('pg_cart_recovery_whatsapp_key_sent')) {
-            pg_cart_recovery_whatsapp_key_sent(isset($options['order_id']) ? (int) $options['order_id'] : 0,
-                $row['contact_id'], $row['template_id']);
-        }
-
-        return array('ok' => true, 'row' => $queued, 'duplicate' => false, 'error' => '');
+        return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');
     }
 
     $errno = (int) mysqli_errno(db::$con);
@@ -1315,6 +1306,34 @@ function pg_whatsapp_queue_row_marketing($id, $category)
 }
 
 /**
+ * The recovered-carts touch a sent outbox row makes, pure: a message that
+ * was sent and carried a single-use key, to a known contact. null for any
+ * other (failed, uncertain, still queued, no key, no contact).
+ *
+ * @param array $row     whatsapp_outbox row: key_code_id, contact_id, template_id
+ * @param array $outcome pg_sms_queue_outcome(): status, sent_at
+ * @return array|null contact_id, template_id, sent_at
+ */
+function pg_whatsapp_queue_sent_touch(array $row, array $outcome)
+{
+    if (!isset($outcome['status']) || ($outcome['status'] !== 'sent')) {
+        return null;
+    }
+
+    $contact_id = isset($row['contact_id']) ? (int) $row['contact_id'] : 0;
+
+    if ((!isset($row['key_code_id']) || ((int) $row['key_code_id'] < 1)) || ($contact_id < 1)) {
+        return null;
+    }
+
+    return array(
+        'contact_id'  => $contact_id,
+        'template_id' => isset($row['template_id']) ? (int) $row['template_id'] : 0,
+        'sent_at'     => (int) $outcome['sent_at'],
+    );
+}
+
+/**
  * Sends what is due in the queue. Called by job.php on every run. Bounded by
  * a row count and wall-clock time: Meta not answering costs its timeout per
  * message, and this must not hold the general job past its next tick.
@@ -1388,7 +1407,7 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
         }
 
         $row = db_item(
-            "SELECT id, attempts, send_after, expires_at, kind, reference, recipient, category, template_name, template_language, payload
+            "SELECT id, attempts, send_after, expires_at, kind, reference, recipient, contact_id, category, template_id, template_name, template_language, payload, key_code_id
             FROM whatsapp_outbox
             WHERE id = '" . $id . "'");
 
@@ -1450,6 +1469,15 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
 
         if ($outcome['status'] === 'sent') {
             $result['sent']++;
+
+            // A single-use key that went out is a touch of the contact's
+            // left cart, looked up at the send time.
+            $touch = pg_whatsapp_queue_sent_touch($row, $outcome);
+
+            if (($touch !== null) && function_exists('pg_cart_recovery_whatsapp_key_sent')) {
+                pg_cart_recovery_whatsapp_key_sent(0, $touch['contact_id'], $touch['template_id'], $touch['sent_at']);
+            }
+
             continue;
         }
 

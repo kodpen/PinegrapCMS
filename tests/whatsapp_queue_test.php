@@ -140,3 +140,23 @@ function test_whatsapp_queue_wiring()
 
 	pg_assert_true(isset(pg_contact_holders()['whatsapp_outbox']), 'a contact holder');
 }
+
+function test_whatsapp_queue_sent_key_touch()
+{
+	$row = array('key_code_id' => '41', 'contact_id' => '12', 'template_id' => '7');
+	$sent = array('status' => 'sent', 'sent_at' => 1800000000);
+
+	pg_assert_same(array('contact_id' => 12, 'template_id' => 7, 'sent_at' => 1800000000),
+		pg_whatsapp_queue_sent_touch($row, $sent), 'a sent message with a key is a touch, at its send time');
+
+	pg_assert_same(null, pg_whatsapp_queue_sent_touch($row, array('status' => 'failed', 'sent_at' => 0)), 'a failed message is no touch');
+	pg_assert_same(null, pg_whatsapp_queue_sent_touch($row, array('status' => 'uncertain', 'sent_at' => 0)), 'nor one that may have gone');
+	pg_assert_same(null, pg_whatsapp_queue_sent_touch($row, array('status' => 'queued', 'sent_at' => 0)), 'nor one still waiting');
+	pg_assert_same(null, pg_whatsapp_queue_sent_touch(array('key_code_id' => '0') + $row, $sent), 'no key: no touch');
+	pg_assert_same(null, pg_whatsapp_queue_sent_touch(array('contact_id' => '0') + $row, $sent), 'no contact: no cart to find');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+	$enqueue = substr($source, strpos($source, 'function pg_whatsapp_enqueue('));
+	$enqueue = substr($enqueue, 0, strpos($enqueue, "\nfunction ", 10));
+	pg_assert_true(strpos($enqueue, 'pg_cart_recovery_whatsapp_key_sent') === false, 'queuing a message writes no touch');
+}
