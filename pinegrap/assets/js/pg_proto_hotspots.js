@@ -2203,6 +2203,53 @@
         return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
     }
 
+    // ── A links panel row dropped on the canvas ──
+
+    // The item of `items` (frames and chips, { id, x, y, w, h } in canvas
+    // units) whose box holds the point `at` ({ x, y }), edges included; of
+    // two that overlap the later one, drawn on top; null over none.
+    function itemAt(items, at) {
+        if (!Array.isArray(items) || !isObject(at)) {
+            return null;
+        }
+
+        var x = Number(at.x);
+        var y = Number(at.y);
+
+        if (!isFinite(x) || !isFinite(y)) {
+            return null;
+        }
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+            var left = isObject(item) ? Number(item.x) : NaN;
+            var top = isObject(item) ? Number(item.y) : NaN;
+
+            if (x >= left && y >= top && x <= left + (Number(item.w) || 0) && y <= top + (Number(item.h) || 0)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    // Where a links panel row dropped at `at` (canvas units) points its
+    // link: { item, href }, the frame or chip under the point (itemAt())
+    // and the href an arrow ending there writes (hrefTo()). null for a row
+    // no arrow is drawn from (drawable()), over nothing, or over what takes
+    // no arrow (a shared part's frame, an anchor's, a hidden or a broken
+    // chip).
+    function rowDrop(row, items, at, env) {
+        if (!drawable(row)) {
+            return null;
+        }
+
+        var item = itemAt(items, at);
+        var href = item ? hrefTo(item, env) : null;
+
+        return (href === null) ? null : { item: item, href: href };
+    }
+
     // What the selected frame (its id, null for none) shows of a layout:
     // out, the ids of its arrows; in, the ids of the arrows into it from
     // page frames; shared, the links of shared frames into it, which draw
@@ -2530,6 +2577,8 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
+        itemAt: itemAt,
+        rowDrop: rowDrop,
         focusOf: focusOf,
         fitStart: fitStart,
         ZOOM_TAP: ZOOM_TAP,
