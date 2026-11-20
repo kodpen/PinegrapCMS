@@ -24,7 +24,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `error_spike`: last MB of `php_errors.log` (and `.1` when written within the hour), lines dated in the site zone; names the most frequent message.
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
 - `payment_notice`: a payment callback's log line (`commerce/payment-callback.md`), PR #2143.
-- Sales watch, `group => 'sales'` (`commerce/sales-watch.md`): sources `sales` (`orders_stopped`, `payment_broken`), `sales_price` (`price_error`), `returns` (`return_spike`, nightly).
+- `group => 'sales'`: the sales watch's sources (`commerce/sales-watch.md`); `'shipping'`: the delivery tower's pass (`commerce/delivery-tower-alerts-events.md`).
 - `cert_expiring`: https and a public host only; read once a day (`pg_ops_certificate_end()`), judged every pass; a failed reading says nothing.
 
 ## How does an alert name a failing webhook?

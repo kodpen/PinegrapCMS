@@ -1341,6 +1341,7 @@ function ws_scheduled_rule_input($viewer, $rule)
                 'task_status' => ws_task_statuses(),
                 'outcome'     => function_exists('ws_events_approval_outcomes') ? ws_events_approval_outcomes() : array(),
                 'transport'   => function_exists('ws_mail_transport_labels') ? ws_mail_transport_labels() : array(),
+                'problem_kind' => function_exists('ws_events_problem_kinds') ? ws_events_problem_kinds() : array(),
             );
 
             if (isset($filter_values[$info['filter']])) {
@@ -2407,6 +2408,10 @@ function ws_scheduled_rule_text($viewer, $rule)
 
                     case 'transport':
                         $text = lang(array('string' => 'When a message is received by {var:1}', 'vars' => ws_mail_transport_labels()[$status] ?? $status));
+                        break;
+
+                    case 'problem_kind':
+                        $text = lang(array('string' => '{var:1}: {var:2}', 'vars' => array($text, ws_events_problem_kinds()[$status] ?? $status)));
                         break;
 
                     case 'group':

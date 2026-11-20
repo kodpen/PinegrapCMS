@@ -302,6 +302,7 @@ function api_app_event_area($name, $module_label = '') {
 	$areas = array(
 		'order'           => 'Orders',
 		'marketplace'     => 'Marketplaces',
+		'shipment'        => 'Orders',
 		'cart_quote'      => 'Cart quotes',
 		'mail'            => 'E-mail',
 		'whatsapp'        => 'WhatsApp',
