@@ -116,6 +116,14 @@ function pg_event_tickets_page_rows($order_id)
 }
 
 /**
+ * The variable names of a product form field that holds the guest's name,
+ * when the form maps no field to the contact's first and last name: a
+ * regular expression that PHP (preg_match()) and MySQL (REGEXP) both read,
+ * on the name in lower case.
+ */
+define('PG_EVENT_TICKET_GUEST_FIELD_PATTERN', '(^|_)(full_?name|name|guest|attendee|participant|ad_?soyad|isim)($|_)');
+
+/**
  * The guest's name a product form answer gives: the first and last name
  * fields mapped to the contact, else a field whose variable name says it
  * holds a name. Pure.
@@ -143,7 +151,7 @@ function pg_event_ticket_guest_name(array $fields)
             $first = $data;
         } elseif (($contact === 'last_name') && ($last === '')) {
             $last = $data;
-        } elseif (($named === '') && preg_match('/(^|_)(full_?name|name|guest|attendee|participant|ad_?soyad|isim)($|_)/', $name)) {
+        } elseif (($named === '') && preg_match('/' . PG_EVENT_TICKET_GUEST_FIELD_PATTERN . '/', $name)) {
             $named = $data;
         }
     }
@@ -169,14 +177,28 @@ function pg_event_tickets_page_guests(array $order_item_ids)
         return array();
     }
 
-    $forms = array();
-
-    foreach ((array) db_items(
+    return pg_event_tickets_guest_names_from_rows((array) db_items(
         "SELECT form_data.order_item_id, form_data.quantity_number, form_data.name, form_data.data, form_fields.contact_field
         FROM form_data
         LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
         WHERE form_data.order_item_id IN (" . implode(',', $ids) . ")
-        ORDER BY form_data.id") as $row) {
+        ORDER BY form_data.id"));
+}
+
+/**
+ * The guests' names in the product form answers of some order lines, by
+ * pg_event_ticket_guest_name(): order item id => unit => name, a unit whose
+ * form names nobody left out. Pure.
+ *
+ * @param array $rows form_data order_item_id, quantity_number, name, data,
+ *                    with the field's contact_field, in form_data id order
+ * @return array
+ */
+function pg_event_tickets_guest_names_from_rows(array $rows)
+{
+    $forms = array();
+
+    foreach ($rows as $row) {
         $forms[(int) $row['order_item_id']][(int) $row['quantity_number']][] = $row;
     }
 

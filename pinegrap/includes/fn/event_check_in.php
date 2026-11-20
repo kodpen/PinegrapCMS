@@ -25,6 +25,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The guest's name follows the tickets page's rule
+// (pg_event_ticket_guest_name()), so the door names whom the ticket names.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets_page.php');
+
 /** The most rows a name search answers. */
 define('PG_CHECK_IN_SEARCH_LIMIT', 30);
 
@@ -393,26 +397,39 @@ function pg_check_in_with_names(array $tickets)
         $line_ids[(int) $ticket['order_item_id']] = true;
     }
 
-    $forms = array();
+    $rows = array();
 
     if ($line_ids) {
         $ids = array_keys($line_ids);
         $rows = pg_check_in_rows(
-            "SELECT form_data.order_item_id, form_data.quantity_number, form_fields.contact_field, form_data.data
+            "SELECT form_data.order_item_id, form_data.quantity_number, form_data.name, form_data.data, form_fields.contact_field
             FROM form_data
-            INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
-            WHERE
-                (form_data.order_item_id IN (" . implode(',', array_fill(0, count($ids), '?')) . "))
-                AND (form_fields.contact_field IN ('first_name', 'last_name'))",
+            LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
+            WHERE form_data.order_item_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ")
+            ORDER BY form_data.id",
             $ids);
-
-        foreach ($rows as $row) {
-            $forms[(int) $row['order_item_id'] . ':' . (int) $row['quantity_number']][(string) $row['contact_field']] = (string) $row['data'];
-        }
     }
 
+    return pg_check_in_names_from_forms($tickets, $rows);
+}
+
+/**
+ * Each ticket with its guest name: the one the tickets page shows
+ * (pg_event_ticket_guest_name() on the unit's product form), else the
+ * buyer's. Pure.
+ *
+ * @param array $tickets   rows with order_item_id, unit, billing_first_name,
+ *                         billing_last_name
+ * @param array $form_rows the lines' form_data rows with contact_field
+ * @return array the tickets with guest_name
+ */
+function pg_check_in_names_from_forms(array $tickets, array $form_rows)
+{
+    $guests = pg_event_tickets_guest_names_from_rows($form_rows);
+
     foreach ($tickets as $i => $ticket) {
-        $tickets[$i]['guest_name'] = pg_check_in_guest_name($forms[(int) $ticket['order_item_id'] . ':' . (int) $ticket['unit']] ?? array(), $ticket);
+        $guest = (string) ($guests[(int) $ticket['order_item_id']][(int) $ticket['unit']] ?? '');
+        $tickets[$i]['guest_name'] = ($guest !== '') ? $guest : pg_check_in_guest_name(array(), $ticket);
     }
 
     return $tickets;
@@ -449,11 +466,28 @@ function pg_check_in_search(array $pick, $text)
         return array();
     }
 
-    $like = '%' . escape_like(mb_substr($text, 0, 100)) . '%';
+    $search = pg_check_in_search_sql($pick, $text);
+
+    return pg_check_in_with_names(pg_check_in_rows($search['sql'], $search['params']));
+}
+
+/**
+ * The name search's statement and values: the buyer's name, the order
+ * number, or a name in the unit's product form, read by the tickets page's
+ * rule (the contact's name fields, or a field named for the guest,
+ * PG_EVENT_TICKET_GUEST_FIELD_PATTERN). Pure.
+ *
+ * @param array  $pick
+ * @param string $text the trimmed search text
+ * @return array sql, params
+ */
+function pg_check_in_search_sql(array $pick, $text = '')
+{
+    $like = '%' . escape_like(mb_substr((string) $text, 0, 100)) . '%';
     $where = pg_check_in_pick_where($pick);
 
-    return pg_check_in_with_names(pg_check_in_rows(
-        "SELECT " . PG_CHECK_IN_TICKET_COLUMNS . "
+    return array(
+        'sql'    => "SELECT " . PG_CHECK_IN_TICKET_COLUMNS . "
         FROM event_tickets AS t
         LEFT JOIN orders ON orders.id = t.order_id
         LEFT JOIN user ON user.user_id = t.used_by
@@ -465,15 +499,18 @@ function pg_check_in_search(array $pick, $text)
                 OR (orders.order_number = ?)
                 OR EXISTS (
                     SELECT 1 FROM form_data
-                    INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+                    LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
                     WHERE
                         (form_data.order_item_id = t.order_item_id)
                         AND (form_data.quantity_number = t.unit)
-                        AND (form_fields.contact_field IN ('first_name', 'last_name'))
+                        AND (
+                            (form_fields.contact_field IN ('first_name', 'last_name'))
+                            OR (LOWER(form_data.name) REGEXP ?))
                         AND (form_data.data LIKE ?)))
         ORDER BY orders.billing_last_name, orders.billing_first_name, t.order_item_id, t.unit
         LIMIT " . PG_CHECK_IN_SEARCH_LIMIT,
-        array_merge($where['params'], array($like, $text, $like))));
+        'params' => array_merge($where['params'], array($like, (string) $text, PG_EVENT_TICKET_GUEST_FIELD_PATTERN, $like)),
+    );
 }
 
 /**

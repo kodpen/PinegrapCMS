@@ -306,3 +306,34 @@ function test_check_in_lost_write_answers_from_the_row_read_again()
 	pg_assert_same('valid', $GLOBALS['check_in_test_row']['state'], 'the ticket stays valid');
 	pg_assert_true(pg_check_in_answer_text('failed', $failed['ticket'])['title'] !== pg_check_in_answer_text('unknown', null)['title'], 'with its own words');
 }
+
+function test_check_in_guest_name_is_the_tickets_page_name()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets_page.php');
+
+	// A product form that asks "Guest name" (variable guest_name, mapped to
+	// no contact field): the ticket shows that name, so the door and the API
+	// show it too, not the buyer's.
+	$tickets = array(
+		array('order_item_id' => 501, 'unit' => 1, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+		array('order_item_id' => 501, 'unit' => 2, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+		array('order_item_id' => 502, 'unit' => 1, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+	);
+	$form_rows = array(
+		array('order_item_id' => 501, 'quantity_number' => 1, 'name' => 'guest_name', 'data' => 'Ayşe Demir', 'contact_field' => null),
+		array('order_item_id' => 501, 'quantity_number' => 2, 'name' => 'first', 'data' => 'Elif', 'contact_field' => 'first_name'),
+		array('order_item_id' => 501, 'quantity_number' => 2, 'name' => 'last', 'data' => 'Şahin', 'contact_field' => 'last_name'),
+		array('order_item_id' => 502, 'quantity_number' => 1, 'name' => 'diet', 'data' => 'Vegan', 'contact_field' => null),
+	);
+
+	$named = pg_check_in_names_from_forms($tickets, $form_rows);
+
+	pg_assert_same('Ayşe Demir', $named[0]['guest_name'], 'a field named for the guest');
+	pg_assert_same('Elif Şahin', $named[1]['guest_name'], 'the contact name fields');
+	pg_assert_same('Mehmet Kaya', $named[2]['guest_name'], 'else the buyer');
+
+	// The name search finds the same names.
+	$sql = pg_check_in_search_sql(pg_check_in_pick_parse('e-12-4'));
+	pg_assert_contains('REGEXP', $sql['sql'], 'the search reads a field named for the guest too');
+	pg_assert_contains(PG_EVENT_TICKET_GUEST_FIELD_PATTERN, implode(' ', array_map('strval', $sql['params'])) . $sql['sql'], 'with the page\'s rule');
+}
