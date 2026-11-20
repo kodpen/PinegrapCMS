@@ -164,3 +164,96 @@ function test_content_proposals_studio_mark_names()
 	pg_assert_contains("_pgContentWithdrawAsk(p, st.waiting, btn)", $js, 'Withdraw asks first');
 	pg_assert_contains("_sdT('Withdraw your waiting change?')", $js);
 }
+
+// The marks are drawn on the page strip and in every list of pages: the
+// tab carries its own mark and opens an answer once; a chip, "+N", "+N
+// groups" and, at the narrowest step, the Pages button carry the mark of
+// the pages they hide; the rows of the chip lists and the Pages list carry
+// their page's.
+function test_content_proposals_studio_strip_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$body = function ($name) use ($js) {
+		$a = strpos($js, '    function ' . $name . '(');
+		pg_assert_true($a !== false, $name . ' is in style_designer.src.js');
+		$b = ($a !== false) ? strpos($js, "\n    }\n", $a) : false;
+
+		return ($a !== false && $b !== false) ? substr($js, $a, $b - $a) : '';
+	};
+
+	pg_assert_contains('_pgContentChangeBadge(p) +', $body('_pgTabHtml'), 'the tab');
+	pg_assert_contains('_pgContentAnswerAuto();', $body('_pgTabsRender'), 'the answer opens once');
+	pg_assert_contains('_pgContentChangeBadge(p, true)', $body('_pgTabsAllFill'), 'the Pages list');
+	pg_assert_contains('_pgContentChangeBadge(p, true)', $body('_pgTabsChipList'), 'a chip\'s list');
+	pg_assert_contains('_pgContentClimbHtml(', $body('_pgTabGroupChipHtml'), 'a group\'s chip');
+	$fit = $body('_pgTabsFit');
+	pg_assert_contains('_pgContentClimbOn(moreEl, plan.hidden.map(_pgPageByKey));', $fit, '"+N"');
+	pg_assert_contains('_pgContentClimbOn(groupsEl, ', $fit, '"+N groups"');
+	pg_assert_contains('_pgContentClimbOn(allBtn, plan.cut ? others : []);', $fit, 'the Pages button at step 6 only');
+	pg_assert_contains("closest('.sd-tab-cc[data-cc]')", $js, 'only the tab\'s own mark is a target');
+}
+
+// Runs `$code` in Node with the pure marks loaded; null without Node.
+function _content_proposals_editor_node($code)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return null;
+	}
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$a = strpos($js, '    // ── The marks, pure ──');
+	$b = ($a !== false) ? strpos($js, '    // ── end of the pure marks ──', $a) : false;
+	pg_assert_true($b !== false, 'the pure marks are in style_designer.src.js');
+	$file = ($b !== false) ? @tempnam(sys_get_temp_dir(), 'pgccmarks') : false;
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, substr($js, $a, $b - $a) . "\nvar out = null;\n" . $code . "\nconsole.log(JSON.stringify(out));");
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+	pg_assert_same(0, $status, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// One mark per page (own waiting change, then the answer, then the count);
+// a folded page's mark climbs: a designer's counts add up, an editor gets
+// the most important one (cannot be applied, dismissed, applied, waiting).
+function test_content_proposals_studio_marks_climb()
+{
+	$out = _content_proposals_editor_node(
+		'var W = { waiting: 3 }, A = { answer: { kind: "applied" } }, D = { answer: { kind: "dismissed" } }, S = { answer: { kind: "stale" } };'
+		. ' out = {'
+		. ' own: _pgContentMarkOf({ waiting: 3, answer: { kind: "stale" } }),'
+		. ' answer: _pgContentMarkOf(D), count: _pgContentMarkOf({ count: 2 }), none: _pgContentMarkOf({}),'
+		. ' sum: _pgContentClimb([{ count: 2 }, null, { count: 3 }]),'
+		. ' stale: _pgContentClimb([W, A, S, D]), dismissed: _pgContentClimb([W, D, A]),'
+		. ' applied: _pgContentClimb([W, A]), wait: _pgContentClimb([W, {}]), empty: _pgContentClimb([]) };'
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('kind' => 'wait', 'n' => 0), $out['own'], 'the own waiting change first');
+	pg_assert_same(array('kind' => 'dismissed', 'n' => 0), $out['answer']);
+	pg_assert_same(array('kind' => 'count', 'n' => 2), $out['count']);
+	pg_assert_same(null, $out['none']);
+	pg_assert_same(array('kind' => 'count', 'n' => 5), $out['sum'], 'a designer\'s counts add up');
+	pg_assert_same('stale', $out['stale']['kind']);
+	pg_assert_same('dismissed', $out['dismissed']['kind']);
+	pg_assert_same('applied', $out['applied']['kind']);
+	pg_assert_same('wait', $out['wait']['kind']);
+	pg_assert_same(null, $out['empty']);
+}

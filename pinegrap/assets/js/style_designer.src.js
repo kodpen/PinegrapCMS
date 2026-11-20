@@ -60864,9 +60864,10 @@ const StyleDesigner = (function () {
     // many changes wait, which opens the list where they are applied.
     // The editor's waiting change is laid on their canvas when the editor
     // opens, as the page they saved: nothing writes it but a new save.
-    // The tab strip and the Pages list draw no mark yet: the strip is being
-    // redrawn, and the marks return there (_pgContentChangeBadge(),
-    // _pgContentAnswerAuto()) once its new tab states exist.
+    // A tab carries one mark after its name (_pgContentChangeBadge()); a
+    // page whose tab is folded away lends its mark to the chip, "+N" or, at
+    // the strip's narrowest, the Pages button that hides it
+    // (_pgContentClimbHtml()); every list of pages shows it on the row.
     var _pgCc = { pages: {}, listUrl: '', laid: false, shown: {} };
 
     function _pgContentChangesStart() {
@@ -60923,29 +60924,80 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // ── The marks, pure ──
+    // One page's mark from its state: the editor's own waiting change
+    // first, then the answer they have not closed, then (roles 0 and 1)
+    // the number of changes waiting. { kind: 'wait' | 'applied' |
+    // 'dismissed' | 'stale' | 'count', n } or null.
+    function _pgContentMarkOf(st) {
+        if (!st) return null;
+        if (st.waiting > 0) return { kind: 'wait', n: 0 };
+        if (st.answer && st.answer.kind) return { kind: String(st.answer.kind), n: 0 };
+        if (st.count > 0) return { kind: 'count', n: +st.count };
+        return null;
+    }
+
+    // The mark folded pages lend to the chip or button that hides them:
+    // for a designer the sum of the counts; for an editor the most
+    // important mark, cannot be applied before dismissed, applied and
+    // waiting (an editor has no bell, so an answer must reach the strip).
+    function _pgContentClimb(states) {
+        var rank = { stale: 4, dismissed: 3, applied: 2, wait: 1 };
+        var sum = 0, best = null;
+        (states || []).forEach(function (st) {
+            var m = _pgContentMarkOf(st);
+            if (!m) return;
+            if (m.kind === 'count') { sum += m.n; return; }
+            if (rank[m.kind] && (!best || rank[m.kind] > rank[best.kind])) best = m;
+        });
+        return sum > 0 ? { kind: 'count', n: sum } : best;
+    }
+    // ── end of the pure marks ──
+
+    // A mark's markup. attrs: the tab's own mark is a target (data-cc,
+    // role, tabindex); a mark in a list or on a chip is part of its row
+    // or chip. The pill's word hides on a narrow strip; its name stays in
+    // the tip and the aria-label.
+    function _pgContentMarkHtml(m, attrs, extra) {
+        if (!m) return '';
+        var cls = 'sd-tab-cc sd-tab-cc-' + m.kind + (extra ? ' ' + extra : '');
+        if (m.kind === 'wait') {
+            var words = _sdT('Waiting for approval');
+            return '<span class="' + cls + '"' + attrs + ' title="' + esc(words) + '" aria-label="' + esc(words) + '">' +
+                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span><span class="sd-tab-cc-word" aria-hidden="true">' + esc(words) + '</span></span>';
+        }
+        if (m.kind === 'count') {
+            var many = _pgContentMarkName('count', m.n);
+            return '<span class="' + cls + '"' + attrs + ' title="' + esc(many) + '" aria-label="' + esc(many) + '">' +
+                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span><span aria-hidden="true">' + esc(String(m.n)) + '</span></span>';
+        }
+        var icon = { applied: 'bi-check-circle', dismissed: 'bi-x-circle', stale: 'bi-exclamation-triangle' }[m.kind] || 'bi-info-circle';
+        var label = _pgContentMarkName(m.kind);
+        return '<span class="' + cls + '"' + attrs + ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+               '<span class="bi ' + icon + '" aria-hidden="true"></span></span>';
+    }
+
     // The tab's mark: the editor's waiting change, an answer, or the count.
-    // inList: the same mark in the list of every page, a row that is itself
-    // a button, so the mark is not a second one there.
+    // inList: the same mark on the page's row of a list, a row that is
+    // itself a button, so the mark is not a second one there.
     function _pgContentChangeBadge(p, inList) {
         var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
-        if (!st) return '';
-        var key = ' data-cc="' + esc(p.key) + '"' + (inList ? '' : ' role="button" tabindex="0"');
-        if (st.waiting > 0) {
-            return '<span class="sd-tab-cc sd-tab-cc-wait"' + key + ' title="' + esc(_sdT('Waiting for approval')) + '">' +
-                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span>' + esc(_sdT('Waiting for approval')) + '</span>';
-        }
-        if (st.answer) {
-            var icon = { applied: 'bi-check2-circle', dismissed: 'bi-x-circle', stale: 'bi-exclamation-triangle' }[st.answer.kind] || 'bi-info-circle';
-            var label = _pgContentMarkName(st.answer.kind);
-            return '<span class="sd-tab-cc sd-tab-cc-' + esc(st.answer.kind) + '"' + key + ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
-                   '<span class="bi ' + icon + '" aria-hidden="true"></span></span>';
-        }
-        if (st.count > 0) {
-            var many = _pgContentMarkName('count', st.count);
-            return '<span class="sd-tab-cc sd-tab-cc-count"' + key + ' title="' + esc(many) + '" aria-label="' + esc(many) + '">' +
-                   '<span aria-hidden="true">' + esc(String(st.count)) + '</span></span>';
-        }
-        return '';
+        return _pgContentMarkHtml(_pgContentMarkOf(st), inList ? '' : ' data-cc="' + esc(p.key) + '" role="button" tabindex="0"');
+    }
+
+    // The mark that climbs to a chip from the pages it hides.
+    function _pgContentClimbHtml(pages) {
+        var states = (pages || []).map(function (p) { return (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null; });
+        return _pgContentMarkHtml(_pgContentClimb(states), '', 'sd-tab-cc-up');
+    }
+
+    // Puts the climbed mark on a chip or button, after its count.
+    function _pgContentClimbOn(el, pages) {
+        if (!el) return;
+        var old = el.querySelector('.sd-tab-cc-up');
+        if (old) old.remove();
+        var html = _pgContentClimbHtml(pages);
+        if (html) el.insertAdjacentHTML('beforeend', html);
     }
 
     function _pgContentAnswerLabel(kind) {
@@ -61072,11 +61124,12 @@ const StyleDesigner = (function () {
     }
 
     // The tab's mark opens its note instead of switching tabs: caught on
-    // the way down, before the strip's own handler.
+    // the way down, before the strip's own handler. A mark on a chip or a
+    // row is part of it: its click opens the chip's list or the page.
     ['click', 'keydown'].forEach(function (type) {
         document.addEventListener(type, function (e) {
             if (type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-            var mark = (e.target && e.target.closest) ? e.target.closest('.sd-tab-cc') : null;
+            var mark = (e.target && e.target.closest) ? e.target.closest('.sd-tab-cc[data-cc]') : null;
             if (!mark) {
                 if (type === 'click' && !(e.target && e.target.closest && e.target.closest('#sd-cc-pop'))) _pgContentPopClose();
                 return;
@@ -79306,6 +79359,7 @@ const StyleDesigner = (function () {
                st.before.map(pick).join('') +
                '<span class="sd-tab-name">' + esc(name) + '</span>' +
                st.after.map(pick).join('') +
+               _pgContentChangeBadge(p) +
                pick(st.end) +
                '</div>';
     }
@@ -79395,6 +79449,7 @@ const StyleDesigner = (function () {
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
         _pgTabsFit();
+        _pgContentAnswerAuto();
     }
 
     // Measures the strip drawn in full and its short forms, asks the plan
@@ -79434,6 +79489,10 @@ const StyleDesigner = (function () {
         tabEls.concat(chipEls).forEach(function (el) { el.classList.remove('sd-tab-folded'); });
         if (moreEl) { moreEl.hidden = false; moreEl.textContent = '+88'; }
         if (groupsEl) { groupsEl.hidden = false; groupsEl.textContent = _sdT('+{n} groups').replace('{n}', '88'); }
+        // Measured with the mark the hidden pages could lend them.
+        var others = _pages.filter(function (q) { return q.key !== _activeKey; });
+        _pgContentClimbOn(moreEl, others);
+        _pgContentClimbOn(groupsEl, others);
         var w = function (el) { return el ? el.getBoundingClientRect().width : 0; };
         var gap = parseFloat(getComputedStyle(list).columnGap) || 0;
         // Two pixels kept back for rounding.
@@ -79445,7 +79504,10 @@ const StyleDesigner = (function () {
             var inner = [].slice.call(box.children).map(w);
             boxExtra = w(box) - inner.reduce(function (a, b) { return a + b; }, 0) - gap * Math.max(0, inner.length - 1);
         }
-        if (groupsEl) groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+        if (groupsEl) {
+            groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+            _pgContentClimbOn(groupsEl, others);
+        }
         var allW = w(groupsEl);
         // The room the icon gives back is measured, not assumed: a toolbar
         // already at its narrowest gives nothing.
@@ -79467,10 +79529,12 @@ const StyleDesigner = (function () {
             moreEl.hidden = !plan.more;
             moreEl.textContent = '+' + plan.hidden.length;
             moreEl.title = _sdT('{n} pages that do not fit').replace('{n}', plan.hidden.length);
+            _pgContentClimbOn(moreEl, plan.hidden.map(_pgPageByKey));
         }
         if (groupsEl) {
             groupsEl.hidden = !(plan.chipMode === 'some' || plan.chipMode === 'one');
             groupsEl.textContent = (plan.chipMode === 'one' ? _sdT('{n} groups') : _sdT('+{n} groups')).replace('{n}', plan.folded.length);
+            _pgContentClimbOn(groupsEl, _pages.filter(function (q) { return plan.folded.indexOf(q.tabGroup && _pgTabGroups[q.tabGroup] ? q.tabGroup : '') !== -1; }));
         }
         list.classList.toggle('sd-strip-nocount', !plan.counts);
         list.classList.toggle('sd-strip-nohead', !plan.headName);
@@ -79502,6 +79566,10 @@ const StyleDesigner = (function () {
             }
         }
         list.setAttribute('data-step', String(plan.step));
+        // At step 6 no chip is left: the pages not open lend their mark to
+        // the Pages button, which carries one at this step only.
+        var allBtn = _pgTabsAllToggle();
+        if (allBtn) _pgContentClimbOn(allBtn, plan.cut ? others : []);
         // As an icon, the design's name is in the button's tip.
         if (designBtn) {
             if (!designBtn.hasAttribute('data-sd-title')) designBtn.setAttribute('data-sd-title', designBtn.title || '');
@@ -79539,6 +79607,7 @@ const StyleDesigner = (function () {
                    (_pgPageDirty(p) ? '<span class="sd-tabs-list-dirty" title="' + esc(_sdT('Unsaved Changes')) + '"></span>' : '') +
                    (holder ? '<span class="bi bi-lock sd-tabs-list-busy" title="' + esc(_sdT('Open for editing by {name}').replace('{name}', holder)) + '"></span>' : '') +
                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                   _pgContentChangeBadge(p, true) +
                    (locked ? '<span class="bi bi-lock-fill sd-tabs-list-lock" aria-hidden="true"></span>' : '') +
                    '</button>';
         };
@@ -79564,7 +79633,9 @@ const StyleDesigner = (function () {
                 rows += '<button type="button" class="sd-tab-popmenu-item" data-group-row="' + esc(id) + '">' +
                         '<span class="sd-tab-color-dot me-3" data-color="' + esc(id ? _pgTabGroups[id].color : 'grey') + '" aria-hidden="true"></span>' +
                         '<span class="sd-tabs-list-name">' + esc(id ? _pgTabGroupLabel(id) : _sdT('Other')) + '</span>' +
-                        '<span class="sd-tabs-list-count">' + n + '</span><span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
+                        '<span class="sd-tabs-list-count">' + n + '</span>' +
+                        _pgContentClimbHtml(id ? _pgTabGroupMembers(id) : _pages.filter(function (p) { return !p.tabGroup; })) +
+                        '<span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
             });
         }
         var m = document.createElement('div');
@@ -79660,6 +79731,7 @@ const StyleDesigner = (function () {
                     '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
                     (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
                     ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    _pgContentChangeBadge(p, true) +
                     (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
@@ -80813,6 +80885,7 @@ const StyleDesigner = (function () {
                (head ? '' : '<span class="sd-tab-group-dot" aria-hidden="true"></span>') +
                '<span class="sd-tab-group-name">' + esc(label) + '</span>' +
                (head ? '' : '<span class="sd-tab-group-count">' + count + '</span>') +
+               (head ? '' : _pgContentClimbHtml(gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; }))) +
                (head && g && editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
                '</div>';
     }
