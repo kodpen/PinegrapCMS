@@ -1929,12 +1929,19 @@ function pg_page_bundle_take_back_locked($bundle, $user, $accepted, $out)
         return $out;
     }
 
-    $items = $check['items'];
-    $undo = function ($id) use ($items, $bundle, $user) {
-        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'reverted');
-    };
+    // A failed query inside a page save throws instead of ending the
+    // request: that page failed, the others are still tried.
+    list(, $undo) = pg_page_bundle_publish_ops($check['items'],
+        function ($item) {
+            return array('ok' => false, 'error' => '');
+        },
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_undo_item($item, $bundle, $user, 'reverted');
+        });
 
-    $run = pg_page_bundle_take_back_run($check['plan']['can'], $undo);
+    $run = pg_page_bundle_with_throwing_errors(function () use ($check, $undo) {
+        return pg_page_bundle_take_back_run($check['plan']['can'], $undo);
+    });
     $out['run'] = $run;
 
     if ($run['failed']) {
