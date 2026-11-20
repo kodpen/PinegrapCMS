@@ -3,7 +3,7 @@ name: erp-stock-plan-screen
 description: Stock Planning screen (erp_stock_plan.php, SP3): filters, columns, dead stock value, settings card in config_text, the account card's Lead time, New purchase order per supplier by POST
 ---
 
-## What does the screen show? (SP3 of plan stock-planning, P11)
+## What does the screen show? (SP3 of plan stock-planning, P11, PR #10693)
 - `erp_stock_plan.php`, Accounting menu "Stock Planning" after "Stock and cost"; `validate_erp_access($user)`, the read-only accountant sees it without the order buttons and the settings link.
 - Rows: `erp_stock_plan_screen_rows()` reads the nightly cache joined to `products`, `erp_accounts.title` and `erp_product_costs.avg_cost`; dead stock and its value are worked out on read (`erp_stock_plan_dead()` with today's stock).
 - Columns: product, stock, units a day (with "Season ×n" when not 1), days left, runs out, order by, to order, state (+ "Dead stock" pill and value), supplier ("No supplier yet"), lead time (Measured / From the account card). Printed list, sorted in the browser.
