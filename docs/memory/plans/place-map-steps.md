@@ -22,7 +22,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 
 - MP3b (S) after MP3: the block's field pickers, done (PR #10535; `platform/place-list-fields.md`). Features: X2's pickers.
 
-- MP4 (M) after MP3b: the map and the switch, PR #MP4PR (`designer/designer-blocks-map.md`). Features: X9, X13, X14. Pictures to the owner; not marked ready before his look.
+- MP4 (M) after MP3b: the map and the switch, PR #10581 (`designer/designer-blocks-map.md`). Features: X9, X13, X14. Pictures to the owner; not marked ready before his look.
 
 - MP5 (S) after MP4: near me and a typed address. Existing files: none. In the script and the endpoint. Tests: the lookup's rate limit; nothing typed kept. Features: X11, X12.
 
