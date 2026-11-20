@@ -4,8 +4,8 @@
  *
  * Tests that the importers find a .xlsx workbook's shared strings, and the
  * product importer its styles, where the workbook's relationships name
- * them, as PHPExcel found them, and not only at xl/sharedStrings.xml and
- * xl/styles.xml: the sheet reader (includes/fn/sheet_read.php) and the
+ * them, and the sheet reader its styles, as PHPExcel found them, and not
+ * only at xl/sharedStrings.xml and xl/styles.xml: the sheet reader (includes/fn/sheet_read.php) and the
  * product importer's own .xlsx walk (import_products_f.php).
  *
  * @author      Erdal Güral (Kodpen)
@@ -91,6 +91,35 @@ function test_sheet_read_xlsx_shared_strings_from_the_relationships()
 	pg_assert_same(array('t' => 's', 'v' => '00123'), $rows[1][2], 'a code kept as text');
 	pg_assert_same(array('t' => 's', 'v' => 'Çay bardağı'), $rows[2][0], 'a product name');
 	pg_assert_same(array('t' => 'n', 'v' => '12.5'), $rows[2][2], 'a price');
+}
+
+// The styles part named in the relationships (xl/Styles2.xml): the date in
+// B2 read as its day count while only xl/styles.xml was looked at, and the
+// bank statement import then found no dated line.
+function test_sheet_read_xlsx_styles_from_the_relationships()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$path = sheet_read_xlsx_parts_test_file();
+	$error = 'not run';
+	$rows = array();
+
+	foreach (pg_sheet_rows($path, 'xlsx', $error) as $number => $row) {
+		$rows[$number] = $row;
+	}
+
+	$zip = new ZipArchive();
+	$zip->open($path);
+	$date_styles = pg_office_xlsx_date_styles($zip, $refused);
+	$zip->close();
+	unlink($path);
+
+	pg_assert_same('', $error, 'the file is read');
+	pg_assert_same(array('t' => 'd', 'v' => '46343'), $rows[2][1], 'a date in a style of xl/Styles2.xml');
+	pg_assert_same(array(1 => 'date'), $date_styles, 'the date styles of the named part');
+	pg_assert_same('', $refused, 'the styles part read whole');
 }
 
 // The product importer's own .xlsx walk: the same file gave a product with

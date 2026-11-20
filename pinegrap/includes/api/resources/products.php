@@ -1538,6 +1538,72 @@ function api_products_update($params) {
 
 }
 
+// Take a product off sale or put it back from outside a request to the API:
+// the sales watch's price error shield (includes/fn/sales_watch.php) runs in
+// the general job. The steps after the write are those of
+// api_products_update() - the search index, the audit trail, the activity
+// log, the product.updated event and the marketplace queue - so every reader
+// of a product change sees this one too. Stock is not touched. Never stops
+// the caller: a product that is missing, in the Recycle Bin or already in
+// that state answers false and writes nothing.
+//
+// $by names who did it in the activity log.
+function api_products_set_enabled($id, $enabled, $by) {
+
+	$id = (int)$id;
+	$enabled = $enabled ? 1 : 0;
+
+	$product = db_item("SELECT id, name, enabled, keywords FROM products WHERE (id = '" . $id . "')" . pg_catalog_bin_live_sql('products') . " LIMIT 1");
+
+	if (!is_array($product) || ((int)$product['enabled'] === $enabled)) {
+
+		return false;
+
+	}
+
+	$audit_before = pg_audit_fetch('products', $id);
+
+	if (db_q("UPDATE products SET enabled = ?, timestamp = UNIX_TIMESTAMP() WHERE (id = ?) AND (enabled = ?) LIMIT 1", array((string)$enabled, (string)$id, (string)(1 - $enabled))) === false) {
+
+		return false;
+
+	}
+
+	// Another writer got there first.
+	if (mysqli_affected_rows(db::$con) !== 1) {
+
+		return false;
+
+	}
+
+	if (!function_exists('pg_pb_sync_tag_cloud_keywords')) {
+
+		$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+		require_once($directory . '/product_builder.php');
+
+	}
+
+	pg_pb_sync_tag_cloud_keywords($id, $product['keywords'], ($enabled === 1));
+
+	pg_audit_record('update', 'products', $id, $audit_before);
+
+	log_activity($enabled
+		? lang(array('string' => 'Product ({var:1}) was put on sale by {var:2}.', 'vars' => array($product['name'], $by)))
+		: lang(array('string' => 'Product ({var:1}) was taken off sale by {var:2}.', 'vars' => array($product['name'], $by))), 'SYSTEM');
+
+	api_webhook_enqueue('product.updated', array('id' => $id, 'name' => $product['name']));
+
+	if (function_exists('pg_marketplace_product_changed')) {
+
+		pg_marketplace_product_changed($id);
+
+	}
+
+	return true;
+
+}
+
 // The bundle fields an update sent, checked before anything is written, the
 // way the product screen's Bundle card writes them: null when the request
 // named none of them. Answers the columns to set and the contents to save

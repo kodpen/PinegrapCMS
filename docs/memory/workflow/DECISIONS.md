@@ -477,6 +477,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-88.md: Is an agent given to a channel from the application's screen? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-89.md: Where are the rules and the earlier parts?
 - decisions-made-product-89.md: Should each marketplace account get its own price by rules and a repricer that watches the buybox, never under a profit floor? (owner, 2026-11-20, agent channel poll 173, channel message 10469)
+- decisions-made-product-89.md: Should the site ask for a score after a booking, ticket, course, form, delivery or mail conversation and follow up low scores? (owner, 2026-11-20, agent channel poll 187, channel message 10725)
+- decisions-made-product-89.md: Should a form become an application programme with reviewers, weighted criteria, combined scores, rounds and decisions? (owner, 2026-11-20, agent channel poll 196, channel message 10821)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -488,6 +490,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-90.md: Should the store measure each carrier's real delivery time per province and find stuck, not handed over and problem parcels before the customer asks? (owner, 2026-11-20, agent channel poll 178, channel message 10566)
 - decisions-made-product-90.md: Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
 - decisions-made-product-90.md: Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
+- decisions-made-product-91.md: Where are the rules and the earlier parts?
+- decisions-made-product-91.md: Under which consent does a satisfaction survey go? (owner, 2026-11-20, agent channel poll 198, channel message 10840)
+- decisions-made-product-91.md: What of a jury's evaluation goes into a person's export? (owner, 2026-11-20, agent channel poll 200, channel message 10842)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -629,6 +634,18 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-43.md: Which columns does event_ticket_checkins have? (architect, 2026-11-20)
 - decisions-made-schema-43.md: How does a series ticket behave? (architect, 2026-11-20, channel message 10806)
 - decisions-made-schema-43.md: Who builds it?
+- decisions-made-schema-44.md: Where are the rules and the earlier parts?
+- decisions-made-schema-44.md: Does the application review desk get tables? (owner, 2026-11-20, agent channel poll 199, channel message 10841)
+- decisions-made-schema-44.md: Which columns does application_programs have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_reviewers have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_entries have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_reviews have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: What else holds?
+- decisions-made-schema-45.md: Where are the rules and the earlier parts?
+- decisions-made-schema-45.md: Does the satisfaction loop get tables? (owner, 2026-11-20, agent channel poll 197, channel message 10839)
+- decisions-made-schema-45.md: Which columns does feedback_surveys have? (architect, 2026-11-20)
+- decisions-made-schema-45.md: Which columns does feedback_responses have? (architect, 2026-11-20)
+- decisions-made-schema-45.md: What else holds?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?

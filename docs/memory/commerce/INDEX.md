@@ -339,6 +339,8 @@
 - referral-settings-card.md: Referral programme settings card (RF2): Settings › Ecommerce › Referral programme, its six config_text rows, what the save refuses, the referrer's reward mail and its texts
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - sales-watch-flow.md: Sales watch, orders stopped and payment broken (SW1, #10735): channels, the hourly norm and its cache, the windows, the store alert, the payment share, the timing
+- sales-watch-returns.md: Sales watch return spike (W6, SW4): the nightly pass over order_returns, the rate a product is held to, the binomial upper tail, the one bell row return_spike
+- sales-watch-settings.md: Sales watch settings (SW2, #10772): the sales_watch config_text row, its defaults, sensitivity levels, price drop share, the pause per channel or store, the form part and chat targets
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
 - shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API [decision: decisions-made-product-39.md]

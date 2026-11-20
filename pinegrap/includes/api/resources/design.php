@@ -992,6 +992,20 @@ function api_design_proposals_create($params) {
 
 	$owner_id = isset($app['owner']['id']) ? (int)$app['owner']['id'] : 0;
 
+	// The page as the caller read it: operations written against an older
+	// page would land on other elements than the ones it meant.
+	if (isset($params['hash']) && ((string)$params['hash'] !== '')) {
+
+		$base = pg_design_ai_base_tree($request, $page);
+
+		if ($base && !hash_equals(pg_design_ai_hash($base), (string)$params['hash'])) {
+
+			api_fail(409, 'design_page_changed', lang('The page has changed since it was read. Read it again and repeat the change.'), 'hash');
+
+		}
+
+	}
+
 	// Checked in full before anything is kept: every operation has to find
 	// what it names, and the page it makes has to be a valid page. The index
 	// of the operation that failed is in the field name.
@@ -1004,7 +1018,7 @@ function api_design_proposals_create($params) {
 
 	if (!$check['ok']) {
 
-		api_fail_validation($check['error'], ($check['op'] >= 0) ? 'ops[' . $check['op'] . ']' : 'ops');
+		api_design_proposal_fail($check, ($check['op'] >= 0) ? 'ops[' . $check['op'] . ']' : 'ops');
 
 	}
 
@@ -1029,7 +1043,7 @@ function api_design_proposals_create($params) {
 
 	if (!$created['ok']) {
 
-		api_fail_validation($created['error'], 'ops');
+		api_design_proposal_fail($created, 'ops');
 
 	}
 
@@ -1040,6 +1054,46 @@ function api_design_proposals_create($params) {
 	}
 
 	api_ok(api_design_proposal_out(pg_design_ai_proposal($created['id'])), 201);
+
+}
+
+// A refused proposal answers 422 with the designer's own code where the
+// check names one (pg_design_ai_apply_ops()), so each case carries its hint.
+// Each code is written out, so tools/check_api_schema.php finds it answered.
+function api_design_proposal_fail($check, $field) {
+
+	$message = (string)$check['error'];
+
+	switch (api_design_proposal_code(isset($check['code']) ? (string)$check['code'] : '')) {
+
+		case 'design_node_unknown':
+			api_fail(422, 'design_node_unknown', $message, $field);
+			break;
+
+		case 'design_keep_inside':
+			api_fail(422, 'design_keep_inside', $message, $field);
+			break;
+
+		case 'design_op_invalid':
+			api_fail(422, 'design_op_invalid', $message, $field);
+			break;
+
+		case 'design_page_invalid':
+			api_fail(422, 'design_page_invalid', $message, $field);
+			break;
+
+		default:
+			api_fail_validation($message, $field);
+
+	}
+
+}
+
+// The error code of a refused proposal: one of the designer's, or
+// validation_failed for any other.
+function api_design_proposal_code($code) {
+
+	return in_array($code, array('design_node_unknown', 'design_keep_inside', 'design_op_invalid', 'design_page_invalid'), true) ? $code : 'validation_failed';
 
 }
 

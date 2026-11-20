@@ -6,6 +6,8 @@
 - agent-guide-areas.md: The guide's content, forms and store topics (agent_guide_content/forms/store.php): sections, which tools each names, values read from their registries, money tools named, the store prefixes, bytes
 - agent-guide-designer.md: The guide's designer topic: lines shared with the built-in assistant, <pg-keep> kinds, worked lists the test applies, colours and fonts on design_designs_list, the design_change prompt
 - agent-guide-engine.md: The guide for AI agents (agent_guide.php): topic registry, topic files, GET /guide (guide.read, no scope), MCP guide_read, pinegrap://guide resources, "Guide: <topic>." on tools, size limits
+- agent-guide-hints.md: Hints on API refusals: hint and guide on the error object from pg_agent_guide_hints(), the designer's own refusal codes on design.proposals.create, the hash check (design_page_changed)
+- agent-guide-panel-door.md: The guide for a browser agent through the panel session: agent_guide.php, llms.txt in the software folder, the rel="help" head link, "AI agent guide" in the account menu, the designer link
 - agent-guide-panel.md: The guide's panel topic for a browser agent: screens from the Ctrl+K list under the viewer's gates, Save button and Visual Page Editor rules, whose gates, sizes
 - agent-guide-workspace-erp.md: The guide's workspace and erp topics for AI agents: what each says, when each is listed, the canvas guide pointed at and not copied, sizes and the tool list's bytes
 - ai-connections-feature-cards.md: The feature cards without a key (CX9b): the Provider select and the chosen provider's connection on the assistants' form and the Voice message transcripts card, own keys, the 11.0.241 voice data step
@@ -118,6 +120,7 @@
 - api-workspace-quiet-hours.md: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
 - application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
+- application-access-new-sheet.md: Application Access's New application sheet: a drawer in three steps, the starting point cards of api_app_templates(), what each ticks, the sign-in card when OAuth is set up, the create branch's checks
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]

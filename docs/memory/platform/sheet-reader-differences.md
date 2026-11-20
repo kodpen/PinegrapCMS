@@ -13,7 +13,7 @@ module: sheet_read
 - Memory (#10537): `addcell()` keeps each cell as its type letter and value in one string, the workbook's bytes are let go after the read and rows are made as given. The library's cell, text and details took 3 to 5 times PHPExcel's memory (60,000 cells: over 100 MB against 24.5 MB).
 
 ## Which .xlsx parts are found through the relationships?
-- The shared strings (sheet reader and product import) and the product import's styles: `pg_sheet_xlsx_part()` (#10537), as PHPExcel found them; before, a writer naming them otherwise lost every text cell. The sheet reader's styles and workbook part are still fixed names (#10544).
+- The shared strings (sheet reader and product import) and the product import's styles: `pg_sheet_xlsx_part()` (#10537), as PHPExcel found them; before, a writer naming them otherwise lost every text cell. The sheet reader's date and zero styles too (#10765, `office-xlsx-cell-values.md`); the workbook part is still `xl/workbook.xml` (#10764).
 
 ## Where does it differ from PHPExcel? (on purpose)
 - .ods text keeps `text:s` spaces, tabs, line breaks and link text (PHPExcel kept only a paragraph's own text: `  spaced  ` read `spaced `); a boolean comes from `office:boolean-value` (PHPExcel compared the shown text with TRUE, so a Turkish DOĞRU read false); a value cell with no paragraph keeps its value.
@@ -24,7 +24,7 @@ module: sheet_read
 - An .ods merged range makes no cells (its value stands in the first) and other sheets are not read, so a small file spanning millions of merged cells, or a huge second sheet, is read, not refused as too large.
 
 ## How is it tested?
-- `tests/sheet_read_xls_test.php` builds .xls files byte by byte (compound file, SST split across records, a 60,000-cell memory budget); `tests/sheet_read_xlsx_parts_test.php` a .xlsx with renamed parts.
+- `tests/sheet_read_xls_test.php` builds .xls files byte by byte (compound file, SST split across records, a 60,000-cell memory budget); `tests/sheet_read_xlsx_parts_test.php` a .xlsx with renamed parts (strings, styles: a date in B2).
 - `tests/sheet_read_test.php`: the fixtures in `tests/fixtures/sheet_read/` (LibreOffice 24.2 .xlsx/.ods/.xls from one openpyxl workbook, a PHPExcel Excel5 .xls, 1904 workbooks) and `tests/fixtures/excel_reader2/products.xls` read by the reader and compared cell by cell with what PHPExcel read from them, frozen in `tests/fixtures/sheet_read/phpexcel_cells.json` before the library was removed (#10528); the differences above are listed there.
 - Also: no preview limits, rows one at a time, .ods ceilings, cut and looping .xls files refused within seconds.
 - The product import's CSV from the same fixtures against PHPExcel's frozen rows: `tests/products_import_sheet_test.php` (`product-import-sheets.md`).
