@@ -10,7 +10,7 @@ priority: 6
 ## What is there today?
 - A marketplace gets the site's price with VAT (`mp_product_price()` in `includes/api/outbound/connectors/base.php`, `commerce/marketplace-price.md`), built into the queue row by `mp_product_row()`; Trendyol refuses the same price and stock again within 15 minutes (`commerce/trendyol-stock-price.md`).
 - `product_price_history.channel` keeps `marketplace:<code>` reserved for a price kept per channel; `source` is VARCHAR (`commerce/product-price-history.md`).
-- Costs: `erp_product_costs.avg_cost`, `erp_cost_rates` (typed payment, shipping and marketplace rates) and `marketplace_product_map.commission` (the listing's rate, often NULL) (`plans/order-profit.md`, `commerce/marketplace-commission-and-invoice-columns.md`).
+- Costs: `erp_product_costs.avg_cost`, `erp_cost_rates` (typed payment, shipping and marketplace rates) and `marketplace_product_map.commission` (the listing's rate, often NULL) (`erp/order-profit.md`, `commerce/marketplace-commission-and-invoice-columns.md`).
 - No buybox read. Trendyol's buybox service (developers.trendyol.com, "Product Buybox Check"): POST with up to 10 barcodes and a `storeFrontCode` header; answers our rank, the buybox price and whether other sellers sell it; 1000 requests a minute. It does not give the second seller's price.
 
 ## What binds it?
