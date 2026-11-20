@@ -21058,6 +21058,17 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   body.ws-keyboard .ws-channel-card > .ws-tabs {
     display: none;
   }
+  /* The expanded box (Aa) rides on the keyboard as the one-line box does:
+     its 50vh cap reads the layout viewport, so the field alone could take
+     what the keyboard leaves and push the tools and Send under it. The
+     hint names Ctrl+Enter, which a phone's keyboard does not have. */
+  body.ws-keyboard .ws-composer .ws-rich.is-expanded {
+    min-height: 2.5rem;
+    max-height: 6rem;
+  }
+  body.ws-keyboard .ws-composer-hint {
+    display: none;
+  }
 }
 @media (max-width: 575.98px) {
   /* On a phone a day is a tap target: what is in it shows as bars, the day drawer tells the rest. */
