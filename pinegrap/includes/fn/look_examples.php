@@ -17,6 +17,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The settings pane pattern draws its rows with Site Settings' own fold
+// helper and the Assistants and agents pane's own lines, so it cannot drift
+// from the screen; both files hold only functions, the helper's behind this
+// gate.
+if (!defined('PG_SETTINGS_ENTRY')) {
+    define('PG_SETTINGS_ENTRY', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/assistants_fold.php');
+
 /**
  * The recipes in the order the sheet shows them: each with its title, the
  * classes it is built from and its live markup. $prefix keeps the ids of the
@@ -166,6 +177,103 @@ function pg_look_examples($prefix = 'light')
 }
 
 /**
+ * The patterns under the parts: whole pieces of a screen, each copied from
+ * the screen that built it, with the classes it is put together from. $prefix
+ * keeps the ids apart when they are drawn twice (light and dark).
+ *
+ * @param string $prefix
+ * @return array list of array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_patterns($prefix = 'light')
+{
+    $p = preg_replace('/[^a-z0-9-]/', '', strtolower((string) $prefix));
+
+    $patterns = array();
+
+    // Site Settings > Assistants and agents: the MCP servers row open, its
+    // servers as rows with their actions (ws_mcp_settings_card()).
+    $server = function ($alias, $name, $details, $pill, $sign_in) {
+        return '<div class="ws-agset-row">'
+            . '<span class="pg-icon-tile ws-agset-face" aria-hidden="true"><i class="bi bi-plug"></i></span>'
+            . '<div class="ws-agset-main">'
+            . '<div class="ws-agset-name"><strong class="pg-list-row-title">@' . h($alias) . '</strong><span class="pg-text-meta">' . h($name) . '</span></div>'
+            . '<div class="pg-text-meta ws-agset-summary">' . h($details) . '</div>'
+            . '</div>'
+            . '<span class="pg-pill ws-agset-state ' . $pill[1] . '">' . h($pill[0]) . '</span>'
+            . '<div class="ws-agset-edit d-flex flex-wrap align-items-center gap-1">' . $sign_in
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm" aria-label="' . h(lang('Ask the server for its tools again')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>'
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm" aria-label="' . h(lang('Turn off')) . '"><i class="bi bi-pause-circle" aria-hidden="true"></i></button>'
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-sliders" aria-hidden="true"></i>' . h(lang('Tools and settings')) . '</button>'
+            . '</div></div>';
+    };
+
+    $servers = '<div class="pg-card-inner ws-agset-list">'
+        . $server('docs', 'Docs', 'docs.example.com · ' . lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(4, 6))), array(lang('Ready'), 'pg-tone-teal'),
+            '<button type="button" class="pg-button pg-button-ghost pg-button-sm"><i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>')
+        . $server('crm', 'CRM', 'crm.example.com · ' . lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(0, 9))), array(lang('Not connected'), 'pg-tone-amber'),
+            '<button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>' . h(lang('Connect')) . '</button>')
+        . '</div>';
+
+    $now = mktime(16, 30, 0, 11, 20, 2026);
+    $parts = array(
+        'ws-claude' => ws_assistants_fold_claude(array('enabled' => true, 'missing' => array(), 'last_run' => mktime(14, 5, 0, 11, 20, 2026)), $now),
+        'ws-agents' => ws_assistants_fold_agents(array('total' => 3, 'not_seen' => 1, 'waiting' => 1)),
+        'ws-mcp'    => ws_assistants_fold_mcp(array('total' => 2, 'sign_in' => 1, 'unreachable' => 0, 'ready' => 1)) + array('html' => $servers),
+        // Switched off: what is missing is not shown then.
+        'ws-voice'  => ws_assistants_fold_voice(array('enabled' => false, 'missing' => array('-'))),
+    );
+    $rows = array();
+    $card = '<p class="pg-text-2">' . h(lang('The part\'s card opens here, its fields and buttons as they are.')) . '</p>';
+
+    foreach ($parts as $key => $part) {
+        $rows[] = array('key' => $p . '-' . $key) + ws_assistants_fold_face($key) + $part + array('html' => $card);
+    }
+
+    $patterns[] = array(
+        'id'      => 'pattern-settings',
+        'title'   => lang('Settings pane'),
+        'classes' => array('.pg-sm-heading', '.pg-sm-desc', '.pg-set-fold', '.pg-set-fold-item', '.is-open', '.pg-set-fold-head', '.pg-set-fold-text', '.pg-set-fold-name', '.pg-set-fold-line', '.pg-set-fold-chevron', '.pg-set-fold-body', '.ws-agset-row', '.ws-agset-face', '.ws-agset-main', '.ws-agset-name', '.ws-agset-state', '.ws-agset-edit'),
+        'html'    => '<div class="pg-look-stack">'
+            . '<div class="pg-sm-heading"><div class="pg-title-section">' . h(lang('Assistants and agents')) . '</div><p class="pg-sm-desc pg-text-2">' . h(lang('Claude, the agents, Pinegrap AI, voice transcripts, the MCP servers and bulk changes.')) . '</p></div>'
+            . pg_settings_fold($rows)
+            . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents: pg_settings_fold() draws the rows, and the row that needs attention arrives open.')) . '</p>',
+    );
+
+    // The Connections screen's rows (connections.php): the state pill in its
+    // words, the line saying what is still missing, Connect after Not connected.
+    $connect = function ($icon, $tone, $name, $line, $pill, $button) {
+        return '<a class="pg-card-inner-row connections-row" href="connections.php">'
+            . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<span class="connections-row-main"><span class="connections-row-name">' . h($name) . '</span><span class="pg-text-meta d-block">' . h($line) . '</span></span>'
+            . '<span class="connections-row-side"><span class="pg-pill pg-tone-' . $pill[0] . '">' . h($pill[1]) . '</span>'
+            . '<span class="pg-button pg-button-sm pg-button-quiet">' . h($button) . '</span></span>'
+            . '</a>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-connect',
+        'title'   => lang('Connect row'),
+        'classes' => array('.pg-card-inner', '.connections-list', '.pg-card-inner-row', '.connections-row', '.connections-row-main', '.connections-row-name', '.connections-row-side', '.pg-pill'),
+        'html'    => '<div class="pg-card-inner connections-list">'
+            . $connect('bi-google', 'blue', 'Google', lang('Site Settings') . ' › ' . lang('E-mail sending'), array('teal', lang('Connected')), lang('Manage'))
+            . $connect('bi-microsoft', 'blue', 'Microsoft', lang('The account must sign in again.'), array('amber', lang('Needs attention')), lang('Manage'))
+            . $connect('bi-whatsapp', 'teal', 'WhatsApp', lang('Site Settings') . ' › ' . lang('Communication'), array('gray', lang('Not connected')), lang('Connect'))
+            . '</div><p class="pg-text-meta">' . h(lang('From the Connections screen: a state reads the same wherever the thing is named.')) . '</p>',
+    );
+
+    $patterns[] = array(
+        'id'      => 'pattern-empty',
+        'title'   => lang('A list\'s empty state'),
+        'classes' => array('.pg-card-inner', '.ws-empty'),
+        'html'    => '<div class="pg-card-inner"><div class="ws-empty py-5"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › MCP servers.')) . '</p>',
+    );
+
+    return $patterns;
+}
+
+/**
  * What the look does not cover yet, for a step that meets it: parts the
  * sheet draws that are no recipe yet, and parts the sheet has not drawn.
  *
@@ -207,14 +315,25 @@ function pg_look_examples_pane($theme)
     $out = '<div class="pg-look-pane" data-bs-theme="' . $theme . '">'
         . '<h2 class="pg-title-section pg-look-pane-title">' . h(($theme === 'dark') ? lang('Dark') : lang('Light')) . '</h2>';
 
-    foreach (pg_look_examples($theme) as $section) {
-        $out .= '<section class="pg-look-example" aria-labelledby="pg_look_' . $theme . '_' . $section['id'] . '">'
+    $draw = function ($section) use ($theme) {
+        return '<section class="pg-look-example" aria-labelledby="pg_look_' . $theme . '_' . $section['id'] . '">'
             . '<h3 class="pg-title-status" id="pg_look_' . $theme . '_' . $section['id'] . '">' . h($section['title']) . '</h3>'
             . $section['html']
             . '<p class="pg-look-classes pg-text-meta">' . implode(' ', array_map(function ($name) {
                 return '<code>' . h($name) . '</code>';
             }, $section['classes'])) . '</p>'
             . '</section>';
+    };
+
+    foreach (pg_look_examples($theme) as $section) {
+        $out .= $draw($section);
+    }
+
+    // The patterns: whole pieces put together from the parts above.
+    $out .= '<h3 class="pg-title-section pg-look-pane-title" id="pg_look_' . $theme . '_patterns">' . h(lang('Patterns')) . '</h3>';
+
+    foreach (pg_look_examples_patterns($theme) as $section) {
+        $out .= $draw($section);
     }
 
     return $out . '</div>';
