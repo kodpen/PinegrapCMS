@@ -17,7 +17,7 @@ description: A zip entry is read no further than its archive declares: streams v
 - `pg_zip_entry_contents($zip, $entry, $limit, &$error)` (files.php): null with `large` (declares more than `$limit`, or a size negative on 32-bit), `damaged` (not exactly its declared size, `getFromIndex()` asked for size + 1, or not its CRC: zip-entry-php-versions.md) or `missing`. Size 0: `getFromIndex()` gives '' unread, so one byte is read from the stream; empty Go/bzip2 entries pass, hidden data is `damaged` (#860).
 - `pg_zip_import_open($path, &$error)` refuses, before inflating, an empty archive, more than 10,000 entries, 2 GB declared or the disk room (`pg_explorer_disk_has_room()`, now in files.php). `import_zip.php` and `pg_designer_import_zip()` use both; an entry past 64 MB (`PG_ZIP_IMPORT_MAX_ENTRY`; a designer page past 8 MB, `PG_DI_MAX_HTML`, as libxml's DOM memory escapes memory_limit) or damaged is left out with a warning. Names are raw (`FL_ENC_RAW`); Import ZIP cleans them with `pg_zip_entry_path()`, the designer reads by each entry's index.
 - Search index: only the text part is read, at `PG_OFFICE_MAX_PART`; pptx slides share that room. A refused part gives no text.
-- .ods: the bank import's `pg_products_import_ods_check()` reads `content.xml`, `meta.xml` at 8 MB before PHPExcel (`ods-cell-ceiling.md`); the product import's sheet reader streams `content.xml` at `PG_SHEET_ODS_MAX_PART` (`sheet-reader.md`).
+- .ods: both importers' sheet reader streams `content.xml` at `PG_SHEET_ODS_MAX_PART` (`sheet-reader.md`); `pg_products_import_ods_check()` (8 MB before PHPExcel, `ods-cell-ceiling.md`) is left without a caller until XL5.
 - Without ZipArchive these refuse, as restore and update do; PclZip is no longer read.
 
 ## What is the rule?

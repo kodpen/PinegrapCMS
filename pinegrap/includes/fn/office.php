@@ -446,21 +446,20 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
  * The built-in zip:// stream, which XMLReader walks a sheet through. PHPExcel
  * (the .xls and .ods importers) replaces that wrapper with its own for the
  * rest of the request and switches libxml's loader off, and XMLReader cannot
- * open a part through either; both are put back once, when first needed.
- * Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
+ * open a part through either; both are put back on every call, as PHPExcel
+ * may be loaded after an earlier read in the same request. Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
  * LIBXML_NONET), so the loader being on changes nothing else.
  */
 function pg_office_zip_stream()
 {
-    static $restored = false;
+    if (!class_exists('PHPExcel_Settings', false)) {
+        return;
+    }
 
-    if (!$restored) {
-        $restored = true;
-        @stream_wrapper_restore('zip');
+    @stream_wrapper_restore('zip');
 
-        if (function_exists('libxml_disable_entity_loader')) {
-            @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
-        }
+    if (function_exists('libxml_disable_entity_loader')) {
+        @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
     }
 }
 
