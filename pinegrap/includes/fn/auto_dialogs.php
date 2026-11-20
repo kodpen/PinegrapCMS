@@ -351,6 +351,22 @@ function pg_auto_dialogs_on_page($rows, $page_name, $has_cart = false)
 }
 
 /**
+ * The rows as the JSON the page prints into its inline script for
+ * software.init_auto_dialogs(). Angle brackets and ampersands are written
+ * as \u escapes: an address may hold "<!--<script>" (the URL field refuses
+ * only spaces), and printed raw the HTML parser would then read past the
+ * script's closing tag and swallow the rest of the page. Letters stay as
+ * they are. Pure.
+ *
+ * @param array $rows
+ * @return string
+ */
+function pg_auto_dialogs_script_json($rows)
+{
+    return (string) json_encode(array_values((array) $rows), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+}
+
+/**
  * The values each open setting takes, its default first: the value a row
  * stored before the columns, or one this version does not know, reads as.
  *

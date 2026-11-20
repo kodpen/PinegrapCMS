@@ -1500,6 +1500,10 @@ function pg_image_editor_strings_layers()
         'groupName'      => lang('Group {n}'),
         'groupOpen'      => lang('Show the layers in the group'),
         'groupClose'     => lang('Hide the layers in the group'),
+        'attachTo'       => lang('Attach to'),
+        'attachNone'     => lang('Not attached'),
+        'attachNote'     => lang('An attached layer takes the other layer\'s move, turn and size at every moment, with its own place and keys on top.'),
+        'detach'         => lang('Detach'),
     );
 }
 

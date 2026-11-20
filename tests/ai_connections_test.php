@@ -223,6 +223,43 @@ function test_ai_connections_agent_form_takes_no_key_for_a_connection()
 
 	pg_assert_contains('pg_ai_connection_block_html($provider_id,', $source, 'the chosen provider\'s connection under the select');
 	pg_assert_contains("'provider=' . implode('|', \$own_key)", $source, 'the key field only for a provider without a connection');
-	pg_assert_contains('if ($connected && is_string($key) && ($key !== \'\')) {', $source, 'a key typed for a connected provider is not stored');
+	pg_assert_contains('$key = pg_ai_connection_agent_key($current, $check[\'values\'][\'provider\'], $key);', $source, 'a key typed for a connected provider is not stored, nor kept for another provider');
 	pg_assert_contains('<select class="pg-input pg-input-sm" name="\' . h($name($field)) . \'"', $source, 'the selects post their names');
+}
+
+function test_ai_connections_voice_move_keeps_a_speech_key_whose_fallback_is_another_key()
+{
+	// Spoken answers that follow the transcripts fall back to the
+	// transcripts' key: emptying theirs while the transcripts keep a
+	// different key of their own would switch them to that key.
+	$move = pg_ai_connection_voice_move('sk-conn-1', array('url' => '', 'key' => 'sk-own-2', 'speech_url' => '', 'speech_key' => 'sk-conn-1'));
+
+	pg_assert_same(array(), $move['empty'], 'the spoken answers keep the key they called with');
+
+	$move = pg_ai_connection_voice_move('sk-conn-1', array('url' => '', 'key' => 'sk-conn-1', 'speech_url' => '', 'speech_key' => 'sk-conn-1'));
+
+	pg_assert_same(array('ws_voice_key', 'ws_voice_speech_key'), $move['empty'], 'both equal to the connection: both read it');
+}
+
+function test_ai_connections_voice_speech_on_connection_by_address()
+{
+	pg_assert_true(pg_ai_connection_voice_speech_on_connection('https://api.openai.com/v1', 'https://api.groq.com/openai/v1'), 'speech on OpenAI, transcripts elsewhere: OpenAI\'s connection');
+	pg_assert_true(!pg_ai_connection_voice_speech_on_connection('', 'https://api.groq.com/openai/v1'), 'speech following another service takes its key');
+	pg_assert_true(!pg_ai_connection_voice_speech_on_connection('https://api.openai.com/v1', ''), 'both on OpenAI: the transcripts\' key, which falls back to the connection');
+	pg_assert_true(!pg_ai_connection_voice_speech_on_connection('https://api.groq.com/openai/v1', ''), 'speech on another service never takes OpenAI\'s key');
+}
+
+function test_ai_connections_agent_key_never_follows_a_provider_change()
+{
+	$openai = array('kind' => 'model', 'provider' => 'openai', 'key_set' => true);
+
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'anthropic', null), 'an OpenAI key is not sent to Anthropic: the assistant reads Anthropic\'s connection');
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'custom', null), 'nor to a custom address');
+	pg_assert_same('v:iv', pg_ai_connection_agent_key($openai, 'custom', 'v:iv'), 'a key typed for a provider without a connection is stored');
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'anthropic', 'v:iv'), 'a key typed for a connected provider is not stored, and the old one is dropped');
+	pg_assert_same(null, pg_ai_connection_agent_key($openai, 'openai', 'v:iv'), 'a key typed for the same connected provider is not stored');
+	pg_assert_same(null, pg_ai_connection_agent_key($openai, 'openai', null), 'the same provider keeps its own key');
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'openai', ''), 'its box gives the own key up');
+	pg_assert_same(null, pg_ai_connection_agent_key(null, 'anthropic', null), 'a new assistant has no key to drop');
+	pg_assert_same(null, pg_ai_connection_agent_key(array('kind' => 'model', 'provider' => 'openai', 'key_set' => false), 'anthropic', null), 'nothing stored, nothing to drop');
 }

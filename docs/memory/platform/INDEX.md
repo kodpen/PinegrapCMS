@@ -116,7 +116,7 @@
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 - install-design-step.md: The installer's Site Design screen: live-picture tiles, the chosen template's block and tour, pickers set to the template's theme, 1440 px width, designer scripts loaded in order [decision: decisions-made-product-35.md]
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter [decision: decisions-made-data.md]
-- iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
+- iys-settings-card.md: The İYS account's fields (on İYS's page of Connections since CX11d, includes/iys/settings.php): save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - job-pass-time-claim.md: Window passes of the general job (booking reminders, store credit expiring notices) claim their config_text pass time with pg_config_text_claim(), so overlapping runs never both send
 - job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one [decision: decisions-made-schema-24.md]
@@ -126,6 +126,7 @@
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch (PR #4381, PG_VENDOR_API_V1 on), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
+- list-excel-export-limits.md: When Export to Excel sends the CSV instead (memory, 1,048,575 rows) and the text it cleans (UTF-8, 32,767 characters); the bug hunt of #10619
 - list-excel-export.md: Export to Excel beside a panel list's CSV export (OS1, #10483): the capture helper, column types, the toolbar action, which lists have it, what passes through
 - mail-domain-health.md: The "Sending domain" card of E-mail sending (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
@@ -154,11 +155,12 @@
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
-- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, .pptx only shown, no .doc/.ppt, .xls only shown and copied, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
+- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: here]
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
+- office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (OE1a, office_shift.php): the save entry, what moves, what is refused and why, one change a save; the head menu is OE1b
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
@@ -174,6 +176,7 @@
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
 - place-list-fields.md: Fields of a "Map of places" answer (#10535): the block's pickers in its Options panel, data-pg-map-fields on the saved page, fit and office-use rules, name-rule fallback
+- place-list-near.md: Near me and the typed-address box of the Map of places block (MP5, X11, X12): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
 - place-list.md: The "Map of places" block's list (place-map MP3, MP3b): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
 - product-import-sheets.md: How the product import turns a .xlsx, .ods or .xls upload into its CSV (pg_products_import_to_csv(), import_products_f.php): its own .xlsx walk, the sheet reader for .ods and .xls, the refusal texts
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
@@ -196,6 +199,7 @@
 - share-card-address.md: The share card (og:image drawn from the title, logo and site name): its address and signature, the order file, the draw under a lock, the 404 cases, the sweep
 - share-card-page.md: The share card's switch and colours in Site Settings, SEO, Social Sharing, which pages print a card as og:image, the sample and the record warning
 - share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out [decision: here]
+- sheet-import-door-safety.md: The spreadsheet import door's guards from the bug hunt (#10619): reader by content, the CSV written row by row, waiting workbooks swept by age
 - sheet-import-upload.md: How the CSV-only importers take .xlsx, .ods and .xls (pg_sheet_import_upload(), OS2a #10523); the sheet question, also on Products > Import and the bank import (OS2c)
 - sheet-reader-differences.md: The sheet reader's .xls fixes to excel_reader2.php (SST, memory), .xlsx parts found through the relationships, its deliberate differences from PHPExcel, its tests
 - sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel [decision: here]
@@ -252,7 +256,7 @@
 - visitor-push.md: Visitor notifications start file: the "Notify me" block, the Features switch, Send a notification; its decisions, which file holds each part, the known gap [decision: here]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
-- whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
+- whatsapp-connection.md: WhatsApp account (WA1, #9067): its five steps on WhatsApp's page of Connections (CX11d), connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 - whatsapp-form-messages.md: A custom form's WhatsApp message to its sender (WA6, #9374): number field, template, a field per variable, connect_apps whatsapp_forms, sent with the e-mails, off by default
 - whatsapp-offer-codes.md: WhatsApp offer codes (WA10, #9414): the offer column, shared code or a key per recipient made at enqueue, copy-code button, consent gate at queue and send, SMS box naming WhatsApp [decision: decisions-made-product-48.md]
 - whatsapp-order-messages.md: WhatsApp order moments (WA5, #9347): the WhatsApp Messages card, one approved template per event and a value per variable, connect_apps whatsapp_messages, where each is queued, off by default

@@ -12,6 +12,9 @@ description: The one cookie notice check of the anonymous counts (clicks and scr
 - Callers: `pg_page_clicks_allowed()` (`visitors/page-clicks.md`) and `pg_auto_dialog_count_allowed()` (`visitors/auto-dialog-counts.md`). A new anonymous count asks this one; nobody writes a second check.
 - Browser (#9946): `software.statistics_not_refused()` in `frontend.src.js` (and the hand-patched `frontend.min.js`), the notice on when `#pg-cc` is on the page, over the pure `software.statistics_not_refused_by(enabled, raw)` that reads the cookie as `pg_consent_parse()` does. Askers: the pop-up counts and the clicks script.
 
+## Did a bug hunt read it?
+- Yes, the pop-up hunt of agent channel message 10243: both sides ask the rule before a pop-up event is sent and counted. A copied day signature can still be posted by hand, 30 a minute from one address (`visitors/auto-dialog-counts.md`): the limit, not a fault.
+
 ## Why not pg_consent_allows()?
 - `pg_consent_allows()` guards cookies and held scripts, where the rule is a yes; it stays as it is. A check that lets an unanswered visitor through is named for what it answers ("not refused"), so nobody sets a cookie with it.
 

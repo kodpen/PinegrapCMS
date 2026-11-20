@@ -11914,6 +11914,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // One conditional UPDATE; a restore makes them valid again.
     pg_event_tickets_order_cancelled($order_id);
 
+    // ── Give the order's event places back ─────────────────────────────
+    // Only with tickets on; those waiting for a freed date are mailed.
+    pg_order_event_places_cancelled($order_id);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -12374,6 +12378,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     // The event tickets the cancellation voided.
     pg_event_tickets_order_restored($order_id);
+
+    // The event places the cancellation gave back are taken again.
+    pg_order_event_places_restored($order_id);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
@@ -14396,4 +14403,150 @@ function pg_product_oos_notice($product)
     $copy    = (string)($product['out_of_stock_message'] ?? '');
     if (!$tracked || $qty > 0 || $copy === '') return '';
     return _pg_rich_text_to_inline($copy);
+}
+
+/**
+ * The event places an order's lines hold, per date: a reservation line of an
+ * event that takes reservations and limits its places, its quantity summed
+ * on the date the places are counted on (pg_stock_notify_event_date()).
+ * Nothing with tickets off or the calendars off: places return only with
+ * tickets on (a cancel never gave them back before). Pure.
+ *
+ * @param array $lines     calendar_event_id, recurrence_number, quantity,
+ *                         reservations, limit_reservations, recurrence,
+ *                         separate_reservations
+ * @param bool  $on        pg_event_tickets_on()
+ * @param bool  $calendars whether the calendars are on
+ * @return array list of array(calendar_event_id, recurrence_number, quantity)
+ */
+function pg_order_event_places(array $lines, $on, $calendars = true)
+{
+    if (!$on || !$calendars) {
+        return array();
+    }
+
+    $places = array();
+
+    foreach ($lines as $line) {
+        $event_id = (int) ($line['calendar_event_id'] ?? 0);
+        $quantity = (int) ($line['quantity'] ?? 0);
+
+        if (($event_id <= 0) || ($quantity <= 0) || ((int) ($line['reservations'] ?? 0) !== 1) || ((int) ($line['limit_reservations'] ?? 0) !== 1)) {
+            continue;
+        }
+
+        $date = pg_stock_notify_event_date($line, (int) ($line['recurrence_number'] ?? 0));
+        $key = $event_id . ':' . $date;
+
+        if (!isset($places[$key])) {
+            $places[$key] = array($event_id, $date, 0);
+        }
+
+        $places[$key][2] += $quantity;
+    }
+
+    return array_values($places);
+}
+
+/**
+ * The statement that moves one date's places: back up on a cancel, down
+ * again on a restore, never below 0 (the column is unsigned and a date read
+ * as 0 left is full). A date without a row has its initial places already.
+ * Pure.
+ *
+ * @param string $direction give or take
+ * @param int    $event_id
+ * @param int    $date
+ * @param int    $quantity
+ * @return string '' for anything else
+ */
+function pg_order_event_places_sql($direction, $event_id, $date, $quantity)
+{
+    $event_id = (int) $event_id;
+    $quantity = (int) $quantity;
+
+    if (($event_id <= 0) || ($quantity <= 0) || !in_array($direction, array('give', 'take'), true)) {
+        return '';
+    }
+
+    $set = ($direction === 'give')
+        ? "number_of_remaining_spots + " . $quantity
+        : "IF(number_of_remaining_spots > " . $quantity . ", number_of_remaining_spots - " . $quantity . ", 0)";
+
+    return "UPDATE remaining_reservation_spots SET number_of_remaining_spots = " . $set
+        . " WHERE (calendar_event_id = '" . $event_id . "') AND (recurrence_number = '" . max(0, (int) $date) . "')";
+}
+
+/**
+ * Moves the places of an order's reservation lines (pg_order_event_places()).
+ *
+ * @param int    $order_id
+ * @param string $direction give or take
+ * @return array the dates moved, as array(calendar_event_id, recurrence_number)
+ */
+function pg_order_event_places_move($order_id, $direction)
+{
+    $order_id = (int) $order_id;
+    $on = function_exists('pg_event_tickets_on') && pg_event_tickets_on();
+
+    if (($order_id <= 0) || !$on || !defined('CALENDARS') || !CALENDARS) {
+        return array();
+    }
+
+    $lines = db_items(
+        "SELECT
+            order_items.calendar_event_id,
+            order_items.recurrence_number,
+            order_items.quantity,
+            calendar_events.reservations,
+            calendar_events.limit_reservations,
+            calendar_events.recurrence,
+            calendar_events.separate_reservations
+        FROM order_items
+        INNER JOIN calendar_events ON calendar_events.id = order_items.calendar_event_id
+        WHERE (order_items.order_id = '" . $order_id . "') AND (order_items.calendar_event_id > 0)" . pg_order_item_active_sql());
+
+    $moved = array();
+
+    foreach (pg_order_event_places((array) $lines, $on) as $place) {
+        db(pg_order_event_places_sql($direction, $place[0], $place[1], $place[2]));
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            $moved[] = array($place[0], $place[1]);
+        }
+    }
+
+    return $moved;
+}
+
+/**
+ * A cancelled order gives its event places back, with tickets on, and those
+ * waiting for a freed date are mailed (pg_stock_notify_event_freed()). The
+ * cancel's guarded status write lets this run once per cancellation.
+ *
+ * @param int $order_id
+ * @return int the dates given places
+ */
+function pg_order_event_places_cancelled($order_id)
+{
+    $freed = pg_order_event_places_move($order_id, 'give');
+
+    if ($freed && function_exists('pg_stock_notify_event_freed')) {
+        pg_stock_notify_event_freed($freed);
+    }
+
+    return count($freed);
+}
+
+/**
+ * A restored order takes its event places again, with tickets on, never
+ * below 0: a place taken meanwhile by someone on the waiting list stays
+ * theirs.
+ *
+ * @param int $order_id
+ * @return int the dates taken from
+ */
+function pg_order_event_places_restored($order_id)
+{
+    return count(pg_order_event_places_move($order_id, 'take'));
 }

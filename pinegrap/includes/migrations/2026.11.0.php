@@ -237,6 +237,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
 	upgrade_2026_11_0_event_tickets();           // 11.0.247
+	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
+	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
+	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 
 }
 
@@ -7946,5 +7949,154 @@ function upgrade_2026_11_0_event_tickets() {
 	}
 
 	install_note('Event tickets: the table for tickets with a QR code is ready; nothing changes on the site until Tickets is switched on in Site Settings, Features.');
+
+}
+
+// The waiting list of a full event date (11.0.248, includes/fn/stock_notify.php):
+// a request to be told when a place frees is a stock_notify row with the
+// event and its date (recurrence_number, 0 for a single event or shared
+// spots) beside product_id 0, so a product's notice never reads it and an
+// event's never reads a product's. Both columns default to 0, which every
+// existing row is: a product's request. The index is the sender's and the
+// "already waiting" read: the date's waiting rows. stock_notify is small,
+// so a plain ALTER is fine where an instant one is refused.
+function upgrade_2026_11_0_event_waiting_list() {
+
+	$columns = array(
+		'calendar_event_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'recurrence_number' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('stock_notify', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('stock_notify', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('stock_notify', 'idx_event_sent', "INDEX idx_event_sent (calendar_event_id, recurrence_number, sent_at)");
+
+}
+
+// The daily stock record behind stock planning (2026.11.0, 11.0.249;
+// includes/erp/stock_plan.php, erp_stock_plan_job.php). One row per tracked
+// product and site day, written only when it sold or its stock was 0 at the
+// night pass: the units sold and that stock, NULL when unknown (the 365 days
+// filled from past sales). idx_day serves the nightly pruning of rows older
+// than 400 days. The job is added to the general job's list here, so the
+// history starts the first night after the upgrade.
+function upgrade_2026_11_0_erp_stock_days() {
+
+	install_create_table('erp_stock_days', "CREATE TABLE erp_stock_days (
+		product_id  INT UNSIGNED NOT NULL,
+		day         DATE NOT NULL,
+		sold        INT UNSIGNED NOT NULL DEFAULT 0,
+		stock       INT UNSIGNED NULL,
+		PRIMARY KEY (product_id, day),
+		KEY idx_day (day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_column_exists('config', 'job_dispatch') && install_column_exists('config', 'job_dispatch_enabled')) {
+
+		$row = db_item("SELECT job_dispatch_enabled, job_dispatch FROM config LIMIT 1");
+
+		if (!empty($row) && ((int) $row['job_dispatch_enabled'] === 1)) {
+
+			$list = array_values(array_filter(array_map('trim', explode(',', (string) $row['job_dispatch'])), 'strlen'));
+
+			if (!in_array('erp_stock_plan_job', $list, true)) {
+				$list[] = 'erp_stock_plan_job';
+				db_q("UPDATE config SET job_dispatch = ?", array(implode(',', $list)));
+			}
+
+		}
+
+	}
+
+	install_note('Accounting: a daily stock record per product starts tonight, the ground of the coming stock plan.');
+
+}
+
+// Each order's costs and net profit (2026.11.0, 11.0.250;
+// includes/erp/order_profit.php, erp_order_profit_job.php). erp_order_costs
+// holds an order's cost rows: kind, amount in minor units, where the figure
+// came from and its reference, unique per order, kind and reference so a
+// rerun adds no row. erp_order_profit holds one row per order: revenue, the
+// costs by kind, net, margin, state, the hash of the order figures it was
+// built from and a mark to compute it again. erp_cost_rates holds the typed
+// rates (percent plus fixed) per payment method, shipping method and
+// marketplace account. The job joins the general job's list here, so the
+// first orders are computed after the upgrade.
+function upgrade_2026_11_0_erp_order_profit() {
+
+	install_create_table('erp_order_costs', "CREATE TABLE erp_order_costs (
+		id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('product','payment','marketplace','shipping','other') NOT NULL DEFAULT 'other',
+		source      ENUM('invoice','average','bundle','gateway','marketplace','label','rate','estimate') NOT NULL DEFAULT 'rate',
+		source_ref  VARCHAR(100) NOT NULL DEFAULT '',
+		amount      BIGINT NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_order_kind_ref (order_id, kind, source_ref)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_order_profit', "CREATE TABLE erp_order_profit (
+		order_id          INT UNSIGNED NOT NULL,
+		order_date        INT UNSIGNED NOT NULL DEFAULT 0,
+		channel           VARCHAR(48) NOT NULL DEFAULT 'web',
+		revenue           BIGINT NOT NULL DEFAULT 0,
+		cost_product      BIGINT NOT NULL DEFAULT 0,
+		cost_payment      BIGINT NOT NULL DEFAULT 0,
+		cost_marketplace  BIGINT NOT NULL DEFAULT 0,
+		cost_shipping     BIGINT NOT NULL DEFAULT 0,
+		cost_other        BIGINT NOT NULL DEFAULT 0,
+		net               BIGINT NOT NULL DEFAULT 0,
+		margin            DECIMAL(10,1) NULL DEFAULT NULL,
+		state             ENUM('final','estimate','incomplete') NOT NULL DEFAULT 'incomplete',
+		basis             CHAR(32) CHARACTER SET ascii NOT NULL DEFAULT '',
+		stale             TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		computed_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (order_id),
+		KEY idx_stale (stale),
+		KEY idx_date (order_date),
+		KEY idx_channel_date (channel, order_date),
+		KEY idx_net (net)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_cost_rates', "CREATE TABLE erp_cost_rates (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind        ENUM('payment','shipping','marketplace') NOT NULL DEFAULT 'payment',
+		rate_key    VARCHAR(100) NOT NULL DEFAULT '',
+		percent     DECIMAL(6,3) NOT NULL DEFAULT 0.000,
+		fixed       BIGINT NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_kind_key (kind, rate_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_column_exists('config', 'job_dispatch') && install_column_exists('config', 'job_dispatch_enabled')) {
+
+		$row = db_item("SELECT job_dispatch_enabled, job_dispatch FROM config LIMIT 1");
+
+		if (!empty($row) && ((int) $row['job_dispatch_enabled'] === 1)) {
+
+			$list = array_values(array_filter(array_map('trim', explode(',', (string) $row['job_dispatch'])), 'strlen'));
+
+			if (!in_array('erp_order_profit_job', $list, true)) {
+				$list[] = 'erp_order_profit_job';
+				db_q("UPDATE config SET job_dispatch = ?", array(implode(',', $list)));
+			}
+
+		}
+
+	}
+
+	install_note('Accounting: each finished order gets its costs and net profit, computed by the general job after the upgrade.');
 
 }

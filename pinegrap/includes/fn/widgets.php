@@ -4434,10 +4434,12 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
     if (pg_sw_list_wanted('account')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_event_tickets.php');
         pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date'))
             + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings'])
             + pg_sw_list_account_subscription_rows($values['account_id'], $extras['subscriptions'])
-            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards']));
+            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards'])
+            + pg_sw_list_account_ticket_rows($values['account_id'], $extras['tickets']));
     }
 
     // ── No loop_area — render entire tree once with account tokens ─────────
@@ -9643,6 +9645,8 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
                 if ((int)$event['limit_reservations'] === 1 && (int)$event['number_of_remaining_spots'] === 0) $msg[] = (string)$event['no_remaining_spots_message'];
                 if ((int)$event['inventory'] === 1 && (int)$event['inventory_quantity'] === 0 && (int)$event['backorder'] === 0) $msg[] = (string)$event['out_of_stock_message'];
                 $values['__reservation_message'] = trim(implode(' ', array_filter($msg)));
+                // A full date offers its waiting list in the reserve form's place.
+                $reserve_form = pg_stock_notify_event_line($event, (int)$recurrence, pg_sw_drawn_page_id(), get_request_uri());
             }
         }
     }

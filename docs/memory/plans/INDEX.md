@@ -25,6 +25,7 @@
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
+- channel-commands-answer-census.md: K28 census (CC12 of channel-commands): an application command's answer today, what one person sees and where it is kept, a phone and a second window; the proposed shape
 - channel-commands-features-2.md: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek, /oluştur for a contact, row, ERP account and event, /kargo, application arguments, an agent's command
 - channel-commands-features.md: Plan channel-commands, features K1 to K14: the registry, the gate that knows the channel, grouped /help and / list, commands as a reply, /hatırlat, /özet, /onay, /güncelleme, /checkin, /akış
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
@@ -137,7 +138,4 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
-- wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
-- wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
-- wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
 - workspace-calls.md: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls in the Workspace, browser to browser (WebRTC), two people and groups of four at most, guests, screen sharing; steps CL1-CL8

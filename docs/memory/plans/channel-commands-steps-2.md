@@ -29,7 +29,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
   - Picture: the line, the agent's line under it.
   - Memory: `workspace/agent-doors.md`. Feature: K27.
 
-- CC12 (S, no code) after CC11: the census for the writer-only answer, one memory file in the plans folder (channel-commands-answer-census) answering K28's questions from the code. It ends with a shape for the architect; a table or a column in it is asked of the owner by the architect. CC12b builds what was confirmed.
+- CC12 (S, no code) after CC11: census for the writer-only answer, one plans memory file (channel-commands-answer-census) answering K28 from the code. Done: #10636. It ends with a shape for the architect; a table or a column in it is asked of the owner by the architect. CC12b builds what was confirmed.
 
 - Close-out, with the last step that lands: every K number checked against the code with its PR; `workspace/workspace-command-registry.md`, `workspace/workspace-app-commands.md` and `workspace/workspace-command-api.md` current; this plan's files deleted.
 

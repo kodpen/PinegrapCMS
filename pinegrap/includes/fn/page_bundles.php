@@ -723,6 +723,25 @@ function pg_page_bundle_load_recycle()
  */
 function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
 {
+    $busy = pg_page_bundle_busy_answer() + array('item_id' => 0, 'draft_page_id' => 0);
+
+    return pg_page_bundle_with_lock($bundle, $user, $busy, function ($bundle) use ($live_page_id, $user) {
+        return pg_page_bundle_add_copy_locked($bundle, $live_page_id, $user);
+    });
+}
+
+/**
+ * Adds a copy of a live page to a bundle, under the bundle's lock: a
+ * publish running reads the items once, so a page added meanwhile would
+ * wait in a bundle that is published.
+ *
+ * @param array $bundle       pg_page_bundle_get(), read under the lock
+ * @param int   $live_page_id
+ * @param array $user
+ * @return array as pg_page_bundle_add_copy()
+ */
+function pg_page_bundle_add_copy_locked($bundle, $live_page_id, $user)
+{
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'draft_page_id' => 0);
     };
@@ -856,6 +875,24 @@ function pg_page_bundle_add_draft_check($bundle, $draft_page_id)
  * @return array ok, error, item_id, time_cleared
  */
 function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
+{
+    $busy = pg_page_bundle_busy_answer() + array('item_id' => 0, 'time_cleared' => false);
+
+    return pg_page_bundle_with_lock($bundle, $user, $busy, function ($bundle) use ($draft_page_id, $user) {
+        return pg_page_bundle_add_draft_locked($bundle, $draft_page_id, $user);
+    });
+}
+
+/**
+ * Adds a draft to a bundle, under the bundle's lock
+ * (pg_page_bundle_add_copy_locked()).
+ *
+ * @param array $bundle        pg_page_bundle_get(), read under the lock
+ * @param int   $draft_page_id
+ * @param array $user
+ * @return array as pg_page_bundle_add_draft()
+ */
+function pg_page_bundle_add_draft_locked($bundle, $draft_page_id, $user)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'time_cleared' => false);
@@ -1620,6 +1657,27 @@ function pg_page_bundle_publish_ops($items, $write_item, $undo_item)
 }
 
 /**
+ * The drafts of the replacements a published bundle wrote onto their live
+ * pages: written items of a live page with the state written kept. A claim
+ * with no state (a publish that died part-way) keeps its draft. Pure.
+ *
+ * @param array $items page_bundle_item rows
+ * @return int[] draft page ids
+ */
+function pg_page_bundle_used_replacements($items)
+{
+    $out = array();
+
+    foreach ((array) $items as $item) {
+        if (((string) $item['status'] === 'written') && ((int) $item['live_page_id'] > 0) && ((string) $item['written_state'] !== '')) {
+            $out[] = (int) $item['draft_page_id'];
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Takes one written page back: a new page goes back to Drafts; a replaced
  * page gets the tree, title and description of its revision before, saved
  * as a new publish with the source 'restore'. After a failed publish the
@@ -1775,13 +1833,13 @@ function pg_page_bundle_publish_locked($bundle, $user, $choices = array())
             db_q("UPDATE page_bundle_item SET status = 'left_out' WHERE id = ? AND status = 'waiting'", array((int) $id));
         }
 
-        // The used replacements: their live pages carry them now.
+        // The used replacements: their live pages carry them now. Read
+        // again, so "Publish the rest" also bins those of the run that left
+        // the bundle partly published.
         pg_page_bundle_load_recycle();
 
-        foreach ($run['written'] as $id) {
-            if ((int) $items[$id]['live_page_id'] > 0) {
-                pg_recycle_page((int) $items[$id]['draft_page_id'], $user);
-            }
+        foreach (pg_page_bundle_used_replacements(pg_page_bundle_items($bundle['id'])) as $draft_id) {
+            pg_recycle_page($draft_id, $user);
         }
 
         log_activity(lang(array('string' => 'release bundle ({var:1}) was published', 'vars' => array((string) $bundle['name']))),
@@ -1908,12 +1966,19 @@ function pg_page_bundle_take_back_locked($bundle, $user, $accepted, $out)
         return $out;
     }
 
-    $items = $check['items'];
-    $undo = function ($id) use ($items, $bundle, $user) {
-        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'reverted');
-    };
+    // A failed query inside a page save throws instead of ending the
+    // request: that page failed, the others are still tried.
+    list(, $undo) = pg_page_bundle_publish_ops($check['items'],
+        function ($item) {
+            return array('ok' => false, 'error' => '');
+        },
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_undo_item($item, $bundle, $user, 'reverted');
+        });
 
-    $run = pg_page_bundle_take_back_run($check['plan']['can'], $undo);
+    $run = pg_page_bundle_with_throwing_errors(function () use ($check, $undo) {
+        return pg_page_bundle_take_back_run($check['plan']['can'], $undo);
+    });
     $out['run'] = $run;
 
     if ($run['failed']) {
@@ -2018,7 +2083,7 @@ function pg_page_bundle_with_lock($bundle, $user, $busy, $action)
         $fresh = pg_page_bundle_finish_dead($bundle, $user);
 
         if (!$fresh) {
-            return array('ok' => false, 'error' => lang('The bundle was not found.')) + $busy;
+            return array('ok' => false, 'error' => lang('The bundle was not found.'), 'busy' => false, 'gone' => true) + $busy;
         }
 
         return $action($fresh);
@@ -2676,6 +2741,7 @@ function pg_page_bundle_job_run($now = null, $limit = 5)
             continue;
         }
 
+        $due_at = (int) $bundle['publish_at'];
         $bundle['publish_at'] = 0;
         $person = pg_page_bundle_time_person(db_item((string) pg_db_bind(
             "SELECT user_id, user_role, user_username FROM user WHERE user_id = ? LIMIT 1", array((int) $bundle['scheduled_by']), 'escape')));
@@ -2688,8 +2754,12 @@ function pg_page_bundle_job_run($now = null, $limit = 5)
                 return pg_page_bundle_publish($bundle, $person);
             });
 
-            // A person's publish of the bundle is running: it decides.
+            // Another action holds the bundle (a person's publish, a page
+            // being removed): the time cleared above is given back, so the
+            // next pass publishes it unless that action moved the bundle.
             if (!empty($published['busy'])) {
+                db_q("UPDATE page_bundle SET publish_at = ? WHERE id = ? AND status = 'scheduled' AND publish_at = 0",
+                    array($due_at, (int) $bundle['id']));
                 continue;
             }
 

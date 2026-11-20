@@ -311,3 +311,55 @@ function test_referral_mail_wired_after_the_lock()
 	pg_assert_true(($release !== false) && ($mail !== false) && ($mail > $release), 'the mail is sent once the referrer\'s lock is let go');
 	pg_assert_contains("'queue'              => true", $source, 'through the mail queue');
 }
+
+// A referral link written with zeros before the contact's number passed its
+// signature (the number reads the same), but the month's room counts the
+// rows by the exact code, so each such spelling of one customer's code had
+// a month of its own.
+function test_referral_code_refuses_another_spelling_of_the_number()
+{
+	$code = pg_referral_code_make(41, referral_test_key());
+	$padded = 'R0' . substr($code, 1);
+	$padded_more = 'R00' . substr($code, 1);
+
+	pg_assert_true(pg_referral_code_shaped($padded), 'the padded spelling has the referral shape');
+	pg_assert_same(0, pg_referral_code_contact($padded, referral_test_key()), 'a zero before the number is not the customer\'s code');
+	pg_assert_same(0, pg_referral_code_contact($padded_more, referral_test_key()), 'nor two zeros');
+	pg_assert_same(41, pg_referral_code_contact(' ' . strtolower($code) . ' ', referral_test_key()), 'the code itself still reads, in any case');
+}
+
+// A friend's two orders by the same link, the later one completed first:
+// the earlier one, completed after it, read only orders of a lower id and
+// earned a second reward for the same friend.
+function test_referral_friend_orders_count_any_other_completed_order()
+{
+	$by_account = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 9, 'billing_email_address' => 'friend@example.com'));
+	$by_email = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' Friend@Example.com '));
+
+	pg_assert_contains("(id <> '10')", $by_account, 'every other order of the friend counts, whatever its number');
+	pg_assert_contains("user_id = '9'", $by_account, 'by account');
+	pg_assert_contains("(status IN ('complete', 'exported'))", $by_account, 'only orders that count');
+	pg_assert_contains("= 'friend@example.com'", $by_email, 'else by billing e-mail');
+	pg_assert_same('', pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' ')), 'a guest without an e-mail matches nothing');
+}
+
+// A referrer whose account e-mail differs from their contact's e-mail
+// bought as a guest with the contact's e-mail and was rewarded for it:
+// the self check read only the account's address.
+function test_referral_check_self_by_the_contact_email()
+{
+	$referrer = array('user_id' => 7, 'contact_id' => 41, 'email' => 'login@example.com', 'contact_email' => 'Ayse.Kaya@example.com', 'affiliate_approved' => 0, 'orders' => 2);
+
+	pg_assert_same('self', pg_referral_check(referral_test_facts(array(
+		'referrer' => $referrer,
+		'buyer'    => array('user_id' => 0, 'contact_id' => 0, 'email' => 'ayse.kaya+gift@example.com'),
+	))), 'the contact\'s e-mail, folded');
+	pg_assert_same('', pg_referral_check(referral_test_facts(array(
+		'referrer' => $referrer + array(),
+		'buyer'    => array('user_id' => 0, 'contact_id' => 0, 'email' => 'friend@example.com'),
+	))), 'a friend\'s own e-mail still passes');
+	pg_assert_same('', pg_referral_check(referral_test_facts(array(
+		'referrer' => array('contact_email' => '') + $referrer,
+		'buyer'    => array('user_id' => 0, 'contact_id' => 0, 'email' => ''),
+	))), 'no e-mail on either side is not a match');
+}

@@ -1018,6 +1018,11 @@ function pg_settings_legacy_anchors()
         'pgset-mailchimp'  => array('mail_sending', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
+        // The WhatsApp and İYS accounts moved onto their pages of
+        // Connections; an old link to their fields lands on the card that
+        // shows the connection.
+        'whatsapp_app_id'  => array('contact',    'pgset-whatsapp'),
+        'iys_user'         => array('contact',    'pgset-iys'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),
         'pgsub-signin'     => array('security',   'pgset-signin'),

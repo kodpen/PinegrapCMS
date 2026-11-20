@@ -62,7 +62,7 @@
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 - cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)
 - cart-product-form-answer-name.md: Designer cart product form answers keep their field name in form_data.name; readers fall back to form_fields.name for older rows (#10541, PR #10574)
-- cart-product-form-file-field.md: Why the cart's product form still has no working file upload path after FU1: the field exists but the cart forms post urlencoded and no cart save writes the file yet (FU2, FU3) [decision: decisions-made-product-80.md]
+- cart-product-form-file-field.md: Where a shopper's File Upload works in the cart (FU2, #10641): the designer cart saves it through cart_action.php; the express order widget posts multipart, its save is express_order.php's (FU3) [decision: decisions-made-product-80.md]
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
@@ -98,10 +98,11 @@
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
 - course-blocks.md: The course blocks on the site: pg_course.js, course_action.php (view and the "Mark as done" press), the checks in order, quiz score, rates
 - course-certificate.md: The course certificate (certificate.php): the member's printable page, the public code check and its rate, refusals in order, and the course.completed event for webhooks and flows (#10487)
+- course-enrolment-day.md: A course's enrolment day: the first counting order granting the course folder or a parent of it, else the first open; one reader for gate, blocks and learners [decision: decisions-made-product-34.md]
 - course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row [decision: here]
 - course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress [decision: here]
 - course-student-hunt.md: Bug hunt of the courses' student side (architect, 2026-11-20, agent channel message 10214): files read, the lesson outside its folder fixed (#10601), the parent-folder enrolment day left as #10603 [decision: here]
-- course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code [decision: decisions-made-product-34.md]
+- course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code [decision: here]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
@@ -112,8 +113,11 @@
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
+- event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the six answers, rights, name search, counts, undo
 - event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets [decision: here]
 - event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch [decision: here]
+- event-tickets-page.md: Event tickets (TK2): the holder's page tickets.php behind the signed link, each ticket's QR and code, void ones without a QR, print, .ics; the my account tickets section, flag and account.tickets list
+- event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split [decision: here]
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-field-labels.md: Express order widget's accessible names: labels follow the walker's shipping_<rid>_ renames, fallback aria-labels for the quantity, offer code and custom arrival date boxes (#4799)
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the checkout cart table's stacked layout below lg, its header row and the three places to update.
@@ -284,6 +288,7 @@
 - product-feed-streaming.md: How the daily product feed build streams a large catalog to data/feeds/ chunk by chunk (writer open/add/close, CSV/TSV work file), why, and the out-of-memory symptom it fixed (PR #1056)
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV/XML feeds, field rules, skip reasons, variant families, writers
 - product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function [decision: here]
+- product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept [decision: here]
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules [decision: decisions-made-product-26.md]
 - product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
@@ -315,6 +320,7 @@
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule. [decision: decisions-made-product-26.md]
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
+- referral-checks.md: What each check of a referred friend's order reads (pg_referral_check()): the code's one spelling, self by both e-mails, the friend's other orders; open gaps
 - referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind [decision: here]
 - referral-report-and-event.md: Referrals Report (view_referral_report.php): who sees it, what each column counts from the referral rows, top referrers' names; the referral.rewarded event for webhooks and flows
 - referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings [decision: decisions-made-product-25.md]
@@ -398,5 +404,6 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export
