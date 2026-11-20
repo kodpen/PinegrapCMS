@@ -15,5 +15,6 @@ module: page_clicks
 
 ## How is it sent?
 - Once, on `visibilitychange` hidden or `pagehide`; a page back from the back-forward cache sends nothing more. Fields `cp`, `cs`, `c` = JSON `{d, t, e}` (`visitors/page-clicks.md` has the server side).
+- `take()` drops the last elements named while `c` is over 8 KB in UTF-8 bytes (`BYTES`, the server's limit), so the view and depth still count (#10604): twenty long addresses with four-byte labels reached about 10 KB, and the server dropped the whole beacon.
 - With the speed beacon on the page it sets `window.pgVitalsSends`; `pg_vitals.src.js` then takes `window.pgClicks.take()` into its own request (and sends one with clicks alone when it measured nothing), and the clicks script sends none of its own.
 - `take()` returns nothing unless `software.statistics_not_refused()` (`frontend.src.js`, `platform/consent-anonymous-counts.md`) says statistics were not refused; without that function on the page nothing is sent.
