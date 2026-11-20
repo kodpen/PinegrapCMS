@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-89
-description: Decisions list, product part 89 (2026-11-20 on): plans from the owner's hourly polls; a price per marketplace account by rules, with a buybox repricer that never goes under a profit floor
+description: Decisions list, product part 89 (2026-11-20 on): plans from the owner's hourly polls: a buybox repricer above a profit floor; NPS and CSAT after a service; a jury desk for applications
 ---
 
 ## Where are the rules and the earlier parts?
@@ -11,4 +11,14 @@ description: Decisions list, product part 89 (2026-11-20 on): plans from the own
 - Not chosen: "Evet, önce yalnız kanal fiyat kuralları ve kâr tabanı" (channel price rules and the floor first), "Hayır, gerek yok".
 - The plan: `plans/marketplace-repricer.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/marketplace-repricer.md
+## Should the site ask for a score after a booking, ticket, course, form, delivery or mail conversation and follow up low scores? (owner, 2026-11-20, agent channel poll 187, channel message 10725)
+- "Evet, plana girsin": NPS, CSAT and effort surveys, the touchpoint triggers, the one-click answer, the fatigue limits, the follow-up of a low score, the review invitation, the report and the API.
+- Not chosen: "Evet, önce yalnız tek tıkla puan ve kapalı döngü" (the survey, triggers, one-click answer and low-score alert first), "Hayır, gerek yok".
+- The review invitation is never filtered by the score (Google's rule against review gating). The plan: `plans/feedback-loop.md`.
+
+## Should a form become an application programme with reviewers, weighted criteria, combined scores, rounds and decisions? (owner, 2026-11-20, agent channel poll 196, channel message 10821)
+- "Evet, plana girsin": programme and eligibility, criteria, assignment and conflicts, blind review, the reviewer screen and external jurors, combining with the leniency correction, rounds and decision e-mails, report and API.
+- Not chosen: "Evet, önce jüri puanlaması ve kısa liste" (criteria, assignment, the reviewer screen, combining and the shortlist first), "Hayır, gerek yok".
+- The plan: `plans/application-review.md`.
+
+Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/marketplace-repricer.md, docs/memory/plans/feedback-loop.md, docs/memory/plans/application-review.md
