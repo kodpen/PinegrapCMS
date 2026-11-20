@@ -13,6 +13,7 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
   - marketing with tracking and the affiliate program: `software[affiliate_code]`;
   - marketing while Auto Dialogs are on (`AUTO_DIALOGS`): `pg_popup, software[auto_dialog_*]` (`pg_consent_popup_row()`): the pop-ups' one cookie and the per-row ones before it, both in `pg_consent_revoke_names()` (PR #9852, `auto-dialog-browser-dialog.md`);
   - necessary, while `CAPTCHA` is on with a provider: "Cloudflare Turnstile" or "hCaptcha" as a service (not held: a form cannot be sent without it, `waf/form-captcha-providers.md`);
+  - marketing, on a page with the "Map of places" block while "Maps" is on: the map's tile service ("OpenStreetMap" or the tile host), not a cookie (`designer/designer-blocks-map.md`);
   - every script the page holds with `data-pg-consent` (`pg_consent_page_services()`), as a service of the site.
 - Before PR #1090 (issue #768) `software[view_page_mode]` and `pg_language` were written but not listed.
 

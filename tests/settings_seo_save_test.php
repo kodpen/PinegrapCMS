@@ -17,8 +17,9 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The field is marked, so the dialog answers status "invalid" with the
-// sentence; output_error() answered it with a 500 after the IndexNow file had
-// been written and the old one deleted.
+// sentence; output_error() answered it with a 500 after the config row had
+// been written. The IndexNow key and its file are saved on IndexNow's page of
+// Connections now, so this module touches no file.
 function test_settings_seo_save_jsonld_marked_before_writes()
 {
 	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/settings/seo.save.php');
@@ -28,7 +29,9 @@ function test_settings_seo_save_jsonld_marked_before_writes()
 	pg_assert_true($mark !== false, 'invalid JSON-LD marks its field');
 	pg_assert_false(strpos($source, 'output_error(') !== false, 'the module does not stop the request');
 
-	foreach (array('@unlink(', '@fopen(', 'db("DELETE', 'db("UPDATE config') as $write) {
+	pg_assert_false(strpos($source, 'indexnow_key =') !== false, 'the SEO save no longer writes the IndexNow key');
+
+	foreach (array('db("UPDATE config') as $write) {
 		$at = strpos($source, $write);
 
 		pg_assert_true(($at !== false) && ($mark < $at), 'marked before ' . $write);

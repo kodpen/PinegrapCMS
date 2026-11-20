@@ -21,7 +21,7 @@ description: Menus, regions, ads, styles, theme and design files, the visitor an
 
 ## What stayed as it was?
 - Buttons (toolbar, row, dialog and filter buttons), the Summary values, switches and radios.
-- The figure tiles of the Firewall log, Performance and Search Console (a figure outside the report block, `panel-old-screens-rules.md`), Visit Details' value tiles.
+- The figure tiles of the Firewall log, Performance and Search Console (a figure outside the report block, `look-sheet-silent.md`), Visit Details' value tiles.
 - Edit Menu's item tree table: its own phone rule (dates hidden below md, the address breaking inside its cell) would clash with `.pg-card-table`'s 40rem.
 - Menu Item's Page / or / URL trio (5 + 2 + 5 from xl), as the short link trio of S1.
 - Audit Trail's filter card: a list's filters wait for the shared steps.

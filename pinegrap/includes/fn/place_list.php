@@ -77,6 +77,10 @@ function pg_place_list_labels()
         'Directions' => lang('Directions'),
         'Details' => lang('Details'),
         'The places could not be loaded.' => lang('The places could not be loaded.'),
+        'Show the map' => lang('Show the map'),
+        'The map shows once you allow marketing in the cookie settings.' => lang('The map shows once you allow marketing in the cookie settings.'),
+        'Map of places' => lang('Map of places'),
+        'Show on the map' => lang('Show on the map'),
     );
 }
 
@@ -88,9 +92,10 @@ function pg_place_list_labels()
  * @param string      $content page HTML
  * @param int         $page_id
  * @param string|null $src     the script's address; null builds it
+ * @param array|null  $map     the map's part (pg_place_tiles_page()); null reads it
  * @return string
  */
-function pg_place_list_inject($content, $page_id, $src = null)
+function pg_place_list_inject($content, $page_id, $src = null, $map = null)
 {
     if (!pg_place_list_on_page($content) || (strpos($content, '/assets/js/pg_map.js') !== false)) {
         return $content;
@@ -100,8 +105,16 @@ function pg_place_list_inject($content, $page_id, $src = null)
         $src = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_map.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_map.js');
     }
 
+    // The map: the "Maps" switch, the cookie notice and the tiles
+    // (includes/fn/place_tiles.php); the same for every visitor.
+    if ($map === null) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+        $map = pg_place_tiles_page();
+    }
+
     $endpoint = (defined('OUTPUT_PATH') ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY : '') . '/places.php';
-    $file = '<script>window.pgMap = ' . encode_json(array('page' => (int) $page_id, 'endpoint' => $endpoint, 'labels' => pg_place_list_labels())) . ';</script>' . "\n"
+    // JSON_HEX_TAG: a credit line or a text holding "</script>" stays inside.
+    $file = '<script>window.pgMap = ' . json_encode(array('page' => (int) $page_id, 'endpoint' => $endpoint, 'labels' => pg_place_list_labels(), 'map' => $map), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ';</script>' . "\n"
           . '<script src="' . h($src) . '" defer></script>' . "\n";
 
     $body = strripos($content, '</body>');

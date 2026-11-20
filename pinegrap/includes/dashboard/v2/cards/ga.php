@@ -162,7 +162,7 @@ function pg_dashboard_v2_card_ga($user, $period, $compare)
         'range'         => prepare_form_data_for_output($report['from'], 'date', false) . ' – ' . prepare_form_data_for_output($report['to'], 'date', false),
         'sources_title' => lang('Traffic sources'),
         'sources'       => $shares,
-        'url'           => ((int) $user['role'] < 3) ? pg_settings_link('privacy', 'pgset-analytics') : '',
+        'url'           => ((int) $user['role'] < 3) ? 'connections.php?service=google_analytics' : '',
         'link'          => (string) $state['property_name'],
     ));
 }

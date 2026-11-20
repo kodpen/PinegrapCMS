@@ -243,7 +243,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $waf_allow_ai_search      = isset($row['waf_allow_ai_search']) ? (int)$row['waf_allow_ai_search'] : 1;
     $tracking_code_duration = $row['tracking_code_duration'];
     $pay_per_click_flag = $row['pay_per_click_flag'];
-    $stats_url = $row['stats_url'];
     $google_analytics = $row['google_analytics'];
     $google_analytics_web_property_id = $row['google_analytics_web_property_id'];
     $cookie_consent = (int) ($row['cookie_consent'] ?? 0);
@@ -367,6 +366,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
     $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
     $credit_refund_bonus = pg_credit_points_rate_for_input(pg_config_text('credit_refund_bonus'));
+
+    // Referral programme: config_text rows, read through the rules' own reader.
+    $referral_settings = pg_referral_settings_for_input();
+    $referral_ready = pg_referral_ready();
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];
@@ -2293,14 +2296,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             . '</div>';
     }
 
-    // if Google Analytics is enabled, check it and display the related rows
-    if ($google_analytics == 1) {
-        $google_analytics_checked = ' checked="checked"';
-        
-    // else, do not check it and hide the related rows
-    } else {
-        $google_analytics_checked = '';
-    }
 
     if ($advanced_visual_effects == 1) {
         $advanced_visual_effects_checked = ' checked="checked"';

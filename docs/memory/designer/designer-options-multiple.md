@@ -14,7 +14,7 @@ description: The Options panel with several elements selected (#10468): identity
 
 ## How is a mixed value drawn?
 - `_sdMcMark()` reads each row's controls (`_SD_MC_CTRL`, with its per-size box) per element (`_sdMcSpecOf()`, `_sdMcValOf()`); values that differ go to `_sdMcDrawMixed()`.
-- A select: a first option "— Multiple —" (`data-mc-mixed`). A button group: no segment on, each value present framed (`.sd-seg-has`), on a `.sd-prop-row` a muted line "— Multiple —: 2 × H2, 1 × H3". Alignment icons framed; a colour's swatch split in two; a field gets the word as placeholder; a switch half set; the spacing box "~", its core the count.
+- A select: a first option "— Multiple —" (`data-mc-mixed`). A button group: no segment on, each value present framed (`.sd-seg-has`), on a `.sd-prop-row` a muted line "— Multiple —: 2 × H2, 1 × H3". Alignment icons framed; a colour's swatch split in two; a field gets the word as placeholder; a switch half set; the spacing box "~" in an accent frame, its core the count (`designer-spacing-box.md`).
 - The row carries `data-sd-mixed`: a closed section whose first changed row is mixed reads "multiple".
 
 ## What do the dot and the counts mean?
@@ -27,6 +27,6 @@ description: The Options panel with several elements selected (#10468): identity
 - Before #10468 it was one list with no head or tabs, and the fields of Size and display, Tooltip and Accessibility, the switches of Shadow and effect and the spacing box wrote nothing.
 
 ## What is left to other steps?
-- The brush and the quick strip (DP10), "Only what I changed" (DP9), the new spacing box (DP7).
+- The brush and the quick strip (DP10), "Only what I changed" (DP9).
 
 Test: `tests/designer_options_multiple_test.php` (pure block "Several elements selected: pure helpers" under Node).

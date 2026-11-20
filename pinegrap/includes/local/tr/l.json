@@ -1679,6 +1679,7 @@
     "learners so far": "öğrenci bugüne kadar",
     "learning": "ogrenme",
     "leave blank for auto": "otomatik boyut için boş bırakın",
+    "leave blank for credit that never expires": "hiç sona ermeyen kredi için boş bırakın",
     "leave blank for default": "varsayılan için boş bırakın",
     "leave blank for default, 1 for instant, 1000 for 1 second": "varsayılan için boş bırakın, anında için 1, 1 saniye için 1000",
     "leave blank for default: {var:1}%": "varsayılan için boş bırakın: %{var:1}",

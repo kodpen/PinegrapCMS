@@ -16,7 +16,7 @@ description: Application Access for automation platforms: the "Automation platfo
 - One check for both callers: `api_webhook_create_check($url, $events, $held)` (`includes/api/resources/webhooks.php`) answers the route's refusals (status, code, field, text): url required and within 500, events within 20, `api_http_check_url()`, every name in the catalogue, the limit (`api_webhook_held_count()`). Then `api_webhook_store()` writes the row. `api_webhook_create_bounds()` equals the route row's `max_length`/`max_items` (tested).
 - The channel group stays API-only: the panel makes whole-site subscriptions.
 - Nothing typed is dropped: while the form holds an address or a chosen event, the drawer's Save does not post; it shows the form with "The subscription is not created yet…" (architect 2026-11-17; `hookFormHolds()`, tested).
-- The new parts use the design language: `pg-button` (Create the form's one fill, the rest quiet or ghost), `pg-icon-button`, `pg-input`, `pg-field-label`, `pg-checkbox`, `pg-pill`. The starting point copies the dialog's own choice cards (no radio recipe yet); the old rows' Stop/Remove and the tab strip wait for panel-old-screens.
+- The new parts use the design language: `pg-button` (Create the form's one fill, the rest quiet or ghost), `pg-icon-button`, `pg-input`, `pg-field-label`, `pg-checkbox`, `pg-pill`. The starting point copies the dialog's own choice cards (no radio recipe yet); the old rows' Stop/Remove and the tab strip moved with S6b (#10534).
 - After the post the drawer opens on the Events tab again (`$_SESSION['software']['api_hooks_back']`): the form with its error and values, or the signing secret once, removed on leaving the tab.
 
 ## How is a sample sent?

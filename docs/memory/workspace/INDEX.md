@@ -157,7 +157,7 @@
 - mail-rules.md: A support box's incoming mail rules (IB11): one condition and one action, kept in the box's settings JSON, run at ingest on a new conversation, the list and Add rule on the Mailboxes card [decision: decisions-made-workspace-29.md]
 - mail-screen-pane-wrap.md: Long subjects, file names and addresses without spaces wrap inside the Incoming e-mail reading pane (text-break on the head's subject and customer line #10496, on each mail #9009)
 - mail-screen-pane.md: The Incoming e-mail reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu and card count
-- mail-screen-phone.md: Communication › Incoming e-mail below 768 px: the pane in the list's place, the toolbar folded while a mail is read, the scroll to the pane, the narrower paddings (#10082)
+- mail-screen-phone.md: Communication › Incoming e-mail below 768 px: the pane in the list's place, the toolbar folded while a mail is read, the scroll to the pane, the narrower paddings (#10082), the channel pill on touch
 - mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207 [decision: decisions-made-product-55.md, decisions-made-schema-20.md]
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line [decision: here]
@@ -328,6 +328,7 @@
 - workspace-command-topic-search-memory.md: /topic (/konu), /search (/ara) and /memory (/bellek) in a Workspace channel (CC6b): what each reads, the function it writes through, its gate, live line and answer (#10277) [decision: here]
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
 - workspace-composer-later.md: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite, find): the owner's answers that still bind and what is left for later
+- workspace-composer-touch.md: The writing box's tips, windows and menus on a touch screen: 16px fields so iOS does not zoom (tipFieldClass(), --pg-text-field-touch), the table size picker's 2.5rem cells
 - workspace-context-menu.md: Workspace messages take focus (one roving Tab stop); the own context menu and floating boxes give focus back, Tab closes a menu, radio entries, aria-haspopup openers
 - workspace-create-account-event.md: /create account (/oluştur cari) and /create event (/oluştur etkinlik) in a channel: how each line is read, the card, the drawer opened filled, the writers, rights, the strip
 - workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends [decision: decisions-made-workspace-2.md]
