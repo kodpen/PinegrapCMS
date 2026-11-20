@@ -15546,9 +15546,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-msg-body .ws-checklist + .ws-text {
   margin-top: .3rem;
 }
+/* The frame scrolls sideways; a swipe that reaches its end stays in it
+   instead of panning the pane or going back a page. */
 .ws-table-wrap {
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   margin: .15rem 0 .3rem;
 }
 .ws-table-wrap .table.ws-table {
@@ -15568,6 +15571,20 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-table thead th {
   background: var(--pg-bg-1);
   font-weight: 600;
+}
+/* On a phone a table wider than the message would be laid out at its
+   narrowest: every column one word wide, a sentence a word per line and
+   the right-hand column a sliver at the frame's edge. There the table
+   takes each column's natural width, a cell wrapping at 11rem, and the
+   frame scrolls to the columns past the edge; a table that fits (two
+   short columns) still fits. */
+@media (max-width: 575.98px) {
+  .ws-table-wrap .table.ws-table {
+    width: max-content;
+  }
+  .ws-table-wrap > .ws-table > :not(caption) > * > * {
+    max-width: 11rem;
+  }
 }
 .ws-checklist {
   list-style: none;
