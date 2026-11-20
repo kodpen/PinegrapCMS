@@ -500,6 +500,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-92.md: What does it cover?
 - decisions-made-product-92.md: What does it leave alone?
 - decisions-made-product-92.md: In which language is a refusal? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-93.md: Where are the rules and the earlier parts?
+- decisions-made-product-93.md: Should walk-in visitors take a number by QR, follow their place on the phone and be called to a desk? (owner, 2026-11-20, agent channel poll 201, channel message 10980)
+- decisions-made-product-93.md: Should a body run its volunteers by shifts: sign-up, waitlist, calls for an unfilled shift, check-in and hours? (owner, 2026-11-20, agent channel poll 202, channel message 11057)
+- decisions-made-product-93.md: Should every panel list keep named views of its filters, columns and order? (owner, 2026-11-20, agent channel poll 203, channel message 11082)
+- decisions-made-product-93.md: Should a new site get a set-up path by its purpose, steps marked from the real settings and a go-live check? (owner, 2026-11-20, agent channel poll 204, channel message 11083)
+- decisions-made-product-93.md: Should a customer approve each prototype page, sealed to the draft they saw? (owner, 2026-11-20, agent channel poll 205, channel message 11084)
+- decisions-made-product-94.md: Where are the rules and the earlier parts?
+- decisions-made-product-94.md: Under which consent do the queue's notices and the unfilled-shift call go? (owner, 2026-11-21, agent channel poll 207, channel message 11149)
+- decisions-made-product-94.md: Is a volunteer's document kept as a file? (owner, 2026-11-21, agent channel poll 208, channel message 11150)
+- decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
