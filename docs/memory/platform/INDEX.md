@@ -147,7 +147,7 @@
 - object-storage-health.md: Object store health: failed calls counted for the ops alert storage_unreachable, the Storage card's last test result, the System Status tile with the move job's failures
 - object-storage-migration.md: The Storage card's Uploaded files tool: move existing files, pause, resume, bring back; the switch's modes; Disk Usage and System Info counting local and stored bytes
 - object-storage-unmovable-come-home.md: A stored file that a rename or the design flag makes unmovable (design file, .css, .js) is brought back to the disk by the door that changed it: pg_file_storage_bring_home()
-- ods-cell-ceiling.md: PHPExcel's .ods reader makes cells of repeated rows/columns and merged ranges only up to a ceiling, steps over empty runs at once; both importers also cap the first sheet's used range
+- ods-cell-ceiling.md: The .ods cell and used-range ceilings of the importers' sheet reader (PG_SHEET_ODS_MAX_CELLS, PG_SHEET_ODS_MAX_RANGE): repeated rows/columns counted, empty runs stepped over, "The file is too large."
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
 - office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
@@ -170,7 +170,8 @@
 - panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
-- place-list.md: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
+- place-list-fields.md: Fields of a "Map of places" answer (#10535): the block's pickers in its Options panel, data-pg-map-fields on the saved page, fit and office-use rules, name-rule fallback
+- place-list.md: The "Map of places" block's list (place-map MP3, MP3b): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
 - product-import-sheets.md: How the product import turns a .xlsx, .ods or .xls upload into its CSV (pg_products_import_to_csv(), import_products_f.php): its own .xlsx walk, the sheet reader for .ods and .xls, the refusal texts
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
@@ -192,9 +193,9 @@
 - share-card-address.md: The share card (og:image drawn from the title, logo and site name): its address and signature, the order file, the draw under a lock, the 404 cases, the sweep
 - share-card-page.md: The share card's switch and colours in Site Settings, SEO, Social Sharing, which pages print a card as og:image, the sample and the record warning
 - share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out [decision: here]
-- sheet-import-upload.md: How the CSV-only importers take .xlsx, .ods and .xls (pg_sheet_import_upload(), OS2a #10523): upload turned into a CSV file, the sheet question, refusal texts
-- sheet-reader-differences.md: The importers' sheet reader (sheet-reader.md): what its .xls subclasses fix in excel_reader2.php, where it reads otherwise than PHPExcel on purpose, its cell-by-cell test
-- sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
+- sheet-import-upload.md: How the CSV-only importers take .xlsx, .ods and .xls (pg_sheet_import_upload(), OS2a #10523); the sheet question, also on Products > Import and the bank import (OS2c)
+- sheet-reader-differences.md: The sheet reader's .xls fixes to excel_reader2.php (SST, memory), .xlsx parts found through the relationships, its deliberate differences from PHPExcel, its tests
+- sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel [decision: here]
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.
 - short-link-gone-destination.md: A short link whose page or file was deleted answers its address as no link had it (404 or a pattern), not with the home page; pg_short_link_destination_gone() in router.php
 - short-link-names.md: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.

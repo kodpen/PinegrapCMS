@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for event tickets (2026.11.0, 11.0.246; includes/fn/event_tickets.php):
+ * Tests for event tickets (2026.11.0, 11.0.247; includes/fn/event_tickets.php):
  * which lines give tickets, one per unit and the cap, the code and its
  * hash, the writes of make, cancel and restore, nothing with the switch
  * off, the tickets link and mail, and the schema step run twice.
@@ -345,7 +345,7 @@ function test_event_tickets_step_run_twice_changes_nothing_the_second_time()
 
 	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_same(1, substr_count($migration, "\tupgrade_2026_11_0_event_tickets();"), 'called once');
-	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_tickets\(\); +// 11\.0\.246\n~', $migration), 'under 11.0.246');
+	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_tickets\(\); +// 11\.0\.247\n~', $migration), 'under 11.0.247');
 
 	$install = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
 	pg_assert_contains("\t\t'event_tickets',\n", $install, 'listed in get_tables()');

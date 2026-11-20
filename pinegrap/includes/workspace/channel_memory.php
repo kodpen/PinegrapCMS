@@ -42,6 +42,13 @@ define('WS_MEMORY_DIGEST_MAX', 6000);
  */
 define('WS_MEMORY_BRIEF_DECISIONS', 10);
 
+// A writer's memory changes in one channel within this many seconds go into
+// one note: the channel's last note is extended rather than a new one written.
+define('WS_MEMORY_NOTE_BURST', 300);
+
+// A note longer than this starts a new one, so a long burst stays readable.
+define('WS_MEMORY_NOTE_MAX', 3000);
+
 /**
  * An entry's tags as stored: trimmed, lower case, without a leading #,
  * each once, in the order given. Pure.
@@ -797,6 +804,7 @@ function ws_memory_save($channel_id, $values, $kind, $id, $current = null)
 
     if ($current) {
         db("UPDATE ws_channel_memory SET " . $set . " WHERE id = '" . (int) $current['id'] . "'");
+        ws_memory_note((int) $current['channel_id'], (int) $current['id'], (string) $values['title'], 'changed', $kind, $id);
 
         return (int) $current['id'];
     }
@@ -807,18 +815,26 @@ function ws_memory_save($channel_id, $values, $kind, $id, $current = null)
         author_id = '" . (int) $id . "',
         created_at = '" . $now . "'");
 
-    return (int) mysqli_insert_id(db::$con);
+    $new_id = (int) mysqli_insert_id(db::$con);
+
+    if ($new_id > 0) {
+        ws_memory_note((int) $channel_id, $new_id, (string) $values['title'], 'added', $kind, $id);
+    }
+
+    return $new_id;
 }
 
 /**
  * Deletes an entry: whoever may post in its channel, or for a general record
  * whoever may post in an agent channel.
  *
- * @param array $viewer
- * @param array $row ws_channel_memory
+ * @param array      $viewer
+ * @param array      $row    ws_channel_memory
+ * @param array|null $writer kind (user | app) and id of who deletes, for the
+ *                           channel's note; null for the viewer as a person
  * @return array ok, error, forbidden
  */
-function ws_memory_delete($viewer, $row)
+function ws_memory_delete($viewer, $row, $writer = null)
 {
     if (ws_memory_is_general($row)) {
         if (!ws_memory_general_can($viewer)) {
@@ -829,6 +845,9 @@ function ws_memory_delete($viewer, $row)
     }
 
     db("DELETE FROM ws_channel_memory WHERE id = '" . (int) $row['id'] . "'");
+
+    $writer = is_array($writer) ? $writer : array('kind' => 'user', 'id' => (int) $viewer['id']);
+    ws_memory_note((int) $row['channel_id'], (int) $row['id'], (string) $row['title'], 'deleted', (string) $writer['kind'], (int) $writer['id']);
 
     return array('ok' => true, 'error' => '', 'forbidden' => false);
 }
@@ -901,6 +920,186 @@ function ws_memory_move_general($row, $kind, $id)
         updated_by_id = '" . (int) $id . "',
         updated_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "'");
+
+    ws_memory_note(0, (int) $row['id'], (string) $row['title'], 'changed', $kind, $id);
+}
+
+/* ---------------------------------------------------------------------------
+   The channel's note when its memory changes
+   --------------------------------------------------------------------------- */
+
+/**
+ * The note's first line: which memory changed. Pure but for lang().
+ *
+ * @param bool $general the general memory (channel_id 0)
+ * @return string
+ */
+function ws_memory_note_head($general)
+{
+    return $general ? lang('General memory updated') : lang('Channel memory updated');
+}
+
+/**
+ * One entry's line of the note. Pure but for lang().
+ *
+ * @param int    $entry_id
+ * @param string $title
+ * @param string $action added | changed | deleted
+ * @return string
+ */
+function ws_memory_note_entry_line($entry_id, $title, $action)
+{
+    // One line whatever the title holds.
+    $title = trim(preg_replace('/\s+/u', ' ', (string) $title));
+    $vars = array((string) (int) $entry_id, $title);
+
+    if ($action === 'deleted') {
+        return lang(array('string' => '#{var:1} {var:2} - deleted', 'vars' => $vars));
+    }
+
+    if ($action === 'changed') {
+        return lang(array('string' => '#{var:1} {var:2} - changed', 'vars' => $vars));
+    }
+
+    return lang(array('string' => '#{var:1} {var:2} - added', 'vars' => $vars));
+}
+
+/**
+ * The note's last line: who changed it. A person by their mention tag, an
+ * application by its name. Pure but for lang().
+ *
+ * @param string $kind user | app
+ * @param int    $id
+ * @param string $app_name the application's name, for kind app
+ * @return string
+ */
+function ws_memory_note_by_line($kind, $id, $app_name = '')
+{
+    $who = ($kind === 'app') ? (((string) $app_name !== '') ? (string) $app_name : ('#' . (int) $id)) : ('<@user:' . (int) $id . '>');
+
+    return lang(array('string' => 'by {var:1}', 'vars' => $who));
+}
+
+/**
+ * The note's whole text. Pure.
+ *
+ * @param string   $head  ws_memory_note_head()
+ * @param string[] $lines ws_memory_note_entry_line() lines
+ * @param string   $by    ws_memory_note_by_line()
+ * @return string
+ */
+function ws_memory_note_body($head, $lines, $by)
+{
+    return $head . "\n" . implode("\n", (array) $lines) . "\n" . $by;
+}
+
+/**
+ * The burst rule: the text the channel's last note takes with one more
+ * entry line, or null when a new note is written instead. The last
+ * message is extended only when it is a system note of the same memory
+ * (its head) by the same writer (its last line), written within
+ * WS_MEMORY_NOTE_BURST seconds and still short enough. A line already in
+ * it (the same entry and action) leaves it as it is. Pure.
+ *
+ * @param array|null $last  the channel's last message: kind, sender_kind, body, created_at, deleted_at
+ * @param string     $head
+ * @param string     $line
+ * @param string     $by
+ * @param int        $now
+ * @return string|null
+ */
+function ws_memory_note_merge($last, $head, $line, $by, $now)
+{
+    if (!is_array($last) || (($last['sender_kind'] ?? '') !== 'system') || (($last['kind'] ?? '') !== 'system')
+        || ((int) ($last['deleted_at'] ?? 0) > 0) || (((int) $now - (int) ($last['created_at'] ?? 0)) > WS_MEMORY_NOTE_BURST)) {
+        return null;
+    }
+
+    $parts = explode("\n", (string) $last['body']);
+
+    if ((count($parts) < 3) || ($parts[0] !== $head) || ($parts[count($parts) - 1] !== $by)) {
+        return null;
+    }
+
+    $lines = array_slice($parts, 1, -1);
+
+    if (in_array($line, $lines, true)) {
+        return (string) $last['body'];
+    }
+
+    $lines[] = $line;
+    $body = ws_memory_note_body($head, $lines, $by);
+
+    return (mb_strlen($body) > WS_MEMORY_NOTE_MAX) ? null : $body;
+}
+
+/**
+ * The channels a note goes to: the entry's own channel, or for the general
+ * memory every agent channel that is not archived.
+ *
+ * @param int $channel_id 0 for the general memory
+ * @return int[]
+ */
+function ws_memory_note_channels($channel_id)
+{
+    if ((int) $channel_id > 0) {
+        return array((int) $channel_id);
+    }
+
+    if (!function_exists('ws_agent_channel_ready') || !ws_agent_channel_ready()) {
+        return array();
+    }
+
+    return array_map('intval', array_column((array) db_items("SELECT id FROM ws_channels
+        WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest') AND archived_at = 0 ORDER BY id LIMIT 200"), 'id'));
+}
+
+/**
+ * Tells the channel that its memory changed: a system note (drawn as
+ * ws-msg-system) naming the entry, the change and who made it. A system
+ * message wakes no agent, makes no agent request and is no step of a reply
+ * chain, so the loop guard never counts it. A burst by the same writer
+ * extends the channel's last note (ws_memory_note_merge()).
+ *
+ * @param int    $channel_id 0 for the general memory: the note goes into every agent channel
+ * @param int    $entry_id
+ * @param string $title
+ * @param string $action added | changed | deleted
+ * @param string $kind   user | app: who changed it
+ * @param int    $id     their user or application id
+ * @return int how many channels were told
+ */
+function ws_memory_note($channel_id, $entry_id, $title, $action, $kind, $id)
+{
+    $kind = ($kind === 'app') ? 'app' : 'user';
+    $head = ws_memory_note_head((int) $channel_id === 0);
+    $line = ws_memory_note_entry_line($entry_id, $title, $action);
+    $by = ws_memory_note_by_line($kind, $id, ($kind === 'app') ? (string) (ws_app_sender((int) $id)['name'] ?? '') : '');
+    $now = time();
+    $told = 0;
+
+    foreach (ws_memory_note_channels($channel_id) as $target) {
+        $last_id = (int) db_value("SELECT last_message_id FROM ws_channels WHERE id = '" . $target . "'");
+        $last = ($last_id > 0) ? db_item("SELECT id, kind, sender_kind, body, created_at, deleted_at FROM ws_messages WHERE id = '" . $last_id . "' AND channel_id = '" . $target . "'") : null;
+        $merged = ws_memory_note_merge($last ? $last : null, $head, $line, $by, $now);
+
+        if ($merged !== null) {
+            if ($merged !== (string) $last['body']) {
+                db("UPDATE ws_messages SET body = '" . e($merged) . "' WHERE id = '" . (int) $last['id'] . "'");
+
+                // Open screens read the message again (interact.php).
+                if (function_exists('ws_message_touch')) {
+                    ws_message_touch((int) $last['id']);
+                }
+            }
+        } else {
+            ws_message_system($target, ws_memory_note_body($head, array($line), $by));
+        }
+
+        $told++;
+    }
+
+    return $told;
 }
 
 /**

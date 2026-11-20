@@ -797,7 +797,7 @@ function workspace_flows_parity_product_files()
 		$root = realpath(PG_FUNCTIONS_DIR);
 		$vendored = array();
 
-		foreach (array('phpmailer', 'stripe', 'iyzipay-php', 'phpexcel', 'boxpacker', 'dompdf') as $folder) {
+		foreach (array('phpmailer', 'stripe', 'iyzipay-php', 'boxpacker', 'dompdf') as $folder) {
 			$vendored[] = $root . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . $folder . DIRECTORY_SEPARATOR;
 		}
 

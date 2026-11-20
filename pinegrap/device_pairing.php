@@ -112,16 +112,16 @@ if ($refusal !== '') {
 				. pg_qr_svg($payload, 260, array('label' => lang('Pairing code'))) . '
 			</div>
 			<p class="mb-2">' . h(lang('Open the team app, choose Scan QR code and point the camera at this code.')) . '</p>
-			<p class="small fg-secondary mb-5" id="pairing_left" data-expires="' . (int)$shown['expires'] . '" data-now="' . time() . '"
+			<p class="pg-text-2 mb-5" id="pairing_left" data-expires="' . (int)$shown['expires'] . '" data-now="' . time() . '"
 				data-expired="' . h(lang('This code has run out. Show a new one.')) . '">'
 				. h(lang(array('string' => 'Works once, for {var:1} minutes.', 'vars' => (int)(api_pairing_lifetime() / 60)))) . '
 				<span id="pairing_clock" class="ms-1 font-monospace" aria-live="off"></span></p>
 			<form method="post" action="device_pairing.php" class="d-flex flex-wrap justify-content-center gap-3">
 				' . get_token_field() . '
-				<button type="submit" name="pairing_action" value="show" class="btn btn-sm btn-solid theme-primary">
-					<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('New code')) . '</button>
-				<button type="submit" name="pairing_action" value="cancel" class="btn btn-sm btn-outline theme-secondary">
-					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Cancel')) . '</button>
+				<button type="submit" name="pairing_action" value="show" class="pg-button pg-button-fill">
+					<i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('New code')) . '</button>
+				<button type="submit" name="pairing_action" value="cancel" class="pg-button pg-button-quiet">
+					<i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Cancel')) . '</button>
 			</form>
 		</div>
 	</div>
@@ -162,11 +162,11 @@ if ($refusal !== '') {
 	<div class="card" style="max-width:520px">
 		<div class="card-body">
 			<p>' . h(lang('A pairing code signs the team app in as you without typing your password on the phone. The app gets at most what your own account may do.')) . '</p>
-			<p class="small fg-secondary">' . h(lang('Show the code only to a device you are holding. A new password, or signing out everywhere, signs that device out again.')) . '</p>
+			<p class="pg-text-2">' . h(lang('Show the code only to a device you are holding. A new password, or signing out everywhere, signs that device out again.')) . '</p>
 			<form method="post" action="device_pairing.php">
 				' . get_token_field() . '
-				<button type="submit" name="pairing_action" value="show" class="btn btn-sm btn-solid theme-primary">
-					<i class="bi bi-qr-code me-1" aria-hidden="true"></i>' . h(lang('Show a pairing code')) . '</button>
+				<button type="submit" name="pairing_action" value="show" class="pg-button pg-button-fill">
+					<i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Show a pairing code')) . '</button>
 			</form>
 		</div>
 	</div>';

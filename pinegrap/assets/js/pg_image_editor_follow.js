@@ -4,13 +4,15 @@
  * Image editor: Follow. In the Animate tool, with one layer selected over a
  * video, Follow (in the Path tab beside Recording a move) asks for a box
  * over the thing to follow; the clip's frames from the playhead on are read
- * from a decoder of their own, as grey at 320 px, and searched for that
- * patch by the tracker (pg_image_editor_track.js, a worker, or on the page
+ * from a decoder of their own, as grey at 320 px (a small thing larger:
+ * only the region round its last place, at a scale where the box's shorter
+ * side is 24 px, M.followSize()), and searched for that patch by the tracker (pg_image_editor_track.js, a worker, or on the page
  * in slices where a site's policy refuses it). The layer keeps its place at
  * the playhead and moves by what the patch moved (M.followSamples()); the
  * samples become keys as a recorded move's do (M.followApply()), one undo
  * step. A pill over the stage shows the share done and Cancel; the path
- * grows as samples come. Lost keeps the keys up to there and says where.
+ * grows as samples come. Lost keeps the keys up to there and says where;
+ * why and what helps the first time only (M.followLostText()).
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -347,8 +349,12 @@
             return;
         }
 
-        size = M.followSize(clip.width, clip.height);
         src = corners.map(function (p) { return M.followToSource(clip, p); });
+        // The box's shorter side in the source's pixels sets the scale.
+        size = M.followSize(clip.width, clip.height, Math.min(
+            Math.max.apply(null, src.map(function (p) { return p[0]; })) - Math.min.apply(null, src.map(function (p) { return p[0]; })),
+            Math.max.apply(null, src.map(function (p) { return p[1]; })) - Math.min.apply(null, src.map(function (p) { return p[1]; }))
+        ));
 
         Object.assign(f, {
             phase: 'running',
@@ -367,6 +373,7 @@
             times: [],
             next: 0,
             points: [],
+            want: null,
             waiting: null,
             canvas: document.createElement('canvas'),
             stats: { started: now(), decode: 0, grey: 0, match: 0, frames: 0 },
@@ -399,7 +406,9 @@
     };
 
     // The next frame: decoded at its source time, drawn grey at the run's
-    // size and posted to the tracker; the first starts it with the box.
+    // size and posted to the tracker; the first starts it with the box. A
+    // run read in regions draws only the region round the box (the first)
+    // or the one the tracker asked for.
     Editor.prototype.followFrame = function (f, first) {
         var self = this, item = f.times[f.next], t0 = now();
 
@@ -415,7 +424,7 @@
         f.source.then(function (s) {
             return s.frameAt(item.src);
         }).then(function (frame) {
-            var g, t1, grey, msg;
+            var g, t1, grey, msg, cut = f.size.region ? ((first || !f.want) ? M.followRegion(f.box, f.size) : f.want) : null, ratio;
 
             if (f.done) {
                 if (frame) {
@@ -430,8 +439,25 @@
             }
 
             t1 = now();
+
+            if (cut) {
+                if ((f.canvas.width !== cut[2] - cut[0]) || (f.canvas.height !== cut[3] - cut[1])) {
+                    f.canvas.width = cut[2] - cut[0];
+                    f.canvas.height = cut[3] - cut[1];
+                }
+
+                // The frame's own pixels over the run's whole frame.
+                ratio = (frame.displayWidth || frame.width || (f.size.w / f.size.k)) / f.size.w;
+            }
+
             g = f.canvas.getContext('2d', { willReadFrequently: true });
-            g.drawImage(frame, 0, 0, f.canvas.width, f.canvas.height);
+
+            if (cut) {
+                g.drawImage(frame, cut[0] * ratio, cut[1] * ratio, f.canvas.width * ratio, f.canvas.height * ratio, 0, 0, f.canvas.width, f.canvas.height);
+            } else {
+                g.drawImage(frame, 0, 0, f.canvas.width, f.canvas.height);
+            }
+
             frame.close();
             grey = greyOf(g.getImageData(0, 0, f.canvas.width, f.canvas.height).data, f.canvas.width, f.canvas.height);
             f.stats.decode += t1 - t0;
@@ -440,6 +466,17 @@
             f.sent = now();
             f.waiting = item;
             msg = first ? { type: 'start', frame: grey.buffer, width: f.canvas.width, height: f.canvas.height, box: f.box, t: item.t } : { type: 'frame', frame: grey.buffer, t: item.t };
+
+            if (cut) {
+                msg.width = f.canvas.width;
+                msg.height = f.canvas.height;
+                msg.at = [cut[0], cut[1]];
+
+                if (first) {
+                    msg.full = [f.size.w, f.size.h];
+                }
+            }
+
             f.tracker.post(msg, [grey.buffer]);
         }).then(null, function () {
             self.followFail(f, t('followError'));
@@ -467,13 +504,17 @@
         f.waiting = null;
 
         if (m.type === 'error') {
-            this.followFail(f, t((m.code === 'flat') ? 'followFlat' : 'followError'));
+            this.followFail(f, t((m.code === 'flat') ? 'followFlat' : ((m.code === 'box') ? 'followTiny' : 'followError')));
             return;
         }
 
         if (m.type === 'lost') {
-            this.followFinish(f, m.t);
+            this.followFinish(f, m.t, m.why);
             return;
+        }
+
+        if (m.want) {
+            f.want = m.want;
         }
 
         if ((m.type === 'ready') || (m.type === 'point')) {
@@ -509,8 +550,9 @@
 
     // The end of a run: the thinned keys, one undo step; the playhead back
     // at the start, the layer selected, the Path tab open. lostAt is the
-    // time the patch was lost at, or null when the span was read through.
-    Editor.prototype.followFinish = function (f, lostAt) {
+    // time the patch was lost at, or null when the span was read through;
+    // why the tracker's reason.
+    Editor.prototype.followFinish = function (f, lostAt, why) {
         var res, l, samples = M.followSamples(f.start, f.clip, f.from, f.points, f.size.k);
 
         f.stats.total = now() - f.stats.started;
@@ -536,7 +578,9 @@
         this.render();
 
         if (lostAt !== null) {
-            this.showMessage(String(t('followLost')).replace('{var:1}', clockText(this.motionStart() + lostAt)), true);
+            // Why and what helps once in the editor's life, not on each try.
+            this.followTold = this.followTold || {};
+            this.showMessage(String(t(M.followLostText(why, f.size.small, this.followTold))).replace('{var:1}', clockText(this.motionStart() + lostAt)), true);
         }
     };
 

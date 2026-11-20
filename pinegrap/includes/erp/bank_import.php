@@ -21,9 +21,9 @@
  *
  * The file is a CSV or the Excel workbook internet banking offers beside it
  * (.xlsx, or the older .xls), or an OpenDocument sheet (.ods) for a statement
- * saved again from LibreOffice; a workbook's first sheet becomes the same rows
- * of cells a CSV does, so the columns, the hash and the matching never learn
- * which one arrived.
+ * saved again from LibreOffice; a workbook's sheet (the one the sheet question
+ * chose when it has more than one) becomes the same rows of cells a CSV does,
+ * so the columns, the hash and the matching never learn which one arrived.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -263,8 +263,8 @@ function erp_bank_csv_separator($lines)
 
 /**
  * Read an uploaded statement into rows of cells, by the name the operator's
- * machine gave it: a workbook is read from its first sheet, anything else as
- * CSV. The bank's title block above the transactions is dropped (see
+ * machine gave it: a workbook is read from the sheet asked for (the first
+ * unless the sheet question chose another), anything else as CSV. The bank's title block above the transactions is dropped (see
  * erp_bank_rows_from_heading()), so the column screen opens on the heading.
  * A document that is neither (Numbers, PDF) is refused rather than read as
  * text.
@@ -274,9 +274,10 @@ function erp_bank_csv_separator($lines)
  *
  * @param string $path
  * @param string $file_name
+ * @param int    $sheet  which sheet of a workbook, 0 for the first
  * @return array ['rows' => array, 'error' => string, 'csv_lines' => array (CSV only)]
  */
-function erp_bank_read_file($path, $file_name)
+function erp_bank_read_file($path, $file_name, $sheet = 0)
 {
     $extension = strtolower((string) pathinfo((string) $file_name, PATHINFO_EXTENSION));
 
@@ -285,7 +286,7 @@ function erp_bank_read_file($path, $file_name)
     }
 
     if (in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)) {
-        $read = erp_bank_read_spreadsheet($path, $extension);
+        $read = erp_bank_read_spreadsheet($path, $extension, $sheet);
     } else {
         $read = erp_bank_read_csv($path);
         $read['csv_lines'] = $read['lines'];
@@ -300,7 +301,7 @@ function erp_bank_read_file($path, $file_name)
 }
 
 /**
- * Read the first sheet of a workbook into rows of cells.
+ * Read one sheet of a workbook into rows of cells.
  *
  * Every format (.xlsx, .xls, .ods) is read a row at a time by the sheet
  * reader (pg_sheet_rows(), includes/fn/sheet_read.php): no library holds the
@@ -312,16 +313,17 @@ function erp_bank_read_file($path, $file_name)
  *
  * @param string $path
  * @param string $extension  xlsx | xlsm | xls | ods
+ * @param int    $sheet      which sheet, 0 for the first
  * @return array ['rows' => array, 'error' => string]
  */
-function erp_bank_read_spreadsheet($path, $extension)
+function erp_bank_read_spreadsheet($path, $extension, $sheet = 0)
 {
     $kind = pg_sheet_kind('statement.' . $extension);
     $rows = array();
     $width = 0;
     $error = '';
 
-    foreach (pg_sheet_rows($path, $kind, $error) as $row) {
+    foreach (pg_sheet_rows($path, $kind, $error, $sheet) as $row) {
         $cells = array();
 
         foreach ($row as $cell) {
@@ -708,9 +710,10 @@ function erp_bank_statement_kinds_sql($alias = '')
  * @param string $path
  * @param string $file_name
  * @param int    $user_id
+ * @param int    $sheet  which sheet of a workbook, 0 for the first
  * @return array ['success' => bool, 'id' => int, 'error' => string]
  */
-function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id)
+function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id, $sheet = 0)
 {
     if (!erp_bank_import_ready()) {
         return array('success' => false, 'id' => 0, 'error' => lang('Bank statements come with the software update; run the update to use them.'));
@@ -722,7 +725,7 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
         return array('success' => false, 'id' => 0, 'error' => lang('Choose the bank account.'));
     }
 
-    $read = erp_bank_read_file($path, $file_name);
+    $read = erp_bank_read_file($path, $file_name, $sheet);
 
     if ($read['error'] !== '') {
         return array('success' => false, 'id' => 0, 'error' => $read['error']);
