@@ -2164,6 +2164,51 @@
         return out;
     }
 
+    // The links the designer's canvas marks, from a design marked by mark():
+    // each drawable link (drawable(): a link of a tree, never a classic
+    // menu's or a region's) that is broken or has no target ('' or '#'),
+    // the page frames' first, then the shared components', in document
+    // order. Each: { nodeId, sharedId (0 on a page), source, index (the
+    // nth link of a text), mark ('broken' or 'empty'), label, href, why
+    // (brokenWhy(), '' for an empty link) }. `known` false: the map read
+    // has not answered, so no link is called broken and only the empty
+    // ones are listed.
+    function canvasMarks(marked, known) {
+        var out = [];
+
+        function frame(item, sharedId) {
+            rowsOf(item).forEach(function (row) {
+                var broken = (row.mark === 'broken' && known !== false);
+
+                if (!drawable(row) || !(broken || row.mark === 'empty')) {
+                    return;
+                }
+
+                out.push({ nodeId: row.nodeId, sharedId: sharedId, source: row.source, index: row.index, mark: row.mark, label: row.label, href: row.href, why: broken ? brokenWhy(row) : '' });
+            });
+        }
+
+        ((marked && Array.isArray(marked.pages)) ? marked.pages : []).forEach(function (page) { frame(page, 0); });
+        ((marked && Array.isArray(marked.shared)) ? marked.shared : []).forEach(function (one) { frame(one, parseInt(one.id, 10) || 0); });
+
+        return out;
+    }
+
+    // What the map read is asked for the canvas marks: the design's
+    // addresses but the empty ones (mark() calls those empty without the
+    // read) and the pages its links are kept by; no menu or region, whose
+    // links get no mark (canvasMarks()).
+    function canvasRequest(designed) {
+        var request = (designed && isObject(designed.request)) ? designed.request : {};
+
+        return {
+            hrefs: (Array.isArray(request.hrefs) ? request.hrefs : []).filter(function (href) { return !emptyHref(href); }),
+            page_ids: Array.isArray(request.page_ids) ? request.page_ids.slice() : [],
+            menus: [],
+            regions: []
+        };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -2538,6 +2583,8 @@
         rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        canvasMarks: canvasMarks,
+        canvasRequest: canvasRequest,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,
