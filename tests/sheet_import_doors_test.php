@@ -72,3 +72,28 @@ function test_sheet_import_doors_big_sheet_is_written_without_holding_it()
 	pg_assert_same(40001, $lines, 'every row and the heading');
 	pg_assert_true($grown < 4 * 1024 * 1024, 'the rows are not held in memory while the CSV is written (' . round($grown / 1048576, 1) . ' MB)');
 }
+
+function test_sheet_import_doors_unanswered_workbooks_are_swept_by_age()
+{
+	$directory = sys_get_temp_dir() . '/pg_doors_sweep_' . bin2hex(random_bytes(4));
+	mkdir($directory);
+	$old = $directory . '/sheet_import_' . str_repeat('a', 32) . '.bin';
+	$fresh = $directory . '/sheet_import_' . str_repeat('b', 32) . '.bin';
+	$other = $directory . '/list_export.xlsx';
+
+	foreach (array($old, $fresh, $other) as $file) {
+		file_put_contents($file, 'x');
+	}
+
+	touch($old, time() - PG_SHEET_IMPORT_MAX_AGE - 60);
+	touch($other, time() - PG_SHEET_IMPORT_MAX_AGE - 60);
+
+	pg_assert_same(1, pg_sheet_import_sweep($directory, time()), 'one workbook was past the hour');
+	pg_assert_false(is_file($old), 'the workbook nobody came back for is removed');
+	pg_assert_true(is_file($fresh), 'a workbook still waiting stays');
+	pg_assert_true(is_file($other), 'another file in the folder stays');
+
+	@unlink($fresh);
+	@unlink($other);
+	@rmdir($directory);
+}
