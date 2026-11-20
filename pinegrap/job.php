@@ -1047,6 +1047,11 @@ if (pg_cron_job_is_enabled('api_webhook_job')) {
 
 }
 
+// The ad services' events (includes/fn/ad_conversions.php): the 30-day sweep
+// once a day, then the due rows. Its own small budget, apart from the
+// webhook queue, so a slow ad service never holds back an order webhook.
+pg_ad_conversion_dispatch(10);
+
 // Device notifications, when the operator has switched them on. Same shape and
 // same reasoning as the webhook pass above: the queue is empty on a site where
 // nobody subscribed a device, which costs one indexed read.

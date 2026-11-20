@@ -65,6 +65,7 @@ function pg_privacy_export_sections()
         'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
+        'ad_conversions'     => lang('Ad service events'),
         'mail'               => lang('E-mail messages'),
         'mail_bounces'       => lang('E-mail bounces and complaints'),
         'sms'                => lang('Text messages'),
@@ -1118,6 +1119,12 @@ function pg_privacy_export_collect(array $found)
         ));
 
         $sections['consents'] = _pg_privacy_export_select("SELECT * FROM consent_log WHERE " . $consent_where . " ORDER BY created_at DESC, id DESC", ($consent_where !== '') ? array(1) : array(), array(), array('person_token'));
+    }
+
+    // The ad services' events of the person's orders, with the ids kept for
+    // them until each was sent.
+    if (pg_schema_has('ad_conversion_events', 'order_id')) {
+        $sections['ad_conversions'] = _pg_privacy_export_select("SELECT * FROM ad_conversion_events WHERE " . _pg_privacy_export_in('order_id', $order_ids) . " ORDER BY id", $order_ids);
     }
 
     // Messages sent to the person, without what the message itself carried.
