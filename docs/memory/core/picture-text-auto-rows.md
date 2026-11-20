@@ -10,7 +10,7 @@ module: picture_translation
 
 ## When are a picture's texts sent to an engine?
 - `pg_picture_tr_texts_jobs($file_ids, $user_id)`: a job of scope `file:<id>` for each picture with a text untranslated in a language set to translate on save with a ready engine (`pg_picture_tr_auto_languages()`, right to left left out), through `pg_tr_auto_update()`: the same lock and open-job guard as a page's (`content-translation-jobs-duplicates.md`). One query (`pg_picture_tr_pending_files_sql()`) picks the pictures with something pending.
-- Opened by a page save (the pictures it shows) and by a signed-in save of a picture with a row: a Design Canvas save, a photo's replace, a Restore (`pg_picture_tr_saved($file_id, $doc, $user_id)`). Never from a visit, never with user 0.
+- Opened by a page save (the pictures it shows) and by a signed-in save of a picture with a row: a Artifact Canvas save, a photo's replace, a Restore (`pg_picture_tr_saved($file_id, $doc, $user_id)`). Never from a visit, never with user 0.
 - `pg_tr_scope_extract('file:<id>')` extracts nothing (the saves keep the texts); the Translations screen's jobs list names such a job by the Pictures group ("Images").
 
 ## What is the mark?

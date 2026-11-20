@@ -18,7 +18,7 @@ description: Decisions list, product part 71 (2026-11-17): designer additions wa
 - Poll 129 (message 8265): the Pages and Move windows on a 390 px phone (`phone-pages-move.jpg`); DP16 and DP20.
 - Poll 132 (message 8315, the sheet of message 8298): the page strip as it narrows in six steps and the five marks of publish approval on a tab. A folded page's mark climbs to its chip and, at the narrowest step, to the Pages button: the designer's total, the editor's most important mark. DP18 and DP19 build it; PA3 (#10188) is drawn on it once DP19 has landed.
 
-## Is the Design Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
+## Is the Artifact Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
 - "Evet, böyle çıksın" to the list as shown (PT4 #10208): the button in the top bar, a row per language with its state, "Draw" and "Draw all".
 
 ## May a language's picture be drawn while some of its texts are not translated? (owner, 2026-11-17, agent channel poll 131, message 8313)

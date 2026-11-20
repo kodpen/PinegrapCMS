@@ -3075,12 +3075,16 @@ if (!$_POST) {
         // the notes column nothing could be noted, so nothing is taken here.
         // On an order without an invoice the lines given back are noted too
         // (erp_order_refund_lines_note()), so the next refund by lines does
-        // not give the same line back again.
+        // not give the same line back again; on an invoiced order the order
+        // lines are noted for the points count alone
+        // (pg_credit_points_lines_marker()), so a return of the same lines
+        // does not take their points a second time.
         $refund_points_marker = '';
         if (is_array($refund_by_lines) && pg_schema_has('order_refunds', 'notes')) {
-            $refund_points = pg_credit_points_lines_refunded($order_id, pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']));
-            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total'])
-                . ((($refund_source['source'] ?? '') === 'order') ? ' ' . erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : ''));
+            $refund_points_lines = pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']);
+            $refund_points = pg_credit_points_lines_refunded($order_id, $refund_points_lines);
+            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total']) . ' '
+                . ((($refund_source['source'] ?? '') === 'order') ? erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : pg_credit_points_lines_marker($refund_points_lines)));
         }
 
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)

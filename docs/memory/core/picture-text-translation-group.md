@@ -1,11 +1,11 @@
 ---
 name: picture-text-translation-group
-description: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Design Canvas link
+description: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Artifact Canvas link
 module: picture_translation
 ---
 
 ## What does the group hold?
-- Its name is "Görseller" (key `Images`), the word its note and the Design Canvas use; the owner chose it on poll 118 (agent channel message 8070). "Pictures" stays "Resimler" on other screens.
+- Its name is "Görseller" (key `Images`), the word its note and the Artifact Canvas use; the owner chose it on poll 118 (agent channel message 8070). "Pictures" stays "Resimler" on other screens.
 - `pg_tr_owner_groups()` (`includes/translate/content.php`) lists `pictures` ("Images", Turkish "Görseller", `bi-image`, types `file`) under Other texts, between Forms and the Cookie window.
 - Its owners are never every file: `pg_tr_owner_where()` turns `('file', '*')` into `pg_tr_picture_owner_bound()`, the texts of a file with a row in `file_translation` (written when a page showing the picture is saved in the Visual Page Editor, `picture-text-auto-rows.md`, or by the page pass when a page in another language shows it). Before the table exists it is `0 = 1`.
 - The bound is the file's, not the language's: a picture a page showed in one language counts for every target language.
@@ -18,7 +18,7 @@ module: picture_translation
 - `pg_tr_extract_pictures()` (`includes/translate/extract.php`) reads every file with a row: a live document (`pg_picture_tr_live()`) has its words written again; a binned, flattened or gone file is forgotten (`pg_picture_tr_forget()`: uses, rows, language pictures). A file with no row is never read; its uses go with the daily prune.
 
 ## What does a row show?
-- On the group's view each text names the pictures it comes from (`pg_tr_picture_files()`, same bound), as a badge button with `data-pg-image-edit` (title "Edit this image in the Design Canvas"), which opens the file in the Design Canvas (`ui/image-editor-callers.md`); the loader is printed only when such a badge is listed.
+- On the group's view each text names the pictures it comes from (`pg_tr_picture_files()`, same bound), as a badge button with `data-pg-image-edit` (title "Edit this image in the Artifact Canvas"), which opens the file in the Artifact Canvas (`ui/image-editor-callers.md`); the loader is printed only when such a badge is listed.
 
 ## What does the empty group say?
 - The list reads "None yet" (as the Cookie window), never "Not scanned": Update lists no picture before a page showing it is saved in the Visual Page Editor or opened in another language. The panel carries a note of its own saying which pictures are listed and when, and the empty panel says the same instead of "press Update".

@@ -31,4 +31,4 @@ module: event_check_in
 
 Test: `tests/event_check_in_test.php` (two scans at once, each answer, the rights, the pick, names, counts, undo). The camera path is not reached by a unit test.
 
-Related: docs/memory/commerce/event-tickets-model.md, docs/memory/plans/event-tickets.md
+Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/event-tickets.md

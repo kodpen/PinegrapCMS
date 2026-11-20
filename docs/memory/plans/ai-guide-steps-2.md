@@ -4,7 +4,7 @@ description: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the
 ---
 
 ## Which steps are there?
-- AG8 (S) any time: presets Design and Content. `includes/oauth/rules.php` (`pg_oauth_consent_presets()`), the consent screen's links, `tests/oauth_consent_presets_test.php`. Feature: G15.
+- AG8 (S) any time, done (#10709): presets Design and Content. `includes/oauth/rules.php` (`pg_oauth_consent_presets()`), the consent screen's links, `tests/oauth_consent_presets_test.php`. Feature: G15.
 - AG9 (S) after AG7: the budget. `includes/mcp/tools.php` and `includes/api/openapi.php` (the `details` key, read by the document only), a test with today's tools over 600 characters or 4,096 bytes as a list that may only shrink (209 and 13 on 2026-11-20). Feature: G16.
 - AG10 (M) after AG9 and AG4: the Workspace's diet (95 descriptions, 7 tools over 4 KB). Long text into `details` or a section of `workspace`; cut in two PRs by route file when one passes the size limit of a PR.
 - AG11 (S) after AG9 and AG4: the ERP's diet (25 descriptions).

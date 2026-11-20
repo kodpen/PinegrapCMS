@@ -9,7 +9,7 @@ module: contacts
 - A contact's picture on a single-record screen: `pg_contact_picture_address($file_id)` (one query, '' for no files row, as `pg_contact_picture_name()`).
 
 ## Why?
-- Owner (2026-11-12, #8882): a GIF made in the Design Canvas was his profile picture; saved again, the header showed the old pixels for three days, after a site cache reset, an emptied browser cache and Ctrl+F5, while the File Manager showed the new ones.
+- Owner (2026-11-12, #8882): a GIF made in the Artifact Canvas was his profile picture; saved again, the header showed the old pixels for three days, after a site cache reset, an emptied browser cache and Ctrl+F5, while the File Manager showed the new ones.
 - A canvas Replace save writes over the same file (same id and name) and sets `files.timestamp` (`pg_image_editor_api()`, `ui/image-editor-versions.md`); `get_file.php` answers a picture `public, max-age=604800`, so the browser and any edge cache before the site may keep it a week under an address that never changed. The site's cache reset purges neither.
 - The panel's service worker (`sw.js`) answers only page loads and keeps no picture: nothing of the site's own needs dropping on a save (PF2 of the plan was skipped).
 

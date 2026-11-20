@@ -1,6 +1,6 @@
 ---
 name: image-editor-modal
-description: The Design Canvas core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
+description: The Artifact Canvas core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
 module: image_editor
 ---
 

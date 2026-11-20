@@ -6,8 +6,8 @@ module: cart_recovery_weak
 
 ## What do the rules find?
 - Pure functions in `includes/fn/cart_recovery_weak.php`, tests in `tests/cart_recovery_weak_test.php`; `pg_cart_recovery_weak()` runs them in this order:
-  - unreachable: untouched left carts with no contact e-mail address, or an address but no opt-in when an enabled `order_abandoned` profile is not transactional; over 30 % of the left carts, at least 10 left.
-  - stalled: carts that came back (clicked or restored) and were not recovered, over half of at least 5 that came back; split into still open (the order's own `status = 'incomplete'`) and completed after the 7 days; the furthest checkout step the open ones reached, the most common named.
+  - unreachable: untouched left carts with no contact e-mail address (a no-touch row whose order was deleted is left out: address unknown), or an address but no opt-in when an enabled `order_abandoned` profile is not transactional; over 30 % of the left carts, at least 10 left.
+  - stalled: carts that came back (clicked or restored) and were not recovered, over half of at least 5 that came back; split into still open (the order's own `status = 'incomplete'`) and completed more than 7 days after the last touch before the completion; the furthest checkout step the open ones reached, the most common named.
   - late: the first message more than a day after the cart was started, over half of at least 10 carts. Only open carts count: the completion rewrites `orders.order_date`.
   - stock: left carts not recovered (open ones) holding an active line of a tracked product with no stock and no back orders; over 20 % of at least 10 left.
   - message: sent at least 20 times and under 5 % of the carts it reached came back; the three most sent.

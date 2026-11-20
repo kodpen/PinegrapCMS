@@ -858,7 +858,27 @@ function pg_label_geliver_track($reference, $account)
         return pg_label_geliver_failure($read, false);
     }
 
+    if (pg_label_geliver_not_scanned($read['data'])) {
+        return pg_label_track_not_scanned($id);
+    }
+
     return array('reference' => $id) + pg_label_geliver_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * Whether Geliver knows a shipment its carrier has not scanned yet: no
+ * status of ours, and no tracking code or Geliver's UNKNOWN. A code Geliver
+ * adds later is not read as created. Pure.
+ *
+ * @param array $data a shipment
+ * @return bool
+ */
+function pg_label_geliver_not_scanned($data)
+{
+    $tracking = (is_array($data) && isset($data['trackingStatus']) && is_array($data['trackingStatus'])) ? $data['trackingStatus'] : array();
+    $code = isset($tracking['trackingStatusCode']) && is_scalar($tracking['trackingStatusCode']) ? strtoupper(trim((string) $tracking['trackingStatusCode'])) : '';
+
+    return is_array($data) && (pg_label_geliver_status($data) === '') && in_array($code, array('', 'UNKNOWN'), true);
 }
 
 /**
