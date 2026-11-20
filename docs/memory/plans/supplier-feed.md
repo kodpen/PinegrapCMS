@@ -23,13 +23,13 @@ priority: 6
 - A product a person turned off is never turned on by a feed.
 - Large feeds: streamed to `data/temp/`, read row by row with a resumable cursor in job ticks, one lock per feed.
 
-## What does the architect decide?
-- Schema (the owner's, through the architect): `supplier_feeds`, `supplier_feed_items` (feed, supplier key, product, barcode, buy price in minor units, currency, stock, seen, closed by the feed), `supplier_feed_runs`. Or another shape.
-- Cost: the buy price as a third cost source that order profit reads only where `erp_product_costs` has none, never written into it? And the stock plan's supplier from the feed's linked ERP account when no invoice names one?
-- Closing a dropped product: stock 0 for a tracked one (its page and back-in-stock notices stay), `enabled = 0` for an untracked one?
-- Plain http feeds (common, often with the key in the address): allowed per feed with a warning, or https only?
-- A single item's buy price falling under half its last value: held for a person's yes, not written?
-- The screen: Products › Supplier feeds, with the product screens' right?
+## What did the architect decide? (2026-11-20, agent channel message 10643)
+- Schema: the three tables are the shape; asked of the owner in poll 185, columns written after a yes. The F5 switch and a held price live on the `supplier_feed_items` row (no `products` column); category and brand rules stay in the feed's rules JSON.
+- Cost: a third source, read only (F11); an order with a feed cost stays `estimate`.
+- A dropped product is closed in the same pull (F7); F13's brake holds a mass drop.
+- http only per feed with its box, key in the address only (F1).
+- Price brake both ways, under half or over ten times (F13).
+- Screen: Products › Supplier feeds, behind `view_products.php`'s gate (role under 3 or manage_ecommerce); F14's scopes for the API.
 
 ## What is built?
 - Features: `supplier-feed-features.md` (F1 to F14). Steps: `supplier-feed-steps.md`. Claim as `[plan:supplier-feed] <step> — <topic>`.
