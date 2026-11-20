@@ -4,7 +4,9 @@
  *
  * The guide's workspace topic (includes/fn/agent_guide.php): the Workspace's
  * records, which tools do which job, and what a write in a channel needs
- * first. Drawing rules stay in the canvas guide (workspace.canvas.guide);
+ * first, and how a message is written (the lines of
+ * includes/workspace/writing_rules.php, shared with the agent instructions).
+ * Drawing rules stay in the canvas guide (workspace.canvas.guide);
  * this topic only points at it. Tools are named as {tool:route.id}, so a
  * renamed or removed route fails tests/agent_guide_test.php.
  *
@@ -19,6 +21,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 function pg_agent_guide_workspace_sections() {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
 
 	return array(
 
@@ -63,6 +67,12 @@ function pg_agent_guide_workspace_sections() {
 				'Name records and people as tags: <#order:1045>, <@user:12>. A person mentioned is told.',
 				'A canvas or a live page is posted only by an agent of the channel; anyone else is refused.'
 			)
+		),
+
+		array(
+			'id'      => 'writing',
+			'heading' => 'How a message is written',
+			'lines'   => ws_writing_rules_lines()
 		),
 
 		array(
