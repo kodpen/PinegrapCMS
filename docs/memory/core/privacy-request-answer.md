@@ -5,7 +5,7 @@ module: privacy_requests
 ---
 
 ## How is the Answer tab built?
-- `pg_privacy_request_answer_pane()` in `includes/fn/privacy_requests.php`: Bootstrap 6's `ol.stepper.pg-stepper-cards` (`ui/step-rail.md`) drawn by `pg_privacy_request_answer_stepper()`. Its example on Design examples is "Facts and numbered steps" (#10884); no second section.
+- `pg_privacy_request_answer_pane()` in `includes/fn/privacy_requests.php`: Bootstrap 6's `ol.stepper.pg-stepper-cards` (`ui/step-rail.md`) drawn by `pg_privacy_request_answer_stepper()`. KV4b adds no Design examples section; DX2 (#10885) draws numbered steps there (architect, channel message 11228).
 - Four steps: "Check who asks", "Gather", "Write the answer", "Send". Each folds in a `<details name="privacy_answer_step">`, so one is open at a time; a done step is `.active.theme-success`, the current one `.active` with `aria-current="step"`, a later one plain; `.theme-reset` on the details keeps the theme out of its buttons.
 - States from `pg_privacy_request_answer_steps()`: before the check only step 1 is open; after it Gather is open and Write is current. A gather this operator may not run (`refused`, `self`) stops at Gather and Send stays disabled.
 
@@ -20,7 +20,9 @@ module: privacy_requests
 - `action=send` calls `pg_privacy_request_send()`; its codes become the screen's errors (mail not sent: nothing was erased).
 
 ## What was fixed on the way?
-- The Requests view called `pg_list_table_when_cell()` without loading `includes/fn/list_table.php` (fatal with one row); History read `audit_log.actor_name`, the column is `username`; the drawer named by the address opened before Bootstrap's module had run, now through `pgUI.ready()`. On a phone the sheet is 88vh (`--pg-drawer-height`).
+- The Requests view called `pg_list_table_when_cell()` without loading `includes/fn/list_table.php` (fatal with one row).
+- History read `audit_log.actor_name`, which does not exist (the tab was always empty): `pg_privacy_request_history_query()` selects `user_id, username`, pinned by a test.
+- The drawer named by the address opened before Bootstrap's module had run, now through `pgUI.ready()`. On a phone the sheet is 88vh (`--pg-drawer-height`).
 
 ## Tests?
 - `tests/privacy_request_answer_test.php`: the step states, the gather mode and lists, each kind's text, the stepper markup. A sent answer was not seen: the sandbox has no mail server.

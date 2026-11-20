@@ -153,3 +153,13 @@ function test_privacy_request_answer_stepper_markup()
 	pg_assert_true(strpos($html, 'B2') > strpos($html, ' open>'), 'the open one is the gather step');
 	pg_assert_same(false, strpos($html, '>1<'), 'the number is the counter, never written');
 }
+
+// History reads the columns audit_log has: user_id and username, never actor_name.
+function test_privacy_request_history_query_columns()
+{
+	$sql = pg_privacy_request_history_query(7);
+
+	pg_assert_contains('SELECT created_at, action, user_id, username, after_json FROM audit_log', $sql, 'the columns');
+	pg_assert_same(false, strpos($sql, 'actor_name'), 'no actor_name');
+	pg_assert_contains("(entity_id = '7')", $sql, 'one request');
+}

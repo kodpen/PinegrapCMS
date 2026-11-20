@@ -363,6 +363,20 @@ function pg_privacy_requests_counts($now = null)
 }
 
 /**
+ * The query of a request's steps, newest first: audit_log names the person
+ * who took a step in user_id and username. Pure.
+ *
+ * @param int $id
+ * @return string
+ */
+function pg_privacy_request_history_query($id)
+{
+    return "SELECT created_at, action, user_id, username, after_json FROM audit_log
+        WHERE (entity_type = 'privacy_request') AND (entity_id = '" . (int) $id . "')
+        ORDER BY created_at DESC, id DESC LIMIT 200";
+}
+
+/**
  * The request's steps, newest first.
  *
  * @param int $id
@@ -374,9 +388,7 @@ function pg_privacy_request_history($id)
         return array();
     }
 
-    return db_items("SELECT created_at, action, username AS actor_name, after_json FROM audit_log
-        WHERE (entity_type = 'privacy_request') AND (entity_id = '" . (int) $id . "')
-        ORDER BY created_at DESC, id DESC LIMIT 200");
+    return db_items(pg_privacy_request_history_query($id));
 }
 
 /**
@@ -1145,7 +1157,7 @@ function pg_privacy_request_drawer(array $request, array $labels, $now, $tab = '
     foreach (pg_privacy_request_history($id) as $line) {
         $history .= '<div class="pg-list-row is-read"><div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">'
             . h(pg_audit_view_labels('action')[$line['action']] ?? $line['action']) . '</span><span class="pg-list-row-time">' . get_relative_time(array('timestamp' => (int) $line['created_at'])) . '</span></div>'
-            . '<div class="pg-list-row-text">' . h((string) $line['actor_name']) . '</div></div></div>';
+            . '<div class="pg-list-row-text">' . h((string) $line['username']) . '</div></div></div>';
     }
 
     $panes = array(
