@@ -248,3 +248,17 @@ function test_ai_connections_voice_speech_on_connection_by_address()
 	pg_assert_true(!pg_ai_connection_voice_speech_on_connection('https://api.openai.com/v1', ''), 'both on OpenAI: the transcripts\' key, which falls back to the connection');
 	pg_assert_true(!pg_ai_connection_voice_speech_on_connection('https://api.groq.com/openai/v1', ''), 'speech on another service never takes OpenAI\'s key');
 }
+
+function test_ai_connections_agent_key_never_follows_a_provider_change()
+{
+	$openai = array('kind' => 'model', 'provider' => 'openai', 'key_set' => true);
+
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'anthropic', null), 'an OpenAI key is not sent to Anthropic: the assistant reads Anthropic\'s connection');
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'custom', null), 'nor to a custom address');
+	pg_assert_same('v:iv', pg_ai_connection_agent_key($openai, 'custom', 'v:iv'), 'a key typed for a provider without a connection is stored');
+	pg_assert_same(null, pg_ai_connection_agent_key($openai, 'anthropic', 'v:iv'), 'a key typed for a connected provider is not');
+	pg_assert_same(null, pg_ai_connection_agent_key($openai, 'openai', null), 'the same provider keeps its own key');
+	pg_assert_same('', pg_ai_connection_agent_key($openai, 'openai', ''), 'its box gives the own key up');
+	pg_assert_same(null, pg_ai_connection_agent_key(null, 'anthropic', null), 'a new assistant has no key to drop');
+	pg_assert_same(null, pg_ai_connection_agent_key(array('kind' => 'model', 'provider' => 'openai', 'key_set' => false), 'anthropic', null), 'nothing stored, nothing to drop');
+}
