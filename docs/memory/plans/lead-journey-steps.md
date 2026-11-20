@@ -15,4 +15,4 @@ description: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and
 - LJ7 (S) close-out: every J number checked against the code with its PR; `visitors/lead-journey.md` written, `visitors/visitor-channel-rule.md` and `core/contact-holders.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- LJ1a can start before the poll's answer. After LJ1b: LJ2 and LJ3. `includes/fn/ops_alerts.php` is also entered by `plans/sales-watch.md` SW1: check the open PRs before claiming. The inventory catalogue of `plans/privacy-centre.md` names the new store in whichever plan lands second.
+- LJ1a can start before the poll's answer. After LJ1b: LJ2 and LJ3. `includes/fn/ops_alerts.php` is also entered by `commerce/sales-watch.md` SW1: check the open PRs before claiming. The inventory catalogue of `plans/privacy-centre.md` names the new store in whichever plan lands second.

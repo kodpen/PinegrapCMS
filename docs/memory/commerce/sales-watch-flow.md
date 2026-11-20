@@ -1,6 +1,6 @@
 ---
 name: sales-watch-flow
-description: Sales watch, orders stopped and payment broken (SW1, #10735): channels, the hourly norm and its cache, the windows, the store alert, the payment share, the timing
+description: Sales watch, orders stopped and payment broken (#10735): channels, the hourly norm and its cache, the windows, the store alert, the payment share, the timing
 module: sales_watch
 ---
 
@@ -21,7 +21,7 @@ module: sales_watch
 - Site only: carts `billing_complete = 1`, `status = 'incomplete'` by `last_modified_timestamp` against site orders completed (`order_date` is rewritten at completion) in the same windows; the 8 weeks' share, smoothed (+1/+2), binomial lower tail; at least 5 carts and 20 completed orders in 8 weeks. Names the `payment_method` values chosen ("not chosen" for empty).
 
 ## Once a day per what?
-- Per code and subject (`site`, `mp_<id>`, `store`) through `pg_ops_alert($code, $detail, $subject)`; the subject's send time lives only in `ops_alerts_state.json` (no column on `notifications`), so a lost file may repeat an alert once (architect, `plans/sales-watch.md`).
+- Per code and subject (`site`, `mp_<id>`, `store`) through `pg_ops_alert($code, $detail, $subject)`; the subject's send time lives only in `ops_alerts_state.json` (no column on `notifications`), so a lost file may repeat an alert once (architect, `sales-watch.md`).
 
 ## Which settings?
 - The `sales_watch` `config_text` row: each alert on or off, sensitivity, the pause per channel or store (`sales-watch-settings.md`, #10772).
@@ -32,4 +32,4 @@ module: sales_watch
 ## How is it tested?
 - `tests/sales_watch_test.php`: tails, windows, holiday week, quiet small shop, silent channel and store, marketplace between syncs, broken checkout, subject key.
 
-Related: docs/memory/platform/ops-alerts.md, docs/memory/plans/sales-watch.md
+Related: docs/memory/platform/ops-alerts.md, docs/memory/commerce/sales-watch.md

@@ -15,4 +15,4 @@ description: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses,
 - PP7 (S) close-out: every K number checked against the code with its PR; `commerce/pick-pack.md` written, `commerce/stock-locations-model.md` and `commerce/shipment-labels.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- PP1a can start before the poll's answer. After PP1b: PP2, PP3 and PP4. `includes/fn/ops_alerts.php` is also entered by `plans/sales-watch.md` SW1 and the delivery-tower plan's DT2: check the open PRs before claiming.
+- PP1a can start before the poll's answer. After PP1b: PP2, PP3 and PP4. `includes/fn/ops_alerts.php` is also entered by `commerce/sales-watch.md` SW1 and the delivery-tower plan's DT2: check the open PRs before claiming.
