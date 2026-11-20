@@ -146,6 +146,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/automation_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/workspace_mail_gate.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_shift.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/xlsx_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sheet_read.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sheet_import.php');
