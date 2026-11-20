@@ -555,6 +555,8 @@ function ws_file_edit_js_strings()
         'file_edit_image'      => lang('Edit the picture'),
         'file_edit_text'       => lang('Open the text'),
         'file_edit_put'        => lang('Put the edited picture in its place'),
+        // Its words on a narrow phone (under 576 px).
+        'file_edit_put_short'  => lang('Put in place'),
         'file_edit_send'       => lang('Edit and send'),
         'file_text_save'       => lang('Save'),
         'file_text_send'       => lang('Send the edited copy'),

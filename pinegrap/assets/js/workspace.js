@@ -14254,7 +14254,7 @@
                 var doc = loaded[1];
                 var options = {
                     fileName: message.file.name,
-                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send') },
+                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send'), short: mine ? t('file_edit_put_short') : t('file_edit_send') },
                     onSave: function () {
                         toast(mine ? t('file_replaced') : t('file_copy_sent'), 'success');
                         self.sync(!mine);
@@ -14305,7 +14305,7 @@
                 window.pgImageEditor.open({
                     blank: { width: 1080, height: 1080, background: '#ffffff' },
                     fileName: t('canvas_new'),
-                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send') },
+                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send'), short: t('canvas_send_short') },
                     send: self.canvasSend(channel),
                     onSave: function () {
                         toast(t('canvas_sent'), 'success');

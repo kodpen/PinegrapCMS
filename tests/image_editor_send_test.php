@@ -363,3 +363,27 @@ function test_image_editor_send_narrow_top_bar()
 		}
 	}
 }
+
+// Under 576 px the main button shows its caller's short words, the full
+// ones kept as its title and aria-label; from 576 px up nothing changes.
+function test_image_editor_send_short_main_label()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/pg_image_editor.src.css');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor.js');
+	$ws = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_true(strpos($css, ".pgie-savebtn .pgie-saveshort {\n  display: none;\n}") !== false, 'short words hidden by default');
+
+	$narrow = substr($css, (int) strpos($css, '@media (max-width: 575.98px) {' . "\n" . '  .pgie-top .pgie-importbtn,'), 1600);
+
+	pg_assert_true(strpos($narrow, ".pgie-savebtn .pgie-savefull {\n    display: none;") !== false && strpos($narrow, ".pgie-savebtn .pgie-saveshort {\n    display: inline;") !== false, 'under 576 px the short words show');
+	pg_assert_true(strpos($core, "this.saveBtn.setAttribute('aria-label', full);") !== false && strpos($core, 'this.saveBtn.title = full;') !== false, 'the full words stay its name');
+	pg_assert_true(strpos($ws, "label: t('canvas_send'), short: t('canvas_send_short')") !== false, 'Send the canvas: Send');
+	pg_assert_true(strpos($ws, "short: mine ? t('file_edit_put_short') : t('file_edit_send')") !== false, 'Put in place; Edit and send stays');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/file_edits.php');
+
+	pg_assert_same('Send', ws_canvas_js_strings()['canvas_send_short'] ?? null, 'the short word is a label');
+	pg_assert_same('Put in place', ws_file_edit_js_strings()['file_edit_put_short'] ?? null, 'its short word is a label');
+}

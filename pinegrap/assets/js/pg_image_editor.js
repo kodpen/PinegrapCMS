@@ -1621,7 +1621,10 @@
 
         this.saveBox.textContent = '';
         this.saveMenu = null;
-        this.saveBtn = button('pgie-btn pgie-primary', this.saveLabel(), null, function () { self.save(); }, true);
+        this.saveBtn = button('pgie-btn pgie-primary pgie-savebtn', this.saveLabel(), null, function () { self.save(); }, false);
+        this.saveBtn.appendChild(el('span', { class: 'pgie-savefull' }));
+        this.saveBtn.appendChild(el('span', { class: 'pgie-saveshort', 'aria-hidden': 'true' }));
+        this.labelSave(this.saveLabel());
         this.saveBox.appendChild(this.saveBtn);
         this.menuBtn = null;
 
@@ -1666,6 +1669,22 @@
             this.renderSave();
         }
     });
+
+    // The main button's words: the full ones, and under 576 px the caller's
+    // short form (save.short) shown in their place by the stylesheet; the
+    // full words stay its title and aria-label at every width.
+    Editor.prototype.labelSave = function (full, short) {
+        var save = this.opts.save || {};
+
+        if (short === undefined) {
+            short = ((this.saveMode === 'url') && save.short) ? String(save.short) : full;
+        }
+
+        this.saveBtn.title = full;
+        this.saveBtn.setAttribute('aria-label', full);
+        this.saveBtn.querySelector('.pgie-savefull').textContent = full;
+        this.saveBtn.querySelector('.pgie-saveshort').textContent = short;
+    };
 
     // A caller's own word for its save (save.label), else Done or Save.
     Editor.prototype.saveLabel = function () {
@@ -2038,7 +2057,11 @@
         this.root.classList.toggle('pgie-busy', on);
         this.root.setAttribute('aria-busy', on ? 'true' : 'false');
         this.saveBtn.disabled = on;
-        this.saveBtn.lastChild.textContent = on ? t('saving') : this.saveLabel();
+        if (on) {
+            this.labelSave(t('saving'), t('saving'));
+        } else {
+            this.labelSave(this.saveLabel());
+        }
 
         if (this.menuBtn) {
             this.menuBtn.disabled = on;

@@ -18,12 +18,13 @@ module: image_editor
 - Offered (canvas menu "Save to Files as a picture", "as a video" only with motion) only to someone who may edit a folder: staff, or a user granted edit rights (`pg_image_editor_files_edit()`, config `filesEdit`). Others keep "Send to another channel…" and "Download".
 - A small window lists the folders they may edit as an indented select (action `folders`, `pg_image_editor_folder_choices()`: no bin, archived or Workspace branch; 403 without rights); the last one is remembered in the browser (`M.filesRemember()`).
 - Picture: the artboard PNG with its document (save mode `new`, `folder_id`), so it opens as a canvas from Files; video: action `animation` with that folder. The name is the canvas's, unique. Each save asks `check_edit_access()` and refuses the bin and folder 0 again.
-- Then one line "Saved to Files > <folder>" with "Open in Files". The message and its file in the channel stay as they are: a copy.
+- Then "Saved to Files > <folder>" with "Open in Files"; the channel's message stays as it is (a copy).
 
 ## How does the top bar fit a phone?
-- Under 576 px Import, Languages, Save animation and Present show their glyph only (36 px, name as aria-label and title), the split button keeps its words and the file's name gives way; `.pgie-btn[hidden]` hides on pages without a reset.
+- Under 576 px (architect, 2026-11-20): Import, Languages, Save animation, Present show their glyph only (36 px, name kept as aria-label and title); the bar's gap narrows; the file's name gives way. No sideways scroll at 390 and 360 px.
+- The main button shows its caller's short words there (`save.short`: "Send", "Put in place"; "Edit and send" and "Save" stay), two spans the stylesheet picks between, never "…"; the full words stay its title and aria-label.
 
 ## Where is it tested?
-- `tests/image_editor_send_test.php` (the menu's rights under Node, the channels, the callers, the labels); `ws_library_postable()` in `tests/workspace_library_test.php`.
+- `tests/image_editor_send_test.php`; `ws_library_postable()` in `tests/workspace_library_test.php`.
 
 Related: docs/memory/ui/image-editor-callers.md, docs/memory/ui/image-editor-workspace.md

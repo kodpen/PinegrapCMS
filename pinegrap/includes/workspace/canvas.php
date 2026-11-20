@@ -323,6 +323,8 @@ function ws_canvas_js_strings()
     return array(
         'canvas_new'     => lang('New canvas'),
         'canvas_send'    => lang('Send the canvas'),
+        // Its words on a narrow phone (under 576 px).
+        'canvas_send_short' => lang('Send'),
         'canvas_sent'    => lang('The canvas was sent.'),
         'canvas_to_note' => lang('Add to the note'),
         'canvas_edited_by' => ws_js_template('Edited by @{var:1}', 1),

@@ -255,6 +255,12 @@
   background: var(--pgie-hover);
 }
 
+/* The main button's short words show only under 576 px (the narrow-phone
+   rules below). */
+.pgie-savebtn .pgie-saveshort {
+  display: none;
+}
+
 /* A button the editor hides (hidden) stays hidden on a page without a reset
    that says so: .pgie-btn's display would show it. */
 .pgie-btn[hidden] {
@@ -3230,13 +3236,26 @@ a.pgie-langthumb:focus-visible {
     display: none;
   }
 
+  .pgie-top {
+    gap: 1px;
+  }
+
   .pgie-top .pgie-file {
     flex: 1 1 0;
     min-width: 0;
+    margin: 0 2px;
   }
 
   .pgie-top .pgie-savebox {
     flex: none;
+  }
+
+  .pgie-savebtn .pgie-savefull {
+    display: none;
+  }
+
+  .pgie-savebtn .pgie-saveshort {
+    display: inline;
   }
 }
 
