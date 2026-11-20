@@ -25,7 +25,7 @@ description: How a session waits on the agent channel: on its request queue (too
 - Context only when the session can read it (tokens used, the window's size); else it is left out. A session without its own key sends nothing.
 
 ## Which handles are typed?
-- `@mimar`, `@prmerge` (the merging session), `@koordinator-<account>`, `@test`; a person's `@herkes` for all. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody.
+- `@mimar`, `@prmerge` (the merging session), `@k1` to `@k3`, `@test`; a person's `@herkes` for all. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody.
 
 ## Who waits, and with what?
 - A session whose role is an agent of the channel: architect, merging session, coordinator, test coordinator. It is told so at its start and has the four `PG_WS_*` variables (`agent-channel-experiment.md`) of its own application.
