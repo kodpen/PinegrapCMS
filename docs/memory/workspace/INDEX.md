@@ -644,4 +644,4 @@
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-voice-unheard.md: Why nobody heard a voice message (VA1): the recorder's hint while transcripts are off or the channel keeps its recordings, ws_voice_unheard_reason() in the assistants' briefings, Claude's instruction
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
-- workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide [decision: here]
+- workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide [decision: decisions-made-product-92.md]

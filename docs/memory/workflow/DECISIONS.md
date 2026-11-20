@@ -493,6 +493,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-91.md: Where are the rules and the earlier parts?
 - decisions-made-product-91.md: Under which consent does a satisfaction survey go? (owner, 2026-11-20, agent channel poll 198, channel message 10840)
 - decisions-made-product-91.md: What of a jury's evaluation goes into a person's export? (owner, 2026-11-20, agent channel poll 200, channel message 10842)
+- decisions-made-product-92.md: Where are the rules and the earlier parts?
+- decisions-made-product-92.md: In which language is text written for an agent? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-92.md: What does it cover?
+- decisions-made-product-92.md: What does it leave alone?
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
