@@ -4232,8 +4232,9 @@
     // are not counted).
 
     // The most frames a second read, the longer side they are read at, the
-    // shortest span (ms) and the smallest box side on the screen (px).
-    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12;
+    // shortest span (ms), the smallest box side on the screen (px) and the
+    // shorter box side (px) a small thing is read at least at.
+    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12, FOLLOW_SIDE = 24;
 
     // The topmost visible video layer showing at document time t whose box
     // holds document point p, or null.
@@ -4288,12 +4289,49 @@
         return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
     }
 
-    // The size frames are read at: FOLLOW_EDGE on the longer side, never
-    // enlarged; k is that size over the source's.
-    function followSize(width, height) {
-        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k = Math.min(1, FOLLOW_EDGE / Math.max(w, h));
+    // The size frames are read at: FOLLOW_EDGE on the longer side, or larger
+    // where the box's shorter side (side, source px) would be under
+    // FOLLOW_SIDE there, but never above the source's own pixels; k is that
+    // size over the source's. region: frames are read as the region round
+    // the last place only (the tracker's want), not whole; small: the box is
+    // under FOLLOW_SIDE even at the source's pixels.
+    function followSize(width, height, side) {
+        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k0 = Math.min(1, FOLLOW_EDGE / Math.max(w, h)), k = k0;
 
-        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k };
+        side = Number(side) || 0;
+
+        if (side > 0) {
+            k = Math.min(1, Math.max(k0, FOLLOW_SIDE / side));
+        }
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k, region: k > k0, small: (side > 0) && (side * k < FOLLOW_SIDE) };
+    }
+
+    // The region [x0, y0, x1, y1] the first frame is read in: box (frame
+    // pixels at size) in whole pixels with a pixel round it, inside the frame.
+    function followRegion(box, size) {
+        return [
+            Math.max(0, Math.floor(Math.min(box[0], box[2])) - 1), Math.max(0, Math.floor(Math.min(box[1], box[3])) - 1),
+            Math.min(size.w, Math.ceil(Math.max(box[0], box[2])) + 1), Math.min(size.h, Math.ceil(Math.max(box[1], box[3])) + 1)
+        ];
+    }
+
+    // The lost message's label key: why it was lost ('edge': it left the
+    // picture; otherwise it no longer matched, small for a thing a few
+    // pixels across), said in full the first time only; told holds the
+    // keys said before and is added to. Leaving the picture is no fault.
+    function followLostText(why, small, told) {
+        var key = (why === 'edge') ? 'followLostEdge' : (small ? 'followLostSmall' : 'followLostMatch');
+
+        if ((key === 'followLostEdge') || !told || !told[key]) {
+            if (told) {
+                told[key] = true;
+            }
+
+            return key;
+        }
+
+        return 'followLost';
     }
 
     // What Follow covers from document time now: to the first of the clip's
@@ -4351,7 +4389,7 @@
 
     var FOLLOW = {
         followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
-        followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
+        followSize: followSize, followRegion: followRegion, followLostText: followLostText, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
     // -- tracks (pg_image_editor_tracks.js) --
