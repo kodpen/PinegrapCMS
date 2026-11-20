@@ -676,10 +676,13 @@
         var added = [];
 
         this.change(function (doc) {
-            M.groupCopy(doc, list).forEach(function (l) {
+            var copies = M.groupCopy(doc, list), map = {};
+
+            copies.forEach(function (l, i) {
                 // A copy of an erased or adjusted area keeps its place on the
                 // picture.
                 l.id = M.newId(doc);
+                map[list[i].id] = l.id;
                 if (!kind(l).fixed) {
                     l.x += offset;
                     l.y += offset;
@@ -687,6 +690,8 @@
                 doc.layers.push(l);
                 added.push(l.id);
             });
+            // A target copied with its follower: the copies hold together.
+            M.attachRemap(copies, map);
             doc.layers = M.groupTidy(doc.layers);
         });
         this.select(added);
@@ -931,6 +936,40 @@
 
         this.change(function (doc) { doc.layers = M.groupBreak(doc.layers, gid); });
         this.render();
+
+        return true;
+    };
+
+    // What the one picked layer may be attached to (M.attachTargets()):
+    // [] for a group, several layers, a locked or a fixed one.
+    Editor.prototype.attachOffer = function () {
+        var picked = this.selected();
+
+        return ((picked.length === 1) && !fixed(picked[0])) ? M.attachTargets(this.doc.layers, picked[0].id) : [];
+    };
+
+    // A target's name as the layers list gives it: a layer's, or "Group n".
+    Editor.prototype.attachLabel = function (att) {
+        var gid = (String(att).indexOf('group:') === 0) ? String(att).slice(6) : '', l = gid ? null : find(this.doc, att);
+
+        if (gid) {
+            return t('groupName').replace('{n}', String(M.groupNumber(gid) || ''));
+        }
+
+        return l ? this.layerName(l) : '';
+    };
+
+    // Layer id attached to att (the menu's Attach to, the Path tab), or
+    // let go where it stands with att ''. One undo step; false when
+    // refused (a circle, a gone target) or nothing changes.
+    Editor.prototype.attachLayer = function (id, att) {
+        var l = find(this.doc, id), next = l ? M.attachSet(this.doc.layers, id, att) : null;
+
+        if (!next || (M.attachOf(l) === (att || ''))) {
+            return false;
+        }
+
+        this.change(function (doc) { doc.layers = M.attachSet(doc.layers, id, att); });
 
         return true;
     };
