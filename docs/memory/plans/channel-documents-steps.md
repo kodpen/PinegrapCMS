@@ -4,7 +4,7 @@ description: Plan channel-documents, steps KD1 to KD5: the server (write in a ch
 ---
 
 ## Which steps are there?
-- KD1 (M) first: the server.
+- KD1 (M) first: the server. Done: PR #10742.
   - `includes/workspace/notes.php`: `ws_note_access()` reads a channel row's `can_edit`; the save touches the cards' messages; `ws_note_channel_write_check()` and `ws_note_channel_write()`, shared by the panel and the API; the panel actions `ws_note_channel_write` and `ws_note_channel_edit` (the switch).
   - New `includes/workspace/api_channel_notes.php` (the route, its dry run through the check); `ws_api_message_note_card()` gains the three fields; `php tools/check_api_schema.php`.
   - Tests, red first: access by owner, person share and channel share, each with and without `can_edit` and the right to post; the touch; the Markdown rules; the refusals (locked, may not post, too long). Features: N2 to N7.
