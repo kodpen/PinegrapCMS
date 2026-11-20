@@ -10,8 +10,8 @@ description: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console age
 
 ## What is built?
 - (U15) The key as one token (step AA4) is what a vault's bearer entry carries. The application's own key acts as the application, so the agent's call reads as the agent, never as a person.
-- (U16) The agent's own routes are MCP tools only for an active application agent's own key: the instructions, the request list, claim, brief, answer, fail, progress, report and the wake schedule. An OAuth connection, a device session and a key with no active agent never see them; a test holds each. They carry `'mcp' => false` today because a person's connection must not answer as the agent.
-- (U17) The agent's instructions and the start text name a second sending form beside `-u`: the two headers, or the single token, for an environment where a secret is put in only when sent word for word. `-u` stays the default. The instructions' version changes.
+- (U16) The agent's own routes are MCP tools only for an active application agent's own key: the instructions, the request list, claim, brief, answer, fail, progress, report and the wake schedule. An OAuth connection, a device session and a key with no active agent never see them; a test holds each. Built in AA7a (#10867) as `'mcp' => 'agent'`: `api/mcp-agent-own-tools.md`.
+- (U17) The agent's instructions and the start text name a second sending form beside `-u`: the two headers, or the single token, for an environment where a secret is put in only when sent word for word. `-u` stays the default. The instructions' version changes. Built in AA7a (#10867).
 - (U18) The guide "Claude Console" in `api_app_guides()`: the vault entry, the MCP server's address, the site's host among the allowed hosts, the start text as the agent's system prompt, the scheduled run as how it wakes. Its first line says it follows Anthropic's pages as read on that date and that the product is in beta. An OAuth connection is not offered there: it acts as the person.
 
 ## How does a Console agent wake?

@@ -127,7 +127,7 @@ function test_workspace_agent_instructions_parts_in_order()
 	pg_assert_contains('- #all-talk (id 40): every message.', $text, 'all');
 	pg_assert_contains('- #review (id 41): a message that names @mimar, or a reply to one of your own messages.', $text, 'replies');
 
-	$order = array('You are ', 'Your channels', 'How you wait', '/claim', '/brief', '{"no_answer": true}', '/fail', '409 edited', 'A wake request', 'Never:', 'two sessions on one key', 'GET /workspace/agent-instructions', 'Rules:');
+	$order = array('You are ', 'Your channels', 'How you wait', '1. POST /workspace/agent-requests/{id}/claim', '/brief', '{"no_answer": true}', '/fail', '409 edited', 'A wake request', 'Never:', 'two sessions on one key', 'GET /workspace/agent-instructions', 'Rules:');
 	$at = -1;
 
 	foreach ($order as $part) {
