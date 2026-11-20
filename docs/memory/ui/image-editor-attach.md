@@ -6,7 +6,8 @@ module: image_editor
 
 ## Where does an attachment live?
 - On the follower: `l.att` is the target layer's id or `group:<gid>`. Nothing elsewhere, no schema; a document without `att` opens and draws as before. The server's draw knows the field (`pg_image_draw_known()`) and draws the follower where it stands.
-- Code: the ATTACH section of `pg_image_editor_model.js`; the editor side in `pg_image_editor_layers.js` (`attachOffer()`, `attachLabel()`, `attachLayer()`), the menu, the Path tab (`attachField()` in keyframes), the core's `change()`. Labels in `pg_image_editor_strings_layers()`. Built in GC2 of `plans/design-canvas-groups.md`, the manual follow the owner asked for (`workflow/decisions-made-product-80.md`).
+- Code: the ATTACH section of `pg_image_editor_model.js`; the editor side in `pg_image_editor_layers.js` (`attachOffer()`, `attachLabel()`, `attachLayer()`), the menu, the Path tab (`attachField()` in keyframes), the core's `change()`. Labels in `pg_image_editor_strings_layers()`. Built in #10593.
+- Owner (2026-11-20): "bir vektör diğerini takip edebilsin ... gruplandırılmış mantığı manuel olabilir nesne takibinde": a manual follow, nothing searched in pixels (`workflow/decisions-made-product-80.md`).
 
 ## What does a follower do while the animation plays?
 - `M.groupMotionAt()` composes, for every moment: its own motion, then its target's move, turn and size round the target's centre (`attachOver()`), then its own groups' keys. The target's entrance, loop, exit, keys and its groups' keys all count; its opacity, wipe and letters never.

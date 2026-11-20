@@ -1,11 +1,12 @@
 ---
 name: image-editor-select
-description: How the Design Canvas picks layers: Select's click, Shift, box, Select all, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
+description: How the Design Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 ---
 
 ## How are several layers selected?
 - A click selects one layer, Shift and a click adds or removes one; Ctrl+A, or Select all above the layers list (two layers or more), selects every layer (`selectAll()`, `pg_image_editor_layers.js`). Select all is there for touch screens, which have no Shift or Ctrl+A.
 - A drag from an empty spot draws a box (`.pgie-marquee`) that selects the visible, unlocked layers it touches, a turned layer by its drawn upright bounds (`M.layersInBox()`); Shift keeps the selection and adds them. A box under 3 screen px is a click: it clears the selection. A second finger (the pan) gives back the selection from before the box. The box works with one finger on a phone (#6613).
+- A press on a grouped layer picks its outermost group, a click on the picked group the item one level in; Shift and the box take whole groups (`image-editor-groups.md`).
 - On a photo with its picture unlocked, a press on the picture selects and moves the picture (`image-editor-picture-layer.md`): a box starts outside it.
 
 ## Why does a press inside an outline shape take it?
@@ -14,7 +15,7 @@ description: How the Design Canvas picks layers: Select's click, Shift, box, Sel
 ## How is a layer selected from another tool?
 - Ctrl held (Cmd on a Mac, where Ctrl and a click is the context menu) makes a press Select's press in every tool: it selects, Shift adds, a drag moves or draws the box; the tool and its panel stay (`M.pressSelects()`, `Editor.selectPresses`, `pressOn()` in `pg_image_editor.js`; #9965).
 - Refused, the press staying the tool's: cropping, typing a text, placing a path (Pen) or a polygon (Select area), editing a path's points, recording a move.
-- While the key is held a tool that does not show the selection draws its box and handles (`selectShown()`). The stage has no cursor per tool, so the pointer is already Select's arrow.
+- While the key is held a tool that does not show the selection draws its box and handles (`selectShown()`).
 - The Layers list selects in every tool and the tool stays; before, a tool outside `Editor.selectTools` became Select.
 
 ## What does a plain click on a layer do in each tool?
