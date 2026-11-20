@@ -161,3 +161,120 @@ function test_product_form_uploads_field_type_offered_on_product_forms()
 	pg_assert_contains('value="file upload"', select_field_type('', 'product'), 'the type list of a product form has no File Upload');
 	pg_assert_contains('value="file upload"', select_field_type('', 'product_group'), 'the type list of a variant set has no File Upload');
 }
+
+function pfu_test_cart($id, $status, $touched, $file_touch = 0)
+{
+	return array('id' => (string) $id, 'status' => $status, 'order_date' => (string) $touched, 'last_modified_timestamp' => (string) $touched, 'file_touch' => (string) $file_touch);
+}
+
+function test_product_form_uploads_sweep_takes_only_unordered_carts_past_30_days()
+{
+	$now = 1800000000;
+	$day = 86400;
+
+	pg_assert_same(30, PG_PFU_SWEEP_DAYS, 'the sweep does not wait the 30 days the owner chose');
+
+	$carts = array(
+		pfu_test_cart(1, 'incomplete', $now - 31 * $day),
+		pfu_test_cart(2, 'incomplete', $now - 29 * $day),
+		pfu_test_cart(3, 'complete', $now - 400 * $day),
+		pfu_test_cart(4, 'exported', $now - 400 * $day),
+		pfu_test_cart(5, 'cancelled', $now - 400 * $day),
+		pfu_test_cart(6, 'incomplete', $now - 30 * $day),
+		// Started long ago, but a file came in last week: the cart was touched then.
+		pfu_test_cart(7, 'incomplete', $now - 90 * $day, $now - 7 * $day),
+		pfu_test_cart(8, 'incomplete', 0),
+	);
+
+	pg_assert_same(array(1, 6), pg_pfu_sweep_pick($carts, $now), 'the sweep picked the wrong carts');
+	pg_assert_true(pg_pfu_sweep_chosen(pfu_test_cart(1, 'incomplete', $now - 31 * $day), $now), 'an unordered cart past 30 days was kept');
+	pg_assert_false(pg_pfu_sweep_chosen(pfu_test_cart(2, 'incomplete', $now - 29 * $day), $now), 'a cart inside 30 days was swept');
+	pg_assert_false(pg_pfu_sweep_chosen(pfu_test_cart(3, 'complete', $now - 400 * $day), $now), 'an order was swept');
+
+	$last = pfu_test_cart(9, 'incomplete', $now - 90 * $day, $now - 2 * $day);
+	$last['last_modified_timestamp'] = (string) ($now - 5 * $day);
+	pg_assert_same($now - 2 * $day, pg_pfu_sweep_last_touch($last), 'the last touch is not the newest of the cart and its files');
+}
+
+function test_product_form_uploads_sweep_statements_recheck_the_order()
+{
+	$where = pg_pfu_sweep_where(array(5, '7', 0, -1), 1700000000);
+
+	pg_assert_true(strpos($where, "status = 'incomplete'") !== false, 'the remove condition does not check the cart is still unordered');
+	pg_assert_true(strpos($where, "1700000000") !== false, 'the remove condition does not check the cutoff again');
+	pg_assert_true(strpos($where, 'IN (5, 7)') !== false, 'the remove condition names the wrong carts');
+	pg_assert_true(strpos($where, 'form_data.order_item_id > 0') !== false, 'the remove condition reaches beyond cart answers');
+	pg_assert_same('', pg_pfu_sweep_where(array(0, -3), 1700000000), 'a condition without carts was built');
+
+	pg_assert_true(strpos(pg_pfu_sweep_walk_sql(40, 200), "> '40'") !== false, 'the walk does not go on after the last cart');
+	pg_assert_same('', pg_pfu_sweep_carts_sql(array()), 'a cart read without ids was built');
+}
+
+function test_product_form_uploads_sweep_runs_once_a_day_and_resumes()
+{
+	$now = 1800000000;
+
+	pg_assert_true(pg_pfu_sweep_due_at(pg_pfu_sweep_state(null), $now), 'a sweep that never ran is not due');
+	pg_assert_false(pg_pfu_sweep_due_at(array('after_id' => 0, 'done_at' => $now - 3600), $now), 'a sweep ran twice in a day');
+	pg_assert_true(pg_pfu_sweep_due_at(array('after_id' => 0, 'done_at' => $now - 86400), $now), 'a day-old sweep is not due');
+	pg_assert_true(pg_pfu_sweep_due_at(array('after_id' => 12, 'done_at' => $now - 60), $now), 'a sweep under way does not carry on');
+
+	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
+	pg_assert_true(strpos($job, 'pg_pfu_sweep_run(') !== false, 'the general job does not run the sweep');
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+	$start = strpos($module, 'function pg_pfu_sweep_run(');
+	pg_assert_true(($start !== false) && (strpos(substr($module, $start, 4000), 'pg_pfu_remove_files_where(') !== false), 'the sweep does not delete through the one remove function');
+}
+
+function test_product_form_uploads_cart_step()
+{
+	$sent = pfu_test_upload('mug.jpg');
+
+	pg_assert_same('place', pg_pfu_cart_file_step($sent, false, ''), 'a new file is not placed');
+	pg_assert_same('place', pg_pfu_cart_file_step($sent, true, ''), 'Remove beat a new file');
+	pg_assert_same('refuse', pg_pfu_cart_file_step($sent, false, 'no'), 'a refused file was placed');
+	pg_assert_same('keep', pg_pfu_cart_file_step(pfu_test_upload('', 0, UPLOAD_ERR_NO_FILE), false, ''), 'no file sent dropped the kept one');
+	pg_assert_same('keep', pg_pfu_cart_file_step(null, false, ''), 'a page without multipart dropped the kept one');
+	pg_assert_same('remove', pg_pfu_cart_file_step(pfu_test_upload('', 0, UPLOAD_ERR_NO_FILE), true, ''), 'the Remove check did nothing');
+	pg_assert_same('keep', pg_pfu_cart_file_step(array('name' => array('a.jpg'), 'error' => array(0), 'tmp_name' => array('/tmp/x')), false, ''), 'a list of files was placed');
+	pg_assert_same('order_item_4_quantity_number_1_form_field_9_remove', pg_pfu_remove_name('order_item_4_quantity_number_1_form_field_9'));
+	pg_assert_same(0, preg_match('/^order_item_(\d+)_quantity_number_(\d+)_form_field_(\d+)$/', pg_pfu_remove_name('order_item_4_quantity_number_1_form_field_9')), 'the check reads as an answer');
+}
+
+function test_product_form_uploads_unit_belongs_to_the_line()
+{
+	pg_assert_true(pg_pfu_unit_in_line(3, 3, 'One Form per Quantity'), 'the last unit was refused');
+	pg_assert_false(pg_pfu_unit_in_line(4, 3, 'One Form per Quantity'), 'a unit above the quantity took a file');
+	pg_assert_false(pg_pfu_unit_in_line(0, 3, 'One Form per Quantity'), 'unit 0 took a file');
+	pg_assert_true(pg_pfu_unit_in_line(1, 5, 'One Form per Product'), 'the one form of the line was refused');
+	pg_assert_false(pg_pfu_unit_in_line(2, 5, 'One Form per Product'), 'a form per product took a second file');
+	pg_assert_false(pg_pfu_unit_in_line(1, 0, 'One Form per Product'), 'an empty line took a file');
+}
+
+function test_product_form_uploads_kept_file()
+{
+	$kept = pg_pfu_kept_file(array('data' => 'mug-3.png', 'file_id' => 12, 'file_size' => 3 * 1024 * 1024), '/');
+	pg_assert_same(array('mug-3.png', '3.0 MB', '/mug-3.png', '/mug-3.png'), array($kept['name'], $kept['size'], $kept['url'], $kept['image_url']));
+	pg_assert_same('', pg_pfu_kept_file(array('data' => 'print.pdf', 'file_id' => 4), '/site/')['image_url'], 'a PDF got a preview');
+	pg_assert_same(array(), pg_pfu_kept_file(array('data' => 'old.jpg', 'file_id' => 0), '/'), 'a name saved as text was shown as a file');
+	pg_assert_same('a.jpg', pg_pfu_kept_file(array('data' => '../../a.jpg', 'file_id' => 1), '/')['name'], 'a path stayed in the name');
+}
+
+function test_product_form_uploads_cart_action_paths()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/cart_action.php');
+	$init = strpos($src, "include('init.php');");
+	$discarded = strpos($src, 'if (pg_post_body_discarded())');
+	pg_assert_true(($discarded !== false) && ($discarded > $init) && ($discarded < strpos($src, 'validate_token_field();')), 'the discarded body is not read before the token');
+
+	$file_branch = strpos($src, "if (\$f_type === 'file upload')");
+	pg_assert_true(($file_branch !== false) && ($file_branch < strpos($src, 'DELETE FROM form_data')), 'an upload is rewritten as text before its own branch');
+	pg_assert_contains('pg_pfu_cart_save(', $src);
+	pg_assert_contains('pg_pfu_drop_units_above($iid, $q)', $src, 'a lowered quantity keeps its files');
+
+	$cart = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+	pg_assert_same(1, preg_match('/class="pg-cart-update-form"/', $cart));
+	pg_assert_contains('enctype="multipart/form-data" class="pg-cart-update-form"', $cart, 'the cart form is not multipart');
+	pg_assert_same(2, substr_count($cart, 'enctype="multipart/form-data" class="pg-eo-form"'), 'an express order form is not multipart');
+}

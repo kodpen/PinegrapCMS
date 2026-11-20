@@ -16936,6 +16936,8 @@ const StyleDesigner = (function () {
             __field_is_info: '', __field_has_info: '', __field_info_html: '', __field_control: 'input', __field_required: '1',
             __field_name: 'monogram', __field_id: 'monogram', __field_type: 'text box', __field_maxlength: '3',
             __field_rows: '', __field_cols: '', __field_multiple: '', __field_file: '',
+            __field_file_size: '', __field_file_url: '', __field_file_image: '', __field_file_remove: '',
+            __field_control_required: '1', __field_error: '',
             __option_label: _sdT('Navy'), __option_value: 'navy', __option_id: 'thread-navy', __option_name: 'thread',
             __option_type: 'radio', __option_checked: '1', __option_required: '',
             // A gift card of a line (order.item_gift_cards, cart.item_gift_cards).
@@ -27831,8 +27833,8 @@ const StyleDesigner = (function () {
         if (ctrl.classList.contains('sd-seg-src')) {
             ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
         }
-        // The spacing rows are hidden behind the spacing box: it stands in.
-        var _spRows = ctrl.closest('.sd-sp-rows');
+        // The spacing and radius rows are hidden behind their box: it stands in.
+        var _spRows = ctrl.closest('.sd-sp-rows, .sd-rd-rows');
         if (_spRows) ctrl = _spRows.parentNode.querySelector('.sd-spb-host') || _spRows.parentNode;
         var _hidden = ctrl.closest('.sd-sect-body');
         if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
@@ -47848,15 +47850,27 @@ const StyleDesigner = (function () {
         var controls = ['input', 'textarea', 'select', 'choice', 'file'].map(function (k) { return _sdPartCartFormControl(k); });
         var star = _sdPartWhen('__field_required', 'not_empty');
         star.text = '*';
+        var preview = _sdPartWhen('__field_file_image', 'not_empty');
+        preview._attrs = [{ name: 'src', value: '^^__field_file_image^^' }, { name: 'alt', value: '^^__field_file^^' }];
+        var link = _sdPartValue('__field_file', 'file.pdf');
+        link._attrs = [{ name: 'href', value: '^^__field_file_url^^' }, { name: 'target', value: '_blank' }, { name: 'rel', value: 'noopener' }];
         var field = _sdPartEl('div', 'mb-3', _sdT('Field'), _sdPartWhen('__field_is_info', 'empty'), [
             _sdPartEl('label', 'form-label', _sdT('Label'), {}, [
                 _sdPartEl('span', '', _sdT('Text'), _sdPartValue('__field_label', _sdT('Label'))),
                 _sdPartEl('span', 'text-danger', _sdT('Required mark'), star)
             ])
         ].concat(controls, [
-            _sdPartEl('div', 'form-text small', _sdT('Current file'), _sdPartWhen('__field_file', 'not_empty'), [
+            _sdPartEl('div', 'invalid-feedback d-block', _sdT('Message'), _sdPartValue('__field_error', _sdT('Message'), 'not_empty')),
+            _sdPartEl('div', 'form-text small pg-cart-item-file', _sdT('Current file'), _sdPartWhen('__field_file', 'not_empty'), [
+                _sdPartEl('img', 'pg-cart-item-file-preview d-block rounded border mb-1', _sdT('Preview'), preview),
                 _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Current file:') }),
-                _sdPartEl('span', '', _sdT('File name'), _sdPartValue('__field_file', 'file.pdf'))
+                _sdPartEl('a', '', _sdT('File name'), link),
+                _sdPartEl('span', 'text-muted', _sdT('Size'), _sdPartValue('__field_file_size', '120 KB', 'not_empty')),
+                _sdPartEl('span', '', _sdT('Replace'), { text: _sdT('Choose another file to replace it.') }),
+                _sdPartEl('div', 'form-check', _sdT('Remove'), {}, [
+                    _sdPartEl('input', 'form-check-input', _sdT('Remove'), { _bindings: { value: 'form_field_file_remove' } }),
+                    _sdPartEl('label', 'form-check-label', _sdT('Label'), { text: _sdT('Remove') })
+                ])
             ])
         ]));
         var infoText = _sdPartWhen('__field_has_info', 'not_empty');
@@ -48943,6 +48957,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['schedule_start',          _sdT('Payment schedule: start date')]);
                 vOpts.push(['form_field',              _sdT('Product form: the field\'s text box, text area or pick list (cart.item_form_fields)')]);
                 vOpts.push(['form_field_file',         _sdT('Product form: the field\'s file upload (cart.item_form_fields)')]);
+                vOpts.push(['form_field_file_remove',  _sdT('Product form: the Remove check of the field\'s kept file (cart.item_form_fields)')]);
                 vOpts.push(['form_field_option',       _sdT('Product form: one choice of the field (cart.item_form_field_options)')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
@@ -55545,17 +55560,24 @@ const StyleDesigner = (function () {
         };
     }
 
-    // Draws the box once the panel is drawn. While its section is closed
-    // (search mode builds closed bodies) the part waits for the head to
+    // Draws the spacing box and the corners (Style › Border and corner,
+    // data-sd-rdbox) once the panel is drawn. While a section is closed
+    // (search mode builds closed bodies) the part waits for its head to
     // open it before it is loaded for the first time.
     function _sdSpBoxBind(nodes) {
         var panel = document.getElementById('sd-properties');
-        var el = panel ? panel.querySelector('[data-sd-spbox]') : null;
-        if (!el || !nodes.length || !nodes[0]) return;
+        if (!panel || !nodes.length || !nodes[0]) return;
+        var el = panel.querySelector('[data-sd-spbox]');
+        if (el) _sdSpBoxBindOne(el, nodes, function (host) { return _sdPartCall('spacing', 'draw', [host]); });
+        var rd = panel.querySelector('[data-sd-rdbox]');
+        if (rd) _sdSpBoxBindOne(rd, nodes, function (host) { return _sdPartCall('spacing', 'corners', [host]); });
+    }
+
+    function _sdSpBoxBindOne(el, nodes, call) {
         var draw = function () {
             if (!el.isConnected) return;
             var host = _sdSpBoxHost(el, nodes);
-            _sdPartCall('spacing', 'draw', [host]).catch(_sdPartFailed);
+            call(host).catch(_sdPartFailed);
         };
         var sectBody = el.closest('.sd-sect-body');
         var hdr = sectBody ? sectBody.previousElementSibling : null;
@@ -56014,15 +56036,22 @@ const StyleDesigner = (function () {
         function _radList(prefix) {
             return _radSizes.map(function (n) { return prefix + n; });
         }
+        // The corners are one drawing (data-sd-rdbox, drawn by the part
+        // 'spacing' as the spacing box is); today's five radius rows stay
+        // in the body, hidden, so the section's count, the row reset and
+        // the search read them as before.
         var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
             row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
+            '<div class="sd-spb-host sd-rdb-host sd-bm-wrap" data-sd-rdbox></div>' +
+            '<div class="sd-rd-rows" hidden>' +
             row(_sdT('Radius'), selStyleGroup(n.props, ['rounded-0','rounded-1','rounded-2','rounded-3','rounded-4','rounded-5','rounded-circle','rounded-pill'], 'Default')) +
             row(_sdT('Top Radius'),    selStyleGroup(n.props, _radList('rounded-top-'),    'Default')) +
             row(_sdT('Right Radius'),  selStyleGroup(n.props, _radList('rounded-end-'),    'Default')) +
             row(_sdT('Bottom Radius'), selStyleGroup(n.props, _radList('rounded-bottom-'), 'Default')) +
-            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')),
+            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')) +
+            '</div>',
             _sdT('Border')
         );
 
@@ -65620,7 +65649,13 @@ const StyleDesigner = (function () {
                 ['__field_cols',         _sdT('Columns')],
                 ['__field_multiple',     _sdT('Several choices (1 or empty)')],
                 ['__field_options_html', _sdT('Choices of the pick list (HTML)')],
-                ['__field_file',         _sdT('Current file')]
+                ['__field_file',         _sdT('Current file')],
+                ['__field_file_size',    _sdT('Size of the current file')],
+                ['__field_file_url',     _sdT('Address of the current file')],
+                ['__field_file_image',   _sdT('Preview of the current file (an image\'s address, or empty)')],
+                ['__field_file_remove',  _sdT('Name of the Remove check of the current file')],
+                ['__field_control_required', _sdT('The control is required (1 or empty; not with a kept file)')],
+                ['__field_error',        _sdT('Message of the last save')]
             ]
         },
         'cart.item_form_field_options': {

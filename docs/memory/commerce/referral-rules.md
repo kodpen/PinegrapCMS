@@ -14,7 +14,7 @@ module: referral
 
 ## When is a reward given?
 - At completion, beside `pg_order_complete_commission()`, only when the order earned no affiliate commission: `pg_referral_order_completed()`.
-- The checks are one pure function, `pg_referral_check()`, first failure wins: off, code (bad signature), affiliate (an approved affiliate holds the code), referrer (no account, an approved affiliate, or no order complete/exported), self (same account, contact, or folded e-mail: lower case, no +tag, Gmail dots), friend (an earlier complete/exported order by account, else billing e-mail), smallest, month.
+- The checks are one pure function, `pg_referral_check()`, first failure wins: off, code, affiliate, referrer, self, friend, smallest, month; what each reads: `referral-checks.md`.
 - The order's value: `pg_referral_order_value()`: total + gift card discount − surcharge − everything refunded (`pg_referral_refunded_total()`: the larger of the `order_refunds` sum and `refunded_amount`). An order of 0 never counts.
 - The month's room: every check and write runs under `GET_LOCK('pg_referral_<contact id>')`, so two orders at once cannot pass the cap or reward one order twice. Every referral row of the code since the month's first moment counts, a taken-back one too, so a restore never goes over the cap.
 - Then `pg_credit_issue()` kind `referral` (named "Referral"), reason "Referral: order #N", notes' first line `Referral reward of order <id>` (`pg_referral_card_marker()`, how the take-back finds the card), and the row `paid`.

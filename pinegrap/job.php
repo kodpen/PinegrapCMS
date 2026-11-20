@@ -963,6 +963,24 @@ if (pg_price_history_trim_due()) {
     }
 }
 
+// The uploaded files of carts that never became an order, 30 days after the
+// cart's last touch (pg_pfu_sweep_run()); an order's files are never swept.
+// Once a day, five seconds a tick until the pass is through. A tick with
+// nothing due reads one small file.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
+if (pg_pfu_sweep_due()) {
+
+    $pfu_sweep = pg_pfu_sweep_run(PG_PFU_SWEEP_BUDGET);
+
+    if ($pfu_sweep['files'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} uploaded file(s) of {var:2} cart(s) left unordered for {var:3} days',
+            'vars'   => array(pg_format_number($pfu_sweep['files'], 0), pg_format_number($pfu_sweep['carts'], 0), PG_PFU_SWEEP_DAYS),
+        )), 'UNKNOWN');
+    }
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a

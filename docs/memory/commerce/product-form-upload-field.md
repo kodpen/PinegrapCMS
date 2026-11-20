@@ -17,7 +17,7 @@ module: product_form_uploads
 - Not in the `functions.php` manifest: every caller loads it with `require_once`.
 - `pg_pfu_rule_clean()` reads the rule; `pg_pfu_file_refusal($upload, $rule, $file_max)` gives the message for an upload error, a blocked name, a type the field does not take or a file over `pg_pfu_size_cap()` ('' when fine or no file).
 - `pg_pfu_place()` copies through `pg_cf_place_upload()` into a files row with `attachment = 1` in the field's folder; `pg_pfu_keep()` writes the unit's answer (data = file name, `form_data.file_id`) and deletes the file the answer held before.
-- The cart widgets and pages (FU2, FU3) call these; FU1 builds none of the shopper's screens.
+- The designer cart's save calls them through `pg_pfu_cart_save()` (FU2, #10641; `commerce/cart-product-form-file-field.md`); the classic cart and express order pages come with FU3.
 
 ## Who opens the file?
 - `get_file.php`, its own block before the folder's check: a file with `attachment = 1` held by a product answer (`form_id = 0`, `order_item_id > 0`; `pg_pfu_file_lines()`) opens for the session's cart (`$_SESSION['ecommerce']['order_id']`), the signed-in buyer (`orders.user_id`) and staff with role below 3 or the commerce right (`pg_pfu_access_verdict()`), whatever the folder allows.
@@ -27,5 +27,6 @@ module: product_form_uploads
 ## What deletes the files?
 - `pg_pfu_remove_line_files()` before the answers go in `remove_order_item()`, `pg_order_drop_saved_lines()` and `remove_item_from_cart.php`; `pg_pfu_remove_order_files()` in `delete_order()`; `pg_pfu_remove_unit_files($line, $quantity)` for a lowered quantity (called by FU2/FU3).
 - A file another answer still holds is kept (`pg_pfu_files_to_remove()`). Pinned by `tests/product_form_uploads_test.php`.
+- A cart that never became an order loses its files 30 days after its last touch: `commerce/product-form-upload-sweep.md`.
 
 Related: commerce/cart-product-form-file-field.md, platform/custom-form-upload-placement.md, plans/product-form-uploads.md

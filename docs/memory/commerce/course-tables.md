@@ -1,6 +1,6 @@
 ---
 name: course-tables
-description: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
+description: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 module: courses
 ---
 
@@ -23,8 +23,7 @@ module: courses
 - Days are calendar days (`pg_calendar_days_later()` from noon of the enrolment day). A member with no enrolment day yet counts from today, the day the first open is written.
 
 ## What is the enrolment day?
-- The day of the member's first counting order (status complete or exported) with a line that opens the course's folder; else the first-open row's day. Cancelled and incomplete orders do not count.
-- No row names an order: owner (2026-11-05, #7204) refused a grants-per-order table, so the day is read from the orders each time.
+- The day of the first counting order that opens the course's folder, else the first-open row's day: `course-enrolment-day.md`.
 
 ## What is the certificate's code?
 - `pg_course_certificate_code()`: course, member and completion moment in base 36, then 12 hex of an HMAC with `ENCRYPTION_KEY`; nothing more is stored. `pg_course_certificate_parse()` reads it back in any letter case and refuses any changed part; the caller still checks the completion row exists.
