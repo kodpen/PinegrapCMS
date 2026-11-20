@@ -4741,6 +4741,13 @@ const StyleDesigner = (function () {
                 return;
             }
 
+            // P — the Prototype view with the selected element's link picked
+            // (PGProtoHotspots.backKey() says where the key is left alone).
+            if (window.PGProtoHotspots && window.PGProtoHotspots.backKey(e) && _sdProtoBack()) {
+                e.preventDefault();
+                return;
+            }
+
             // An element picked inside a text: Delete removes that element,
             // not the whole text, and Escape goes back to the text.
             if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && _sdTextInnerKey(e)) return;
@@ -75683,6 +75690,11 @@ const StyleDesigner = (function () {
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
+        // The link the key back asked for (_sdProtoBack()), once this
+        // drawing is the one of the load it opened.
+        var goTo = _sdProto.goTo;
+        _sdProto.goTo = null;
+        if (goTo && goTo.seq === _sdProto.seq) _sdProtoBackPick(goTo.spot);
     }
 
     // ── The page picture (F1, F3) ──
@@ -76802,6 +76814,9 @@ const StyleDesigner = (function () {
             return;
         }
 
+        // Kept for the key back (_sdProtoBack()): which of a menu's items or
+        // a text's links was opened, which the selection alone cannot say.
+        _sdProto.back = window.PGProtoHotspots.linkSpot(_sdProto.layout, frameId, port);
         _sdProtoClose();
         if (key && key !== _activeKey) _pgTabsSwitch(key);
 
@@ -76815,6 +76830,71 @@ const StyleDesigner = (function () {
             renderProperties();
             scrollCanvasToNode(node);
         }, 0);
+    }
+
+    // The key back (P, PGProtoHotspots.backKey()): the Prototype view opened,
+    // or kept open, with the selected element's link picked and its frame in
+    // sight. The spot is the selection's (_sdProtoBackSpot()); with nothing
+    // selected, or the same element as the link last opened from the view
+    // with no link picked inside it, the one opened (_sdProtoOpenRow()). A
+    // view still loading picks once the drawing of its load is done. False
+    // where the editor has no Prototype view (an e-mail design), so the key
+    // is left alone.
+    function _sdProtoBack() {
+        if (document.body.classList.contains('sd-email-design')) return false;
+        var spot = _sdProtoBackSpot();
+        var back = _sdProto.back;
+        if (back && (!spot || (spot.index < 0 && spot.frame === back.frame && spot.nodeId === back.nodeId))) spot = back;
+        if (_sdProto.open) {
+            if (spot) _sdProtoBackPick(spot);
+            return true;
+        }
+        _sdProtoOpen();
+        if (_sdProto.open) _sdProto.goTo = { spot: spot, seq: _sdProto.seq };
+        return true;
+    }
+
+    // Where the selection stands in the view: { frame (the open page's, or
+    // the shared component's the element lives in), nodeId, index (a link
+    // picked inside a text, by its place among the text's links; -1 for
+    // none), nth: -1 }; a placed shared component stands for its own frame.
+    // Null with nothing selected.
+    function _sdProtoBackSpot() {
+        var node = selectedNode;
+        if (!node || node === tree || node._id === undefined) return null;
+        var props = node.props || {};
+        if (node.type === 'shared_ref' && parseInt(props.sharedId, 10) > 0) {
+            return { frame: 's:' + parseInt(props.sharedId, 10), nodeId: '', index: -1, nth: -1 };
+        }
+        var owner = _sdAnyParent(node);
+        var sid = owner ? owner.sid : 0;
+        var index = -1;
+        var s = _sdInnerSel();
+        if (s && s.el) {
+            var a = s.el.closest('a[href]') || s.el.querySelector('a[href]');
+            if (a) index = _sdLinkIndexOf(s.root, a);
+        }
+        return { frame: sid ? 's:' + sid : 'p:' + _activeKey, nodeId: String(node._id), index: index, nth: -1 };
+    }
+
+    // The spot's link picked as a click on its mark picks it, its frame
+    // brought into view and named; a spot with no link selects its frame.
+    function _sdProtoBackPick(spot) {
+        var canvas = _sdProto.canvas;
+        var to = window.PGProtoHotspots.backTo(_sdProto.layout, spot);
+        var item = to ? _sdProto.byId[to.frame] : null;
+        if (!canvas || !item) return;
+        if (to.port === null) {
+            _sdProto.link = null;
+            _sdProtoPicked();
+            _sdProtoListDraw();
+            canvas.focus(to.frame);
+        } else {
+            _sdProtoPick(to.frame, to.port, true);
+        }
+        canvas.view.reveal(item);
+        var row = _sdProtoRow(item, to.port);
+        if (row) canvas.announce(_sdT('{var:1}: the link “{var:2}” is picked', [_sdProtoFrameName(item), row.from ? row.from + ' › ' + row.label : row.label]));
     }
 
     // ── Live preview ──
@@ -83783,6 +83863,7 @@ const StyleDesigner = (function () {
                 { title: _sdT('View & Preview'), rows: [
                     ['Ctrl+Shift+P',        _sdT('Command palette')],
                     ['Ctrl+Alt+P',          _sdT('Preview in a new window')],
+                    ['P',                   _sdT('Show the selected link in the Prototype view')],
                     ['Ctrl++  /  Ctrl+-',   _sdT('Zoom the canvas in / out')],
                     ['Ctrl+0',              _sdT('Reset the canvas zoom')],
                     ['Ctrl+Wheel',          _sdT('Zoom with the mouse wheel')]
@@ -88310,6 +88391,19 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // The place of the link `a` among the <a href> of `el`, counted as
+    // _sdLinkNth() counts them; -1 when it is not one of them.
+    function _sdLinkIndexOf(el, a) {
+        var n = 0;
+        var links = el.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            if (links[i].closest(_SD_FX_CHROME)) continue;
+            if (links[i] === a) return n;
+            n++;
+        }
+        return -1;
+    }
+
     // The link field of the Options panel `panel`: a text's picked link,
     // the element's own address, the button of a link kept by page id back
     // to a typed address, or the notice of an address that is bound.
@@ -88696,6 +88790,12 @@ const StyleDesigner = (function () {
                 && !(e.target.closest && e.target.closest('dialog, .sd-note-overlay'))) {
                 e.preventDefault();
                 _collabOpenNote();
+                return;
+            }
+            // P — the Prototype view with the selected element's link picked,
+            // as from the canvas (_sdShortcutKeydown()).
+            if (window.PGProtoHotspots && window.PGProtoHotspots.backKey(e) && _sdProtoBack()) {
+                e.preventDefault();
                 return;
             }
             // View mode: the same guard as inside the canvas. Ctrl+S is left

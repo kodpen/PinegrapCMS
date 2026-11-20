@@ -2209,6 +2209,87 @@
         };
     }
 
+    // The editor's key back to the Prototype view: P alone (Shift and Caps
+    // Lock allowed). Nothing else uses a bare P in the editor; the palette's
+    // Ctrl+Shift+P and the preview's Ctrl+Alt+P carry modifiers.
+    var BACK_KEY = 'p';
+
+    // Where the key is typed or kept by what holds the focus: a dialog, a
+    // menu or list (whose letters jump to an item), a note being written,
+    // the code editor, the Prototype view itself (its own keys).
+    var BACK_SKIP = 'dialog, [role="dialog"], [role="menu"], [role="listbox"], .sd-note-overlay, .cm-editor, #sd-proto';
+
+    // Whether a keydown is the key back: P with no Ctrl, Alt or Meta, not
+    // held down, not part of an IME composition, not taken by an earlier
+    // listener, and not where it is typed (a field, a text written in) or
+    // kept (BACK_SKIP).
+    function backKey(event) {
+        if (!isObject(event) || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing || event.defaultPrevented) {
+            return false;
+        }
+
+        if (str(event.key).toLowerCase() !== BACK_KEY) {
+            return false;
+        }
+
+        var target = event.target;
+
+        if (!isObject(target)) {
+            return false;
+        }
+
+        var tag = str(target.tagName).toUpperCase();
+
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+            return false;
+        }
+
+        return !(typeof target.closest === 'function' && target.closest(BACK_SKIP));
+    }
+
+    // The spot of a row of the view, kept while the editor is open: { frame,
+    // nodeId, index (a text's link by its place in the text, -1 for any
+    // other source), nth (the row's place among its node's rows, which
+    // tells a menu's items apart) }; null when the frame or row is gone.
+    function linkSpot(laid, frameId, port) {
+        var frame = (laid && Array.isArray(laid.frames)) ? laid.frames.filter(function (f) { return f.id === frameId; })[0] : null;
+        var row = frame ? frame.rows.filter(function (r) { return r.port === port; })[0] : null;
+
+        if (!row) {
+            return null;
+        }
+
+        var same = frame.rows.filter(function (r) { return r.nodeId === row.nodeId; });
+
+        return { frame: frame.id, nodeId: row.nodeId, index: row.source === 'text' ? row.index : -1, nth: same.indexOf(row) };
+    }
+
+    // Where the key back takes the view for a spot (linkSpot() or the
+    // editor's selection): { frame, port } of the node's row, a text's
+    // link found by its index, a menu's item by its place, else the node's
+    // first row; port null for a node with no row (its frame alone); null
+    // for a frame the view does not draw.
+    function backTo(laid, spot) {
+        if (!isObject(spot) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var frame = laid.frames.filter(function (f) { return f.id === spot.frame; })[0];
+
+        if (!frame) {
+            return null;
+        }
+
+        var rows = frame.rows.filter(function (r) { return r.nodeId === spot.nodeId; });
+        var index = isFinite(spot.index) ? Number(spot.index) : -1;
+        var nth = isFinite(spot.nth) ? Number(spot.nth) : -1;
+        var row = (index >= 0 ? rows.filter(function (r) { return r.source === 'text' && r.index === index; })[0] : null)
+            || (nth >= 0 ? rows[nth] : null)
+            || rows[0];
+
+        return { frame: frame.id, port: row ? row.port : null };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -2634,6 +2715,10 @@
         problemsOf: problemsOf,
         canvasMarks: canvasMarks,
         canvasRequest: canvasRequest,
+        BACK_KEY: BACK_KEY,
+        backKey: backKey,
+        linkSpot: linkSpot,
+        backTo: backTo,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,
