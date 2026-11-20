@@ -321,6 +321,12 @@ function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '',
 
     if (!$given['ok']) {
         db("ROLLBACK");
+
+        // The first half wrote the total without the units it took. A
+        // products table still on MyISAM keeps that through the rollback,
+        // so the total is written again from the rows the rollback restored.
+        db(pg_stock_sum_sql($product_id));
+
         return $refuse($given['error']);
     }
 

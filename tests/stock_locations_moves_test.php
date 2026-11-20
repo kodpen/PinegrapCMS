@@ -207,3 +207,16 @@ function test_stock_moves_transfer_refuses_a_bundle()
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_stock_moves.php');
 	pg_assert_true(strpos($screen, "'bundle' => 'transfer_product'") !== false, 'the screen marks the product field');
 }
+
+function test_stock_moves_refused_transfer_writes_the_total_again()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+	$transfer = substr($source, strpos($source, 'function pg_stock_transfer('));
+	$transfer = substr($transfer, 0, strpos($transfer, "\n}\n"));
+	$given = substr($transfer, strpos($transfer, '$given = pg_stock_change('));
+	$refused = substr($given, 0, strpos($given, 'COMMIT'));
+
+	pg_assert_true(strpos($refused, 'ROLLBACK') !== false, 'a refused second half rolls both rows back');
+	pg_assert_true(strpos($refused, 'pg_stock_sum_sql($product_id)') > strpos($refused, 'ROLLBACK'),
+		'then the total is written again from the rows: a products table still MyISAM keeps the first half\'s sum through the rollback');
+}
