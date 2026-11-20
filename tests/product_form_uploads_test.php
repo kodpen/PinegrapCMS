@@ -269,6 +269,12 @@ function test_product_form_uploads_kept_file()
 	pg_assert_same('', pg_pfu_kept_file(array('data' => 'print.pdf', 'file_id' => 4), '/site/')['image_url'], 'a PDF got a preview');
 	pg_assert_same(array(), pg_pfu_kept_file(array('data' => 'old.jpg', 'file_id' => 0), '/'), 'a name saved as text was shown as a file');
 	pg_assert_same('a.jpg', pg_pfu_kept_file(array('data' => '../../a.jpg', 'file_id' => 1), '/')['name'], 'a path stayed in the name');
+
+	// The cart reads files.size through a LEFT JOIN: NULL is a file deleted
+	// from Files since, whose link would not open and whose required field
+	// would read as answered.
+	pg_assert_same(array(), pg_pfu_kept_file(array('data' => 'gone.jpg', 'file_id' => 9, 'file_size' => null), '/'), 'a file deleted from Files was shown as kept');
+	pg_assert_same('empty.txt', pg_pfu_kept_file(array('data' => 'empty.txt', 'file_id' => 9, 'file_size' => '0'), '/')['name'], 'an empty file was not shown');
 }
 
 function test_product_form_uploads_cart_action_paths()

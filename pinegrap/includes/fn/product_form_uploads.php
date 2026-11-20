@@ -956,9 +956,12 @@ function pg_pfu_unit_in_line($quantity_number, $quantity, $form_quantity_type)
 /**
  * A kept file as the cart shows it: its name, size, address and, for an
  * image, the same address for the preview. Empty when the answer holds no
- * file (an answer saved as text before uploads were stored has no file_id).
+ * file (an answer saved as text before uploads were stored has no file_id)
+ * or its file was deleted from Files since (file_size given as NULL by the
+ * reader's LEFT JOIN): its link would not open, and a required field would
+ * read as answered while checkout asks for the file again.
  *
- * @param array  $answer form_data file_id, data (the file name) and file_size (files.size)
+ * @param array  $answer form_data file_id, data (the file name) and file_size (files.size, NULL: no files row)
  * @param string $path   the site's path (PATH)
  * @return array name, size (text, '' when not known), url, image_url
  */
@@ -967,6 +970,10 @@ function pg_pfu_kept_file($answer, $path)
     $name = pg_basename(str_replace('\\', '/', (string) ($answer['data'] ?? '')));
 
     if (((int) ($answer['file_id'] ?? 0) <= 0) || ($name === '')) {
+        return array();
+    }
+
+    if (array_key_exists('file_size', (array) $answer) && ($answer['file_size'] === null)) {
         return array();
     }
 
