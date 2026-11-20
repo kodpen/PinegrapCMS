@@ -11507,6 +11507,96 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* Folded rows of a settings pane (includes/settings/fold.php; Assistants and
+   agents): one framed list, a row a part, its head a button with the icon
+   tile, the name over one line of state, the pill and a chevron. The card a
+   row holds is drawn by its own function: inside the row it loses its frame
+   and its heading, which the head already says; a heading holding a button
+   (Add an agent) keeps the button. */
+.pg-set-fold {
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-card);
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+}
+.pg-set-fold-item + .pg-set-fold-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-set-fold-item.is-open {
+  background: color-mix(in srgb, var(--pg-accent) 3%, transparent);
+}
+.pg-set-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.pg-set-fold-head:hover {
+  background: var(--pg-hover);
+}
+.pg-set-fold-head:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.pg-set-fold-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-set-fold-name {
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-set-fold-line {
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-set-fold-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+  transition: transform .15s ease;
+}
+.pg-set-fold-item.is-open .pg-set-fold-chevron {
+  transform: rotate(180deg);
+}
+.pg-set-fold-body {
+  padding: 2px 16px 18px 63px;
+}
+.pg-set-fold-body > .pg-set-card > .card {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header,
+.pg-set-fold-body > .pg-set-card > .card > .card-body {
+  padding-inline: 0;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:not(:has(button, a)) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header > :not(button, a, form) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:has(button, a) {
+  justify-content: flex-end;
+  padding-block: 0;
+}
+@media (max-width: 575.98px) {
+  .pg-set-fold-body { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-set-fold-chevron { transition: none; }
+}
 /* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
    tables straight under their section title. */
 .pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
