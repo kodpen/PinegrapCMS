@@ -192,13 +192,13 @@ function test_page_bundle_hold_four_refusals_ask_it()
 // that is an open experiment's variant is not added (B4).
 function test_page_bundle_add_refuses_experiments()
 {
-	$copy = pg_test_function_source('pg_page_bundle_add_copy');
+	$copy = pg_test_function_source('pg_page_bundle_add_copy_locked');
 	pg_assert_contains('pg_page_bundle_add_copy_check(', $copy, 'the copy runs its checks first');
 	pg_assert_contains('FROM experiments', pg_test_function_source('pg_page_bundle_add_copy_check'), 'the copy asks for an open experiment');
 	pg_assert_contains('duplicate_page(', $copy, 'copied as a variant is');
 	pg_assert_contains('page_drafts', $copy, 'and remembers the live page\'s folder');
 
-	$draft = pg_test_function_source('pg_page_bundle_add_draft');
+	$draft = pg_test_function_source('pg_page_bundle_add_draft_locked');
 	pg_assert_contains('pg_page_bundle_add_draft_check(', $draft, 'the draft runs its checks first');
 	pg_assert_contains('pg_experiment_variant_hold(', pg_test_function_source('pg_page_bundle_add_draft_check'), 'an open experiment\'s variant is refused');
 	pg_assert_contains('publish_at = 0', $draft, 'a publish time of its own is cleared');
@@ -228,7 +228,7 @@ function test_page_bundle_insert_item_reads_its_id_first_and_rechecks()
 	pg_assert_true($insert < $id && $id < $race && $id < $update, 'the id is read before any other query');
 	pg_assert_contains('DELETE FROM page_bundle_item', $source, 'a lost race takes its row back');
 
-	pg_assert_contains('pg_delete_page_record(', pg_test_function_source('pg_page_bundle_add_copy'), 'and the copy it made');
+	pg_assert_contains('pg_delete_page_record(', pg_test_function_source('pg_page_bundle_add_copy_locked'), 'and the copy it made');
 }
 
 function test_page_bundle_time_keeps_who_set_it()

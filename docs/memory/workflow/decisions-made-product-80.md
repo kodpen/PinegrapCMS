@@ -10,7 +10,7 @@ description: Decisions list, product part 80 (2026-11-20 on): Design Canvas grou
 - "tasarım tuvalinde gruplama gelecekti o özellik atlanmış."
 - "yerleşmiş bir vektör, nesne veya resim takip edilir olsun. yani bir vektör diğerini takip edebilsin (bir nesne yol olarak kaydırıldığında. videodakinden farklı olarak gruplandırılmış mantığı manuel olabilir nesne takibinde)".
 - Of Follow on a video: "takip yapılamıyor diye defalarca uyarı aldım küçük bir gemiyi takip edemedi."
-- The architect's reading, not his words: Group and Ungroup, "Attach to" a layer (no pixel search), the tracker reading a small thing larger; `plans/design-canvas-groups.md`.
+- The architect's reading, not his words: Group and Ungroup, "Attach to" a layer (no pixel search), the tracker reading a small thing larger; built in `ui/image-editor-groups.md`, `ui/image-editor-attach.md`, `ui/image-editor-follow.md`.
 
 ## How is the Workspace writing box laid out on a phone? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - With a picture of the narrow field: "workspace yazma alanı mobilde daralıyor ve gerçekten zorlayıcı oluyor. bunun yerine yazı alanı üstte alt taraf kanal araçları olabilir. (masaüstünde zaten o şekilde.)"

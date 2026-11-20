@@ -1,10 +1,10 @@
 ---
 name: office-files-scope
-description: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, .pptx only shown, no .doc/.ppt, .xls only shown and copied, no library; where the xlsx reader may go next
+description: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next
 ---
 
 ## What does "simple editing" mean?
-- Cell edits in a workbook (`office-cell-edits.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19). An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
+- Cell edits and one inserted or deleted row or column at a time in a workbook (`office-cell-edits.md`, `office-sheet-rows-columns.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19). An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
 
 ## Which files are out?
 - .pptx: shown as a list of slides, only looked at (`office-pptx-preview.md`); never edited.

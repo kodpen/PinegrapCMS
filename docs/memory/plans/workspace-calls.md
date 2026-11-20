@@ -17,7 +17,7 @@ description: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls i
 - CL3, a group. Up to four in one call, a grid; a fifth sees "This call is full"; who speaks is marked.
 - CL4, screen sharing: one share at a time in a call, shown large.
 - CL5, guests. The guest page shows a room's running call with "Join": no install, no account; the guest's name as the room knows it. A guest never starts a call.
-- CL6, settings. A "Calls" card in the Workspace settings: on or off (off at first on an upgraded site), the STUN addresses in use (the default named on the card, as it is a third party the browsers reach), an optional TURN service (address, user, secret kept sealed, short-lived credentials handed to a call's members only) and "Test the connection".
+- CL6, settings (done, #10608; `workspace/calls-settings.md`): the "Calls" card in Site Settings › Channels: on or off (off until turned on), the STUN addresses (the default named on the card), an optional TURN relay (addresses, user, sealed secret; short-lived credentials only with a granted start or join) and "Test the connection" in the browser.
 - CL7, the channel's lines: "Call started", "Call ended" with its length and who took part, a missed call to the one who did not answer; counts as activity, never as a message to an agent.
 - CL8, phone and endurance: the call screen on a phone, the route kept when the network changes (ICE restart), a closed tab leaves the call, a second tab of the same person does not join twice.
 - Order CL1, CL2, CL6, CL3, CL4, CL5, CL7, CL8; one PR each, a and b where a step passes the size.

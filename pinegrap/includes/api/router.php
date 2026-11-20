@@ -610,11 +610,16 @@ function api_validate_collect($route, $input, $body_keys) {
 	// Silently ignoring it is how an integration sends "stock" for a year,
 	// gets 200 every time and never writes a single quantity. The name is
 	// reported back so the mistake is obvious from the response alone.
+	//
+	// A query parameter sent in the body is taken: the body is merged over
+	// the query string (api_request_input()), so its value is read above.
+	// Only a path parameter's name is refused there, since the address alone
+	// says which record.
 	$accepted = array('api_key', 'api_secret');
 
 	foreach ($route['params'] as $param) {
 
-		if ((isset($param['in']) ? $param['in'] : 'query') === 'body') {
+		if ((isset($param['in']) ? $param['in'] : 'query') !== 'path') {
 
 			$accepted[] = $param['name'];
 

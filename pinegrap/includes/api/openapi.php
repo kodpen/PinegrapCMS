@@ -1062,6 +1062,7 @@ function api_openapi_objects()
         'LocalSale'    => 'api_local_sale_schema',
         'LocalSaleInvoice' => 'api_local_sale_invoice_schema',
         'LocalSaleReceipt' => 'api_local_sale_receipt_schema',
+        'OrderItemFile' => 'api_order_item_file_schema',
         'OrderShipment' => 'api_order_shipment_schema',
         'OrderShipmentLabel' => 'api_order_label_schema',
         'OrderDocument' => 'api_order_document_schema',

@@ -14,7 +14,7 @@ module: courses
 - Architect (2026-11-17, message 9031): managers and above open the Courses screen (`workflow/decisions-made-product-74.md`). The owner accepted the screen's look (poll 141); the blocks' and certificate's pictures were dropped (message 9546), the unit tests pin them.
 
 ## Which file holds what?
-- Tables, the open-lesson rule, the enrolment day, rows written once, the code, personal data: `commerce/course-tables.md` (`includes/fn/courses.php`).
+- Tables, the open-lesson rule, rows written once, the code, personal data: `commerce/course-tables.md` (`includes/fn/courses.php`); the enrolment day: `commerce/course-enrolment-day.md`.
 - The gate in `get_page.php` and the classroom notice: `commerce/course-gate.md`. The Courses screen, problems, learners: `commerce/course-screen.md` (`includes/fn/courses_admin.php`).
 - `course_action.php` and the press's refusals: `commerce/course-blocks.md`; the palette blocks: `designer-blocks-course.md`. `certificate.php`, the public check, `course.completed`: `commerce/course-certificate.md`.
 

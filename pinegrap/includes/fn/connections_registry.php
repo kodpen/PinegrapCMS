@@ -484,9 +484,9 @@ function pg_connections_registry()
         'twilio' => array('name' => 'Twilio', 'group' => 'messaging', 'place' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
             'state' => array('kind' => 'app', 'key' => 'sms_twilio'),
             'covers' => array('sms' => array('twilio'))),
-        'iys' => array('name' => 'İYS', 'group' => 'messaging', 'place' => '#settings/contact/pgset-iys', 'uses' => 'Marketing consent records',
+        'iys' => array('name' => 'İYS', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-iys', 'uses' => 'Marketing consent records',
             'state' => array('kind' => 'app', 'key' => 'iys')),
-        'whatsapp' => array('name' => 'WhatsApp', 'group' => 'messaging', 'place' => '#settings/contact/pgset-whatsapp', 'uses' => 'Template messages and replies into the Workspace',
+        'whatsapp' => array('name' => 'WhatsApp', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-whatsapp', 'uses' => 'Template messages and replies into the Workspace',
             'state' => array('kind' => 'app', 'key' => 'whatsapp')),
         'slack' => array('name' => 'Slack', 'group' => 'messaging', 'place' => '#settings/maintenance/pgset-chat-notify', 'uses' => 'Operations alerts and Workspace events',
             'state' => array('kind' => 'notify', 'key' => 'slack'),
@@ -587,7 +587,7 @@ function pg_connections_registry()
         'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
             'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('azure')),
             'covers' => array('model' => array('azure'))),
-        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
+        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
             'state' => array('kind' => 'config', 'names' => array('TRANSLATION_GOOGLE_KEY_ENC'))),
 
         // Protection and delivery.

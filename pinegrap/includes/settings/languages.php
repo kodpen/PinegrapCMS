@@ -358,9 +358,9 @@ $pg_settings_cards[] = '
 
 // ── Translation Engines ──
 
-$output_translation_google_state = $translation_google_key_stored
-    ? '<span class="pg-pill pg-tone-teal">' . lang('A key is stored') . '</span>'
-    : '<span class="pg-pill pg-tone-gray">' . lang('No key stored') . '</span>';
+// The Google Cloud Translation key is typed on its page of Connections; this
+// card shows the connection and leads there.
+$translation_google_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_translate';
 
 // Whether the two AI engines can run here, in one line each.
 $translation_ai_state = '';
@@ -378,19 +378,17 @@ if ($translation_settings_ready) {
 }
 
 $output_translation_engines_card = '
-                    <div class="col-12">
-                        <div class="pg-f-lg">
-                            <label for="translation_google_key" class="form-label">' . lang('Google Cloud Translation API key') . ' ' . $output_translation_google_state . '</label>
-                            <input type="text" name="translation_google_key" id="translation_google_key" class="form-control font-monospace" value="" autocomplete="off" spellcheck="false" placeholder="' . ($translation_google_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '"/>
-                            <div class="form-text">' . lang('Your own key from the Google Cloud console, with the Cloud Translation API enabled on the project. It is stored encrypted and never shown again; leave the field blank to keep it.') . '</div>
+                    <div id="pgsub-google-translate" class="col-12">
+                        <div class="d-flex flex-column align-items-start gap-2">
+                            <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'Google Cloud Translation'))) . '</span>' . ($translation_google_key_stored
+                                ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                            <div class="form-text mt-0">' . h($translation_google_key_stored
+                                ? lang('The languages set to Google Cloud Translation are translated with your own key. It is kept on Google Cloud Translation\'s page of Connections.')
+                                : lang('Google Cloud Translation needs your own key from the Google Cloud console. The key is set on Google Cloud Translation\'s page of Connections.')) . '</div>
+                            <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($translation_google_url) . '">' . h($translation_google_key_stored ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                         </div>
-                    </div>' . ($translation_google_key_stored ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <input value="1" class="check" type="checkbox" id="translation_google_key_clear" name="translation_google_key_clear"/>
-                            <label class="" for="translation_google_key_clear">' . lang('Remove the stored key') . '</label>
-                        </div>
-                    </div>' : '') . '
+                    </div>
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . (($translation_attribution === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="translation_attribution" name="translation_attribution"/></div>

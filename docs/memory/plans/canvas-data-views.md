@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-20): a Data table as a chart or table layer of 
 - DV4, following in the channel. The step's first commit is a census choosing how a card with data layers shows the current rows without a model call and without a version per change: the server's draw made again when a bound table's change stamp is newer than the picture, or the layers drawn in the card. A changed description is a version; changed rows are not.
 - DV5, the File Manager and export: a document saved to the site's files keeps its data layers and reads the rows when opened; export writes a still and says so once; "Save as picture" in a channel does the same.
 - DV6, the API and MCP: an agent adds or changes a data layer by the description, in place of drawing a chart's picture; phone width for the menu and the panel.
-- Order DV1 to DV6, one PR each, a and b where a step passes the size; after `plans/design-canvas-groups.md` GC1, as both change the layer model.
+- Order DV1 to DV6, one PR each, a and b where a step passes the size; built on the layer groups (`ui/image-editor-groups.md`), as both change the layer model.
 
 ## Which rules does every step keep?
 - No schema foreseen: the description lives in the document, the binding in `ws_canvas_tables`; a step that needs a column stops and asks the architect.

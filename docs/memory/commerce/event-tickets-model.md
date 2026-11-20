@@ -29,7 +29,7 @@ module: event_tickets
 
 ## What mail does the buyer get?
 - After the lines, `pg_order_complete()` calls `pg_event_tickets_order_mail()` when tickets were made: subject "Your tickets for order #…", one signed link `tickets.php?o=<order id>&t=<token>` (`pg_event_tickets_link_token()`, HMAC of the order under the tickets key), through the queue (`'queue' => true`). No QR picture in a mail.
-- `tickets.php` itself is TK2.
+- The page behind the link and the my account tickets: `event-tickets-page.md`.
 
 Test: `tests/event_tickets_test.php` (the step run twice against stubs). Not run on a dev database.
 

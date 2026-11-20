@@ -36,6 +36,12 @@ $ws_warn = function ($sentence) use ($liveform) {
 // The link previews switch (link_preview.php), with the pane's Save.
 ws_link_preview_settings_save($ws_viewer, $_POST);
 
+// The Calls card (calls_settings.php), with the pane's Save; a refused box
+// is marked and nothing of the card is written.
+ws_calls_settings_save($ws_viewer, $_POST, function ($field, $sentence) use ($liveform) {
+    $liveform->mark_error($field, h($sentence));
+});
+
 // A channel template's Archive or Bring it back.
 foreach (array('ws_template_archive' => true, 'ws_template_restore' => false) as $ws_button => $ws_archive) {
     $ws_value = post_value($ws_button);

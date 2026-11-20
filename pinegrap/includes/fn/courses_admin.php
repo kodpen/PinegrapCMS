@@ -509,8 +509,9 @@ function pg_course_learners(array $course)
         $progress[(int) $row['user_id']] = $row;
     }
 
-    // The first counting order of each member that opens the folder: the
-    // enrolment day, read the way pg_course_member_orders() reads it.
+    // The first counting order of each member that opens the folder,
+    // directly or through a parent: the enrolment day, read the way
+    // pg_course_member_orders() reads it.
     $first_orders = array();
 
     if ($folder_id > 0) {
@@ -523,7 +524,7 @@ function pg_course_learners(array $course)
                 (orders.user_id IN (" . $in . "))
                 AND (orders.status IN ('complete', 'exported'))
                 AND (products.grant_private_access = '1')
-                AND (products.private_folder = '" . $folder_id . "')" . pg_order_item_active_sql() . "
+                AND " . pg_course_grant_folder_sql(pg_course_folder_ids($folder_id)) . pg_order_item_active_sql() . "
             GROUP BY orders.user_id") as $row) {
             $first_orders[(int) $row['user_id']] = (int) $row['first_at'];
         }

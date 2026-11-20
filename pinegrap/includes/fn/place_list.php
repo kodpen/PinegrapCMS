@@ -254,6 +254,38 @@ function pg_place_list_field_fits($field, $part)
 }
 
 /**
+ * The fields a block chose that the form still has: part => field id. A
+ * part is taken only when a field of that exact name is there, fits the
+ * part and is not office-use-only; the others are left out, for the name
+ * rule to find. Pure.
+ *
+ * @param array $fields rows in form order: id, name, type, kind, office
+ * @param array $choice pg_place_list_saved_choice(): part => field name
+ * @return array
+ */
+function pg_place_list_chosen_ids($fields, $choice)
+{
+    $chosen = array();
+
+    foreach ((array) $choice as $part => $wanted) {
+        if (!in_array($part, pg_place_list_parts(), true) || !is_string($wanted)) {
+            continue;
+        }
+
+        foreach ((array) $fields as $field) {
+            $id = isset($field['id']) ? (int) $field['id'] : 0;
+
+            if (($id > 0) && empty($field['office']) && isset($field['name']) && ((string) $field['name'] === $wanted) && pg_place_list_field_fits($field, $part)) {
+                $chosen[$part] = $id;
+                break;
+            }
+        }
+    }
+
+    return $chosen;
+}
+
+/**
  * Which fields an answer carries. A part the block chose ($choice, from the
  * saved page) takes that field when the collection has it, it fits the part
  * and it is not office-use-only; every other part is found by the server's
@@ -275,23 +307,7 @@ function pg_place_list_field_roles($fields, $choice = array())
         }
     }
 
-    $chosen = array();
-
-    foreach ((array) $choice as $part => $wanted) {
-        if (!in_array($part, pg_place_list_parts(), true) || !is_string($wanted)) {
-            continue;
-        }
-
-        foreach ($public as $field) {
-            $id = isset($field['id']) ? (int) $field['id'] : 0;
-
-            if (($id > 0) && isset($field['name']) && ((string) $field['name'] === $wanted) && pg_place_list_field_fits($field, $part)) {
-                $chosen[$part] = $id;
-                break;
-            }
-        }
-    }
-
+    $chosen = pg_place_list_chosen_ids($public, $choice);
     $roles = pg_place_map_field_roles_found($public);
 
     foreach (array('lat', 'lng') as $part) {

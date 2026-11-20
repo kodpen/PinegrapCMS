@@ -36,6 +36,8 @@ function delete_order($request) {
     db("DELETE FROM ship_tos WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM order_item_gift_cards WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM applied_gift_cards WHERE order_id = '" . e($order['id']) . "'");
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_order_files($order['id']);
     db("DELETE FROM form_data WHERE (order_id = '" . e($order['id']) . "') AND (order_id != '0')");
     db("DELETE FROM shipping_tracking_numbers WHERE order_id = '" . e($order['id']) . "'");
 
@@ -58,6 +60,13 @@ function delete_order($request) {
     // The order's event tickets: a row left behind would still pass at the
     // door.
     pg_event_tickets_delete_for_order($order['id']);
+
+    // The order's cost rows and its profit (Accounting): kept for the order
+    // alone. The typed rates (erp_cost_rates) belong to no order and stay.
+    if (pg_schema_has('erp_order_profit')) {
+        db("DELETE FROM erp_order_costs WHERE order_id = '" . e($order['id']) . "'");
+        db("DELETE FROM erp_order_profit WHERE order_id = '" . e($order['id']) . "'");
+    }
 
     // Cancel the order abandoned and review request auto campaigns of this
     // order that have not been sent yet: both would reach the customer about

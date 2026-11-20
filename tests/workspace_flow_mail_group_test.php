@@ -59,16 +59,77 @@ function test_workspace_flow_mail_group_problems()
 	pg_assert_true(count(ws_flow_mail_group_problems(array('recipient' => 'group', 'group_id' => 7, 'page_id' => 4), 'Mail')) === 1, 'a page');
 	pg_assert_true(count(ws_flow_mail_group_problems(array('recipient' => 'typed', 'records' => 'read'), 'Mail')) === 1, 'records only to a group');
 
-	$graph = array('nodes' => array(array('id' => 'read', 'kind' => 'list_records'), array('id' => 'other', 'kind' => 'rows_get')));
-	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $graph));
-	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => ''), 'Mail', $graph));
-	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'other'), 'Mail', $graph)) === 1, 'not a records box');
-	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'gone'), 'Mail', $graph)) === 1, 'not in the flow');
-	pg_assert_contains('ws_flow_mail_records_box_problems(', workspace_flow_mail_group_test_source('ws_flow_graph_check'));
+	$graph = array(
+		'nodes' => array(array('id' => 'read', 'kind' => 'list_records'), array('id' => 'other', 'kind' => 'rows_get'), array('id' => 'mail', 'kind' => 'email')),
+		'edges' => array(array('from' => 'read', 'to' => 'other', 'on' => 'done'), array('from' => 'other', 'to' => 'mail', 'on' => 'done')),
+	);
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $graph, 'mail'));
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => ''), 'Mail', $graph, 'mail'));
+	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'other'), 'Mail', $graph, 'mail')) === 1, 'not a records box');
+	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'gone'), 'Mail', $graph, 'mail')) === 1, 'not in the flow');
+	pg_assert_contains('ws_flow_mail_records_box_problems($node[\'config\'], $name, $graph, (string) $id)', workspace_flow_mail_group_test_source('ws_flow_graph_check'));
 
 	// A role-3 owner is refused before any read.
 	pg_assert_true(ws_flow_mail_group_refusal_for(array('id' => 5, 'role' => 3), array('group_id' => 7)) !== '', 'role 3');
 	pg_assert_contains('ws_flow_mail_group_refusal_for(', workspace_flow_mail_group_test_source('ws_step_check'), 'checked at publish and run');
+}
+
+// A records box that does not come before the e-mail box (after it, or on
+// another branch) never gives its records to the run: the e-mail box would
+// say "No record to send" every week. Refused at publish.
+function test_workspace_flow_mail_group_records_box_before()
+{
+	$nodes = array(array('id' => 'start', 'kind' => 'schedule'), array('id' => 'read', 'kind' => 'list_records'), array('id' => 'mail', 'kind' => 'email'));
+	$after = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'mail', 'on' => 'next'), array('from' => 'mail', 'to' => 'read', 'on' => 'done')));
+	$apart = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'mail', 'on' => 'next'), array('from' => 'start', 'to' => 'read', 'on' => 'next')));
+	$before = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'read', 'on' => 'next'), array('from' => 'read', 'to' => 'mail', 'on' => 'done')));
+
+	pg_assert_same(1, count(ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $after, 'mail')), 'after the e-mail box');
+	pg_assert_same(1, count(ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $apart, 'mail')), 'on another branch');
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $before, 'mail'));
+
+}
+
+// A group e-mail takes no BCC: on a campaign it would get one copy for every
+// contact. Every write refuses group + BCC with a reason; a typed recipient
+// keeps its BCC.
+function test_workspace_flow_mail_group_no_bcc()
+{
+	$group = ws_step_config_normalize('email', array('recipient' => 'group', 'group_id' => 7, 'subject' => 'S', 'body' => 'B', 'bcc' => 'copy@example.com'));
+	$empty = ws_step_config_normalize('email', array('recipient' => 'group', 'group_id' => 7, 'subject' => 'S', 'body' => 'B', 'bcc' => ''));
+	$typed = ws_step_config_normalize('email', array('to' => 'a@example.com', 'subject' => 'S', 'body' => 'B', 'bcc' => 'copy@example.com'));
+
+	pg_assert_same('copy@example.com', $group['bcc'], 'kept as written, so the refusal sees it');
+	pg_assert_true(ws_flow_mail_group_bcc_problem($group, 'Mail') !== '', 'group + BCC refused');
+	pg_assert_same('', ws_flow_mail_group_bcc_problem($empty, 'Mail'), 'group, no BCC');
+	pg_assert_same('', ws_flow_mail_group_bcc_problem($typed, 'Mail'), 'typed recipient + BCC');
+
+	// The publish check (and the problems the canvas lists).
+	pg_assert_same(1, count(ws_step_config_problems('email', $group, 'Mail')), 'publish refused');
+	pg_assert_same(array(), ws_step_config_problems('email', $empty, 'Mail'));
+	pg_assert_same(array(), ws_step_config_problems('email', $typed, 'Mail'));
+
+	// The save: the canvas's, the API's and the assistant's draft all go
+	// through ws_flow_save_check().
+	$graph = array('nodes' => array(array('id' => 'mail', 'kind' => 'email', 'config' => $group)), 'edges' => array());
+	pg_assert_true(ws_flow_mail_group_bcc_refusal($graph) !== '', 'a graph with group + BCC');
+	$graph['nodes'][0]['config'] = $empty;
+	pg_assert_same('', ws_flow_mail_group_bcc_refusal($graph));
+	$graph['nodes'][0]['config'] = $typed;
+	pg_assert_same('', ws_flow_mail_group_bcc_refusal($graph));
+	pg_assert_contains('ws_flow_mail_group_bcc_refusal($graph)', workspace_flow_mail_group_test_source('ws_flow_save_check'));
+}
+
+// Run time does not refuse a published group + BCC box: it sends, as it
+// did, without the BCC. Only the writes refuse.
+function test_workspace_flow_mail_group_bcc_not_at_run()
+{
+	foreach (array('ws_flow_mail_group_refusal_for', 'ws_step_check', 'ws_flow_mail_group_do', 'ws_flow_mail_group_try') as $function) {
+		pg_assert_false(strpos(workspace_flow_mail_group_test_source($function), 'ws_flow_mail_group_bcc_') !== false, $function . ' does not refuse a BCC');
+	}
+
+	$campaign = workspace_flow_mail_group_test_source('ws_flow_mail_group_campaign');
+	pg_assert_false(stripos($campaign, 'bcc') !== false, 'the campaign carries no BCC');
 }
 
 // A group send is one campaign, made through the campaigns' own path with
@@ -167,6 +228,17 @@ function test_workspace_flow_mail_group_try()
 	pg_assert_contains('ws_flow_mail_group_try(', workspace_flow_mail_group_test_source('ws_flow_box_try'));
 }
 
+// Try says what the run would do with the group: a group nobody in it may
+// get the mail from made the run send nothing, while Try said it would make
+// a campaign to 0 people; a group that could not be read is said so.
+function test_workspace_flow_mail_group_try_said()
+{
+	pg_assert_same(lang(array('string' => 'The run would make a campaign to {var:1} people.', 'vars' => 3)), ws_flow_mail_group_try_said(array('recipients' => array('a@x.test', 'b@x.test', 'c@x.test'))));
+	pg_assert_same(lang('Nobody in the contact group may get this e-mail: the run would send none.'), ws_flow_mail_group_try_said(array('recipients' => array())));
+	pg_assert_same(lang('The contact group could not be read.'), ws_flow_mail_group_try_said(false));
+	pg_assert_contains('ws_flow_mail_group_try_said($picked)', workspace_flow_mail_group_test_source('ws_flow_mail_group_try'));
+}
+
 // The canvas: "A contact group" offered while the person may send to one
 // (or the box writes to one), its group, why, and the records box; a new
 // e-mail box starts with no group and no records box. A role-3 member is
@@ -181,4 +253,9 @@ function test_workspace_flow_mail_group_canvas()
 	pg_assert_contains("group_id: 0, records: ''", $js);
 	pg_assert_contains("if (config.recipient === 'group') {\n                return mailGroupMeta(config);", $js);
 	pg_assert_same(array(), ws_flow_mail_groups(array('id' => 5, 'role' => 3)));
+
+	// No BCC field for a group, and a BCC kept from before is emptied when
+	// the box is opened or switched to a group.
+	pg_assert_contains("if (group && config.bcc && (state.edit || state.form)) {\n            config.bcc = '';", $js);
+	pg_assert_contains("concat(group ? [] : [['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]])", $js);
 }

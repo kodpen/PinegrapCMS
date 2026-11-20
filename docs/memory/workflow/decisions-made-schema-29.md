@@ -13,7 +13,7 @@ description: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tab
 
 ## Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-20, agent channel, answer to K2's request 1584)
 - `content` VARCHAR(10) NOT NULL DEFAULT 'url' after `place` (url or component, checked in code; missing or unknown reads as url) and `component_id` INT UNSIGNED NOT NULL DEFAULT 0 after it; no index, no backfill, no foreign key.
-- Both are named by `plans/auto-dialog-popups.md` under the owner's yes to new columns (channel message 5139); not chosen: `component_id` alone, as a row keeps its address while it shows a component.
+- Both were named by the pop-ups plan (`platform/auto-dialog-pop-ups.md`) under the owner's yes to new columns (channel message 5139); not chosen: `component_id` alone, as a row keeps its address while it shows a component.
 
 ## Does `prototype_links` get a column for a release bundle's share link? (owner, 2026-11-20, poll 159, channel message 9931)
 - "Evet, eklensin", to: `bundle_id` (INT, default 0: not tied to a bundle) on `prototype_links`, a table the open version 2026.11.0 added; existing links do not change.

@@ -122,8 +122,39 @@ function pg_iys_settings_refusal()
 }
 
 /**
- * The fields of the İYS card. The password is never drawn back; the brand is
- * a list once İYS has named the brands of the İYS code, a code box before.
+ * The İYS card of Site Settings › Communication: the account and its sync
+ * are set up on İYS's page of Connections, so the card shows the connection
+ * and leads there. No field and no password.
+ *
+ * @return string
+ */
+function pg_iys_settings_card_html()
+{
+    $app = pg_iys_settings_before();
+    $connected = $app['enabled'] && pg_iys_app_complete($app);
+    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/connections.php?service=iys';
+
+    $line = $connected
+        ? lang('The e-mail and SMS marketing answers are synced with İYS every day. The account is kept on İYS\'s page of Connections.')
+        : lang('The consent sync needs the site\'s İYS account. The account is set up on İYS\'s page of Connections.');
+
+    return '
+                                        <div id="pgsub-iys-connection" class="col-12">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'İYS'))) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
+}
+
+/**
+ * The fields of "Connection details" on İYS's page of Connections, drawn
+ * inside the page's form with its Save button. The password is never drawn
+ * back; the brand is a list once İYS has named the brands of the İYS code, a
+ * code box before.
  *
  * @return string
  */
@@ -144,19 +175,17 @@ function pg_iys_settings_fields()
     };
 
     $html = '
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="iys_enabled" id="iys_enabled" value="1"' . ($app['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#iys_row"/></div>
-                                                <label class="" for="iys_enabled">' . lang('İYS consent sync') . '</label><div class="form-text">' . lang('Every day, the e-mail and SMS marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back: an e-mail refusal stops e-mail campaigns to that address, an SMS refusal stops marketing SMS to that number. A consent İYS does not know stays valid; only a refusal held in İYS stops sending.') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0" id="iys_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">';
+				<div>
+					<div class="d-flex align-items-center gap-3">
+						<input type="checkbox" class="pg-switch" role="switch" name="iys_enabled" value="1" id="iys_enabled"' . ($app['enabled'] ? ' checked' : '') . '>
+						<label class="pg-text-2" for="iys_enabled">' . h(lang('İYS consent sync')) . '</label>
+					</div>
+					<div class="pg-field-help">' . h(lang('Every day, the e-mail and SMS marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back: an e-mail refusal stops e-mail campaigns to that address, an SMS refusal stops marketing SMS to that number. A consent İYS does not know stays valid; only a refusal held in İYS stops sending.')) . '</div>
+				</div>';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h($warning) . '</div>';
     }
 
     $placeholder = ($app['password_stored'] && ($app['password'] !== ''))
@@ -178,55 +207,55 @@ function pg_iys_settings_fields()
             $brand_options .= '<option value="' . h($code) . '"' . $selected((string) $code === $app['brand_code']) . '>' . h(($name !== '') ? $name . ' (' . $code . ')' : $code) . '</option>';
         }
 
-        $brand_field = '<select name="iys_brand" id="iys_brand" class="form-control">' . $brand_options . '</select>';
+        $brand_field = '<select name="iys_brand" id="iys_brand" class="pg-input">' . $brand_options . '</select>';
     } else {
-        $brand_field = '<input type="text" name="iys_brand" id="iys_brand" class="form-control" value="' . h($app['brand_code']) . '" maxlength="16" inputmode="numeric" autocomplete="off"/>
-                                                            <div class="form-text">' . lang('Left empty, saving asks İYS for the brands of the İYS code and takes the only one; with several, pick one after saving.') . '</div>';
+        $brand_field = '<input type="text" name="iys_brand" id="iys_brand" class="pg-input" value="' . h($app['brand_code']) . '" maxlength="16" inputmode="numeric" autocomplete="off">
+					<div class="pg-field-help">' . h(lang('Left empty, saving asks İYS for the brands of the İYS code and takes the only one; with several, pick one after saving.')) . '</div>';
     }
 
     $html .= '
-                                                        <div class="col-12 form-text">' . lang('Enter the API user of your İYS account (Settings › API Users on the İYS portal), its password, and the İYS code of the company. Saving checks them with İYS and lists the brands. To remove the account from this site, switch İYS off and empty the API user.') . '</div>
-                                                        <div class="pg-f-md">
-                                                            <label for="iys_user" class="form-label">' . lang('API User') . '</label>
-                                                            <input type="text" name="iys_user" id="iys_user" class="form-control" value="' . h($app['user']) . '" maxlength="255" autocomplete="off"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="iys_password" class="form-label">' . lang('Password') . '</label>
-                                                            <input type="password" name="iys_password" id="iys_password" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="iys_code" class="form-label">' . lang('İYS Code') . '</label>
-                                                            <input type="text" name="iys_code" id="iys_code" class="form-control" value="' . h($app['iys_code']) . '" maxlength="16" inputmode="numeric" autocomplete="off"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="iys_brand" class="form-label">' . lang('Brand') . '</label>
-                                                            ' . $brand_field . '
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="iys_env" class="form-label">' . lang('Environment') . '</label>
-                                                            <select name="iys_env" id="iys_env" class="form-control">
-                                                                <option value="live"' . $selected($app['env'] === 'live') . '>' . lang('Live') . '</option>
-                                                                <option value="test"' . $selected($app['env'] === 'test') . '>' . lang('Test (sandbox)') . '</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="iys_live" class="form-label">' . lang('Mode') . '</label>
-                                                            <select name="iys_live" id="iys_live" class="form-control">
-                                                                <option value="0"' . $selected(!$app['live']) . '>' . lang('Dry run: only log what would be sent') . '</option>
-                                                                <option value="1"' . $selected($app['live']) . '>' . lang('Live: send to İYS') . '</option>
-                                                            </select>
-                                                            <div class="form-text">' . lang('A dry run calls nothing and keeps its place, so the answers go to İYS once the mode is live.') . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input type="checkbox" name="iys_email" id="iys_email" value="1"' . ($app['email'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                                <label class="" for="iys_email">' . lang('E-mail and SMS') . '</label><div class="form-text">' . lang('Sync e-mail and SMS consents, and leave out of marketing every address and number İYS holds a refusal for. Switched off, neither channel is synced.') . '</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>';
+				<p class="pg-field-help mt-0 mb-0">' . h(lang('Enter the API user of your İYS account (Settings › API Users on the İYS portal), its password, and the İYS code of the company. Saving checks them with İYS and lists the brands. To remove the account from this site, switch İYS off and empty the API user.')) . '</p>
+				<div>
+					<label class="pg-field-label" for="iys_user">' . h(lang('API User')) . '</label>
+					<input type="text" name="iys_user" id="iys_user" class="pg-input" value="' . h($app['user']) . '" maxlength="255" autocomplete="off">
+				</div>
+				<div>
+					<label class="pg-field-label" for="iys_password">' . h(lang('Password')) . '</label>
+					<input type="password" name="iys_password" id="iys_password" class="pg-input" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '>
+				</div>
+				<div>
+					<label class="pg-field-label" for="iys_code">' . h(lang('İYS Code')) . '</label>
+					<input type="text" name="iys_code" id="iys_code" class="pg-input" value="' . h($app['iys_code']) . '" maxlength="16" inputmode="numeric" autocomplete="off">
+				</div>
+				<div>
+					<label class="pg-field-label" for="iys_brand">' . h(lang('Brand')) . '</label>
+					' . $brand_field . '
+				</div>
+				<div>
+					<label class="pg-field-label" for="iys_env">' . h(lang('Environment')) . '</label>
+					<select name="iys_env" id="iys_env" class="pg-input">
+						<option value="live"' . $selected($app['env'] === 'live') . '>' . h(lang('Live')) . '</option>
+						<option value="test"' . $selected($app['env'] === 'test') . '>' . h(lang('Test (sandbox)')) . '</option>
+					</select>
+				</div>
+				<div>
+					<label class="pg-field-label" for="iys_live">' . h(lang('Mode')) . '</label>
+					<select name="iys_live" id="iys_live" class="pg-input">
+						<option value="0"' . $selected(!$app['live']) . '>' . h(lang('Dry run: only log what would be sent')) . '</option>
+						<option value="1"' . $selected($app['live']) . '>' . h(lang('Live: send to İYS')) . '</option>
+					</select>
+					<div class="pg-field-help">' . h(lang('A dry run calls nothing and keeps its place, so the answers go to İYS once the mode is live.')) . '</div>
+				</div>
+				<div>
+					<div class="d-flex align-items-center gap-3">
+						<input type="checkbox" class="pg-switch" role="switch" name="iys_email" id="iys_email" value="1"' . ($app['email'] ? ' checked' : '') . '>
+						<label class="pg-text-2" for="iys_email">' . h(lang('E-mail and SMS')) . '</label>
+					</div>
+					<div class="pg-field-help">' . h(lang('Sync e-mail and SMS consents, and leave out of marketing every address and number İYS holds a refusal for. Switched off, neither channel is synced.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>';
 
     return $html;
 }

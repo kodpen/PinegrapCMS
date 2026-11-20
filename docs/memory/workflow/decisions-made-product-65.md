@@ -17,4 +17,4 @@ description: Decisions list, product part 65 (2026-11-16 on): the place map defa
 
 ## Which amount does a contact group's minimum order compare? (architect, 2026-11-16, agent channel message 6895)
 - The cart's goods subtotal, before discounts, tax and shipping. Why: the offers' order ladder measures an order by its subtotal too, and the customer can check the missing amount against the cart's "Subtotal" line.
-- Given with the look at WS4 (PR #9987): the "Minimum Order" card on the contact group's edit screen, the cart's warning and the refusal at submit use the boxes that exist. Plan: `plans/wholesale.md`, feature J9.
+- Given with the look at WS4 (PR #9987): the "Minimum Order" card on the contact group's edit screen, the cart's warning and the refusal at submit use the boxes that exist. Topic: `commerce/wholesale.md`, feature J9.
