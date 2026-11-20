@@ -178,6 +178,21 @@ function pg_cart_recovery_outcome($order_date, $completed_at, array $touches)
 }
 
 /**
+ * Whether the completion deletes the order's sent touches instead of
+ * completing them, pure: the cart was never left (completed under 6 hours
+ * after it was started), so a touch of it, a pop-up taken on a fresh cart,
+ * was no touch of a left cart. An unknown start time deletes nothing.
+ *
+ * @param array $outcome    pg_cart_recovery_outcome()
+ * @param int   $order_date the cart's start time
+ * @return bool
+ */
+function pg_cart_recovery_drop_touches(array $outcome, $order_date)
+{
+    return ((int) $order_date > 0) && empty($outcome['left']);
+}
+
+/**
  * The first column of the first row a placeholder query returns; '' when it
  * failed or found nothing.
  *
@@ -367,14 +382,15 @@ function pg_cart_recovery_left_cart($order_id, $contact_id, $now)
 }
 
 /**
- * A WhatsApp message carrying a single-use key was queued: a touch of the
- * left cart it is about (channel whatsapp, source the template). Called by
- * pg_whatsapp_enqueue() once the message is in the queue.
+ * A WhatsApp message carrying a single-use key was sent: a touch of the
+ * left cart it is about (channel whatsapp, source the template), the cart
+ * looked up at the send time. Called by pg_whatsapp_queue_run() when the
+ * outbox row becomes sent; a failed, expired or waiting message is no touch.
  *
  * @param int      $order_id    the order the sender named, 0 for none
  * @param int      $contact_id  the recipient's contact, 0 for none
  * @param int      $template_id whatsapp_templates.id
- * @param int|null $now         unix time; now when null
+ * @param int|null $now         the send time; now when null
  * @return int the touch's id, 0 when nothing was written
  */
 function pg_cart_recovery_whatsapp_key_sent($order_id, $contact_id, $template_id, $now = null)
@@ -447,7 +463,8 @@ function pg_cart_recovery_order_date($order_id)
 
 /**
  * The order was completed: every touch of it gets completed_at; the touch
- * the rule picks gets recovered = 1 and the total. A left cart with no touch
+ * the rule picks gets recovered = 1 and the total. A cart that was never
+ * left loses its touches (pg_cart_recovery_drop_touches()). A left cart with no touch
  * gets one row with channel '' and the total, counted apart. The total is
  * written on one row of an order at most, so a sum over a period counts an
  * order once.
@@ -483,6 +500,16 @@ function pg_cart_recovery_completed($order_id, $order_date, $total, $completed_a
     }
 
     $outcome = pg_cart_recovery_outcome($order_date, $completed_at, $touches);
+
+    // A cart never left keeps no touch: it was in no figure while open (a
+    // cart under 6 hours old is not read), so no past period changes.
+    if ($touches && pg_cart_recovery_drop_touches($outcome, $order_date)) {
+        db_q(
+            "DELETE FROM cart_recovery_touch
+            WHERE (order_id = ?) AND (channel <> '')", array((string) $order_id));
+
+        return;
+    }
 
     if ($touches) {
         db_q(

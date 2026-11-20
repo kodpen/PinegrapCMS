@@ -561,23 +561,8 @@ function pg_cart_recovery_weak_untouched_ids($from, $to, $now)
  */
 function pg_cart_recovery_weak_facts($from, $to, $now)
 {
-    $result = db_q(
-        "SELECT order_id, channel, sent_at, clicked_at, restored_at, recovered, completed_at
-        FROM cart_recovery_touch
-        WHERE
-            (channel <> '')
-            AND order_id IN (
-                SELECT order_id FROM cart_recovery_touch
-                WHERE (channel <> '') AND (sent_at >= ?) AND (sent_at < ?))",
-        array((string) (int) $from, (string) (int) $to));
-
-    $touches = array();
-
-    if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $touches[] = $row;
-        }
-    }
+    // The figures' own rows and reading, so both count a cart alike.
+    $touches = pg_cart_recovery_touch_rows($from, $to, $now);
 
     $carts = pg_cart_recovery_weak_carts($touches, $from, $to);
     $untouched_ids = pg_cart_recovery_weak_untouched_ids($from, $to, $now);
