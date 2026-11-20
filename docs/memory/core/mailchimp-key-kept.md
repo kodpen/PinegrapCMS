@@ -14,7 +14,7 @@ module: mailchimp_key
 - `pg_mailchimp_dc()` returns the lower-case letters + digits after the last dash, or `''`. The save refuses a key without one ("The API key must end with its data center, like -us6."); `mailchimp_request()` answers an error without sending when `$dc` is `''` (also for a stored key from before). Tests: `tests/mailchimp_key_test.php`.
 
 ## Does a refused Mailchimp request log or mail the key?
-- No (#10589). `mailchimp_request()` builds its message with `pg_mailchimp_error_message()`: the heading (Mailchimp's title and detail, or the cURL error), the response, and the request from `pg_mailchimp_request_for_log()`, whose `key` reads `****-<dc>`.
+- No (#10589, PR #10594). `mailchimp_request()` builds its message with `pg_mailchimp_error_message()`: the heading (Mailchimp's title and detail, or the cURL error), the response, and the request from `pg_mailchimp_request_for_log()`, whose `key` reads `****-<dc>`.
 - `pg_mailchimp_mask_key()` then masks the key in the whole message: plain, URL-encoded, Base64 and the Basic auth value `key:<key>`. The same text goes to `log_activity()`, `mailchimp_email_error()` and the returned `message`.
 - Before: a save with a wrong List ID or a timeout wrote the whole key into the `log` table and the admin mail via `print_r($request)`. Old `log` rows are not cleaned. Tests: `tests/mailchimp_key_test.php`.
 
