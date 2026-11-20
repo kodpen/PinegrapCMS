@@ -338,3 +338,19 @@ function test_place_list_panel_section()
 	pg_assert_contains("String(f.office_use_only) === '1') return false;", $js, 'no office-use-only field is offered');
 	pg_assert_contains("cfg.regionType !== 'form_list_view'", $js, 'the list places.php reads');
 }
+
+// An import or an API write keeps a number field's text as sent: a
+// coordinate with a decimal comma is still the point it names.
+function test_place_list_item_reads_a_decimal_comma()
+{
+	$roles = pg_place_list_field_roles(place_list_test_fields());
+	$item = pg_place_list_item(array('id' => 9), array(2 => 'Moda', 3 => ' 40,98 ', 4 => '29,0215'), $roles, '');
+
+	pg_assert_same(40.98, $item['lat']);
+	pg_assert_same(29.0215, $item['lng']);
+
+	$bad = pg_place_list_item(array('id' => 9), array(2 => 'Moda', 3 => '40,98,1', 4 => '29'), $roles, '');
+	pg_assert_same(null, $bad['lat'], 'two commas name no number');
+	pg_assert_same(null, $bad['lng'], 'no point without both');
+	pg_assert_same(null, pg_place_list_item(array('id' => 9), array(2 => 'x', 3 => '-90,5', 4 => '1'), $roles, '')['lat'], 'still in range');
+}

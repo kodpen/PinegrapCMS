@@ -450,6 +450,29 @@ function pg_place_list_records_sql($form_page_id, $clause, $order)
 }
 
 /**
+ * A stored coordinate as a number, null when it is none or out of range.
+ * A number field's text written by an import or the API is kept as sent, so
+ * a decimal comma ("40,98") reads as the record's form would save it
+ * (pg_coll_number_value()). Pure.
+ *
+ * @param string $text
+ * @param int    $bound 90 for a latitude, 180 for a longitude
+ * @return float|null
+ */
+function pg_place_list_coordinate($text, $bound)
+{
+    $text = str_replace(',', '.', trim((string) $text));
+
+    if (!preg_match('/^[+-]?(\d+(\.\d*)?|\.\d+)$/D', $text)) {
+        return null;
+    }
+
+    $value = (float) $text;
+
+    return (abs($value) <= $bound) ? $value : null;
+}
+
+/**
  * One place as the answer carries it. Pure.
  *
  * @param array  $record id, reference_code, address_name
@@ -464,17 +487,17 @@ function pg_place_list_item($record, $values, $roles, $url)
         return ($id > 0 && isset($values[$id])) ? trim((string) $values[$id]) : '';
     };
 
-    $lat = $value($roles['lat']);
-    $lng = $value($roles['lng']);
-    $point = (is_numeric($lat) && is_numeric($lng) && (abs((float) $lat) <= 90) && (abs((float) $lng) <= 180));
+    $lat = pg_place_list_coordinate($value($roles['lat']), 90);
+    $lng = pg_place_list_coordinate($value($roles['lng']), 180);
+    $point = ($lat !== null) && ($lng !== null);
 
     return array(
         'name'    => $value($roles['name']),
         'address' => pg_place_map_address_text($values, $roles['address']),
         'hours'   => $value($roles['hours']),
         'phone'   => $value($roles['phone']),
-        'lat'     => $point ? (float) $lat : null,
-        'lng'     => $point ? (float) $lng : null,
+        'lat'     => $point ? $lat : null,
+        'lng'     => $point ? $lng : null,
         'url'     => $url,
     );
 }
