@@ -162,3 +162,131 @@ function test_github_link_channels_check_the_full_row()
 	pg_assert_contains("ws_can_post_channel(\$viewer, ws_channel(\$brief['id']))", $source, 'the channel\'s own row is checked');
 	pg_assert_false(strpos($source, "ws_can_post_channel(\$viewer, \$brief)") !== false, 'never the short form');
 }
+
+function test_github_line_read_round_trips_every_written_shape()
+{
+	$link = array('events' => array('ci', 'pull_request', 'label'), 'labels' => array('ready', 'ci', 'pr'));
+	$run = array(
+		'conclusion'    => 'failure',
+		'head_branch'   => 'plan/x',
+		'head_sha'      => 'abcdef1234567890',
+		'name'          => 'PHP checks',
+		'html_url'      => 'https://github.com/o/r/actions/runs/9',
+		'display_title' => 'Fix the @thing now',
+		'pull_requests' => array(array('number' => 42)),
+	);
+	$pull = array('number' => 7, 'head' => array('ref' => 'feature', 'sha' => '1234567abc'), 'title' => 'Add a thing', 'html_url' => 'https://github.com/o/r/pull/7');
+
+	$cases = array(
+		'ci red' => array(
+			pg_github_line('workflow_run', array('action' => 'completed', 'workflow_run' => $run), $link),
+			array('kind' => 'ci', 'state' => 'red', 'number' => 42, 'branch' => 'plan/x', 'sha' => 'abcdef1', 'check' => 'php-checks=failure', 'url' => 'https://github.com/o/r/actions/runs/9', 'title' => 'Fix the @thing now'),
+		),
+		'ci green, no pull request' => array(
+			pg_github_line('workflow_run', array('action' => 'completed', 'workflow_run' => array('conclusion' => 'success', 'pull_requests' => array()) + $run), $link),
+			array('kind' => 'ci', 'state' => 'green', 'number' => null, 'branch' => 'plan/x', 'sha' => 'abcdef1', 'check' => 'php-checks=success', 'url' => 'https://github.com/o/r/actions/runs/9', 'title' => 'Fix the @thing now'),
+		),
+		'ci with no address and no title' => array(
+			pg_github_line('workflow_run', array('action' => 'completed', 'workflow_run' => array('html_url' => '', 'display_title' => '') + $run), $link),
+			array('kind' => 'ci', 'state' => 'red', 'number' => 42, 'branch' => 'plan/x', 'sha' => 'abcdef1', 'check' => 'php-checks=failure', 'url' => '', 'title' => ''),
+		),
+		'ci of a branch named like a check' => array(
+			pg_github_line('workflow_run', array('action' => 'completed', 'workflow_run' => array('head_branch' => 'a=success') + $run), $link),
+			array('kind' => 'ci', 'state' => 'red', 'number' => 42, 'branch' => 'a=success', 'sha' => 'abcdef1', 'check' => 'php-checks=failure', 'url' => 'https://github.com/o/r/actions/runs/9', 'title' => 'Fix the @thing now'),
+		),
+		'pr opened' => array(
+			pg_github_line('pull_request', array('action' => 'opened', 'pull_request' => $pull), $link),
+			array('kind' => 'pr', 'state' => 'opened', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => 'https://github.com/o/r/pull/7', 'title' => 'Add a thing'),
+		),
+		'pr reopened' => array(
+			pg_github_line('pull_request', array('action' => 'reopened', 'pull_request' => $pull), $link),
+			array('kind' => 'pr', 'state' => 'reopened', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => 'https://github.com/o/r/pull/7', 'title' => 'Add a thing'),
+		),
+		'pr closed' => array(
+			pg_github_line('pull_request', array('action' => 'closed', 'pull_request' => $pull), $link),
+			array('kind' => 'pr', 'state' => 'closed', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => 'https://github.com/o/r/pull/7', 'title' => 'Add a thing'),
+		),
+		'pr merged' => array(
+			pg_github_line('pull_request', array('action' => 'closed', 'pull_request' => array('merged' => true) + $pull), $link),
+			array('kind' => 'pr', 'state' => 'merged', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => 'https://github.com/o/r/pull/7', 'title' => 'Add a thing'),
+		),
+		'pr with no address' => array(
+			pg_github_line('pull_request', array('action' => 'opened', 'pull_request' => array('html_url' => '') + $pull), $link),
+			array('kind' => 'pr', 'state' => 'opened', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => '', 'title' => 'Add a thing'),
+		),
+		'label' => array(
+			pg_github_line('pull_request', array('action' => 'labeled', 'label' => array('name' => 'Ready'), 'pull_request' => $pull), $link),
+			array('kind' => 'label', 'state' => 'ready', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => '', 'title' => 'Add a thing'),
+		),
+		'label named ci' => array(
+			pg_github_line('pull_request', array('action' => 'labeled', 'label' => array('name' => 'ci'), 'pull_request' => $pull), $link),
+			array('kind' => 'label', 'state' => 'ci', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => '', 'title' => 'Add a thing'),
+		),
+		'label named pr, no title' => array(
+			pg_github_line('pull_request', array('action' => 'labeled', 'label' => array('name' => 'pr'), 'pull_request' => array('title' => '') + $pull), $link),
+			array('kind' => 'label', 'state' => 'pr', 'number' => 7, 'branch' => 'feature', 'sha' => '1234567', 'check' => '', 'url' => '', 'title' => ''),
+		),
+	);
+
+	foreach ($cases as $name => $case) {
+		pg_assert_true($case[0] !== '', $name . ': a line was written');
+		pg_assert_same($case[1], pg_github_line_read($case[0]), $name);
+	}
+}
+
+function test_github_line_read_refuses_typed_text()
+{
+	foreach (array('', 'hello', '[pr] opened', '[pr] waiting #7 x 1234567 t', '[ci] green', '[ci] blue #3 b 1234567 x=success', '[ready] seven', '[Bad Label] #7 x', 'pr opened #7 b 1234567 t', '[ci] green #0 b 1234567 x=success') as $text) {
+		pg_assert_same(null, pg_github_line_read($text), 'typed: ' . $text);
+	}
+
+	pg_assert_same(null, pg_github_line_read(array('[pr]')), 'not text');
+}
+
+function test_github_pull_url()
+{
+	pg_assert_same('https://github.com/o/r/pull/7', pg_github_pull_url('o/r', 7), 'pull request address');
+	pg_assert_same('', pg_github_pull_url('o/r', 0), 'no number');
+	pg_assert_same('', pg_github_pull_url('nope', 7), 'no repository');
+}
+
+function test_github_day_counts()
+{
+	$rows = array(
+		array('id' => 1, 'created_at' => 100, 'body' => '[pr] opened #7 feature 1234567 https://github.com/o/r/pull/7 Add a thing'),
+		array('id' => 2, 'created_at' => 110, 'body' => 'a person typed this'),
+		array('id' => 3, 'created_at' => 120, 'body' => '[ci] red #7 feature 1234567 checks=failure https://github.com/o/r/actions/runs/1 Add a thing'),
+		array('id' => 4, 'created_at' => 130, 'body' => '[ci] green #7 feature 1234567 checks=success https://github.com/o/r/actions/runs/2 Add a thing'),
+		array('id' => 5, 'created_at' => 140, 'body' => '[ci] green main 89abcde checks=success https://github.com/o/r/actions/runs/3 Merge'),
+		array('id' => 6, 'created_at' => 150, 'body' => '[ready] #7 feature 1234567 Add a thing'),
+		array('id' => 7, 'created_at' => 160, 'body' => '[pr] merged #7 feature 1234567 https://github.com/o/r/pull/7 Add a thing'),
+		array('id' => 8, 'created_at' => 170, 'body' => '[pr] closed #8 other 7654321 https://github.com/o/r/pull/8 Drop it'),
+		array('id' => 9, 'created_at' => 180, 'body' => '[pr] reopened #8 other 7654321 https://github.com/o/r/pull/8 Drop it'),
+	);
+
+	$day = pg_github_day_counts(array_reverse($rows), 'o/r', 5);
+
+	pg_assert_same(array('opened' => 2, 'merged' => 1, 'closed' => 1), $day['pull_requests'], 'pull requests: a reopened one counts as opened');
+	pg_assert_same(array('green' => 2, 'red' => 1), $day['checks'], 'checks');
+	pg_assert_same(array(9, 8, 7, 6, 5), array_map(function ($line) { return $line['message_id']; }, $day['lines']), 'the newest five lines, newest first');
+	pg_assert_same('https://github.com/o/r/pull/7', $day['lines'][2]['url'], 'a label line links to its pull request');
+	pg_assert_same('https://github.com/o/r/actions/runs/3', $day['lines'][4]['url'], 'a check links to its run');
+	pg_assert_same(180, $day['lines'][0]['created_at'], 'when');
+	pg_assert_same(array('message_id', 'kind', 'state', 'number', 'branch', 'title', 'url', 'created_at'), array_keys($day['lines'][0]), 'a line\'s fields');
+
+	$empty = pg_github_day_counts(array(), 'o/r', 5);
+	pg_assert_same(array('opened' => 0, 'merged' => 0, 'closed' => 0), $empty['pull_requests'], 'nothing today');
+	pg_assert_same(array(), $empty['lines'], 'no lines');
+}
+
+function test_channel_activity_repo_counts_only_the_application_lines_of_today()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_activity_repo.php');
+	$source = pg_test_function_source('ws_channel_activity_repo');
+
+	pg_assert_true(strpos($source, 'ws_channel_activity_link_name($viewer, $channel)') !== false, 'only a link the reader may see');
+	pg_assert_true(strpos($source, "pg_connect_service_get('github_channel_app')") !== false, 'the application is read');
+	pg_assert_true(strpos($source, "sender_kind = 'app' AND sender_id = '\" . \$app_id . \"'") !== false, 'by the application\'s id');
+	pg_assert_true(strpos($source, "strtotime('today'") !== false, 'since local midnight');
+	pg_assert_true(strpos($source, 'deleted_at = 0') !== false, 'a deleted line counts nothing');
+}
