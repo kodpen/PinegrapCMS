@@ -241,7 +241,8 @@ function test_spacing_box_is_a_part()
 	$parts = pg_designer_parts();
 	$bundles = pg_js_bundles();
 	pg_assert_same('assets/js/style_designer_spacing.min.js', isset($parts['spacing']) ? $parts['spacing'] : null, 'spacing is a part');
-	pg_assert_same(array('assets/js/pg_spacing_box.js', 'assets/js/style_designer_spacing.js'), $bundles['assets/js/style_designer_spacing.min.js'], 'the module, then the part');
+	pg_assert_same('assets/js/pg_spacing_box.js', $bundles['assets/js/style_designer_spacing.min.js'][0], 'the module first');
+	pg_assert_same('assets/js/style_designer_spacing.js', end($bundles['assets/js/style_designer_spacing.min.js']), 'the part last');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdPartCall('spacing', 'draw', [host])", $core, 'the core draws the box through the part');

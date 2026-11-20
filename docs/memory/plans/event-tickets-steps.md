@@ -17,13 +17,12 @@ description: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the 
   - A QR is drawn only when the sha256 of the code drawn again equals the row's `code_hash` (architect, 2026-11-20, `workflow/decisions-made-schema-29.md`).
   - Features: T5, T6.
 
-- TK3 (M) after TK1: the check-in screen.
+- TK3 (M) after TK1: the check-in screen. Done in #10587.
   - New: the root screen `event_check_in.php` and its script (the browser's barcode reader, the typed code).
   - Tests: the one UPDATE under two scans at once; each answer of T8; an event's ticket refused without the calendar's right and a product's without the commerce right.
-  - Pictures on a phone: the pick, a valid scan, a second scan, a wrong event, the name search. To the owner.
   - Features: T7, T8, T9.
 
-- TK4 (M) after TK1: places given back and the waiting list.
+- TK4 (M) after TK1: places given back and the waiting list. Done in PR #10578.
   - A migration step adds two columns and an index to `stock_notify` (the event and its date); the draft PR's body carries them for the architect.
   - Existing files: `includes/fn/stock_notify.php` (a request for an event's date, the send when places free), `reserve_calendar_event.php` (the "Tell me" line), `includes/fn/ecommerce.php` (the cancel gives places back). `includes/fn/stock_notify.php` is also entered by VP5 of `plans/visitor-push.md`: never open together.
   - Tests: one request per address and date; a product's stock notice not mailing an event's requests, nor the reverse; places back on a cancel only with tickets on; two frees at once mailing a request once.

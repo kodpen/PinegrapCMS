@@ -242,11 +242,18 @@ function pg_sheet_xls_names($path)
 function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error, $separator = '')
 {
     $error = '';
-    $lines = array();
     $header = null;
+    $width = 0;
     $last = 0;
+    $handle = @fopen($target, 'wb');
 
-    // Held until the walk ends: a late error drops the whole file.
+    if (!$handle) {
+        $error = 'read';
+        return false;
+    }
+
+    // Each row goes to the file as it is read, so a big sheet is never held
+    // whole; a late error empties the file and refuses it.
     foreach (pg_sheet_rows($path, $kind, $read_error, $sheet) as $number => $cells) {
         $texts = array();
 
@@ -266,54 +273,44 @@ function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error, $separator 
             }
 
             $header = $texts;
+            $width = count($header);
             $last = $number;
+
+            if ($separator === '') {
+                $joined = implode('', $header);
+                $separator = ',';
+
+                if (strpos($joined, ',') !== false) {
+                    $separator = (strpos($joined, ';') === false) ? ';' : "\t";
+                }
+            }
+
+            fwrite($handle, pg_sheet_import_csv_line($header, $separator));
             continue;
         }
 
         for ($gap = $last + 1; $gap < $number; $gap++) {
-            $lines[] = array();
+            fwrite($handle, pg_sheet_import_csv_line(array(), $separator));
         }
 
         // A row as wide as the header at least, as a CSV file writes it.
-        while (count($texts) < count($header)) {
+        while (count($texts) < $width) {
             $texts[] = '';
         }
 
-        $lines[] = $texts;
+        fwrite($handle, pg_sheet_import_csv_line($texts, $separator));
         $last = $number;
     }
 
+    if (($read_error === '') && ($header === null)) {
+        $read_error = 'empty';
+    }
+
     if ($read_error !== '') {
+        ftruncate($handle, 0);
+        fclose($handle);
         $error = $read_error;
         return false;
-    }
-
-    if ($header === null) {
-        $error = 'empty';
-        return false;
-    }
-
-    $joined = implode('', $header);
-
-    if ($separator === '') {
-        $separator = ',';
-
-        if (strpos($joined, ',') !== false) {
-            $separator = (strpos($joined, ';') === false) ? ';' : "\t";
-        }
-    }
-
-    $handle = @fopen($target, 'wb');
-
-    if (!$handle) {
-        $error = 'read';
-        return false;
-    }
-
-    fwrite($handle, pg_sheet_import_csv_line($header, $separator));
-
-    foreach ($lines as $texts) {
-        fwrite($handle, pg_sheet_import_csv_line($texts, $separator));
     }
 
     fclose($handle);
@@ -530,7 +527,39 @@ function pg_sheet_import_staged()
 
     $_SESSION['software']['sheet_import'] = $staged;
 
+    // A question left unanswered in a session that ended is in no session
+    // any more: its workbook goes by the file's age.
+    pg_sheet_import_sweep(PG_FUNCTIONS_DIR . '/data/temp', time());
+
     return $staged;
+}
+
+/**
+ * Removes the waiting workbooks (sheet_import_<token>.bin) older than
+ * PG_SHEET_IMPORT_MAX_AGE from a folder, whichever session kept them.
+ *
+ * @param string $directory
+ * @param int    $now
+ * @return int how many were removed
+ */
+function pg_sheet_import_sweep($directory, $now)
+{
+    $removed = 0;
+    $files = is_dir($directory) ? glob(rtrim($directory, '/') . '/sheet_import_*.bin') : array();
+
+    foreach ((array) $files as $file) {
+        if (preg_match('/\/sheet_import_[a-f0-9]{32}\.bin$/', $file) !== 1) {
+            continue;
+        }
+
+        $time = @filemtime($file);
+
+        if (($time !== false) && (($now - $time) > PG_SHEET_IMPORT_MAX_AGE) && @unlink($file)) {
+            $removed++;
+        }
+    }
+
+    return $removed;
 }
 
 /**
@@ -607,13 +636,68 @@ function pg_sheet_import_ask($path, $name, $kind, $names, $title, $options = arr
 }
 
 /**
+ * The reader for an uploaded file by its content: an OLE file is xls, a zip
+ * package ods when its mimetype says so, else xlsx; text is '' (a CSV file).
+ * Many programs save tab-separated text or a workbook under the other's
+ * extension; the name decides only for a zip package that is neither.
+ *
+ * @param string $path
+ * @param string $name the uploaded file's name
+ * @return string xlsx, ods, xls or ''
+ */
+function pg_sheet_import_content_kind($path, $name)
+{
+    $handle = @fopen((string) $path, 'rb');
+    $head = $handle ? (string) fread($handle, 8) : '';
+
+    if ($handle) {
+        fclose($handle);
+    }
+
+    if ($head === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1") {
+        return 'xls';
+    }
+
+    if (substr($head, 0, 4) !== "PK\x03\x04") {
+        return '';
+    }
+
+    if (class_exists('ZipArchive')) {
+        $zip = new ZipArchive();
+
+        if ($zip->open((string) $path) === true) {
+            $mimetype = $zip->getFromName('mimetype', 200);
+            $workbook = $zip->locateName('xl/workbook.xml') !== false;
+            $zip->close();
+
+            if (is_string($mimetype) && (strpos($mimetype, 'opendocument.spreadsheet') !== false)) {
+                return 'ods';
+            }
+
+            if ($workbook) {
+                return 'xlsx';
+            }
+        }
+    }
+
+    // Another zip package: the name's reader, which refuses what it cannot read.
+    $kind = pg_sheet_kind($name);
+
+    return ($kind === '') ? 'xlsx' : $kind;
+}
+
+/**
  * The upload in a file field when it is a workbook PHP received: its path,
  * name and kind; null for a CSV, no file or a failed upload.
  *
  * @param string $field
+ * @param bool   $by_content the kind by the file's content
+ *                           (pg_sheet_import_content_kind()), for the CSV
+ *                           importers; else by its name, for the importers
+ *                           whose own reader goes by the name
  * @return array|null ['path', 'name', 'kind']
  */
-function pg_sheet_import_uploaded_workbook($field)
+function pg_sheet_import_uploaded_workbook($field, $by_content = false)
 {
     $upload = isset($_FILES[$field]) && is_array($_FILES[$field]) ? $_FILES[$field] : null;
 
@@ -621,7 +705,7 @@ function pg_sheet_import_uploaded_workbook($field)
         return null;
     }
 
-    $kind = pg_sheet_kind($upload['name']);
+    $kind = $by_content ? pg_sheet_import_content_kind($upload['tmp_name'], $upload['name']) : pg_sheet_kind($upload['name']);
 
     return ($kind === '') ? null : array('path' => $upload['tmp_name'], 'name' => $upload['name'], 'kind' => $kind);
 }
@@ -671,7 +755,7 @@ function pg_sheet_import_upload($field, $title, $options = array())
         $kind = $answer['kind'];
         $sheet = $answer['sheet'];
     } else {
-        $workbook = pg_sheet_import_uploaded_workbook($field);
+        $workbook = pg_sheet_import_uploaded_workbook($field, true);
 
         if ($workbook === null) {
             return '';

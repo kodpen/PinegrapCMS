@@ -2219,6 +2219,45 @@
         };
     }
 
+    // The link counts a page tab's tip shows, from a design marked by
+    // mark(), as the Prototype view's links panel counts them (listOf(),
+    // brokenOf()): by tab key { out, in, broken }. `out` is the page's own
+    // links, one per row (a classic menu's or a region's items each);
+    // `in` the links of the other pages and of the shared components that
+    // open the tab, a page's link to itself not counted; `broken` its own
+    // broken links. A shared component's links are its own frame's, never
+    // those of the pages placing it.
+    function tabCounts(marked) {
+        var out = {};
+        var pages = (marked && Array.isArray(marked.pages)) ? marked.pages : [];
+        var shared = (marked && Array.isArray(marked.shared)) ? marked.shared : [];
+
+        pages.forEach(function (page) {
+            out[str(page.key)] = { out: 0, 'in': 0, broken: 0 };
+        });
+
+        function frame(item, key) {
+            rowsOf(item).forEach(function (row) {
+                if (key !== null) {
+                    out[key].out++;
+
+                    if (row.mark === 'broken') {
+                        out[key].broken++;
+                    }
+                }
+
+                if (row.mark === 'tab' && row.tab !== key && has(out, row.tab)) {
+                    out[row.tab]['in']++;
+                }
+            });
+        }
+
+        pages.forEach(function (page) { frame(page, str(page.key)); });
+        shared.forEach(function (one) { frame(one, null); });
+
+        return out;
+    }
+
     // The editor's key back to the Prototype view: P alone (Shift and Caps
     // Lock allowed). Nothing else uses a bare P in the editor; the palette's
     // Ctrl+Shift+P and the preview's Ctrl+Alt+P carry modifiers.
@@ -2426,6 +2465,79 @@
             out.in.push(edge.id);
             (out.lit[edge.from] = out.lit[edge.from] || []).push(edge.port);
         });
+
+        return out;
+    }
+
+    // The shortest click path (PX5) from page frame `from` to page frame
+    // `to` over the map's arrows, breadth first: a page leads to the pages
+    // its own links lead to and to those of the shared parts placed on it
+    // (`parts`, their frame ids: a click on the part as shown on that page); arrows to chips
+    // and to shared frames lead nowhere. Of the paths with the fewest
+    // clicks, the first by the arrows' order. Answers { frames, edges,
+    // hops } (the pages in order, the arrows' ids, each hop as { from, to,
+    // edge, via: the shared frame's id or '' }), from === to as no hop;
+    // null when there is none, or when an end is no page frame.
+    function pathOf(laid, from, to) {
+        var frames = (laid && Array.isArray(laid.frames)) ? laid.frames : [];
+        var byId = {};
+
+        frames.forEach(function (frame) { byId[frame.id] = frame; });
+        from = (from === null || from === undefined) ? '' : String(from);
+        to = (to === null || to === undefined) ? '' : String(to);
+
+        if (!has(byId, from) || !has(byId, to) || byId[from].kind !== 'page' || byId[to].kind !== 'page') {
+            return null;
+        }
+
+        var outOf = {};
+
+        ((laid && laid.edges) || []).forEach(function (edge) {
+            if (!has(byId, edge.to) || byId[edge.to].kind !== 'page' || edge.to === edge.from) {
+                return;
+            }
+
+            (outOf[edge.from] = outOf[edge.from] || []).push(edge);
+        });
+
+        var came = {};
+        var queue = [from];
+
+        came[from] = null;
+
+        while (queue.length && !has(came, to)) {
+            var at = queue.shift();
+            var page = byId[at];
+            var own = outOf[at] || [];
+            var parts = Array.isArray(page.parts) ? page.parts : [];
+
+            parts.forEach(function (sid) {
+                sid = String(sid);
+                (has(byId, sid) && outOf[sid] ? outOf[sid] : []).forEach(function (edge) {
+                    own = own.concat([{ id: edge.id, from: at, to: edge.to, via: sid }]);
+                });
+            });
+            own.forEach(function (edge) {
+                if (has(came, edge.to)) {
+                    return;
+                }
+
+                came[edge.to] = { from: at, edge: str(edge.id), via: edge.via || '' };
+                queue.push(edge.to);
+            });
+        }
+
+        if (!has(came, to)) {
+            return null;
+        }
+
+        var out = { frames: [to], edges: [], hops: [] };
+
+        for (var step = came[to], at2 = to; step; at2 = step.from, step = came[step.from]) {
+            out.frames.unshift(step.from);
+            out.edges.unshift(step.edge);
+            out.hops.unshift({ from: step.from, to: at2, edge: step.edge, via: step.via });
+        }
 
         return out;
     }
@@ -2798,6 +2910,7 @@
         emptyOf: emptyOf,
         canvasMarks: canvasMarks,
         canvasRequest: canvasRequest,
+        tabCounts: tabCounts,
         BACK_KEY: BACK_KEY,
         backKey: backKey,
         linkSpot: linkSpot,
@@ -2807,6 +2920,7 @@
         brokenWhy: brokenWhy,
         SUGGEST_FILLER: SUGGEST_FILLER,
         foldWords: foldWords,
+        pathOf: pathOf,
         searchOf: searchOf,
         searchStep: searchStep,
         searchKey: searchKey,

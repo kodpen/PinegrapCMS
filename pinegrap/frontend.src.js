@@ -2137,35 +2137,38 @@ var software = {
             dialog.modal = false;
         }
 
-        var opened = software.open_dialog(dialog);
+        // Remembered and counted once it is on the screen, never for a
+        // preview. open_dialog() calls opened then, also for a centred
+        // dialog that first waited for the cookie notice's answer (its
+        // return value is then only true), so that one is remembered too
+        // and does not open again on the next page.
+        if (!preview) {
+            dialog.opened = function(opened) {
+                memory.mark(auto_dialog.id, 's');
+                software.count_auto_dialog(auto_dialog, 'shown');
 
-        // Remembered once it is on the screen: not for a preview,
-        // a refused address or a dialog still waiting.
-        if (preview || !opened || !opened.addEventListener) {
-            return;
-        }
+                opened.addEventListener('close', function() {
+                    memory.mark(auto_dialog.id, 'c');
+                    software.count_auto_dialog(auto_dialog, 'closed');
+                });
 
-        memory.mark(auto_dialog.id, 's');
-        software.count_auto_dialog(auto_dialog, 'shown');
+                // A designed pop-up is taken up by a press on its marked
+                // action (data-pg-popup-take) or a form sent inside it.
+                if (dialog.content) {
+                    opened.addEventListener('click', function(event) {
+                        if (event.target && event.target.closest && event.target.closest('[data-pg-popup-take]')) {
+                            software.count_auto_dialog(auto_dialog, 'taken');
+                        }
+                    });
 
-        opened.addEventListener('close', function() {
-            memory.mark(auto_dialog.id, 'c');
-            software.count_auto_dialog(auto_dialog, 'closed');
-        });
-
-        // A designed pop-up is taken up by a press on its marked action
-        // (data-pg-popup-take) or a form sent inside it.
-        if (dialog.content) {
-            opened.addEventListener('click', function(event) {
-                if (event.target && event.target.closest && event.target.closest('[data-pg-popup-take]')) {
-                    software.count_auto_dialog(auto_dialog, 'taken');
+                    opened.addEventListener('submit', function() {
+                        software.count_auto_dialog(auto_dialog, 'taken');
+                    });
                 }
-            });
-
-            opened.addEventListener('submit', function() {
-                software.count_auto_dialog(auto_dialog, 'taken');
-            });
+            };
         }
+
+        software.open_dialog(dialog);
     },
 
     // Whether this visitor's answer leaves an anonymous count standing, the
@@ -5835,6 +5838,8 @@ var software = {
     // press on an element marked data-pg-popup-close inside closes it;
     // content that brings such a button leaves out the frame's own. A press
     // on one marked data-pg-popup-copy copies its offer code (popup_copy()).
+    // opened, a function, is called with the dialog once it is on the
+    // screen: at once, or after the cookie notice's answer it waited for.
     open_dialog: function(properties) {
         var class_name = properties.class_name;
         var modal = properties.modal;
@@ -6011,6 +6016,11 @@ var software = {
             dialog.showModal();
         } else {
             dialog.show();
+        }
+
+        // The caller's opened(dialog), once the dialog is on the screen.
+        if (typeof properties.opened === 'function') {
+            properties.opened(dialog);
         }
 
         return dialog;

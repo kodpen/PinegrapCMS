@@ -167,8 +167,9 @@ $pg_settings_cards[] = '
                         </div>';
 
 // ── WhatsApp ──
-// The site's own WhatsApp Business account on Meta's Cloud API, its secrets
-// sealed with the connected accounts' applications (includes/fn/whatsapp.php).
+// The site's own WhatsApp Business account on Meta's Cloud API is set up on
+// WhatsApp's page of Connections; the card shows the connection and keeps
+// the Workspace's Conversations field (includes/fn/whatsapp.php).
 $pg_settings_cards[] = '
                         <div id="pgset-whatsapp" class="pg-set-card">
                             <div class="card">
@@ -200,7 +201,8 @@ $pg_settings_cards[] = '
 $pg_settings_scripts[] = pg_whatsapp_message_settings_script();
 
 // ── İYS ──
-// The İYS account and the consent sync's switches (includes/iys/settings.php).
+// The İYS account and the consent sync are set up on İYS's page of
+// Connections; the card shows the connection (includes/iys/settings.php).
 $pg_settings_cards[] = '
                         <div id="pgset-iys" class="pg-set-card">
                             <div class="card">
@@ -208,7 +210,7 @@ $pg_settings_cards[] = '
                                     ' . lang('İYS') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-5">' . pg_iys_settings_fields() . '
+                                   <div class="row gy-5">' . pg_iys_settings_card_html() . '
                                     </div>
                                 </div>
                             </div>

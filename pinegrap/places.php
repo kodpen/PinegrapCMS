@@ -15,6 +15,14 @@
  * the line a designer sees (no list on the page, fields missing, a cut
  * list); a visitor gets ''.
  *
+ *   POST find=<typed address>
+ *     -> {"ok": true, "state": "found"|"not_found"|"empty"|"wait"|"error",
+ *        "lat": number|null, "lng": number|null}
+ *
+ * The lookup (X12) asks Photon once per press of Find, with its own lower
+ * rate. The text comes in the body, so it is not in the address a server
+ * log writes; it is neither stored nor logged and does not come back.
+ *
  * Refused: method 405, a cross-site request 403, rate 429.
  *
  * @author      Erdal Güral (Kodpen)
@@ -46,14 +54,30 @@ function places_answer($data, $status = 200)
     exit();
 }
 
-if (!in_array(strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')), array('GET', 'HEAD'), true)) {
-    header('Allow: GET, HEAD');
+$method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? ''));
+
+if (!in_array($method, array('GET', 'HEAD', 'POST'), true)) {
+    header('Allow: GET, HEAD, POST');
     places_answer(array('ok' => false, 'message' => lang('Method not allowed.')), 405);
 }
 
 // Same origin only: the page that holds the block asks.
 if (pg_request_cross_site($_SERVER)) {
     places_answer(array('ok' => false, 'message' => lang('Access denied.')), 403);
+}
+
+// A typed address: one Photon lookup, nothing kept.
+if ($method === 'POST') {
+    if (!pg_place_list_find_on()) {
+        places_answer(array('ok' => false, 'message' => lang('Access denied.')), 403);
+    }
+
+    if (pg_place_list_find_throttled()) {
+        header('Retry-After: ' . PG_PLACE_LIST_RATE_WINDOW);
+        places_answer(array('ok' => false, 'message' => lang('Too many requests. Please try again in a minute.')), 429);
+    }
+
+    places_answer(pg_place_list_find($_POST['find'] ?? ''));
 }
 
 if (pg_place_list_throttled()) {

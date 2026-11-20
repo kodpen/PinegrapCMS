@@ -555,6 +555,9 @@ function get_express_order($properties) {
     }
 
     if ($layout_type == 'system') {
+
+        // Set when a product form in the cart holds a File Upload field.
+        $pg_form_has_file = false;
     
         $grand_shipping = 0;
         $grand_shipping_drawn = 0;
@@ -1654,6 +1657,11 @@ function get_express_order($properties) {
                             
                             // get form info (form content, wysiwyg fields, file upload)
                             $form_info = get_form_info(0, $product_id, $order_item_id, $quantity_number, $form_label_column_width, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, $reference_code_field_id);
+
+                            // A File Upload field makes the form post multipart.
+                            if (!empty($form_info['file_upload_exists'])) {
+                                $pg_form_has_file = true;
+                            }
                             
                             $wysiwyg_fields = array_merge($wysiwyg_fields, $form_info['wysiwyg_fields']);
                             
@@ -3575,7 +3583,7 @@ function get_express_order($properties) {
             }
             
             $output_express_order =
-                '<form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/express_order.php" method="post" style="margin: 0px 0px 15px 0px">
+                '<form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/express_order.php" method="post"' . ($pg_form_has_file ? ' enctype="multipart/form-data"' : '') . ' style="margin: 0px 0px 15px 0px">
                     ' . get_token_field() . '
                     <input type="hidden" name="page_id" value="' . $page_id . '">
                     <input type="hidden" name="require_cookies" value="true">
@@ -3844,6 +3852,9 @@ function get_express_order($properties) {
         $attributes =
             'action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/express_order.php" ' .
             'method="post"';
+
+        // Set when a product form in the cart holds a File Upload field.
+        $pg_form_has_file = false;
 
         $number_of_pending_offer_actions = 0;
         $pending_system = '';
@@ -4753,7 +4764,8 @@ function get_express_order($properties) {
                                 wysiwyg,
                                 `rows`, # Backticks for reserved word.
                                 cols,
-                                information
+                                information,
+                                rules
                             FROM form_fields
                             WHERE (product_id = '" . e($item['product_id']) . "') AND (form_type = 'product')
                             ORDER BY sort_order");
@@ -4934,6 +4946,23 @@ function get_express_order($properties) {
                                 }
 
                                 switch ($field['type']) {
+
+                                    case 'file upload':
+                                        // The layout reads the file the answer keeps
+                                        // (files[quantity number]: id, name, size, url,
+                                        // html with the Remove box) and the types the
+                                        // field takes (accept); the form posts multipart.
+                                        require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+                                        $pg_kept_file = pg_pfu_stored_file($item['id'], $quantity_number, $field['id']);
+                                        if ($pg_kept_file) {
+                                            $pg_kept_file['url'] = OUTPUT_PATH . encode_url_path($pg_kept_file['name']);
+                                            $pg_kept_file['html'] = pg_pfu_kept_file_html($pg_kept_file, $html_name, OUTPUT_PATH);
+                                        }
+                                        $item['fields'][$field_key]['files'][$quantity_number] = $pg_kept_file;
+                                        $item['fields'][$field_key]['accept'] = pg_pfu_accept_attribute(pg_pfu_rule_clean($field['rules'] ?? null));
+                                        $pg_form_has_file = true;
+
+                                        break;
 
                                     case 'text box':
 
@@ -6161,6 +6190,11 @@ function get_express_order($properties) {
             } else {
                 $currencies = array();
             }
+        }
+
+        // A File Upload field makes every form of the layout post multipart.
+        if ($pg_form_has_file) {
+            $attributes .= ' enctype="multipart/form-data"';
         }
 
         $content = render_layout(array(

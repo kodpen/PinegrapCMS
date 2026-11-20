@@ -239,16 +239,16 @@ function test_workspace_mail_phone_wiring()
 	pg_assert_contains('pg_whatsapp_inbox_to_channel($event, $contact_id, $at, $now);', $read('includes/fn/whatsapp_webhook.php'), 'a kept message goes to the channel');
 	pg_assert_contains('$whatsapp_channel_post = pg_whatsapp_channel_check($_POST, USER_ID, $liveform);', $read('includes/settings/contact.save.php'), 'the card checks the channel');
 	pg_assert_contains('pg_whatsapp_channel_save($whatsapp_channel_post, USER_ID);', $read('includes/settings/contact.save.php'), 'and saves it after the account');
-	pg_assert_contains("'channel_html' => pg_whatsapp_channel_field(", $read('includes/fn/whatsapp.php'), 'the card draws the field');
+	pg_assert_contains("pg_whatsapp_settings_card_html(pg_whatsapp_app(), pg_whatsapp_channel_field(", $read('includes/fn/whatsapp.php'), 'the card draws the field');
 
 	$messages = $read('includes/workspace/messages.php');
 	pg_assert_contains("!(function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone(", $messages, 'no Reply by e-mail on a WhatsApp card');
 
-	$html = pg_whatsapp_settings_html(array(
+	$html = pg_whatsapp_settings_card_html(array(
 		'enabled' => false, 'secrets_unreadable' => false, 'app_secret' => '', 'token' => '', 'app_id' => '', 'phone_number_id' => '',
 		'account_id' => '', 'verify_token' => '', 'checked' => 0, 'display_phone_number' => '', 'verified_name' => '', 'quality_rating' => '',
-	), array('refusal' => '', 'webhook_url' => 'https://shop.test/whatsapp_webhook.php', 'test_to' => '', 'channel_html' => '<i id="channel-field"></i>'));
-	pg_assert_contains('6. ' . h(lang('Conversations')), $html, 'step 6');
+	), '<i id="channel-field"></i>');
+	pg_assert_contains('<h6>' . h(lang('Conversations')) . '</h6>', $html, 'the Conversations heading stays on the card');
 	pg_assert_contains('<i id="channel-field"></i>', $html, 'the field under it');
 }
 

@@ -193,6 +193,7 @@ function erp_api_account_present($row)
         'payment_days' => (int) ($row['payment_days'] ?? 0),
         'credit_limit' => api_money($row['credit_limit'] ?? 0),
         'invoice_email' => (string) ($row['invoice_email'] ?? ''),
+        'price_account_id' => (int) ($row['price_account_id'] ?? 0),
         'status' => (string) $row['status'],
         'notes' => (string) $row['notes'],
         'created_at' => api_time($row['created_at']),
@@ -227,6 +228,7 @@ function erp_api_account_schema()
         'payment_days' => 'integer',
         'credit_limit' => 'integer',
         'invoice_email' => 'string',
+        'price_account_id' => 'integer',
         'status' => 'string',
         'notes' => 'string',
         'created_at' => 'datetime?',
@@ -648,6 +650,16 @@ function erp_api_accounts_update($params)
         $changed[] = 'contact_id';
     }
 
+    // Whose prices the account buys at is written by the panel's own save,
+    // after the card, so the card's fields are counted apart from it.
+    $card_changed = !empty($changed);
+    $points = array_key_exists('price_account_id', $params);
+    $price_account_id = $points ? max(0, (int) $params['price_account_id']) : (int) ($account['price_account_id'] ?? 0);
+
+    if ($points) {
+        $changed[] = 'price_account_id';
+    }
+
     if (empty($changed)) {
         api_fail_validation(lang('No writable field was sent.'));
     }
@@ -696,6 +708,18 @@ function erp_api_accounts_update($params)
         }
     }
 
+    if ($points) {
+        if (!erp_shared_prices_ready()) {
+            api_fail_validation(lang('Shared prices are not available until the site is updated.'), 'price_account_id');
+        }
+
+        $refusal = erp_account_price_pointer_check($account_id, $price_account_id);
+
+        if ($refusal !== '') {
+            api_fail_validation($refusal, 'price_account_id');
+        }
+    }
+
     api_dry_run_stop('updated', 'erp_account', array(
         'id' => $account_id,
         'changed' => $changed,
@@ -710,10 +734,20 @@ function erp_api_accounts_update($params)
         }
     }
 
-    $saved = erp_account_save($data);
+    if ($card_changed) {
+        $saved = erp_account_save($data);
 
-    if (empty($saved['success'])) {
-        api_fail_validation((string) $saved['error']);
+        if (empty($saved['success'])) {
+            api_fail_validation((string) $saved['error']);
+        }
+    }
+
+    if ($points && ($price_account_id !== (int) ($account['price_account_id'] ?? 0))) {
+        $pointed = erp_account_price_pointer_save($account_id, $price_account_id);
+
+        if (empty($pointed['success'])) {
+            api_fail_validation((string) $pointed['error'], 'price_account_id');
+        }
     }
 
     erp_api_log(lang(array(

@@ -11,9 +11,10 @@
  *
  * Supported actions (mutually exclusive per POST):
  *   submit_update_cart           — quantities[item_id] map → UPDATE order_items;
- *                                  also product-form data, gift-card recipient
- *                                  rows and the recurring schedule of every
- *                                  recurring row
+ *                                  also product-form data (a File Upload
+ *                                  field's file, multipart), gift-card
+ *                                  recipient rows and the recurring schedule
+ *                                  of every recurring row
  *   submit_special_offer_code    — special_offer_code → orders.special_offer_code
  *
  * Required fields on every POST:
@@ -26,6 +27,19 @@
  */
 
 include('init.php');
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
+// A body over post_max_size (a product form's file too big for the server)
+// arrives with no fields and no token: the visitor goes back to the cart and
+// is told why, instead of meeting the token's error.
+if (pg_post_body_discarded()) {
+    $lf = new liveform('shopping_cart');
+    $limits = pg_upload_limits();
+    $lf->add_error(h(pg_upload_body_discarded_message($limits['post_max'])));
+    session_write_close();
+    go(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
+}
 
 // Nothing to process on a direct GET: send the visitor back to the page
 // they came from. go() only honours same-host targets, so a foreign or
@@ -92,6 +106,10 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             $lf->mark_error('quantities[' . $iid . ']', pg_gift_card_line_quantity_error());
         } else {
             db("UPDATE order_items SET quantity = '$q' WHERE id = '$iid' AND order_id = '$oid'");
+            // The files of the units the line no longer holds go with them.
+            if ($q < (int)$line['quantity']) {
+                pg_pfu_drop_units_above($iid, $q);
+            }
             // A recipient that already has an address and a shipping method
             // is charged for what it now holds.
             if (($q != (int)$line['quantity']) && $line['ship_to_id'] && ($line['complete'] == 1)) {
@@ -153,6 +171,8 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
     // We scan $_POST + $_FILES for that pattern, validate the
     // order_item belongs to THIS order (anti-tamper), then upsert into
     // form_data (DELETE existing for that item+qty+field, INSERT new).
+    // A File Upload field goes through pg_pfu_cart_save() instead: the file
+    // sent is checked and placed, the kept one stays when none comes.
     $_pg_form_saved = 0;
     $_pg_form_re = '/^order_item_(\d+)_quantity_number_(\d+)_form_field_(\d+)$/';
     $_pg_form_seen = array();   // track item_id, qty, field_id we touched
@@ -171,11 +191,12 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
 
         // Anti-tamper: verify the order_item belongs to this session's order
         // AND the field is owned by the order_item's product. One JOIN does both.
-        $owns = (int)db_value(
-            "SELECT 1 FROM order_items oi
+        $owns = db_item(
+            "SELECT oi.quantity, p.form_quantity_type FROM order_items oi
              INNER JOIN form_fields ff
                 ON ff.product_id = oi.product_id
                AND ff.id = '" . (int)$fid . "'
+             LEFT JOIN products p ON p.id = oi.product_id
              WHERE oi.id = '" . (int)$iid . "'
                AND oi.order_id = '" . (int)$oid . "'
              LIMIT 1"
@@ -183,8 +204,21 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!$owns) continue;
 
         // Resolve field type for proper storage of date / datetime / time.
-        $f_meta = db_item("SELECT id, name, type, label, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
+        $f_meta = db_item("SELECT id, name, type, label, multiple, upload_folder_id, rules FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
         $f_type = is_array($f_meta) ? (string)$f_meta['type'] : 'text box';
+
+        if ($f_type === 'file upload') {
+            // A unit the line does not hold takes no file.
+            if (!pg_pfu_unit_in_line($qn, (int)$owns['quantity'], (string)$owns['form_quantity_type'])) continue;
+            $f_refusal = pg_pfu_cart_save($oid, $iid, $qn, $f_meta, isset($_FILES[$key]) ? $_FILES[$key] : null,
+                !empty($_POST[pg_pfu_remove_name($key)]));
+            if ($f_refusal !== '') {
+                $lf->mark_error($key, h($f_refusal));
+            } else {
+                $_pg_form_saved++;
+            }
+            continue;
+        }
 
         // Collect raw value(s) from POST. Multi-select / checkbox arrays
         // collapse to a comma-joined string for storage. Any other field

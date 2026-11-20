@@ -1572,7 +1572,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li id="new_folder_item"><button type="button" class="menu-item" id="new_folder_button"><span class="bi bi-folder-plus me-3"></span><?php echo lang('New Folder'); ?></button></li>
                 <li id="upload_file_item"><button type="button" class="menu-item" id="upload_file_button"><span class="bi bi-upload me-3"></span><?php echo lang('Upload Files or Folders'); ?></button></li>
                 <li id="create_file_item"><button type="button" class="menu-item" id="create_file_button"><span class="bi bi-file-earmark-plus me-3"></span><?php echo lang('Create File'); ?></button></li>
-                <li id="new_image_item"><button type="button" class="menu-item" id="new_image_button"><span class="bi bi-easel me-3"></span><?php echo lang('New image'); ?></button></li>
+                <li id="new_image_item"><button type="button" class="menu-item" id="new_image_button"><?php echo pg_design_canvas_icon_one_colour('me-3') . lang('New image'); ?></button></li>
                 <li id="new_visual_page_item" class="d-none"><button type="button" class="menu-item" id="new_visual_page_button"><span class="bi bi-magic me-3"></span><?php echo lang('Add Page'); ?></button></li>
                 <li id="new_page_item" class="d-none"><a class="menu-item" id="new_page_button" href="add_page.php"><span class="bi bi-window-plus me-3"></span><?php echo lang('New Page'); ?></a></li>
                 <li id="new_short_link_item" class="d-none"><button type="button" class="menu-item" id="new_short_link_button"><span class="bi bi-link-45deg me-3"></span><?php echo lang('Short Link'); ?></button></li>
@@ -8411,7 +8411,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     menuItem('bi-folder-plus', L.new_folder, 'new_folder', !actions.folder) +
                     menuItem('bi-upload', L.upload_file, 'upload_link', !actions.upload) +
                     menuItem('bi-file-earmark-plus', L.create_file, 'create_file_link', !actions.file) +
-                    menuItem('bi-easel', L.new_image, 'new_image_link', !actions.image) +
+                    menuItem(L.image_editor_icon, L.new_image, 'new_image_link', !actions.image) +
                     ((state.caps.can_create_pages && canVisualPages) ? menuItem('bi-magic', L.new_visual_page, 'new_visual_page', !actions.page) : '') +
                     (state.caps.can_create_pages ? menuItem('bi-window-plus', canVisualPages ? L.new_page_legacy : L.new_page, 'new_page_link', !actions.page) : '') +
                     (actions.short_link ? menuItem('bi-link-45deg', L.short_link, 'new_short_link') : '');

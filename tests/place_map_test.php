@@ -61,6 +61,61 @@ function test_place_map_field_roles_need_number_fields_and_an_address()
 	pg_assert_same(null, pg_place_map_field_roles(array()));
 }
 
+// The Map of places block's chosen fields come first: fields the name rule
+// does not know are taken, and a chosen field beats a name-rule field.
+function test_place_map_field_roles_take_the_block_choice()
+{
+	$fields = array(
+		array('id' => 21, 'name' => 'Location', 'type' => 'text area', 'kind' => ''),
+		array('id' => 22, 'name' => 'Y Coord', 'type' => 'text box', 'kind' => 'number'),
+		array('id' => 23, 'name' => 'X Coord', 'type' => 'text box', 'kind' => 'number'),
+	);
+	pg_assert_same(null, pg_place_map_field_roles($fields), 'no name matches');
+	pg_assert_same(
+		array('lat' => 22, 'lng' => 23, 'address' => array(21)),
+		pg_place_map_field_roles($fields, array('address' => 'Location', 'lat' => 'Y Coord', 'lng' => 'X Coord'))
+	);
+
+	$both = array_merge(place_map_test_fields(), $fields);
+	$roles = pg_place_map_field_roles($both, array('lat' => 'Y Coord', 'lng' => 'X Coord', 'address' => 'Location'));
+	pg_assert_same(22, $roles['lat'], 'the chosen field, not Latitude');
+	pg_assert_same(23, $roles['lng']);
+	pg_assert_same(array(21), $roles['address'], 'a chosen address is the address alone');
+
+	$roles = pg_place_map_field_roles($both, array('lat' => 'Y Coord'));
+	pg_assert_same(array(22, 15, array(12, 13)), array($roles['lat'], $roles['lng'], $roles['address']), 'a part not chosen is found by name');
+
+	pg_assert_same(pg_place_map_field_roles(place_map_test_fields()), pg_place_map_field_roles(place_map_test_fields(), array()), 'no block: the name rule');
+}
+
+// A chosen field no longer on the form, or one that does not fit the part,
+// falls back to the name rule.
+function test_place_map_field_roles_stale_choice_falls_back()
+{
+	$fields = place_map_test_fields();
+	$roles = pg_place_map_field_roles($fields, array('lat' => 'Gone', 'lng' => 'Phone', 'address' => 'Removed'));
+	pg_assert_same(array('lat' => 14, 'lng' => 15, 'address' => array(12, 13)), $roles);
+
+	$fields[] = array('id' => 31, 'name' => 'Hidden lat', 'type' => 'text box', 'kind' => 'number', 'office' => 1);
+	pg_assert_same(14, pg_place_map_field_roles($fields, array('lat' => 'Hidden lat'))['lat'], 'an office-use-only field is never chosen');
+}
+
+// Whose block wins for a form listed on several pages: the lowest page id
+// whose first form list shows the form and whose block names a field.
+function test_place_map_pick_choice()
+{
+	$pages = array(
+		array('page_id' => 9, 'form' => 5, 'choice' => array('lat' => 'B')),
+		array('page_id' => 4, 'form' => 7, 'choice' => array('lat' => 'Other form')),
+		array('page_id' => 6, 'form' => 5, 'choice' => array('lat' => 'A')),
+		array('page_id' => 2, 'form' => 5, 'choice' => array()),
+	);
+	pg_assert_same(array('lat' => 'A'), pg_place_map_pick_choice($pages, 5));
+	pg_assert_same(array('lat' => 'Other form'), pg_place_map_pick_choice($pages, 7));
+	pg_assert_same(array(), pg_place_map_pick_choice($pages, 8), 'no block lists it');
+	pg_assert_same(array(), pg_place_map_pick_choice(array(), 5));
+}
+
 // A found address fills both fields, latitude second in GeoJSON.
 function test_place_map_found_fills_both()
 {
@@ -168,7 +223,7 @@ function test_place_map_address_text_and_number()
 	pg_assert_same('0', pg_place_map_number(-0.0000001));
 }
 
-// No lookup without a press: only the endpoint calls it, and the form's and
+// No lookup without a press: only the endpoints call it, and the form's and
 // the list's scripts ask the server inside their click handlers.
 function test_place_map_no_call_without_a_press()
 {
@@ -181,7 +236,14 @@ function test_place_map_no_call_without_a_press()
 	}
 
 	sort($callers);
-	pg_assert_same(array('place_coordinates.php', 'place_map.php'), $callers);
+	pg_assert_same(array('place_coordinates.php', 'place_list.php', 'place_map.php'), $callers);
+
+	// The page's typed-address lookup (place_list.php) asks only for a POST
+	// of places.php, which the page sends on a press of Find.
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	pg_assert_same(1, preg_match_all('/\bpg_place_map_lookup\(\$/', $list), 'one call, in pg_place_list_find()');
+	$places = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
+	pg_assert_true(strpos($places, 'pg_place_list_find(') > strpos($places, "if (\$method === 'POST')"), 'only for a POST');
 
 	foreach (array(pg_place_map_form_script(), pg_place_map_list_script()) as $script) {
 		pg_assert_true(strpos($script, 'fetch(') > strpos($script, 'addEventListener("click"'), 'asked only on a click');

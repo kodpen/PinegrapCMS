@@ -130,6 +130,63 @@ function test_courses_enrolment_day_from_first_open()
 	pg_assert_same('', pg_course_enrolment_day(array(), 0), 'neither: no day');
 }
 
+function test_courses_folder_chain_walks_the_parents()
+{
+	// 10 Academy at the root, 11 Course A below it, 12 a lesson group below that.
+	$parents = array(10 => 0, 11 => 10, 12 => 11, 20 => 0);
+
+	pg_assert_same(array(10), pg_course_folder_chain($parents, 10), 'a root folder: itself only');
+	pg_assert_same(array(11, 10), pg_course_folder_chain($parents, 11), 'a parent grant opens the folder');
+	pg_assert_same(array(12, 11, 10), pg_course_folder_chain($parents, 12), 'a grandparent grant opens it too');
+	pg_assert_same(array(), pg_course_folder_chain($parents, 99), 'a folder that does not exist: none');
+	pg_assert_same(array(), pg_course_folder_chain($parents, 0), 'no folder: none');
+}
+
+function test_courses_folder_chain_stops_on_a_broken_chain()
+{
+	pg_assert_same(array(5, 6), pg_course_folder_chain(array(5 => 6, 6 => 5), 5), 'a loop stops at the folder seen');
+	pg_assert_same(array(7), pg_course_folder_chain(array(7 => 7), 7), 'a folder that is its own parent');
+	pg_assert_same(array(3, 4), pg_course_folder_chain(array(3 => 4, 4 => 8), 3), 'a parent that names no folder stops the walk');
+
+	$deep = array(1 => 0);
+	for ($i = 2; $i <= 200; $i++) {
+		$deep[$i] = $i - 1;
+	}
+	pg_assert_same(PG_COURSE_FOLDER_DEPTH, count(pg_course_folder_chain($deep, 200)), 'the walk is bounded');
+}
+
+function test_courses_grant_folder_sql_matches_the_chain()
+{
+	pg_assert_same("(products.private_folder IN ('11', '10'))", pg_course_grant_folder_sql(array(11, 10)), 'the folder and its parents');
+	pg_assert_same('(1 = 0)', pg_course_grant_folder_sql(array()), 'no folder matches nothing');
+	pg_assert_same("(products.private_folder IN ('3'))", pg_course_grant_folder_sql(array('3 OR 1', 0)), 'ids are integers');
+
+	// The gate, the course blocks and the learners list read the same chain.
+	$fn = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/courses.php');
+	$admin = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/courses_admin.php');
+	pg_assert_contains('pg_course_grant_folder_sql(pg_course_folder_ids($folder_id))', $fn, 'pg_course_member_orders() walks the parents');
+	pg_assert_contains('pg_course_grant_folder_sql(pg_course_folder_ids($folder_id))', $admin, 'the learners list walks the parents');
+	pg_assert_false(strpos($fn . $admin, "products.private_folder = '") !== false, 'no reader matches the course folder alone');
+}
+
+function test_courses_enrolment_day_from_a_parent_folder_grant()
+{
+	// Bought on day 1 a product opening "Academy", the parent of the course
+	// folder; first open on day 10. The order counts: lesson 2 at 7 days
+	// opens on day 8.
+	$chain = pg_course_folder_chain(array(10 => 0, 11 => 10), 11);
+	pg_assert_true(in_array(10, $chain, true), 'the parent grant opens the course folder');
+
+	$orders = array(array('status' => 'complete', 'order_date' => mktime(10, 0, 0, 11, 1, 2026)));
+	$day = pg_course_enrolment_day($orders, mktime(9, 0, 0, 11, 10, 2026));
+	pg_assert_same('2026-11-01', $day, 'the order day, not the first open');
+
+	$state = pg_course_lesson_state(_courses_test_lessons(), 12, array(), $day, false, '2026-11-10', false);
+	pg_assert_true($state['open'], 'lesson 2 is open on day 10');
+	$state = pg_course_lesson_state(_courses_test_lessons(), 12, array(), $day, false, '2026-11-07', false);
+	pg_assert_same('2026-11-08', $state['opens_on'], 'lesson 2 opens on day 8');
+}
+
 function test_courses_first_open_row_only_for_member_with_folder()
 {
 	$now = mktime(12, 0, 0, 11, 2, 2026);
@@ -350,4 +407,47 @@ function test_courses_progress_goes_with_a_deleted_account()
 
 	pg_assert_true($forget !== false, 'pg_user_delete() removes the course progress');
 	pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), 'before the account row goes');
+}
+
+function test_courses_lesson_outside_folder_does_not_count()
+{
+	// Lesson 12's page left the course's folder (40); lesson 13's page was
+	// deleted (no folder). Neither gates or counts (Z17).
+	$lessons = array(
+		array('id' => 11, 'page_id' => 101, 'sort_order' => 1, 'open_days' => 0),
+		array('id' => 12, 'page_id' => 102, 'sort_order' => 2, 'open_days' => 0),
+		array('id' => 13, 'page_id' => 103, 'sort_order' => 3, 'open_days' => 0),
+		array('id' => 14, 'page_id' => 104, 'sort_order' => 4, 'open_days' => 0),
+	);
+	$counted = pg_course_lessons_counted($lessons, array(101 => 40, 102 => 41, 104 => 40), 40);
+
+	pg_assert_same(array(11, 14), array_map('intval', array_column($counted, 'id')), 'only the lessons in the folder count');
+	pg_assert_same(array(), pg_course_lessons_counted($lessons, array(101 => 40), 0), 'a course without a folder counts none');
+
+	$state = pg_course_lesson_state($counted, 14, array(11), '2026-11-01', true, '2026-11-20', false);
+	pg_assert_true($state['open'], 'in order: the stray lessons before do not hold lesson 14 back');
+
+	$now = mktime(12, 0, 0, 11, 2, 2026);
+	$row = pg_course_completion_row(7, 5, array_column($counted, 'id'), array(11, 14), false, $now);
+	pg_assert_same(pg_course_kind('complete'), $row['kind'] ?? 0, 'the counted lessons done complete the course');
+}
+
+function test_courses_student_side_reads_counted_lessons()
+{
+	$files = array(
+		'course_action.php'            => file_get_contents(PG_FUNCTIONS_DIR . '/course_action.php'),
+		'includes/fn/course_blocks.php' => file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php'),
+	);
+
+	foreach ($files as $name => $source) {
+		pg_assert_false(strpos($source, 'pg_course_lessons(') !== false, $name . ' reads the counted lessons, not every lesson row');
+		pg_assert_true(strpos($source, 'pg_course_member_lessons(') !== false, $name . ' reads pg_course_member_lessons()');
+	}
+
+	$courses = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/courses.php');
+	foreach (array('pg_course_mark_done', 'pg_course_gate') as $fn) {
+		$at = strpos($courses, 'function ' . $fn . '(');
+		$body = substr($courses, $at, strpos($courses, "\n}\n", $at) - $at);
+		pg_assert_false(strpos($body, 'pg_course_lessons(') !== false, $fn . ' reads the counted lessons');
+	}
 }

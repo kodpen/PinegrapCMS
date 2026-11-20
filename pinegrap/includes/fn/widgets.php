@@ -9645,6 +9645,8 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
                 if ((int)$event['limit_reservations'] === 1 && (int)$event['number_of_remaining_spots'] === 0) $msg[] = (string)$event['no_remaining_spots_message'];
                 if ((int)$event['inventory'] === 1 && (int)$event['inventory_quantity'] === 0 && (int)$event['backorder'] === 0) $msg[] = (string)$event['out_of_stock_message'];
                 $values['__reservation_message'] = trim(implode(' ', array_filter($msg)));
+                // A full date offers its waiting list in the reserve form's place.
+                $reserve_form = pg_stock_notify_event_line($event, (int)$recurrence, pg_sw_drawn_page_id(), get_request_uri());
             }
         }
     }

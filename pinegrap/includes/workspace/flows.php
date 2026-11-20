@@ -1329,7 +1329,7 @@ function ws_flow_graph_check($graph)
         // time, whose start moments make the window (flow_records.php).
         // An e-mail box draws the records of a records box of the flow.
         if (($node['kind'] === 'email') && function_exists('ws_flow_mail_records_box_problems')) {
-            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph) as $text) {
+            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph, (string) $id) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -2502,6 +2502,14 @@ function ws_flow_save_check($viewer, $data, $flow = null)
 
         if (strlen($json) > WS_FLOW_GRAPH_BYTES) {
             return ws_flow_refusal(lang(array('string' => 'The flow is too large to keep: at most {var:1} KB.', 'vars' => (int) (WS_FLOW_GRAPH_BYTES / 1024))), 422, 'graph');
+        }
+
+        // A group e-mail's campaign takes no BCC; refused, not dropped, so
+        // the writer learns the address gets nothing.
+        $bcc = function_exists('ws_flow_mail_group_bcc_refusal') ? ws_flow_mail_group_bcc_refusal($graph) : '';
+
+        if ($bcc !== '') {
+            return ws_flow_refusal($bcc, 422, 'graph');
         }
 
         $sets['draft'] = $json;

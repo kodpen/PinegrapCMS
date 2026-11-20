@@ -19,6 +19,7 @@ description: An uncaught Throwable or a fatal error inside integration.php or mc
 ## How does the operator find the log line?
 - `pg_error_request_id()` returns `api_request_id()` when `PG_API_ENTRY` is defined, so every error line of an API or MCP request carries the id the client got in `X-Request-Id` and the API request log keeps. A line written before `includes/api/bootstrap.php` loaded still has a short id of its own.
 - `pg_error_record_throwable()` writes the Throwable's line for both `pg_error_uncaught()` and the API guard.
+- A failed query of `api_query()` (`includes/api/db.php`) writes the database's message as a `Database` line (`api_fault_query_entry()`, `fault.php`) before it answers 500. Before PR #10615 nothing was logged outside DEBUG: the answer's request id led to no line.
 
 ## What is left as before?
 - A fault in `init.php` before the API bootstrap loads (database guard, config) answers as the site does.

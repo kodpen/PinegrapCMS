@@ -262,3 +262,32 @@ function api_fault_record($thrown) {
 	}
 
 }
+
+// The error log line of a failed query (includes/api/db.php). Outside DEBUG
+// the client gets only the generic sentence, so without this line the
+// request id in its answer led to nothing that said what went wrong.
+// $detail is what the database said: an operator's text, never a client's.
+function api_fault_query_entry($detail) {
+
+	$detail = trim((string)$detail);
+
+	return pg_error_entry(
+		'error',
+		'Database',
+		($detail === '') ? 'API: a query failed.' : 'API: a query failed: ' . $detail,
+		'',
+		0,
+		array());
+
+}
+
+// Writes that line, under the request's id.
+function api_fault_query_record($detail) {
+
+	if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
+
+		pg_error_write(api_fault_query_entry($detail));
+
+	}
+
+}

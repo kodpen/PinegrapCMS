@@ -148,6 +148,28 @@ if (check_view_access($folder_id) == false) {
     output_error(lang('You do not have access to reserve this calendar event.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
+// The waiting list of a full date ("Tell me when a place frees"): the
+// address is kept as a back-in-stock request is, and the visitor goes back
+// to the page with the answer. Nothing is added to the cart.
+if ((string) $liveform->get_field_value('waiting_list') === '1') {
+    $waiting_status = pg_stock_notify_throttled()
+        ? 'throttled'
+        : pg_stock_notify_event_request($calendar_event_id, $recurrence_number, (string) $liveform->get_field_value('email_address'), (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ? (int) USER_ID : 0);
+
+    $waiting_message = ($waiting_status === 'throttled')
+        ? lang('Too many requests from your address. Please wait a moment and try again.')
+        : pg_stock_notify_event_status_message($waiting_status);
+
+    if (pg_stock_notify_status_ok($waiting_status)) {
+        $liveform->add_notice(h($waiting_message));
+    } else {
+        $liveform->mark_error('email_address', h($waiting_message));
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+    exit();
+}
+
 // if reservations are limited and there are no remaining spots for this calendar event,
 // or if inventory is enabled for product and the inventory quantity is 0 and this product is not allowed to be backordered
 // then add error and forward visitor back to previous screen

@@ -568,16 +568,18 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, GitHub links and link previews.'),
+            'description' => lang('Channel templates, GitHub links, link previews and calls.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-link-preview'    => lang('Link previews'),
+                'pgset-ws-calls'           => lang('Calls'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
+                'pgset-ws-calls'           => pg_settings_keywords(lang('workspace, call, voice call, video call, stun, turn, relay')),
             ),
         ),
 
@@ -1004,6 +1006,10 @@ function pg_settings_legacy_anchors()
         'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
         'stats_url'        => array('privacy',    'pgset-analytics'),
         'ga_property'      => array('privacy',    'pgset-analytics'),
+        // The Google Cloud Translation key moved onto its page of
+        // Connections; an old link to its field lands on the card that shows
+        // the connection.
+        'translation_google_key' => array('languages', 'pgset-translation-engines'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail
@@ -1012,6 +1018,11 @@ function pg_settings_legacy_anchors()
         'pgset-mailchimp'  => array('mail_sending', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
+        // The WhatsApp and İYS accounts moved onto their pages of
+        // Connections; an old link to their fields lands on the card that
+        // shows the connection.
+        'whatsapp_app_id'  => array('contact',    'pgset-whatsapp'),
+        'iys_user'         => array('contact',    'pgset-iys'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),
         'pgsub-signin'     => array('security',   'pgset-signin'),
