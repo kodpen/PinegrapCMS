@@ -1266,8 +1266,11 @@ function pg_panel_designer($request, $action)
                 define('PG_API_PANEL', true);
             }
             require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/page_clicks.php');
+            // on: the switch as saved, which the layer's "Turn on" reads
+            // back, its post's answer telling nothing.
             respond(array(
                 'status' => 'success',
+                'on'     => pg_page_clicks_switch_on(),
                 'page'   => api_page_clicks_page_present($pc_page, (string)$pc_name,
                     pg_page_clicks_page($pc_page, $pc_window[0], $pc_window[1], $pc_device)),
             ));

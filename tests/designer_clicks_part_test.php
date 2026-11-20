@@ -219,3 +219,46 @@ function test_designer_clicks_part_uses_only_the_kit()
 
 	pg_assert_true(strpos(implode("\n", pg_js_bundles()['assets/js/style_designer.min.js']), 'style_designer_clicks.js') === false, 'kept out of the core bundle');
 }
+
+// The empty state's "Turn on" after a post the switch did not take: the
+// session ran out (a redirect to the sign-in page) or the token was refused
+// (an error page answered 200). Both answers look like the switch's own
+// redirect, so the figures' read says whether it is on.
+function test_designer_clicks_part_turn_on_trusts_only_the_switch()
+{
+	// One page on the canvas, and one settings object, as sdDesign is.
+	$prelude = 'var DESIGN = null;' . "\n" . str_replace(
+		array('pages: { get: function () { return []; } }, activeKey: { get: function () { return ""; } }', 'design: { get: function () { return { clicks: '),
+		array('pages: { get: function () { return [{ key: "p7", page_id: 7, page_name: "home" }]; } }, activeKey: { get: function () { return "p7"; } }', 'design: { get: function () { return DESIGN = DESIGN || { clicks: '),
+		designer_clicks_part_test_prelude(array('visitors' => true, 'features' => true, 'on' => false, 'ready' => true)));
+	// The answer comes after the promises: the harness' own print of `out`
+	// is held back and this one prints it.
+	$code = 'var toasts = [], asked = 0, print = console.log; console.log = function () {};
+		K._pgApiPost = function () { asked++; return Promise.resolve({ status: "success", on: SWITCH, page: { views: 0, reach: [], elements: [], other: 0 } }); };
+		var FormData = function () { this.append = function () {}; };
+		var fetch = function () { return Promise.resolve({ ok: false, type: "opaqueredirect" }); };
+		K.sdToast = function (m) { toasts.push(m); };
+		var heard = {};
+		var panel = { innerHTML: "", addEventListener: function (t, f) { heard[t] = f; }, removeEventListener: function () {} };
+		api.open({ panel: panel });
+		var button = { disabled: false };
+		setTimeout(function () { heard.click({ target: { closest: function () { return button; } } }); }, 5);
+		setTimeout(function () { print(JSON.stringify({ asked: asked, toasts: toasts, disabled: button.disabled, button: panel.innerHTML.indexOf("data-sd-clicks-on") >= 0, on: K.design.clicks.on })); process.exit(0); }, 50);';
+
+	$refused = page_clicks_script_test_node($prelude, str_replace('SWITCH', 'false', $code));
+	$taken = page_clicks_script_test_node($prelude, str_replace('SWITCH', 'true', $code));
+
+	if ($refused === null) {
+		return;
+	}
+
+	pg_assert_same(1, $refused['asked'], 'the figures are read after the post');
+	pg_assert_same(1, count($refused['toasts']), 'a post the switch did not take is told as not turned on');
+	pg_assert_false($refused['disabled'], 'the button can be pressed again');
+	pg_assert_true($refused['button'], 'the empty state with its button is drawn again, not an empty period');
+	pg_assert_same(0, count($taken['toasts']), 'no error when the switch is on');
+	pg_assert_false($taken['button'], 'the figures replace the empty state');
+
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	pg_assert_contains("'on'     => pg_page_clicks_switch_on(),", $panel, 'the read says whether the switch is on');
+}

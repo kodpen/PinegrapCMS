@@ -67,9 +67,22 @@ StyleDesigner.definePart('clicks', function (K) {
         return Array.from ? Array.from(text).slice(0, length).join('') : text.slice(0, length);
     }
 
-    // A path part that looks like a code (pg_page_clicks_code_like()).
+    // A path part that looks like a code (pg_page_clicks_code_like()),
+    // judged as the word it encodes; one that does not decode as it stands.
     function codeLike(part) {
-        return (part.length > 16) && (part.indexOf('-') < 0) && /[A-Za-z]/.test(part) && /[0-9]/.test(part);
+        var text = part;
+
+        if (part.indexOf('%') >= 0) {
+            try {
+                text = decodeURIComponent(part);
+            } catch (e) {
+                text = part;
+            }
+        }
+
+        var length = Array.from ? Array.from(text).length : text.length;
+
+        return (length > 16) && (text.indexOf('-') < 0) && /[A-Za-z]/.test(text) && /[0-9]/.test(text);
     }
 
     // The twin of pg_page_clicks_fold_url() and the script's foldUrl().
@@ -559,6 +572,15 @@ StyleDesigner.definePart('clicks', function (K) {
                     throw new Error('refused');
                 }
 
+                // The read says whether the switch is on: a "Turn on" post
+                // the switch did not take looks like the switch's own answer.
+                if (body.on === false) {
+                    s.on = false;
+                    refresh();
+
+                    return null;
+                }
+
                 state.report = body.page ? body.page : { views: 0, reach: [], elements: [], other: 0 };
                 refresh();
 
@@ -575,7 +597,10 @@ StyleDesigner.definePart('clicks', function (K) {
 
     // The empty state's button: the Visitors section's form post, which
     // checks the Features right and the token and saves through the one
-    // saver. Its answer is a redirect, not followed.
+    // saver. Its answer is a redirect, not followed; so is the sign-in
+    // page's when the session ran out, and a refused token answers 200 with
+    // an error page. Whether the switch took is read from the figures' read
+    // that follows (load()).
     function turnOn(button) {
         var s = settings();
         var body = new FormData();
@@ -594,9 +619,23 @@ StyleDesigner.definePart('clicks', function (K) {
                 }
 
                 s.on = true;
+
                 return load();
             })
+            .then(function (report) {
+                if (!report || !s.on) {
+                    throw new Error('not on');
+                }
+
+                return report;
+            })
             .catch(function () {
+                s.on = false;
+
+                if (H) {
+                    refresh();
+                }
+
                 if (button) {
                     button.disabled = false;
                 }

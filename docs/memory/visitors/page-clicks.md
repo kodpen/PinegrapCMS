@@ -16,7 +16,7 @@ module: page_clicks
 - Refused: over 30 a minute an address (waf `clicks`), the switch off, a crawler, anyone signed in, a visitor who refused statistics (`platform/consent-anonymous-counts.md`); one pure gate, `pg_page_clicks_may_count()`. A bad shape (unknown device or area, a tenth not 0-10, over 20 elements, an element not four strings, over 8 KB) drops the whole beacon.
 
 ## How are address and label folded?
-- `pg_page_clicks_fold_url()`: no query or fragment; this site's host by its path, another as `//host/path`; `mailto:`, `tel:`, `sms:` and messaging schemes or hosts (wa.me, t.me, m.me …) keep their kind only (`tel:`), and a kind folds to itself (`telegram:`); a path part over 16 characters with letters and digits and no hyphen becomes `*`; script or unresolved addresses are ''; cut at 255 characters.
+- `pg_page_clicks_fold_url()`: no query or fragment; this site's host by its path, another as `//host/path`; `mailto:`, `tel:`, `sms:` and messaging schemes or hosts (wa.me, t.me, m.me …) keep their kind only (`tel:`), and a kind folds to itself (`telegram:`); a path part over 16 characters with letters and digits and no hyphen becomes `*`, judged as the word it percent-encodes; script or unresolved addresses are ''; cut at 255 characters.
 - `pg_page_clicks_fold_label()`: control characters out, white space folded, cut at 60 characters; empty when it holds an e-mail address or seven digits in a row.
 - The server folds the script's values again (only it meets a kind as input); an element folded alike counts once a beacon; one with neither address nor label is dropped.
 
@@ -32,9 +32,9 @@ module: page_clicks
 ## What else is there?
 - Switch `page-clicks-switch.md`, script `page-clicks-script.md`, Visitors and `GET /reports/page-clicks` `ui/visitors-clicks-section.md`, designer `page-clicks-designer-layer.md`; scope and decisions `page-clicks-scope.md`.
 
-## What did the bug hunt find? (message 10214, #10604)
-- Fixed: a beacon counted with the switch off (a cached page keeps the script an hour, a signature a day); the second fold made `telegram:`, `signal:`, `messenger:`, `teams:` '' (icon link dropped); the script's part could pass 8 KB and lose the view.
-- Clean: bound, signature, forged body, figures, sweep, API.
+## What did the bug hunts find?
+- Message 10214 (#10604): counted with the switch off; `telegram:` and the other kinds folded to ''; a part over 8 KB. Clean: bound, signature, forged body, figures, sweep, API.
+- Message 10776: `workflow/bug-hunt-areas-click-scroll-map.md`.
 
 ## Tested?
 - `tests/page_clicks_test.php`; step, record, bound, figures, sweep on MariaDB.
