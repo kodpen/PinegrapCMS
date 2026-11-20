@@ -250,6 +250,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_application_review();      // 11.0.258
 	upgrade_2026_11_0_shipment_problems();       // 11.0.259
 	upgrade_2026_11_0_privacy_requests();        // 11.0.260
+	upgrade_2026_11_0_marketplace_step_unit();   // 11.0.261
 
 }
 
@@ -8394,6 +8395,18 @@ function upgrade_2026_11_0_marketplace_pricing() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Marketplaces: an account can sell at its own prices by rules, never under a profit floor.');
+
+}
+
+// The unit of a marketplace account's repricing step (2026.11.0, 11.0.261;
+// includes/fn/marketplace_pricing.php): 0 the step is an amount in minor
+// units, 1 hundredths of a percent of the price it moves from. Read on the
+// account's row only; every row stored so far is an amount.
+function upgrade_2026_11_0_marketplace_step_unit() {
+
+	install_add_column('marketplace_price_rules', 'step_unit', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Marketplaces: the repricing step can be an amount or a percent.');
 
 }
 

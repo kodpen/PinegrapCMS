@@ -2716,6 +2716,8 @@
     "Own account": "Kendi hesabı",
     "Own department": "Asıl departmanı",
     "Own integration": "Kendi entegrasyonum",
+    "Own price": "Kendi fiyatı",
+    "Own price: an amount over zero and up to 1,000,000, or empty to price by the rules.": "Kendi fiyatı: sıfırdan büyük ve en fazla 1.000.000 bir tutar ya da kurallara göre fiyatlamak için boş.",
     "Own studio": "Kendi stüdyom",
     "Owned by a cat": "Bir kedinin malı",
     "Owner": "Sahibi",

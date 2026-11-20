@@ -180,7 +180,7 @@ function mp_matches_page($account_id, $filter, $search, $page, $per_page) {
 	$total = (int) db_value("SELECT COUNT(*) " . $where);
 
 	$rows = db_items("SELECT products.id, products.name, products.short_description, products.title, products.image_name,
-			products.price, products.taxable, products.tax_rate, products.inventory, products.inventory_quantity,
+			products.price, products.taxable, products.tax_rate, products.brand, products.inventory, products.inventory_quantity,
 			products.out_of_stock, products.enabled,
 			marketplace_product_map.id AS map_id, marketplace_product_map.remote_code, marketplace_product_map.remote_id,
 			marketplace_product_map.status AS map_status, marketplace_product_map.last_error AS map_error,
@@ -198,7 +198,7 @@ function mp_matches_page($account_id, $filter, $search, $page, $per_page) {
 function mp_matches_row($account_id, $product_id) {
 
 	$page = db_items("SELECT products.id, products.name, products.short_description, products.title, products.image_name,
-			products.price, products.taxable, products.tax_rate, products.inventory, products.inventory_quantity,
+			products.price, products.taxable, products.tax_rate, products.brand, products.inventory, products.inventory_quantity,
 			products.out_of_stock, products.enabled,
 			marketplace_product_map.id AS map_id, marketplace_product_map.remote_code, marketplace_product_map.remote_id,
 			marketplace_product_map.status AS map_status, marketplace_product_map.last_error AS map_error,
