@@ -280,7 +280,7 @@ function pg_stock_transfer_ref($product_id, $from_id, $to_id, $now)
  * @param array  $options user_id for both moves (the API's application
  *                        owner; default USER_ID)
  * @return array ok, error (pg_stock_transfer_check()'s, pg_stock_change()'s,
- *               'no_locations'), ref, from (the writer's answer), to
+ *               'no_locations', 'bundle'), ref, from (the writer's answer), to
  */
 function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '', array $options = array())
 {
@@ -296,6 +296,13 @@ function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '',
 
     if (!$check['ok']) {
         return $refuse($check['error']);
+    }
+
+    // A bundle's stock is a cache of its components' (includes/fn/bundles.php):
+    // its rows are never kept up, and the writer would put their sum in place
+    // of the cached figure the shop sells from.
+    if (function_exists('pg_bundle_ids_among') && pg_bundle_ids_among(array((int) $product_id))) {
+        return $refuse('bundle');
     }
 
     $ref = pg_stock_transfer_ref($product_id, $check['from'], $check['to'], time());
@@ -345,6 +352,8 @@ function pg_stock_transfer_error_text($error)
             return lang('The location the units come from does not hold that many.');
         case 'untracked':
             return lang('This product does not track its inventory.');
+        case 'bundle':
+            return lang('This product is a bundle: its stock follows the products in it. Change their stock instead.');
         case 'product':
             return lang('No product has this SKU.');
         case 'no_locations':
