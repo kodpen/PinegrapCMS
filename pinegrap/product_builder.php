@@ -1046,6 +1046,21 @@ function pg_pb_managed_product_columns()
 
 
 /**
+ * Whether the "Gives tickets" switch is drawn: products.gives_tickets is
+ * there and Tickets is on in Site Settings. Not drawn, it posts nothing and
+ * the stored mark is kept.
+ *
+ * @return bool
+ */
+function pg_pb_tickets_mark_drawn()
+{
+    return function_exists('pg_event_tickets_product_mark_ready')
+        && pg_event_tickets_product_mark_ready()
+        && pg_event_tickets_switch_on();
+}
+
+
+/**
  * Read the settings shared by every product this submission creates.
  *
  * In group mode these values are written to every generated variant: they are
@@ -1201,6 +1216,12 @@ function pg_pb_common_from_post()
     // pg_pb_validate_product_post() refused a pre-order with no usable date.
     if (pg_product_preorder_ready()) {
         $common = array_merge($common, pg_preorder_from_post($_POST));
+    }
+
+    // "Gives tickets": each unit ordered gives an event ticket
+    // (includes/fn/event_tickets.php). Read only where it is drawn.
+    if (pg_pb_tickets_mark_drawn()) {
+        $common['gives_tickets'] = $switch('gives_tickets');
     }
 
     /* ---------------------------------------------------- checkout */
@@ -5430,6 +5451,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // nothing in the checkout knows how to sell.
     $gift_cards_enabled = (defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == TRUE);
 
+    // The "Gives tickets" switch, only while Tickets is on in Site Settings.
+    $tickets_mark_drawn = pg_pb_tickets_mark_drawn();
+
     // Google Merchant Center's push state and its send button: the button
     // posts a form drawn after the product form, never nested in it.
     $pg_merchant = (($pg_mode === 'edit') && !$pg_recycled && function_exists('pg_merchant_product_card'))
@@ -6099,6 +6123,22 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 </div>
                                                             </div>
                                                         </div>',
+                                                ))) . '
+                                                </div>
+                                            </div>
+                                    </details>
+    ' : '') . '
+    ' . ($tickets_mark_drawn ? '
+                                    <details class="accordion-item"' . ($v('gives_tickets') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-ticket-perforated me-3"></i>' . lang('Event Tickets') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
+                                            <div class="accordion-body">
+                                                <div class="row">
+                                    ' . pg_pb_render_switch_row(
+                                                pg_pb_render_switch(array(
+                                                    'id'    => 'gives_tickets',
+                                                    'name'  => 'gives_tickets',
+                                                    'label' => lang('Gives tickets'),
+                                                    'help'  => lang('Each unit ordered gives a ticket with a QR code, made when the order is completed and checked in at the door.'),
                                                 ))) . '
                                                 </div>
                                             </div>

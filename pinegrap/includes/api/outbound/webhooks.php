@@ -259,6 +259,10 @@ function api_webhook_core_events() {
 		// them. A cancellation does not give the spots back and is not
 		// announced here (order.cancelled is).
 		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)',
+		// A ticket checked in at the door (event_check_in.php), once: a second
+		// scan of a used ticket and an undone check-in are not announced. GET
+		// /calendars/events/{id}/tickets lists an event's tickets.
+		'ticket.checked_in' => 'An event ticket was checked in at the door (a second scan of the same ticket and an undone check-in are not announced)',
 		// The submitted form screens' deletes and the API's alike (includes/fn/
 		// submitted_form_writes.php); undoing an import stays quiet.
 		'form.submission.deleted' => 'A form submission was deleted',

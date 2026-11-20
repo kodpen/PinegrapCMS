@@ -12,7 +12,7 @@ module: event_tickets
 
 ## What happens when an order is deleted?
 - `delete_order.php` calls `pg_event_tickets_delete_for_order()` beside the returns and the shipping labels: a valid row left behind would still pass at the door, and a reused order line id would stay without tickets (unique line and unit, `INSERT IGNORE`). `pg_local_order_discard()` deletes only incomplete orders, which have none.
-- Not in `privacy_erase.php`: a ticket holds no personal data of its own and reaches a person through its order. The export of a person's tickets is TK5's.
+- Not in `privacy_erase.php`: a ticket holds no personal data of its own and reaches a person through its order. The personal data export lists a person's tickets without the code (`event-tickets-api.md`).
 
 Test: `tests/event_tickets_test.php`, `tests/reseal_test.php` (`test_reseal_event_tickets_key`).
 

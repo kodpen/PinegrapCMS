@@ -138,6 +138,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Leave it out to follow the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool',   'description' => 'On by default.'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -187,6 +188,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Send an empty value to clear it, which puts the product back on the rate of the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -3157,6 +3159,25 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_tickets',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/tickets',
+			'scope'   => 'orders:read',
+			'handler' => 'api_calendar_event_tickets',
+			'returns' => array('list' => 'EventTicket', 'counts' => 'EventTicketCounts'),
+			'summary' => 'The tickets of an event',
+			'description' => 'One ticket per place of a placed order that reserved the event, oldest first, cursor paged, made when the order is completed while Tickets is on in Site Settings. state is valid, used (checked in at the door: checked_in_at and checked_in_by, the user who scanned it) or void (its order was cancelled). guest_name is the name the product form asked for that place, else the buyer\'s. counts gives sold (valid and used), checked_in and void for the event, or for the repeat asked, whatever the state filter. A ticket\'s code is never answered. An event on none of the calendars the owner may open is answered 404; 503 service_unavailable before the database update that adds tickets. The ticket.checked_in webhook announces each check-in.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the tickets of this repeat.'),
+				array('name' => 'state',             'in' => 'query', 'type' => 'enum', 'values' => array('valid', 'used', 'void'), 'description' => 'Only the tickets in this state.'),
 				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
 				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
