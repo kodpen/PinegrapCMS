@@ -8,7 +8,7 @@ description: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine wit
   - New: `includes/fn/agent_guide.php` (registry, text, list, digest, sizes; all eight topic ids named, each listed only when its builder file is there), `includes/fn/agent_guide_start.php`, `includes/api/resources/guide.php` (`guide.read`, the 304).
   - `includes/api/schema.php` (the route), `includes/mcp/tools.php` (`guide.read` offered without a scope; "Guide: <topic>." in `pg_mcp_tool_guidance()`), `includes/mcp/resources.php`, `includes/mcp/protocol.php` (the two lines, the 3,072 byte test).
   - Tests, red first: sizes, every named tool is an offered route, digest changes with the text, a topic without its file is not listed. Features: G1 to G5, G9, G10 without the prompt, G17.
-- AG2 (M) after AG1: the designer topic.
+- AG2 (M) after AG1: the designer topic. Done: #10737.
   - `includes/designer_ai.php`: the assistant's rule lines into one function the prompt and the topic read (the assistant's prompt stays word for word: a test compares); a function listing the `<pg-keep>` kinds.
   - New `includes/fn/agent_guide_designer.php`; `includes/api/resources/design.php` (framework, colours, font families on `design.designs.list`); `includes/mcp/prompts.php` (`design_change`). `php tools/check_api_schema.php`.
   - Tests: the five worked lists run through `pg_design_ai_apply_ops()`; every kind and operation in the text. Features: G6, G7, the prompt of G10.

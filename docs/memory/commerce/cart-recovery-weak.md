@@ -11,6 +11,7 @@ module: cart_recovery_weak
   - late: the first message more than a day after the cart was started, over half of at least 10 carts. Only open carts count: the completion rewrites `orders.order_date`.
   - stock: left carts not recovered (open ones) holding an active line of a tracked product with no stock and no back orders; over 20 % of at least 10 left.
   - message: sent at least 20 times and under 5 % of the carts it reached came back; the three most sent.
+- The touched carts come from the figures' `pg_cart_recovery_touch_rows()` (`cart-recovery-figures.md`), so a cancelled order is not recovered here either and an open cart under 6 hours is left out.
 - Thresholds are constants at the top of the file. Nothing is stored; worked out on each render.
 
 ## Which checkout step?

@@ -4,7 +4,7 @@ description: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers,
 ---
 
 ## Which steps are there?
-- KV1 (M) first: the catalogue and transfers, no schema.
+- KV1 (M) first: the catalogue and transfers, no schema. Done (#10738).
   - New `includes/fn/privacy_inventory.php` (pure catalogue, live counts), country and data fields on `includes/fn/connections_registry.php`'s rows, `tests/privacy_inventory_test.php` red first (P5's two failures). Features: P1, P2, P3, P5.
 - KV2 (S) after KV1: Contacts › Privacy centre beside the erase screen, the link from Site Settings › Visitors and privacy, Excel through `includes/fn/xlsx_write.php` and PDF. Feature: P4.
 - KV3 (M) after KV1: the retention rules.
