@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-87
-description: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre enters a plan
+description: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre and a supplier feed enter plans
 ---
 
 ## Where are the rules and the earlier parts?
@@ -22,4 +22,9 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 - Not chosen: "Evet, önce envanter ve başvuru kutusu" (destruction later, nothing removed in the first step), "Hayır, gerek yok".
 - The plan: `plans/privacy-centre.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/plans/privacy-centre.md
+## Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
+- "Evet, plana girsin": the connection with field mapping, price rules, hourly price and stock sync, new products as drafts, several suppliers on one barcode, the buy price as cost, a run log, a stop on a broken feed.
+- Not chosen: "Evet, önce yalnız fiyat ve stok eşitleme" (price and stock sync first), "Hayır, gerek yok".
+- The plan: `plans/supplier-feed.md`.
+
+Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/plans/privacy-centre.md, docs/memory/plans/supplier-feed.md
