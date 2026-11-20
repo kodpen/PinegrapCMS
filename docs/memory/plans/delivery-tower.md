@@ -15,7 +15,7 @@ priority: 6
 - Labels: one write path, bulk, automatic once paid (`commerce/shipment-label-auto.md`); quotes by `rate()` (`commerce/carrier-label-rate.md`).
 
 ## What binds it?
-- Read after the fact, from the parcel rows; the tracking job, label creation and checkout are not entered.
+- Read after the fact, from the parcel rows; the tracking job, label creation and checkout are not entered, but for the one argument DT4b gives the label path (`delivery-tower-screens-label.md`).
 - One status writer stays `pg_shipment_record()`; the plan writes only its own problem records.
 - A marketplace order's buyer is never written to by the shop (`commerce/shipment-tracking-hunt.md`, #10661); its parcels are measured and listed.
 - Alerts to staff through `pg_ops_alert()` and its channels, once a day per code; the desk is the record.

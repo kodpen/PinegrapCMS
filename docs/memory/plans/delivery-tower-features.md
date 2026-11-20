@@ -24,7 +24,7 @@ description: Plan delivery-tower, features T1 to T14: measured times, the four p
 ## What is the scorecard?
 - (T11) Per carrier and month, then per province: parcels, on-time share, median days, problem share, returned share; the last 12 months, Excel.
 - (T12) Arrival suggestion: when a method's typed transit days differ from its carrier's measured median by a day or more, the method's screen and the scorecard say so ("Ankara: measured 2.6 days, set 1"); nothing changes by itself. Per method only; per province later.
-- (T13) Carrier suggestion: for an order whose method names no carrier, the Create Label dialog orders the ready drivers by the province's on-time share, then by `rate()` price where it answers; a suggestion only.
+- (T13) Carrier suggestion: for an order whose method names no carrier, a chooser on the order screen (DT4b) orders the ready drivers by the province's on-time share, then by `rate()` price where it answers; a suggestion only.
 
 ## Who can read it from outside?
 - (T14) `GET /reports/delivery` (scorecard) and `GET /shipments/problems` (`orders:read`); MCP tools by the route rule. Settings in `config_text`: each problem kind on or off, the one day of T5, the plus one day of T4.
