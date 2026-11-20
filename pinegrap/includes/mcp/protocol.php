@@ -655,7 +655,7 @@ function pg_mcp_gate() {
 
 	if (@mysqli_query(db::$con, "SELECT 1 FROM api_apps LIMIT 1") === false) {
 
-		api_fail(503, 'not_installed', lang('The API is not installed on this site yet. Run the software upgrade to finish it.'));
+		api_fail(503, 'not_installed', 'The API is not installed on this site yet. Run the software upgrade to finish it.');
 
 	}
 
@@ -663,13 +663,13 @@ function pg_mcp_gate() {
 
 	if (!$settings['enabled']) {
 
-		api_fail(503, 'api_disabled', lang('The API is switched off for this site.'));
+		api_fail(503, 'api_disabled', 'The API is switched off for this site.');
 
 	}
 
 	if ($settings['require_https'] && function_exists('pg_request_is_https') && !pg_request_is_https()) {
 
-		api_fail(403, 'https_required', lang('This API requires a secure (https) connection.'));
+		api_fail(403, 'https_required', 'This API requires a secure (https) connection.');
 
 	}
 
@@ -678,7 +678,7 @@ function pg_mcp_gate() {
 		&& !waf_ip_is_allowed(api_client_ip())
 		&& waf_ip_is_blocked(api_client_ip())) {
 
-		api_fail(403, 'address_blocked', lang('We are currently unable to fulfill your request.'));
+		api_fail(403, 'address_blocked', 'We are currently unable to fulfill your request.');
 
 	}
 

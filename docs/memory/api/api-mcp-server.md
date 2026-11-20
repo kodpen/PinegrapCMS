@@ -13,6 +13,9 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 
 ## How does tools/call run a route?
 - In-process through `pg_mcp_route_run()`, with the checks of `integration.php`: scope, `api_validate_input()`, the handler. The handler leaves through `api_send()`/`api_fail()`; `api_send_hook()` hands the answer to the caller's writer (tools/call: a result, a refusal with `isError`).
+
+## In which language does MCP refuse?
+- Its own refusal sentences, written in `includes/mcp/tools.php` (dry run, compact list) and `includes/mcp/protocol.php` (`pg_mcp_gate()`), are plain English strings, never `lang()`: only an agent reads them. A refusal passed on from a route keeps that route's translated `message` and English `hint`. `tests/mcp_refusal_language_test.php` pins it. Decision: `workflow/decisions-made-product-92.md`.
 - So a handler never reads `$_SERVER`, `$_GET` or `php://input` itself: it uses `api_request_input()` and `api_header()`, which the MCP endpoint fills through their setters (`X-Dry-Run` included), and `$_FILES` only while `api_send_hook() === null`.
 
 ## What besides tools?
