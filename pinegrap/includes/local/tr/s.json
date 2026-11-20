@@ -4968,6 +4968,7 @@
     "State / Province": "Eyalet / İl",
     "State Code": "Eyalet/İl Kodu",
     "State cannot be read": "Durumu okunamaz",
+    "State colour (success or secondary)": "Durum rengi (success veya secondary)",
     "State colour (success, secondary or warning)": "Durum rengi (success, secondary ya da warning)",
     "State is required.": "Eyalet/İl alanı zorunludur.",
     "State now": "Şu anki durumu",
