@@ -22,7 +22,7 @@ description: Designer Overview, moving without dragging (DP16): row buttons, key
 - Head: the move icon, "Where should {name} move?" on up to two lines, the ×. The search ("Search by name…") is focused; targets are the body and every element but the moved ones and their insides, each with its path (past four steps: the section, "…", the last two), the match marked, at most 80 drawn.
 - Turkish letters are folded by `_mvFold()`, the part's own copy beside the tree search's `_tsFold()`; the plan's close-out merges the folds.
 - Before, Into, After (After first; Into for the body), the refusal's words live under them, "Move" disabled while refused. Enter picks the active result, a second Enter moves.
-- Under 576 px the window is the bottom sheet of `designer-panels-measures-6.md`: from 58 px under the top, 20 px corners, a 38 by 4 handle that closes when pulled 60 px down, 54 px results, 44 px place group and button.
+- Under 576 px the window is the bottom sheet the owner approved (poll 129, `phone-pages-move.jpg`, git history: `designer-panels-overview.md`): from 58 px under the top, 20 px corners, a 38 by 4 handle that closes when pulled 60 px down, 54 px results, 44 px place group and button.
 
 ## Where is the test?
 - `tests/designer_overview_move_test.php`: each row key, each key's plan, the key moves through `canDrop()` with one undo step and the element selected and shown, refusals that change nothing and say why, the window's moves and search, and where the window opens from.

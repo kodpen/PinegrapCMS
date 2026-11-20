@@ -17,4 +17,4 @@ module: content_proposals
 - A climbed mark is part of its chip or button, not a target; the click opens the chip's list or the Pages window. On a chip it stands after the count, the pill without its word.
 - Every list's row carries its page's mark: "+N", a group's list, the Pages window (`_pgContentChangeBadge(p, true)`); a row of "+N groups" carries its group's climbed mark.
 
-Related: docs/memory/designer/content-proposals-editor-side.md, docs/memory/plans/designer-panels-measures-8.md
+Related: docs/memory/designer/content-proposals-editor-side.md, docs/memory/designer/designer-page-strip.md

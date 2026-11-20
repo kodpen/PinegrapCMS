@@ -17,4 +17,4 @@ description: A draft that waits for an area's new shape holds nothing in that ar
 - The owner gave the strip to designer-panels first (poll 127) and PA3's marks are redrawn on DP19's strip (poll 132).
 - So #10188 takes those lines out and moves its block; its line in the save callback and its start-up line stay. DP18 starts when that push is in; the marks return on the strip and the Pages list of DP19.
 
-Related: docs/memory/workflow/held-file-bundled-sources.md, docs/memory/workflow/claim-work.md, docs/memory/plans/designer-panels-additions.md
+Related: docs/memory/workflow/held-file-bundled-sources.md, docs/memory/workflow/claim-work.md, docs/memory/designer/designer-panels-overview.md
