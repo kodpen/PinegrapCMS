@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-81
-description: Decisions list, product part 81 (2026-11-20 on): the Google Cloud Translation key moves to its own Connections page (the reading of polls 146, 147 and 149)
+description: Decisions list, product part 81 (2026-11-20 on): the Google Cloud Translation key moves to its own Connections page (the reading of polls 146, 147 and 149); each order's net profit
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,5 +14,11 @@ description: Decisions list, product part 81 (2026-11-20 on): the Google Cloud T
 - Kept from poll 147's reasons: the page opens and works with the Workspace off, and writing keeps the gate of Site Settings › Languages and Translation.
 - The subscription key (the licence) and Application Access stay where they are.
 - The reading is the architect's, not the owner's words; he looks at the page on dev and may turn it.
+
+## Does the store show each order's real net profit? (owner, 2026-11-20, agent channel poll 164, channel message 10092)
+- "Evet, plana girsin": each order's costs (product cost, payment fee, marketplace commission and deductions, shipping) are read from the services' real figures where they give them (iyzico, Stripe, Trendyol finance, carrier labels), else from typed rates; net profit and margin on the order with a "sold at a loss" filter; product by channel by period; a break-even price; a bell; API and MCP.
+- Prices never change by themselves.
+- Not chosen: "Evet, önce yalnız yazılan oranlarla" (typed rates only at first, real deductions later), "Hayır, gerek yok" (the period profit and loss report is enough).
+- The plan: `plans/order-profit.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-76.md, docs/memory/plans/connections-merges-build.md
