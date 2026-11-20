@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas-picture-translation
-description: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the six faults fixed, the issue opened, what was read clean
+description: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 ---
 
 ## Which area was hunted?
@@ -14,9 +14,10 @@ description: The bug hunt of picture text translation, the server's side (#10569
 - A picture the prune deleted stayed named by cached pages for the page cache's lifetime: the prune marks the page cache.
 - The waiting mark read as set for good on Windows (`is_writable()` on a read-only folder attribute): `pg_dir_writable()`.
 - A binned picture lost its texts with its rows at the prune, so once restored it was never drawn again: it keeps its texts.
+- A language's picture redrawn under its name was kept by browsers and CDNs for up to a week (`get_file.php` max-age): the page pass adds `?v=<drawn_at>` (`core/picture-text-translation-page.md`).
 
 ## Which issue did it open?
-- #10573: a language's picture redrawn under the same address is kept by browsers and CDNs for up to a week (`get_file.php` max-age); a change stamp in the page pass needs a decision.
+- #10573 for that last fault, then fixed in the same PR: the architect (2026-11-20, agent channel) answered that the change-stamp rule of `platform/panel-picture-change-stamp.md` already covers it.
 
 ## What was read clean?
 - The page pass (address rule, the swap's places, the one query, waiting rows, a binned folder), the state moves of a save, a written and a removed translation, the queue's query and its folder checks, the server draw's budget, stamp check and keep, the follow on every move door, the delete chain through `pg_file_versions_delete_file()`, `edit_files.php`'s move and delete, the Recycle Bin's bin, restore and Empty, and `get_file.php` serving a language's picture with its source folder's rights.

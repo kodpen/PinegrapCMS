@@ -19,6 +19,8 @@ module: picture_translation
 
 ## What is shown?
 - Only a drawn row (state 1) whose picture is found; waiting and out of date show the source (`pg_picture_tr_page_plan()`).
+- The language's picture carries its drawing time, `?v=<drawn_at>` (`&amp;v=` after `?w=` / `?f=`), in every place swapped, read by the same query (#10569, issue #10573): a redraw keeps the name and `get_file.php` lets a browser keep a picture a week; it ignores `v` (`platform/panel-picture-change-stamp.md`). The keep marks the page cache, so a redraw's new stamp is on the next page.
+- Known, not this pass's job: the source picture's own address on the site carries no stamp, so a source saved again under its name may show old for up to a week.
 - The picture is joined only in the source's folder (`p.folder = f.folder`), so `get_file.php` serves it with the source's rights: a private folder's picture stays private.
 
 ## Where is it tested?
