@@ -253,3 +253,16 @@ function test_check_in_screen_source()
 	pg_assert_contains('BarcodeDetector', $script, 'the browser\'s own barcode reader');
 	pg_assert_false(strpos($script, 'innerHTML') !== false, 'the script writes text only');
 }
+
+function test_check_in_picks_keep_the_newest_dates_under_the_cap()
+{
+	// The pick list reads at most 500 event dates and drops the ended ones
+	// afterwards; without an order the oldest dates filled the 500 and a
+	// new event never reached the list.
+	$sql = pg_check_in_picks_groups_sql();
+
+	pg_assert_contains('GROUP BY calendar_event_id, recurrence_number', $sql, 'one row per event date');
+	pg_assert_contains("(state <> 'void')", $sql, 'void tickets left out');
+	pg_assert_contains('ORDER BY MAX(id) DESC', $sql, 'the dates sold most lately first');
+	pg_assert_true(strpos($sql, 'ORDER BY') < strpos($sql, 'LIMIT 500'), 'ordered before the cap');
+}

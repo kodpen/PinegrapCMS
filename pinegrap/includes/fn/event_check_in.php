@@ -469,6 +469,24 @@ function pg_check_in_search(array $pick, $text)
 }
 
 /**
+ * The query of the event dates that hold tickets, 500 at most. The dates
+ * whose tickets were sold last come first: the ended ones are dropped only
+ * after the cap, so without an order the oldest dates filled it and a new
+ * event never reached the pick list. Pure.
+ *
+ * @return string
+ */
+function pg_check_in_picks_groups_sql()
+{
+    return "SELECT calendar_event_id, recurrence_number
+        FROM event_tickets
+        WHERE (calendar_event_id > 0) AND (state <> 'void')
+        GROUP BY calendar_event_id, recurrence_number
+        ORDER BY MAX(id) DESC
+        LIMIT 500";
+}
+
+/**
  * The event dates and products a user may check tickets in for, from the
  * tickets sold: an event's date with its name, date and place, a product
  * with its name. An event that ended more than a day ago is left out.
@@ -482,12 +500,7 @@ function pg_check_in_picks(array $user, $event_access)
     $picks = array();
     $dated = array();
 
-    $groups = pg_check_in_rows(
-        "SELECT calendar_event_id, recurrence_number
-        FROM event_tickets
-        WHERE (calendar_event_id > 0) AND (state <> 'void')
-        GROUP BY calendar_event_id, recurrence_number
-        LIMIT 500", array());
+    $groups = pg_check_in_rows(pg_check_in_picks_groups_sql(), array());
 
     foreach ($groups as $group) {
         $event_id = (int) $group['calendar_event_id'];
