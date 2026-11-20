@@ -983,15 +983,31 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 /**
  * What a bundle saves its buyer against its components bought one by one,
  * in minor units: the components' prices times their quantities less the
- * price the bundle sells at, 0 when the bundle costs as much or more.
+ * price the bundle sells at, 0 when the bundle costs as much or more. A
+ * component the visitor pays less for on its own (an offer, an account
+ * price: get_discounted_product_prices()) counts at that price, so the
+ * saving shown is never more than buying the components would save.
  *
- * @param array $components rows with price and quantity
- * @param int   $price      the bundle's price as the visitor pays it
+ * @param array $components     rows with price, quantity and product_id
+ * @param int   $price          the bundle's price as the visitor pays it
+ * @param array $visitor_prices product_id => the price the visitor pays
  * @return int
  */
-function pg_bundle_saving($components, $price)
+function pg_bundle_saving($components, $price, $visitor_prices = array())
 {
-    return max(0, pg_bundle_price('sum', 0, $components, 0) - (int) round($price));
+    $priced = array();
+
+    foreach ((array) $components as $component) {
+        $product_id = isset($component['product_id']) ? (int) $component['product_id'] : 0;
+
+        if (isset($visitor_prices[$product_id]) && is_numeric($visitor_prices[$product_id])) {
+            $component['price'] = min((int) $component['price'], (int) round($visitor_prices[$product_id]));
+        }
+
+        $priced[] = $component;
+    }
+
+    return max(0, pg_bundle_price('sum', 0, $priced, 0) - (int) round($price));
 }
 
 /**

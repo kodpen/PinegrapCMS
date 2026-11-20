@@ -332,3 +332,19 @@ function test_bundle_switch_on_problem()
 	pg_assert_same('', pg_bundle_switch_on_problem(false, false));
 	pg_assert_same('', pg_bundle_switch_on_problem(true, true), 'a bundle already: its contents are checked on their own');
 }
+
+// The saving is measured against what the visitor would pay for the
+// components one by one: a component on offer, or at the visitor's account
+// price, counts at that price (rounded), never above its own.
+function test_bundle_saving_at_the_visitors_component_prices()
+{
+	$components = array(
+		array('product_id' => 7, 'price' => 1000, 'quantity' => 2),
+		array('product_id' => 8, 'price' => 550, 'quantity' => 1),
+	);
+
+	pg_assert_same(150, pg_bundle_saving($components, 2000, array(7 => 800.4)), 'two of 7 at 800 and 8 at 550');
+	pg_assert_same(0, pg_bundle_saving($components, 2000, array(7 => 700, 8 => 500)), 'cheaper one by one: no saving');
+	pg_assert_same(550, pg_bundle_saving($components, 2000, array(8 => 600)), 'a dearer figure is not the visitor\'s price');
+	pg_assert_same(550, pg_bundle_saving($components, 2000, array()), 'no visitor prices: their own');
+}
