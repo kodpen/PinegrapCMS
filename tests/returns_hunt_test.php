@@ -66,3 +66,24 @@ function test_returns_hunt_refund_due_callers_pass_the_order_status()
 	$view = returns_hunt_test_body('includes/fn/returns.php', 'pg_return_customer_view');
 	pg_assert_contains("\$shown['refund_deadline'] = ''", $view, 'the customer reads no refund date on a cancelled order');
 }
+
+// A gift card line has nothing to ask for, but it is not in a return: the
+// customer's form says why it has no box.
+function test_returns_hunt_gift_card_line_on_the_form()
+{
+	$html = pg_return_form_html(array(array(
+		'ship_to_id' => 31,
+		'label'      => '',
+		'deadline'   => '',
+		'lines'      => array(
+			array('id' => 11, 'name' => 'Mug', 'quantity' => 1, 'returnable' => 1, 'gift_card' => false),
+			array('id' => 12, 'name' => 'Gift card', 'quantity' => 1, 'returnable' => 0, 'gift_card' => true),
+		),
+	)), array('action' => '/r', 'send_to' => '/e', 'token' => '', 'order_id' => 7));
+
+	pg_assert_contains('Gift cards cannot be returned', $html, 'the gift card line says why');
+	pg_assert_false(strpos($html, 'Already in a return') !== false, 'not that it is in a return');
+
+	$view = returns_hunt_test_body('includes/fn/returns.php', 'pg_return_customer_view');
+	pg_assert_contains("'gift_card' => !empty(\$line['gift_card'])", $view, 'the view hands the flag to the form');
+}

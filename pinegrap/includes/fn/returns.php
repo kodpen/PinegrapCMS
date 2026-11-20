@@ -1793,7 +1793,8 @@ function pg_return_label_url($order_id, $return_id)
  * @param string   $today       Y-m-d, or '' for today
  * @return array enabled, deliveries (ship_to_id, label, deadline, lines of
  *               id, name, quantity, returnable), returns
- *               (pg_return_present()), can_request, has_returns
+ *               (pg_return_present()), can_request, has_returns; a line's
+ *               gift_card says it is never returnable
  */
 function pg_return_customer_view($order_id, $format_date = null, $today = '')
 {
@@ -1857,7 +1858,7 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
 
         foreach ($lines as $line) {
             $left += $line['returnable'];
-            $shown[] = array('id' => $line['id'], 'name' => $line['name'], 'quantity' => $line['quantity'], 'returnable' => $line['returnable']);
+            $shown[] = array('id' => $line['id'], 'name' => $line['name'], 'quantity' => $line['quantity'], 'returnable' => $line['returnable'], 'gift_card' => !empty($line['gift_card']));
         }
 
         if ($left > 0) {
@@ -1914,6 +1915,9 @@ function pg_return_form_html($deliveries, $form)
                 $cell = '<input type="number" class="form-control form-control-sm text-end" id="pg-ov-return-qty-' . $id . '"'
                     . ' name="qty[' . $id . ']" min="0" max="' . $left . '" step="1" value="0" inputmode="numeric"'
                     . ' aria-label="' . h(lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string) $line['name'])))) . '">';
+            } elseif (!empty($line['gift_card'])) {
+                // Never returnable (pg_return_returnable()), not in a return.
+                $cell = '<span class="small text-muted">' . h(lang('Gift cards cannot be returned')) . '</span>';
             } else {
                 $cell = '<span class="small text-muted">' . h(lang('Already in a return')) . '</span>';
             }
