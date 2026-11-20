@@ -4,7 +4,7 @@ description: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, t
 ---
 
 ## Which steps are there?
-- SW1 (M) first: the norm, orders stopped and payment broken.
+- SW1 (M) first: the norm, orders stopped and payment broken. Done: #10735.
   - New `includes/fn/sales_watch.php` (pure: the norm from hourly counts, the Poisson and binomial tails, the windows; the pass reading `orders` and `marketplace_order_map`), called from `pg_ops_alerts_run()` at most every 10 minutes; the norm cached under `data/temp/`.
   - `includes/fn/ops_alerts.php`: the `sales` codes and the once-a-day key by code and subject. `tests/sales_watch_test.php`, red first: the norm on a holiday week, a quiet small shop, a silent channel beside a busy one, a broken checkout, the windows.
   - The pass timed on a 200k-order copy; the figure goes into the PR body. Tests also cover a marketplace channel between syncs and the store alert holding back the channel alerts. Features: W1, W2, W2b, W3, W7 (two codes), W10, W12.

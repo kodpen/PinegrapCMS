@@ -10,9 +10,9 @@ description: Plan designer-panels: additions of other plans to the Options colum
 - Not chosen: "Hepsi beklesin" (no addition at all until the plan ends) and "Bugünkü gibi yan yana sürsün".
 
 ## Which steps wait?
-- PA3 (#10188, publish-approval): done after DP19 (#10291): its marks are drawn on the new strip and in the lists as `page-strip-narrow-approval.jpg` shows (`designer/content-proposals-editor-side.md`). Owner (agent channel message 9546): no picture look is asked for it.
-- CM4b (click-scroll-map): not started before DP22; its "Clicks" switch goes into the new bar's View menu.
-- PN3 (#10042, prototype-comments): waited for DP22 and DP2, both landed. It adds nothing to the four areas: the Comments button sits in the top bar's actions beside the Assistant, the list floats over the right column as the Assistant's panel does, its colours are DP1's tokens (`designer/designer-prototype-comments-list.md`).
+- Plan publish-approval, PA3 (#10188): done after DP19 (#10291): its marks are drawn on the new strip and in the lists as `page-strip-narrow-approval.jpg` shows (`designer/content-proposals-editor-side.md`). Owner (agent channel message 9546): no picture look is asked for it.
+- Plan click-scroll-map, CM4b: not started before DP22; its "Clicks" switch goes into the new bar's View menu.
+- Plan prototype-comments, PN3 (#10042): waited for DP22 and DP2, both landed. It adds nothing to the four areas: the Comments button sits in the top bar's actions beside the Assistant, the list floats over the right column as the Assistant's panel does, its colours are DP1's tokens (`designer/designer-prototype-comments-list.md`).
 
 ## What goes on?
 - PV11a, PV11b and PV12 (DP24 waits for that plan's end), RB2b (#10191, the Publish sheet's row), LS2, MP3 and the steps after it, fixes. None adds a part to the four areas; a step that finds it must, stops and asks.

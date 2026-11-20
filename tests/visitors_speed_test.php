@@ -53,8 +53,8 @@ function test_visitors_speed_screen_redirects_and_anchors()
 	pg_assert_contains('validate_visitors_access($user);', $screen);
 	pg_assert_contains("array('device' => 'speed_device', 'order' => 'speed_order'))) . '#speed', true, 301);", $screen);
 
-	$search = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
-	pg_assert_contains("\$base_url . '/visitors.php#speed'", $search);
+	$search = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/panel_screens.php');
+	pg_assert_contains("'visitors.php#speed'", $search);
 
 	$section = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/visitors/speed.php');
 	pg_assert_contains("if (!pg_vitals_ready()) {\n        return '';", $section, 'nothing before the table exists');
