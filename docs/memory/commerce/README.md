@@ -32,7 +32,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `product-price-*`: 6 files.
 - `product-review-*`: 6 files.
 - `shipment-label-*`: 8 files; start at `shipment-labels.md`.
-- `stock-locations-*`: 6 files.
+- `stock-locations-*`: 7 files.
 - `store-credit-*`: 9 files.
 
 ## Files
