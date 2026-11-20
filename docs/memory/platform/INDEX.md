@@ -48,7 +48,7 @@
 - content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out [decision: decisions-made-product-10.md, decisions-made-product-65.md]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
-- cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]
+- cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product-87.md, decisions-made-product.md]
 - curl-run-callers.md: Which outgoing calls use pg_curl_run(), what moving each changed (VERIFYHOST, proxy, http refused, TLS settings), which stay raw and why.
 - curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule and allow_http, where its callers are listed.
 - custom-form-upload-placement.md: Custom form file uploads (custom_form.php): an upload error code is refused at validation; every file is copied and given its files row before the forms row, and a failed copy sends the form back.
