@@ -2106,6 +2106,7 @@
     "Where it was spent": "Harcamanın yapıldığı yer",
     "Where our technicians go, on which days, and what a visit costs to get there.": "Ustalarımızın nereye, hangi günler gittiği ve oraya bir ziyaretin gelme ücreti.",
     "Where should \"{var}\" go?": "\"{var}\" nereye gitsin?",
+    "Where should {var} move?": "{var} nereye taşınsın?",
     "Where the \"Already a member?\" link goes. Token: ^^__login_url^^": "\"Zaten üye misiniz?\" bağlantısının hedefi. Token: ^^__login_url^^",
     "Where the \"Already have an account?\" link goes. Token: ^^__login_url^^": "\"Zaten hesabınız var mı?\" bağlantısının hedefi. Token: ^^__login_url^^",
     "Where the \"Back to sign-in\" link goes. Token: ^^__back_url^^": "\"Girişe dön\" bağlantısının hedefi. Token: ^^__back_url^^",
