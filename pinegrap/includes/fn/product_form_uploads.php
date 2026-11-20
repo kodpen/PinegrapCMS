@@ -1258,3 +1258,256 @@ function pg_pfu_copy_to_submission($form_id, $field, $value, $order_item_id, $qu
 
     return true;
 }
+
+/**
+ * Whether a $_FILES entry carries a file the shopper chose (an upload error
+ * counts, so it is refused rather than passed over); an empty input and a
+ * list of files posted under one name do not.
+ *
+ * @param mixed $upload one $_FILES entry
+ * @return bool
+ */
+function pg_pfu_upload_given($upload)
+{
+    if (!is_array($upload) || !isset($upload['error']) || !is_scalar($upload['error'])) {
+        return false;
+    }
+
+    return (int) $upload['error'] !== UPLOAD_ERR_NO_FILE;
+}
+
+/**
+ * What a cart save does with one File Upload answer: place a new file
+ * (it replaces the stored one), refuse it (the stored one stays), remove the
+ * stored one (the Remove box), or keep what is stored. A save without a new
+ * file never drops the stored one.
+ *
+ * @param bool   $given      pg_pfu_upload_given()
+ * @param string $refusal    pg_pfu_file_refusal() ('' when the file may be placed)
+ * @param bool   $remove     the Remove box was ticked
+ * @param bool   $has_stored the unit's answer holds a file
+ * @return string place, refuse, remove or keep
+ */
+function pg_pfu_save_action($given, $refusal, $remove, $has_stored)
+{
+    if ($given) {
+        return ((string) $refusal === '') ? 'place' : 'refuse';
+    }
+
+    return ($remove && $has_stored) ? 'remove' : 'keep';
+}
+
+/**
+ * Whether the unit's answer holds a file once the save's action is done:
+ * what a required File Upload field is checked against.
+ *
+ * @param string $action     pg_pfu_save_action()
+ * @param bool   $has_stored the answer held a file before the save
+ * @return bool
+ */
+function pg_pfu_holds_file($action, $has_stored)
+{
+    if ($action === 'place') {
+        return true;
+    }
+
+    if ($action === 'remove') {
+        return false;
+    }
+
+    return (bool) $has_stored;
+}
+
+/**
+ * The form_data condition of the answers a classic cart save clears before
+ * it writes a line's form again: every answer of the line but its File
+ * Upload answers, which stay until a new file, the Remove box or a lower
+ * quantity takes them, and every answer of a unit above the line's number of
+ * forms.
+ *
+ * @param int   $order_item_id
+ * @param array $file_field_ids the product form's File Upload field ids
+ * @param int   $number_of_forms the forms the line now has
+ * @return string values cast, ready for SQL
+ */
+function pg_pfu_reset_where($order_item_id, $file_field_ids, $number_of_forms)
+{
+    $line = "(form_data.order_item_id = '" . (int) $order_item_id . "') AND (form_data.order_item_id != '0')";
+    $ids = array();
+
+    foreach ((array) $file_field_ids as $id) {
+        if (is_numeric($id) && ((int) $id > 0) && !in_array((int) $id, $ids, true)) {
+            $ids[] = (int) $id;
+        }
+    }
+
+    if (!$ids) {
+        return $line;
+    }
+
+    return $line . " AND ((form_data.quantity_number > '" . max(0, (int) $number_of_forms) . "')"
+        . " OR (form_data.form_field_id NOT IN (" . implode(', ', $ids) . ")))";
+}
+
+/**
+ * The file input's accept list for a rule: the extensions with their dot,
+ * '' when the field takes any file the blocklist lets through.
+ *
+ * @param array $rule pg_pfu_rule_clean()
+ * @return string
+ */
+function pg_pfu_accept_attribute($rule)
+{
+    $out = array();
+
+    foreach (pg_pfu_rule_extensions($rule) as $extension) {
+        $out[] = '.' . $extension;
+    }
+
+    return implode(',', $out);
+}
+
+/**
+ * The kept file of a File Upload answer, drawn above the field's input: its
+ * name as a link, its size, a small preview for an image, and the Remove box
+ * (posted as <field>_remove). The input below it replaces the file.
+ *
+ * @param array|null $file            id, name, size (pg_pfu_stored_file())
+ * @param string     $html_field_name the field's input name
+ * @param string     $base_path       OUTPUT_PATH
+ * @return string '' when no file is kept
+ */
+function pg_pfu_kept_file_html($file, $html_field_name, $base_path)
+{
+    if (!is_array($file) || !isset($file['name']) || ((string) $file['name'] === '')) {
+        return '';
+    }
+
+    $name = (string) $file['name'];
+    $href = h($base_path . encode_url_path($name));
+    $dot = mb_strrpos($name, '.');
+    $extension = ($dot === false) ? '' : mb_strtolower(mb_substr($name, $dot + 1));
+    $preview = '';
+
+    if (in_array($extension, pg_pfu_image_extensions(), true)) {
+        $preview = '<a href="' . $href . '" target="_blank"><img src="' . $href . '" alt="" style="max-width: 80px; max-height: 80px; vertical-align: middle; margin-right: .5em"></a>';
+    }
+
+    return '<div class="software_product_form_file" style="margin-bottom: .5em">'
+        . $preview
+        . '<a href="' . $href . '" target="_blank">' . h($name) . '</a>'
+        . ' (' . h(convert_bytes_to_string((int) ($file['size'] ?? 0), 'auto')) . ')'
+        . ' <label style="white-space: nowrap"><input type="checkbox" name="' . h($html_field_name . '_remove') . '" value="1"> ' . h(lang('Remove')) . '</label>'
+        . '<div class="software_product_form_file_replace" style="font-size: 90%">' . h(lang('Choose a new file to replace it:')) . '</div>'
+        . '</div>';
+}
+
+/**
+ * The file a cart line unit's answer to a File Upload field holds.
+ *
+ * @param int $order_item_id
+ * @param int $quantity_number
+ * @param int $form_field_id
+ * @return array|null id, name, size
+ */
+function pg_pfu_stored_file($order_item_id, $quantity_number, $form_field_id)
+{
+    if (((int) $order_item_id <= 0) || ((int) $form_field_id <= 0)) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT files.id, files.name, files.size
+        FROM form_data
+        INNER JOIN files ON files.id = form_data.file_id
+        WHERE
+            (form_data.order_item_id = '" . (int) $order_item_id . "')
+            AND (form_data.form_id = '0')
+            AND (form_data.form_field_id = '" . (int) $form_field_id . "')
+            AND (form_data.quantity_number = '" . (int) $quantity_number . "')
+            AND (form_data.file_id > 0)
+        ORDER BY form_data.id DESC
+        LIMIT 1");
+
+    return $row ? $row : null;
+}
+
+/**
+ * Clears a cart line's answers before a classic cart save writes its form
+ * again (pg_pfu_reset_where()), taking the files of the answers that go.
+ *
+ * @param int   $order_item_id
+ * @param array $file_field_ids
+ * @param int   $number_of_forms
+ */
+function pg_pfu_cart_reset($order_item_id, $file_field_ids, $number_of_forms)
+{
+    $where = pg_pfu_reset_where($order_item_id, $file_field_ids, $number_of_forms);
+
+    pg_pfu_remove_files_where($where);
+    db("DELETE FROM form_data WHERE " . $where);
+}
+
+
+/**
+ * Saves one File Upload answer of a classic cart or express order line unit
+ * (shopping_cart.php, express_order.php): a new file is checked against the
+ * field's rule and placed, a refused one is marked on its own field and the
+ * stored file stays, the Remove box takes the stored file, and a save
+ * without either keeps it. A required field without a file is marked when
+ * $check_required.
+ *
+ * @param liveform $liveform
+ * @param string   $html_field_name
+ * @param array    $field          form_fields id, name, label, required, upload_folder_id, rules
+ * @param int      $order_id
+ * @param int      $order_item_id
+ * @param int      $quantity_number
+ * @param bool     $check_required checkout was asked for
+ * @return string the action done (pg_pfu_save_action())
+ */
+function pg_pfu_cart_save_file($liveform, $html_field_name, $field, $order_id, $order_item_id, $quantity_number, $check_required)
+{
+    $upload = $_FILES[$html_field_name] ?? null;
+    $given = pg_pfu_upload_given($upload);
+    $remove = isset($_POST[$html_field_name . '_remove']) && is_string($_POST[$html_field_name . '_remove']) && ($_POST[$html_field_name . '_remove'] !== '');
+    $stored = pg_pfu_stored_file($order_item_id, $quantity_number, $field['id']);
+    $refusal = '';
+
+    if ($given) {
+        $limits = pg_upload_limits();
+        $refusal = pg_pfu_file_refusal($upload, pg_pfu_rule_clean($field['rules'] ?? null), $limits['file_max']);
+
+        if (($refusal === '') && pg_pfu_upload_rate_exceeded()) {
+            $refusal = lang('Too many files were sent from your address. Please wait a few minutes and try again.');
+        }
+    }
+
+    $action = pg_pfu_save_action($given, $refusal, $remove, (bool) $stored);
+
+    if ($action === 'place') {
+        $user_id = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ? (int) USER_ID : 0;
+        $file = pg_pfu_place($upload, (int) ($field['upload_folder_id'] ?? 0), $user_id);
+
+        if ($file === false) {
+            $action = 'refuse';
+            $refusal = lang(array(
+                'string' => 'The server could not accept {var:1}. Please try again.',
+                'vars' => array(pg_basename(str_replace('\\', '/', is_scalar($upload['name'] ?? null) ? (string) $upload['name'] : '')))));
+        } else {
+            pg_pfu_keep($order_id, $order_item_id, $quantity_number, $field, $file);
+        }
+    } elseif ($action === 'remove') {
+        pg_pfu_remove_unit_answer($order_item_id, $quantity_number, $field['id']);
+    }
+
+    if ($action === 'refuse') {
+        $liveform->mark_error($html_field_name, h($refusal));
+    } elseif ($check_required && !empty($field['required']) && !pg_pfu_holds_file($action, (bool) $stored)) {
+        $liveform->mark_error($html_field_name, ((string) ($field['label'] ?? '') !== '')
+            ? lang(array('string' => '{var:1} is required.', 'vars' => h($field['label'])))
+            : lang('Please choose a file.'));
+    }
+
+    return $action;
+}
