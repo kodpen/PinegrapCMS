@@ -621,6 +621,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Each finished order's costs and net profit (erp_order_profit):
+        // orders marked by a real cost, new orders, then a rolling recheck of
+        // the computed ones. Hourly, within a budget per tick; a pass with
+        // work left asks to come back in a minute. With Accounting off it
+        // reads and writes nothing.
+        'erp_order_profit_job' => array(
+            'label'       => lang('Order profit'),
+            'script'      => 'erp_order_profit_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
         // Repeating workspace tasks, and the requests to Claude and Pinegrap AI
         // that waited. Every five minutes, so a copy due today is handed out in
         // the first minutes of the day and a request held back by a failed call

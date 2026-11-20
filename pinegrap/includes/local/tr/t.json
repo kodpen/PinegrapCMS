@@ -5555,6 +5555,7 @@
     "The order number could not be taken. Try again.": "Sipariş numarası alınamadı. Tekrar deneyin.",
     "The order number is missing.": "Sipariş numarası eksik.",
     "The order of this folder among the folders beside it": "Klasörün, aynı düzeydeki klasörler arasındaki sırası",
+    "The order profit could not be written; the next run tries again.": "Sipariş kârı yazılamadı; bir sonraki çalışma yeniden dener.",
     "The order receipt bcc e-mail address is invalid.": "Sipariş makbuzu gizli kopya e-posta adresi geçersiz.",
     "The order receipt bcc e-mail address is invalid. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Sipariş makbuzu gizli kopya e-posta adresi geçersiz. <a href=\"javascript:history.go(-1);\">Geri git</a>.",
     "The order report has been created, and the results appear below.": "Sipariş raporu oluşturuldu ve sonuçlar aşağıda görünüyor.",
