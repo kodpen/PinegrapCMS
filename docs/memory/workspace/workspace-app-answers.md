@@ -6,7 +6,7 @@ description: An application's answer to its / command shown only to the writer: 
 ## What does it do?
 - An application answers the person who typed one of its / commands, and nobody else, with `POST /workspace/commands/answer` (`token`, `text`). The answer is a box under that channel's conversation, with the application's name, the command and "Only you can see this", in every window and on the phone of that person.
 - Nothing is posted: no inbox line, no push, no bell. The box's close (×) hides it in that window only; reopening the channel in another window shows it again while it is kept.
-- Before CC12b an application could only answer everyone (`POST /workspace/channels/{id}/messages`), and the "Sent to the application" box was lost on reload or in a second window (census: `plans/channel-commands-answer-census.md`).
+- Before PR #10668 an application could only answer everyone (`POST /workspace/channels/{id}/messages`), and the "Sent to the application" box was lost on reload or in a second window (census of PR #10636: nothing kept an application's text for one person; `ws_call_signals` and its sweep were the model).
 
 ## How is the token made?
 - `ws_app_command_send()` puts `answer_token` into `workspace.app.command` (`ws_app_answer_token_for()`), only once `ws_app_answers` exists; before the upgrade the payload has no such key.

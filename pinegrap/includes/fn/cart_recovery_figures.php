@@ -8,7 +8,9 @@
  * (a touch clicked or restored) and recovered, with the recovered total, in
  * all, by channel and by message. Left = the touched carts plus the left
  * carts no message touched. pg_cart_recovery_figures() is the pure part;
- * pg_cart_recovery_period() reads the rows for a period.
+ * pg_cart_recovery_period() reads the rows for a period. A touch is read
+ * against its order (pg_cart_recovery_touch_read()): a cancelled or fully
+ * refunded order is not recovered, a cart open under 6 hours not left.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -246,21 +248,112 @@ function pg_cart_recovery_untouched($from, $to, $now)
 }
 
 /**
+ * One touch row as the figures read it, pure. The row carries its order's
+ * columns from the LEFT JOIN (order_found, order_status, order_cancelled_at,
+ * order_total, order_refunded_amount, order_date); with no order row (the
+ * order was deleted or purged) it is read as written.
+ * - An order the Customers report does not count (cancelled, or refunded in
+ *   full, pg_customer_value_order_counts()) is not recovered and brings no
+ *   revenue; the cart is still left, reached and came back.
+ * - A partial refund keeps the cart recovered; its revenue is the recovered
+ *   total less the refund, never below zero.
+ * - A cart still open and started under 6 hours before now was not left:
+ *   null, so it is in no figure until the 6 hours pass.
+ *
+ * @param array $row
+ * @param int   $now
+ * @return array|null
+ */
+function pg_cart_recovery_touch_read(array $row, $now)
+{
+    if (!isset($row['order_found']) || ((int) $row['order_found'] < 1)) {
+        return $row;
+    }
+
+    $order = array(
+        'status'          => (string) $row['order_status'],
+        'cancelled_at'    => $row['order_cancelled_at'],
+        'total'           => (int) $row['order_total'],
+        'refunded_amount' => (int) $row['order_refunded_amount'],
+    );
+
+    $started = (int) $row['order_date'];
+
+    if (($order['status'] === 'incomplete') && ($started > 0) && (((int) $now - $started) < PG_CART_RECOVERY_LEFT_AFTER)) {
+        return null;
+    }
+
+    if ((int) $row['recovered'] === 1) {
+        if (!pg_customer_value_order_counts($order)) {
+            $row['recovered'] = 0;
+            $row['completed_total'] = 0;
+        } else {
+            $row['completed_total'] = max(0, (int) $row['completed_total'] - $order['refunded_amount']);
+        }
+    }
+
+    return $row;
+}
+
+/**
+ * pg_cart_recovery_touch_read() over a list of rows, the carts not left yet
+ * left out. Pure.
+ *
+ * @param array $rows
+ * @param int   $now
+ * @return array
+ */
+function pg_cart_recovery_touches_read(array $rows, $now)
+{
+    $out = array();
+
+    foreach ($rows as $row) {
+        $row = pg_cart_recovery_touch_read($row, $now);
+
+        if ($row !== null) {
+            $out[] = $row;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The touch rows of every cart with a touch sent in [from, to), each with all
  * its touches, so pg_cart_recovery_figures() can find the cart's first one.
+ * Each row is joined to its order and read by pg_cart_recovery_touch_read():
+ * every reader of recovered and completed_total takes them from here.
  *
  * @param int $from
  * @param int $to
+ * @param int $now
  * @return array
  */
-function pg_cart_recovery_touch_rows($from, $to)
+function pg_cart_recovery_touch_rows($from, $to, $now)
 {
     $result = db_q(
-        "SELECT order_id, channel, source_type, source_id, sent_at, clicked_at, restored_at, recovered, completed_total
+        "SELECT
+            cart_recovery_touch.order_id,
+            cart_recovery_touch.channel,
+            cart_recovery_touch.source_type,
+            cart_recovery_touch.source_id,
+            cart_recovery_touch.sent_at,
+            cart_recovery_touch.clicked_at,
+            cart_recovery_touch.restored_at,
+            cart_recovery_touch.recovered,
+            cart_recovery_touch.completed_total,
+            cart_recovery_touch.completed_at,
+            orders.id AS order_found,
+            orders.status AS order_status,
+            orders.cancelled_at AS order_cancelled_at,
+            orders.total AS order_total,
+            orders.refunded_amount AS order_refunded_amount,
+            orders.order_date AS order_date
         FROM cart_recovery_touch
+        LEFT JOIN orders ON orders.id = cart_recovery_touch.order_id
         WHERE
-            (channel <> '')
-            AND order_id IN (
+            (cart_recovery_touch.channel <> '')
+            AND cart_recovery_touch.order_id IN (
                 SELECT order_id FROM cart_recovery_touch
                 WHERE (channel <> '') AND (sent_at >= ?) AND (sent_at < ?))",
         array((string) (int) $from, (string) (int) $to));
@@ -273,7 +366,7 @@ function pg_cart_recovery_touch_rows($from, $to)
         }
     }
 
-    return $rows;
+    return pg_cart_recovery_touches_read($rows, $now);
 }
 
 /**
@@ -358,7 +451,7 @@ function pg_cart_recovery_period($from, $to, $now = null)
     $now = ($now === null) ? time() : (int) $now;
 
     $figures = pg_cart_recovery_figures(
-        pg_cart_recovery_touch_rows($from, $to),
+        pg_cart_recovery_touch_rows($from, $to, $now),
         $from,
         $to,
         pg_cart_recovery_untouched($from, $to, $now)

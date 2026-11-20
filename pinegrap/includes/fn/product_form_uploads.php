@@ -1109,6 +1109,91 @@ function pg_pfu_answer_text($data, $file_name)
 }
 
 /**
+ * How an order reader shows a product answer's file: an e-mail (the receipt
+ * of either audience) names it, so no address is mailed; the panel's order
+ * view adds an image's thumbnail to the link; everywhere else a link. Pure.
+ *
+ * @param string $audience  pg_order_receipt_audience(): screen, customer or store
+ * @param string $interface the reader: backend (panel order view), print, frontend
+ * @return string link, thumbnail or name (pg_pfu_order_file_html())
+ */
+function pg_pfu_order_file_mode($audience, $interface)
+{
+    if ($audience !== 'screen') {
+        return 'name';
+    }
+
+    return ($interface === 'backend') ? 'thumbnail' : 'link';
+}
+
+/**
+ * A product answer's file as an order reader prints it: the file's current
+ * name as a link get_file.php serves (it decides who may open it), with a
+ * small preview for an image in thumbnail mode, or the name alone in name
+ * mode. '' when the answer holds no file, so the caller prints the answer's
+ * own text. Pure.
+ *
+ * @param string|null $file_name files.name of form_data.file_id, null for none
+ * @param string      $base_path the site's path (PATH), not escaped
+ * @param string      $mode      link, thumbnail or name (pg_pfu_order_file_mode())
+ * @return string HTML
+ */
+function pg_pfu_order_file_html($file_name, $base_path, $mode = 'link')
+{
+    $name = pg_basename(str_replace('\\', '/', (string) $file_name));
+
+    if ($name === '') {
+        return '';
+    }
+
+    if ($mode === 'name') {
+        return h($name);
+    }
+
+    $href = h((string) $base_path . encode_url_path($name));
+    $link = '<a href="' . $href . '" target="_blank" rel="noopener">' . h($name) . '</a>';
+    $dot = mb_strrpos($name, '.');
+    $extension = ($dot === false) ? '' : mb_strtolower(mb_substr($name, $dot + 1));
+
+    if (($mode !== 'thumbnail') || !in_array($extension, pg_pfu_image_extensions(), true)) {
+        return $link;
+    }
+
+    return '<a href="' . $href . '" target="_blank" rel="noopener"><img src="' . $href . '" alt="" loading="lazy" style="max-width: 80px; max-height: 80px; vertical-align: middle; margin-right: .5em"></a>' . $link;
+}
+
+/**
+ * A product answer's file in the order reader that runs now: the receipt
+ * being e-mailed names it, the screen links it (pg_pfu_order_file_mode()).
+ *
+ * @param string|null $file_name files.name of form_data.file_id (pg_pfu_order_file_name_sql())
+ * @param string      $interface backend (panel order view), print or frontend
+ * @return string HTML, '' when the answer holds no file
+ */
+function pg_pfu_order_answer_html($file_name, $interface = 'frontend')
+{
+    if (($file_name === null) || ((string) $file_name === '')) {
+        return '';
+    }
+
+    $audience = function_exists('pg_order_receipt_audience') ? pg_order_receipt_audience() : 'screen';
+
+    return pg_pfu_order_file_html($file_name, PATH, pg_pfu_order_file_mode($audience, $interface));
+}
+
+/**
+ * An order reader's SQL column for an answer's file name: files.name of
+ * form_data.file_id, NULL when the answer holds no file or the file was
+ * deleted from Files since.
+ *
+ * @return string
+ */
+function pg_pfu_order_file_name_sql()
+{
+    return "(SELECT files.name FROM files WHERE (files.id = form_data.file_id) AND (form_data.file_id > 0) LIMIT 1)";
+}
+
+/**
  * The product form field a submit-form value names for a File Upload field:
  * a value that is one variable alone (^^photo^^) names that field; anything
  * else names none. Pure.

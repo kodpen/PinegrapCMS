@@ -42,6 +42,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * - url    The panel screen that deals with it, relative to the software
  *          directory.
  * - direct Optional. The e-mail is sent at once instead of being queued.
+ * - group  Optional. 'sales' for the sales watch's alerts
+ *          (includes/fn/sales_watch.php), which are about the shop's orders
+ *          rather than the software.
  *
  * @return array<string,array>
  */
@@ -114,6 +117,18 @@ function pg_ops_alert_codes()
             'label' => lang('The SSL certificate is about to expire'),
             'type'  => 'error',
             'url'   => 'welcome.php',
+        ),
+        'orders_stopped' => array(
+            'label' => lang('Orders stopped coming in'),
+            'type'  => 'error',
+            'url'   => 'view_orders.php',
+            'group' => 'sales',
+        ),
+        'payment_broken' => array(
+            'label' => lang('Carts reach payment but orders are not completed'),
+            'type'  => 'error',
+            'url'   => 'settings_commerce.php#pgset-payments',
+            'group' => 'sales',
         ),
     );
 }
@@ -362,9 +377,24 @@ function pg_ops_alert_state_path()
 }
 
 /**
+ * The key the once-a-day rule keeps a send under: the code, or the code and
+ * its subject (a sales channel) for an alert told once a day per subject.
+ *
+ * @param string $code
+ * @param string $subject
+ * @return string
+ */
+function pg_ops_alert_key($code, $subject = '')
+{
+    $subject = substr((string) preg_replace('/[^a-z0-9_]+/', '', strtolower((string) $subject)), 0, 64);
+
+    return ($subject === '') ? (string) $code : $code . ':' . $subject;
+}
+
+/**
  * A state as read from the file, with every key present and typed.
  *
- * - sent  code => unix time the alert was last sent
+ * - sent  key (pg_ops_alert_key()) => unix time the alert was last sent
  * - pass  unix time the checks last ran
  *
  * @param mixed $state
@@ -378,7 +408,7 @@ function pg_ops_alert_state_normalize($state)
 
     if (isset($state['sent']) && is_array($state['sent'])) {
         foreach ($state['sent'] as $code => $stamp) {
-            if (is_string($code) && (preg_match('/^[a-z0-9_]{1,64}$/', $code) === 1)) {
+            if (is_string($code) && (preg_match('/^[a-z0-9_]{1,64}(:[a-z0-9_]{1,64})?$/', $code) === 1)) {
                 $sent[$code] = (int) $stamp;
             }
         }
@@ -449,14 +479,23 @@ function pg_ops_alert_state($change = null)
  * notification deleted from the bell, and covers a send whose row could not be
  * written.
  *
+ * An alert with a subject has its send time in the state file only: the bell
+ * row carries no subject, so a lost file may repeat such an alert once.
+ *
  * @param string $code
+ * @param string $subject
  * @return int unix time, 0 for never
  */
-function pg_ops_alert_last_sent($code)
+function pg_ops_alert_last_sent($code, $subject = '')
 {
     $state = pg_ops_alert_state();
+    $key = pg_ops_alert_key($code, $subject);
 
-    $from_file = (is_array($state) && isset($state['sent'][$code])) ? (int) $state['sent'][$code] : 0;
+    $from_file = (is_array($state) && isset($state['sent'][$key])) ? (int) $state['sent'][$key] : 0;
+
+    if ($key !== $code) {
+        return $from_file;
+    }
 
     $from_bell = (int) db_value(
         "SELECT MAX(timestamp)
@@ -470,7 +509,9 @@ function pg_ops_alert_last_sent($code)
 
 /**
  * Raise an alert: the bell row, the device banners and the e-mail, at most
- * once per code per day.
+ * once per code per day - or once per code and subject per day, when a
+ * subject is given (a sales channel: the site, a marketplace account, the
+ * store).
  *
  * The send is claimed in the state file before anything goes out, so two
  * processes that find the same problem in the same minute send it once. When
@@ -482,10 +523,11 @@ function pg_ops_alert_last_sent($code)
  * mail itself must not wait in the queue that is failing.
  *
  * @param string $code   a key of pg_ops_alert_codes()
- * @param string $detail what happened, in a sentence; plain text
+ * @param string $detail  what happened, in a sentence; plain text
+ * @param string $subject what the alert is about, for the once-a-day rule
  * @return array array('sent' => bool, 'notification_id' => int, 'email' => bool)
  */
-function pg_ops_alert($code, $detail = '')
+function pg_ops_alert($code, $detail = '', $subject = '')
 {
     $result = array('sent' => false, 'notification_id' => 0, 'email' => false);
 
@@ -501,20 +543,21 @@ function pg_ops_alert($code, $detail = '')
 
     $now = time();
 
-    if (!pg_ops_alert_due(pg_ops_alert_last_sent($code), $now)) {
+    if (!pg_ops_alert_due(pg_ops_alert_last_sent($code, $subject), $now)) {
         return $result;
     }
 
+    $key = pg_ops_alert_key($code, $subject);
     $claimed = true;
 
-    $state = pg_ops_alert_state(function ($state) use ($code, $now, &$claimed) {
+    $state = pg_ops_alert_state(function ($state) use ($key, $now, &$claimed) {
 
-        if (!pg_ops_alert_due(isset($state['sent'][$code]) ? $state['sent'][$code] : 0, $now)) {
+        if (!pg_ops_alert_due(isset($state['sent'][$key]) ? $state['sent'][$key] : 0, $now)) {
             $claimed = false;
             return $state;
         }
 
-        $state['sent'][$code] = $now;
+        $state['sent'][$key] = $now;
 
         return $state;
     });
@@ -1418,7 +1461,8 @@ function pg_ops_alerts_check_certificate($now)
 /**
  * The checks the general job runs, in order.
  *
- * @return array name => callable taking the current time, returning the code found
+ * @return array name => callable taking the current time, returning the code
+ *               found, or a list of codes
  */
 function pg_ops_alert_sources()
 {
@@ -1432,6 +1476,8 @@ function pg_ops_alert_sources()
         'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
         'storage'     => 'pg_ops_alerts_check_storage',
+        // Orders stopped and payment broken (includes/fn/sales_watch.php).
+        'sales'       => 'pg_sales_watch_check',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',
@@ -1487,7 +1533,7 @@ function pg_ops_alerts_run($force = false)
     foreach (pg_ops_alert_sources() as $name => $check) {
 
         try {
-            $found = (string) call_user_func($check, $now);
+            $found = call_user_func($check, $now);
         } catch (\Throwable $e) {
             log_activity(lang(array(
                 'string' => 'The operations alert check {var:1} failed: {var:2}',
@@ -1496,8 +1542,10 @@ function pg_ops_alerts_run($force = false)
             continue;
         }
 
-        if ($found !== '') {
-            $result['found'][] = $found;
+        foreach ((array) $found as $code) {
+            if ((string) $code !== '') {
+                $result['found'][] = (string) $code;
+            }
         }
     }
 

@@ -16,13 +16,32 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The file only defines the panel actions; its gate is the dispatcher's.
+if (!defined('PG_PANEL_ACTIONS')) {
+	define('PG_PANEL_ACTIONS', true);
+}
+require_once(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
+
+// The search box's screen row with the address $url.
+function panel_search_shortcut_screen($url)
+{
+	foreach (pg_panel_search_screens() as $screen) {
+		if ($screen['url'] === $url) {
+			return $screen;
+		}
+	}
+
+	return null;
+}
+
 function test_panel_search_states_and_zones_shortcut_names()
 {
-	$php = file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
+	$zones = panel_search_shortcut_screen('view_zones.php');
+	$states = panel_search_shortcut_screen('view_states.php');
 
-	pg_assert_contains("array('label' => lang('Shipping Zones'), 'icon' => 'bi-map', 'url' => \$base_url . '/view_zones.php'", $php, 'zones named as in the menu');
-	pg_assert_contains("array('label' => lang('States/Provinces'), 'icon' => 'bi-geo-alt', 'url' => \$base_url . '/view_states.php'", $php, 'states named as in the menu');
-	pg_assert_contains("'nakliye bolge'", $php, 'zones found by their Turkish menu words');
-	pg_assert_contains("'iller'", $php, 'states found by "il" and "iller"');
-	pg_assert_contains("'province'", $php, 'states found by "province"');
+	pg_assert_same(array('Shipping Zones', 'bi-map'), array($zones['label'], $zones['icon']), 'zones named as in the menu');
+	pg_assert_same(array('States/Provinces', 'bi-geo-alt'), array($states['label'], $states['icon']), 'states named as in the menu');
+	pg_assert_true(in_array('nakliye bolge', $zones['keys'], true), 'zones found by their Turkish menu words');
+	pg_assert_true(in_array('iller', $states['keys'], true), 'states found by "il" and "iller"');
+	pg_assert_true(in_array('province', $states['keys'], true), 'states found by "province"');
 }

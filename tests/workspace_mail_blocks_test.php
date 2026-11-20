@@ -300,7 +300,7 @@ function test_workspace_mail_blocks_wiring()
 	pg_assert_contains('ws_mail_block_pane($pane, $viewer)', workspace_mail_blocks_test_source('includes/workspace/mail_pane.php'), 'the pane offers it');
 	pg_assert_contains("post_value('ws_mail_allow')", workspace_mail_blocks_test_source('includes/settings/mailboxes.save.php'), 'Allow again is saved');
 	$card = workspace_mail_blocks_test_source('includes/workspace/mail_settings.php');
-	pg_assert_true(strpos($card, 'ws_mail_blocks_html(ws_mail_blocks_list(), $form)') > strpos($card, 'ws_mail_connect_form($viewer, $form)'), 'the list is the card\'s last block, after the Microsoft line');
+	pg_assert_true(strpos($card, 'ws_mail_blocks_html(ws_mail_blocks_list(), $form)') > strpos($card, 'ws_mail_connections_html($viewer)'), 'the list is the card\'s last block, after the accounts\' line');
 
 	$css = workspace_mail_blocks_test_source('assets/css/backend.src.css');
 	pg_assert_contains(".ws-mail-block .pg-seg-item {\n  height: auto;", $css, 'a choice wraps on a phone');

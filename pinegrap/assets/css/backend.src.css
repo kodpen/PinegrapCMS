@@ -11055,14 +11055,14 @@ body.pg-side-panel-open .pg-chat-launcher {
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1240px, calc(100vw - 6rem));
   --bs-dialog-backdrop-bg: var(--pg-scrim);
   --bs-dialog-backdrop-blur: 2px;
 }
 .pg-settings-modal.pg-sm {
   flex-direction: row;
   overflow: hidden;
-  height: min(680px, calc(100vh - 3.5rem));
+  height: min(880px, calc(100vh - 3.5rem));
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-sheet);
   background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
@@ -11075,7 +11075,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
   .pg-settings-modal.pg-sm {
-    height: min(680px, calc(100dvh - 3.5rem));
+    height: min(880px, calc(100dvh - 3.5rem));
   }
 }
 
@@ -19578,6 +19578,42 @@ a.ws-chip-message:hover,
 .office-tab-hidden {
   font-style: italic;
   opacity: .7;
+}
+/* A workbook whose sheets may change: its tab list is laid out in one strip
+   with the sheet being added and the add button. */
+.office-tablist {
+  display: contents;
+}
+.office-tab-add,
+.office-tab-new {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  font: inherit;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  background: transparent;
+}
+.office-tab-add {
+  border-color: transparent;
+}
+.office-tab-add:hover {
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+}
+.office-tab-delete {
+  background: var(--pg-danger-bg-subtle);
+}
+.office-tab-delete .office-tab-name {
+  text-decoration: line-through;
+}
+.office-tab-moved {
+  border-style: dashed;
+  border-color: var(--pg-primary);
+}
+.office-tab-input {
+  width: 10rem;
+  font-size: .8125rem;
 }
 /* The separator and character set a .csv is read with, above its sheet. */
 .office-choice {

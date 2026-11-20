@@ -25,4 +25,4 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
 - NP7 (S) close-out: every N number checked against the code with its PR; `erp/order-profit.md` written; `erp/erp-profit-report.md` updated; `erp/erp-not-built-on-purpose.md`'s settlement line made exact (no reconciliation; an order's deductions are read for its cost); this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- After NP1: NP2, NP3, NP4 and NP5a side by side; NP5b after NP5a. `view_order.php` and `view_orders.php` are entered by `plans/product-form-uploads.md` FU4a and FU4b too: never open together.
+- After NP1: NP2, NP3, NP4 and NP5a side by side; NP5b after NP5a. `view_order.php` and `view_orders.php` are entered by the product form uploads work (done) too: never open together.

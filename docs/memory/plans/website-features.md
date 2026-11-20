@@ -17,7 +17,6 @@ priority: 6
 - The rules every step keeps: `plans/website-features-rules.md`. The existing files several plans touch: `plans/website-features-shared-files.md`.
 
 ## Which plans are there, in the proposed order?
-- `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
 - Architect (2026-11-16, agent channel message 5847): every plan stays 6; a step opens only in a place with no begun plan's step free (`workflow/plan-order-begun-first.md`). Given: to `@elcin` RW1, then LS1 once RW1 has landed; to `@adnan` PA1 and, once PU8 (#9877) and LP1 (#9843) have landed, CM1. After CM1 OG1 and PN1 side by side, then CH1, VP1, last RB1, taken by the coordinator with a place.
 - Two steps that touch the same existing file are never open together, another plan's open PR counted: `plans/website-features-shared-files.md`.
 

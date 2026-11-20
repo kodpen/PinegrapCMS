@@ -141,12 +141,10 @@ function test_designer_clicks_part_lines_and_device_choice()
 		var reach = [{ tenth: 0, share: 1 }, { tenth: 1, share: 0.9 }, { tenth: 5, share: 0.5 }, { tenth: 6, share: null }, { tenth: 10, share: 0.125 }];
 		out = {
 			lines: api.lines(reach, 4000).map(function (l) { return [l.tenth, l.top, l.text]; }),
-			all: api.address("/pinegrap/api.php?route=page-clicks", 7, ""),
-			mobile: api.address("/pinegrap/api.php?route=page-clicks", 7, "mobile"),
-			bad: api.address("/r", 7, "phone<x>"),
-			plain: api.address("/r", 7, "tablet"),
-			unsaved: api.address("/r", 0, "tablet"),
-			none: api.address("", 7, "")
+			all: api.ask(7, ""),
+			mobile: api.ask(7, "mobile"),
+			bad: api.ask(7, "phone<x>"),
+			unsaved: api.ask(0, "tablet")
 		};');
 
 	if ($out === null) {
@@ -155,12 +153,10 @@ function test_designer_clicks_part_lines_and_device_choice()
 
 	pg_assert_same(array(array(1, 399, '90%'), array(5, 1999, '50%'), array(10, 3999, '12.5%')), $out['lines'],
 		'a line a tenth with its share: none for tenth 0 or a tenth without a share');
-	pg_assert_same('/pinegrap/api.php?route=page-clicks&page_id=7', $out['all'], 'all devices: no device asked');
-	pg_assert_same('/pinegrap/api.php?route=page-clicks&page_id=7&device=mobile', $out['mobile'], 'the device choice filters the rows');
-	pg_assert_same('/r?page_id=7', $out['bad'], 'an unknown device is all devices');
-	pg_assert_same('/r?page_id=7&device=tablet', $out['plain']);
-	pg_assert_same('', $out['unsaved'], 'a page not saved yet has no figures');
-	pg_assert_same('', $out['none'], 'no report address, no ask');
+	pg_assert_same(array('page_id' => 7), $out['all'], 'all devices: no device asked');
+	pg_assert_same(array('page_id' => 7, 'device' => 'mobile'), $out['mobile'], 'the device choice filters the rows');
+	pg_assert_same(array('page_id' => 7), $out['bad'], 'an unknown device is all devices');
+	pg_assert_same(null, $out['unsaved'], 'a page not saved yet has no figures');
 }
 
 function test_designer_clicks_part_empty_state_and_who_may_open()
@@ -189,6 +185,7 @@ function test_designer_clicks_part_empty_state_and_who_may_open()
 
 	$source = designer_clicks_part_test_source();
 	pg_assert_contains("fetch(s.turnOn, { method: 'POST'", $source, 'the button posts to the Visitors section\'s switch, which saves through the one saver');
+	pg_assert_contains("K._pgApiPost('page_clicks', asked)", $source, 'the figures through the designer\'s one read (includes/panel/designer.php)');
 	$code = preg_replace(array('~/\*.*?\*/~s', "~//[^\n]*~"), ' ', $source);
 	pg_assert_true(strpos($code, 'page_clicks_switch') === false && strpos($code, 'pg_config_text') === false && strpos($code, 'sub_action') === false, 'no reader or saver of its own');
 	pg_assert_contains('Every variant of an experiment on this page is counted together.', $source, 'variants are not told apart, and the reader is told so');

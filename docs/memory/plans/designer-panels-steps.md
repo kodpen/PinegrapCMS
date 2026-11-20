@@ -28,7 +28,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: every state of `measures-3-controls.jpg`, one crop each.
   - Features: D10, D12, D13. Keeps K1, K2.
 
-- DP5 (M) after DP4: the three tabs and the sections' new places.
+- DP5 (M) after DP4: the three tabs and the sections' new places. Done in #10321, #10443 and #10468.
   - Functions: `renderProperties()` (the order of sections), the tab remembered per element kind. The table of `designer-panels-measures-3.md` row by row.
   - Tests: every section of today reached in a tab for a heading, a row, a picture, a link and a form field; a content-level user's hidden rows still hidden and an empty tab not drawn; another kind opens Content at the top.
   - Pictures: the three tabs beside `options-1-content.jpg` and `options-2-style-advanced.jpg`.

@@ -21,7 +21,7 @@ priority: 6
 
 ## What did the architect decide? (2026-11-20)
 - The hold is placed in `submit_order.php` right before the payment is asked for, and lasts 15 minutes (`PG_STOCK_HOLD_MINUTES`); no setting in this plan.
-- Placing: the products of the order in id order, each under `GET_LOCK('pg_stock_hold_<product id>')` for the read and the insert only: units free = stock less the unexpired holds of other orders. Not enough: no hold is kept, the cart is shown again with the notice `check_inventory()` gives.
+- Placing: the products of the order in id order, each under `GET_LOCK(pg_stock_hold_lock_name())` (`pg_stock_hold_<database hash>_<product id>`) for the read and the insert only: units free = stock less the unexpired holds of other orders. Not enough: no hold is kept, the cart is shown again with the notice `check_inventory()` gives.
 - Released when the order completes (with the take), when the payment fails or the visitor comes back to the cart, and by time. An expired row counts for nothing and is swept by an existing daily job.
 - Marketplace import, the counter sale, a subscription renewal and `POST /orders` place no hold: they take at once. Their takes are not stopped by a hold.
 - A bundle holds its components, one pool with the same product bought alone, as its check counts.

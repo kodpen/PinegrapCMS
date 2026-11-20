@@ -4,7 +4,7 @@ description: Plan stock-holds, steps SH1 to SH5: the table and its functions, th
 ---
 
 ## Which steps are there?
-- SH1 (M) first: the record and its functions; nothing calls them yet.
+- SH1 (M) first: the record and its functions; nothing calls them yet. Done: #10711.
   - Migration step in 2026.11.0: `stock_holds` as `workflow/decisions-made-schema-34.md` writes it, idempotent helpers, rerun twice on a dev database.
   - New `includes/fn/stock_holds.php` (module `stock_holds`): units free (pure), the rows an order needs (pure, bundles and locations), place under the lock, release, the sweep; the sweep's call in the general job; `delete_order.php` and the product delete take the rows along.
   - Tests, red first: units free with other orders' holds, expired rows, the order's own rows; a bundle's components as one pool; a location. Features: H1, H2, H5, the functions of H3, H7 and H8.
