@@ -564,12 +564,15 @@ function pg_pfu_file_lines($file_id)
 
 /**
  * Who opens a product form answer's file, whatever its folder allows: the
- * visitor whose cart holds the line, the signed-in buyer of the order, and
- * staff who manage orders (role below 3, or the commerce right). Pure, and
- * PHP only, for get_file.php.
+ * visitor whose cart holds the line, the visitor who has just placed the
+ * order (the receipt page links the file once the cart has left the
+ * session), the signed-in buyer of the order, and staff who manage orders
+ * (role below 3, or the commerce right). Pure, and PHP only, for
+ * get_file.php.
  *
  * @param array $lines  pg_pfu_file_lines()
- * @param array $viewer cart_order_id (the session's cart), user_id (0: not
+ * @param array $viewer cart_order_id (the session's cart), completed_order_id
+ *                      (the session's order just placed), user_id (0: not
  *                      signed in), role, manage_ecommerce
  * @return bool
  */
@@ -577,6 +580,7 @@ function pg_pfu_access_verdict($lines, $viewer)
 {
     $user_id = (int) ($viewer['user_id'] ?? 0);
     $cart_order_id = (int) ($viewer['cart_order_id'] ?? 0);
+    $completed_order_id = (int) ($viewer['completed_order_id'] ?? 0);
 
     if (($user_id > 0) && (((int) ($viewer['role'] ?? 3) < 3) || !empty($viewer['manage_ecommerce']))) {
         return true;
@@ -589,7 +593,7 @@ function pg_pfu_access_verdict($lines, $viewer)
             continue;
         }
 
-        if ($cart_order_id === $order_id) {
+        if (($cart_order_id === $order_id) || ($completed_order_id === $order_id)) {
             return true;
         }
 

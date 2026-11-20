@@ -97,6 +97,16 @@ function test_product_form_uploads_who_opens_the_file()
 	pg_assert_false(pg_pfu_access_verdict($lines, array('user_id' => 0, 'role' => 0)), 'a role without a user opened the file');
 }
 
+function test_product_form_uploads_guest_opens_the_file_of_the_order_just_placed()
+{
+	$lines = array(array('order_id' => '40', 'order_user_id' => '0', 'order_status' => 'complete'));
+
+	// The receipt page links the file; the session's cart is gone by then.
+	pg_assert_true(pg_pfu_access_verdict($lines, array('completed_order_id' => 40)), 'the guest who just placed the order was refused');
+	pg_assert_false(pg_pfu_access_verdict($lines, array('completed_order_id' => 41)), 'another completed order opened the file');
+	pg_assert_false(pg_pfu_access_verdict(array(array('order_id' => '0')), array('completed_order_id' => 0)), 'no completed order matched a line of no order');
+}
+
 function test_product_form_uploads_removed_line_takes_its_file()
 {
 	$rows = array(

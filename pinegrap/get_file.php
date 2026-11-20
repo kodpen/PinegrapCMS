@@ -407,7 +407,8 @@ if (!$file['local'] && !$file['stored']) {
 
 // A file a shopper uploaded with a product form answer (form_data.form_id is
 // 0, the answer belongs to a cart line) opens for the visitor whose cart
-// holds the line, the signed-in buyer of the order, and staff who manage
+// holds the line or who has just placed its order (the receipt page links
+// it), the signed-in buyer of the order, and staff who manage
 // orders, whatever its folder allows; anyone else is answered as a private
 // file answers a visitor without access. Decided here, before the folder's
 // own check and the submitted-form attachment check, neither of which knows
@@ -429,6 +430,7 @@ if (($erp_document === false) && ($workspace_file === false) && ($chat_attachmen
         $pfu_user = (USER_LOGGED_IN == true) ? pg_load_user_row((int) USER_ID) : null;
         $pfu_allowed = pg_pfu_access_verdict($pfu_lines, array(
             'cart_order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+            'completed_order_id' => (int) ($_SESSION['ecommerce']['completed_order_id'] ?? 0),
             'user_id' => is_array($pfu_user) ? (int) $pfu_user['id'] : 0,
             'role' => is_array($pfu_user) ? (int) $pfu_user['role'] : 3,
             'manage_ecommerce' => is_array($pfu_user) ? !empty($pfu_user['manage_ecommerce']) : false,
