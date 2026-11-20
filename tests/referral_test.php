@@ -327,3 +327,18 @@ function test_referral_code_refuses_another_spelling_of_the_number()
 	pg_assert_same(0, pg_referral_code_contact($padded_more, referral_test_key()), 'nor two zeros');
 	pg_assert_same(41, pg_referral_code_contact(' ' . strtolower($code) . ' ', referral_test_key()), 'the code itself still reads, in any case');
 }
+
+// A friend's two orders by the same link, the later one completed first:
+// the earlier one, completed after it, read only orders of a lower id and
+// earned a second reward for the same friend.
+function test_referral_friend_orders_count_any_other_completed_order()
+{
+	$by_account = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 9, 'billing_email_address' => 'friend@example.com'));
+	$by_email = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' Friend@Example.com '));
+
+	pg_assert_contains("(id <> '10')", $by_account, 'every other order of the friend counts, whatever its number');
+	pg_assert_contains("user_id = '9'", $by_account, 'by account');
+	pg_assert_contains("(status IN ('complete', 'exported'))", $by_account, 'only orders that count');
+	pg_assert_contains("= 'friend@example.com'", $by_email, 'else by billing e-mail');
+	pg_assert_same('', pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' ')), 'a guest without an e-mail matches nothing');
+}

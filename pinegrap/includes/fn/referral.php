@@ -434,25 +434,39 @@ function pg_referral_referrer($contact_id, $order_id = 0)
 }
 
 /**
- * How many earlier orders that count the friend has: by account, else by
- * the billing e-mail.
+ * The condition that finds the friend's other orders that count: by
+ * account, else by the billing e-mail; '' for a guest without an e-mail.
+ * Every other completed order counts, not only those of a lower id: of two
+ * orders by the same link, the one placed first may be completed last.
+ *
+ * @param array $order id, user_id, billing_email_address
+ * @return string
+ */
+function pg_referral_friend_orders_sql(array $order)
+{
+    if ((int) $order['user_id'] > 0) {
+        $who = "user_id = '" . (int) $order['user_id'] . "'";
+    } elseif (trim((string) $order['billing_email_address']) !== '') {
+        $who = "LOWER(TRIM(billing_email_address)) = '" . e(strtolower(trim((string) $order['billing_email_address']))) . "'";
+    } else {
+        return '';
+    }
+
+    return "(" . $who . ") AND (status IN ('complete', 'exported')) AND (id <> '" . (int) $order['id'] . "')";
+}
+
+/**
+ * How many other orders that count the friend has
+ * (pg_referral_friend_orders_sql()).
  *
  * @param array $order id, user_id, billing_email_address
  * @return int
  */
 function pg_referral_friend_orders(array $order)
 {
-    $where = ((int) $order['user_id'] > 0)
-        ? "user_id = '" . (int) $order['user_id'] . "'"
-        : "LOWER(TRIM(billing_email_address)) = '" . e(strtolower(trim((string) $order['billing_email_address']))) . "'";
+    $where = pg_referral_friend_orders_sql($order);
 
-    if (((int) $order['user_id'] <= 0) && (trim((string) $order['billing_email_address']) === '')) {
-        return 0;
-    }
-
-    return (int) db_value(
-        "SELECT COUNT(*) FROM orders
-        WHERE (" . $where . ") AND (status IN ('complete', 'exported')) AND (id < '" . (int) $order['id'] . "')");
+    return ($where === '') ? 0 : (int) db_value("SELECT COUNT(*) FROM orders WHERE " . $where);
 }
 
 /**
