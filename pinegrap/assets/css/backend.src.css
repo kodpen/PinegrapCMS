@@ -22016,8 +22016,10 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   gap: 1rem;
   padding-left: 1.2rem;
 }
-/* The pictures of the steps for connecting Claude (claude_setup.php). */
-.ws-claude-steps .ws-ui {
+/* The pictures of the steps for connecting Claude (claude_setup.php); the
+   set-up drawer of Claude's row draws them in a .stepper. */
+.ws-claude-steps .ws-ui,
+.ws-claude-setup-steps .ws-ui {
   font-weight: 600;
   color: var(--pg-fg-emphasis);
   white-space: nowrap;
