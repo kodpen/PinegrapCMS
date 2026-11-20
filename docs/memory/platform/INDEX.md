@@ -116,7 +116,7 @@
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 - install-design-step.md: The installer's Site Design screen: live-picture tiles, the chosen template's block and tour, pickers set to the template's theme, 1440 px width, designer scripts loaded in order [decision: decisions-made-product-35.md]
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter [decision: decisions-made-data.md]
-- iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
+- iys-settings-card.md: The İYS account's fields (on İYS's page of Connections since CX11d, includes/iys/settings.php): save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - job-pass-time-claim.md: Window passes of the general job (booking reminders, store credit expiring notices) claim their config_text pass time with pg_config_text_claim(), so overlapping runs never both send
 - job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one [decision: decisions-made-schema-24.md]
@@ -256,7 +256,7 @@
 - visitor-push.md: Visitor notifications start file: the "Notify me" block, the Features switch, Send a notification; its decisions, which file holds each part, the known gap [decision: here]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
-- whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
+- whatsapp-connection.md: WhatsApp account (WA1, #9067): its five steps on WhatsApp's page of Connections (CX11d), connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 - whatsapp-form-messages.md: A custom form's WhatsApp message to its sender (WA6, #9374): number field, template, a field per variable, connect_apps whatsapp_forms, sent with the e-mails, off by default
 - whatsapp-offer-codes.md: WhatsApp offer codes (WA10, #9414): the offer column, shared code or a key per recipient made at enqueue, copy-code button, consent gate at queue and send, SMS box naming WhatsApp [decision: decisions-made-product-48.md]
 - whatsapp-order-messages.md: WhatsApp order moments (WA5, #9347): the WhatsApp Messages card, one approved template per event and a value per variable, connect_apps whatsapp_messages, where each is queued, off by default
