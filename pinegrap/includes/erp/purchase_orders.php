@@ -893,15 +893,70 @@ function erp_purchase_order_suggested_quantity($minimum, $current)
 }
 
 /**
- * Editor rows for a new order from products (the minimum stock screen): the
- * suggested quantity, the last purchase price and the product's own tax
- * rate, or the store's default. The operator picks the supplier and checks
- * the figures before saving.
+ * The quantities Stock Planning sends with a new order, by POST: product id
+ * => whole units above 0, at most a million each and one order's lines in
+ * all. Anything else (an array, a fraction, a key that is no id) is left
+ * out. Pure.
+ *
+ * @param mixed $posted
+ * @return array<int,int>
+ */
+function erp_purchase_order_plan_quantities($posted)
+{
+    $quantities = array();
+
+    if (!is_array($posted)) {
+        return $quantities;
+    }
+
+    foreach ($posted as $id => $quantity) {
+        if (count($quantities) >= ERP_MANUAL_MAX_LINES) {
+            break;
+        }
+
+        if (!preg_match('/^[1-9][0-9]{0,9}$/', (string) $id) || !is_scalar($quantity) || !preg_match('/^[0-9]{1,12}$/', trim((string) $quantity))) {
+            continue;
+        }
+
+        $units = min(1000000, (int) trim((string) $quantity));
+
+        if ($units > 0) {
+            $quantities[(int) $id] = $units;
+        }
+    }
+
+    return $quantities;
+}
+
+/**
+ * A product's quantity on a new order: the one Stock Planning sent, else
+ * what it needs to get back to its minimum. Pure.
+ *
+ * @param array<int,int> $quantities erp_purchase_order_plan_quantities()
+ * @param int $product_id
+ * @param int|float $minimum
+ * @param int|float $current
+ * @return int
+ */
+function erp_purchase_order_product_quantity(array $quantities, $product_id, $minimum, $current)
+{
+    return isset($quantities[(int) $product_id])
+        ? (int) $quantities[(int) $product_id]
+        : erp_purchase_order_suggested_quantity($minimum, $current);
+}
+
+/**
+ * Editor rows for a new order from products (the minimum stock screen, or
+ * Stock Planning with its quantities): the quantity, the last purchase
+ * price and the product's own tax rate, or the store's default. The
+ * operator checks the figures before saving.
  *
  * @param array $product_ids
+ * @param array<int,int> $quantities erp_purchase_order_plan_quantities(); a
+ *                       product without one gets back to its minimum
  * @return array  Rows shaped like erp_purchase_order_editor_rows()
  */
-function erp_purchase_order_rows_for_products($product_ids)
+function erp_purchase_order_rows_for_products($product_ids, array $quantities = array())
 {
     $ids = array();
     foreach ((array) $product_ids as $id) {
@@ -939,7 +994,7 @@ function erp_purchase_order_rows_for_products($product_ids)
             'product_id' => $id,
             'product_name' => (string) $product['name'],
             'description' => (string) $product['name'],
-            'quantity' => erp_purchase_order_suggested_quantity((int) $found[$id]['min_quantity'], $current),
+            'quantity' => erp_purchase_order_product_quantity($quantities, $id, (int) $found[$id]['min_quantity'], $current),
             'unit_code' => 'C62',
             'unit_price' => is_array($product['cost']) ? (int) $product['cost']['last'] : 0,
             'tax_rate' => (float) $product['tax_rate'],
