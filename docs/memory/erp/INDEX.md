@@ -25,7 +25,7 @@
 - erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), recording a line; what a refused step keeps, the send-once forms.
 - erp-bank-statement-matching.md: ERP bank statement matching: which till movements a line matches, cancels left out, undoing a match, which tills take a statement.
 - erp-bank-statement-suggestions.md: ERP bank statement suggestions worked out once per statement (erp_bank_statement_suggestions): one line per open invoice, the per-line buttons, the count and Record the N suggested lines.
-- erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
+- erp-bank-statements.md: ERP bank statement import (4.102): readers (the sheet reader for workbooks), title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
