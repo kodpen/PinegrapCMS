@@ -5,7 +5,7 @@ description: The MCP tool size budget (AG9): 600 characters a description, 4,096
 
 ## What are the budgets?
 - A tool's description (summary, description and guidance as `tools/list` sends it) at most 600 characters (`mb_strlen`); the whole tool as JSON (`pg_mcp_json_encode()`) at most 4,096 bytes. `pg_mcp_tool_budgets()` and `pg_mcp_tool_over_budget()` in `includes/mcp/tools.php`.
-- Why: every tool on the full address is read before the first question; long tools cost a client its context. Built in plan ai-guide step AG9 (feature G16).
+- Why: every tool on the full address is read before the first question; long tools cost a client its context. Built in plan ai-guide step AG9 (feature G16), PR #10822.
 
 ## How does the test hold them?
 - `tests/mcp_tool_budget_test.php` builds every route of the core and the modules as tools for a caller with every scope, and keeps two lists: tools over 600 characters, tools over 4,096 bytes.
