@@ -77282,17 +77282,31 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdProtoPlayUrl() {
+    // The tab Play opens the viewer at: the selected page when it has an
+    // address, else the first tab that has one; null when none has.
+    function _sdProtoPlayStart() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
         var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;
-        var url = page ? _pgPrototypeUrl(page) : '';
-        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
-        return url;
+        if (page && _pgPrototypeUrl(page)) return page;
+        for (var i = 0; i < _pages.length; i++) if (_pgPrototypeUrl(_pages[i])) return _pages[i];
+        return null;
     }
 
+    function _sdProtoPlayUrl() {
+        return _pgPrototypeUrl(_sdProtoPlayStart());
+    }
+
+    // Play names the page it starts from, so a selected page that has no
+    // address yet (unsaved, or not a draft) does not hide that it starts
+    // elsewhere.
     function _sdProtoPlayState() {
-        if (_sdProto.ui) _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        if (!_sdProto.ui) return;
+        var start = _sdProtoPlayStart();
+        _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        var label = start ? _sdT('Play the prototype from {var}', start.page_name || _sdT('New Page')) : _sdT('Play the prototype from the selected page');
+        _sdProto.ui.play.title = label;
+        _sdProto.ui.play.setAttribute('aria-label', label);
     }
 
     function _sdProtoDraw(marked) {
