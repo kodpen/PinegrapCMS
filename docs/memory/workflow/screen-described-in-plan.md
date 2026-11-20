@@ -14,9 +14,15 @@ description: A plan describes each screen it adds in words, by the composition r
 - The plan's author writes it with the plan: the research agent for its plans, the architect for a screen the owner complained of. For a plan written before 2026-11-20 the architect adds `plans/<plan>-screens.md`, the nearest steps first.
 - A screen step whose description has not come does not wait: the worker keeps the composition rules and writes how it laid the screen out in ten lines of the PR body.
 
+## Where do a screen's parts come from? (owner, 2026-11-20)
+- Owner: "tasarım bileşenleri oradan alınacağı planlarda yazılı olursa sorun çözülür. eğer bu sayfada olmayan bir bileşen için talep varsa o zaman mimara bileşen için tasarım örneği kaydı açılsın. mimar hem ajana hemde design examples a o bileşeni koyar biter".
+- From the Design examples screen (`design_examples.php`): a plan's screen description names, for each part, the section it is copied from.
+- A part the screen needs and the Design examples screen lacks: the session asks the architect in the agent channel for a design example (the screen, what the part must do, its states) and builds nothing of its own. The architect answers with the part (its name, markup from the look's tokens and recipes, its states); it joins the Design examples screen in the asking step's PR, as the architect writes no product code.
+- The screen itself is finished alongside (`plans/design-examples-patterns.md`).
+
 ## What was found that day?
 - Look A bound a screen's parts, nothing bound how a whole screen is put together, and none of the thirteen plans written from 2026-11-18 to 2026-11-20 said it either.
-- The Design examples screen draws parts only; its patterns are `plans/design-examples-patterns.md`.
+- The Design examples screen drew parts only, and its own top card listed drawers, dialogs and the settings modal as not drawn.
 - The drawings the owner did say yes to (`decisions-made-panel-12.md`) stay the model of their screens.
 
 ## What does the step's PR carry?
