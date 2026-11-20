@@ -20,10 +20,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
   - Pictures: the block as a list, the search, a card, a phone. To the owner.
   - Features: X1, X2, X3, X8, X10, X15, X16.
 
-- MP3b (S) after MP3: the block's field pickers, done (PR #10535; `platform/place-list-fields.md`). Architect (2026-11-16, agent channel message 7423): `places.php` never returns a field because the request names it; MP3 takes the page id only and finds the fields by the server's name rule, never an office-use-only field.
-  - The block's panel section, and the endpoint reading the chosen fields from the saved page. A chosen field counts only when it is the collection's, of a text or number kind and not office-use-only; else the name rule.
-  - Tests: a request naming a field gets nothing more; a saved choice of an office-use field refused; the fallback.
-  - Features: X2's pickers.
+- MP3b (S) after MP3: the block's field pickers, done (PR #10535; `platform/place-list-fields.md`). Features: X2's pickers.
 
 - MP4 (M) after MP3b: the map and the switch.
   - Existing files: `includes/settings/features.php` and `features.save.php` (the card with the tile setting), `includes/fn/consent.php` (the map as a service of the notice), the Firewall settings screen (a line to copy when the site's own policy lacks the tile host; the security headers the software sends do not change, X14).
