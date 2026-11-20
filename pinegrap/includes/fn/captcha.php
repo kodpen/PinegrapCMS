@@ -8,7 +8,9 @@
  * The built-in question (get_captcha_fields() in includes/fn/auth.php) is
  * what a form gets when no provider is switched on; it needs no account and
  * no outside service. A provider is chosen on the Security settings' Spam
- * Protection card; its keys are kept in connect_apps under 'captcha_<key>',
+ * Protection card, its keys typed on the provider's page of Connections
+ * (connections.php?service=<key>); they are kept in connect_apps under
+ * 'captcha_<key>',
  * like the SMS accounts: the site key as client_id, the secret key sealed
  * with the site's key and never drawn back into a form, and the chosen
  * provider as enabled. Keys that are incomplete, or that this site cannot
@@ -526,8 +528,9 @@ function pg_captcha_settings_selected($apps)
 }
 
 /**
- * The Spam Protection card's provider fields: the choice, each provider's
- * keys (the secret never drawn back) and what the card has to warn about.
+ * The Spam Protection card's provider fields: the choice, a line per
+ * provider leading to its page of Connections, where its keys are typed,
+ * and what the card has to warn about.
  *
  * @return string
  */
@@ -563,7 +566,7 @@ function pg_captcha_settings_fields()
             $warning = !function_exists('curl_init')
                 ? lang('This server has no cURL extension, so it cannot check a CAPTCHA with the provider and forms show the built-in question.')
                 : lang(array(
-                'string' => 'The {var:1} keys are incomplete or cannot be read with this site\'s encryption key, so forms show the built-in question. Enter them again.',
+                'string' => 'The {var:1} keys are incomplete or cannot be read with this site\'s encryption key, so forms show the built-in question. Enter them again on its page of Connections.',
                     'vars'   => array(h($label))));
         } elseif (function_exists('waf_setting') && (trim((string) waf_setting('security_csp_policy', '')) !== '')) {
             $warning = lang(array(
@@ -577,47 +580,22 @@ function pg_captcha_settings_fields()
                                         <div class="col-12"><div class="alert theme-warning mb-0">' . $warning . '</div></div>';
     }
 
+    // The keys are typed on each provider's page of Connections; the card
+    // says whether they are there and leads to it.
     foreach (pg_captcha_providers() as $key => $definition) {
-        $html .= pg_captcha_settings_provider_fields($key, $definition, $apps[$key]);
+        $stored = ($apps[$key]['site_key'] !== '') && ($apps[$key]['secret'] !== '');
+
+        $html .= '
+                                        <div class="col-12">
+                                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                                <span class="fw-bold">' . h($definition['label']) . '</span>
+                                                <span class="pg-text-meta">' . h($stored ? lang('Keys stored') : lang('No keys yet')) . '</span>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h('connections.php?service=' . $key) . '"><i class="bi bi-plug" aria-hidden="true"></i>' . h($stored ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
     }
 
     return $html;
-}
-
-/**
- * One provider's key fields.
- *
- * @param string $provider
- * @param array  $definition
- * @param array  $app pg_captcha_app()
- * @return string
- */
-function pg_captcha_settings_provider_fields($provider, $definition, $app)
-{
-    $name = 'captcha_' . $provider . '_';
-
-    // "Stored" only for a secret this site can still read.
-    $placeholder = ($app['secret_stored'] && ($app['secret'] !== ''))
-        ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"'
-        : '';
-
-    return '
-                                        <div class="col-12">
-                                            <div class="form-label fw-bold mb-1">' . h($definition['label']) . '</div>
-                                            <div class="form-text mt-0">' . lang(array(
-                                                'string' => 'Enter the site key and secret key of a {var:1} widget made for this site\'s domain. Saving checks them with the provider. To remove the keys from this site, choose another type and empty the site key.',
-                                                'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>
-                                            <div class="row gy-5 mt-0">
-                                                <div class="pg-f-md">
-                                                    <label for="' . h($name) . 'site_key" class="form-label">' . lang('Site Key') . '</label>
-                                                    <input type="text" name="' . h($name) . 'site_key" id="' . h($name) . 'site_key" class="form-control" value="' . h($app['site_key']) . '" maxlength="255" autocomplete="off"/>
-                                                </div>
-                                                <div class="pg-f-md">
-                                                    <label for="' . h($name) . 'secret" class="form-label">' . lang('Secret Key') . '</label>
-                                                    <input type="password" name="' . h($name) . 'secret" id="' . h($name) . 'secret" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
-                                                </div>
-                                            </div>
-                                        </div>';
 }
 
 /**
@@ -642,13 +620,18 @@ function pg_captcha_post($post, $name)
  * @param array  $post
  * @param array  $before  provider => pg_captcha_app()
  * @param string $refusal pg_captcha_settings_refusal()
+ * A post without a provider's key fields (the Spam Protection card, whose
+ * keys are typed on the provider's page of Connections) only switches that
+ * provider: on with its stored keys, asked about first, or off.
+ *
  * @return array|null provider (chosen, '' for the built-in question), apps
- *                    (provider => action 'none', 'save', 'disable' or
- *                    'forget', site_key, secret as typed, enabled), ask (the
- *                    provider whose keys are to be checked, ''), secret
- *                    (the typed or stored secret of that provider), marks
- *                    (field => sentence), notices; null when the post has no
- *                    such card
+ *                    (provider => action 'none', 'save', 'enable',
+ *                    'disable' or 'forget', site_key, secret as typed,
+ *                    enabled), ask (the provider whose keys are to be
+ *                    checked, ''), secret (the typed or stored secret of
+ *                    that provider), field (where the provider's answer is
+ *                    marked), marks (field => sentence), notices; null when
+ *                    the post has no such card
  */
 function pg_captcha_settings_decide($post, $before, $refusal)
 {
@@ -667,6 +650,7 @@ function pg_captcha_settings_decide($post, $before, $refusal)
         'apps'     => array(),
         'ask'      => '',
         'secret'   => '',
+        'field'    => '',
         'marks'    => array(),
         'notices'  => array(),
     );
@@ -684,8 +668,26 @@ function pg_captcha_settings_decide($post, $before, $refusal)
         );
 
         // A pane that does not draw this provider's fields says nothing
-        // about its keys.
+        // about its keys: it only switches the provider on or off.
         if (!isset($post[$name . 'site_key'])) {
+            if ($enabled && !$was['enabled']) {
+                if (($was['site_key'] === '') || ($was['secret'] === '')) {
+                    $decision['marks']['captcha_provider'] = lang(array(
+                        'string' => 'Set up the {var:1} keys on its page of Connections first.',
+                        'vars'   => array(h($definition['label']))));
+                } elseif ($refusal !== '') {
+                    $decision['marks']['captcha_provider'] = $refusal;
+                } else {
+                    $app['action'] = 'enable';
+                    $app['site_key'] = $was['site_key'];
+                    $decision['ask'] = $provider;
+                    $decision['secret'] = $was['secret'];
+                    $decision['field'] = 'captcha_provider';
+                }
+            } elseif (!$enabled && $was['enabled']) {
+                $app['action'] = 'disable';
+            }
+
             $decision['apps'][$provider] = $app;
             continue;
         }
@@ -739,6 +741,7 @@ function pg_captcha_settings_decide($post, $before, $refusal)
                 if (!$marked) {
                     $decision['ask'] = $provider;
                     $decision['secret'] = $secret;
+                    $decision['field'] = $name . 'secret';
                 }
             }
         }
@@ -818,7 +821,8 @@ function pg_captcha_settings_answer($decision, $result)
     }
 
     if ($result['outcome'] === 'misconfigured') {
-        $decision['marks']['captcha_' . $provider . '_secret'] = lang(array(
+        $field = (isset($decision['field']) && ($decision['field'] !== '')) ? $decision['field'] : 'captcha_' . $provider . '_secret';
+        $decision['marks'][$field] = lang(array(
             'string' => '{var:1} did not accept these keys ({var:2}).',
             'vars'   => array(h($definition['label']), h($result['detail']))));
     } elseif ($result['outcome'] === 'unavailable') {
@@ -851,6 +855,13 @@ function pg_captcha_settings_save($decision, $user_id, $liveform)
 
         if ($app['action'] === 'forget') {
             db("DELETE FROM connect_apps WHERE provider = '" . e($key) . "'");
+        } elseif (($app['action'] === 'enable') && $app['enabled']) {
+            db("UPDATE connect_apps
+                SET
+                    enabled = 1,
+                    updated_user_id = '" . (int) $user_id . "',
+                    updated_timestamp = UNIX_TIMESTAMP()
+                WHERE provider = '" . e($key) . "'");
         } elseif ($app['action'] === 'disable') {
             db("UPDATE connect_apps
                 SET

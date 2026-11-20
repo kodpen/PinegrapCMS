@@ -373,13 +373,15 @@ function test_reseal_runs_after_the_sealing_writes()
 
 	pg_assert_true($reset !== false);
 
-	foreach (array('pg_captcha_settings_save(', 'pg_connect_app_save(', 'generate_encryption_key()') as $call) {
+	foreach (array('pg_captcha_settings_save(', 'generate_encryption_key()') as $call) {
 		pg_assert_true(strpos($save, $call) !== false, $call);
 	}
 
-	foreach (array('pg_captcha_settings_save(', 'pg_connect_app_save(') as $call) {
-		pg_assert_true(strpos($save, $call) < strpos($save, 'generate_encryption_key()'), $call . ' runs before the key changes');
-	}
+	pg_assert_true(strpos($save, 'pg_captcha_settings_save(') < strpos($save, 'generate_encryption_key()'), 'the CAPTCHA switch runs before the key changes');
+
+	// Sign in with Apple's application is sealed on its page of Connections,
+	// never in the save that changes the key.
+	pg_assert_false(strpos($save, 'pg_connect_app_save(') !== false, 'no application sealed here');
 
 	// The Google client secret is sealed on Google's page of Connections,
 	// never in the save that changes the key.

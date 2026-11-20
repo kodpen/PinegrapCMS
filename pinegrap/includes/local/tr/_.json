@@ -916,6 +916,7 @@
     "{var:1} could not be moved (MySQL {var:2}: {var:3}); it stays on MyISAM": "{var:1} taşınamadı (MySQL {var:2}: {var:3}); MyISAM'da kalıyor",
     "{var:1} could not be parsed as HTML.": "{var:1} HTML olarak çözümlenemedi.",
     "{var:1} could not be reached from this server ({var:2}), so it was not switched on and forms show the built-in question. Its keys were saved; choose it again to retry.": "{var:1} bu sunucudan erişilemedi ({var:2}); bu yüzden açılmadı ve formlar yerleşik soruyu gösteriyor. Anahtarları kaydedildi; yeniden denemek için onu tekrar seçin.",
+    "{var:1} could not be reached from this server ({var:2}).": "{var:1} bu sunucudan erişilemedi ({var:2}).",
     "{var:1} could not be reached or took too long to answer.": "{var:1} ile bağlantı kurulamadı ya da yanıtı çok uzun sürdü.",
     "{var:1} could not be reached to check a CAPTCHA ({var:2}), so the form submission was refused": "CAPTCHA'yı denetlemek için {var:1} hizmetine ulaşılamadı ({var:2}), bu yüzden form gönderimi reddedildi",
     "{var:1} could not be reached: {var:2}": "{var:1} ile bağlantı kurulamadı: {var:2}",

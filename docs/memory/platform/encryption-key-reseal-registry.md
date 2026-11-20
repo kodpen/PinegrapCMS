@@ -5,7 +5,7 @@ module: reseal
 ---
 
 ## What does a key reset seal again?
-- The key-reset block is the last thing `security.save.php` does: `pg_write_config_file()`, then `pg_reseal_run($old, $new)` (`includes/fn/reseal.php`), while `ENCRYPTION_KEY` still holds the old key. Every write before it in that save (Apple's application, the CAPTCHA keys, the Google client secret) seals with the old key and is carried over with the rest.
+- The key-reset block is the last thing `security.save.php` does: `pg_write_config_file()`, then `pg_reseal_run($old, $new)` (`includes/fn/reseal.php`), while `ENCRYPTION_KEY` still holds the old key. No write before it in that save seals a value: Apple's application, the CAPTCHA keys and the Google client secret are typed on their pages of Connections (CX11f, CX10b), and the reseal carries them over with the rest.
 - `pg_reseal_registry()` lists: `orders.card_number`, the gateway secrets, `connect_apps` / `connect_accounts.secret`, `marketplace_accounts.credentials`, `erp_edoc_providers.credentials_enc`, config `parasut_credentials_enc`, `backup_remote_settings`, `product_feeds` (token_secret of each format), `oauth_google_client_secret` (+ its IV column), `translation_google_key`, `ws_claude_token`.
 - Rows: `user_mfa` totp_secret and pending_secret; `subscriptions.card_ref` (sealed shape only); `ws_mcp_servers.secret`, `ws_calendar_feeds.token_secret`, `ws_mail_boxes.settings` (its `secret`).
 - And config_text: `ap_keys` (`private`), `ws_voice_key`, `ws_voice_speech_key`, `event_tickets_key` (`commerce/event-tickets-key.md`).
