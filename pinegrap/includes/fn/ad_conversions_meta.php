@@ -45,7 +45,35 @@ define('PG_AD_CONVERSION_META_ROW', 'ad_conversions_meta_capi');
  */
 function pg_ad_conversion_meta_events()
 {
-    return array('purchase' => 'Purchase');
+    return array(
+        'purchase' => 'Purchase',
+        'lead' => 'Lead',
+        'complete_registration' => 'CompleteRegistration',
+        'add_to_cart' => 'AddToCart',
+        'begin_checkout' => 'InitiateCheckout',
+    );
+}
+
+/**
+ * An event's name on the page, in the panel's language.
+ *
+ * @param string $event
+ * @return string
+ */
+function pg_ad_conversion_meta_event_label($event)
+{
+    switch ($event) {
+        case 'lead':
+            return lang('Lead (a form picked below)');
+        case 'complete_registration':
+            return lang('Account opened');
+        case 'add_to_cart':
+            return lang('Add to cart');
+        case 'begin_checkout':
+            return lang('Begin checkout');
+        default:
+            return lang('Purchase');
+    }
 }
 
 /**
@@ -57,12 +85,7 @@ function pg_ad_conversion_meta_events()
  */
 function pg_ad_conversion_meta_event_name($event)
 {
-    $names = pg_ad_conversion_meta_events() + array(
-        'add_to_cart' => 'AddToCart',
-        'begin_checkout' => 'InitiateCheckout',
-        'lead' => 'Lead',
-        'complete_registration' => 'CompleteRegistration',
-    );
+    $names = pg_ad_conversion_meta_events();
 
     return isset($names[$event]) ? $names[$event] : '';
 }
@@ -124,12 +147,13 @@ function pg_ad_conversion_meta_stored($raw)
 /**
  * The settings the page's form writes, from what is stored and what was
  * typed. An empty token field keeps the stored token; the event ticks, the
- * notice-off box and "Send events without the person" are taken as posted.
- * Pure.
+ * notice-off box, "Send events without the person" (the purchase only) and
+ * the forms picked for Lead are taken as posted. Pure.
  *
  * @param array  $stored pg_ad_conversion_meta_stored()
  * @param array  $post   pixel_id, test_event_code, events (string[]),
- *                       person_notice_off, without_person (string[])
+ *                       person_notice_off, without_person (string[]),
+ *                       lead_forms (page ids)
  * @param string $sealed the newly sealed token, '' to keep the stored one
  * @return array what is saved as JSON
  */
@@ -150,7 +174,8 @@ function pg_ad_conversion_meta_settings_merge(array $stored, array $post, $seale
         'test_event_code' => trim((string) ($post['test_event_code'] ?? '')),
         'events' => $list($post['events'] ?? array()),
         'person_notice_off' => !empty($post['person_notice_off']),
-        'without_person' => $list($post['without_person'] ?? array()),
+        'without_person' => array_values(array_intersect(array('purchase'), $list($post['without_person'] ?? array()))),
+        'lead_forms' => pg_ad_conversion_page_ids($post['lead_forms'] ?? array()),
     );
 }
 
@@ -212,10 +237,13 @@ function pg_ad_conversion_meta_server_event(array $event, $source_url)
         );
     }
 
-    $custom = array(
-        'value' => (float) ($event['value'] ?? 0),
-        'currency' => strtoupper((string) ($event['currency'] ?? '')),
-    );
+    // A Lead or a registration has no amount: no value and no currency.
+    $custom = array();
+
+    if ((string) ($event['currency'] ?? '') !== '') {
+        $custom['value'] = (float) ($event['value'] ?? 0);
+        $custom['currency'] = strtoupper((string) $event['currency']);
+    }
 
     if ($contents) {
         $custom['contents'] = $contents;
@@ -232,8 +260,11 @@ function pg_ad_conversion_meta_server_event(array $event, $source_url)
         'event_id' => (string) ($event['event_id'] ?? ''),
         'action_source' => 'website',
         'user_data' => $user ? $user : new stdClass(),
-        'custom_data' => $custom,
     );
+
+    if ($custom) {
+        $server['custom_data'] = $custom;
+    }
 
     if ((string) $source_url !== '') {
         $server['event_source_url'] = (string) $source_url;
@@ -536,6 +567,7 @@ function pg_ad_conversion_meta_post_page($action, array $post, $liveform)
             'events' => $post['ad_events'] ?? array(),
             'person_notice_off' => !empty($post['person_notice_off']),
             'without_person' => $post['ad_without_person'] ?? array(),
+            'lead_forms' => $post['ad_lead_forms'] ?? array(),
         ), $sealed);
 
         pg_config_text_save(PG_AD_CONVERSION_META_ROW, json_encode($saved));
@@ -592,12 +624,29 @@ function pg_ad_conversion_meta_page(array $page, $may_manage, $can_seal)
             $ticks .= '
 					<div class="d-flex align-items-center gap-2">
 						<input type="checkbox" class="pg-checkbox" name="ad_events[]" value="' . h($event) . '" id="meta_capi_event_' . h($event) . '"' . (in_array($event, $stored['events'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="meta_capi_event_' . h($event) . '">' . h(lang('Purchase')) . ' <span class="pg-text-meta">(' . h($meta_name) . ')</span></label>
+						<label class="pg-text-2" for="meta_capi_event_' . h($event) . '">' . h(pg_ad_conversion_meta_event_label($event)) . ' <span class="pg-text-meta">(' . h($meta_name) . ')</span></label>
 					</div>';
+
+            // Without consent only the purchase goes, without the person.
+            if ($event !== 'purchase') {
+                continue;
+            }
+
             $without .= '
 					<div class="d-flex align-items-center gap-2">
 						<input type="checkbox" class="pg-checkbox" name="ad_without_person[]" value="' . h($event) . '" id="meta_capi_without_' . h($event) . '"' . (in_array($event, $stored['without_person'], true) ? ' checked' : '') . '>
 						<label class="pg-text-2" for="meta_capi_without_' . h($event) . '">' . h(lang('Send events without the person')) . ' <span class="pg-text-meta">(' . h(lang('Purchase')) . ')</span></label>
+					</div>';
+        }
+
+        $forms = '';
+
+        foreach ((array) db_items("SELECT page_id, form_name FROM custom_form_pages ORDER BY form_name, page_id") as $form) {
+            $form_id = (int) $form['page_id'];
+            $forms .= '
+					<div class="d-flex align-items-center gap-2">
+						<input type="checkbox" class="pg-checkbox" name="ad_lead_forms[]" value="' . $form_id . '" id="meta_capi_lead_form_' . $form_id . '"' . (in_array($form_id, $stored['lead_forms'], true) ? ' checked' : '') . '>
+						<label class="pg-text-2" for="meta_capi_lead_form_' . $form_id . '">' . h((string) $form['form_name']) . '</label>
 					</div>';
         }
 
@@ -612,7 +661,7 @@ function pg_ad_conversion_meta_page(array $page, $may_manage, $can_seal)
         $page['details'] = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(lang('Purchases are sent from the server to the Meta pixel, after the buyer accepted marketing cookies.')) . '</p>
+			<p class="pg-card-sub mb-4">' . h(lang('Events are sent from the server to the Meta pixel, after the visitor accepted marketing cookies.')) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
 				<input type="hidden" name="connections_action" value="meta_capi_save">
@@ -635,6 +684,11 @@ function pg_ad_conversion_meta_page(array $page, $may_manage, $can_seal)
 				</div>
 				<div>
 					<div class="pg-field-label">' . h(lang('Events sent')) . '</div>' . $ticks . '
+				</div>
+				<div>
+					<div class="pg-field-label">' . h(lang('Forms sent as Lead')) . '</div>' . (($forms !== '') ? $forms : '
+					<div class="pg-text-meta">' . h(lang('No form yet.')) . '</div>') . '
+					<div class="pg-field-help">' . h(lang('A record of a picked form is sent as Lead, when Lead is ticked. Add to cart, Begin checkout and the other events go only after the visitor accepted marketing cookies.')) . '</div>
 				</div>
 				<div>
 					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>' . $without . '
