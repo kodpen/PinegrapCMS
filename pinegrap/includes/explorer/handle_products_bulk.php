@@ -706,6 +706,11 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
                 WHERE id = '" . e($product_id) . "'");
             pg_audit_record('update', 'products', $product_id, $audit_before);
 
+            // Stock locations: rows follow the tracking chosen.
+            if ($bulk_inventory !== '') {
+                pg_stock_tracking_sync(array((int) $product_id));
+            }
+
             if ($relative_write) {
                 pg_stock_refresh_out_of_stock($product_id);
             }

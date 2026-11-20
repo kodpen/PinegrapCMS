@@ -8,7 +8,8 @@ description: Satisfaction survey tables feedback_surveys and feedback_responses 
 - Defaults chosen in the step: `kind` 1 (NPS); every other number 0, text '', TEXT NULL. A new survey is off (`enabled` 0).
 
 ## Why is token_hash NULL and not ''?
-- The answer token signs the row id (`pg_feedback_token_make()`), so the row is inserted first and the hash written after. With a unique key, two rows waiting for their link with '' would collide; NULL never does. Asked of the architect with the columns (FD1b's PR).
+- The answer token signs the row id (`pg_feedback_token_make()`), so the row is inserted first and the hash written after. With a unique key, two rows waiting for their link with '' would collide; NULL never does (architect, 2026-11-21, `workflow/decisions-made-schema-45.md`).
+- Its terms: the writer sets the hash in the same call as the insert, so no row stays NULL past it; the answer page finds a row by an equal hash only; the job's pass skips a row whose hash is NULL.
 
 ## How is person_hash made?
 - `pg_feedback_person_hash()`: SHA-1 of `pg_feedback_fold_person()` (address trimmed and lower-cased, number digits only). A number is hashed in the form `pg_sms_number()` gives (country code, no `+`), the form the personal data export and erasure read numbers in; another form (a leading 0) gives another hash and the person's rows are not found.

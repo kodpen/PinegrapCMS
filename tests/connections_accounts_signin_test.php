@@ -103,7 +103,7 @@ function test_connections_signin_apple_fields_moved_to_the_page()
 
 	pg_assert_same(array('security', 'pgset-signin'), pg_settings_legacy_anchors()['signin_apple_row'] ?? null, 'an old link to the fields lands on the card\'s row');
 	pg_assert_same('#settings/security/pgset-signin', pg_connections_registry()['signin_apple']['place'] ?? null, 'the switch keeps the service\'s place');
-	pg_assert_same(79, pg_connections_count(), 'the figure stays');
+	pg_assert_same(80, pg_connections_count(), 'the figure stays');
 }
 
 function test_connections_captcha_keys_keep_the_category_gate()

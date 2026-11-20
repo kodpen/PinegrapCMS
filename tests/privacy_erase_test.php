@@ -52,6 +52,7 @@ function privacy_erase_test_scope()
 		'revision_form_ids' => array(40, 96),
 		'wtable_row_ids'   => array(97),
 		'wtable_bin_ids'   => array(98),
+		'application_entry_ids' => array(99),
 		'feedback_hashes'  => array(str_repeat('b', 40)),
 	);
 }
@@ -79,7 +80,9 @@ function test_privacy_erase_tables_are_pinned()
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
 			'comments' => 'anonymise', 'prototype_comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'ws_personal_plans' => 'anonymise', 'cart_quotes' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
-			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
+			'form_data' => 'delete', 'form_signatures' => 'delete',
+			'application_reviews' => 'delete', 'application_entries' => 'delete', 'application_reviewers' => 'anonymise',
+			'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'bookings' => 'anonymise',
 			'feedback_responses' => 'anonymise',
 			'course_progress' => 'delete',
@@ -142,6 +145,7 @@ function test_privacy_erase_tables_are_pinned()
 			'ws_wtable_cells' => array('cells' => ''),
 			'ws_wtable_bin_cells' => array('cells' => ''),
 			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
+			'application_reviewers' => array('name' => '', 'email' => '{token}'),
 			'feedback_responses' => array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null),
 	);
 
@@ -189,6 +193,9 @@ function test_privacy_erase_find_columns_are_pinned()
 			'form_data_cells' => array('id' => 'cell_ids'),
 			'form_data' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'),
 			'form_signatures' => array('form_id' => 'form_ids'),
+			'application_reviews' => array('entry_id' => 'application_entry_ids'),
+			'application_entries' => array('form_id' => 'form_ids'),
+			'application_reviewers' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'forms' => array('id' => 'form_ids'),
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
@@ -381,6 +388,7 @@ function test_privacy_erase_audit_fields_are_pinned()
 			'order_return' => $tables['order_returns']['fields'],
 			'contact'      => pg_privacy_erase_audit_fields()['contact'],
 			'person'       => array(),
+			'application_entry' => array(),
 		),
 		pg_privacy_erase_audit_fields(),
 		'audit fields'

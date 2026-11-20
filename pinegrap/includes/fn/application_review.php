@@ -561,3 +561,41 @@ function pg_application_shortlist(array $scores, $mode, $value)
 
     return $list;
 }
+
+/**
+ * A score as the store keeps it (times 100, SMALLINT) back on its own scale.
+ *
+ * @param mixed $stored Stored value.
+ * @return float
+ */
+function pg_application_export_score($stored)
+{
+    return round(((int) $stored) / 100, 2);
+}
+
+/**
+ * One submitted review as the personal data export gives it: the round, the
+ * weighted total and each criterion's score. The reviewer and their notes
+ * are never given (owner, poll 200): only a criterion's whole 'score' is
+ * read from the stored JSON, and a criterion without one is left out.
+ *
+ * @param array $row round, total, scores (the application_reviews columns).
+ * @return array array('round' => int, 'total' => float, 'scores' => criterion id => int).
+ */
+function pg_application_export_review(array $row)
+{
+    $stored = isset($row['scores']) && is_string($row['scores']) ? json_decode($row['scores'], true) : null;
+    $scores = array();
+
+    foreach (is_array($stored) ? $stored : array() as $id => $criterion) {
+        if (is_array($criterion) && isset($criterion['score']) && pg_application_is_whole($criterion['score'])) {
+            $scores[(string) $id] = (int) $criterion['score'];
+        }
+    }
+
+    return array(
+        'round'  => (int) (isset($row['round']) ? $row['round'] : 0),
+        'total'  => (float) pg_application_export_score(isset($row['total']) ? $row['total'] : 0),
+        'scores' => $scores,
+    );
+}

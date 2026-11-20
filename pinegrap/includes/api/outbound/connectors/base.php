@@ -52,6 +52,9 @@
 //   create_listings($account, $items)     open listings, answers a task handle
 //   listing_status($account, $barcodes)   where those listings stand (approved,
 //                                         pending, rejected), by barcode
+//   buybox($account, $barcodes)           where the store stands in each
+//                                         listing's buybox, by barcode: rank,
+//                                         the buybox price, other sellers
 //   remote_products($account, $page)     one page of the products the store
 //                                         sells there, for matching; answers
 //                                         products, page, pages, total, last

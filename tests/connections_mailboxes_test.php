@@ -89,3 +89,48 @@ function test_connections_mailboxes_card_shows_the_state_without_a_button()
 	pg_assert_true(strpos(connections_mailboxes_test_source('includes/settings/mailboxes.php'), 'action="connect.php"') === false, 'no hidden Connect form on the category');
 	pg_assert_contains('pg_connect_flash_take()', connections_mailboxes_test_source('includes/settings/mailboxes.php'), 'connect.php\'s answer is still shown on the category');
 }
+
+function test_connections_mailboxes_state_reads_the_purposes_each_account_holds()
+{
+	$send = array('purposes' => array('mail'), 'status' => 'ok');
+	$read = array('purposes' => array('mail', 'mail_read'), 'status' => 'ok');
+	$analytics = array('purposes' => array('google_analytics'), 'status' => 'ok');
+
+	pg_assert_same(array('count' => 0, 'other' => array()), ws_mail_connection_state(array()), 'no account');
+	pg_assert_same(array('count' => 1, 'other' => array()), ws_mail_connection_state(array($send, $read)), 'one account reads mailboxes');
+	pg_assert_same(array('count' => 0, 'other' => array('mail', 'google_analytics')), ws_mail_connection_state(array($send, $analytics, $send)),
+		'connected on Connections for sending only: the purposes it holds, once each');
+	pg_assert_same(array('count' => 0, 'other' => array()), ws_mail_connection_state(array(array('purposes' => array()))), 'an account with no purpose');
+}
+
+function test_connections_mailboxes_state_line_names_the_missing_sign_in()
+{
+	$state = array('count' => 0, 'other' => array('mail'));
+
+	foreach (array('google', 'microsoft') as $provider) {
+		$html = ws_mail_connection_html(array('role' => 1), $provider, $state, true);
+		pg_assert_true(strpos($html, '>' . h(lang('Not connected')) . '<') === false, $provider . ': not a bare Not connected');
+		pg_assert_contains(h(lang('Connected for another purpose')), $html, $provider);
+		pg_assert_contains(h(lang('Sending e-mail')), $html, $provider . ': the purpose it holds is named');
+		pg_assert_contains(h(lang('Reading mailboxes')), $html, $provider . ': the missing sign-in is named');
+		pg_assert_contains('>' . h(lang('Sign in for mailboxes in Connections')) . '</a>', $html, $provider . ': leads to it');
+		pg_assert_contains('href="' . h(ws_mail_connections_url($provider)) . '"', $html, $provider);
+
+		$member = ws_mail_connection_html(array('role' => 3), $provider, $state, true);
+		pg_assert_contains(h(lang('Connected for another purpose')), $member, $provider . ': a member reads the same state');
+		pg_assert_true(strpos($member, '<a ') === false, $provider . ': with no link');
+	}
+}
+
+function test_connections_mailboxes_connected_account_leads_to_adding_the_mailbox()
+{
+	$google = ws_mail_connection_html(array('role' => 1), 'google', array('count' => 1, 'other' => array()), true);
+	pg_assert_contains(h(lang('Connected')), $google);
+	pg_assert_contains(h(lang('Next, add the mailbox with Add a mailbox and choose Mail service: Gmail or Google Workspace.')), $google, 'the next step on the card');
+
+	$microsoft = ws_mail_connection_html(array('role' => 1), 'microsoft', 1, true);
+	pg_assert_contains(h(lang('Next, add the mailbox with Add a mailbox and choose Mail service: Microsoft 365 or Outlook.com.')), $microsoft, 'a count still reads as before');
+
+	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 1), 'google', 1, true, true), 'Next, add') === false, 'not inside the box form being filled');
+	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 1), 'google', 0, true), 'Next, add') === false, 'not while nothing is connected');
+}
