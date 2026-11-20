@@ -15,6 +15,10 @@ module: bundles
 
 ## Which issues did it open?
 - #10682: two orders can both take the last bundle (or unit); no lock between the submit check and the take. Needs a decision (lock, reservation or refund).
+- #10683 needs no decision; a separate worker fixes it in `ecommerce.php`. #10682 and #10684 wait for the owner (polls 172 and 171): architect 2026-11-20, agent channel message 10458.
+
+## What is a known limit until #10682 is decided?
+- The take stops at 0, so an oversell shows only through the `out_stock` bell, once per product (architect 2026-11-20, agent channel message 10458).
 - #10683: the plain `check_inventory()` path still cuts a line below its minimum and the checkout bounces (`cart-stock-below-minimum.md`), `ecommerce.php`.
 - #10684: a marketplace cancel puts back component units a bundle sale never took (back order, short stock); recording the taken quantity needs a schema step.
 
