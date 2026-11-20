@@ -7583,6 +7583,11 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
 .sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
 .sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
+/* A frame's amber count is a button listing its links without a target;
+   it reaches 6 px further each way for a finger. */
+button.sd-proto-badge-empty { position: relative; border: 0; font-family: inherit; cursor: pointer; }
+button.sd-proto-badge-empty::after { content: ''; position: absolute; inset: -6px; }
+button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, button.sd-proto-badge-empty[aria-expanded="true"] { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
 /* Suggest targets (F30 to F33): the dialog stands at the canvas's right
    without a backdrop, so the map and its dashed proposed arrows stay in
    sight; a row is its tick, label and page selector, an unsure row's

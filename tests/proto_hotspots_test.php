@@ -1312,7 +1312,7 @@ function test_proto_hotspots_view_what_to_check()
 		pg_assert_contains($group, $source, 'a group of the problems list');
 	}
 	pg_assert_contains("if (!rows.length) return;", $source, 'an empty group left out');
-	pg_assert_contains("var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
+	pg_assert_contains("var amber = _sdProtoEl('button', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
 	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
 	pg_assert_contains("shows.state === 'empty' ? _sdT('No target') : ", $source, 'a read-only list row without a target says so');
 	pg_assert_contains("if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');", $source, 'a link count that does not fit is left out whole');
@@ -2065,7 +2065,7 @@ function test_proto_hotspots_view_opens_the_page_whole()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 
-	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on',", $source, 'the canvas takes no click from the foot button');
+	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on, ", $source, 'the canvas takes no click from the foot button');
 	pg_assert_contains("_sdProtoPicFull(_sdProto.pics.full === item.id ? null : item.id);", $source, 'the foot opens and closes the page');
 	pg_assert_contains("if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);", $source, 'another selection closes it');
 	pg_assert_contains("if (all) P.full = null;", $source, 'closing the view closes it; a redraw keeps it');
@@ -2282,4 +2282,51 @@ function test_proto_hotspots_view_drags_a_row_onto_a_frame()
 	foreach (array('.sd-proto-li-drag {', '.sd-proto-li-dragged {', '.sd-proto-row-drag,', '.sd-proto-ghost {') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
+}
+
+// A frame's links without a target (emptyOf()): the rows its amber count
+// lists, in the frame's order, from problemsOf()'s answer; none for a frame
+// without any or for no answer.
+function test_proto_hotspots_empty_links_of_a_frame()
+{
+	$problems = array('empty' => array('list' => array(
+		array('frame' => 'p:a', 'port' => 'h0', 'label' => 'Go', 'href' => ''),
+		array('frame' => 'p:b', 'port' => 'h0', 'label' => 'More', 'href' => '#'),
+		array('frame' => 'p:a', 'port' => 'h3', 'label' => 'Buy', 'href' => '#'),
+	), 'count' => array('p:a' => 2, 'p:b' => 1)));
+	$out = proto_hotspots_test_node('var p = ' . proto_hotspots_test_js($problems) . ';'
+		. ' var ports = function (list) { return list.map(function (e) { return e.frame + "|" + e.port + " " + e.label; }); };'
+		. ' out = { a: ports(H.emptyOf(p, "p:a")), b: ports(H.emptyOf(p, "p:b")), c: H.emptyOf(p, "p:c"), none: H.emptyOf(null, "p:a") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:a|h0 Go', 'p:a|h3 Buy'), $out['a'], 'only the frame\'s own, in its order');
+	pg_assert_same(array('p:b|h0 More'), $out['b'], 'another frame\'s');
+	pg_assert_same(array(), $out['c'], 'a frame without any');
+	pg_assert_same(array(), $out['none'], 'no answer');
+}
+
+// A frame's amber count is a button (PX3): it lists that frame's links
+// without a target under itself; a row picks the link, opens the links
+// panel and puts the focus on its target box. The canvas leaves the
+// button its clicks and keys; Tab reaches it on the selected frame.
+function test_proto_hotspots_view_badge_lists_links_without_a_target()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("amber.setAttribute('aria-haspopup', 'dialog');", $source, 'the count says it opens a list');
+	pg_assert_contains('if (!again) _sdProtoProblemsOpen(amber, item.id);', $source, 'a press opens the frame\'s list, a second closes it');
+	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',", $source, 'the canvas leaves it its clicks and keys');
+	pg_assert_contains('var only = (frameId && issues) ? window.PGProtoHotspots.emptyOf(issues, frameId) : null;', $source, 'only the frame\'s links without a target');
+	pg_assert_contains('go: function () { _sdProtoEmptyGo(one.frame, one.port); }', $source, 'a row goes to the link in the panel');
+	pg_assert_contains("if (!ui.root.classList.contains('sd-proto-list-open')) _sdProtoListShow(true, false);", $source, 'the panel opens, not kept as a choice');
+	pg_assert_contains("var to = li ? (li.querySelector('.sd-proto-li-target') || li.querySelector('.sd-proto-li-main')) : null;", $source, 'the focus on the target box, else the row');
+	pg_assert_contains("_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target)", $source, 'a press on the count is no press outside');
+	pg_assert_contains("Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-badge-empty')).forEach(function (b) {", $source, 'Tab reaches the selected frame\'s count');
+	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, '"No link leads here" stays a label');
+	pg_assert_contains("button.sd-proto-badge-empty::after { content: ''; position: absolute; inset: -6px; }", $css, 'a finger\'s reach');
+	pg_assert_contains('button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible', $css, 'the focus is seen');
 }

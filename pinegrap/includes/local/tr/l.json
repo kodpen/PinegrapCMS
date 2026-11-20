@@ -1113,6 +1113,7 @@
     "Links to the page shown (1 or empty)": "Gösterilen sayfaya bağlanır (1 veya boş)",
     "Links to their work, talks or earlier interviews, one per line.": "Çalışmalarına, konuşmalarına ya da önceki röportajlarına bağlantılar, her satıra bir tane.",
     "Links without a target": "Hedefi olmayan bağlantılar",
+    "Links without a target on {var:1}": "{var:1} sayfasında hedefi olmayan bağlantılar",
     "Lion feeding": "Aslan besleme",
     "Lions": "Aslanlar",
     "Lisbon": "Lizbon",

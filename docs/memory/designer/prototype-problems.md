@@ -17,7 +17,7 @@ description: The Prototype view's problems (PV11a): links without a target, page
 ## What does the bar say, and what does the list show?
 - `problemsOf(layout)` answers `broken` (`brokenOf()`), `empty` (`list`, `count` per frame), `unreached` and `check` (empty links plus unreached pages). After the red "N broken" the bar shows the amber "N to check" (`ui.check`, `.sd-proto-check`); either opens `.sd-proto-problems` under it. A link count that does not fit beside them is left out whole, never cut (`_sdProtoStatusFit()`, measured again on resize); its words stay in the bar's title.
 - The list has three groups, an empty one left out: "Broken links" (its heading red), "Pages no link leads to", "Links without a target" (amber). A link's row picks it (`_sdProtoPick()`); a page's row selects its frame and brings it into view. Escape closes it and refocuses the button that opened it.
-- The head's red count stays broken links only; an amber count beside it (`.sd-proto-badge-empty`) is that frame's links without a target.
+- The head's red count stays broken links only; an amber count beside it (`.sd-proto-badge-empty`) is that frame's links without a target; pressed, it lists them (designer/prototype-badge-list.md).
 
 ## How is it checked?
 - `tests/proto_hotspots_test.php`: `test_proto_hotspots_empty_links_marked` (`''`, `#`, `#top`, a toggle, a kept link, text links; no chip, no arrow), `_problems_of_a_design` (a shared part's link reaching a page, the Start page unlinked, the counts), `_widget_settings_reach_pages`, `_bound_fields_reach_widget_pages`, `_view_what_to_check`.

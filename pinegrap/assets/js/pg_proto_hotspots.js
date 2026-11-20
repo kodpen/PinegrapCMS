@@ -2049,6 +2049,16 @@
         return { control: !!r.drawable, state: state };
     }
 
+    // One frame's links without a target, in its rows' order, from
+    // problemsOf()'s answer: what its amber count lists when pressed.
+    function emptyOf(problems, frameId) {
+        var list = (problems && problems.empty && Array.isArray(problems.empty.list)) ? problems.empty.list : [];
+
+        return list.filter(function (one) {
+            return one.frame === String(frameId);
+        });
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -2632,6 +2642,7 @@
         rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        emptyOf: emptyOf,
         canvasMarks: canvasMarks,
         canvasRequest: canvasRequest,
         widgetPages: widgetPages,
