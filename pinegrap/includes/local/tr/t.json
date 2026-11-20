@@ -6899,6 +6899,7 @@
     "The service centre, Showroom News, a newsletter, an inbox, a staff area with the requests and a help center.": "Servis merkezi, Showroom Haberleri, bülten, gelen kutusu, taleplerin olduğu bir ekip alanı ve yardım merkezi.",
     "The service did not say whether the label was cancelled. Check the shipment there.": "Servis etiketin iptal edilip edilmediğini bildirmedi. Gönderiyi orada kontrol edin.",
     "The service did not say whether the pickup was booked. Check it there before asking again.": "Hizmet, kuryenin çağrılıp çağrılmadığını bildirmedi. Yeniden istemeden önce hizmetin kendi ekranından kontrol edin.",
+    "The service did not say whether this label was created": "Servis bu etiketin oluşturulup oluşturulmadığını bildirmedi",
     "The service does not register the site on its own. Register an application in its developer settings with the redirect address {var:1}, then enter its client ID here.": "Hizmet siteyi kendiliğinden kaydetmiyor. Hizmetin geliştirici ayarlarında yönlendirme adresi {var:1} olan bir uygulama kaydedin, sonra istemci kimliğini buraya girin.",
     "The service is published.": "Hizmet yayımlandı.",
     "The service or server the site's e-mail is sent through, the campaign job and its texts, DKIM, the sending domain and MailChimp.": "Sitenin e-postalarının gönderildiği servis ya da sunucu, kampanya görevi ve metinleri, DKIM, gönderen alan adı ve MailChimp.",
