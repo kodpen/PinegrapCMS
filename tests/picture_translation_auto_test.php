@@ -357,3 +357,18 @@ function test_picture_translation_auto_keep_lock()
 
 	pg_assert_true(($get !== false) && ($write !== false) && ($release !== false) && ($get < $write) && ($write < $release), 'locked, written, released');
 }
+
+// The mark reads as set only where data/temp takes no file: asked with
+// pg_dir_writable(), since is_writable() on Windows reads the folder's
+// read-only attribute, which OneDrive and Explorer set and no write obeys.
+function test_picture_translation_auto_mark_folder_right()
+{
+	$marked = picture_translation_auto_body('includes/fn/picture_translation.php', 'pg_picture_tr_marked');
+
+	pg_assert_contains('pg_dir_writable(dirname($path))', $marked, 'the folder asked the way that settles it');
+	pg_assert_false(strpos($marked, 'is_writable(') !== false, 'not the attribute\'s guess');
+
+	$path = picture_translation_auto_mark_path();
+	@unlink($path);
+	pg_assert_false(pg_picture_tr_marked($path), 'a clear mark in a folder that takes files reads clear');
+}
