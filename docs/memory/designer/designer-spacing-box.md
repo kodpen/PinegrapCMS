@@ -23,7 +23,7 @@ description: Style › Spacing as one box (DP7): outer and inner sides typed, dr
 - Unlike today's base select (it also removed `mt-md-*` when `mt-` changed, matching by prefix), a change at one size never touches another size's class.
 
 ## How is it loaded?
-- The part `spacing` (`assets/js/style_designer_spacing.js`, bundle `style_designer_spacing.min.js` = the module, then the part; `pg_designer_parts()`). The section body holds `<div class="sd-spb-host sd-bm-wrap" data-sd-spbox>`; `_sdSpBoxBind(nodes)` (single and several-element panel) runs `_sdPartCall('spacing', 'draw', [host])` once the section is shown; a closed card's body is not drawn, so the part loads on first open.
+- The part `spacing` (`assets/js/style_designer_spacing.js`, bundle `style_designer_spacing.min.js` = the module, the corner module of Style › Border and corner (`designer-corner-box.md`), then the part; `pg_designer_parts()`). The section body holds `<div class="sd-spb-host sd-bm-wrap" data-sd-spbox>`; `_sdSpBoxBind(nodes)` (single and several-element panel) runs `_sdPartCall('spacing', 'draw', [host])` once the section is shown; a closed card's body is not drawn, so the part loads on first open.
 - The host (`_sdSpBoxHost()`) gives the classes, the size, `locked` (content level) and `commit(fn)`: one element `saveState()` and `_sdRenderNode()`, several `_sdMcCommit()`; view mode nudges.
 - A design without Bootstrap removes the box with the rows (`.sd-bm-wrap`, `_sdHideBootstrapControls()`). The old click-to-cycle box (`boxModel()`, `.sd-bm-v`) is gone.
 

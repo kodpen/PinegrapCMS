@@ -27816,8 +27816,8 @@ const StyleDesigner = (function () {
         if (ctrl.classList.contains('sd-seg-src')) {
             ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
         }
-        // The spacing rows are hidden behind the spacing box: it stands in.
-        var _spRows = ctrl.closest('.sd-sp-rows');
+        // The spacing and radius rows are hidden behind their box: it stands in.
+        var _spRows = ctrl.closest('.sd-sp-rows, .sd-rd-rows');
         if (_spRows) ctrl = _spRows.parentNode.querySelector('.sd-spb-host') || _spRows.parentNode;
         var _hidden = ctrl.closest('.sd-sect-body');
         if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
@@ -55480,17 +55480,24 @@ const StyleDesigner = (function () {
         };
     }
 
-    // Draws the box once the panel is drawn. While its section is closed
-    // (search mode builds closed bodies) the part waits for the head to
+    // Draws the spacing box and the corners (Style › Border and corner,
+    // data-sd-rdbox) once the panel is drawn. While a section is closed
+    // (search mode builds closed bodies) the part waits for its head to
     // open it before it is loaded for the first time.
     function _sdSpBoxBind(nodes) {
         var panel = document.getElementById('sd-properties');
-        var el = panel ? panel.querySelector('[data-sd-spbox]') : null;
-        if (!el || !nodes.length || !nodes[0]) return;
+        if (!panel || !nodes.length || !nodes[0]) return;
+        var el = panel.querySelector('[data-sd-spbox]');
+        if (el) _sdSpBoxBindOne(el, nodes, function (host) { return _sdPartCall('spacing', 'draw', [host]); });
+        var rd = panel.querySelector('[data-sd-rdbox]');
+        if (rd) _sdSpBoxBindOne(rd, nodes, function (host) { return _sdPartCall('spacing', 'corners', [host]); });
+    }
+
+    function _sdSpBoxBindOne(el, nodes, call) {
         var draw = function () {
             if (!el.isConnected) return;
             var host = _sdSpBoxHost(el, nodes);
-            _sdPartCall('spacing', 'draw', [host]).catch(_sdPartFailed);
+            call(host).catch(_sdPartFailed);
         };
         var sectBody = el.closest('.sd-sect-body');
         var hdr = sectBody ? sectBody.previousElementSibling : null;
@@ -55949,15 +55956,22 @@ const StyleDesigner = (function () {
         function _radList(prefix) {
             return _radSizes.map(function (n) { return prefix + n; });
         }
+        // The corners are one drawing (data-sd-rdbox, drawn by the part
+        // 'spacing' as the spacing box is); today's five radius rows stay
+        // in the body, hidden, so the section's count, the row reset and
+        // the search read them as before.
         var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
             row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
+            '<div class="sd-spb-host sd-rdb-host sd-bm-wrap" data-sd-rdbox></div>' +
+            '<div class="sd-rd-rows" hidden>' +
             row(_sdT('Radius'), selStyleGroup(n.props, ['rounded-0','rounded-1','rounded-2','rounded-3','rounded-4','rounded-5','rounded-circle','rounded-pill'], 'Default')) +
             row(_sdT('Top Radius'),    selStyleGroup(n.props, _radList('rounded-top-'),    'Default')) +
             row(_sdT('Right Radius'),  selStyleGroup(n.props, _radList('rounded-end-'),    'Default')) +
             row(_sdT('Bottom Radius'), selStyleGroup(n.props, _radList('rounded-bottom-'), 'Default')) +
-            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')),
+            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')) +
+            '</div>',
             _sdT('Border')
         );
 
