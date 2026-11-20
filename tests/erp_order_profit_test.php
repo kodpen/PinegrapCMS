@@ -328,3 +328,50 @@ function test_erp_order_profit_margin_rule()
 	pg_assert_same(0, $free['profit']['revenue']);
 	pg_assert_same(null, $free['profit']['margin']);
 }
+
+// A payment service's fee in the order's currency is kept as it is; in
+// another currency it is converted at the payment's rate, else the day's,
+// with erp_to_base()'s rounding; with no rate it is not written.
+function test_erp_order_profit_fee_amount()
+{
+	pg_assert_same(292, erp_order_profit_fee_amount(array('fee' => 292, 'fee_currency' => '', 'fee_rate' => 0.0), 'TRY', 0.0));
+	pg_assert_same(292, erp_order_profit_fee_amount(array('fee' => 292, 'fee_currency' => 'TRY', 'fee_rate' => 0.0), 'try', 0.0));
+	pg_assert_same(0, erp_order_profit_fee_amount(array('fee' => 0, 'fee_currency' => '', 'fee_rate' => 0.0), 'TRY', 0.0));
+
+	// 9 cents of USD at 107.14 / 3.18 = 303.2...
+	pg_assert_same(303, erp_order_profit_fee_amount(array('fee' => 9, 'fee_currency' => 'USD', 'fee_rate' => 10714 / 318), 'TRY', 40.0), 'the payment\'s rate before the day\'s');
+	// 4.65 USD at the day's 33.6789 is 156.606..., half away from zero.
+	pg_assert_same(15661, erp_order_profit_fee_amount(array('fee' => 465, 'fee_currency' => 'USD', 'fee_rate' => 0.0), 'TRY', 33.6789));
+	pg_assert_same(null, erp_order_profit_fee_amount(array('fee' => 465, 'fee_currency' => 'USD', 'fee_rate' => 0.0), 'TRY', 0.0), 'no rate at all');
+	pg_assert_same(null, erp_order_profit_fee_amount(array('fee' => null), 'TRY', 1.0));
+	pg_assert_same(null, erp_order_profit_fee_amount(array('fee' => -5), 'TRY', 1.0));
+}
+
+// Accounting off: recording a fee reads and writes nothing (no database is
+// reached in the test runner, so any query would fail the run).
+function test_erp_order_profit_record_fee_off()
+{
+	pg_assert_false(erp_order_profit_record_fee(41, array('fee' => 292, 'fee_currency' => '', 'fee_rate' => 0.0), false));
+	pg_assert_false(erp_order_profit_record_fee(0, array('fee' => 292), true), 'no order');
+	pg_assert_false(erp_order_profit_record_fee(41, array('fee' => null), true), 'no fee');
+}
+
+// The fee is a payment row of source gateway under the one documented
+// reference, which the pass never removes and which stands in for the rate.
+function test_erp_order_profit_gateway_fee_replaces_the_rate()
+{
+	pg_assert_same('gateway', ERP_ORDER_PROFIT_GATEWAY_REF);
+	pg_assert_false(in_array('gateway', erp_order_profit_pass_sources(), true));
+
+	$rates = array('payment' => array('Credit/Debit Card' => array('percent' => 2.49, 'fixed' => 25)));
+	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'rates' => $rates,
+		'recorded' => array(array('kind' => 'payment', 'source' => 'gateway', 'ref' => ERP_ORDER_PROFIT_GATEWAY_REF, 'amount' => 292)),
+	)));
+
+	pg_assert_same(array(), erp_order_profit_test_rows($result, 'payment'));
+	pg_assert_same(292, $result['profit']['cost_payment']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/order_profit.php');
+	pg_assert_true(strpos($source, "VALUES (?, 'payment', 'gateway', ?, ?, ?, ?)") !== false, 'the fee row is kind payment, source gateway');
+}

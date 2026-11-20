@@ -97,7 +97,8 @@ function mp_trendyol_connector() {
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook',
-		'remote_products'     => 'mp_trendyol_remote_products'
+		'remote_products'     => 'mp_trendyol_remote_products',
+		'deductions'          => 'mp_trendyol_deductions'
 	);
 
 }
@@ -3609,6 +3610,227 @@ function mp_trendyol_reject_claim($account, $claim_id, $unit_ids, $reason_id, $d
 	}
 
 	return mp_ok(array('rejected' => count($ids)));
+
+}
+
+/* ----------------------------------------------------------------- finance */
+
+// The settlement types that make an order's deduction, with the sign their
+// commission takes: a sale's commission is a cost, a return's comes back, a
+// seller discount lowers the commission and its cancellation raises it
+// again. Their answer writes the type in Turkish ("Satış"), so the sign is
+// taken from the type asked for, never from the record. Coupons, Trendyol's
+// own discounts, provisions and manual commission corrections are not read:
+// the guide's table gives them directions that contradict each other.
+function mp_trendyol_finance_types() {
+
+	return array('Sale' => 1, 'Return' => -1, 'Discount' => -1, 'DiscountCancel' => 1);
+
+}
+
+// Records a page asks for (their sizes are 500 or 1000).
+function mp_trendyol_finance_page_size() {
+
+	return 500;
+
+}
+
+// The window one call reads: their limit is fifteen days, fourteen are asked.
+function mp_trendyol_finance_window() {
+
+	return 1209600;
+
+}
+
+// How far back a read starts again once it has caught up with now: a record
+// may be written a little after its transaction date. Rereading costs
+// nothing, a record is kept under its own id.
+function mp_trendyol_finance_overlap() {
+
+	return 172800;
+
+}
+
+// A settlement id as it goes into a cost row's reference, or false. Theirs
+// are numbers written as text; nothing that could not be shown as it is.
+function mp_trendyol_finance_id_fits($id) {
+
+	return is_string($id) && (preg_match('/^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/', $id) === 1);
+
+}
+
+// A page of settlements as a list of
+// {ref, package_id, order_number, amount, currency, date}.
+//
+// amount is the record's commissionAmount in minor units, round()ed, its
+// size taken and its sign the type's ($sign). currency is 'TRY' for their
+// Türkiye affiliate (or none named), '' for another, whose currency their
+// reference does not give. A record without a usable id, without a package
+// or order number, or whose commission is zero or not a number is left out.
+function mp_trendyol_finance_rows($decoded, $sign) {
+
+	$content = (is_array($decoded) && isset($decoded['content']) && is_array($decoded['content']))
+		? $decoded['content'] : array();
+
+	$rows = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry) || !isset($entry['commissionAmount']) || !is_numeric($entry['commissionAmount'])) {
+
+			continue;
+
+		}
+
+		$id = mp_trendyol_text($entry, array('id'));
+
+		$package_id = mp_trendyol_text($entry, array('shipmentPackageId'));
+
+		$order_number = mp_trendyol_text($entry, array('orderNumber'));
+
+		$amount = abs(mp_trendyol_minor($entry['commissionAmount']));
+
+		if (!mp_trendyol_finance_id_fits($id) || (($package_id === '') && ($order_number === '')) || ($amount === 0)) {
+
+			continue;
+
+		}
+
+		$affiliate = strtoupper(mp_trendyol_text($entry, array('affiliate')));
+
+		$rows[] = array(
+			'ref'          => 'settlement:' . $id,
+			'package_id'   => $package_id,
+			'order_number' => $order_number,
+			'amount'       => ($sign < 0) ? -$amount : $amount,
+			'currency'     => (($affiliate === '') || ($affiliate === 'TRENDYOLTR')) ? 'TRY' : '',
+			'date'         => isset($entry['transactionDate']) ? mp_trendyol_seconds($entry['transactionDate']) : 0
+		);
+
+	}
+
+	return $rows;
+
+}
+
+// Read the settlements that make orders' deductions, from where $state
+// stands, for at most $calls requests.
+//
+// GET /integration/finance/che/sellers/{sellerId}/settlements, one
+// transactionType a call (mp_trendyol_finance_types()), over windows of
+// fourteen days from $state['from'] to now. Within a window each type is
+// read page by page until their totalPages or a short page; then the next
+// type, then the next window. When the window that ends now has been read,
+// the read has caught up and the next one starts two days back.
+//
+// $state is {from: unix seconds, type: index into the types, page}; a state
+// out of range (in the future, a type that is not there) starts at two days
+// back, first type, first page. A page that fails makes the whole read an
+// error: the caller keeps the state it had and reads the same pages again.
+//
+// Answers data['records'] in the shape of mp_trendyol_finance_rows(),
+// data['state'] where the next read starts and data['caught_up'].
+function mp_trendyol_deductions($account, $state, $calls, $transport = null, $now = null) {
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	$types = mp_trendyol_finance_types();
+
+	$names = array_keys($types);
+
+	$from = isset($state['from']) ? (int)$state['from'] : 0;
+
+	$type = isset($state['type']) ? (int)$state['type'] : 0;
+
+	$page = isset($state['page']) ? (int)$state['page'] : 0;
+
+	if (($from <= 0) || ($from >= $now)) {
+
+		$from = $now - mp_trendyol_finance_overlap();
+
+	}
+
+	if (($type < 0) || ($type >= count($names))) {
+
+		$type = 0;
+
+	}
+
+	$page = max(0, $page);
+
+	$size = mp_trendyol_finance_page_size();
+
+	$records = array();
+
+	$caught_up = false;
+
+	for ($call = 0; $call < (int)$calls; $call++) {
+
+		$end = min($from + mp_trendyol_finance_window(), $now);
+
+		$result = mp_trendyol_call($account,
+			'/integration/finance/che/sellers/' . mp_trendyol_seller_id($account) . '/settlements'
+				. '?transactionType=' . $names[$type]
+				. '&startDate=' . ($from * 1000)
+				. '&endDate=' . ($end * 1000)
+				. '&page=' . $page
+				. '&size=' . $size
+				. '&supplierId=' . mp_trendyol_seller_id($account),
+			8388608, $transport);
+
+		if (!$result['ok']) {
+
+			return $result;
+
+		}
+
+		$records = array_merge($records, mp_trendyol_finance_rows($result['data'], $types[$names[$type]]));
+
+		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
+			? $result['data']['content'] : array();
+
+		$total_pages = (isset($result['data']['totalPages']) && is_numeric($result['data']['totalPages']))
+			? (int)$result['data']['totalPages'] : -1;
+
+		if ((count($content) >= $size) && (($total_pages < 0) || ($page + 1 < $total_pages))) {
+
+			$page++;
+
+			continue;
+
+		}
+
+		$page = 0;
+
+		$type++;
+
+		if ($type < count($names)) {
+
+			continue;
+
+		}
+
+		$type = 0;
+
+		if ($end >= $now) {
+
+			$from = $now - mp_trendyol_finance_overlap();
+
+			$caught_up = true;
+
+			break;
+
+		}
+
+		$from = $end;
+
+	}
+
+	return mp_ok(array(
+		'records'   => $records,
+		'state'     => array('from' => $from, 'type' => $type, 'page' => $page),
+		'caught_up' => $caught_up
+	));
 
 }
 

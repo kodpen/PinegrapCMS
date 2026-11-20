@@ -192,7 +192,9 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
         $state['id'] = (int) $order['id'];
         $state['done']++;
 
-        if (!pg_customer_value_order_counts($order)) {
+        // An order with no date cannot be placed in a month or an age; the
+        // pass's total leaves it out too.
+        if (((int) $order['order_date'] <= 0) || !pg_customer_value_order_counts($order)) {
             continue;
         }
 
@@ -549,7 +551,8 @@ function pg_customer_value_summary()
 
 /**
  * The read of one page of orders after the place ($date, $id), in date
- * order on the order_date index, up to the pass's start. A column the site
+ * order on the order_date index, up to the pass's start; an order with no
+ * date is left out, as the pass's total leaves it. A column the site
  * does not have yet reads as its default. Pure.
  *
  * @param int   $until
@@ -569,7 +572,7 @@ function pg_customer_value_page_query($until, $date, $id, $limit, $present)
     }
 
     $sql = 'SELECT ' . implode(', ', $columns) . ' FROM orders'
-        . " WHERE (status IN ('complete', 'exported')) AND (order_date <= ?)"
+        . " WHERE (status IN ('complete', 'exported')) AND (order_date > 0) AND (order_date <= ?)"
         . ' AND (order_date >= ?) AND ((order_date > ?) OR (id > ?))'
         . ' ORDER BY order_date, id LIMIT ' . max(1, (int) $limit);
 
@@ -607,7 +610,8 @@ function pg_customer_value_pass_read()
 
 /**
  * Whether a rebuild is due: one under way, or a summary missing or older
- * than PG_CUSTOMER_VALUE_INTERVAL. Pure.
+ * than PG_CUSTOMER_VALUE_INTERVAL, unless the last pass ended without
+ * writing its summary less than that interval ago. Pure.
  *
  * @param array    $record
  * @param int|null $summary_at
@@ -618,6 +622,12 @@ function pg_customer_value_due($record, $summary_at, $now)
 {
     if ((int) $record['started'] > 0) {
         return true;
+    }
+
+    // The last pass could not write its summary: wait the interval from its
+    // end, so a failing write does not run the whole rebuild every tick.
+    if (isset($record['saved'], $record['ended']) && ((int) $record['saved'] === 0) && (((int) $now - (int) $record['ended']) < PG_CUSTOMER_VALUE_INTERVAL)) {
+        return false;
     }
 
     return ($summary_at === null) || (((int) $now - (int) $summary_at) >= PG_CUSTOMER_VALUE_INTERVAL);
@@ -724,7 +734,7 @@ function pg_customer_value_job_run($budget = PG_CUSTOMER_VALUE_TICK_SECONDS, $no
         @unlink($path);
         // A summary too large for its text keeps the last one; the pass
         // ends all the same and is tried again after the interval.
-        pg_config_text_claim('customer_values_pass', $claimed, json_encode(array('lease' => 0, 'started' => 0, 'done' => (int) $state['done'], 'total' => (int) $state['total'], 'saved' => $saved ? 1 : 0)));
+        pg_config_text_claim('customer_values_pass', $claimed, json_encode(array('lease' => 0, 'started' => 0, 'done' => (int) $state['done'], 'total' => (int) $state['total'], 'saved' => $saved ? 1 : 0, 'ended' => time())));
 
         return array('done' => true, 'read' => $read);
     }
@@ -1024,27 +1034,78 @@ function pg_customer_value_top_rows($top, $orders, $names)
  */
 function pg_customer_value_order_names($numbers)
 {
-    $numbers = array_values(array_unique(array_filter(array_map('intval', (array) $numbers))));
+    list($sql, $params) = pg_customer_value_order_names_query($numbers);
 
-    if (empty($numbers)) {
+    if ($sql === '') {
         return array();
     }
 
-    $result = db_q(
-        'SELECT id, order_number, billing_first_name, billing_last_name, billing_company FROM orders WHERE order_number IN (' . implode(', ', array_fill(0, count($numbers), '?')) . ')',
-        $numbers);
-    $names = array();
+    $result = db_q($sql, $params);
 
     if ($result === false) {
-        return $names;
+        return array();
     }
 
+    $rows = array();
+
     while ($row = mysqli_fetch_assoc($result)) {
-        $name = trim($row['billing_first_name'] . ' ' . $row['billing_last_name']);
-        $names[(int) $row['order_number']] = array('id' => (int) $row['id'], 'name' => ($name !== '') ? $name : trim((string) $row['billing_company']));
+        $rows[] = $row;
     }
 
     mysqli_free_result($result);
+
+    return pg_customer_value_order_names_from_rows($rows);
+}
+
+/**
+ * The read of pg_customer_value_order_names(): the counted orders that carry
+ * one of $numbers. Only a complete or exported order can be the one the
+ * summary kept. Pure.
+ *
+ * @param array $numbers
+ * @return array array(sql, params); sql '' when no number is given
+ */
+function pg_customer_value_order_names_query($numbers)
+{
+    $numbers = array_values(array_unique(array_filter(array_map('intval', (array) $numbers))));
+
+    if (empty($numbers)) {
+        return array('', array());
+    }
+
+    return array(
+        'SELECT id, order_number, billing_first_name, billing_last_name, billing_company FROM orders'
+            . " WHERE (status IN ('complete', 'exported')) AND (order_number IN (" . implode(', ', array_fill(0, count($numbers), '?')) . '))',
+        $numbers,
+    );
+}
+
+/**
+ * The names by order number from the rows read. orders.order_number has no
+ * unique index, so a number carried by more than one order gives no name:
+ * the summary cannot say which buyer it kept, and another buyer's name must
+ * not be shown in their place. Pure.
+ *
+ * @param array $rows id, order_number, billing_first_name, billing_last_name, billing_company
+ * @return array order number => array('id' => int, 'name' => string)
+ */
+function pg_customer_value_order_names_from_rows($rows)
+{
+    $names = array();
+    $shared = array();
+
+    foreach ((array) $rows as $row) {
+        $number = (int) $row['order_number'];
+
+        if (isset($names[$number]) || isset($shared[$number])) {
+            $shared[$number] = true;
+            unset($names[$number]);
+            continue;
+        }
+
+        $name = trim($row['billing_first_name'] . ' ' . $row['billing_last_name']);
+        $names[$number] = array('id' => (int) $row['id'], 'name' => ($name !== '') ? $name : trim((string) $row['billing_company']));
+    }
 
     return $names;
 }

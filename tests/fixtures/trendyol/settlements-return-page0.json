@@ -1,0 +1,24 @@
+{
+  "page": 0,
+  "size": 500,
+  "totalPages": 1,
+  "totalElements": 1,
+  "content": [
+    {
+      "id": "725099001",
+      "transactionDate": 1763900000000,
+      "barcode": "8681387147421",
+      "transactionType": "İade",
+      "debt": 49.99,
+      "credit": 0.0,
+      "commissionRate": 12.5,
+      "commissionAmount": -6.2488,
+      "sellerRevenue": -43.7412,
+      "orderNumber": "501915861",
+      "sellerId": 123456,
+      "country": "Türkiye",
+      "affiliate": "TRENDYOLTR",
+      "shipmentPackageId": 1111111111
+    }
+  ]
+}

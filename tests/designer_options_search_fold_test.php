@@ -87,6 +87,8 @@ var document = {
     }
 };
 function _sdT(s, v) { return s.replace('{var}', v); }
+// The Options search part has not run: the filter keeps its own line.
+function _sdOptSearchRefine() { return false; }
 function rows() {
     return panel.querySelectorAll('.sd-prop-row').filter(function (r) {
         return r.style.display !== 'none' && r.parentElement.parentElement.style.display !== 'none';
