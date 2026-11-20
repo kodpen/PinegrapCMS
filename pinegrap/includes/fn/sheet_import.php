@@ -242,11 +242,18 @@ function pg_sheet_xls_names($path)
 function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error, $separator = '')
 {
     $error = '';
-    $lines = array();
     $header = null;
+    $width = 0;
     $last = 0;
+    $handle = @fopen($target, 'wb');
 
-    // Held until the walk ends: a late error drops the whole file.
+    if (!$handle) {
+        $error = 'read';
+        return false;
+    }
+
+    // Each row goes to the file as it is read, so a big sheet is never held
+    // whole; a late error empties the file and refuses it.
     foreach (pg_sheet_rows($path, $kind, $read_error, $sheet) as $number => $cells) {
         $texts = array();
 
@@ -266,54 +273,44 @@ function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error, $separator 
             }
 
             $header = $texts;
+            $width = count($header);
             $last = $number;
+
+            if ($separator === '') {
+                $joined = implode('', $header);
+                $separator = ',';
+
+                if (strpos($joined, ',') !== false) {
+                    $separator = (strpos($joined, ';') === false) ? ';' : "\t";
+                }
+            }
+
+            fwrite($handle, pg_sheet_import_csv_line($header, $separator));
             continue;
         }
 
         for ($gap = $last + 1; $gap < $number; $gap++) {
-            $lines[] = array();
+            fwrite($handle, pg_sheet_import_csv_line(array(), $separator));
         }
 
         // A row as wide as the header at least, as a CSV file writes it.
-        while (count($texts) < count($header)) {
+        while (count($texts) < $width) {
             $texts[] = '';
         }
 
-        $lines[] = $texts;
+        fwrite($handle, pg_sheet_import_csv_line($texts, $separator));
         $last = $number;
     }
 
+    if (($read_error === '') && ($header === null)) {
+        $read_error = 'empty';
+    }
+
     if ($read_error !== '') {
+        ftruncate($handle, 0);
+        fclose($handle);
         $error = $read_error;
         return false;
-    }
-
-    if ($header === null) {
-        $error = 'empty';
-        return false;
-    }
-
-    $joined = implode('', $header);
-
-    if ($separator === '') {
-        $separator = ',';
-
-        if (strpos($joined, ',') !== false) {
-            $separator = (strpos($joined, ';') === false) ? ';' : "\t";
-        }
-    }
-
-    $handle = @fopen($target, 'wb');
-
-    if (!$handle) {
-        $error = 'read';
-        return false;
-    }
-
-    fwrite($handle, pg_sheet_import_csv_line($header, $separator));
-
-    foreach ($lines as $texts) {
-        fwrite($handle, pg_sheet_import_csv_line($texts, $separator));
     }
 
     fclose($handle);
