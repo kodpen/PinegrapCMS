@@ -140,7 +140,7 @@ function test_picture_translation_doors_disk_usage()
 	pg_assert_contains('pg_file_storage_usage()', picture_translation_doors_body('includes/fn/image_editor.php', 'pg_files_disk_usage'), 'the files rows');
 	pg_assert_contains('FROM files GROUP BY storage', picture_translation_doors_body('includes/fn/file_storage.php', 'pg_file_storage_usage'), 'no row left out');
 
-	$draw = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep');
+	$draw = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep_write');
 	pg_assert_contains('pg_image_editor_record(', $draw, 'the draw writes the row with its size');
 	pg_assert_contains('size', picture_translation_doors_body('includes/fn/image_editor.php', 'pg_image_editor_record'), 'the size kept');
 }

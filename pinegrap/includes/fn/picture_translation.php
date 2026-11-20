@@ -1757,6 +1757,50 @@ function pg_picture_tr_keep_query($file_id, $language, $picture_id, $fit, $doc_h
  */
 function pg_picture_tr_keep($source, $language, $drawn, $fit, $doc_hash, $user_id)
 {
+    // Two draws of one picture and language at once (a panel tab and the
+    // server's job) would each find no picture yet and write a files row of
+    // their own, the first left visible in Files. Under the lock the second
+    // finds the first's row and writes over it. A server that answers no
+    // lock (null) still keeps the picture, without that protection.
+    $lock = pg_picture_tr_keep_lock_sql((int) $source['id'], (string) $language);
+    $got = db_value("SELECT GET_LOCK(" . $lock . ", 10)");
+
+    if (($got !== null) && ((int) $got !== 1)) {
+        @unlink($drawn['path']);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $kept = pg_picture_tr_keep_write($source, $language, $drawn, $fit, $doc_hash, $user_id);
+
+    if ($got !== null) {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
+
+    return $kept;
+}
+
+/**
+ * The name of the lock a language's picture is kept under, as SQL. GET_LOCK
+ * names belong to the whole database server, so the database is part of
+ * the name; hashed, so the name stays under 64 characters and the language
+ * is never quoted into the statement. Pure.
+ *
+ * @param int    $file_id
+ * @param string $language
+ * @return string an SQL expression
+ */
+function pg_picture_tr_keep_lock_sql($file_id, $language)
+{
+    return "CONCAT('pg_picture_keep_', MD5(CONCAT(DATABASE(), ':', '" . md5((int) $file_id . '|' . (string) $language) . "')))";
+}
+
+/**
+ * The keep's writes, under its lock (pg_picture_tr_keep()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_picture_tr_keep_write($source, $language, $drawn, $fit, $doc_hash, $user_id)
+{
     $file_id = (int) $source['id'];
     $now = time();
 
