@@ -79,6 +79,18 @@ function pg_mcp_prompt_kinds() {
 			'needs'       => array('canvas_guide'),
 			'tools'       => array('workspace.channels.canvases.create'),
 			'embed'       => array('resource' => 'canvas_guide', 'arguments' => array())
+		),
+
+		'design_change' => array(
+			'title'       => 'Change a page',
+			'description' => 'Propose a change of a page of the Visual Page Editor from a wish, by the guide\'s designer topic: read the page, write the smallest operations, and send them as a proposal a designer previews and applies.',
+			'arguments'   => array(
+				array('name' => 'page_id', 'description' => 'The id of the page to change.', 'required' => true),
+				array('name' => 'wish', 'description' => 'What should change, in the person\'s words.', 'required' => true, 'kind' => 'text')
+			),
+			'needs'       => array('guide_topic'),
+			'tools'       => array('design.pages.get', 'design.proposals.create'),
+			'embed'       => array('resource' => 'guide_topic', 'arguments' => array(), 'fixed' => array('topic' => 'designer'))
 		)
 
 	);
@@ -324,6 +336,10 @@ function pg_mcp_prompt_result($name, $values, $site, $routes, $embedded) {
 
 		$text = pg_mcp_prompt_canvas_chart_text($values, $site, $embedded !== null);
 
+	} else if ($name === 'design_change') {
+
+		$text = pg_mcp_prompt_design_change_text($values, $site, $embedded !== null);
+
 	} else {
 
 		$text = 'Write a weekly report for the person who connected you to the Workspace of ' . $site . ', from what you can read there now.' . "\n\n"
@@ -416,6 +432,30 @@ function pg_mcp_prompt_canvas_chart_text($values, $site, $attached) {
 
 }
 
+// design_change's text. $attached says whether the guide's designer topic
+// follows as an embedded resource.
+function pg_mcp_prompt_design_change_text($values, $site, $attached) {
+
+	$topic = array('topic' => 'designer');
+
+	$guide = $attached
+		? 'The guide\'s designer topic is attached below as the resource ' . pg_mcp_resource_uri('guide_topic', $topic) . '.'
+		: 'Read the guide\'s designer topic from ' . pg_mcp_prompt_read_line('guide_topic', $topic) . '.';
+
+	$page = $values['page_id'];
+
+	return 'Change page ' . $page . ' of ' . $site . ' as the person who asked wishes: ' . $values['wish'] . "\n\n"
+		. $guide . ' It says how a page is shown, the operations and their fields, the classes that work, the system widgets, worked operation lists and the frequent mistakes.' . "\n\n"
+		. 'Then:' . "\n"
+		. '- Read the page with the tool ' . pg_mcp_tool_name('design.pages.get') . ' (id ' . $page . '); for a long page ask format outline first, then one element with node. Its framework says which classes work; ' . pg_mcp_tool_name('design.designs.list') . ' gives its design\'s colours and fonts.' . "\n"
+		. '- Write the smallest operations that do the wish, keeping every <pg-keep> part and the data-pg of every element you keep.' . "\n"
+		. '- Send them with the tool ' . pg_mcp_tool_name('design.proposals.create') . ' (id ' . $page . ') with dry_run true first; fix the operation a refusal names in its field (ops[N]) and try again; then send them without dry_run, with a summary of one or two sentences.' . "\n"
+		. '- Report what you proposed: nothing on the page changes until a designer applies it.' . "\n"
+		. 'Write the page\'s words in the page\'s language and your answer in the language the person writes in. If the page cannot be read, say so and stop.' . "\n\n"
+		. pg_mcp_prompt_rules_text();
+
+}
+
 // The resource a prompt embeds, read through its route: the route's answer
 // as one content item when it answered the caller (2xx), null when it
 // refused or failed - an API error is never passed off as the resource - or
@@ -473,7 +513,9 @@ function pg_mcp_prompt_get($id, $params, $modern) {
 
 	$route = ($embed !== null) ? pg_mcp_resource_route($embed['resource'], $routes) : null;
 
-	$arguments = array();
+	// A prompt that always embeds the same resource (a guide topic) names
+	// its variables' values in fixed.
+	$arguments = (($embed !== null) && isset($embed['fixed'])) ? $embed['fixed'] : array();
 
 	if ($route !== null) {
 

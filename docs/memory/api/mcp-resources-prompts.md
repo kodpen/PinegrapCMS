@@ -22,9 +22,9 @@ description: MCP resources (pinegrap://workspace/my-day, channels/{id}/context a
 - Nothing is paged (no `nextCursor`), so a cursor (other than null or '') on any list is -32602 "Invalid params: unknown cursor." in both generations (`pg_mcp_list_answer()`); before, the whole list came back.
 
 ## Which prompts are there?
-- `includes/mcp/prompts.php`: `channel_summary` (channel_id required), `weekly_report` (channel_id optional), `blog_post` (`mcp-form-guidance.md`), `canvas_chart`, offered while the resources they need are readable (`needs`).
-- channel_summary runs the context route: on a 2xx that is JSON the context follows as a second message, an embedded resource; otherwise text only, alike for a missing or unreadable channel. weekly_report names my-day and, with channel_id and the context readable, the channel; it embeds nothing.
-- English texts that name each resource and its tool and end with `pg_ai_prompt_rules('assistant')`. Unknown prompt or argument, a missing one, an id that is not a positive whole number: -32602.
+- `includes/mcp/prompts.php`: `channel_summary` (channel_id required), `weekly_report` (channel_id optional), `blog_post` (`mcp-form-guidance.md`), `canvas_chart`, `design_change` (`agent-guide-designer.md`), offered while their `needs` are readable.
+- channel_summary runs the context route: on a 2xx that is JSON the context follows as a second message, an embedded resource; otherwise text only. `embed.fixed`: set variables. weekly_report names my-day and, with channel_id and the context readable, the channel; it embeds nothing.
+- English texts naming each resource and its tool, ending with `pg_ai_prompt_rules('assistant')`. Unknown prompt or argument, a missing one, an id that is not a positive whole number: -32602.
 
 ## Where is it tested?
-- `tests/mcp_resources_test.php`. The decisions are pure functions it runs: `pg_mcp_list_answer()`, `pg_mcp_resource_target()` (before the route), `pg_mcp_resource_answer()` (after it), `pg_mcp_prompt_embedded()` (2xx only); the request functions only write what they return (`pg_mcp_answer()`).
+- `tests/mcp_resources_test.php`. The decisions are pure functions it runs: `pg_mcp_list_answer()`, `pg_mcp_resource_target()` (before the route), `pg_mcp_resource_answer()` (after it), `pg_mcp_prompt_embedded()` (2xx only); request functions only write what they return.

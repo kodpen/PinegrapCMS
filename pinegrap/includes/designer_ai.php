@@ -4084,22 +4084,62 @@ function pg_design_ai_tools_guide()
 }
 
 /**
- * How the operations are written, for the model's instructions.
+ * How each operation is written, by its name (pg_design_ai_op_names(), in
+ * that order), then 'html': what html in an operation keeps. Read by the
+ * guide's designer topic (includes/fn/agent_guide_designer.php).
  *
- * @return string[]
+ * @return array op name or 'html' => line
  */
 function pg_design_ai_ops_guide()
 {
     return array(
-        'Operations (a JSON list, each an object with "op"):',
-        '- {"op":"update","node":"ID","text":"…","classes":"…","add_classes":"…","remove_classes":"…","style":"…","attrs":{"href":"…"}}: a small change of one element. Give only what changes. "classes" replaces all its classes; add_classes / remove_classes change some.',
-        '- {"op":"replace","node":"ID","html":"…"}: the element and everything inside it, rewritten.',
-        '- {"op":"insert","parent":"ID","index":0,"html":"…"}, or "before":"ID" / "after":"ID" instead of parent: new elements.',
-        '- {"op":"remove","node":"ID"} and {"op":"move","node":"ID","before":"ID"} (or "after", or "parent" with "index").',
-        '- {"op":"set_props","node":"ID","props":{…}}: the settings of a <pg-keep> part, from its data-pg-props.',
-        '- {"op":"page","html":"<body class=\"…\">…</body>"}: the whole page, only when the request asks to redo the page.',
-        '- {"op":"css","css":"…"}: the page\'s own CSS, replacing what it had; "" removes it. It applies to this page only.',
-        'In html: keep data-pg="ID" on every element you keep (it stays the same element, with its settings), leave it off new ones, and put each <pg-keep data-pg="ID"></pg-keep> you keep where it belongs; a <pg-keep> left out is removed. No <script>, event handlers, <iframe>, <form> or <style>: they are removed (styles go into the css operation).',
+        'update'    => '{"op":"update","node":"ID","text":"…","classes":"…","add_classes":"…","remove_classes":"…","style":"…","attrs":{"href":"…"},"name":"…"}: a small change of one element. Give only what changes. "classes" replaces all its classes; add_classes / remove_classes change some; name is its editor name.',
+        'set_props' => '{"op":"set_props","node":"ID","props":{…}}: the settings of a <pg-keep> part, from its data-pg-props.',
+        'replace'   => '{"op":"replace","node":"ID","html":"…"}: the element and everything inside it, rewritten.',
+        'insert'    => '{"op":"insert","parent":"ID","index":0,"html":"…"}, or "before":"ID" / "after":"ID" instead of parent: new elements.',
+        'remove'    => '{"op":"remove","node":"ID"}.',
+        'move'      => '{"op":"move","node":"ID","before":"ID"} (or "after", or "parent" with "index").',
+        'page'      => '{"op":"page","html":"<body class=\\"…\\">…</body>"}: the whole page, only when the request asks to redo the page.',
+        'css'       => '{"op":"css","css":"…"}: the page\'s own CSS, replacing what it had; "" removes it. It applies to this page only.',
+        'html'      => 'In html: keep data-pg="ID" on each element you keep (it stays that element, with its settings), none on new ones, and each <pg-keep data-pg="ID"></pg-keep> where it belongs; one left out is removed. <script>, event handlers, <iframe>, <form> and <style> are removed (use css).',
+    );
+}
+
+/**
+ * How a page is shown to a model: the HTML with data-pg ids and <pg-keep>
+ * parts, what is bound to data, and the page's CSS. Read word for word by
+ * the assistant's instructions (pg_design_ai_system_prompt()) and by the
+ * guide's designer topic.
+ *
+ * @return array html, bound, css => line
+ */
+function pg_design_ai_page_lines()
+{
+    return array(
+        'html'  => 'HTML in which every element carries data-pg="ID". <pg-keep data-pg="ID" kind="…"> is a part the page runs rather than shows (a menu, a shared component, a widget, custom code, a Bootstrap component): keep it, move it or remove it, but do not write its inside; data-pg-props are its settings.',
+        'bound' => 'data-pg-bound names what of an element comes from the data (its words, its link): leave that as it is.',
+        'css'   => 'The page\'s own CSS is shown after the HTML.',
+    );
+}
+
+/**
+ * The kinds a <pg-keep> part names first in its kind attribute
+ * (pg_design_ai_island_label()), each with what it is. A content part of
+ * another kind than these names its content type instead (a video, custom
+ * code, a carousel).
+ *
+ * @return array kind => what it is
+ */
+function pg_design_ai_keep_kinds()
+{
+    return array(
+        'region'              => 'a page or common region, a menu',
+        'shared_ref'          => 'a shared component or system widget',
+        'loop_area'           => 'repeated per record',
+        'recipient_loop_area' => 'repeated per e-mail recipient',
+        'component'           => 'a Bootstrap component',
+        'locked'              => 'locked by a designer',
+        'bound'               => 'filled from the data',
     );
 }
 
@@ -4135,14 +4175,18 @@ function pg_design_ai_system_prompt($row, $asker, $page)
         : 'the page';
 
     $lines = array(
-        'You are Pinegrap AI, working in the Visual Page Editor of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+        'You are Pinegrap AI, working in the Visual Page Editor of the Pinegrap site ' . (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '') . '.',
         $name . ' asks you to change ' . $scope . ' "' . $page['page_name'] . '" (page ' . (int) $page['page_id'] . ').',
         pg_design_ai_framework_line($page),
         '',
         'How the page is shown to you:',
-        '- HTML in which every element carries data-pg="ID". <pg-keep data-pg="ID" kind="…"> is a part the page runs rather than shows (a menu, a shared component, a widget, custom code, a Bootstrap component): keep it, move it or remove it, but do not write its inside; data-pg-props are its settings.',
-        '- data-pg-bound names what of an element comes from the data (its words, its link): leave that as it is.',
-        '- The page\'s own CSS is shown after the HTML.',
+    );
+
+    foreach (pg_design_ai_page_lines() as $line) {
+        $lines[] = '- ' . $line;
+    }
+
+    array_push($lines,
         '',
         'How to work:',
         '- You cannot change the page yourself: what you do with the page tools is a proposal the person who asked previews and applies. Call the tools themselves; a tool call written as text does nothing.',
@@ -4152,7 +4196,7 @@ function pg_design_ai_system_prompt($row, $asker, $page)
             : '- Prefer the smallest change that does what was asked: page_set for small changes, page_replace for one section, page_rewrite only when the request asks to design the page again.',
         '- A look of its own (colours, glow, shadows, gradients) needs page_css: a class you make up draws nothing until page_css defines it.',
         '- Write real words in the language of the page, never placeholder text. Keep existing images and links unless asked; new images may use https://picsum.photos/1200/600 style addresses.',
-        '- Answer in the language of the request, briefly, without headings.',
+        '- Answer in the language of the request, briefly, without headings.'
     );
 
     foreach (pg_design_ai_tools_guide() as $line) {
