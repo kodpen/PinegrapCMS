@@ -532,3 +532,22 @@ function test_page_bundle_revision_before()
 	pg_assert_contains('pg_page_bundle_revision_before(', pg_test_function_source('pg_page_bundle_write_item'), 'the write keeps it so');
 	pg_assert_contains('pg_page_revision_seed(', pg_test_function_source('pg_page_bundle_write_item'), 'seeding through the revisions\' own seed');
 }
+
+// "Publish the rest" of a partly published bundle sends to the Recycle Bin
+// every replacement that now stands on its live page, also those written by
+// the earlier run that went partial, not only this run's.
+function test_page_bundle_used_replacements()
+{
+	$items = array(
+		array('id' => 1, 'draft_page_id' => 11, 'live_page_id' => 21, 'status' => 'written', 'written_state' => 'a'),
+		array('id' => 2, 'draft_page_id' => 12, 'live_page_id' => 0, 'status' => 'written', 'written_state' => 'b'),
+		array('id' => 3, 'draft_page_id' => 13, 'live_page_id' => 23, 'status' => 'written', 'written_state' => ''),
+		array('id' => 4, 'draft_page_id' => 14, 'live_page_id' => 24, 'status' => 'left_out', 'written_state' => ''),
+		array('id' => 5, 'draft_page_id' => 15, 'live_page_id' => 25, 'status' => 'written', 'written_state' => 'c'),
+	);
+
+	pg_assert_same(array(11, 15), pg_page_bundle_used_replacements($items),
+		'written replacements with a state; not a new page, an unfinished claim or a page left out');
+	pg_assert_contains('pg_page_bundle_used_replacements(', pg_test_function_source('pg_page_bundle_publish_locked'),
+		'the publish reads them after its run');
+}
