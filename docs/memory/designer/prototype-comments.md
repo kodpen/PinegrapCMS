@@ -13,6 +13,7 @@ module: prototype_comments
 - The `prototype_comments` row, the guest's door `prototype_comment.php`, its gates, limits and plain text: `designer-prototype-comments-door.md`.
 - The viewer's comment mode (the Comment button, the box, pins, threads, "Not on the page any more"): `designer-prototype-comments-viewer.md`.
 - The editor's Comments button, pins on the canvas, the Prototype comments list, the heartbeat's stamp, the bell line: `designer-prototype-comments-list.md`.
+- The viewer's keep-alive ping to the door: `prototype-comments-ping.md`.
 - "Make a task": `designer-prototype-comments-task.md`. What a later change must keep and the schema answer: `designer-prototype-comments-rules.md`. The share links: `designer-prototype-share-links.md`.
 
 ## How are a link's comments deleted?
