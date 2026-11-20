@@ -134,7 +134,14 @@ function test_office_xls_copy_reads_back()
 
 		foreach ($shown['sheets'] as $index => $sheet) {
 			pg_assert_same($sheet['name'], $copied['sheets'][$index]['name'], $fixture . ' sheet name');
-			pg_assert_same($sheet['rows'], $copied['sheets'][$index]['rows'], $fixture . ' shown alike');
+			// The copy's date cells carry the look of their date style (s),
+			// which the .xls reader does not give; the values must match.
+			$copied_rows = array_map(function ($row) {
+				unset($row['s']);
+
+				return $row;
+			}, $copied['sheets'][$index]['rows']);
+			pg_assert_same($sheet['rows'], $copied_rows, $fixture . ' shown alike');
 		}
 
 		@unlink($target);
