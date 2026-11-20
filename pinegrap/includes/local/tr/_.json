@@ -2067,6 +2067,7 @@
     "{var:1} was cancelled": "{var:1} iptal edildi",
     "{var:1} was changed by the scheduled action “{var:2}”. {var:3}": "{var:1}, “{var:2}” programlanmış işlemiyle değiştirildi. {var:3}",
     "{var:1} was changed on Claude's proposal. {var:2}": "{var:1}, Claude'un önerisiyle değiştirildi. {var:2}",
+    "{var:1} was changed.": "{var:1} değiştirildi.",
     "{var:1} was changed. {var:2}": "{var:1} değiştirildi. {var:2}",
     "{var:1} was compressed": "{var:1} sıkıştırıldı",
     "{var:1} was created successfully": "{var:1} başarıyla oluşturuldu",

@@ -297,6 +297,26 @@ function ws_quick_edit_fields($viewer, $type, $id)
 }
 
 /**
+ * The decision a drawer edit leaves in the channel. A contact is named by its
+ * tag alone, as a new one is (ws_quick_create_save()): the tag shows the
+ * contact only to who may see contacts, while the lines would show its old
+ * and new e-mail address to every member. Pure.
+ *
+ * @param string   $type
+ * @param string   $tag   the record's tag
+ * @param string[] $lines what changed, in words
+ * @return string
+ */
+function ws_quick_edit_decision_body($type, $tag, $lines)
+{
+    if ($type === 'contact') {
+        return lang(array('string' => '{var:1} was changed.', 'vars' => array($tag)));
+    }
+
+    return lang(array('string' => '{var:1} was changed. {var:2}', 'vars' => array($tag, implode(' · ', $lines))));
+}
+
+/**
  * Writes the fields a person changed in the drawer.
  *
  * @param array  $viewer
@@ -427,7 +447,7 @@ function ws_quick_edit_save($viewer, $type, $id, $fields, $from = array(), $chan
     $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
 
     if ($decision && $channel && ws_can_post_channel($viewer, $channel)) {
-        $body = lang(array('string' => '{var:1} was changed. {var:2}', 'vars' => array($tag, implode(' · ', $lines))));
+        $body = ws_quick_edit_decision_body($type, $tag, $lines);
         $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision'));
 
         if ($sent['ok']) {
