@@ -98,7 +98,8 @@ function test_settings_deep_links_name_a_listed_card()
 
 function test_settings_deep_links_licence_texts_name_the_software_card()
 {
-	$source = settings_deep_links_test_source('includes/workspace/ai.php');
+	// Pinegrap AI's card and its guide drawer.
+	$source = settings_deep_links_test_source('includes/workspace/ai.php') . settings_deep_links_test_source('includes/workspace/assistants_help.php');
 	$map = pg_test_language_map('tr');
 
 	pg_assert_false(strpos($source, 'under Settings › General') !== false, 'no text names the old place');

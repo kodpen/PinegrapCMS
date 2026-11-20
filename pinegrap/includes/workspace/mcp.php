@@ -2641,16 +2641,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
         $add = ws_mcp_settings_add_html($self_url, $servers, $kept, null);
     }
 
-    $intro = '
-                <p class="pg-text-2 mb-1">' . h(lang('Connect another service\'s tools under an alias, then ask in a channel: "@github which pull requests wait for a review?" Add a ready-made connector with one click, or any other by its address.')) . '</p>
-                <details class="pg-text-2 fg-secondary mb-5">
-                    <summary>' . h(lang('How it works')) . '</summary>
-                    <p class="mt-3 mb-0">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. The tools the server marks as reading only are turned on when its tools are first read; the others stay off until you turn them on here.'))
-                    . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.'))
-                    . ((function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready()) ? ' ' . h(lang('A server that is an agent itself can answer on its own, without Pinegrap AI: choose the tool that takes the messages under Tools and settings.')) : '')
-                    . ' ' . h(lang('On a server people sign in to (OAuth), everybody may connect their own account, and tools that write can be turned on too: each call waits under the answer until the person who asked approves it, and runs with their own account.')) . '</p>
-                </details>
-';
+    $intro = ws_assistants_help_html('ws-mcp');
 
     if ($form !== null) {
         $reopen_add = $admin && in_array($kept['for'], array('new', 'probe'), true);
