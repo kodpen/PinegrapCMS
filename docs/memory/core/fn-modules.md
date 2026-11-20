@@ -250,6 +250,7 @@ description: Generated from the module field of the memory files: each includes/
 - `preorder`: [[product-preorder]]
 - `price_history`: [[widget-currency-symbol-once]]
 - `privacy`: [[consent-log-and-audit-trail]], [[privacy-erase-store-credit]], [[sms-consent-box]]
+- `privacy_centre`: [[privacy-centre-screen]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_inventory`: [[privacy-inventory]]
 - `privacy_retention`: [[privacy-log-retention]]
