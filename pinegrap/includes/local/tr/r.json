@@ -1916,6 +1916,7 @@
     "Revoke private access.": "Özel erişimi iptal et.",
     "Revoke this link? Whoever has it can no longer open the prototype, and it cannot be turned back on.": "Bu bağlantı iptal edilsin mi? Bağlantıya sahip olanlar prototipi artık açamaz ve bağlantı yeniden etkinleştirilemez.",
     "Revoked": "Erişimi kaldırıldı",
+    "Revoked: {var}": "İptal edildi: {var}",
     "Reward & SEO": "Ödül & SEO",
     "Reward Points": "Ödül Puanları",
     "Reward Program, Reward Points": "Ödül Programı, Ödül Puanları",

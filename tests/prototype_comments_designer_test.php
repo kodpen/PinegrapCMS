@@ -173,7 +173,9 @@ function test_proto_comment_part_is_handed_to_designers_and_registered_once()
 	pg_assert_true(strpos($screen, "(\$access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments')") !== false, 'handed over to designers only');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	pg_assert_same(1, substr_count($core, "_sdPartCall('comments'"), 'one line in the core runs the part');
+	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'beat'"), 'one line in the core runs the part on the heartbeat');
+	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'reload'"), 'the Share prototype dialog reads a loaded list again after a link\'s comments go');
+	pg_assert_same(2, substr_count($core, "_sdPartCall('comments'"), 'nothing else calls the part');
 
 	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_comments.js');
 	pg_assert_true(strpos($part, "StyleDesigner.definePart('comments'") !== false, 'the part registers itself');
@@ -188,4 +190,82 @@ function test_proto_comment_erase_takes_a_deleted_users_answers()
 	pg_assert_same(array('user_id' => 'user_ids'), $tables['prototype_comments']['find'], 'found by the user');
 	pg_assert_same('anonymise', $tables['prototype_comments']['action'], 'kept in the thread');
 	pg_assert_same(array('author_name' => '{name}', 'user_id' => 0), $tables['prototype_comments']['fields'], 'the name replaced, the user id 0');
+}
+
+// "Delete comments" in the Share prototype dialog's links list: each link's
+// comments (answers counted), read in one statement on the design.
+function test_proto_comments_link_counts_are_read_by_design()
+{
+	pg_assert_same('SELECT link_id, COUNT(*) AS n FROM prototype_comments WHERE style_id = 31 GROUP BY link_id', pg_proto_comments_link_counts_sql(31), 'counted by link on idx_style');
+	pg_assert_same('', pg_proto_comments_link_counts_sql(0), 'no design, no statement');
+}
+
+// A revoked link is not in the list, but its comments are kept for the
+// designer: it stays listed, newest first, until they are deleted.
+function test_proto_comments_unlisted_links_are_the_ones_with_comments()
+{
+	$listed = array(array('id' => 9), array('id' => 7));
+
+	pg_assert_same(array(8, 4), pg_proto_comments_unlisted_links($listed, array(4 => 2, 7 => 5, 8 => 1)), 'only the links not listed, newest first');
+	pg_assert_same(array(), pg_proto_comments_unlisted_links($listed, array(9 => 3)), 'every link with comments is listed');
+	pg_assert_same(array(), pg_proto_comments_unlisted_links(array(), array(5 => 0, 0 => 4)), 'no comments, no link 0');
+}
+
+function test_proto_comments_links_list_carries_counts_and_revoked_links_with_comments()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+
+	$panel = pg_test_function_source('pg_proto_links_panel');
+
+	pg_assert_contains('pg_proto_comments_link_counts($style_id)', $panel, 'the counts are read once for the design');
+	pg_assert_contains('pg_proto_comments_unlisted_links(', $panel, 'the revoked links with comments');
+	pg_assert_contains('pg_proto_links_revoked_of_design($style_id, ', $panel, 'read only among the design\'s revoked links');
+	pg_assert_contains("'comment_count'", $panel, 'each row says how many');
+
+	$revoked = pg_test_function_source('pg_proto_links_revoked_of_design');
+	pg_assert_contains("style_id = '\" . (int) \$style_id . \"' AND revoked_at > 0", $revoked, 'another design\'s link or an open one never comes in this way');
+}
+
+// The designer's delete takes a link instead of a comment: every comment of
+// one link of the design named, written to the Site Log by the link's id and
+// hint, never its token.
+function test_proto_comments_link_delete_is_the_designers_delete_by_link()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	$start = strpos($source, "case 'proto_comment_delete':");
+	$block = ($start !== false) ? substr($source, $start, 2500) : '';
+
+	pg_assert_contains("if ((\$sub === 'proto_comment_delete') && !empty(\$request['link_id'])) {", $block, 'a link named instead of a comment');
+	pg_assert_contains("pg_proto_comments_delete_link_of_design((int)\$request['link_id'], \$pc_style, (string)\$user['username'])", $block, 'only a link of the design the dialog was opened on');
+	pg_assert_true(strpos($block, "'deleted'") !== false, 'the answer says how many went');
+
+	$fn = pg_test_function_source('pg_proto_comments_delete_link_of_design');
+	pg_assert_contains("(int) \$link['style_id'] !== (int) \$style_id", $fn, 'another design\'s link is refused');
+	pg_assert_contains("pg_proto_comments_delete_link(\$link['id'])", $fn, 'the link\'s comments, open and resolved, with their answers');
+	pg_assert_contains('#{var:2} ({var:3}…)', $fn, 'the Site Log names the link by id and hint');
+	pg_assert_false((strpos($fn, 'token_hash') !== false) || (strpos($fn, 'token_secret') !== false), 'never the token');
+	pg_assert_same(null, pg_proto_comments_delete_link_of_design(0, 31, 'erdal'), 'no link, nothing deleted');
+	pg_assert_same(null, pg_proto_comments_delete_link_of_design(7, 0, 'erdal'), 'no design, nothing deleted');
+}
+
+function test_proto_comments_link_delete_button_asks_first_and_reads_the_lists_again()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$start = strpos($source, 'function _pgPrototypeShareDialog(');
+	$end = strpos($source, 'function _pgTabsSyncViewButton(');
+	$dialog = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
+
+	pg_assert_true($dialog !== '', 'the dialog found');
+	pg_assert_contains('data-ps-comments-delete', $dialog, 'the button');
+	pg_assert_contains('l.comment_count > 0', $dialog, 'only on a link with comments');
+	pg_assert_contains("l.state === 'revoked'", $dialog, 'a revoked link offers nothing else');
+	pg_assert_contains("_pgApiPost('proto_comment_delete', { style_id: styleId, link_id: id })", $dialog, 'the designer\'s delete, by link');
+
+	$ask = strpos($dialog, "title: _sdT('Delete comments')");
+	$post = strpos($dialog, "_pgApiPost('proto_comment_delete'");
+	pg_assert_true(($ask !== false) && ($post !== false), 'asked and posted');
+	pg_assert_contains("if (_sdPartLoaded('comments')) _sdPartCall('comments', 'reload', [])", $dialog, 'an open Comments list is read again');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_comments.js');
+	pg_assert_contains('reload: function () { return started ? fetchList() : Promise.resolve(); }', $part, 'the part reads its list again on request');
 }

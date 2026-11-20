@@ -1754,6 +1754,7 @@
     "{var:1} product{suffix:1} {var:2}.": "{var:1} ürün {var:2}.",
     "{var:1} proposed change(s) wait for approval": "Önerilen {var:1} değişiklik onay bekliyor",
     "{var:1} proposed changes on {var:2}": "{var:1}, {var:2} görevinde değişiklik önerdi",
+    "{var:1} prototype comments of link #{var:2} ({var:3}…) of design ({var:4}) were deleted": "tasarım ({var:4}) prototip bağlantısı #{var:2} ({var:3}…) için {var:1} yorum silindi",
     "{var:1} published pages checked": "{var:1} yayındaki sayfa denetlendi",
     "{var:1} queued, {var:2} refused": "{var:1} kuyruğa alındı, {var:2} reddedildi",
     "{var:1} quote(s) expire within {var:2} days.": "{var:1} teklifin süresi {var:2} gün içinde doluyor.",
