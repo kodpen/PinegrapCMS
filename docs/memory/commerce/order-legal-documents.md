@@ -16,6 +16,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 
 ## What does order_documents hold and who reads it?
 - One row per type per order: rendered `html`, `accepted_at` (NULL = not accepted), `ip`, `user_agent`, `created_at`; a second store call writes nothing.
+- Which orders get rows (renewal: none, #10666): order-legal-documents-writers.md.
 - Acceptance times print on the site's clock and date order (`pg_legal_document_time_text()`; AM/PM until #643).
 - `ip` is `waf_client_ip()`, the visitor behind a CDN or trusted proxy (the proxy's `REMOTE_ADDR` until #626).
 - `legal_document.php?order_id=N&type=...` shows the kept copy with "Accepted by the customer on …" (`pg_legal_document_acceptance_note()`) to `pg_legal_document_may_view()`: staff with `USER_MANAGE_ECOMMERCE`, the signed-in owner (`orders.user_id`), the guest whose `completed_order_id` it is. Anyone else, an incomplete order or a missing type gets "This page is not available.". Readable after the switch is turned off.
@@ -27,4 +28,4 @@ description: Legal documents (pre-information form, distance sales contract): se
 
 ## Why, and what next?
 - Turkish distance-selling rules (Mesafeli Sözleşmeler Yönetmeliği, 1 Jan 2026 text) require both documents. HTML only; a PDF (dompdf is vendored for ERP) when customers ask.
-- Checkout: checkout-legal-checkboxes.md, checkout-kvkk-notice.md; order view links: order-view-legal-documents.md; withdrawal: order-withdrawal-deadline.md.
+- See checkout-legal-checkboxes.md, checkout-kvkk-notice.md, order-view-legal-documents.md, order-withdrawal-deadline.md.

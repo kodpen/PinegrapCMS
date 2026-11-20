@@ -956,20 +956,18 @@ define('ERP_STOCK_PLAN_BATCH', 500);
 define('ERP_STOCK_PLAN_ORDER_SCAN', 5000);
 define('ERP_STOCK_PLAN_MARK_PLANNED', 'erp_stock_plan_planned');
 define('ERP_STOCK_PLAN_MARK_CURSOR', 'erp_stock_plan_cursor');
+// The config_text row of the settings card.
+define('ERP_STOCK_PLAN_SETTINGS', 'erp_stock_plan_settings');
 
 /**
- * Safety, cover and dead-stock days. Defaults until the settings card
- * defines its constants: safety 7, cover 30, dead stock 90. Pure.
+ * Safety, cover and dead-stock days: the Stock Planning settings card's,
+ * stored in config_text, or the defaults 7, 30 and 90.
  *
  * @return array{safety:int,cover:int,dead:int}
  */
 function erp_stock_plan_settings()
 {
-    return array(
-        'safety' => defined('ERP_STOCK_PLAN_SAFETY_DAYS') ? max(0, (int) ERP_STOCK_PLAN_SAFETY_DAYS) : 7,
-        'cover'  => defined('ERP_STOCK_PLAN_COVER_DAYS') ? max(0, (int) ERP_STOCK_PLAN_COVER_DAYS) : 30,
-        'dead'   => defined('ERP_STOCK_PLAN_DEAD_DAYS') ? max(1, (int) ERP_STOCK_PLAN_DEAD_DAYS) : 90,
-    );
+    return erp_stock_plan_settings_parse(function_exists('pg_config_text') ? pg_config_text(ERP_STOCK_PLAN_SETTINGS) : '');
 }
 
 /**
@@ -1626,4 +1624,245 @@ function erp_stock_plan_rebuild(array $marks, $today, $time_left)
     }
 
     return 'done';
+}
+
+/**
+ * The settings as stored (JSON of safety, cover and dead days), each in its
+ * range and the default where missing: safety 0 to 365 (7), cover 0 to 365
+ * (30), dead stock 1 to 3650 (90). Pure.
+ *
+ * @param string $stored
+ * @return array{safety:int,cover:int,dead:int}
+ */
+function erp_stock_plan_settings_parse($stored)
+{
+    $values = json_decode((string) $stored, true);
+    $values = is_array($values) ? $values : array();
+    $settings = array();
+
+    foreach (erp_stock_plan_settings_ranges() as $key => $range) {
+        $value = (isset($values[$key]) && is_numeric($values[$key])) ? (int) $values[$key] : $range[2];
+        $settings[$key] = min($range[1], max($range[0], $value));
+    }
+
+    return $settings;
+}
+
+/**
+ * Each setting's lowest, highest and default value, keyed as stored.
+ *
+ * @return array<string,array{0:int,1:int,2:int}>
+ */
+function erp_stock_plan_settings_ranges()
+{
+    return array('safety' => array(0, 365, 7), 'cover' => array(0, 365, 30), 'dead' => array(1, 3650, 90));
+}
+
+/**
+ * The settings card's field of each setting.
+ *
+ * @return array<string,string>
+ */
+function erp_stock_plan_settings_fields()
+{
+    return array('safety' => 'stock_plan_safety_days', 'cover' => 'stock_plan_cover_days', 'dead' => 'stock_plan_dead_days');
+}
+
+/**
+ * What the settings card's post would refuse: a value that is not whole
+ * days in its range. An empty box is the default. Pure.
+ *
+ * @param array $post
+ * @return array field => sentence
+ */
+function erp_stock_plan_settings_refusals($post)
+{
+    $refusals = array();
+    $ranges = erp_stock_plan_settings_ranges();
+
+    foreach (erp_stock_plan_settings_fields() as $key => $field) {
+        $value = $post[$field] ?? '';
+        $value = is_string($value) ? trim($value) : null;
+
+        if (($value === null) || (($value !== '') && ((preg_match('/^[0-9]{1,5}$/', $value) !== 1)
+            || ((int) $value < $ranges[$key][0]) || ((int) $value > $ranges[$key][1])))) {
+            $refusals[$field] = lang(array('string' => 'Enter whole days from {var:1} to {var:2}.', 'vars' => array($ranges[$key][0], $ranges[$key][1])));
+        }
+    }
+
+    return $refusals;
+}
+
+/**
+ * The value the settings card stores from its post; call it after
+ * erp_stock_plan_settings_refusals() found nothing. Pure.
+ *
+ * @param array $post
+ * @return string JSON
+ */
+function erp_stock_plan_settings_value($post)
+{
+    $values = array();
+
+    foreach (erp_stock_plan_settings_fields() as $key => $field) {
+        $value = (isset($post[$field]) && is_string($post[$field])) ? trim($post[$field]) : '';
+
+        if ($value !== '') {
+            $values[$key] = (int) $value;
+        }
+    }
+
+    return json_encode(erp_stock_plan_settings_parse(json_encode($values)));
+}
+
+/**
+ * Save the settings card. The plan takes them at the next night's rebuild.
+ *
+ * @param array $post
+ * @return array ['success' => bool, 'field' => string, 'error' => string]
+ */
+function erp_stock_plan_settings_save($post)
+{
+    foreach (erp_stock_plan_settings_refusals($post) as $field => $error) {
+        return array('success' => false, 'field' => $field, 'error' => $error);
+    }
+
+    $before = erp_stock_plan_settings();
+    $value = erp_stock_plan_settings_value($post);
+
+    if (!pg_config_text_save(ERP_STOCK_PLAN_SETTINGS, $value)) {
+        return array('success' => false, 'field' => 'stock_plan_safety_days', 'error' => lang('The settings could not be saved.'));
+    }
+
+    if (erp_stock_plan_settings_parse($value) !== $before) {
+        log_activity(lang('erp stock planning settings were changed'), (string) ($_SESSION['sessionusername'] ?? ''));
+    }
+
+    return array('success' => true, 'field' => '', 'error' => '');
+}
+
+/**
+ * The screen's states, in the order its filter lists them, dead stock last.
+ *
+ * @return array<string,string>
+ */
+function erp_stock_plan_state_labels()
+{
+    return array(
+        'runs_out'   => lang('Runs out before goods can come'),
+        'order_now'  => lang('Order now'),
+        'soon'       => lang('Soon'),
+        'fine'       => lang('Fine'),
+        'no_history' => lang('Not enough history'),
+        'dead'       => lang('Dead stock'),
+    );
+}
+
+/**
+ * The screen's filters from the address: a state (or 'all') and a supplier
+ * account (0 for all). Pure.
+ *
+ * @param array $get
+ * @return array{state:string,supplier:int}
+ */
+function erp_stock_plan_filters($get)
+{
+    $state = (isset($get['state']) && is_string($get['state'])) ? $get['state'] : 'all';
+    $supplier = (isset($get['supplier']) && is_scalar($get['supplier'])) ? (int) $get['supplier'] : 0;
+
+    return array(
+        'state'    => array_key_exists($state, erp_stock_plan_state_labels()) ? $state : 'all',
+        'supplier' => max(0, $supplier),
+    );
+}
+
+/**
+ * Whether a screen row passes the filters: dead stock by its own reading,
+ * the other states by the plan's. Pure.
+ *
+ * @param array $row erp_stock_plan_screen_rows()
+ * @param array $filters erp_stock_plan_filters()
+ * @return bool
+ */
+function erp_stock_plan_row_matches(array $row, array $filters)
+{
+    if (($filters['supplier'] > 0) && ((int) $row['supplier_id'] !== (int) $filters['supplier'])) {
+        return false;
+    }
+
+    if ($filters['state'] === 'dead') {
+        return !empty($row['dead']);
+    }
+
+    return ($filters['state'] === 'all') || ($row['state'] === $filters['state']);
+}
+
+/**
+ * Per supplier, the products the plan would order and how many: what one
+ * press of New purchase order sends. A product with no supplier or nothing
+ * to order is left out. Pure.
+ *
+ * @param array $rows
+ * @return array<int,array{name:string,quantities:array<int,int>}>
+ */
+function erp_stock_plan_supplier_orders(array $rows)
+{
+    $orders = array();
+
+    foreach ($rows as $row) {
+        $supplier = (int) $row['supplier_id'];
+        $quantity = (int) $row['quantity'];
+
+        if (($supplier <= 0) || ($quantity <= 0)) {
+            continue;
+        }
+
+        if (!isset($orders[$supplier])) {
+            $orders[$supplier] = array('name' => (string) $row['supplier_name'], 'quantities' => array());
+        }
+
+        $orders[$supplier]['quantities'][(int) $row['product_id']] = $quantity;
+    }
+
+    ksort($orders);
+
+    return $orders;
+}
+
+/**
+ * Every planned product with its name, stock, supplier and average cost,
+ * and its dead-stock reading worked out now (P10).
+ *
+ * @param string $today
+ * @param string $history_from
+ * @param int $dead_days
+ * @return array
+ */
+function erp_stock_plan_screen_rows($today, $history_from, $dead_days)
+{
+    if (!erp_stock_plan_cache_ready()) {
+        return array();
+    }
+
+    $rows = erp_stock_plan_select("SELECT sp.product_id, sp.units_day, sp.season, sp.supplier_id, sp.lead_days, sp.lead_source,
+            sp.days_left, sp.runout_day, sp.order_by_day, sp.quantity, sp.state, sp.last_sale,
+            p.name AS product_sku, p.short_description AS product_name, p.inventory_quantity, p.enabled,
+            COALESCE(a.title, '') AS supplier_name, COALESCE(c.avg_cost, 0) AS avg_cost
+        FROM erp_stock_plan sp
+        INNER JOIN products p ON p.id = sp.product_id
+        LEFT JOIN erp_accounts a ON a.id = sp.supplier_id
+        LEFT JOIN erp_product_costs c ON c.product_id = sp.product_id
+        ORDER BY sp.product_id ASC");
+
+    if ($rows === false) {
+        return array();
+    }
+
+    foreach ($rows as $i => $row) {
+        $dead = erp_stock_plan_dead((int) $row['inventory_quantity'], $row['last_sale'], $history_from, $today, $dead_days, (int) $row['avg_cost']);
+        $rows[$i]['dead'] = $dead['dead'];
+        $rows[$i]['dead_value'] = $dead['value'];
+    }
+
+    return $rows;
 }

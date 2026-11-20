@@ -196,15 +196,21 @@ function pg_sw_order_cancel_wire(&$node, $ctx)
 
 // ── Return request form ────────────────────────────────────────────────
 
-// The quantity cell of a delivery line: the box while some may go back,
-// else the words saying the rest is already in a return.
+// The quantity cell of a delivery line: the box while some may go back;
+// else, for a gift card line (never returnable), the words saying gift
+// cards cannot be returned, and for any other line that the rest is
+// already in a return.
 function pg_sw_part_order_return_qty_cell()
 {
+    $done = array_merge_recursive(array('text' => lang('Already in a return')), pg_sw_part_when('__return_item_left', 'eq', '0'));
+    $done['_bindings']['show_if_2'] = '__return_item_gift_card';
+    $done['_bindParams']['show_if_2'] = array('op' => 'empty');
     return pg_sw_part_el('td', 'text-end', 'To return', array(), array(
         pg_sw_part_el('input', 'form-control form-control-sm text-end', 'Quantity', array_merge_recursive(
             array('_bindings' => array('value' => 'return_qty')), pg_sw_part_when('__return_item_left', 'gt', '0'))),
-        pg_sw_part_el('span', 'small text-muted', 'Already in a return', array_merge(array('text' => lang('Already in a return')),
-            pg_sw_part_when('__return_item_left', 'eq', '0'))),
+        pg_sw_part_el('span', 'small text-muted', 'Gift card', array_merge(array('text' => lang('Gift cards cannot be returned')),
+            pg_sw_part_when('__return_item_gift_card', 'not_empty'))),
+        pg_sw_part_el('span', 'small text-muted', 'Already in a return', $done),
     ));
 }
 

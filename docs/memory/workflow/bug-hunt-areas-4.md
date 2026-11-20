@@ -11,7 +11,7 @@ description: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens h
 - Prototype comments' guest side (#9915, #10025, #10459, #10486): the guest's door `prototype_comment.php`, `includes/fn/prototype_comments.php`, the share links `includes/fn/prototype_links.php`, the viewer `prototype.php` and `assets/js/pg_proto_comments.js`.
   - Not touched: `assets/js/pg_proto_hotspots.js`, `style_designer.src.js`, `style_designer_comments.js` (held by open steps and by the step that moves the Comments button, PN6). Known, not reported: where the button and the list sit.
 - Picture text translation's server side (#10028 to #10448): `includes/fn/picture_translation.php` (states, hooks, the page pass, the prune), the automatic draw's rows and jobs (`translation_job.php`, `includes/fn/picture_server_draw.php`), the file doors (`get_file.php`, `edit_files.php`, `handle_recycle.php`).
-  - Not touched: the Translations screen's files (held by S6c #10547), `view_folder_and_files_f.php` (#10542), the Design Canvas scripts. Decided, no fault: `core/picture-text-overview.md`.
+  - Not touched: the Translations screen's files (held by S6c #10547), `view_folder_and_files_f.php` (#10542), the Artifact Canvas scripts. Decided, no fault: `core/picture-text-overview.md`.
 - What the two hunts found is written by their own PRs.
 
 Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-3.md

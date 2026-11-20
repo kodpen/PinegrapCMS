@@ -856,8 +856,9 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * The bundle tokens of one product: __is_bundle (1 or 0) and the saving
  * against its components bought one by one at their own prices, with the
  * currency sign as the discount amount is written, '' when there is none.
- * The saving is read from the price the visitor pays (an offer included).
- * It is text, escaped with the card's other values: the sign stored as an
+ * The saving is read from the price the visitor pays (an offer included),
+ * and a component the visitor pays less for on its own counts at that
+ * price (pg_bundle_saving()). It is text, escaped with the card's other values: the sign stored as an
  * entity (&#8378;) is its character, as escaping the entity would show it
  * as "&#8378;".
  *
@@ -865,11 +866,13 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * @param array  $contents        the bundle's components (pg_bundle_contents_of())
  * @param int    $price_cents     the price the visitor pays, in minor units
  * @param string $currency_symbol
+ * @param array  $visitor_prices  product_id => the price the visitor pays
+ *                                (get_discounted_product_prices())
  * @return array '__is_bundle', '__bundle_saving_formatted'
  */
-function _pg_catalog_bundle_values($is_bundle, $contents, $price_cents, $currency_symbol)
+function _pg_catalog_bundle_values($is_bundle, $contents, $price_cents, $currency_symbol, $visitor_prices = array())
 {
-    $saving = $is_bundle ? pg_bundle_saving($contents, $price_cents) : 0;
+    $saving = $is_bundle ? pg_bundle_saving($contents, $price_cents, $visitor_prices) : 0;
 
     return array(
         '__is_bundle'               => $is_bundle ? '1' : '0',
@@ -2160,7 +2163,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             isset($p['rating_avg']) ? $p['rating_avg'] : 0,
             isset($p['rating_count']) ? $p['rating_count'] : 0
         );
-        $bundle = _pg_catalog_bundle_values(isset($_pg_bundle_set[$pid]), isset($_pg_bundles[$pid]) ? $_pg_bundles[$pid] : array(), $price_cents, $currency_symbol);
+        $bundle = _pg_catalog_bundle_values(isset($_pg_bundle_set[$pid]), isset($_pg_bundles[$pid]) ? $_pg_bundles[$pid] : array(), $price_cents, $currency_symbol, $_pg_disc_prices);
 
         $values = array(
             // Basic
@@ -5844,7 +5847,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         isset($_civ_bundle_set[$_civ_pid]),
         isset($_civ_bundles[$_civ_pid]) ? $_civ_bundles[$_civ_pid] : array(),
         $p ? (isset($_civ_disc_prices[$_civ_pid]) ? (int)round($_civ_disc_prices[$_civ_pid]) : (int)$p['price']) : 0,
-        $currency_symbol
+        $currency_symbol,
+        is_array($_civ_disc_prices) ? $_civ_disc_prices : array()
     );
     // can_notify: the product can be asked for when back in stock (it tracks
     // stock, none is left, no back order), the rule of __out_of_stock.

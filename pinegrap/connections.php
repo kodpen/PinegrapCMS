@@ -159,8 +159,9 @@ function connections_languages_may_manage($user) {
 
 }
 
-// May the user change the WhatsApp or İYS account? They came from Site
-// Settings › Communication, so they keep that category's gate.
+// May the user change the WhatsApp, İYS or an SMS provider's account? They
+// came from Site Settings › Communication, so they keep that category's
+// gate.
 function connections_contact_may_manage($user) {
 
 	if (!defined('PG_SETTINGS_MENU')) {
@@ -435,6 +436,42 @@ if ($_POST) {
 				if ($contact_decision['action'] !== 'none') {
 					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => $contact_name)));
 					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $contact_name)), $_SESSION['sessionusername']);
+				}
+
+			}
+
+		}
+
+	}
+
+	// An SMS provider's account, saved or removed on its page under the gate
+	// of the SMS card it came from. The switch stays the card's: a save keeps
+	// it as it was. A changed account is asked about at the provider first,
+	// and a refusal is marked on its field with nothing written.
+	if (in_array($action, array('sms_save', 'sms_remove'), true) && connections_contact_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
+
+		$sms_provider = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$sms_definition = pg_sms_provider_definition($sms_provider);
+
+		if ($sms_definition !== null) {
+
+			if ($action === 'sms_remove') {
+
+				pg_sms_account_forget($sms_provider);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($sms_definition['label']))));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $sms_definition['label'])), $_SESSION['sessionusername']);
+
+			} else {
+
+				$sms_decision = pg_sms_account_check($_POST, $sms_provider, $liveform);
+
+				if (!$liveform->check_form_errors() && pg_sms_account_save($sms_decision, (int) $user['id'], $liveform)) {
+					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($sms_definition['label']))));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $sms_definition['label'])), $_SESSION['sessionusername']);
 				}
 
 			}
@@ -1295,6 +1332,70 @@ function connections_contact_page($page, $id, $may_manage) {
 						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Communication')) . ' › ' . h($use[2]) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill($connected ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+	}
+
+	return $page;
+
+}
+
+/* An SMS provider's page, Netgsm, İleti Merkezi or Twilio: "Connection
+   details" holds the provider's account the SMS card of Site Settings ›
+   Communication held (its password never drawn back), for who may open that
+   category; Status has Disconnect while an account is stored; "Where it is
+   used" leads to the SMS card, which keeps the switch and the provider it
+   sends through, and to SMS Messages. */
+
+function connections_sms_page($page, $id, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
+
+	$definition = pg_sms_provider_definition($id);
+	$app = pg_sms_app($id);
+	$sending = (pg_sms_provider() === $id);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} account. SMS is switched on, and its provider chosen, on the SMS card of Site Settings › Communication.', 'vars' => $definition['label']))) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="sms_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . pg_sms_settings_page_fields($id) . '
+			</form>
+		</section>';
+
+		if (($app['user'] !== '') || $app['password_stored']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="sms_remove" data-id="0"
+					data-confirm="' . h($sending
+						? lang(array('string' => 'The {var:1} account is removed from this site: no text message goes out until a provider is connected and chosen again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} account is removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$uses = array(
+		array(lang('SMS messages and codes'), 'pgset-sms', lang('SMS')),
+		array(lang('SMS Messages'), 'pgset-sms-messages', lang('SMS Messages')),
+	);
+
+	foreach ($uses as $use) {
+		$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('contact', $use[1])) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use[0]) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Communication')) . ' › ' . h($use[2]) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($sending ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 	}
@@ -2395,15 +2496,20 @@ if ($provider_page !== '') {
 			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
-			'contact'      => in_array($page_id, array('whatsapp', 'iys'), true) && connections_contact_may_manage($user),
+			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true),
 	);
+
+	// An SMS provider's page: its account and the SMS cards that use it.
+	if (in_array($page_id, array('netgsm', 'iletimerkezi', 'twilio'), true)) {
+		$page = connections_sms_page($page, $page_id, connections_contact_may_manage($user));
+	}
 
 	// WhatsApp's and İYS's pages: the account and the cards that use it.
 	if (in_array($page_id, array('whatsapp', 'iys'), true)) {

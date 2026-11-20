@@ -9173,6 +9173,7 @@ function get_tables() {
 		'sms_outbox',
 		'states',
 		'stock_locations',
+		'stock_holds',
 		'stock_moves',
 		'stock_notify',
 		'style',

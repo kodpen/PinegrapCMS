@@ -1,6 +1,6 @@
 ---
 name: connections-communication-page
-description: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection; the SMS providers wait for their own step
+description: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 module: connections_screen
 ---
 
@@ -23,10 +23,10 @@ module: connections_screen
 ## Why did İYS's mode and switches move too?
 - They are stored on the same `connect_apps` row `iys` as the account and saved by one decision; the card held nothing else.
 
-## Why did the SMS card not move?
-- Netgsm, İleti Merkezi and Twilio are three registry services behind one "Send SMS" switch and one Provider select on one card; they move in their own step CX11d2 (`plans/connections-merges-build.md`), each provider on its page while the card keeps the switch and the Provider select. The SMS card stays as it is until then.
+## Where did the SMS providers go?
+- Each to its own page in CX11d2, the card keeping the switch and the Provider select: `connections-sms-providers-page.md`.
 
 ## What stayed on Communication?
-- Chat (live chat, no outside service), SMS Messages and WhatsApp Messages (the site's message templates and switches), the WhatsApp Conversations field.
+- Chat (live chat, no outside service), the SMS switch and Provider select, SMS Messages and WhatsApp Messages (the site's message templates and switches), the WhatsApp and SMS Channel fields.
 
 Tests: `tests/connections_communication_test.php`, `tests/whatsapp_test.php`, `tests/workspace_mail_phone_test.php`.

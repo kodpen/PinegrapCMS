@@ -127,6 +127,7 @@ $presenters = array(
 	'erp_api_stock_move_schema'       => 'erp_api_stock_move_present',
 	'erp_api_stock_count_schema'      => 'erp_api_stock_count_present',
 	'erp_api_stock_count_item_schema' => 'erp_api_stock_count_item_present',
+	'erp_api_stock_plan_schema'       => 'erp_api_stock_plan_present',
 	'erp_api_aging_report_schema'     => 'erp_api_aging_report_present',
 	'erp_api_vat_report_schema'       => 'erp_api_vat_report_present',
 	'erp_api_cash_transfer_schema'    => 'erp_api_cash_transfer_present',

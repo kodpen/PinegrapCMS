@@ -405,3 +405,24 @@ function test_stock_notify_push_wiring()
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
 	pg_assert_contains("'push_secret'", $endpoint, 'the endpoint reads the secret');
 }
+
+// A mail that could not go out in the request is no notice: its row goes
+// back to waiting for the next announcement, unless the failure is for good
+// or the visitor was told another way.
+function test_stock_notify_unsent_mail_waits_again()
+{
+	pg_assert_false(pg_stock_notify_mail_unsent(true, false), 'sent');
+	pg_assert_true(pg_stock_notify_mail_unsent(false, false), 'failed for now');
+	pg_assert_false(pg_stock_notify_mail_unsent(false, true), 'failed for good');
+
+	pg_assert_contains('AND (sent_at > 0)', pg_test_function_source('pg_stock_notify_unclaim'), 'only a claimed row');
+
+	foreach (array('pg_stock_notify_send', 'pg_stock_notify_event_send') as $function) {
+		$source = pg_test_function_source($function);
+		$mail = strpos($source, 'email(');
+		$unclaim = strpos($source, 'pg_stock_notify_unclaim(');
+
+		pg_assert_true(($mail !== false) && ($unclaim !== false) && ($mail < $unclaim), $function . ': a failed mail waits again');
+		pg_assert_contains('pg_stock_notify_mail_unsent(', $source, $function . ': asks whether it went');
+	}
+}

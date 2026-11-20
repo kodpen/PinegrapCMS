@@ -19,6 +19,7 @@ module: cart_recovery
 - Pure `pg_cart_recovery_outcome($order_date, $completed_at, $touches)`, tests in `tests/cart_recovery_test.php`.
 - Left: the cart started at least 6 hours (21600 s) before the completion, as the abandoned-order mail reads it.
 - The last touch sent before the completion (later row on the same second) takes it when sent at most 7 days (604800 s) before; an older last touch takes nothing, and no earlier touch replaces it.
+- Only a left cart is recovered: a cart completed under 6 hours after it was started (a pop-up touch on a fresh cart) gets no recovery and no `channel = ''` row. Until the bug hunt's PR (`workflow/bug-hunt-cart-recovery-figures.md`) such a pop-up touch took the completion.
 - Every touch of the order gets `completed_at`; only the taking touch gets `recovered = 1` and `completed_total`, so a sum over a period counts an order once.
 - A left cart with no touch sent before the completion gets one row with `channel = ''` and the total: counted apart, never recovered. Reads of sent touches filter `channel <> ''`.
 - A left cart whose touches are all older than 7 days gets no total and no `channel = ''` row.

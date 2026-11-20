@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the Communication group on Connections: the WhatsApp and İYS
- * accounts are set up on their pages under the gate of Site Settings ›
+ * Tests for the Communication group on Connections: the WhatsApp, İYS and
+ * SMS providers' accounts are set up on their pages under the gate of Site Settings ›
  * Communication they came from; the cards show the connection and lead
  * there; the registry rows and the old anchors follow the move.
  *
@@ -38,13 +38,18 @@ function test_connections_communication_page_cards_keep_the_communication_gate()
 		pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards($id, array('manager' => true, 'contact' => false)), $id . ': a manager without the category sees no account');
 	}
 
-	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('netgsm', array('contact' => true)), 'the SMS providers are not moved in this step');
+	foreach (array('netgsm', 'iletimerkezi', 'twilio') as $id) {
+		pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards($id, array('manager' => true, 'contact' => true)), $id . ': who may open Communication types the account');
+		pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards($id, array('manager' => true, 'contact' => false)), $id . ': a manager without the category sees no account');
+	}
 
 	$screen = connections_communication_test_source('connections.php');
 	pg_assert_contains("return pg_settings_may_open('contact', \$user);", $screen, 'the gate is the Communication category');
 	pg_assert_contains("array('whatsapp_save', 'whatsapp_remove', 'iys_save', 'iys_remove'), true) && connections_contact_may_manage(\$user)", $screen, 'the write checks the gate');
-	pg_assert_contains("'contact'      => in_array(\$page_id, array('whatsapp', 'iys'), true) && connections_contact_may_manage(\$user)", $screen, 'the details card takes the same right as the write');
+	pg_assert_contains("'contact'      => in_array(\$page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage(\$user)", $screen, 'the details card takes the same right as the write');
 	pg_assert_contains('is_array($contact_decision) && !$liveform->check_form_errors()', $screen, 'a refused account writes nothing');
+	pg_assert_contains("array('sms_save', 'sms_remove'), true) && connections_contact_may_manage(\$user)", $screen, 'an SMS provider\'s write checks the same gate');
+	pg_assert_contains('!$liveform->check_form_errors() && pg_sms_account_save(', $screen, 'a refused SMS account writes nothing');
 }
 
 function test_connections_communication_registry_and_anchors_follow_the_move()
@@ -55,7 +60,11 @@ function test_connections_communication_registry_and_anchors_follow_the_move()
 	pg_assert_same('#settings/contact/pgset-whatsapp', $registry['whatsapp']['found_at'], 'the WhatsApp card still finds it');
 	pg_assert_same('connections.php', $registry['iys']['place'], 'İYS\'s place is Connections');
 	pg_assert_same('#settings/contact/pgset-iys', $registry['iys']['found_at'], 'the İYS card still finds it');
-	pg_assert_same('#settings/contact/pgset-sms', $registry['netgsm']['place'], 'the SMS providers stay on their card');
+	foreach (array('netgsm', 'iletimerkezi', 'twilio') as $id) {
+		pg_assert_same('connections.php', $registry[$id]['place'], $id . '\'s place is Connections');
+		pg_assert_same('#settings/contact/pgset-sms', $registry[$id]['found_at'], 'the SMS card still finds ' . $id);
+		pg_assert_same(array('contact', 'pgset-sms'), pg_settings_legacy_anchors()['sms_' . $id . '_user'], 'an old link to ' . $id . '\'s fields lands on the SMS card');
+	}
 	pg_assert_same(78, pg_connections_count(), 'the figure stays');
 
 	$anchors = pg_settings_legacy_anchors();
@@ -84,7 +93,8 @@ function test_connections_communication_cards_show_the_connection()
 	pg_assert_contains('connections.php?service=iys', $iys, 'and leads to its page');
 	pg_assert_false(strpos($save, 'pg_whatsapp_settings_check(') !== false || strpos($save, 'pg_iys_settings_check(') !== false, 'the pane\'s save cannot change either account');
 	pg_assert_contains('pg_whatsapp_channel_check($_POST', $save, 'the WhatsApp channel stays the pane\'s');
-	pg_assert_contains('pg_sms_settings_check($_POST', $save, 'the SMS account stays the pane\'s');
+	pg_assert_contains('pg_sms_switch_check($_POST', $save, 'the SMS switch and provider stay the pane\'s');
+	pg_assert_false(strpos($save, 'pg_sms_account_') !== false, 'the pane\'s save cannot change an SMS account');
 }
 
 function test_connections_communication_page_form_draws_no_secret()

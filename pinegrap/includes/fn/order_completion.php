@@ -806,6 +806,20 @@ function pg_order_complete_query($order_id, array $values)
 }
 
 /**
+ * Whether a completion keeps copies of the legal documents with the order.
+ * The copies show what was in front of the customer at checkout; a
+ * subscription renewal had no checkout, so it keeps none and the first
+ * order's copies stand.
+ *
+ * @param array $context pg_order_complete()'s context
+ * @return bool
+ */
+function pg_order_complete_keeps_legal_documents(array $context)
+{
+    return empty($context['renewal']);
+}
+
+/**
  * Completes an incomplete order: writes the settled values and the status,
  * takes off the lines saved for later, gives the order its number, keeps the
  * legal documents the customer accepted, queues order.created and the
@@ -840,6 +854,8 @@ function pg_order_complete_query($order_id, array $values)
  * - visitor_id: the visit that placed the order (0 for none)
  * - legal_acceptance: ip, user_agent, at the documents were accepted with
  *   (none: this request's own, now)
+ * - renewal: true for a subscription renewal, which keeps no legal
+ *   document copies (pg_order_complete_keeps_legal_documents())
  *
  * @param int   $order_id
  * @param array $values    column => value (pg_order_complete_columns())
@@ -918,14 +934,17 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // final by this point.
     // A payment service's message passes the visitor's address, browser and
     // time of acceptance; the visitor's own request leaves them to the store.
-    $legal = (isset($context['legal_acceptance']) && is_array($context['legal_acceptance'])) ? $context['legal_acceptance'] : array();
+    // A subscription renewal keeps none: no checkout showed it any document.
+    if (pg_order_complete_keeps_legal_documents($context)) {
+        $legal = (isset($context['legal_acceptance']) && is_array($context['legal_acceptance'])) ? $context['legal_acceptance'] : array();
 
-    pg_legal_documents_store(
-        $order_id,
-        array_values(array_intersect(array('preinfo', 'contract', 'kvkk'), $documents)),
-        $legal['ip'] ?? null,
-        $legal['user_agent'] ?? null,
-        $legal['at'] ?? null);
+        pg_legal_documents_store(
+            $order_id,
+            array_values(array_intersect(array('preinfo', 'contract', 'kvkk'), $documents)),
+            $legal['ip'] ?? null,
+            $legal['user_agent'] ?? null,
+            $legal['at'] ?? null);
+    }
 
     // Tell whoever is subscribed that an order was placed, once the order
     // number exists, because that is the number every other system knows the

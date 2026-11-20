@@ -43,6 +43,29 @@ function test_cart_recovery_weak_unreachable()
 	pg_assert_same(null, pg_cart_recovery_weak_unreachable(20, $untouched), '5 of 20 is not above 30 %');
 }
 
+function test_cart_recovery_weak_unreachable_leaves_out_a_deleted_order()
+{
+	// The no-touch row of a completed order that was deleted since: nothing
+	// is known of its address, so it is not "no e-mail address".
+	$gone = pg_cart_recovery_weak_untouched_fact(null, true);
+	pg_assert_same(null, $gone['address'], 'a deleted order: address unknown');
+	pg_assert_same(false, $gone['stock_out'], 'and no line out of stock');
+
+	$kept = pg_cart_recovery_weak_untouched_fact(array('open' => true, 'address' => true, 'opt_in' => false, 'stock_out' => true), true);
+	pg_assert_same(true, $kept['address'], 'an order still there keeps its address');
+	pg_assert_same(false, $kept['consent'], 'no opt-in where the mail needs it');
+	pg_assert_same(true, $kept['stock_out'], 'an open cart out of stock');
+	pg_assert_same(true, pg_cart_recovery_weak_untouched_fact(array('open' => true, 'address' => true, 'opt_in' => false, 'stock_out' => false), false)['consent'], 'no opt-in needed');
+
+	$untouched = array_merge(
+		cart_recovery_weak_test_many(3, array('address' => false, 'consent' => false)),
+		cart_recovery_weak_test_many(4, array('address' => null, 'consent' => false)),
+		cart_recovery_weak_test_many(5, array('address' => true, 'consent' => true))
+	);
+
+	pg_assert_same(null, pg_cart_recovery_weak_unreachable(12, $untouched), '3 of 12 is not above 30 %: the deleted orders are not counted');
+}
+
 function test_cart_recovery_weak_messages()
 {
 	$messages = array(
@@ -129,6 +152,28 @@ function test_cart_recovery_weak_step_and_carts()
 	pg_assert_same(array(1), array_keys($carts), 'a cart of the period of its first touch');
 	pg_assert_same($from + 10, $carts[1]['first_sent'], 'its first send');
 	pg_assert_true($carts[1]['returned'], 'a later touch clicked');
+}
+
+function test_cart_recovery_weak_carts_completed_late()
+{
+	$from = 1800000000;
+	$row = array('channel' => 'email', 'clicked_at' => 0, 'restored_at' => 0, 'recovered' => 0, 'completed_at' => 0);
+
+	$carts = pg_cart_recovery_weak_carts(array(
+		// Completed 8 days after its only touch: late.
+		array('order_id' => 1, 'sent_at' => $from + 10, 'completed_at' => $from + 10 + 8 * 86400) + $row,
+		// Completed an hour after a pop-up on a fresh cart: not recovered, not late either.
+		array('order_id' => 2, 'channel' => 'page', 'sent_at' => $from + 10, 'completed_at' => $from + 3610) + $row,
+		// Recovered.
+		array('order_id' => 3, 'sent_at' => $from + 10, 'completed_at' => $from + 100, 'recovered' => 1) + $row,
+		// Still open.
+		array('order_id' => 4, 'sent_at' => $from + 10) + $row,
+	), $from, $from + 86400);
+
+	pg_assert_true($carts[1]['late'], 'completed more than 7 days after its last touch');
+	pg_assert_same(false, $carts[2]['late'], 'completed within the 7 days without a recovery is not late');
+	pg_assert_same(false, $carts[3]['late'], 'a recovered cart is not late');
+	pg_assert_same(false, $carts[4]['late'], 'an open cart is not late');
 }
 
 function test_cart_recovery_weak_runs_every_rule()
