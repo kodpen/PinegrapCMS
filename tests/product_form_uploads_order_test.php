@@ -89,3 +89,25 @@ function test_product_form_uploads_order_reader_mode()
 	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'print'), 'a print showed a thumbnail');
 	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'frontend'), 'a site page did not link the file');
 }
+
+function test_product_form_uploads_designed_order_view_shows_the_file()
+{
+	$item = array('id' => 7, 'qty' => 1, 'form_name' => '', 'form_quantity_type' => 'One Form per Product');
+	$fields = array(
+		array('id' => 1, 'label' => 'Photo', 'type' => 'file upload', 'information' => '', 'wysiwyg' => 0),
+		array('id' => 2, 'label' => 'Name', 'type' => 'text box', 'information' => '', 'wysiwyg' => 0),
+	);
+	$data = array(
+		array('form_field_id' => 1, 'data' => 'mug.jpg', 'quantity_number' => 1, 'file_html' => '<a href="/mug1.jpg">mug1.jpg</a>'),
+		array('form_field_id' => 2, 'data' => 'Ada <b>', 'quantity_number' => 1, 'file_html' => ''),
+	);
+	$rows = pg_sw_list_order_item_form_rows($item, $fields, $data);
+	$cells = $rows['order.item_form_fields']['7001'];
+	pg_assert_same('<a href="/mug1.jpg">mug1.jpg</a>', $cells[0]['__field_value_html'], 'the designed order view did not draw the file');
+	pg_assert_same('Ada &lt;b&gt;', $cells[1]['__field_value_html'], 'a text answer was not escaped as before');
+
+	// A file deleted from Files since: the answer's text stays.
+	$data[0]['file_html'] = '';
+	$rows = pg_sw_list_order_item_form_rows($item, $fields, $data);
+	pg_assert_same('mug.jpg', $rows['order.item_form_fields']['7001'][0]['__field_value_html'], 'a deleted file lost the answer text');
+}

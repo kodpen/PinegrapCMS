@@ -725,7 +725,8 @@ function pg_sw_list_account_credit_rows($account_id, $cards)
 // 1000 plus its number. Answers as the order pages print them: several
 // values of one field joined with ", ", rich text filtered, the rest
 // prepared for HTML; an information field gives its label and text (an
-// empty one nothing).
+// empty one nothing). A File Upload answer's row may carry file_html
+// (pg_pfu_order_answer_html()), drawn in place of its text.
 function pg_sw_list_order_item_form_rows($item, $fields, $data)
 {
     $out = array('order.item_forms' => array(), 'order.item_form_fields' => array());
@@ -733,8 +734,11 @@ function pg_sw_list_order_item_form_rows($item, $fields, $data)
     if ($id <= 0 || !$fields || !$data) return $out;
 
     $by_q = array();
+    $files = array();
     foreach ((array)$data as $r) {
-        $by_q[max(1, (int)$r['quantity_number'])][(int)$r['form_field_id']][] = (string)$r['data'];
+        $q = max(1, (int)$r['quantity_number']);
+        $by_q[$q][(int)$r['form_field_id']][] = (string)$r['data'];
+        if (isset($r['file_html']) && (string)$r['file_html'] !== '') $files[$q][(int)$r['form_field_id']] = (string)$r['file_html'];
     }
     $per_qty = isset($item['form_quantity_type']) && $item['form_quantity_type'] === 'One Form per Quantity';
     $count   = $per_qty ? min(100, max(1, isset($item['qty']) ? (int)$item['qty'] : 1)) : 1;
@@ -762,10 +766,12 @@ function pg_sw_list_order_item_form_rows($item, $fields, $data)
             }
             $fid   = isset($f['id']) ? (int)$f['id'] : 0;
             $value = isset($vals[$fid]) ? implode(', ', $vals[$fid]) : '';
-            // Rich text holds the shopper's markup: filtered, not escaped.
-            $html = !empty($f['wysiwyg'])
+            // A kept file is drawn by its reader; rich text holds the
+            // shopper's markup: filtered, not escaped.
+            $html = (isset($files[$q][$fid]) && count($vals[$fid]) === 1) ? $files[$q][$fid]
+                : (!empty($f['wysiwyg'])
                 ? prepare_form_data_for_output(pg_defuse_php_tags(pg_sanitize_rich_text($value)), $type, false)
-                : prepare_form_data_for_output($value, $type, true);
+                : prepare_form_data_for_output($value, $type, true));
             $rows[] = array('__field_label' => $label, '__field_value_html' => (string)$html, '__field_info_html' => '', '__field_is_info' => '');
         }
         if ($rows) $out['order.item_form_fields'][$key] = $rows;
@@ -836,12 +842,15 @@ function pg_sw_list_order_item_parts_read(&$items, $wanted, $fmt_money, $fmt_dat
         ) as $f) {
             $fields[(int)$f['product_id']][] = $f;
         }
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
         foreach ((array)db_items(
-            "SELECT order_item_id, form_field_id, data, quantity_number
+            "SELECT order_item_id, form_field_id, data, quantity_number, " . pg_pfu_order_file_name_sql() . " AS file_name
              FROM form_data
              WHERE order_item_id IN (" . implode(',', array_keys($form_items)) . ")
              ORDER BY quantity_number ASC, id ASC"
         ) as $d) {
+            // A File Upload answer: a link, or its name in an e-mailed receipt.
+            $d['file_html'] = pg_pfu_order_answer_html($d['file_name'], 'frontend');
             $data[(int)$d['order_item_id']][] = $d;
         }
     }
