@@ -827,6 +827,7 @@ function api_notification_subjects() {
 		'new_comment'   => array('comment', 'comment_id'),
 		'erp_money'     => array('erp_receipt', 'form_id'),
 		'erp_low_stock' => array('product', 'product_id'),
+		'erp_profit_loss' => array('product', 'product_id'),
 		'workspace'     => array('workspace_inbox', 'reference_id')
 	);
 

@@ -20,7 +20,7 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
 - NP5b (M) after NP5a: Accounting › Profitability. Done in #10698.
   - New `erp_profitability.php` with its menu entry, settings card (typed rates, target margin) and workbook. Feature: N11.
   - No pictures (`workflow/look-pictures-none.md`) for NP5a or NP5b.
-- NP6 (S) after NP5b: break-even, bell, API. In progress.
+- NP6 (S) after NP5b: break-even, bell, API. Done in #10736.
   - `includes/erp/order_profit.php`, `includes/erp/alerts.php`, `includes/erp/api.php` and a reader; `php tools/check_api_schema.php`. Features: N12, N13, N14.
 - NP7 (S) close-out: every N number checked against the code with its PR; `erp/order-profit.md` written; `erp/erp-profit-report.md` updated; `erp/erp-not-built-on-purpose.md`'s settlement line made exact (no reconciliation; an order's deductions are read for its cost); this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 

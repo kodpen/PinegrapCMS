@@ -63,6 +63,7 @@ function test_bell_row_module_of_every_known_action()
 		'erp_low_stock'    => 'erp',
 		'erp_quote_expiry' => 'erp',
 		'erp_auto_invoice' => 'erp',
+		'erp_profit_loss'  => 'erp',
 		'form_submited'    => 'content',
 		'new_comment'      => 'content',
 		'content_change'    => 'content',

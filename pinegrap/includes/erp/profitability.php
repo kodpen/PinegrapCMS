@@ -712,6 +712,66 @@ function erp_profitability_report($from, $to, $channel = '')
 }
 
 /**
+ * The key of a product on a channel, as the break-even list and the loss
+ * notice keep it. Pure.
+ *
+ * @param int    $product_id
+ * @param string $channel
+ * @return string
+ */
+function erp_profitability_key($product_id, $channel)
+{
+    return (int) $product_id . '|' . (string) $channel;
+}
+
+/**
+ * The report narrowed to one product: its groups and their totals. Pure.
+ *
+ * @param array $report      erp_profitability_report()
+ * @param int   $product_id  0 for every product
+ * @return array
+ */
+function erp_profitability_for_product($report, $product_id)
+{
+    if ((int) $product_id <= 0) {
+        return $report;
+    }
+
+    $groups = array();
+
+    foreach ((array) $report['groups'] as $group) {
+        if ((int) $group['product_id'] === (int) $product_id) {
+            $groups[] = $group;
+        }
+    }
+
+    $report['groups'] = $groups;
+    $report['totals'] = erp_profitability_totals($groups);
+
+    return $report;
+}
+
+/**
+ * Each product's break-even price on each channel it sold on over the last 90
+ * days (erp_order_profit_break_even()), at the target margin when one is set.
+ *
+ * @param string     $today   Y-m-d, the period's last day
+ * @param float|null $target  erp_profitability_target()
+ * @return array  erp_profitability_key() => erp_order_profit_break_even()
+ */
+function erp_profitability_break_evens($today, $target)
+{
+    $report = erp_profitability_report(date('Y-m-d', strtotime($today . ' -89 days')), $today);
+    $evens = array();
+
+    foreach ($report['groups'] as $group) {
+        $evens[erp_profitability_key($group['product_id'], $group['channel'])] = erp_order_profit_break_even($group, $target);
+    }
+
+    return $evens;
+}
+
+/**
  * A group's product as the screen and the workbook name it.
  *
  * @param array $group     erp_profitability_group() row

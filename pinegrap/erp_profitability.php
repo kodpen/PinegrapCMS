@@ -105,6 +105,10 @@ if ($ready && (($_GET['export'] ?? '') === 'xlsx')) {
     exit();
 }
 
+// Each product's break-even price on its channel, from the last 90 days
+// whatever the period chosen: shown only, no price changes from it.
+$evens = $ready ? erp_profitability_break_evens(date('Y-m-d'), $target) : array();
+
 // ------------------------------------------------------------------ display
 $money = function ($kurus, $class = '') {
     $kurus = (int) $kurus;
@@ -169,6 +173,23 @@ if ($output_channels === '') {
         </tr>';
 }
 
+// A break-even cell: the price, the price at the target margin under it.
+$even_cell = function ($even) use ($money, $target) {
+    if (!is_array($even) || ($even['price'] === null)) {
+        return '<td class="text-end fg-secondary" data-sort="">' . (is_array($even) ? h(lang('Out of reach')) : '—') . '</td>';
+    }
+
+    $under = '';
+
+    if ($target !== null) {
+        $under = '<div class="pg-text-meta fg-secondary">' . (($even['target_price'] === null)
+            ? h(lang('Target margin out of reach'))
+            : h(lang(array('string' => 'At the target margin: {var:1}', 'vars' => erp_money_out($even['target_price'], false))))) . '</div>';
+    }
+
+    return '<td class="text-end" data-sort="' . (int) $even['price'] . '">' . $money($even['price']) . $under . '</td>';
+};
+
 // By product and channel: the most profitable first, sortable.
 $shown_groups = 1000;
 $output_products = '';
@@ -195,11 +216,12 @@ foreach (array_slice($report['groups'], 0, $shown_groups) as $group) {
             ' . $cost_cells($group) . '
             <td class="text-end fw-semibold" data-sort="' . (int) $group['net'] . '">' . $money($group['net']) . '</td>
             <td class="text-end" data-sort="' . h((string) ($group['margin'] ?? '')) . '">' . $margin($group['margin']) . '</td>
+            ' . $even_cell($evens[erp_profitability_key($group['product_id'], $group['channel'])] ?? null) . '
         </tr>';
 }
 
 if ($output_products === '') {
-    $output_products = '<tr data-pg-sort-fixed><td colspan="12" class="text-center fg-secondary py-7">' . lang('No order of this period has its profit worked out yet.') . '</td></tr>';
+    $output_products = '<tr data-pg-sort-fixed><td colspan="13" class="text-center fg-secondary py-7">' . lang('No order of this period has its profit worked out yet.') . '</td></tr>';
 }
 
 // What the reader should know about the figures.
@@ -422,6 +444,7 @@ pg_page_shell([
                                 ' . $cost_heads . '
                                 <th class="text-end">' . lang('Net profit') . '</th>
                                 <th class="text-end">' . lang('Profit margin') . '</th>
+                                <th class="text-end" title="' . h(lang('The lowest unit price without tax that makes no loss, from the last 90 days\' fees and costs. Prices never change by themselves.')) . '">' . lang('Break-even price') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_products . '</tbody>

@@ -514,6 +514,20 @@ function erp_apply_rate($kurus, $rate)
 }
 
 /**
+ * The smallest whole amount at or above a worked-out one, such as the lowest
+ * price that covers a cost. The amount is first rounded to six places, so a
+ * division that lands a hair above a whole kurus (100 / 0.1) is not pushed to
+ * the next one.
+ *
+ * @param float $value  Kurus, with a fraction
+ * @return int
+ */
+function erp_kurus_up($value)
+{
+    return (int) ceil(round((float) $value, 6));
+}
+
+/**
  * Take the tax out of an amount that already includes it.
  *
  * The net is the amount that, with erp_apply_rate() on top, comes back to the

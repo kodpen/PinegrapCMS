@@ -248,6 +248,53 @@ function erp_order_profit_margin($net, $revenue)
 }
 
 /**
+ * A product's break-even price on a channel: the lowest price, without tax,
+ * at which a unit made no loss on the figures of the period read (the last 90
+ * days), and the price that reaches the target margin when one is set. Shown
+ * only: no price is ever changed from it. Pure.
+ *
+ * Product cost, shipping and other costs are taken as a cost per unit; the
+ * payment fees and marketplace deductions as a share of the price, as a rate
+ * on the sale is. So price - share x price - unit cost = margin x price, and
+ * price = unit cost / (1 - share - margin). A share and margin that take the
+ * whole price leave no such price (null); no cost makes every price cover it
+ * (0).
+ *
+ * @param array|null $group   erp_profitability_group() row: units, revenue and the costs
+ * @param float|null $target  Target margin, a percent of revenue; null for none
+ * @return array ['price' => int|null, 'target_price' => int|null, 'average_price' => int|null]
+ */
+function erp_order_profit_break_even($group, $target = null)
+{
+    $none = array('price' => null, 'target_price' => null, 'average_price' => null);
+    $units = is_array($group) ? (float) ($group['units'] ?? 0) : 0.0;
+
+    if ($units <= 0) {
+        return $none;
+    }
+
+    $revenue = (int) ($group['revenue'] ?? 0);
+    $share = ($revenue > 0) ? ((int) ($group['cost_payment'] ?? 0) + (int) ($group['cost_marketplace'] ?? 0)) / $revenue : 0.0;
+    $unit_cost = ((int) ($group['cost_product'] ?? 0) + (int) ($group['cost_shipping'] ?? 0) + (int) ($group['cost_other'] ?? 0)) / $units;
+
+    $price = function ($margin) use ($share, $unit_cost) {
+        $left = 1 - $share - $margin;
+
+        if ($left <= 0) {
+            return null;
+        }
+
+        return ($unit_cost <= 0) ? 0 : erp_kurus_up($unit_cost / $left);
+    };
+
+    return array(
+        'price' => $price(0),
+        'target_price' => ($target === null) ? null : $price(((float) $target) / 100),
+        'average_price' => ($revenue > 0) ? (int) round($revenue / $units) : null,
+    );
+}
+
+/**
  * Compute an order's cost rows and its profit. Reads nothing.
  *
  * @param array $input
