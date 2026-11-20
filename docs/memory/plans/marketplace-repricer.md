@@ -15,17 +15,16 @@ priority: 6
 
 ## What binds it?
 - Prices leave only through the marketplace queue; the channel price is worked out in `mp_product_row()`, so every send carries it.
-- The robot never sets a price under the floor; a product with no known cost is never repriced.
+- The robot never sets a price under the floor; a listing with no floor (no cost and none typed) is never repriced.
 - A robot price carries no struck-through price: `listPrice` equals `salePrice`, since the price before a discount must be the lowest of the last 30 days (price label regulation).
-- Each channel price written goes into `product_price_history` under `marketplace:<code>`, so the sales watch's price shield sees it (`plans/sales-watch.md`).
+- Each channel price queued goes into `product_price_history` on the account's channel, so the sales watch's price shield sees it (`plans/sales-watch.md`).
 - The site's own price is never changed by the robot.
 
-## What does the architect decide?
-- Schema (the owner's, through the architect): a `marketplace_price_rules` table (account, category, brand or product, percent, fixed, rounding) and per listed product the strategy, own fixed price, own floor, last buybox rank, price and time, and the robot's price: columns on `marketplace_product_map` or a table of their own?
-- The floor: cost from `erp_product_costs` (and the supplier feed's buy price when that plan lands); the listing's commission, else the account's typed rate; the shipping rate; a minimum margin. With Accounting off: only a floor typed on the product?
-- "Grow profit while winning": the service gives no second price, so the robot raises one step at most once a period and steps back when the buybox is lost. Allowed, or "win" and "fixed" only?
-- A new `source` label (`repricer`) for the robot's rows?
-- n11 gets rules and the floor, no robot (no buybox service read); Hepsiburada when its connector lands?
+## What did the architect decide? (2026-11-20, agent channel message 10697)
+- Schema: three tables, no column on `marketplace_product_map` or `marketplace_accounts`: `marketplace_price_rules` (account, category or brand rows: percent, fixed, rounding; the account row holds the robot's step, minimum margin, try-first), `marketplace_price_state` (per listing: strategy, own price, own floor, last buybox read, robot price, state), `marketplace_price_log` (each robot change, reason, sent or not; 90 days). Asked of the owner in poll 186 (message 10696).
+- Floor: R4. Grow while winning allowed by probing (R6). n11: rules and floor, Fixed only; a buybox read is a connector's ability, so Hepsiburada joins without touching the robot.
+- Price history: source `rule` for a channel row from rules or the site price, `repricer` for the robot's; a hand price keeps `panel` / `api`. A row only when a price enters the queue, none in try-first. The channel names the account (two stores on one marketplace sell at their own prices); RP1 fixes `commerce/product-price-history.md` if its `<code>` names the provider.
+- An upgrade changes no running site: no rule sends today's price; the robot stays off until switched on per account.
 
 ## What is built?
 - Features: `marketplace-repricer-features.md` (R1 to R13). Steps: `marketplace-repricer-steps.md`. Claim as `[plan:marketplace-repricer] <step> — <topic>`.
