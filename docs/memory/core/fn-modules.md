@@ -77,7 +77,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contacts`: [[affiliate-welcome-mail-link]], [[api-commission-writes]], [[contact-delete-refusals]], [[contact-holders]], [[contact-lead-source]], [[contact-merge-columns]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]], [[panel-picture-change-stamp]]
 - `container_list_edit`: [[list-table-quick-edit-containers]]
 - `content`: [[submitted-form-content-helpers]], [[system-region-fill-once]]
-- `content_proposals`: [[content-proposals]], [[content-proposals-bell]], [[content-proposals-deleted-page]], [[content-proposals-designer-side]], [[content-proposals-editor-side]], [[content-proposals-editor-strip]], [[content-proposals-workspace]]
+- `content_proposals`: [[content-proposals]], [[content-proposals-bell]], [[content-proposals-deleted-page]], [[content-proposals-designer-side]], [[content-proposals-editor-side]], [[content-proposals-editor-strip]], [[content-proposals-overview]], [[content-proposals-workspace]]
 - `content_proposals_compare`: [[content-proposals-compare-markup]]
 - `content_review`: [[content-review]], [[content-review-announce]], [[content-review-rules]]
 - `content_review_list`: [[content-review]], [[content-review-actions]], [[content-review-screen]]
