@@ -47,6 +47,15 @@ if ($_POST) {
     // it the select fell back to the first account.
     $liveform->add_fields_to_session();
 
+    // An answer to the sheet question puts the kept workbook back in the
+    // field, so the checks below see it as on the first post.
+    $sheet = pg_sheet_import_workbook_answer('statement', $sheet_refusal);
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('statement', h($sheet_refusal));
+        go($self);
+    }
+
     $file = $_FILES['statement'] ?? null;
 
     // An oversize or broken upload is named as such, with the limit, before
@@ -58,12 +67,20 @@ if ($_POST) {
         go($self);
     }
 
-    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {
+    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !pg_sheet_import_file($file)) {
         $liveform->mark_error('statement', h(lang('Choose the file the bank gave you.')));
         go($self);
     }
 
-    $uploaded = erp_bank_statement_upload((int) ($_POST['cash_account_id'] ?? 0), (string) $file['tmp_name'], (string) $file['name'], (int) $user['id']);
+    // A workbook with more than one sheet asks which one holds the statement.
+    $sheet_refusal = pg_sheet_import_workbook_ask('statement', lang('Bank statements'));
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('statement', h($sheet_refusal));
+        go($self);
+    }
+
+    $uploaded = erp_bank_statement_upload((int) ($_POST['cash_account_id'] ?? 0), (string) $file['tmp_name'], (string) $file['name'], (int) $user['id'], $sheet);
 
     if (!$uploaded['success']) {
         $liveform->mark_error('_error', h($uploaded['error']));
