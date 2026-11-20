@@ -19,6 +19,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// pg_mail_dkim_key(): the p= key of a DKIM record.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+
 /**
  * The config.php defines E-mail sending writes, in the order they are saved.
  *
@@ -128,6 +131,32 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
         : ' <a href="connections.php">' . h(lang('Set up the application on Connections first.')) . '</a>';
 
     return '<div class="pg-field-help mt-0">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-2 mt-2">' . $buttons . '</div>' : '');
+}
+
+/**
+ * Whether one of the TXT records published for the selector carries the whole
+ * generated key. A record cut short (a DNS panel stopping at 255 characters)
+ * holds only the key's start and signs nothing, so it does not pass.
+ *
+ * @param string $txt_record the generated record (files.description of dkim.key)
+ * @param array $records dns_get_record() answers, each with its 'txt'
+ * @return bool
+ */
+function pg_mail_settings_dkim_matches($txt_record, array $records)
+{
+    $key = pg_mail_dkim_key($txt_record);
+
+    if ($key === '') {
+        return false;
+    }
+
+    foreach ($records as $record) {
+        if (is_array($record) && isset($record['txt']) && (pg_mail_dkim_key($record['txt']) === $key)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -377,18 +406,10 @@ function pg_mail_settings_dkim_test(array $saved, $liveform)
         return;
     }
 
-    $records = dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
-    $dns_txt = '';
+    // A failed lookup is a failed test, not a PHP warning on the pane.
+    $records = @dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
 
-    if ($records) {
-        foreach ($records as $record) {
-            $dns_txt .= $record['txt'] . ' ';
-        }
-
-        $dns_txt = trim($dns_txt);
-    }
-
-    if ($dns_txt && (strpos($txt_record, $dns_txt) !== false)) {
+    if (pg_mail_settings_dkim_matches((string) $txt_record, is_array($records) ? $records : array())) {
         $liveform->add_notice(lang('DKIM test successful. DNS record matches generated key.'));
         log_activity(lang('DKIM test successful.'), $_SESSION['sessionusername']);
     } else {
