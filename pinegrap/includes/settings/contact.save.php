@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Communication screen writes: live chat, SMS,
- * WhatsApp and İYS.
+ * Site Settings - what the Communication screen writes: live chat, SMS and
+ * the WhatsApp channel. The WhatsApp and İYS accounts are saved on their
+ * Connections pages.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -118,18 +119,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
 
     // ── WhatsApp ──
     //
-    // Same reason as the SMS account: a changed account is asked about at
-    // Meta before anything is written.
-    $whatsapp_settings_post = pg_whatsapp_settings_check($_POST, $liveform);
+    // The account is saved on WhatsApp's page of Connections; the messages
+    // and the Workspace channel are this pane's.
     $whatsapp_messages_post = pg_whatsapp_message_settings_check($_POST, $liveform);
     $whatsapp_channel_post = pg_whatsapp_channel_check($_POST, USER_ID, $liveform);
     $sms_channel_post = pg_sms_channel_check($_POST, USER_ID, $liveform);
-
-    // ── İYS ──
-    //
-    // Same reason as the SMS account: a changed account is asked about at
-    // İYS before anything is written.
-    $iys_settings_post = pg_iys_settings_check($_POST, $liveform);
 
     if ($liveform->check_form_errors()) {
         return;
@@ -147,7 +141,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
     pg_sms_channel_save($sms_channel_post, USER_ID);
-    pg_whatsapp_settings_save($whatsapp_settings_post, USER_ID, $liveform);
     pg_whatsapp_channel_save($whatsapp_channel_post, USER_ID);
     pg_whatsapp_message_settings_save($whatsapp_messages_post, USER_ID);
-    pg_iys_settings_save($iys_settings_post, USER_ID, $liveform);
