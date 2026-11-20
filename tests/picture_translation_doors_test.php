@@ -171,3 +171,35 @@ function test_picture_translation_doors_folder_copy()
 	pg_assert_true($at !== false, 'the copy reads the folder files');
 	pg_assert_contains("pg_picture_tr_hidden_sql('id')", substr($source, $at, 120), 'without the languages\' pictures');
 }
+
+// The prune goes on each day after the picture the last run stopped at, so
+// a site with more pictures than one budget checks every one in turn.
+function test_picture_translation_doors_prune_order()
+{
+	pg_assert_same(array(3, 9, 12), pg_picture_tr_prune_order(array(12, 3, 9), 0), 'from the start, in id order');
+	pg_assert_same(array(12, 3, 9), pg_picture_tr_prune_order(array(3, 9, 12), 9), 'after the last one checked, then round');
+	pg_assert_same(array(3, 9, 12), pg_picture_tr_prune_order(array(3, 9, 12), 12), 'the last one checked was the end');
+	pg_assert_same(array(), pg_picture_tr_prune_order(array(), 5), 'nothing to check');
+
+	pg_assert_same(0, pg_picture_tr_prune_cursor(array(3, 9, 12), 12, true), 'a whole pass starts again from the start');
+	pg_assert_same(9, pg_picture_tr_prune_cursor(array(3, 9), 3, false), 'stopped: after the last one checked');
+	pg_assert_same(5, pg_picture_tr_prune_cursor(array(), 5, false), 'stopped before any: where it was');
+}
+
+// The catch-ups are two queries and run before the budget is spent on the
+// pictures; pages are marked once a picture they may name is gone, and the
+// mark is checked whatever the budget left.
+function test_picture_translation_doors_prune_catch_ups()
+{
+	$prune = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_prune');
+	$follow = strpos($prune, 'pg_picture_tr_follow(null)');
+	$loop = strpos($prune, 'foreach (pg_picture_tr_prune_order(');
+
+	pg_assert_true(($follow !== false) && ($loop !== false) && ($follow < $loop), 'the follow before the pictures');
+	pg_assert_true(strpos($prune, 'pg_picture_tr_lost()') < $loop, 'the lost rows before the pictures');
+	pg_assert_contains('pg_page_cache_mark_dirty()', $prune, 'pages naming a picture now gone are drawn again');
+	pg_assert_false((bool) preg_match('~if \(microtime\(true\) <= \$deadline\) \{\s*pg_picture_tr_mark_check\(\)~', $prune), 'the mark is checked after any budget');
+
+	$lost = picture_translation_doors_body('includes/fn/picture_translation.php', 'pg_picture_tr_lost');
+	pg_assert_contains('mysqli_affected_rows(', $lost, 'how many rows lost their picture');
+}
