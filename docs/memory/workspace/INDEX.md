@@ -257,6 +257,7 @@
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
 - workspace-api-task-time.md: Task time over the Workspace API (PR #2288): GET /workspace/time (own rows across tasks, range, hidden task, running timer, total) and POST /workspace/tasks/{id}/time/{entry_id}/update
 - workspace-api-tasks-scope.md: Which Workspace API reads need tasks:read for the tasks they carry (my-day, search, channel context, record refs, customer history), and what they answer without it
+- workspace-app-answers.md: An application's answer to its / command shown only to the writer: ws_app_answers (11.0.252), answer_token, POST /workspace/commands/answer, ws_sync answers (PR #10668)
 - workspace-app-command-args.md: An application command's arguments (ws_app_commands.args, 11.0.246, PR #10322): the definition of POST /workspace/commands, suggest from the kind, values by name in workspace.app.command [decision: decisions-made-schema-26.md]
 - workspace-app-commands.md: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, workspace:commands, never posted, workspace.app.command to that app alone [decision: decisions-made-schema-26.md]
 - workspace-app-handles.md: How an application tag <@app:N> is drawn (Claude's link @Claude, Pinegrap AI's @ai, any other app a handle from its own name) and which apps the @ picker offers per channel

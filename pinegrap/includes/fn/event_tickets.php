@@ -50,6 +50,43 @@ function pg_event_tickets_ready()
 }
 
 /**
+ * Whether the products have their "Gives tickets" mark
+ * (products.gives_tickets).
+ *
+ * @return bool
+ */
+function pg_event_tickets_product_mark_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('products', 'gives_tickets');
+}
+
+/**
+ * A ticket as the personal data export lists it: its order, what it is for
+ * and when, its state and check-in time. Never its code, salt or hash. Pure.
+ *
+ * @param array $row   event_tickets id, order_id, unit, calendar_event_id,
+ *                     recurrence_number, state, used_at, with the order's
+ *                     order_number and the product's product_name
+ * @param array $event get_calendar_event() of its event and repeat, or
+ *                     array() for a product's ticket
+ * @return array
+ */
+function pg_event_tickets_export_row(array $row, array $event = array())
+{
+    return array(
+        'id'                => (int) ($row['id'] ?? 0),
+        'order_id'          => (int) ($row['order_id'] ?? 0),
+        'order_number'      => (string) ($row['order_number'] ?? ''),
+        'unit'              => (int) ($row['unit'] ?? 0),
+        'event'             => (string) ($event['name'] ?? ''),
+        'event_date'        => (string) ($event['start_date_and_time'] ?? ''),
+        'product'           => (string) ($row['product_name'] ?? ''),
+        'state'             => (string) ($row['state'] ?? ''),
+        'checked_in_at'     => (int) ($row['used_at'] ?? 0),
+    );
+}
+
+/**
  * Whether the "Tickets" switch is on.
  *
  * @return bool

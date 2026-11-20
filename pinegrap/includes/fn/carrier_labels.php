@@ -79,6 +79,16 @@
  *   log              array   sentences for the activity log, in order
  *   raw              array   the service's answer, for the log only
  *
+ * track() of a shipment the service knows but the carrier has not scanned
+ * yet (no status given, or the service's own "unknown" code) is a success
+ * with status created, built by pg_label_track_not_scanned(), never a
+ * failure: the tracking job stops a driver after a few failures in a row,
+ * which is meant for a service that refuses or cannot be reached, and the
+ * parcel row already holds created, so nothing is written. A status code the
+ * driver does not know, a refusal and an unreachable service stay failures.
+ * A webhook message without a status stays a failure too, so a message cannot
+ * move a parcel already on its way back to created.
+ *
  * An answer never carries the account's secrets: pg_label_call() masks any
  * secret value it finds in the error, the log and the raw answer, so a
  * service that echoes the request back cannot put a key into a notice or the
@@ -625,6 +635,25 @@ function pg_label_svg_valid($svg)
     }
 
     return true;
+}
+
+/**
+ * The track() answer of a shipment the service knows but the carrier has not
+ * scanned yet: a success with status created and no time, so the tracking
+ * job writes nothing on a parcel that holds created and counts no failure
+ * (see the header of this file). Pure.
+ *
+ * @param string $reference the service's id of the shipment
+ * @return array
+ */
+function pg_label_track_not_scanned($reference)
+{
+    return array(
+        'success'   => true,
+        'reference' => is_scalar($reference) ? (string) $reference : '',
+        'status'    => 'created',
+        'status_at' => 0,
+    );
 }
 
 /**

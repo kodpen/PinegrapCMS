@@ -684,6 +684,13 @@ if ($_POST) {
 
 			}
 
+			// And its answers to their writers (ws_app_answers).
+			if (pg_schema_has('ws_app_answers')) {
+
+				db("DELETE FROM ws_app_answers WHERE app_id = '" . $app_id . "'");
+
+			}
+
 			$liveform->add_notice(lang(array('string' => 'The application {var:1} was deleted.', 'vars' => h($existing['name']))));
 
 			log_activity(lang(array(

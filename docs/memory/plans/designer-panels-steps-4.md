@@ -19,6 +19,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
   - New: a part; it takes the place of `_pgTabsAllToggle()` and `#sd-tabs-all`.
   - Tests: the filters; the search by name and address with Turkish letters folded; F2; a page dragged onto a group written through `designer/tab_layout`.
   - Features: D50, D51, D52. Keeps K9: Ctrl+P is free today.
+  - Done in #10607 (`designer/designer-pages-window.md`).
 
 - DP21 (S) after DP20: suggested groups. New: a pure function from the pages (address, kind) to the suggested groups, with its test; accepted, it is written through `designer/tab_layout`. Features: D53.
 

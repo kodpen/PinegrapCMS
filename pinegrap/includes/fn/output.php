@@ -4748,6 +4748,7 @@ function output_menu($properties = false)
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_profit.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up bi-me-2\'>' . lang('Profit and loss') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_vat_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-bar-graph bi-me-2\'>' . h(pg_erp_tax_report_label()) . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-pie-chart bi-me-2\'>' . lang('Stock and cost') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock_plan.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar2-range bi-me-2\'>' . lang('Stock Planning') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-wallet2 bi-me-2\'>' . lang('Expenses') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-check bi-me-2\'>' . lang('Delivery Notes') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_export.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-download bi-me-2\'>' . lang('Export') . '</a>';
@@ -5061,6 +5062,7 @@ function output_menu($properties = false)
         case 'erp_aging.php':
         case 'erp_stock.php':
         case 'erp_stock_minimums.php':
+        case 'erp_stock_plan.php':
         case 'erp_stock_counts.php':
         case 'erp_stock_count.php':
         case 'erp_accountant.php':
@@ -8132,6 +8134,7 @@ function pg_js_bundles()
         // Border and corner: their pure class mappings (window.PGSpacingBox,
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8220,6 +8223,9 @@ function pg_designer_parts()
         // The spacing box of Style › Spacing and the size chooser in its
         // head, drawn when the section is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The Pages window: every page by group, searched and filtered,
+        // opened, renamed and moved into a group.
+        'pages' => 'assets/js/style_designer_pages.min.js',
     );
 }
 

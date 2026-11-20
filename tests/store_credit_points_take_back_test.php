@@ -121,6 +121,81 @@ function test_store_credit_points_take_back_is_wired_to_cancel_and_refunds()
 	$view_order = file_get_contents($root . 'view_order.php');
 
 	pg_assert_true(strpos($ecommerce, 'pg_credit_points_order_cancelled($order);') !== false, 'the cancellation takes the points back');
-	pg_assert_true(strpos($returns, 'pg_credit_points_lines_refunded($return[\'order_id\'], $returned_quantities);') !== false, 'a return refund takes its lines back');
+	pg_assert_true(strpos($returns, 'pg_credit_points_lines_refunded($return[\'order_id\'], $returned_quantities, array(\'id\' => (int) $return[\'id\'], \'amount\' => (int) $amount));') !== false, 'a return refund takes its lines back');
 	pg_assert_true(strpos($view_order, 'pg_credit_points_marker($refund_points[\'total\'])') !== false, 'a refund by lines notes what it took');
+}
+
+function test_store_credit_points_units_taken_counts_each_unit_once()
+{
+	pg_assert_same(0, pg_credit_points_units_taken(2, array()), 'nothing refunded');
+	pg_assert_same(2, pg_credit_points_units_taken(2, array('screen' => 2)), 'the order screen by lines');
+	pg_assert_same(2, pg_credit_points_units_taken(2, array('screen' => 2, 'recorded' => 2)), 'a 0 recorded return matches the screen\'s units');
+	pg_assert_same(2, pg_credit_points_units_taken(3, array('screen' => 1, 'recorded' => 2)), 'the unmatched unit counts');
+	pg_assert_same(3, pg_credit_points_units_taken(3, array('screen' => 1, 'paid' => 1, 'recorded' => 2)), 'a paid return never matches');
+	pg_assert_same(2, pg_credit_points_units_taken(2, array('screen' => 2, 'paid' => 2)), 'never more than the line\'s quantity');
+}
+
+function test_store_credit_points_units_to_take_the_issue_case()
+{
+	$lines = array(array('order_item_id' => 11, 'quantity' => '2'), array('order_item_id' => 12, 'quantity' => '1'));
+
+	// Order screen by lines A x 2, then a 0 recorded return of A x 2.
+	pg_assert_same(array(11 => 2), pg_credit_points_units_to_take($lines, array(), array(11 => array('screen' => 2))), 'the screen takes both units');
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, array(11 => array('screen' => 2)), array(11 => array('recorded' => 2))), 'the 0 recorded return takes nothing');
+
+	// The screen refunded by amount: no lines noted, the return takes them.
+	pg_assert_same(array(11 => 2), pg_credit_points_units_to_take($lines, array(), array(11 => array('recorded' => 2))), 'unmatched units take their points');
+
+	// The other way round: the 0 recorded return first, then the screen.
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, array(11 => array('recorded' => 2)), array(11 => array('screen' => 2))), 'the screen takes nothing after the return');
+
+	// A paid return first, then the screen by lines of the same line.
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, array(11 => array('paid' => 2)), array(11 => array('screen' => 2))), 'capped at the line');
+
+	// Two 0 recorded returns of one unit each after the screen gave one back.
+	$before = array(11 => array('screen' => 1, 'recorded' => 1));
+	pg_assert_same(array(11 => 1), pg_credit_points_units_to_take($lines, $before, array(11 => array('recorded' => 1))), 'one screen unit matches one return only');
+
+	pg_assert_same(array(12 => 1), pg_credit_points_units_to_take($lines, array(11 => array('screen' => 2)), array(12 => array('recorded' => 1))), 'another line is its own count');
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, array(), array(99 => array('paid' => 1))), 'a line not on the order');
+}
+
+function test_store_credit_points_screen_noted_reads_order_lines()
+{
+	pg_assert_same(array(), pg_credit_points_screen_noted(array('Reward points taken back: 40', '', null)), 'no lines noted');
+	pg_assert_same(array(101 => 3, 102 => 1), pg_credit_points_screen_noted(array(
+		'Reward points taken back: 40 lines:101=1,-1=1',
+		'lines:101=2,102=1,-2=1',
+	)), 'summed per order line, shipping and surcharge left out');
+}
+
+function test_store_credit_points_lines_marker_names_order_lines()
+{
+	pg_assert_same('points-lines:101=2,102=1', pg_credit_points_lines_marker(array(101 => 2, 102 => '1', 103 => 0, -1 => 1)), 'order lines with a quantity only');
+	pg_assert_same('', pg_credit_points_lines_marker(array()), 'none');
+	pg_assert_same(array(101 => 2, 102 => 1), pg_credit_points_screen_noted(array('Reward points taken back: 40 ' . pg_credit_points_lines_marker(array(101 => 2, 102 => 1)))), 'read back');
+}
+
+function test_store_credit_points_screen_noted_reads_both_markers_once()
+{
+	pg_assert_same(array(101 => 3), pg_credit_points_screen_noted(array(
+		'lines:101=1,-1=1',
+		'Reward points taken back: 20 points-lines:101=2',
+	)), 'one refund on the order, one on its invoice');
+	pg_assert_same(array(101 => 2), pg_credit_points_screen_noted(array('points-lines:101=2 lines:101=2')), 'a note with both counts its line once');
+}
+
+function test_store_credit_points_invoiced_line_refund_then_zero_return_takes_once()
+{
+	$lines = array(array('order_item_id' => 101, 'quantity' => '2'));
+
+	// Invoiced order: the screen refunds line 101 x 2 and notes it, then a
+	// return of the same two units is recorded as refunded with 0.
+	$note = trim(pg_credit_points_marker(200) . ' ' . pg_credit_points_lines_marker(array(101 => 2)));
+	$before = array();
+	foreach (pg_credit_points_screen_noted(array($note)) as $id => $quantity) {
+		$before[$id]['screen'] = $quantity;
+	}
+
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, $before, array(101 => array('recorded' => 2))), 'the points are taken once');
 }

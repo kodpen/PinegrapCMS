@@ -4,7 +4,7 @@ description: The Prototype view's amber count on a frame's head as a button (PX3
 ---
 
 ## What does a press on a frame's amber count do?
-- Architect (2026-11-19, plans/prototype-next.md): "the 'No link here' badge becomes a button listing the target-less links". Read as the amber count (F29, designer/prototype-problems.md): only it stands for links; "No link leads here" (F27) is about a page, has no links to list and stays a label.
+- Architect (2026-11-19, plan prototype-next): "the 'No link here' badge becomes a button listing the target-less links". Read as the amber count (F29, designer/prototype-problems.md): only it stands for links; "No link leads here" (F27) is about a page, has no links to list and stays a label.
 - (PX3) The count is a button (`aria-haspopup="dialog"`). A press opens `.sd-proto-problems` under it (above it when the view has no room below) with only that frame's links without a target (`PGProtoHotspots.emptyOf(problems, frameId)`); a second press, Esc, a press elsewhere or a wheel zoom closes it.
 - A row picks its link (`_sdProtoPick()`), opens the links panel when it is closed (not kept in `pg_proto_list`) and puts the focus on the row's "Choose a page" box, where Enter opens the target menu; a link that may not be drawn gets the focus on its row (`_sdProtoEmptyGo()`).
 

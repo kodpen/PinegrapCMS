@@ -160,6 +160,32 @@ function test_wishlist_widget_row_values_discount()
 	pg_assert_same('25', $v['__discount_percent'], 'percent saved');
 }
 
+// An offer's discount shows the price before it as the catalog cards show
+// it: the reference price rule's amount and label (pg_price_reference_page()),
+// read once for the list; none without a reference.
+function test_wishlist_widget_row_values_reference_price()
+{
+	$ref = array('kind' => 'lowest', 'price' => 1800, 'days' => 30);
+	$v = pg_wishlist_widget_row_values(wishlist_widget_test_row(11), wishlist_widget_test_ctx(array(
+		'discounted' => array(11 => 1500),
+		'references' => array(11 => $ref),
+	)));
+
+	pg_assert_same(pg_price_reference_tokens($ref, '$'), array('__reference_price' => $v['__reference_price'], '__reference_label' => $v['__reference_label']), 'the reference amount and label');
+	pg_assert_true($v['__reference_price'] !== '', 'an amount');
+
+	$v = pg_wishlist_widget_row_values(wishlist_widget_test_row(11), wishlist_widget_test_ctx());
+	pg_assert_same('', $v['__reference_price'], 'no reference: no amount');
+	pg_assert_same('', $v['__reference_label'], 'no reference: no label');
+
+	$source = wishlist_widget_test_function_source('_render_system_widget_wishlist');
+	pg_assert_contains('pg_price_reference_page(', $source, 'the renderer reads the references for the list');
+
+	$palette = wishlist_widget_test_js_between('var SW_WISHLIST_TOKEN_GROUPS = [', "\n    ];");
+	pg_assert_contains("['__reference_price'", $palette, 'reference price offered');
+	pg_assert_contains("['__reference_label'", $palette, 'reference label offered');
+}
+
 // No picture, no detail page, no date: empty where the catalog leaves them
 // empty, '#' for the address as the catalog writes it.
 function test_wishlist_widget_row_values_missing()
@@ -253,6 +279,28 @@ function test_wishlist_widget_html_add_to_cart_forms()
 	pg_assert_same(1, substr_count($html, '>Add to Cart</button>'), 'out of stock: no button');
 	pg_assert_same(1, substr_count($html, 'oos-badge'), 'the badge on the product out of stock only');
 	pg_assert_true(strpos($html, 'oos-badge') > strpos($html, 'Product 12'), 'on its own card');
+}
+
+// A list-wide flag on something inside a saved product's card (a note
+// bound to is_signed_out in the card) is weighed there too: the editor
+// offers every flag of the widget on any node, and only the row's flags
+// were known in a row, so the node never showed.
+function test_wishlist_widget_html_list_flags_in_rows()
+{
+	$n = 'wishlist_widget_test_node';
+	$tree = wishlist_widget_test_tree(array(
+		$n('semantic', array('tag' => 'span', 'cssClass' => 'row-guest-note', 'text' => 'Sign in to keep it', '_bindings' => array('eo_visible_if' => 'is_signed_out'))),
+		$n('semantic', array('tag' => 'span', 'cssClass' => 'row-member-note', 'text' => 'Kept on every device', '_bindings' => array('eo_visible_if' => 'is_signed_in'))),
+	));
+	$rows = array(wishlist_widget_test_row(11), wishlist_widget_test_row(12));
+
+	$html = pg_wishlist_widget_html($tree, 9, $rows, wishlist_widget_test_ctx(array('signed_in' => false)));
+	pg_assert_same(2, substr_count($html, 'row-guest-note'), 'signed out: the note in every card');
+	pg_assert_same(0, substr_count($html, 'row-member-note'), 'signed out: not the member note');
+
+	$html = pg_wishlist_widget_html($tree, 9, $rows, wishlist_widget_test_ctx(array('signed_in' => true)));
+	pg_assert_same(2, substr_count($html, 'row-member-note'), 'signed in: the member note in every card');
+	pg_assert_same(0, substr_count($html, 'row-guest-note'), 'signed in: not the guest note');
 }
 
 // The forms sit after the widget, never inside a card, a list or a table.

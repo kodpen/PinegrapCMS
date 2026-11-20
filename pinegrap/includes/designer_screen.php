@@ -377,7 +377,7 @@ function pg_designer_screen_render($ctx)
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -597,14 +597,11 @@ function pg_designer_screen_render($ctx)
                             </div>
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
-                        <!-- Every page in one list, for when the strip cannot
-                             show them all. Shown only then (_pgTabsAllSync()). -->
-                        <div class="pg-menu-wrap sd-tabs-all" id="sd-tabs-all" hidden>
-                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false" title="' . h(lang('All pages')) . '" aria-label="' . h(lang('All pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
-                            <div data-bs-theme="dark" class="menu pg-menu-end sd-tabs-all-menu">
-                                <div class="sd-tabs-all-find"><input type="search" class="form-control form-control-sm" id="sd-tabs-all-filter" placeholder="' . h(lang('Find a page…')) . '" autocomplete="off"></div>
-                                <div class="sd-tabs-all-list" id="sd-tabs-all-list"></div>
-                            </div>
+                        <!-- The Pages button: opens the Pages window (the
+                             part pages, also Ctrl+P). Shown while the strip
+                             cannot show every page (_pgTabsAllSync()). -->
+                        <div class="sd-tabs-all" id="sd-tabs-all" hidden>
+                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" id="sd-tabs-all-btn" aria-haspopup="dialog" aria-expanded="false" title="' . h(lang('Pages')) . '" aria-label="' . h(lang('Pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
                         </div>
                         <div class="sd-toolbar-group sd-toolbar-actions">
                             <!-- Who else has this design open. Empty and

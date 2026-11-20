@@ -577,6 +577,11 @@ function pg_user_delete($user_id)
         db("DELETE FROM ws_saved_replies WHERE user_id = '" . $user_id . "'");
     }
 
+    // So are applications' answers to the person's / commands.
+    if (pg_schema_has('ws_app_answers')) {
+        db("DELETE FROM ws_app_answers WHERE user_id = '" . $user_id . "'");
+    }
+
     // So do the highlights the person made on messages, for everyone and
     // for themselves.
     if (pg_schema_has('ws_highlights')) {

@@ -1,6 +1,6 @@
 ---
 name: shipment-tracking-hunt
-description: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop left as #10660
+description: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop fixed in the drivers (#10660)
 module: shipment_tracking
 ---
 
@@ -13,7 +13,7 @@ module: shipment_tracking
 - Now `pg_shipment_tracking_notify()` keeps the notice back for `orders.type` `marketplace`, as `update_order.php` does; the open query reads the type, the webhook's row is read for it (#10661).
 
 ## What was left as an issue?
-- #10660: every driver answers a shipment not scanned yet as a failure ("… gives no status for this shipment yet."), which counts toward the three-in-a-row stop meant for a service that is down; fresh labels next to each other stop their driver for the run and slow the round. The fix is in the label drivers (answer `created`), held during the hunt.
+- #10660: every driver answered a shipment not scanned yet as a failure, which counted toward the three-in-a-row stop meant for a service that is down. Fixed in the label drivers, not the job: they answer `created` (`carrier-label-drivers.md`).
 
 ## What was read and found clean?
 - Which parcels are open (`pg_shipment_tracking_open()`); one write per change in `pg_shipment_tracking_decide()` (carrier keys and tracking pages compare as stored); the arrival announced once per address, a poll and a webhook racing included; drivers asked in turn, the time and row budgets, the stop after three failures; where the next run starts (`pg_shipment_tracking_next_place()`) and the state file; the job's gate and summary.

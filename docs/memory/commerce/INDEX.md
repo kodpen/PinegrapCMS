@@ -51,6 +51,7 @@
 - carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, customs once filled, cancel, tracking [decision: decisions-made-product-3.md]
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers [decision: decisions-made-product-3.md]
 - carrier-label-text-cuts.md: Carrier label drivers cut a carrier's message, error text and the Sendcloud name with mb_substr(), never byte substr(): a split letter empties the order screen notice or the request body
+- carrier-label-track-not-scanned.md: Label drivers' track() for a shipment the carrier has not scanned yet: success with status created via pg_label_track_not_scanned(), never a failure that stops the tracking job's driver (#10660)
 - carrier-webhook-basitkargo.md: Basit Kargo's side of the carrier webhook (#3645): added by hand in its panel, two unsigned messages (status change, movement), latest trace by time
 - carrier-webhook-drivers.md: The carrier webhook's Shippo (#3407), Sendcloud (#3431) and Kargonomi (#3633) sides: what each reader takes, the signature checks, how each registers and removes its webhook
 - carrier-webhook-geliver.md: Geliver's side of the carrier webhook (#3245): the TRACK_UPDATED message read, registration and removal, no signature, what is unverified
@@ -71,7 +72,7 @@
 - cart-recovery-weak.md: What weakens cart recovery (CR3): the five rules over a period's left carts, their shares and minimums, where the facts come from, the block in the Recovered carts section
 - cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days [decision: here]
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
-- cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut (bundle path); the plain check_inventory() path still cuts it
+- cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut, in a cart with or without a bundle
 - cart-tax-estimate.md: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; the order discount's share off as the checkout takes it (#3455, #9045)
 - cart-widget-low-stock.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns and out_of_stock_message.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
@@ -113,6 +114,7 @@
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
+- event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets [decision: here]
 - event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the six answers, rights, name search, counts, undo
 - event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets [decision: here]
 - event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch [decision: here]
@@ -203,6 +205,7 @@
 - order-export-filter-joins.md: Order exports of view_orders.php select DISTINCT while a product name or shipping filter joins order_items or ship_tos, so no row is written twice (PR #5210)
 - order-form-posted-quantity.md: The order form's drop-down layout refuses quantity 0; a donation falls back to the default quantity
 - order-gift-card-owed.md: The gift card part an order owes back is what the cards gave (applied_gift_cards.amount) less gift card returns, never gift_card_discount; pg_order_gift_card_owed*() and the ERP settlement (#10260)
+- order-legal-documents-writers.md: Which order completions keep legal document copies (checkout, payment message) and which keep none (subscription renewal #10666, API, counter, marketplaces); the NULL legal_acceptance limit
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card [decision: decisions-made-product-83.md]
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
@@ -321,8 +324,11 @@
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule. [decision: decisions-made-product-26.md]
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
-- referral-checks.md: What each check of a referred friend's order reads (pg_referral_check()): the code's one spelling, self by both e-mails, the friend's other orders; open gaps
+- referral-account-part.md: Referral programme in My Account (RF3): section referral, flags has_referral and can_refer, __referral_url, why a customer cannot refer, referrals as initials
+- referral-busy-retry.md: A referral reward whose referrer's lock was busy at completion: kept in config_text referral_pending and tried again by the general job; limits and why only busy orders [decision: here]
+- referral-checks.md: What each check of a referred friend's order reads (pg_referral_check()): the code's one spelling, self by both e-mails, the friend's other orders by account and folded e-mail; the household limit
 - referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind [decision: here]
+- referral-programme.md: Referral programme start file: a customer brings a friend by a personal link on the affiliate link's rails, the friend gets an offer and the customer store credit; its parts, decisions, PRs and files [decision: decisions-made-product-25.md, decisions-made-product-64.md, decisions-made-schema-26.md]
 - referral-report-and-event.md: Referrals Report (view_referral_report.php): who sees it, what each column counts from the referral rows, top referrers' names; the referral.rewarded event for webhooks and flows
 - referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings [decision: decisions-made-product-25.md, decisions-made-product-82.md]
 - referral-settings-card.md: Referral programme settings card (RF2): Settings › Ecommerce › Referral programme, its six config_text rows, what the save refuses, the referrer's reward mail and its texts
@@ -338,7 +344,7 @@
 - shipment-labels.md: Carrier label storage and order actions (2026.11.0, PR #3117): shipment_labels table, data/shipping_labels/ files and retention sweep, Create Label and reprint on the order, erasure and order delete
 - shipment-mail-fields.md: Tracking mail-merge fields of the order_shipped and order_delivered e-mails, which addresses they cover, and step 11.0.42 widening email_campaigns.action
 - shipment-row-schema.md: The shipment row since 2026.11.0 (11.0.20): carrier, status, date, source and warning columns on shipping_tracking_numbers, the unique parcel key, shipping_methods.carrier, the order_delivered action
-- shipment-tracking-hunt.md: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop left as #10660 [decision: here]
+- shipment-tracking-hunt.md: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop fixed in the drivers (#10660) [decision: here]
 - shipment-tracking.md: Carrier status polling (2026.11.0, PR #3157): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
 - shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it [decision: decisions-made-product-12.md, decisions-made-product-7.md]
 - shipping-bulk-import.md: Bulk "mark shipped" on the order list and the tracking-number CSV upload (import_shipments.php): what each writes through update_order(), what is refused and why
@@ -354,7 +360,7 @@
 - staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
-- stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md]
+- stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]
 - stock-locations-moves.md: Stock per location, the operator's side: the Stock locations settings card, the stock history (view_stock_moves.php), the Transfer dialog, the product screen's last moves
 - stock-locations-pickup.md: Pickup at a location: a shipping method naming a stock location, no rate, offered only while the location holds the cart; the place on checkout, order screen, receipt, mails [decision: decisions-made-product-19.md]
 - stock-locations-screens.md: Stock per location on the panel: product screen boxes per location, the quick stock cells refused, the two bulk edits at one location, stock:<location> import and export columns
