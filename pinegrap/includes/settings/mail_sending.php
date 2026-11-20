@@ -172,7 +172,14 @@ $pg_settings_cards[] = '
                         </div>';
 
 // ── DKIM TXT Record ──
-$mail_txt_record = db_value("SELECT description FROM files WHERE name = 'dkim.key'");
+// Named after the selector and domain mail is signed with now, not the ones
+// the key was generated with.
+$mail_txt_record = pg_mail_settings_dkim_shown_record(
+    (string) db_value("SELECT description FROM files WHERE name = 'dkim.key'"),
+    defined('DKIM_SELECTOR') ? (string) DKIM_SELECTOR : '',
+    defined('DKIM_DOMAIN') ? (string) DKIM_DOMAIN : '',
+    EMAIL_ADDRESS
+);
 
 $mail_dkim_buttons = '
                                             <button type="submit" name="generate_dkim_key" value="true" class="pg-button pg-button-quiet pg-button-sm">

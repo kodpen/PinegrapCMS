@@ -15,7 +15,7 @@ module: connections_registry
 - Files and backups (`maintenance/pgset-backup`): Google Drive, OneDrive, Dropbox by the account for `backup`.
 - Sign-in (`security/pgset-signin`): Google, Microsoft, Apple by `pg_signin_enabled()`.
 - Calendars and notes: Google Calendar, Outlook Calendar (`workspace_team/pgset-ws-calendar`) by the account for `calendar_sync`; OneNote (`connections.php`) by the account for `notes`.
-- Analytics and search: Google Analytics (`privacy/pgset-analytics`) and Google Search Console (`search_console.php`) by the Google account for their purpose; IndexNow (`seo/pgset-seo`) by `INDEXNOW_KEY`.
+- Analytics and search: Google Analytics (`connections.php`, found at `privacy/pgset-analytics`) and Google Search Console (`search_console.php`) by the Google account for their purpose; IndexNow (`connections.php`, found at `seo/pgset-seo`) by `INDEXNOW_KEY`.
 - Maps and places: Google Places, Mapbox, Photon (`commerce/pgset-address-autocomplete`) by the app `addr_<key>`; Google reviews (`api/pgset-google-reviews`) by `pg_grev_configured()`; DB-IP (`firewall/pgset-countries`) none.
 - AI (`workspace_assistants/`): Pinegrap AI by `ws_ai_ready()`; Claude by `ws_claude_ready()`; OpenAI, Anthropic, Gemini, Mistral, DeepSeek, OpenRouter, Azure OpenAI (`connections.php`, each its own page since CX9a, `ai-connections.md`) by `pg_ai_connection_ready()`, the key stored as the provider's connection; Google Cloud Translation (`languages/pgset-translation-engines`) by `TRANSLATION_GOOGLE_KEY_ENC`.
 - Protection: Cloudflare (`cloudflare.php`) by `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID`; Turnstile, hCaptcha (`security/pgset-captcha`) by the app `captcha_<key>`; StopForumSpam by `pg_form_spam_enabled()`.

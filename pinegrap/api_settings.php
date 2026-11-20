@@ -1318,11 +1318,7 @@ function api_settings_copy_button($id, $caption_id, $button_class) {
 	// of what it copies ("Copy Key"). The status sits in the same box: the
 	// drawer is a modal dialog and the one-time sheet makes everything else
 	// inert, so a region outside them would never be heard.
-	// A class list of the design language (pg-button …) is the whole list;
-	// the older screens pass a Bootstrap variant added to the small button.
-	$classes = (strpos($button_class, 'pg-') === 0) ? $button_class : 'btn btn-sm ' . $button_class;
-
-	return '<button type="button" class="' . $classes . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
+	return '<button type="button" class="' . $button_class . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard" aria-hidden="true"></i>' . lang('Copy') . '</button>'
 		. '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
 
 }
@@ -1429,30 +1425,30 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	$claude_link = pg_oauth_claude_connect_link($mcp_file, defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : '');
 
 	$claude_row = ($claude_link !== '')
-		? '<div><a class="btn btn-sm btn-solid theme-primary" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a></div>
+		? '<div><a class="pg-button pg-button-quiet pg-button-sm" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a></div>
 		<div class="form-text mt-2">' . lang('Opens Claude in a new tab with the Add custom connector dialog filled in with this site\'s address. Sign in to Claude, press Add, then Connect.') . '</div>'
 		: '<div class="form-text">' . lang('Claude connects only to an https address. Switch the site to https to connect it to Claude.') . '</div>';
 
 	return '
 	<div class="form-field mb-5">
-		<label class="form-label small">' . lang('Claude') . '</label>
+		<label class="form-label pg-field-label">' . lang('Claude') . '</label>
 		' . $claude_row . '
 	</div>
 
 	<div class="form-field mb-5">
-		<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
+		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
 		' . $box($id_prefix . '_mcp', $mcp_file) . '
 		<div class="form-text">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
 	</div>
 
 	<div class="form-field mb-5">
-		<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
+		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
 		' . $box($id_prefix . '_mcp_short', $mcp_short) . '
 		<div class="form-text">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
 	</div>
 
 	<div class="form-field mb-5">
-		<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
+		<label class="form-label pg-field-label" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
 		' . $box($id_prefix . '_meta', $metadata_url) . '
 		<div class="form-text">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
 	</div>
@@ -1737,13 +1733,13 @@ if (!empty($webhook_all)) {
 					<input type="hidden" name="webhook_id" value="' . (int)$hook['id'] . '">'
 					. (($hook['given_up'] > 0 || $hook['held'] > 0 || $hook['status'] === 'failing')
 						? '<button type="submit" name="api_action" value="webhook_retry"
-							class="btn btn-sm btn-outline theme-primary">' . lang('Send again') . '</button>'
+							class="pg-button pg-button-quiet pg-button-sm">' . lang('Send again') . '</button>'
 						: '') . '
 					<button type="submit" name="api_action" value="webhook_status"
-						class="btn btn-sm btn-outline theme-secondary">'
+						class="pg-button pg-button-quiet pg-button-sm">'
 						. (($hook['status'] === 'disabled') ? lang('Resume') : lang('Stop')) . '</button>
 					<button type="submit" name="api_action" value="webhook_delete"
-						class="btn btn-sm btn-outline theme-danger api-confirm"
+						class="pg-button pg-button-danger pg-button-sm api-confirm"
 						data-confirm="' . h(lang('The subscription will be removed and the application will stop being told.')) . '">'
 						. lang('Remove') . '</button>
 				</form>') . '
@@ -1753,9 +1749,9 @@ if (!empty($webhook_all)) {
 
 	$webhook_card = '
 	<div class="card mt-5" id="events">
-		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-send me-3"></i><b>' . lang('Event notifications') . '</b>
-			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
+		<div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+			<h2 class="pg-title-section mb-0">' . lang('Event notifications') . '</h2>
+			<span class="ms-auto pg-text-2 d-none lg:d-inline">'
 				. lang('Every address this site is telling, whoever registered it.') . '</span>
 		</div>
 		<div class="card-body px-5 py-3">' . $hook_blocks . '
@@ -1853,9 +1849,9 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 					' . get_token_field() . '
 					<input type="hidden" name="oauth_client_row" value="' . (int)$client['id'] . '">
 					<button type="submit" name="api_action" value="oauth_client_status"
-						class="btn btn-sm btn-outline theme-secondary">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
+						class="pg-button pg-button-quiet pg-button-sm">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
 					<button type="submit" name="api_action" value="oauth_client_delete"
-						class="btn btn-sm btn-outline theme-danger api-confirm"
+						class="pg-button pg-button-danger pg-button-sm api-confirm"
 						data-confirm="' . h(lang('The application will be removed and every connection it has will be ended. If it registered itself, it can register again.')) . '">'
 						. h(lang('Remove')) . '</button>
 				</form>
@@ -1871,9 +1867,9 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 
 	$oauth_clients_card = '
 	<div class="card mt-5" id="oauth_clients">
-		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-plug me-3"></i><b>' . lang('Connected applications') . '</b>
-			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
+		<div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+			<h2 class="pg-title-section mb-0">' . lang('Connected applications') . '</h2>
+			<span class="ms-auto pg-text-2 d-none lg:d-inline">'
 				. lang('Applications people connected with OAuth, and where each sends its answers.') . '</span>
 		</div>
 		<div class="card-body px-5 py-3">' . $client_blocks . '
@@ -1922,28 +1918,28 @@ echo pg_page_shell(array(
 .api-scroll { overflow-x: auto; overflow-y: hidden; }
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
 	gap: 14px; align-items: center; min-width: 45rem; }
-.api-head { padding: 0 16px 8px; font-size: 0.65625rem; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
+.api-head { padding: 0 16px 8px; font-size: var(--pg-text-meta); font-weight: var(--pg-weight-strong); color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
 /* Inset: .api-scroll clips a ring drawn outside the row. */
 .api-row:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
-.api-name b { font-size: 0.8125rem; display: block; }
+.api-name b { font-size: var(--pg-text-2); display: block; }
 /* Secondary text colour rather than opacity: faded chips and codes read
    under 3:1 on the light card. */
-.api-name code { font-size: 0.65625rem; color: var(--pg-fg-2); }
+.api-name code { font-size: var(--pg-text-count); color: var(--pg-fg-2); }
 .api-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.api-chip { font-size: 0.625rem; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); }
+.api-chip { font-size: var(--pg-text-count); padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); }
 .api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
 .api-chip.muted { color: var(--pg-fg-2); }
-.api-status { font-size: 0.65625rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+.api-status { font-size: var(--pg-text-count); padding: 3px 9px; border-radius: 20px; font-weight: var(--pg-weight-strong);
 	border: 1px solid var(--pg-border-color); display: inline-block; }
 .api-status.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .api-status.off { color: var(--pg-fg-2); }
 .api-status.warn { color: var(--pg-warning-fg-emphasis); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
-.api-meta { font-size: 0.71875rem; color: var(--pg-fg-2); }
-.api-meta small { display: block; font-size: 0.65625rem; color: var(--pg-fg-2); }
+.api-meta { font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
+.api-meta small { display: block; font-size: var(--pg-text-count); color: var(--pg-fg-2); }
 .api-meta small.bad { color: var(--pg-danger-fg-emphasis); }
 .api-empty { padding: 26px 16px; text-align: center; color: var(--pg-fg-2); border-top: 1px solid var(--pg-border-color); }
 
@@ -1955,8 +1951,8 @@ echo pg_page_shell(array(
 /* An icon glyph, not text: it keeps its px size. */
 .api-perm > i { font-size: 15px; width: 18px; text-align: center; opacity: .7; }
 .api-perm-text { flex: 1; min-width: 0; }
-.api-perm-text b { display: block; font-size: 0.78125rem; }
-.api-perm-text span { display: block; font-size: 0.65625rem; color: var(--pg-fg-2); margin-top: 1px; }
+.api-perm-text b { display: block; font-size: var(--pg-text-meta); }
+.api-perm-text span { display: block; font-size: var(--pg-text-count); color: var(--pg-fg-2); margin-top: 1px; }
 /* Below this the sentence under the resource name and the three-way control
    cannot share a line without one of them wrapping into the other. The control
    drops beneath the text and keeps its full width, which is the one part of
@@ -1967,7 +1963,7 @@ echo pg_page_shell(array(
 	.api-seg { margin-left: 30px; }
 }
 .api-seg { flex: none; }
-.api-seg .btn { --bs-btn-font-size: 0.6875rem; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
+.api-seg .btn { --bs-btn-font-size: var(--pg-text-count); --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
 	--bs-btn-color: var(--pg-fg-2); --bs-btn-border-color: var(--pg-border-color);
 	--bs-btn-hover-border-color: var(--pg-border-color); }
 .api-seg .btn-check:checked + .btn { color: var(--pg-on-accent); background: var(--pg-primary); border-color: var(--pg-primary); }
@@ -1978,38 +1974,38 @@ echo pg_page_shell(array(
 .api-seg .btn.implied { color: var(--pg-primary-fg-emphasis); background: var(--pg-primary-bg-subtle);
 	border-color: var(--pg-primary); }
 .api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 2.125rem;
-	font-size: 0.6875rem; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
+	font-size: var(--pg-text-count); opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
 .api-log { display: grid; grid-template-columns: 2.875rem 1fr auto auto auto; gap: 9px; align-items: center;
-	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: 0.71875rem; }
+	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: var(--pg-text-meta); }
 .api-log:first-child { border-top: 0; }
-.api-log .m { font-size: 0.59375rem; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0;
+.api-log .m { font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong); text-align: center; border-radius: 4px; padding: 2px 0;
 	background: var(--pg-bg-1); }
-.api-log code { font-size: 0.6875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.api-log .s { font-size: 0.65625rem; font-weight: 600; }
+.api-log code { font-size: var(--pg-text-count); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-log .s { font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong); }
 .api-log .s.ok { color: var(--pg-success-fg-emphasis); }
 .api-log .s.bad { color: var(--pg-danger-fg-emphasis); }
-.api-log .d, .api-log .t { font-size: 0.65625rem; color: var(--pg-fg-2); }
+.api-log .d, .api-log .t { font-size: var(--pg-text-count); color: var(--pg-fg-2); }
 .api-hook { border-top: 1px solid var(--pg-border-color); padding: 11px 2px; }
 .api-hook:first-child { border-top: 0; }
 .api-hook-top { display: flex; align-items: center; gap: 8px; }
-.api-hook-url { flex: 1; min-width: 0; font-size: 0.75rem; word-break: break-all; }
+.api-hook-url { flex: 1; min-width: 0; font-size: var(--pg-text-meta); word-break: break-all; }
 .api-hook-events { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.api-hook-meta { font-size: 0.65625rem; opacity: .65; margin-top: 6px; }
+.api-hook-meta { font-size: var(--pg-text-count); opacity: .65; margin-top: 6px; }
 /* A blocked subscription prints its line in the danger ink; faded, it reads
    3:1 in the light theme. */
 .api-hook-meta.fg-danger { opacity: 1; }
-.api-hook-error { font-size: 0.65625rem; color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
+.api-hook-error { font-size: var(--pg-text-count); color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
 .api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
 	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
-.api-secret-box code { flex: 1; font-size: 0.75rem; word-break: break-all; }
+.api-secret-box code { flex: 1; font-size: var(--pg-text-meta); word-break: break-all; }
 .api-guide { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color); border-radius: 8px;
-	padding: 10px 12px; margin-bottom: 10px; font-size: 0.78125rem; }
-.api-guide-title { font-weight: 600; margin-bottom: 6px; }
+	padding: 10px 12px; margin-bottom: 10px; font-size: var(--pg-text-meta); }
+.api-guide-title { font-weight: var(--pg-weight-strong); margin-bottom: 6px; }
 .api-guide ol, .api-guide ul { padding-left: 18px; }
 .api-guide li + li { margin-top: 4px; }
 .api-client + .api-client { margin-top: 4px; }
-.api-client summary { cursor: pointer; font-weight: 500; }
+.api-client summary { cursor: pointer; font-weight: var(--pg-weight-medium); }
 .api-client[open] summary { margin-bottom: 4px; }
 .api-snippet code { white-space: pre; overflow-x: auto; word-break: normal; }
 .api-danger-zone { border-top: 1px solid var(--pg-border-color); margin-top: 18px; padding-top: 14px; }
@@ -2068,9 +2064,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	<div class="row">
 	<div class="col-12 lg:col-8 2xl:col-9 order-1">
 	<div class="card">
-		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-key me-3"></i><b>' . lang('Applications') . '</b>
-		</div>
+		<h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Applications') . '</h2>
 		<div class="card-body px-3 py-5">
 			<div class="api-scroll">
 			<div class="api-head">
@@ -2094,34 +2088,34 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	<div class="col-12 lg:col-4 2xl:col-3 order-2">
 		<div class="position-sticky mt-5 lg:mt-0" style="top:3.3rem;">
 			<div class="card" id="api_summary">
-				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+				<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
 				<div class="card-body">
-					<dl class="row small mb-0">
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Applications')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number(count($apps), 0) . '</dd>
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Active')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['on'], 0) . '</dd>
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Disabled')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['off'], 0) . '</dd>
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Expired')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['expired'], 0) . '</dd>'
+					<dl class="pg-kv mb-0">
+						<dt>' . h(lang('Applications')) . '</dt>
+						<dd>' . pg_format_number(count($apps), 0) . '</dd>
+						<dt>' . h(lang('Active')) . '</dt>
+						<dd>' . pg_format_number($summary_counts['on'], 0) . '</dd>
+						<dt>' . h(lang('Disabled')) . '</dt>
+						<dd>' . pg_format_number($summary_counts['off'], 0) . '</dd>
+						<dt>' . h(lang('Expired')) . '</dt>
+						<dd>' . pg_format_number($summary_counts['expired'], 0) . '</dd>'
 						. ($summary_counts['unused'] > 0 ? '
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Not in use')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['unused'], 0) . '</dd>' : '') . '
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Requests in 24 hours')) . '</dt>
-						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_requests, 0) . '</dd>
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Errors in 24 hours')) . '</dt>
-						<dd class="col-4 text-end mb-2' . ($summary_failures > 0 ? ' fg-danger' : '') . '">' . pg_format_number($summary_failures, 0) . '</dd>
-						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Event notifications')) . '</dt>
-						<dd class="col-4 text-end mb-0">' . pg_format_number(count($webhook_all), 0) . '</dd>
+						<dt>' . h(lang('Not in use')) . '</dt>
+						<dd>' . pg_format_number($summary_counts['unused'], 0) . '</dd>' : '') . '
+						<dt>' . h(lang('Requests in 24 hours')) . '</dt>
+						<dd>' . pg_format_number($summary_requests, 0) . '</dd>
+						<dt>' . h(lang('Errors in 24 hours')) . '</dt>
+						<dd' . ($summary_failures > 0 ? ' class="fg-danger"' : '') . '>' . pg_format_number($summary_failures, 0) . '</dd>
+						<dt>' . h(lang('Event notifications')) . '</dt>
+						<dd>' . pg_format_number(count($webhook_all), 0) . '</dd>
 					</dl>
 				</div>
 			</div>
-			<p class="small fg-2 mt-5 mb-2">
+			<p class="pg-text-2 mt-5 mb-2">
 				<i class="bi bi-info-circle me-1" aria-hidden="true"></i>'
 				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '
 			</p>
-			<p class="small fg-2 mb-0">'
+			<p class="pg-text-2 mb-0">'
 				. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
 			</p>
 		</div>
@@ -2153,43 +2147,43 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<p class="small opacity-75 mb-0 mt-1" id="d_sub"></p>
 		</div>
 
-		<ul class="nav nav-tabs px-5" role="tablist">
-			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button" id="d_general_label" aria-controls="d_general">' . lang('General') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button" id="d_perms_label" aria-controls="d_perms">' . lang('Permissions') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button" id="d_security_label" aria-controls="d_security">' . lang('Security') . '</button></li>
-			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices"
-				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button></li>
-			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks">' . lang('Webhook events') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button" id="d_log_label" aria-controls="d_log">' . lang('Log') . '</button></li>
-		</ul>
+		<div class="px-5"><div class="pg-seg pg-list-seg" role="tablist">
+			<button class="pg-seg-item active" data-bs-toggle="tab" data-bs-target="#d_general" type="button" id="d_general_label" aria-controls="d_general" aria-selected="true">' . lang('General') . '</button>
+			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_perms" type="button" id="d_perms_label" aria-controls="d_perms" aria-selected="false">' . lang('Permissions') . '</button>
+			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_security" type="button" id="d_security_label" aria-controls="d_security" aria-selected="false">' . lang('Security') . '</button>
+			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices" aria-selected="false"
+				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button>
+			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks" aria-selected="false">' . lang('Webhook events') . '</button>
+			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_log" type="button" id="d_log_label" aria-controls="d_log" aria-selected="false">' . lang('Log') . '</button>
+		</div></div>
 
 		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
 
 			<div class="tab-pane fade show active" id="d_general">
 				<div class="form-field mb-5">
-					<label class="form-label small" for="d_name">' . lang('Name') . '</label>
+					<label class="form-label pg-field-label" for="d_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="d_name" maxlength="190">
 				</div>
 				<div class="form-field mb-5">
-					<label class="form-label small" for="d_description">' . lang('Description') . '</label>
+					<label class="form-label pg-field-label" for="d_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
 				</div>
 				<div class="form-field mb-5">
-					<label class="form-label small" id="d_key_label">' . lang('API Key') . '</label>
+					<label class="form-label pg-field-label" id="d_key_label">' . lang('API Key') . '</label>
 					<div class="api-secret-box"><code id="d_key"></code>
-						' . api_settings_copy_button('d_key', 'd_key_label', 'btn-outline theme-secondary') . '</div>
+						' . api_settings_copy_button('d_key', 'd_key_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
 				<div class="form-field mb-5" id="d_secret_block">
-					<label class="form-label small">' . lang('Secret') . '</label>
+					<label class="form-label pg-field-label">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="fg-2"></code>
-						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate" id="d_rotate">
-							<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Issue a new secret') . '</button></div>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm" name="api_action" value="rotate" id="d_rotate">
+							<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>' . lang('Issue a new secret') . '</button></div>
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
 				<div class="form-field mb-5 d-none" id="d_nosecret_block">
-					<label class="form-label small">' . lang('Secret') . '</label>
+					<label class="form-label pg-field-label">' . lang('Secret') . '</label>
 					<div class="form-text">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
 				</div>
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
@@ -2199,20 +2193,20 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.')) . '
 				</div>
 				<div class="form-field mb-5" id="d_device_block">
-					<label class="form-label small" id="d_login_label">' . lang('Signing in') . '</label>
+					<label class="form-label pg-field-label" id="d_login_label">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
-						' . api_settings_copy_button('d_login', 'd_login_label', 'btn-outline theme-secondary') . '</div>
+						' . api_settings_copy_button('d_login', 'd_login_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
 					<div class="form-text">'
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
 				</div>
 				<div class="mb-5" id="d_oauth_block">
-					' . api_settings_oauth_guide('d_oauth', 'btn-outline theme-secondary') . '
+					' . api_settings_oauth_guide('d_oauth', 'pg-button pg-button-quiet pg-button-sm') . '
 				</div>
 				<div class="form-field mb-5" id="d_auth_block">
-					<label class="form-label small" id="d_curl_label">' . lang('Authentication') . '</label>
+					<label class="form-label pg-field-label" id="d_curl_label">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
-						' . api_settings_copy_button('d_curl', 'd_curl_label', 'btn-outline theme-secondary') . '</div>
+						' . api_settings_copy_button('d_curl', 'd_curl_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
 					<div class="form-text">'
 						. lang('HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.') . '</div>
 				</div>
@@ -2237,7 +2231,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 			<div class="tab-pane fade" id="d_security">
 				<div class="form-field mb-5">
-					<label class="form-label small" for="d_ip">' . lang('Allowed addresses') . '</label>
+					<label class="form-label pg-field-label" for="d_ip">' . lang('Allowed addresses') . '</label>
 					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
 						data-placeholder="' . lang('Add an address') . '" value="">' . get_date_picker_format() . pg_fields_script() . '
 					<div class="form-text">'
@@ -2246,23 +2240,23 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				</div>
 				<div class="row g-5">
 					<div class="col-12 sm:col-6 form-field">
-						<label class="form-label small" for="d_expires">' . lang('Expires on') . '</label>
+						<label class="form-label pg-field-label" for="d_expires">' . lang('Expires on') . '</label>
 						<input type="date" data-pg-date class="form-control form-control-sm" name="expires_at" id="d_expires">
 						<div class="form-text">' . lang('After this date the key stops working. Leave empty for a key that does not expire.') . '</div>
 					</div>
 					<div class="col-12 sm:col-6 form-field">
-						<label class="form-label small" for="d_rate">' . lang('Requests per minute') . '</label>
+						<label class="form-label pg-field-label" for="d_rate">' . lang('Requests per minute') . '</label>
 						<input type="number" class="form-control form-control-sm" name="rate_limit_per_min" id="d_rate" min="1" max="6000">
 						<div class="form-text">' . lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.') . '</div>
 					</div>
 				</div>
 				<div class="api-danger-zone" id="d_danger_zone">
-					<button type="button" class="btn btn-sm btn-outline theme-danger" id="d_delete_ask">
-						<i class="bi bi-trash me-1"></i>' . lang('Delete this application') . '</button>
+					<button type="button" class="pg-button pg-button-danger pg-button-sm" id="d_delete_ask">
+						<i class="bi bi-trash" aria-hidden="true"></i>' . lang('Delete this application') . '</button>
 					<div id="d_delete_confirm" class="d-none">
 						<p class="small mb-3">' . lang('Any integration using this key stops working immediately. This cannot be undone.') . '</p>
-						<button type="submit" class="btn btn-sm btn-solid theme-danger" name="api_action" value="delete">' . lang('Yes, delete') . '</button>
-						<button type="button" class="btn btn-sm btn-outline theme-secondary" id="d_delete_no">' . lang('Cancel') . '</button>
+						<button type="submit" class="pg-button pg-button-danger pg-button-sm" name="api_action" value="delete">' . lang('Yes, delete') . '</button>
+						<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="d_delete_no">' . lang('Cancel') . '</button>
 					</div>
 				</div>
 			</div>
@@ -2355,8 +2349,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 		<div class="drawer-footer border-top p-5 d-flex gap-3">
 			<span class="flex-grow-1"></span>
-			<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
-			<button type="submit" class="btn btn-sm btn-solid theme-success" id="d_save">' . lang('Save') . '</button>
+			<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
+			<button type="submit" class="pg-button pg-button-fill" id="d_save">' . lang('Save') . '</button>
 		</div>
 	</form>
 </dialog>
@@ -2372,16 +2366,16 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 			<div class="dialog-body">
 				<div class="form-field mb-5">
-					<label class="form-label small" for="n_name">' . lang('Name') . '</label>
+					<label class="form-label pg-field-label" for="n_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
 				<div class="form-field mb-5">
-					<label class="form-label small" for="n_description">' . lang('Description') . '</label>
+					<label class="form-label pg-field-label" for="n_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
 				</div>
 				<fieldset class="mb-7">
-					<legend class="form-label small">' . lang('Who connects') . '</legend>
+					<legend class="form-label pg-field-label">' . lang('Who connects') . '</legend>
 					<div class="form-field form-field-card">
 						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" aria-describedby="n_kind_server_help" checked>
 						<label class="small fw-bold" for="n_kind_server">' . lang('An integration') . '</label>
@@ -2399,7 +2393,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					</div>
 				</fieldset>
 				<fieldset class="mb-7" id="n_start">
-					<legend class="form-label small">' . lang('Starting point') . ' <span class="fg-2">&mdash; ' . lang('only for an integration') . '</span></legend>
+					<legend class="form-label pg-field-label">' . lang('Starting point') . ' <span class="fg-2">&mdash; ' . lang('only for an integration') . '</span></legend>
 					<div class="api-start">
 						<div class="form-field form-field-card">
 							<input class="radio" type="radio" name="start" value="" id="n_start_self" aria-describedby="n_start_self_help" checked>
@@ -2417,13 +2411,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					</div>
 				</fieldset>
 				<div role="group" aria-labelledby="n_scope_title">
-					<div class="form-label small" id="n_scope_title">' . lang('Permissions') . '</div>
+					<div class="form-label pg-field-label" id="n_scope_title">' . lang('Permissions') . '</div>
 					' . api_settings_permission_rows('scope', 'n_scope') . '
 				</div>
 			</div>
 			<div class="dialog-footer">
-				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-sm btn-solid theme-primary" id="n_submit"
+				<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+				<button type="submit" class="pg-button pg-button-fill" id="n_submit"
 					data-server="' . h(lang('Create and show the secret')) . '" data-device="' . h(lang('Create')) . '">' . lang('Create and show the secret') . '</button>
 			</div>
 		</form>
@@ -2434,7 +2428,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'oauth')) {
 
 	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
 	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_oauth" aria-labelledby="api_sheet_oauth_title" open>
 			<div class="dialog-header border-0 pb-0">
 				<h5 class="dialog-title" id="api_sheet_oauth_title"><i class="bi bi-plug me-3 fg-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
@@ -2442,7 +2436,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
 
-				' . api_settings_oauth_guide('nc', 'btn-outline theme-primary') . '
+				' . api_settings_oauth_guide('nc', 'pg-button pg-button-quiet pg-button-sm') . '
 
 				<div class="alert theme-primary py-3 px-5 small mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
@@ -2450,7 +2444,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 				</div>
 			</div>
 			<div class="dialog-footer">
-				<button type="button" class="btn btn-sm btn-solid theme-success" id="nc_close">' . lang('Close') . '</button>
+				<button type="button" class="pg-button pg-button-fill" id="nc_close">' . lang('Close') . '</button>
 			</div>
 	</dialog>
 </div>';
@@ -2465,7 +2459,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'device')) {
 
 	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
 	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_device" aria-labelledby="api_sheet_device_title" open>
 			<div class="dialog-header border-0 pb-0">
 				<h5 class="dialog-title" id="api_sheet_device_title"><i class="bi bi-phone me-3 fg-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
@@ -2474,18 +2468,18 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
+					<label class="form-label pg-field-label" id="nc_login_label">' . lang('Sign-in address') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-						' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
+						' . api_settings_copy_button('nc_login', 'nc_login_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>
 				</div>
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
+					<label class="form-label pg-field-label" id="nc_key_label">client_key</label>
 					<div class="api-secret-box">
 						<code id="nc_key">' . h($new_credentials['key']) . '</code>
-						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>
 				</div>
 
@@ -2495,7 +2489,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 				</div>
 			</div>
 			<div class="dialog-footer">
-				<button type="button" class="btn btn-sm btn-solid theme-success" id="nc_close">' . lang('Close') . '</button>
+				<button type="button" class="pg-button pg-button-fill" id="nc_close">' . lang('Close') . '</button>
 			</div>
 	</dialog>
 </div>';
@@ -2509,7 +2503,7 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 if ($new_credentials !== null) {
 
 	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
 	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_secret" aria-labelledby="api_sheet_secret_title" open>
 			<div class="dialog-header border-0 pb-0">
 				<h5 class="dialog-title" id="api_sheet_secret_title"><i class="bi bi-key me-3 fg-warning"></i>'
@@ -2529,27 +2523,27 @@ if ($new_credentials !== null) {
 				</div>' : '') . '
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_site_label">1 &middot; ' . lang('Site address') . '</label>
+					<label class="form-label pg-field-label" id="nc_site_label">1 &middot; ' . lang('Site address') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_site">' . h($site_address) . '</code>
-						' . api_settings_copy_button('nc_site', 'nc_site_label', 'btn-outline theme-primary') . '
+						' . api_settings_copy_button('nc_site', 'nc_site_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>
 					<div class="form-text">' . lang('The API is found from this address (/.well-known/pinegrap.json).') . '</div>
 				</div>
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">2 &middot; ' . lang('Key') . '</label>
+					<label class="form-label pg-field-label" id="nc_key_label">2 &middot; ' . lang('Key') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_key">' . h($new_credentials['key']) . '</code>
-						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>
 				</div>
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">3 &middot; ' . lang('Secret') . '</label>
+					<label class="form-label pg-field-label" id="nc_secret_label">3 &middot; ' . lang('Secret') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
+						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>
 				</div>
 
@@ -2564,7 +2558,7 @@ if ($new_credentials !== null) {
 					<input class="check" type="checkbox" id="nc_ack">
 					<label class="small" for="nc_ack">' . lang('I have copied it and stored it somewhere safe') . '</label>
 				</div>
-				<button type="button" class="btn btn-sm btn-solid theme-success disabled" id="nc_close">' . lang('Close') . '</button>
+				<button type="button" class="pg-button pg-button-fill disabled" id="nc_close">' . lang('Close') . '</button>
 			</div>
 	</dialog>
 </div>';
@@ -2681,7 +2675,7 @@ echo '
 					: "") +
 				"<div class=\'api-hook-acts\'>" +
 					((h.given_up || h.held || h.status === "failing")
-						? "<button type=\'button\' class=\'btn btn-sm btn-outline theme-primary api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
+						? "<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
 							' . json_encode(lang('Send again'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +
 					// A stopped subscription is sent nothing, a sample neither.
@@ -2689,11 +2683,11 @@ echo '
 						? "<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm api-sample-open\' data-id=\'" + h.id + "\' aria-expanded=\'false\'>" +
 							"<i class=\'bi bi-send\' aria-hidden=\'true\'></i>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-secondary api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
+					"<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
 						(h.status === "disabled"
 							? ' . json_encode(lang('Resume'), JSON_UNESCAPED_UNICODE) . '
 							: ' . json_encode(lang('Stop'), JSON_UNESCAPED_UNICODE) . ') + "</button>" +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-danger api-hook-act\' data-act=\'webhook_delete\' data-id=\'" + h.id + "\'" +
+					"<button type=\'button\' class=\'pg-button pg-button-danger pg-button-sm api-hook-act\' data-act=\'webhook_delete\' data-id=\'" + h.id + "\'" +
 						" data-confirm=\'" + ' . json_encode(lang('The subscription will be removed and the application will stop being told.'), JSON_UNESCAPED_UNICODE) . ' + "\'>" +
 						' . json_encode(lang('Remove'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
 				"</div>" +
@@ -2720,7 +2714,7 @@ echo '
 				"</div>" +
 				"<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" +
 				"<div class=\'api-hook-acts\'>" +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-danger api-device-act\' data-id=\'" + d.id + "\'" +
+					"<button type=\'button\' class=\'pg-button pg-button-danger pg-button-sm api-device-act\' data-id=\'" + d.id + "\'" +
 						" data-confirm=\'" + esc(' . json_encode(lang('This device will be signed out and will have to sign in again.'), JSON_UNESCAPED_UNICODE) . ') + "\'>" +
 						' . json_encode(lang('Sign out'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
 				"</div>" +
@@ -2788,8 +2782,8 @@ echo '
 		document.getElementById("d_device_block").classList.toggle("d-none", !device);
 		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
 		document.getElementById("d_unused_note").classList.toggle("d-none", !app.unused);
-		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);
-		document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);
+		document.getElementById("d_devices_label").classList.toggle("d-none", !keyless);
+		document.getElementById("d_hooks_label").classList.toggle("d-none", keyless);
 		// The arrow keys of the tab row skip only disabled tabs, so a hidden
 		// tab is disabled too; otherwise ArrowLeft/Right opens a tab nobody
 		// can see and focus falls out of the row.
@@ -2806,7 +2800,7 @@ echo '
 		document.getElementById("d_rotate").classList.toggle("d-none", locked);
 		document.getElementById("d_danger_zone").classList.toggle("d-none", locked);
 		drawerElement.classList.toggle("api-locked", locked);
-		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'" + (back ? "#d_hooks" : "#d_general") + "\']");
+		var firstTab = document.querySelector("#api_drawer .pg-seg-item[data-bs-target=\'" + (back ? "#d_hooks" : "#d_general") + "\']");
 		if (firstTab) { pgUI.tab.show(firstTab); }
 		if (back && back.form && !locked) {
 			openHookForm();
@@ -3066,7 +3060,7 @@ echo '
 		var saving = !submitter || submitter.id === "d_save" || !submitter.name;
 		if (!saving || !hookFormHolds()) { return; }
 		e.preventDefault();
-		var tab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_hooks\']");
+		var tab = document.querySelector("#api_drawer .pg-seg-item[data-bs-target=\'#d_hooks\']");
 		if (tab) { pgUI.tab.show(tab); }
 		document.getElementById("d_hook_unsaved").classList.remove("d-none");
 		document.getElementById("d_hook_form").scrollIntoView({ block: "start" });
@@ -3075,7 +3069,7 @@ echo '
 
 	// Leaving the Events tab takes the new subscription\'s secret out.
 	document.addEventListener("click", function (e) {
-		var tab = e.target.closest("#api_drawer .nav-link");
+		var tab = e.target.closest("#api_drawer .pg-seg-item");
 		if (tab && tab.dataset.bsTarget !== "#d_hooks") { dropHookSecret(); }
 	});
 
@@ -3182,10 +3176,10 @@ echo '
 		var status = button.parentNode.querySelector("[role=status]");
 		var icon = button.querySelector("i");
 		var done = function () {
-			icon.className = "bi bi-check2 me-1";
+			icon.className = "bi bi-check2";
 			status.textContent = status.getAttribute("data-copied");
 			setTimeout(function () {
-				icon.className = "bi bi-clipboard me-1";
+				icon.className = "bi bi-clipboard";
 				status.textContent = "";
 			}, 1500);
 		};

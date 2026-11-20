@@ -155,7 +155,7 @@ function test_auto_dialog_script_shows_designed_content()
 		'if("component"===a.content){var c=document.getElementById("pg-popup-"+a.id);if(!c||!c.content)return;t={content:document.importNode(c.content,!0)}}',
 		'if(!k&&!software.is_web_address(a))return!1;',
 		'c=document.createElement(k?"div":"iframe")',
-		'e.target.closest("[data-pg-popup-close]")&&(e.preventDefault(),f())',
+		'if(e.target.closest("[data-pg-popup-close]"))return e.preventDefault(),void f();',
 		'e.target.closest("[data-pg-popup-take]")&&software.count_auto_dialog(a,"taken")',
 		'i.addEventListener("submit",function(){software.count_auto_dialog(a,"taken")})',
 		'dialog.pg-dialog-content{padding:0;font:inherit;',

@@ -8,7 +8,7 @@ description: tools/test.php: what it loads, which errors fail a test, other PHP 
 
 ## Which PHP errors fail a test?
 - The error handler turns every warning, notice and deprecation into an `ErrorException`, so the test is an ERROR instead of printing and passing.
-- Not a deprecation raised inside a vendored library (the folders `tools/lint.php` skips: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `assets/lib`): it is let through. Symptom fixed: on PHP 8.4+ PHPExcel's implicitly nullable parameters stopped the whole run with a fatal error before any test ran (#1283).
+- Not a deprecation raised inside a vendored library (the folders `tools/lint.php` skips: `includes/phpmailer`, `stripe`, `iyzipay-php`, `boxpacker`, `dompdf`, `assets/lib`): it is let through. Symptom fixed: on PHP 8.4+ PHPExcel's (removed in #10528) implicitly nullable parameters stopped the whole run with a fatal error before any test ran (#1283).
 - `pg_assert_contains()` counts an empty needle as contained on every version, as `str_contains()` does from PHP 8.0; `strpos()` before 8.0 warns "Empty needle". A test that shows PHP refusing something catches the runner's `ErrorException` beside PHP 8's `TypeError`: PHP 7 only warns (`tests/order_submit_affiliate_test.php`).
 
 ## What does a run on another PHP version need?

@@ -1491,8 +1491,15 @@ function pg_image_editor_strings_layers()
         'distributeX'    => lang('Distribute horizontally'),
         'distributeY'    => lang('Distribute vertically'),
         'opacity'        => lang('Layer opacity'),
+        'groupOpacity'   => lang('Group opacity'),
         'duplicate'      => lang('Duplicate'),
         'delete'         => lang('Delete'),
+        'groups'         => lang('Groups'),
+        'groupLayers'    => lang('Group'),
+        'ungroupLayers'  => lang('Ungroup'),
+        'groupName'      => lang('Group {n}'),
+        'groupOpen'      => lang('Show the layers in the group'),
+        'groupClose'     => lang('Hide the layers in the group'),
     );
 }
 
@@ -4240,6 +4247,7 @@ function pg_image_editor_strings_keyframes()
     return array(
         'keysTab'     => lang('Path'),
         'keysNote'    => lang('Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.'),
+        'keysGroupNote' => lang('Keys here move the whole group; each layer keeps its own keys inside it.'),
         'keysOne'     => lang('Select one layer to give it a path.'),
         'keysList'    => lang('Keyframes'),
         'keysAdd'     => lang('Add a keyframe at {time}'),
@@ -5084,6 +5092,8 @@ function pg_image_editor_strings_access()
         'keyCopy'       => lang('Copy the selection'),
         'keyPaste'      => lang('Paste a picture or the copied layers'),
         'keySelectAll'  => lang('Select every layer'),
+        'keyGroup'      => lang('Group the selected layers'),
+        'keyUngroup'    => lang('Ungroup the selected group'),
         'keyPan'        => lang('Move the view'),
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
@@ -5822,6 +5832,12 @@ function pg_image_editor_strings_follow()
         'followBusy'      => lang('Following…'),
         'followCancelRun' => lang('Cancel'),
         'followLost'      => lang('Lost it at {var:1}. The move up to there is kept; move the playhead there and follow again.'),
+        // Why it was lost and what helps: said in full the first time only,
+        // then followLost (M.followLostText()).
+        'followLostSmall' => lang('Lost it at {var:1}: in this video it is only a few pixels across. The move up to there is kept. A thing that shows larger follows better: a clip filmed closer or at a higher resolution.'),
+        'followLostMatch' => lang('Lost it at {var:1}: what the box holds changed too much there, or the box holds background that moves differently. The move up to there is kept. Draw the box inside the thing, over its clearest part, and follow again from there.'),
+        'followLostEdge'  => lang('It left the picture at {var:1}. The move up to there is kept.'),
+        'followTiny'      => lang('The box is too small in this video\'s own pixels. Draw a larger box.'),
         'followFlat'      => lang('There is nothing in the box to follow. Draw it over a part with some detail.'),
         'followError'     => lang('The video could not be followed.'),
     );

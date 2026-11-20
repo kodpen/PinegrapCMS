@@ -5,12 +5,13 @@ description: Site Settings › Mailboxes in look A (S5d, #10431): purpose line a
 
 ## What does the Mailboxes card look like?
 - Since S5d (#10431). First line (`pg-card-sub`): what the category is for, incoming mail only, then "For sending: E-mail sending", a link to `pg_settings_url('mail_sending')`. E-mail sending gets the mirror line ("Gelen e-posta için: Posta kutuları") in its own PR.
-- Each box is a `pg-list-row` with a `pg-icon-tile pg-tone-team` (`bi-inbox`): the name as title; address, place and last e-mail on one text line; the last check on the next; Test connection and Edit as `pg-button pg-button-quiet pg-button-sm` under them. An off box stays at `opacity-50`.
+- Each box is a `pg-list-row` with a `pg-icon-tile pg-tone-team` (`bi-inbox`): the name as title; address, place and last e-mail on one text line; the last check on the next; Test connection and Edit as `pg-button pg-button-quiet pg-button-sm` under them, in `pg-list-row-actions flex-wrap`: without the wrap Edit ran off the card at 320 px (#10543). An off box stays at `opacity-50`.
 - Add a mailbox in the card header, Connect a Microsoft account for mailboxes and Bring in (the .eml form): quiet small buttons. The drawer's Save is the one `pg-button pg-button-fill`, no icon.
 - Blocked senders and Incoming mail rules were already list rows (`workspace/mail-blocks.md`, `workspace/mail-rules.md`).
 
 ## What moved in the box form?
-- `form-label` → `pg-field-label`, `form-control form-control-sm` → `pg-input` (selects and the signature textarea too), `form-text` → `pg-field-help`, the switches (On, Support box, Automatic answer, Pinegrap AI suggests) are `input.pg-switch`, the check boxes (bounces, sent copy, Sent folder, the room's people and departments) `input.pg-checkbox`, each beside its label in a flex row. Section titles (Reading the mailbox, Sending answers, Routing, Automatic answer) are `h3.pg-group-label`.
+- `form-label` → `pg-field-label`, `form-control form-control-sm` → `pg-input` (selects and the signature textarea too), `form-text` → `pg-field-help`, the switches (On, Support box, Automatic answer, Pinegrap AI suggests) are `input.pg-switch`, the check boxes (bounces, sent copy, Sent folder, the room's people and departments) `input.pg-checkbox`, each beside its label in a `d-flex align-items-center gap-3` row.
+- The sent copy's check box sat in a `form-field` wrapper, its label under the box at a heading's size, until #10543. Section titles (Reading the mailbox, Sending answers, Routing, Automatic answer) are `h3.pg-group-label`.
 - The helpers of other files drawn only in this form moved with it: `mail_room.php`, `mail_route.php`, `mail_status.php`, `mail_triage.php`. Field names, ids, what a save stores and the texts stayed.
 - The Gmail part between the service and the user name: `workspace/mail-google.md`.
 - `tools/check_look_baseline.json`: `mail_settings.php` 11 → 0 old buttons.

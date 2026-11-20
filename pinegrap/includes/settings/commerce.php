@@ -947,6 +947,74 @@ $pg_settings_cards[] = '
                             </div>
                         </div>';
 
+// ── Referral programme ──
+// A customer with an order brings a friend through their own link; the rules
+// are includes/fn/referral.php, the values config_text rows that
+// commerce.save.php writes through pg_referral_settings_check().
+$referral_notice = '';
+
+if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+    $referral_notice = lang('Ecommerce is off, so the referral programme gives no reward until it is turned on.');
+} elseif (!$referral_ready) {
+    $referral_notice = lang('The referral programme gives rewards once the database upgrade has run.');
+}
+
+$pg_settings_cards[] = '
+                        <div id="pgset-referral" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Referral programme') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . (($referral_notice !== '') ? '
+                                        <div class="col-12">
+                                            <div class="alert theme-secondary py-3 small mb-0">' . h($referral_notice) . '</div>
+                                        </div>' : '') . '
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($referral_settings['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="referral_on" name="referral_on"/></div>
+                                                <label for="referral_on">' . lang('Turn on the referral programme') . '</label>
+                                                <div class="form-text">' . lang('A customer with an order shares their own link; when a friend\'s first order is completed, the customer earns store credit. An approved affiliate keeps the commission programme instead. Off, nothing changes.') . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="pg-f-md">
+                                            <label class="form-label" for="referral_offer_id">' . lang('Offer for the friend') . '</label>
+                                            <select class="form-control" id="referral_offer_id" name="referral_offer_id"><option value="">-' . lang('None') . '-</option>' . select_offer($referral_settings['offer_id']) . '</select>
+                                            <div class="form-text">' . lang('Put in the friend\'s cart when they arrive by a referral link, while the offer runs.') . '</div>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="referral_reward" class="form-label">' . lang('Reward') . '</label>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                                                <input value="' . h($referral_settings['reward']) . '" type="text" name="referral_reward" id="referral_reward" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
+                                            </label>
+                                            <div class="form-text">' . lang('Store credit the customer earns for each friend.') . '</div>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="referral_reward_days" class="form-label">' . lang('Reward lasts') . '</label>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                <input value="' . h($referral_settings['days']) . '" type="text" name="referral_reward_days" id="referral_reward_days" class="form-ghost text-end" size="5" maxlength="4" inputmode="numeric" />
+                                            </label>
+                                            <div class="form-text">(' . lang('leave blank for credit that never expires') . ')</div>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="referral_smallest" class="form-label">' . lang('Smallest order that counts') . '</label>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                                                <input value="' . h($referral_settings['smallest']) . '" type="text" name="referral_smallest" id="referral_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
+                                            </label>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="referral_month_cap" class="form-label">' . lang('Rewards a month per customer') . '</label>
+                                            <input value="' . h($referral_settings['month_cap']) . '" type="text" name="referral_month_cap" id="referral_month_cap" class="form-control text-end" size="5" maxlength="4" inputmode="numeric" />
+                                            <div class="form-text">(' . lang('leave blank for no limit') . ')</div>
+                                        </div>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>';
+
 // ── Product Feeds ──
 // The shop's products as files shopping platforms read
 // (includes/fn/product_feeds.php): a switch, an address and the last build per

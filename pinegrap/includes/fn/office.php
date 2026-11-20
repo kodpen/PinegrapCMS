@@ -14,7 +14,11 @@
  * offer. A .csv or .tsv is read as one sheet of the same rows, its separator
  * and character set guessed, and is only looked at. An .ods is read as a
  * workbook of the same rows through the importers' sheet reader
- * (includes/fn/sheet_read.php), and is only looked at too.
+ * (includes/fn/sheet_read.php), and is only looked at too; so is an .xls,
+ * which may be saved as a copy in .xlsx (pg_office_xls_copy()), written by
+ * the shared writer (includes/fn/xlsx_write.php), to be changed there. A
+ * .pptx is read as a list of its slides' titles, text, pictures and speaker
+ * notes, and is only looked at.
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
@@ -99,6 +103,31 @@ define('PG_OFFICE_MAX_ODS_WALK', 64 * 1024 * 1024);
 define('PG_OFFICE_MAX_ODS_SHEETS', 1000);
 
 /**
+ * The largest .xls file shown or copied, in bytes. The reader holds the
+ * whole file, and a sheet's cells as the library's arrays, in memory.
+ */
+define('PG_OFFICE_MAX_XLS', 8 * 1024 * 1024);
+
+/**
+ * How much of an .xls file the preview parses, its sheets together, in
+ * bytes: the reader parses the whole file again for each sheet, so sheets
+ * are read while their count times the file's size stays within this.
+ */
+define('PG_OFFICE_MAX_XLS_WALK', 64 * 1024 * 1024);
+
+/**
+ * The same for a copy as .xlsx, which takes every sheet whole; a workbook
+ * past it is refused rather than copied in part.
+ */
+define('PG_OFFICE_MAX_XLS_COPY_WALK', 256 * 1024 * 1024);
+
+/**
+ * The most slides a presentation's preview lists; the rest are left out and
+ * the list says it was cut. Each slide is a part built into a DOM in turn.
+ */
+define('PG_OFFICE_MAX_SLIDES', 500);
+
+/**
  * The kind of office file a name is, by its extension: 'docx', 'xlsx' or ''.
  * Macro-enabled and template variants are read the same way, as are the
  * strict OOXML ones; .doc and .xls (the binary formats) are not read.
@@ -126,10 +155,12 @@ function pg_office_kind($name)
  * or 'csv' for a .csv or .tsv, drawn as a sheet and only looked at. The
  * edits ask pg_office_kind(), which leaves the two out, so neither is ever
  * offered for editing here; a channel and the file window still open them
- * as text. An .ods ('ods') is drawn as a workbook and only looked at too.
+ * as text. An .ods ('ods') or .xls ('xls') is drawn as a workbook and only
+ * looked at too, as is a presentation ('pptx': its show, macro and template
+ * forms too), drawn as a list of slides.
  *
  * @param string $name
- * @return string docx | xlsx | csv | ods | ''
+ * @return string docx | xlsx | csv | ods | xls | pptx | ''
  */
 function pg_office_preview_kind($name)
 {
@@ -141,8 +172,12 @@ function pg_office_preview_kind($name)
 
     $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
 
-    if ($extension === 'ods') {
-        return 'ods';
+    if (($extension === 'ods') || ($extension === 'xls')) {
+        return $extension;
+    }
+
+    if (in_array($extension, array('pptx', 'pptm', 'ppsx', 'potx'), true)) {
+        return 'pptx';
     }
 
     return in_array($extension, array('csv', 'tsv'), true) ? 'csv' : '';
@@ -465,27 +500,6 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
 }
 
 /**
- * The built-in zip:// stream, which XMLReader walks a sheet through. PHPExcel
- * (the .xls and .ods importers) replaces that wrapper with its own for the
- * rest of the request and switches libxml's loader off, and XMLReader cannot
- * open a part through either; both are put back on every call, as PHPExcel
- * may be loaded after an earlier read in the same request. Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
- * LIBXML_NONET), so the loader being on changes nothing else.
- */
-function pg_office_zip_stream()
-{
-    if (!class_exists('PHPExcel_Settings', false)) {
-        return;
-    }
-
-    @stream_wrapper_restore('zip');
-
-    if (function_exists('libxml_disable_entity_loader')) {
-        @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
-    }
-}
-
-/**
  * The text of the element the reader is on, as XMLReader::readString()
  * gives it (every text and CDATA node inside it, whitespace included), read
  * node by node. readString(), readOuterXml() and expand() first build the
@@ -557,8 +571,6 @@ function pg_office_xlsx_strings($path, $part, $limited = true)
     if ($size < 0) {
         return $strings;
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -905,8 +917,6 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
     $rows = array();
     $truncated = false;
 
-    pg_office_zip_stream();
-
     $reader = new XMLReader();
 
     // No further than the sheet's declared size: past it the read stops, and
@@ -1245,7 +1255,22 @@ function pg_office_docx_image(&$state, $rel_id)
         return '';
     }
 
-    $part = pg_office_part_name('word/', $rel['target']);
+    return pg_office_image_url($state, pg_office_part_name('word/', $rel['target']));
+}
+
+/**
+ * A picture part of a package as a data: URL, under the preview's picture
+ * limits (PG_OFFICE_MAX_IMAGE one, PG_OFFICE_MAX_IMAGES together, counted in
+ * $state['images']); '' when it is too large, missing, or not of a kind a
+ * browser shows, counted in $state['images_lost']. A document's pictures and
+ * a presentation's go through here alike.
+ *
+ * @param array  $state zip, images, images_lost
+ * @param string $part
+ * @return string
+ */
+function pg_office_image_url(&$state, $part)
+{
     $extension = strtolower((string) pathinfo($part, PATHINFO_EXTENSION));
     $mimes = array('png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'bmp' => 'image/bmp', 'webp' => 'image/webp');
 
@@ -2232,8 +2257,6 @@ function pg_office_ods_sheets($path, &$refused = null)
         return array();
     }
 
-    pg_office_zip_stream();
-
     $reader = new XMLReader();
 
     if (($size <= 0) || !$reader->open(pg_zip_entry_uri($path, 'content.xml', $size), null, LIBXML_NONET)) {
@@ -2351,9 +2374,10 @@ function pg_office_ods_text($cell)
  * @param int    $cells_left how many cells may still be read, counted down
  * @param bool   $truncated  set when the sheet was cut
  * @param string $error      the reader's: '' read, large past its ceilings, read or sheet
+ * @param string $kind       the reader's kind (pg_sheet_kind()): ods, or xls
  * @return array[] n, cells
  */
-function pg_office_ods_rows($path, $sheet, &$cells_left, &$truncated, &$error)
+function pg_office_ods_rows($path, $sheet, &$cells_left, &$truncated, &$error, $kind = 'ods')
 {
     $rows = array();
     $truncated = false;
@@ -2361,7 +2385,7 @@ function pg_office_ods_rows($path, $sheet, &$cells_left, &$truncated, &$error)
     // left early does not reach.
     $previous = libxml_use_internal_errors();
 
-    foreach (pg_sheet_rows($path, 'ods', $error, $sheet) as $number => $cells) {
+    foreach (pg_sheet_rows($path, $kind, $error, $sheet) as $number => $cells) {
         if ((count($rows) >= PG_OFFICE_MAX_ROWS) || ($cells_left <= 0)) {
             $truncated = true;
             break;
@@ -2448,6 +2472,624 @@ function pg_office_ods_read($path)
     return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
 }
 
+/* ---------------------------------------------------------------------------
+   Excel 97-2003 workbooks (.xls)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Room for the .xls reader: it holds the file and a sheet's cells as the
+ * library's arrays, about 40 bytes of memory for each byte of the file (an
+ * 8 MB workbook of 260,000 cells peaked at 300 MB). The limit is raised to
+ * 512 MB, as the product import raises it, unless it is higher already.
+ */
+function pg_office_xls_memory()
+{
+    $limit = trim((string) @ini_get('memory_limit'));
+
+    if (($limit === '') || ($limit === '-1')) {
+        return;
+    }
+
+    $bytes = (int) $limit;
+    $unit = strtolower(substr($limit, -1));
+    $bytes *= ($unit === 'g') ? 1073741824 : (($unit === 'm') ? 1048576 : (($unit === 'k') ? 1024 : 1));
+
+    if ($bytes < 512 * 1048576) {
+        @ini_set('memory_limit', '512M');
+    }
+}
+
+/**
+ * The worksheets of an .xls file for the preview or a copy, after its size
+ * is measured: name and hidden, as the sheet reader lists them
+ * (pg_sheet_xls_sheets()), or an error.
+ *
+ * @param string $path
+ * @param string $error why not, when null comes back
+ * @return array[]|null
+ */
+function pg_office_xls_sheets($path, &$error)
+{
+    $error = '';
+    clearstatcache(true, $path);
+    $size = is_file($path) ? (int) @filesize($path) : -1;
+
+    if ($size > PG_OFFICE_MAX_XLS) {
+        $error = pg_office_refusal_error('large');
+
+        return null;
+    }
+
+    pg_office_xls_memory();
+
+    $sheets = ($size > 0) ? pg_sheet_xls_sheets($path) : 'read';
+
+    if (!is_array($sheets)) {
+        $error = pg_office_refusal_error('damaged');
+
+        return null;
+    }
+
+    if (count($sheets) > PG_OFFICE_MAX_ODS_SHEETS) {
+        $error = pg_office_refusal_error('large');
+
+        return null;
+    }
+
+    return $sheets;
+}
+
+/**
+ * An .xls file as the preview draws a workbook (pg_office_xlsx_read()):
+ * every worksheet in order, the hidden ones flagged, its rows read through
+ * the importers' sheet reader under the preview's row, column and cell
+ * limits, each cell shown as pg_office_ods_text() shows one. A formula
+ * shows the result the file stores. Only looked at: nothing here is offered
+ * for editing; a copy as .xlsx is (pg_office_xls_copy()).
+ *
+ * The reader parses the file again for each sheet, so sheets are read
+ * while their count times the file's size stays within
+ * PG_OFFICE_MAX_XLS_WALK; those past it are listed with no rows, cut.
+ *
+ * @param string $path
+ * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated), truncated
+ */
+function pg_office_xls_read($path)
+{
+    $sheets = pg_office_xls_sheets($path, $error);
+
+    if ($sheets === null) {
+        return array('ok' => false, 'error' => $error, 'sheets' => array(), 'truncated' => false);
+    }
+
+    $walks = max(1, intdiv(PG_OFFICE_MAX_XLS_WALK, max(1, (int) filesize($path))));
+    $cells_left = PG_OFFICE_MAX_CELLS;
+    $out = array();
+    $any_cut = false;
+
+    foreach ($sheets as $index => $sheet) {
+        $rows = array();
+        $cut = true;
+
+        if (($cells_left > 0) && ($index < $walks)) {
+            $rows = pg_office_ods_rows($path, $index, $cells_left, $cut, $failed, 'xls');
+
+            if ($failed !== '') {
+                return array('ok' => false, 'error' => pg_office_refusal_error('damaged'), 'sheets' => array(), 'truncated' => false);
+            }
+        }
+
+        if ($cells_left <= 0) {
+            $cut = true;
+        }
+
+        $any_cut = $any_cut || $cut;
+        $out[] = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+    }
+
+    return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+}
+
+/**
+ * The name of an .xls file's copy as .xlsx: its extension changed, any
+ * other name given .xlsx after it.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_office_xls_copy_name($name)
+{
+    $name = (string) $name;
+
+    if (preg_match('/\.xls$/i', $name)) {
+        return substr($name, 0, -4) . '.xlsx';
+    }
+
+    return (($name === '') ? 'copy' : $name) . '.xlsx';
+}
+
+/**
+ * An .xls file written again as an .xlsx by the shared writer
+ * (pg_xlsx_write_book()): every worksheet whole, in order, hidden ones kept
+ * hidden, each cell with its type (text, number, boolean, date or time,
+ * error). A formula comes over as the result the file stores: the reader
+ * does not read a formula's expression. Number formats other than dates
+ * and times, column widths, merged cells and styles are not carried.
+ *
+ * @param string $path   the .xls
+ * @param string $target where the .xlsx is written
+ * @return array ok, error
+ */
+function pg_office_xls_copy($path, $target)
+{
+    $sheets = pg_office_xls_sheets($path, $error);
+
+    if ($sheets === null) {
+        return array('ok' => false, 'error' => $error);
+    }
+
+    if (count($sheets) * (int) filesize($path) > PG_OFFICE_MAX_XLS_COPY_WALK) {
+        return array('ok' => false, 'error' => lang('This file is too large to copy here.'));
+    }
+
+    $failed = '';
+    $rows = function ($index) use ($path, &$failed) {
+        $error = '';
+
+        foreach (pg_sheet_rows($path, 'xls', $error, $index) as $number => $cells) {
+            yield $number => $cells;
+        }
+
+        if ($error !== '') {
+            $failed = $error;
+            throw new RuntimeException('The sheet could not be read.');
+        }
+    };
+
+    if (!pg_xlsx_write_book($sheets, $rows, $target)) {
+        @unlink($target);
+
+        return array('ok' => false, 'error' => ($failed !== '') ? pg_office_refusal_error('damaged') : lang('The copy could not be written.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/* ---------------------------------------------------------------------------
+   Presentations (.pptx)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The slide parts of a presentation in the order it shows them: part and
+ * relationships part. The presentation part is the one the package's root
+ * relationships name (ppt/presentation.xml when they name none).
+ *
+ * @param ZipArchive $zip
+ * @param string     $refused set to large or damaged when the presentation part or a relationships part could not be read whole
+ * @param bool       $found   whether the package holds a presentation part at all
+ * @return array[]
+ */
+function pg_office_pptx_slides($zip, &$refused = null, &$found = null)
+{
+    $out = array();
+    $refused = '';
+    $found = false;
+    $main = 'ppt/presentation.xml';
+
+    foreach (pg_office_rels($zip, '_rels/.rels', $root_refused) as $rel) {
+        if (($rel['type'] === 'officedocument') && !$rel['external']) {
+            $main = pg_office_part_name('', $rel['target']);
+            break;
+        }
+    }
+
+    pg_office_refuse($refused, $root_refused);
+    $presentation = pg_office_xml($zip, $main, $status);
+    pg_office_refuse($refused, $status);
+
+    if (($presentation === null) || ($refused !== '')) {
+        return $out;
+    }
+
+    $found = true;
+    $folder = pg_office_pptx_folder($main);
+    $rels = pg_office_rels($zip, pg_office_pptx_rels_part($main), $rels_refused);
+    pg_office_refuse($refused, $rels_refused);
+
+    foreach ($presentation->getElementsByTagNameNS('*', 'sldId') as $slide) {
+        // A slide's own number is a bare id beside the relationship's r:id.
+        $id = '';
+
+        foreach ($slide->attributes as $attribute) {
+            if (($attribute->localName === 'id') && ((string) $attribute->namespaceURI !== '')) {
+                $id = (string) $attribute->value;
+            }
+        }
+
+        if (($id === '') || !isset($rels[$id]) || $rels[$id]['external']) {
+            continue;
+        }
+
+        $part = pg_office_part_name($folder, $rels[$id]['target']);
+
+        if ($zip->locateName($part) !== false) {
+            $out[] = $part;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The folder a part's relationship targets are written relative to.
+ *
+ * @param string $part ppt/slides/slide1.xml
+ * @return string ppt/slides/
+ */
+function pg_office_pptx_folder($part)
+{
+    $end = strrpos((string) $part, '/');
+
+    return ($end === false) ? '' : substr((string) $part, 0, $end + 1);
+}
+
+/**
+ * The relationships part of a part: ppt/slides/_rels/slide1.xml.rels.
+ *
+ * @param string $part
+ * @return string
+ */
+function pg_office_pptx_rels_part($part)
+{
+    $folder = pg_office_pptx_folder($part);
+
+    return $folder . '_rels/' . substr((string) $part, strlen($folder)) . '.rels';
+}
+
+/**
+ * The text of one paragraph of a text body (a:p): its runs and fields, a
+ * line break as a new line.
+ *
+ * @param DOMElement $paragraph
+ * @return string
+ */
+function pg_office_pptx_text($paragraph)
+{
+    $text = '';
+
+    foreach ($paragraph->childNodes as $child) {
+        if (!($child instanceof DOMElement)) {
+            continue;
+        }
+
+        if ($child->localName === 'br') {
+            $text .= "\n";
+            continue;
+        }
+
+        if (($child->localName !== 'r') && ($child->localName !== 'fld')) {
+            continue;
+        }
+
+        foreach ($child->childNodes as $part) {
+            if (($part instanceof DOMElement) && ($part->localName === 't')) {
+                $text .= $part->textContent;
+            }
+        }
+    }
+
+    return $text;
+}
+
+/**
+ * The child elements of a node with a local name, in their order.
+ *
+ * @param DOMNode $node
+ * @param string  $local
+ * @return DOMElement[]
+ */
+function pg_office_pptx_children($node, $local)
+{
+    $out = array();
+
+    foreach ($node->childNodes as $child) {
+        if (($child instanceof DOMElement) && ($child->localName === $local)) {
+            $out[] = $child;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The placeholder type of a shape (title, ctrTitle, body, ...), '' for a
+ * shape that is no placeholder; a placeholder without a type is a body.
+ *
+ * @param DOMElement $shape
+ * @return string
+ */
+function pg_office_pptx_placeholder($shape)
+{
+    foreach ($shape->getElementsByTagNameNS('*', 'ph') as $placeholder) {
+        $type = pg_office_attr($placeholder, 'type');
+
+        return ($type === '') ? 'body' : $type;
+    }
+
+    return '';
+}
+
+/**
+ * Keeps a piece of text for the slide while the presentation's text stays
+ * within PG_OFFICE_MAX_HTML characters; past it the rest is cut.
+ *
+ * @param array  $state
+ * @param string $text
+ * @return bool whether it was kept
+ */
+function pg_office_pptx_room(&$state, $text)
+{
+    if ($state['cut']) {
+        return false;
+    }
+
+    $state['size'] += strlen($text);
+
+    if ($state['size'] > PG_OFFICE_MAX_HTML) {
+        $state['cut'] = true;
+
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * The shapes of a slide's tree (or of a group in it) in their order, which
+ * is the slide's reading order: a title placeholder's text becomes the
+ * slide's title, any other shape's paragraphs, a table's rows (cells apart
+ * by a tab) and pictures become its items. Groups are read in place; of
+ * alternate content, the fallback a reader without the newer markup takes.
+ *
+ * @param array      $state zip, images, images_lost, size, cut
+ * @param DOMElement $tree
+ * @param array      $rels  the slide's relationships
+ * @param string     $folder
+ * @param array      $slide title, items
+ */
+function pg_office_pptx_shapes(&$state, $tree, $rels, $folder, &$slide)
+{
+    foreach ($tree->childNodes as $shape) {
+        if (!($shape instanceof DOMElement) || $state['cut']) {
+            continue;
+        }
+
+        switch ($shape->localName) {
+            case 'grpSp':
+                pg_office_pptx_shapes($state, $shape, $rels, $folder, $slide);
+                break;
+
+            case 'AlternateContent':
+                $branch = pg_office_pptx_children($shape, 'Fallback') ?: pg_office_pptx_children($shape, 'Choice');
+
+                if ($branch) {
+                    pg_office_pptx_shapes($state, $branch[0], $rels, $folder, $slide);
+                }
+                break;
+
+            case 'sp':
+                $type = pg_office_pptx_placeholder($shape);
+                $title = (($type === 'title') || ($type === 'ctrTitle')) && ($slide['title'] === '');
+                $lines = array();
+
+                foreach (pg_office_pptx_children($shape, 'txBody') as $body) {
+                    foreach (pg_office_pptx_children($body, 'p') as $paragraph) {
+                        $text = trim(pg_office_pptx_text($paragraph));
+
+                        if ($text === '') {
+                            continue;
+                        }
+
+                        $level = 0;
+
+                        foreach (pg_office_pptx_children($paragraph, 'pPr') as $properties) {
+                            $level = min(8, max(0, (int) pg_office_attr($properties, 'lvl')));
+                        }
+
+                        $lines[] = array('text' => $text, 'level' => $level);
+                    }
+                }
+
+                if ($title && $lines) {
+                    $text = implode(' ', array_column($lines, 'text'));
+
+                    if (pg_office_pptx_room($state, $text)) {
+                        $slide['title'] = $text;
+                    }
+                    break;
+                }
+
+                foreach ($lines as $line) {
+                    if (pg_office_pptx_room($state, $line['text'])) {
+                        $slide['items'][] = array('type' => 'text') + $line;
+                    }
+                }
+                break;
+
+            case 'graphicFrame':
+                foreach ($shape->getElementsByTagNameNS('*', 'tr') as $row) {
+                    $cells = array();
+
+                    foreach (pg_office_pptx_children($row, 'tc') as $cell) {
+                        $texts = array();
+
+                        foreach ($cell->getElementsByTagNameNS('*', 'p') as $paragraph) {
+                            $texts[] = trim(pg_office_pptx_text($paragraph));
+                        }
+
+                        $cells[] = trim(implode(' ', $texts));
+                    }
+
+                    $text = rtrim(implode("\t", $cells));
+
+                    if (($text !== '') && pg_office_pptx_room($state, $text)) {
+                        $slide['items'][] = array('type' => 'row', 'text' => $text, 'level' => 0);
+                    }
+                }
+                break;
+
+            case 'pic':
+                $rel_id = '';
+
+                foreach ($shape->getElementsByTagNameNS('*', 'blip') as $blip) {
+                    $rel_id = pg_office_attr($blip, 'embed');
+                }
+
+                $rel = $rels[$rel_id] ?? null;
+
+                if (($rel === null) || $rel['external']) {
+                    break;
+                }
+
+                $alt = '';
+
+                foreach ($shape->getElementsByTagNameNS('*', 'cNvPr') as $properties) {
+                    $alt = trim((string) $properties->getAttribute('descr'));
+                    break;
+                }
+
+                $src = pg_office_image_url($state, pg_office_part_name($folder, $rel['target']));
+                $slide['items'][] = ($src === '') ? array('type' => 'lost') : array('type' => 'picture', 'src' => $src, 'alt' => $alt);
+                break;
+        }
+    }
+}
+
+/**
+ * The speaker notes of a slide: the paragraphs of its notes page's body
+ * placeholder, in their order.
+ *
+ * @param array      $state
+ * @param ZipArchive $zip
+ * @param array      $rels    the slide's relationships
+ * @param string     $folder  the slide's folder
+ * @param string     $refused set to large or damaged when the notes page could not be read whole
+ * @return string[]
+ */
+function pg_office_pptx_notes(&$state, $zip, $rels, $folder, &$refused)
+{
+    $notes = array();
+
+    foreach ($rels as $rel) {
+        if (($rel['type'] !== 'notesslide') || $rel['external']) {
+            continue;
+        }
+
+        $page = pg_office_xml($zip, pg_office_part_name($folder, $rel['target']), $status);
+        pg_office_refuse($refused, $status);
+
+        if ($page === null) {
+            break;
+        }
+
+        foreach ($page->getElementsByTagNameNS('*', 'sp') as $shape) {
+            if (pg_office_pptx_placeholder($shape) !== 'body') {
+                continue;
+            }
+
+            foreach ($shape->getElementsByTagNameNS('*', 'p') as $paragraph) {
+                $text = trim(pg_office_pptx_text($paragraph));
+
+                if (($text !== '') && pg_office_pptx_room($state, $text)) {
+                    $notes[] = $text;
+                }
+            }
+        }
+
+        break;
+    }
+
+    return $notes;
+}
+
+/**
+ * A presentation read for the preview: a list of its slides, each with its
+ * title, its text and pictures in reading order and its speaker notes. No
+ * layout, theme, animation or master text is read; a hidden slide is
+ * flagged. Only looked at: nothing here is offered for editing.
+ *
+ * Pictures keep the document preview's limits (pg_office_image_url()), the
+ * slides PG_OFFICE_MAX_SLIDES and their text PG_OFFICE_MAX_HTML characters;
+ * past those the list is cut. A slide, notes page or relationships part past
+ * PG_OFFICE_MAX_DOM, or not the size it declares, refuses the file.
+ *
+ * @param string $path
+ * @return array ok, error, slides (n, title, hidden, items, notes), truncated, images_lost
+ */
+function pg_office_pptx_read($path)
+{
+    $zip = pg_office_open($path, $error);
+    $none = array('ok' => false, 'error' => $error, 'slides' => array(), 'truncated' => false, 'images_lost' => 0);
+
+    if ($zip === null) {
+        return $none;
+    }
+
+    $parts = pg_office_pptx_slides($zip, $refused, $found);
+
+    if (($refused !== '') || !$found) {
+        $zip->close();
+        $none['error'] = ($refused !== '') ? pg_office_refusal_error($refused) : lang('The file could not be read.');
+
+        return $none;
+    }
+
+    $state = array('zip' => $zip, 'images' => 0, 'images_lost' => 0, 'size' => 0, 'cut' => false);
+    $slides = array();
+
+    foreach (array_slice($parts, 0, PG_OFFICE_MAX_SLIDES) as $index => $part) {
+        $dom = pg_office_xml($zip, $part, $status);
+        $rels = pg_office_rels($zip, pg_office_pptx_rels_part($part), $rels_refused);
+        pg_office_refuse($refused, $status);
+        pg_office_refuse($refused, $rels_refused);
+        $folder = pg_office_pptx_folder($part);
+        $slide = array('n' => $index + 1, 'title' => '', 'hidden' => false, 'items' => array(), 'notes' => array());
+
+        if (($dom !== null) && ($refused === '')) {
+            $show = strtolower((string) $dom->documentElement->getAttribute('show'));
+            $slide['hidden'] = in_array($show, array('0', 'false'), true);
+
+            foreach ($dom->getElementsByTagNameNS('*', 'spTree') as $tree) {
+                pg_office_pptx_shapes($state, $tree, $rels, $folder, $slide);
+                break;
+            }
+
+            $slide['notes'] = pg_office_pptx_notes($state, $zip, $rels, $folder, $refused);
+        }
+
+        unset($dom);
+
+        if ($refused !== '') {
+            $zip->close();
+            $none['error'] = pg_office_refusal_error($refused);
+
+            return $none;
+        }
+
+        // The slide where the text ran out is listed with what fitted.
+        $slides[] = $slide;
+
+        if ($state['cut']) {
+            break;
+        }
+    }
+
+    $zip->close();
+    $cut = $state['cut'] || (count($parts) > PG_OFFICE_MAX_SLIDES);
+
+    return array('ok' => true, 'error' => '', 'slides' => $slides, 'truncated' => $cut, 'images_lost' => $state['images_lost']);
+}
+
 /**
  * The script tag of the preview's drawing code (assets/js/pg_office_view.js),
  * for the screens that load it on first use, stamped with the file's time.
@@ -2474,6 +3116,8 @@ function pg_office_view_strings()
 {
     return array(
         'hidden'            => lang('Hidden sheet'),
+        'xls_copy'          => lang('Save a copy as .xlsx'),
+        'xls_copy_help'     => lang('This file is only shown here. A copy as .xlsx can be changed; formulas come over as their results.'),
         'sheets'            => lang('Sheets'),
         'changed_mark'      => lang('Changed'),
         'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
@@ -2524,6 +3168,12 @@ function pg_office_view_strings()
         'csv_encoding'      => lang('Character set'),
         'csv_utf8'          => lang('UTF-8'),
         'csv_1254'          => lang('Windows-1254 (Turkish)'),
+        'slides'            => lang('Slides'),
+        'slide'             => lang('Slide {1}'),
+        'slide_hidden'      => lang('Hidden slide'),
+        'slide_notes'       => lang('Speaker notes'),
+        'slide_none'        => lang('The presentation has no slides.'),
+        'picture'           => lang('picture'),
     );
 }
 
@@ -2555,6 +3205,14 @@ function pg_office_read($path, $name, $edit = false, $choice = array())
 
     if ($kind === 'ods') {
         return array('kind' => 'ods') + pg_office_ods_read($path);
+    }
+
+    if ($kind === 'xls') {
+        return array('kind' => 'xls') + pg_office_xls_read($path);
+    }
+
+    if ($kind === 'pptx') {
+        return array('kind' => 'pptx') + pg_office_pptx_read($path);
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');

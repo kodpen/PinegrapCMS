@@ -122,7 +122,7 @@ function pg_assert_contains($needle, $haystack, $label = '')
 // Vendored libraries ship as they are; tools/lint.php skips the same folders.
 $vendored_directories = array();
 
-foreach (array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/phpexcel', 'includes/boxpacker', 'includes/dompdf', 'assets/lib') as $relative) {
+foreach (array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/boxpacker', 'includes/dompdf', 'assets/lib') as $relative) {
 	$path = realpath(PG_FUNCTIONS_DIR . '/' . $relative);
 
 	if ($path !== false) {
@@ -132,9 +132,8 @@ foreach (array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 
 
 // A warning or notice inside a test is a bug the test would otherwise print
 // and pass; turning it into an exception makes the test an ERROR. A
-// deprecation raised inside a vendored library is the vendor's: PHPExcel's
-// implicitly nullable parameters are deprecated from PHP 8.4 on and stopped
-// the whole run at the first test file that loads it.
+// deprecation raised inside a vendored library is the vendor's: one there
+// would otherwise stop the whole run at the first test file that loads it.
 set_error_handler(function ($severity, $message, $file, $line) use ($vendored_directories) {
 	if (!(error_reporting() & $severity)) {
 		return false;

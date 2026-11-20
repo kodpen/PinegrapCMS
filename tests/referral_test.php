@@ -183,3 +183,131 @@ function test_referral_is_wired_to_the_order_path()
 	pg_assert_contains('GET_LOCK', $referral, 'the month\'s room is taken under a named lock');
 	pg_assert_contains("status = 'paid'", $referral, 'the take-back moves only a paid row: never twice');
 }
+
+// A post of the settings card that passes; each test spoils one box.
+function referral_test_post($changes = array())
+{
+	return array_merge(array(
+		'referral_on'          => '1',
+		'referral_offer_id'    => '12',
+		'referral_reward'      => '50',
+		'referral_reward_days' => '90',
+		'referral_smallest'    => '200.50',
+		'referral_month_cap'   => '5',
+	), $changes);
+}
+
+function referral_test_offer_exists($offer_id)
+{
+	return $offer_id === 12;
+}
+
+function test_referral_settings_save_writes_what_the_rules_read()
+{
+	$answer = pg_referral_settings_check(referral_test_post(), 'referral_test_offer_exists');
+
+	pg_assert_same(array(), $answer['errors']);
+	pg_assert_same(array(
+		'referral_on'          => '1',
+		'referral_offer_id'    => '12',
+		'referral_reward'      => '5000',
+		'referral_reward_days' => '90',
+		'referral_smallest'    => '20050',
+		'referral_month_cap'   => '5',
+	), $answer['values'], 'amounts in minor units, the names pg_referral_settings() reads');
+
+	$empty = pg_referral_settings_check(referral_test_post(array('referral_offer_id' => '', 'referral_reward_days' => '', 'referral_smallest' => '', 'referral_month_cap' => '0')), 'referral_test_offer_exists');
+
+	pg_assert_same(array(), $empty['errors'], 'empty boxes are none, never expires and no limit');
+	pg_assert_same('', $empty['values']['referral_offer_id']);
+	pg_assert_same('', $empty['values']['referral_reward_days']);
+	pg_assert_same('', $empty['values']['referral_smallest']);
+	pg_assert_same('', $empty['values']['referral_month_cap']);
+
+	pg_assert_same('1250', pg_referral_settings_check(referral_test_post(array('referral_reward' => '12,50')), 'referral_test_offer_exists')['values']['referral_reward'], 'a decimal comma reads too');
+	pg_assert_same('1999', pg_referral_settings_check(referral_test_post(array('referral_reward' => '19.99')), 'referral_test_offer_exists')['values']['referral_reward'], 'rounded, never cut');
+}
+
+function test_referral_settings_off_keeps_the_values()
+{
+	$answer = pg_referral_settings_check(referral_test_post(array('referral_on' => null, 'referral_reward' => '')), 'referral_test_offer_exists');
+
+	pg_assert_same(array(), $answer['errors'], 'off needs no reward');
+	pg_assert_same('', $answer['values']['referral_on'], 'off is stored as empty');
+	pg_assert_same('90', $answer['values']['referral_reward_days'], 'the other values are kept for the next time');
+
+	$kept = pg_referral_settings_check(referral_test_post(array('referral_on' => '0')), 'referral_test_offer_exists');
+
+	pg_assert_same('', $kept['values']['referral_on']);
+	pg_assert_same('5000', $kept['values']['referral_reward']);
+}
+
+function test_referral_settings_save_refusals()
+{
+	$refused = function ($changes) {
+		return pg_referral_settings_check(referral_test_post($changes), 'referral_test_offer_exists');
+	};
+
+	pg_assert_same(array('referral_reward' => 'reward_needed'), $refused(array('referral_reward' => ''))['errors'], 'on without a reward');
+	pg_assert_same(array('referral_reward' => 'reward_needed'), $refused(array('referral_reward' => '0'))['errors'], 'on with a reward of 0');
+	pg_assert_same(array('referral_reward' => 'reward'), $refused(array('referral_reward' => '-5'))['errors'], 'a negative reward');
+	pg_assert_same(array('referral_reward' => 'reward'), $refused(array('referral_reward' => 'ten'))['errors'], 'letters');
+	pg_assert_same(array('referral_reward' => 'reward'), $refused(array('referral_reward' => '42949673'))['errors'], 'above the column');
+	pg_assert_same(array(), $refused(array('referral_reward' => '42949672.95'))['errors'], 'the column\'s top still fits');
+	pg_assert_same(array('referral_reward' => 'reward'), $refused(array('referral_reward' => array('5')))['errors'], 'not a box value');
+	pg_assert_same(array('referral_reward_days' => 'days'), $refused(array('referral_reward_days' => '3651'))['errors'], 'more than ten years');
+	pg_assert_same(array(), $refused(array('referral_reward_days' => '3650'))['errors'], 'ten years');
+	pg_assert_same(array('referral_reward_days' => 'days'), $refused(array('referral_reward_days' => '1.5'))['errors'], 'part of a day');
+	pg_assert_same(array('referral_reward_days' => 'days'), $refused(array('referral_reward_days' => '-1'))['errors'], 'a negative day');
+	pg_assert_same(array('referral_smallest' => 'smallest'), $refused(array('referral_smallest' => '-1'))['errors'], 'a negative smallest order');
+	pg_assert_same(array('referral_month_cap' => 'month_cap'), $refused(array('referral_month_cap' => '1001'))['errors'], 'above the month\'s limit');
+	pg_assert_same(array(), $refused(array('referral_month_cap' => '1000'))['errors'], 'the month\'s limit');
+	pg_assert_same(array('referral_month_cap' => 'month_cap'), $refused(array('referral_month_cap' => 'x'))['errors'], 'letters for the month');
+	pg_assert_same(array('referral_offer_id' => 'offer'), $refused(array('referral_offer_id' => '13'))['errors'], 'an offer that does not exist');
+	pg_assert_same(array('referral_offer_id' => 'offer'), $refused(array('referral_offer_id' => '12 OR 1'))['errors'], 'not an id');
+
+	$two = $refused(array('referral_reward' => '-1', 'referral_month_cap' => '5000'));
+
+	pg_assert_same(array('referral_reward' => 'reward', 'referral_month_cap' => 'month_cap'), $two['errors'], 'every refusal at once');
+	pg_assert_same(array(), $two['values'], 'a refused save writes nothing');
+
+	foreach (array('reward', 'reward_needed', 'days', 'smallest', 'month_cap', 'offer') as $code) {
+		pg_assert_true(isset(pg_referral_settings_errors()[$code]), 'a sentence for ' . $code);
+	}
+}
+
+function test_referral_mail_placeholders()
+{
+	$body = pg_referral_mail_body(array(
+		'customer'    => 'Ayşe <Kaya>',
+		'amount'      => '₺50,00',
+		'balance'     => '₺75,00',
+		'last_day'    => '18 February 2027',
+		'account_url' => 'https://shop.example.com/my-account',
+		'from_name'   => 'Shop & Co',
+	));
+
+	pg_assert_contains('Ayşe &lt;Kaya&gt;', $body, 'the name, escaped');
+	pg_assert_contains('₺50,00 was added to your account as store credit', $body, 'what they earned');
+	pg_assert_contains('Your store credit balance is now ₺75,00.', $body, 'their balance');
+	pg_assert_contains('until 18 February 2027', $body, 'the last day');
+	pg_assert_contains('href="https://shop.example.com/my-account"', $body, 'the account link');
+	pg_assert_contains('Shop &amp; Co', $body, 'the sender, escaped');
+	pg_assert_true(strpos($body, '{var:') === false, 'no placeholder left');
+
+	$plain = pg_referral_mail_body(array('amount' => '₺50,00', 'balance' => '₺50,00', 'last_day' => '', 'account_url' => 'javascript:alert(1)'));
+
+	pg_assert_true(strpos($plain, 'until') === false, 'a credit that never expires names no last day');
+	pg_assert_true(strpos($plain, 'href=') === false, 'no link but an http address');
+	pg_assert_contains('Hello,', $plain, 'no name: a plain greeting');
+}
+
+function test_referral_mail_wired_after_the_lock()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/referral.php');
+	$release = strpos($source, "SELECT RELEASE_LOCK('\" . e(\$lock)");
+	$mail = strpos($source, 'pg_referral_mail_reward($contact_id');
+
+	pg_assert_true(($release !== false) && ($mail !== false) && ($mail > $release), 'the mail is sent once the referrer\'s lock is let go');
+	pg_assert_contains("'queue'              => true", $source, 'through the mail queue');
+}

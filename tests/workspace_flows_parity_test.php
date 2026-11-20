@@ -797,7 +797,7 @@ function workspace_flows_parity_product_files()
 		$root = realpath(PG_FUNCTIONS_DIR);
 		$vendored = array();
 
-		foreach (array('phpmailer', 'stripe', 'iyzipay-php', 'phpexcel', 'boxpacker', 'dompdf') as $folder) {
+		foreach (array('phpmailer', 'stripe', 'iyzipay-php', 'boxpacker', 'dompdf') as $folder) {
 			$vendored[] = $root . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . $folder . DIRECTORY_SEPARATOR;
 		}
 
@@ -2297,7 +2297,7 @@ function workspace_flows_parity_table()
 			array(array('order.return.approved', 'order.return.received', 'order.return.refunded', 'marketplace.order.imported', 'inventory.changed'), 3, 'event trigger box: shop webhook events (with the shop only; a stock change kept only while a rule names it, pg_event_workspace_on_demand())'),
 			array(array('product.review.created', 'cart_quote.created', 'cart_quote.ordered', 'subscription.renewed', 'subscription.failed', 'subscription.cancelled', 'form.paid'), 3, 'event trigger box: shop webhook events once their tables exist (reviews, cart quotes, subscriptions, form fees); a paid form narrowed to one form'),
 			array(array('contact_group.joined'), 3, 'event trigger box: a contact joins a contact group, one start per contact, narrowed to one group'),
-			array(array('calendar_event.reserved', 'credit.issued', 'credit.expired'), 3, 'event trigger box: shop webhook events about people (with the shop only; store credit once its tables exist): a reserved calendar event, store credit about the customer\'s contact'),
+			array(array('calendar_event.reserved', 'credit.issued', 'credit.expired', 'referral.rewarded'), 3, 'event trigger box: shop webhook events about people (with the shop only; store credit once its tables exist, a referral\'s reward once the referral step ran): a reserved calendar event, store credit and a referral\'s reward about the customer\'s contact'),
 			array(array('customer.consent_changed', 'mail.bounced', 'whatsapp.received', 'campaign.sent', 'user.created'), 3, 'event trigger box: people webhook events: a consent laid out flat, a bounce named by its address\'s contact (pg_event_workspace_payload()), a customer\'s WhatsApp message by its number\'s contact, a campaign for the e-mail right, a user account for the managers'),
 			array(array('erp.invoice.created', 'erp.invoice.paid', 'erp.invoice.overdue', 'erp.invoice.edoc_changed', 'erp.receipt.created', 'erp.edoc.received', 'erp.quote.accepted', 'erp.quote.rejected'), 3, 'event trigger box: ERP events (with the ERP only), kept from erp_event(); an overdue invoice when the overdue reminders first list it, an incoming e-document when it is first kept; a receipt for the ERP cash right'),
 			array(array('page.created', 'page.updated'), 3, 'event trigger box: a page made or changed, checked against the pages the creator\'s tag resolves (ws_events_creator_sees())'),

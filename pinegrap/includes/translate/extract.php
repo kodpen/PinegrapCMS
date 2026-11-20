@@ -837,8 +837,11 @@ function pg_tr_extract_pictures()
         $binned = pg_folder_binned((int) $file['folder']);
         $live = !$binned && pg_picture_tr_live($file_id, $file['name']);
 
-        if (pg_picture_tr_prune_reason(true, $binned, $live) !== '') {
-            pg_picture_tr_forget($file_id);
+        $reason = pg_picture_tr_prune_reason(true, $binned, $live);
+
+        // A binned picture keeps its texts for a restore.
+        if ($reason !== '') {
+            pg_picture_tr_forget($file_id, $reason === 'binned');
             continue;
         }
 

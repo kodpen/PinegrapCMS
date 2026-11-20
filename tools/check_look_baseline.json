@@ -54,10 +54,6 @@
         "button": 1,
         "tabs": 0
     },
-    "api_settings.php": {
-        "button": 22,
-        "tabs": 1
-    },
     "assets/js/add_order.js": {
         "button": 1,
         "tabs": 0
@@ -278,16 +274,8 @@
         "button": 1,
         "tabs": 0
     },
-    "cloudflare.php": {
-        "button": 9,
-        "tabs": 1
-    },
     "confirm_subscription.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "connected_apps.php": {
-        "button": 2,
         "tabs": 0
     },
     "database_engine.php": {
@@ -296,10 +284,6 @@
     },
     "device_limit.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "device_pairing.php": {
-        "button": 3,
         "tabs": 0
     },
     "duplicate_products.php": {
@@ -1040,10 +1024,6 @@
     },
     "subscription_card.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "translations.php": {
-        "button": 17,
         "tabs": 0
     },
     "update_search_index.php": {
