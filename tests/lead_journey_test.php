@@ -373,3 +373,12 @@ function test_lead_journey_store_helpers()
 	pg_assert_same('www.example.com', $copy['referrer_host'], 'host lower-cased');
 	pg_assert_same(255, strlen($copy['landing_page']), 'cut to its column');
 }
+
+function test_lead_journey_key_is_synced_before_the_page_prints()
+{
+	$seo = lead_journey_test_source('includes/fn/seo.php');
+	$start = strpos($seo, 'function init_tracking()');
+	$end = strpos($seo, "\n}\n", (int) $start);
+	pg_assert_contains('pg_lead_request_browser();', substr($seo, (int) $start, (int) $end - (int) $start), 'init_tracking() writes the cookie before output');
+	pg_assert_contains('$browser = pg_lead_request_browser();', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the visit uses the same synced browser');
+}

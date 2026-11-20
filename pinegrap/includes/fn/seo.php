@@ -4093,6 +4093,11 @@ function init_tracking()
                 WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 		}
 	}
+
+	// The visitor journey's browser key is read or written here, before the
+	// page prints anything (its cookie is a header); the visit row follows
+	// in update_visitor_page_data().
+	pg_lead_request_browser();
 }
 
 function update_visitor_page_data($page_name, $page_id = 0)

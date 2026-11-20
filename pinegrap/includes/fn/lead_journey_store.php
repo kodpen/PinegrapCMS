@@ -247,6 +247,26 @@ function pg_lead_browser_sync($now)
 }
 
 /**
+ * This request's browser row, synced once (pg_lead_browser_sync()): called
+ * from init_tracking() before the page prints anything, since the key is a
+ * cookie, and read again when the visit is recorded after the page.
+ *
+ * @return array|null
+ */
+function pg_lead_request_browser()
+{
+    static $synced = false;
+    static $browser = null;
+
+    if (!$synced) {
+        $synced = true;
+        $browser = pg_lead_browser_sync(time());
+    }
+
+    return $browser;
+}
+
+/**
  * A page view of a visit with a visitors row: with a consenting browser the
  * visit gets its own lead_visits row (tied at once when the browser already
  * is) and each page its seconds. Called from update_visitor_page_data().
@@ -259,7 +279,7 @@ function pg_lead_page_view($visitor_id, $page_name)
 {
     $visitor_id = (int) $visitor_id;
     $now = time();
-    $browser = pg_lead_browser_sync($now);
+    $browser = pg_lead_request_browser();
 
     if (($browser === null) || ($visitor_id <= 0)) {
         return;
@@ -291,9 +311,12 @@ function pg_lead_page_view($visitor_id, $page_name)
         array((string) $browser['id'], (string) $browser['contact_id'], (string) $visitor_id, (string) $now, $copy['channel'], $copy['campaign'], $copy['referrer_host'], $copy['landing_page'], json_encode($pages))
     );
 
+    // Read before the next statement, which resets it.
+    $visit_id = (int) mysqli_insert_id(db::$con);
+
     db_q("UPDATE lead_browsers SET last_seen_at = ? WHERE id = ?", array((string) $now, (string) $browser['id']));
 
-    pg_lead_session_store(array('browser_id' => $browser['id'], 'visitor_id' => $visitor_id, 'visit_id' => (int) mysqli_insert_id(db::$con), 'pages' => $pages));
+    pg_lead_session_store(array('browser_id' => $browser['id'], 'visitor_id' => $visitor_id, 'visit_id' => $visit_id, 'pages' => $pages));
 }
 
 /**
