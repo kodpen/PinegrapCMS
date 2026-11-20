@@ -62,6 +62,7 @@ function pg_privacy_export_sections()
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
         'bookings'           => lang('Appointment bookings'),
+        'feedback'           => lang('Satisfaction surveys'),
         'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
@@ -1076,6 +1077,25 @@ function pg_privacy_export_collect(array $found)
             array(),
             array('manage_token', 'slot_at', 'hold_until')
         );
+    }
+
+    // Satisfaction survey answers, by the contact or by the hash of an
+    // address or number the survey went to, with the survey's name. The
+    // link's hash, the person hash and the staff following it up are left
+    // out; a score is given only once answered (pg_feedback_export_row()).
+    if (pg_schema_has('feedback_responses', 'person_hash')) {
+        $feedback_phones = pg_privacy_export_phones(array_merge($contacts, isset($sections['orders']) ? $sections['orders']['rows'] : array()));
+        $feedback_hashes = pg_feedback_person_hashes(array_merge($emails, $feedback_phones));
+        $feedback_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('r.contact_id', $contact_ids),
+            _pg_privacy_export_in('r.person_hash', $feedback_hashes),
+        ));
+
+        $sections['feedback'] = _pg_privacy_export_select(
+            "SELECT r.id, s.name AS survey, s.kind, r.recipient, r.record_type, r.record_id, r.channel, r.status, r.sent_at, r.answered_at, r.score, r.band, r.comment, r.answers, r.stopped, r.outcome, r.created_at FROM feedback_responses AS r LEFT JOIN feedback_surveys AS s ON s.id = r.survey_id WHERE " . $feedback_where . " ORDER BY r.id",
+            ($feedback_where !== '') ? array(1) : array()
+        );
+        $sections['feedback']['rows'] = array_map('pg_feedback_export_row', $sections['feedback']['rows']);
     }
 
     // Course progress: each lesson done, the first open of a course given by

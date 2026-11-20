@@ -170,6 +170,8 @@ function pg_privacy_inventory()
             'purpose' => 'Back-in-stock notices', 'ground' => 'consent', 'retention' => 'until_erased', 'person' => array('email_address', 'text')),
         'bookings' => array('categories' => array('identity', 'contact', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'Bookings', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('email', 'text')),
+        'feedback_responses' => array('categories' => array('contact', 'messages'), 'subjects' => array('customer'),
+            'purpose' => 'Satisfaction survey answers', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $contact),
         'course_progress' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Members\' course progress', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $user),
 
