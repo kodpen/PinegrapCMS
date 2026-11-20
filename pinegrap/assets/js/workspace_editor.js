@@ -112,6 +112,13 @@
         return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     }
 
+    // A tip's field: full size (16px) on a touch screen, where iOS Safari
+    // zooms the page in on a smaller field taking the focus and leaves it
+    // zoomed; the small one under a mouse.
+    function tipFieldClass(touch) {
+        return touch ? 'form-control' : 'form-control form-control-sm';
+    }
+
     // The browser's own editing commands, for what behaves as typing does
     // (text, a line break, a chip or a card at the caret): the caret lands
     // where the browser puts it after typing. Marks never come this way.
@@ -3372,9 +3379,9 @@
         tip = el('div', 'ws-link-tip shadow');
 
         var form = el('form', 'd-flex flex-column gap-1');
-        var words = el('input', 'form-control form-control-sm');
+        var words = el('input', tipFieldClass(touchScreen()));
         var line = el('div', 'd-flex align-items-center gap-1');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', tipFieldClass(touchScreen()));
 
         words.type = 'text';
         words.placeholder = t('link_text');
@@ -3872,13 +3879,13 @@
         var mine = tip;
         var form = el('form', 'd-flex flex-column gap-1');
         var line = el('div', 'd-flex align-items-center gap-1');
-        var query = el('input', 'form-control form-control-sm');
+        var query = el('input', tipFieldClass(touchScreen()));
         var count = el('span', 'small fg-3 text-nowrap ws-find-count');
         var prev = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-up', t('find_prev'));
         var next = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-down', t('find_next'));
         var close = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('find_close'));
         var swap = el('div', 'd-flex align-items-center gap-1');
-        var replace = el('input', 'form-control form-control-sm');
+        var replace = el('input', tipFieldClass(touchScreen()));
         var one = button('btn btn-sm btn-outline theme-secondary', t('find_replace'), '', '');
         var all = button('btn btn-sm btn-outline theme-secondary', t('find_replace_all'), '', '');
         var caseField = el('div', 'form-field small mb-0');
