@@ -23,7 +23,7 @@ description: OS1 census of plan office-own-code: the panel lists that export CSV
 | 15 | Translations, Export CSV and Export pending texts | `translations_action.php` | `action=export` | 5 |
 
 ## Which are left out?
-- Left out: Products > Export (already offers Excel, moved off PHPExcel by `plans/phpexcel-own-code.md`), the ERP export profiles (Parasut templates, XL4), the orders "Multiple files" zip and Parasut export, workflow tables (already .xlsx), the content import's redirect report (a file of the import, not a list), the importers' sample files.
+- Left out: Products > Export (already offers Excel, its own xlsx writer, `export_products_f.php`), the ERP export profiles (Parasut templates, XL4), the orders "Multiple files" zip and Parasut export, workflow tables (already .xlsx), the content import's redirect report (a file of the import, not a list), the importers' sample files.
 
 ## Does it fit one step?
 - Size: each list only asks for the Excel form of its own CSV (the helper converts that CSV), a few lines a list, so the whole census fits one PR; no OS1a/OS1b.

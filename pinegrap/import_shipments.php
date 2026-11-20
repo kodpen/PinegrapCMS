@@ -42,14 +42,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Tracking Numbers'));
+
     $upload = isset($_FILES['file']) ? $_FILES['file'] : null;
 
     $upload_limits = pg_upload_limits();
     $upload_refusal = pg_upload_file_refusal($upload, $upload_limits['file_max']);
 
-    if ($upload_refusal !== '') {
+    if ($sheet_refusal !== '') {
+        $output_error = $sheet_refusal;
+    } elseif ($upload_refusal !== '') {
         $output_error = $upload_refusal;
-    } elseif (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'])) {
+    } elseif (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !pg_sheet_import_file($upload)) {
         $output_error = lang('Please select a CSV file to upload.');
     } elseif ($upload['size'] > $shipping_import_max_bytes) {
         $output_error = lang('The file is larger than 1 MB. Please upload it in parts.');
@@ -87,8 +92,8 @@ print
                     <div class="card-body pt-0">
                         <div class="my-3">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
-                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control" required>
-                            ' . pg_upload_limit_hint($shipping_import_max_bytes) . '
+                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain,' . PG_SHEET_IMPORT_ACCEPT . '" class="form-control" required>
+                            ' . pg_sheet_import_hint() . pg_upload_limit_hint($shipping_import_max_bytes) . '
                         </div>
                         <div class="form-field my-5">
                             <div class="switch"><input type="checkbox" name="notify" id="notify" value="1"' . ($notify_checked ? ' checked' : '') . '></div>

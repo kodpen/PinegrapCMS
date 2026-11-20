@@ -18,8 +18,11 @@
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
+- bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
+- bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
+- bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
-- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named: one per coordinator at a time; since 2026-11-19 it fixes what it finds in its own PR and opens a bug issue only for the rest [decision: here]
+- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]
@@ -124,7 +127,7 @@
 - decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): Prototype view edits links; Incoming e-mail pinned and as a card; Gmail read by a connected account; Google set-up guidance
 - decisions-made-product-79.md: Decisions list, product part 79 (2026-11-19 on): the own Office code replaces PHPExcel and grows to full scope: more previews, wider editing, shared Excel export and import
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
-- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups and a layer attached to another; the phone's Workspace writing box with the field on top
+- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups; the phone's Workspace writing box; a File Upload field in product forms and the sweep of unordered carts' files
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
@@ -147,7 +150,7 @@
 - decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral; ws_app_commands.args
 - decisions-made-schema-27.md: Decisions list, schema part 27 (2026-11-19 on): ws_channel_memory.project and the general memory record kept with channel_id 0
 - decisions-made-schema-28.md: Decisions list, schema part 28 (2026-11-19 on): schema the open version added and then gave up is removed where it was added; ws_profiles.mail_pinned for a person's Incoming e-mail menu pin
-- decisions-made-schema-29.md: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tables; content and component_id on auto_dialogs; prototype_links.bundle_id
+- decisions-made-schema-29.md: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tables; content and component_id on auto_dialogs; prototype_links.bundle_id; the event_tickets columns
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -242,7 +245,7 @@
 - sandbox-on-windows.md: A throwaway Pinegrap install on the owner's Windows machine without touching dev: a private mysqld on its own port, a git archive export, php -S, the installer by curl, CLI scripts, the API over HTTP [decision: decisions-made-workspace-31.md]
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
 - session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft [decision: here]
-- static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro, libxml_disable_entity_loader): phpcs:ignore marker or baseline entry; the brace-less foreach false positive [decision: decisions-made-product-3.md]
+- static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro): phpcs:ignore marker or baseline entry; libxml_disable_entity_loader gone; the brace-less foreach false positive [decision: decisions-made-product-3.md]
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which coordinators give to workers like plan steps; the merging session closes a fixed one
 - trial-merge-check.md: Checking whether a branch or an open PR still merges into development without touching a checkout: git merge-tree --write-tree lists the conflicts; the merged tree's memory index from an export

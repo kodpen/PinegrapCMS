@@ -6,7 +6,8 @@
  * import_products_f.php) reading .ods and .xls files through the sheet
  * reader (includes/fn/sheet_read.php): the fixtures of
  * tests/fixtures/sheet_read/ give the rows PHPExcel gave the importer
- * before, cell for cell, but where the reader reads otherwise on purpose
+ * before (frozen in phpexcel_product_rows.json), cell for cell, but where
+ * the reader reads otherwise on purpose
  * (docs/memory/platform/sheet-reader-differences.md); a .xlsx keeps the
  * importer's own walk; the reader's errors keep the importer's texts.
  *
@@ -49,65 +50,20 @@ function products_import_sheet_test_rows($path, $file_name)
 
 /**
  * The rows the product importer made of a file with PHPExcel before it read
- * through the sheet reader: the first sheet, values only, every row squared
- * to the sheet's last data column, empty rows dropped. Run in its own PHP
- * process, as PHPExcel replaces the zip stream wrapper and switches libxml's
- * entity loader off for the rest of a request.
+ * through the sheet reader (the first sheet, values only, every row squared
+ * to the sheet's last data column, empty rows dropped), frozen in
+ * tests/fixtures/sheet_read/phpexcel_product_rows.json before the library
+ * was removed.
  */
-function products_import_sheet_test_phpexcel($path)
+function products_import_sheet_test_phpexcel($file)
 {
-	$readers = array('xlsx' => 'Excel2007', 'ods' => 'OOCalc', 'xls' => 'Excel5');
-	$script = tempnam(sys_get_temp_dir(), 'pg_products_import_sheet');
-	$code = '<?php
-error_reporting(0);
-require ' . var_export(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php', true) . ';
-$reader = PHPExcel_IOFactory::createReader(' . var_export($readers[pg_sheet_kind($path)], true) . ');
-$reader->setReadDataOnly(true);
-$book = $reader->load(' . var_export($path, true) . ');
-$sheet = $book->getSheet(0);
-$last_row = $sheet->getHighestDataRow();
-$last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
-$out = array();
-for ($row_number = 1; $row_number <= $last_row; $row_number++) {
-	$row = array();
-	$filled = false;
-	for ($column = 0; $column <= $last_column; $column++) {
-		$cell = $sheet->getCellByColumnAndRow($column, $row_number, false);
-		$text = "";
-		if ($cell !== null) {
-			try {
-				$value = $cell->getCalculatedValue();
-			} catch (Exception $exception) {
-				$value = $cell->getValue();
-			}
-			if ($value === null) {
-				$text = "";
-			} elseif (is_bool($value)) {
-				$text = $value ? "1" : "0";
-			} elseif (PHPExcel_Shared_Date::isDateTime($cell)) {
-				$stamp = PHPExcel_Shared_Date::ExcelToPHP((float) $value);
-				$text = gmdate((((float) $value) == floor((float) $value)) ? "Y-m-d" : "Y-m-d H:i:s", $stamp);
-			} else {
-				$text = (string) $value;
-			}
-		}
-		if ($text !== "") {
-			$filled = true;
-		}
-		$row[] = $text;
-	}
-	if ($filled) {
-		$out[] = $row;
-	}
-}
-echo serialize($out);
-';
-	file_put_contents($script, $code);
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>/dev/null');
-	unlink($script);
-	$read = @unserialize($output);
+	static $frozen = null;
 
-	return is_array($read) ? $read : null;
+	if ($frozen === null) {
+		$frozen = json_decode((string) file_get_contents(dirname(__FILE__) . '/fixtures/sheet_read/phpexcel_product_rows.json'), true);
+	}
+
+	return (is_array($frozen) && isset($frozen[$file])) ? $frozen[$file] : null;
 }
 
 // The cells the importer now reads otherwise than PHPExcel did, on purpose,
@@ -156,7 +112,7 @@ function test_products_import_sheet_matches_phpexcel()
 
 	foreach ($files as $file) {
 		$path = $directory . '/' . $file;
-		$expected = products_import_sheet_test_phpexcel($path);
+		$expected = products_import_sheet_test_phpexcel($file);
 
 		if (!pg_assert_true(is_array($expected) && !empty($expected), $file . ' read by PHPExcel')) {
 			continue;
@@ -296,15 +252,4 @@ function test_products_import_sheet_refusals_keep_their_texts()
 	}
 
 	rmdir($dir);
-}
-
-// The product import no longer loads PHPExcel.
-function test_products_import_sheet_loads_no_phpexcel()
-{
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_products_f.php');
-	$start = strpos($source, 'function pg_products_import_to_csv(');
-	$end = strpos($source, 'function pg_products_import_xlsx_sheet_part(');
-
-	pg_assert_true(($start !== false) && ($end !== false), 'the conversion found');
-	pg_assert_same(false, strpos(substr($source, (int) $start, (int) $end - (int) $start), 'PHPExcel'), 'no PHPExcel in the conversion');
 }

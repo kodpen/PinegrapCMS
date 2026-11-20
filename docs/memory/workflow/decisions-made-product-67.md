@@ -13,7 +13,7 @@ description: Decisions list, product part 67 (2026-11-16 on): the owner's looks 
 - The sheet showed: the button right under the later coordinate field of a record's form; one answer line under it (found, kept when the record is saved) and under that the line naming where the address is sent (Photon, OpenStreetMap data); the warning in the answer line's place when the address changes afterwards; the not found line; "Find missing coordinates" on the list, its report above the list with the ones not found one per line; the form on a phone.
 
 ## Do the publish and take-back dialogs come out as on the sheet? (owner, 2026-11-16, agent channel poll 106, message 7125)
-- "Evet, böyle çıksın", on sheet 7124 of RB3 #9999 (`plans/release-bundle.md`).
+- "Evet, böyle çıksın", on sheet 7124 of RB3 #9999 (`designer/release-bundle.md`).
 - The sheet showed, at 1440 dark and 390 light: publish before a choice (each page with what happens to it; a "changed since" row with its two choices, neither chosen, Publish disabled); publish with "Leave out" pressed and Publish enabled; take back, with the page that cannot come back listed with its reason.
 
 ## Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)

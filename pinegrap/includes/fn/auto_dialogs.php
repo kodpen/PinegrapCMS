@@ -213,6 +213,22 @@ function pg_auto_dialog_components_found($rows)
 }
 
 /**
+ * The shared components a designed pop-up may show, by name: every one that
+ * is no system widget. The create and edit screens offer them.
+ *
+ * @return array  rows of id, name; an empty array when the query failed
+ */
+function pg_auto_dialog_component_rows()
+{
+    $rows = db_items(
+        "SELECT id, name FROM shared_components
+        WHERE system_region_config IS NULL OR system_region_config = ''
+        ORDER BY name, id");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
  * What an auto dialog shows, read from a row or from the values the API
  * sends: content url (its address in an iframe, as always) or component (a
  * shared component designed in the visual designer), and component_id, the

@@ -2,14 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the ceilings on what PHPExcel's OpenDocument reader makes of
- * repeated rows, repeated columns and merged ranges: the reader's own cell
- * ceiling and the step over an empty run (PHPExcel_Reader_OOCalc), and
- * pg_products_import_ods_load() (import_products_f.php) as the product
- * importer uses it; the bank statement importer, which reads through the
- * sheet reader, is held to the same files. An honest file, laid out
- * the way LibreOffice saves one, reads as before; a few hundred bytes that
- * ask for millions of cells are turned away before they are made.
+ * Tests for the ceilings on what an .ods makes of repeated rows, repeated
+ * columns and merged ranges, as the product importer
+ * (pg_products_import_to_csv(), import_products_f.php) and the bank
+ * statement importer (erp_bank_read_file(), includes/erp/bank_import.php)
+ * meet them through the sheet reader (includes/fn/sheet_read.php). An honest
+ * file, laid out the way LibreOffice saves one, reads as written; a few
+ * hundred bytes that ask for millions of cells are turned away before they
+ * are made.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,7 +23,6 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bank_import.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
 
 // An .ods holding these table:table elements, in a folder of its own.
 function ods_cell_ceiling_test_file($tables)
@@ -60,88 +59,52 @@ function ods_cell_ceiling_test_number($value, $attributes = '')
 	return '<table:table-cell office:value-type="float" office:value="' . $value . '"' . $attributes . '><text:p>' . $value . '</text:p></table:table-cell>';
 }
 
-// PHPExcel predates PHP 8.2 and raises deprecations of its own; they are not
-// what these tests are about.
-function ods_cell_ceiling_test_quiet($callback)
-{
-	$reporting = error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-
-	try {
-		$result = $callback();
-
-		// A worksheet's destructor creates PHPExcel's calculation engine,
-		// which raises the same deprecations; collected here.
-		gc_collect_cycles();
-
-		return $result;
-
-	} finally {
-		error_reporting($reporting);
-	}
-}
-
-// The product importer's CSV as rows, or its error. The product importer
-// reads through the sheet reader; PHPExcel, loaded by the bank statement
-// importer earlier in this process, switches libxml's entity loader off on
-// every load, which stops XMLReader opening a zip entry. A request that
-// imports products never loads PHPExcel.
+// The product importer's CSV as rows, or its error.
 function ods_cell_ceiling_test_products($path)
 {
-	return ods_cell_ceiling_test_quiet(function () use ($path) {
-		if (function_exists('libxml_disable_entity_loader')) {
-			@libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off in this test process
-		}
+	$error = '';
+	$csv = pg_products_import_to_csv($path, 'products.ods', $error);
 
-		$error = '';
-		$csv = pg_products_import_to_csv($path, 'products.ods', $error);
+	if ($csv === '') {
+		return $error;
+	}
 
-		if ($csv === '') {
-			return $error;
-		}
+	$rows = array();
+	$handle = fopen($csv, 'r');
 
-		$rows = array();
-		$handle = fopen($csv, 'r');
+	while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+		$rows[] = $row;
+	}
 
-		while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
-			$rows[] = $row;
-		}
+	fclose($handle);
+	unlink($csv);
 
-		fclose($handle);
-		unlink($csv);
-
-		return $rows;
-	});
+	return $rows;
 }
 
 // The bank statement importer's rows, or its error.
 function ods_cell_ceiling_test_bank($path)
 {
-	return ods_cell_ceiling_test_quiet(function () use ($path) {
-		$read = erp_bank_read_file($path, 'statement.ods');
+	$read = erp_bank_read_file($path, 'statement.ods');
 
-		return ($read['error'] !== '') ? $read['error'] : $read['rows'];
-	});
+	return ($read['error'] !== '') ? $read['error'] : $read['rows'];
 }
 
-// The reader itself, with a ceiling: the workbook or the exception it threw.
-function ods_cell_ceiling_test_reader($path, $ceiling, $data_only = true)
+// The sheet reader's first sheet: row number => column => value.
+function ods_cell_ceiling_test_cells($path)
 {
-	return ods_cell_ceiling_test_quiet(function () use ($path, $ceiling, $data_only) {
-		$reader = PHPExcel_IOFactory::createReader('OOCalc');
-		$reader->setReadDataOnly($data_only);
-		$reader->setCellCeiling($ceiling);
+	$error = '';
+	$cells = array();
 
-		try {
-			return $reader->load($path);
-		} catch (Exception $exception) {
-			return $exception;
+	foreach (pg_sheet_rows($path, 'ods', $error) as $number => $row) {
+		foreach ($row as $column => $cell) {
+			if ($cell !== null) {
+				$cells[$number][$column] = $cell['v'];
+			}
 		}
-	});
-}
+	}
 
-function ods_cell_ceiling_test_stopped_at_ceiling($result)
-{
-	return ($result instanceof PHPExcel_Reader_Exception) && ($result->getCode() === PHPExcel_Reader_OOCalc::CELL_CEILING_REACHED);
+	return ($error !== '') ? $error : $cells;
 }
 
 // A statement laid out the way LibreOffice saves one with a formatted heading
@@ -193,9 +156,7 @@ function test_ods_cell_ceiling_honest_file_reads_as_written()
 }
 
 // A cell after an empty run lands in the column the run ends at, across the
-// two- and three-letter boundaries, as it did when the run was walked one
-// column at a time; past column ZZZ there is no cell reference, and a value
-// there stops the load as it always did.
+// two- and three-letter boundaries; empty rows are counted.
 function test_ods_cell_ceiling_empty_run_steps_to_the_right_column()
 {
 	if (!class_exists('ZipArchive')) {
@@ -211,25 +172,12 @@ function test_ods_cell_ceiling_empty_run_steps_to_the_right_column()
 		. '<table:table-row>' . $t('last') . '</table:table-row>'
 		. '</table:table>');
 
-	$book = ods_cell_ceiling_test_reader($path, 0);
-	pg_assert_true($book instanceof PHPExcel, 'loaded');
+	pg_assert_same(array(
+		1 => array(0 => 'a', 25 => 'z', 27 => 'ab'),
+		2 => array(0 => 'a', 701 => 'zz', 703 => 'aab'),
+		6 => array(0 => 'last'),
+	), ods_cell_ceiling_test_cells($path), 'Z, AB, ZZ and AAB; nothing made in the runs');
 
-	if ($book instanceof PHPExcel) {
-		$sheet = $book->getSheet(0);
-		pg_assert_same('z', $sheet->getCell('Z1')->getValue(), 'Z after 24 empty');
-		pg_assert_same('ab', $sheet->getCell('AB1')->getValue(), 'AB after one more');
-		pg_assert_same('zz', $sheet->getCell('ZZ2')->getValue(), 'ZZ after 700 empty');
-		pg_assert_same('aab', $sheet->getCell('AAB2')->getValue(), 'AAB across the three-letter boundary');
-		pg_assert_same('last', $sheet->getCell('A6')->getValue(), 'empty rows counted');
-		pg_assert_same('AAB', $sheet->getHighestDataColumn(), 'nothing made in the runs');
-		$book->disconnectWorksheets();
-	}
-
-	ods_cell_ceiling_test_clean($path);
-
-	$path = ods_cell_ceiling_test_file('<table:table table:name="S"><table:table-row>' . $t('a') . '<table:table-cell table:number-columns-repeated="18277"/>' . $t('beyond') . '</table:table-row></table:table>');
-	$result = ods_cell_ceiling_test_reader($path, 0);
-	pg_assert_true(($result instanceof Exception) && !ods_cell_ceiling_test_stopped_at_ceiling($result), 'a value past ZZZ stops the load');
 	ods_cell_ceiling_test_clean($path);
 }
 
@@ -257,52 +205,10 @@ function test_ods_cell_ceiling_long_empty_run_is_free()
 	ods_cell_ceiling_test_clean($path);
 }
 
-// The reader makes up to its ceiling and stops one cell past it, counting
-// every repeat of a repeated row and column and every cell a merged range
-// covers; without a ceiling it makes what it is asked to.
-function test_ods_cell_ceiling_reader_counts_repeats_and_merges()
-{
-	if (!class_exists('ZipArchive')) {
-		return;
-	}
-
-	$t = 'ods_cell_ceiling_test_text';
-
-	// 3 columns x 4 rows of the same value: 12 cells.
-	$path = ods_cell_ceiling_test_file('<table:table table:name="S"><table:table-row table:number-rows-repeated="4">' . $t('x', ' table:number-columns-repeated="3"') . '</table:table-row></table:table>');
-
-	$book = ods_cell_ceiling_test_reader($path, 12);
-	pg_assert_true($book instanceof PHPExcel, 'exactly the ceiling');
-
-	if ($book instanceof PHPExcel) {
-		pg_assert_same('x', $book->getSheet(0)->getCell('C4')->getValue(), 'every repeat made');
-		$book->disconnectWorksheets();
-	}
-
-	pg_assert_true(ods_cell_ceiling_test_stopped_at_ceiling(ods_cell_ceiling_test_reader($path, 11)), 'one past it');
-	pg_assert_true(ods_cell_ceiling_test_reader($path, 0) instanceof PHPExcel, 'no ceiling');
-	ods_cell_ceiling_test_clean($path);
-
-	// One cell and a merged range of 4 x 4: 17.
-	$path = ods_cell_ceiling_test_file('<table:table table:name="S"><table:table-row>' . $t('m', ' table:number-columns-spanned="4" table:number-rows-spanned="4"') . '</table:table-row></table:table>');
-	pg_assert_true(ods_cell_ceiling_test_reader($path, 17) instanceof PHPExcel, 'merged range at the ceiling');
-	pg_assert_true(ods_cell_ceiling_test_stopped_at_ceiling(ods_cell_ceiling_test_reader($path, 16)), 'merged range past it');
-	ods_cell_ceiling_test_clean($path);
-
-	// The count is the workbook's, not the sheet's.
-	$path = ods_cell_ceiling_test_file('<table:table table:name="S"><table:table-row>' . $t('x', ' table:number-columns-repeated="8"') . '</table:table-row></table:table>'
-		. '<table:table table:name="T"><table:table-row>' . $t('y', ' table:number-columns-repeated="8"') . '</table:table-row></table:table>');
-	pg_assert_true(ods_cell_ceiling_test_stopped_at_ceiling(ods_cell_ceiling_test_reader($path, 15)), 'two sheets add up');
-	pg_assert_true(ods_cell_ceiling_test_reader($path, 16) instanceof PHPExcel, 'and fit together');
-	ods_cell_ceiling_test_clean($path);
-}
-
 // A merged range that covers nothing, runs backwards or reaches past column
-// ZZZ stops PHPExcel's load, with or without a ceiling, instead of being
-// walked without end; it is no range a sheet can hold. The bank statement
-// importer reads through the sheet reader, where a span makes no cells: the
-// one value is read.
-function test_ods_cell_ceiling_impossible_merge_stops()
+// ZZZ makes no cells: the sheet reader takes a span as no more than the one
+// value it stands on, and both importers read that value.
+function test_ods_cell_ceiling_impossible_merge_reads_the_value()
 {
 	if (!class_exists('ZipArchive')) {
 		return;
@@ -313,11 +219,7 @@ function test_ods_cell_ceiling_impossible_merge_stops()
 	foreach (array('table:number-columns-spanned="0"', 'table:number-columns-spanned="-3"', 'table:number-rows-spanned="-1"', 'table:number-columns-spanned="20000"') as $span) {
 		$path = ods_cell_ceiling_test_file('<table:table table:name="S"><table:table-row>' . $t('m', ' ' . $span) . '</table:table-row></table:table>');
 
-		foreach (array(0, 1000) as $ceiling) {
-			$result = ods_cell_ceiling_test_reader($path, $ceiling, false);
-			pg_assert_true(($result instanceof PHPExcel_Reader_Exception) && !ods_cell_ceiling_test_stopped_at_ceiling($result), $span . ', ceiling ' . $ceiling);
-		}
-
+		pg_assert_same(array(array('m')), ods_cell_ceiling_test_products($path), $span . ', product import');
 		pg_assert_same(array(array('m')), ods_cell_ceiling_test_bank($path), $span . ', bank statement');
 		ods_cell_ceiling_test_clean($path);
 	}
@@ -339,11 +241,11 @@ function test_ods_cell_ceiling_importers_turn_away_expansion()
 
 	$cases = array(
 		'repeated value' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="100000">' . $t('x', ' table:number-columns-repeated="1000"') . '</table:table-row></table:table>',
-		'one past the cell ceiling' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (PG_PRODUCTS_IMPORT_ODS_MAX_CELLS - 1) . '">' . $t('x') . '</table:table-row></table:table>',
+		'one past the cell ceiling' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (PG_SHEET_ODS_MAX_CELLS - 1) . '">' . $t('x') . '</table:table-row></table:table>',
 		'merged range' => '<table:table table:name="S">' . $heading . '<table:table-row>' . $t('x', ' table:number-columns-spanned="16000" table:number-rows-spanned="100000"') . '</table:table-row></table:table>',
 		'second sheet' => '<table:table table:name="S">' . $heading . '</table:table><table:table table:name="T"><table:table-row table:number-rows-repeated="100000">' . $t('x', ' table:number-columns-repeated="1000"') . '</table:table-row></table:table>',
 		'far corner' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="1048000"><table:table-cell table:number-columns-repeated="16000"/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="16000"/>' . $t('x') . '</table:table-row></table:table>',
-		'used range one row past' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_PRODUCTS_IMPORT_ODS_MAX_RANGE, 1024) - 1) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>',
+		'used range one row past' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_SHEET_ODS_MAX_RANGE, 1024) - 1) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>',
 	);
 
 	// The sheet reader, which both importers read through, makes no cells
@@ -368,7 +270,7 @@ function test_ods_cell_ceiling_importers_turn_away_expansion()
 	}
 
 	// The used range at its ceiling still reads: 1,024 rows by 1,024 columns.
-	$path = ods_cell_ceiling_test_file('<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_PRODUCTS_IMPORT_ODS_MAX_RANGE, 1024) - 2) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>');
+	$path = ods_cell_ceiling_test_file('<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_SHEET_ODS_MAX_RANGE, 1024) - 2) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>');
 	$rows = ods_cell_ceiling_test_products($path);
 	pg_assert_true(is_array($rows) && (count($rows) === 2) && (count($rows[0]) === 1024) && ($rows[1][1023] === 'x'), 'used range at the ceiling');
 	ods_cell_ceiling_test_clean($path);

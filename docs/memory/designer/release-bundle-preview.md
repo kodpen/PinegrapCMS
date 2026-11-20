@@ -21,6 +21,6 @@ module: prototype
 ## Who opens it, and from where?
 - `prototype.php?bundle=<id>`: signed in, past the viewer's manager gate and then `validate_area_access($user, 'designer')`, as the Bundles screen. Site Log: one line per bundle and session, "preview of bundle (<name>) was viewed". Close goes back to `page_bundles.php?id=<id>`.
 - The Bundles screen's toolbar draws "Preview the bundle" (a `pg-button pg-button-quiet pg-button-sm` link, a new tab) while the bundle holds its drafts and at least one waits.
-- A share link of the preview is RB6 (B15).
+- A share link of the preview: release-bundle-share-link.md.
 
 Related: designer/designer-prototype-viewer.md, designer/release-bundle-screen.md

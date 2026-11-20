@@ -790,13 +790,16 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         . '<i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>' . h(lang('Check e-mail')) . '</button>' : '';
 
     // New e-mail opens its form in a drawer (workspace_mail.js); without a
-    // mailbox to send from it is not drawn.
+    // mailbox to send from it is not drawn. The views wrap onto a second
+    // line (flex-wrap): the Workspace toolbar keeps a group on one line that
+    // scrolls sideways with no scrollbar, so on a phone Blocked e-mail and
+    // Drafts lay past the screen's edge with nothing showing they were there.
     return pg_screen_toolbar(array(
         'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
             . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send) . ws_mail_menu_pin_html($pin),
         'search'    => $search,
-        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
+        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
 }
 

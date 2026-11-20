@@ -6,7 +6,7 @@ description: Handles are freed with unset(), not curl_close()/finfo_close(); a t
 ## How is a cURL or finfo handle freed?
 - `unset($ch)` / `unset($finfo)`. `curl_close()`, `finfo_close()` and `openssl_x509_free()` do nothing since PHP 8.0 (the handles are objects freed with their last reference) and are deprecated in 8.5 (`openssl_x509_free()` in 8.4). On PHP 7 `unset()` drops the last reference to the resource, which frees it as the close call did, so behaviour is the same on 7.1-8.5.
 - A call kept on purpose sits behind `if (PHP_VERSION_ID < 80000)` with a `phpcs:ignore` naming the guard on the same line (`imagedestroy()` in `includes/image_engine.php`, `xml_parser_free()` in `includes/workspace/notes_enex.php`). New code just unsets.
-- Embedded libraries (`includes/stripe`, `iyzipay-php`, `phpmailer`, `dompdf`, `phpexcel`, `boxpacker`, `qrcode`, root `mysqldump.php`, `pclzip.lib.php`, `excel_reader2.php`) keep their own calls; the test does not read them. dompdf and PHPMailer 6 guard theirs upstream (`dompdf-embedding.md`, `phpmailer-embedding.md`).
+- Embedded libraries (`includes/stripe`, `iyzipay-php`, `phpmailer`, `dompdf`, `boxpacker`, `qrcode`, root `mysqldump.php`, `pclzip.lib.php`, `excel_reader2.php`) keep their own calls; the test does not read them. dompdf and PHPMailer 6 guard theirs upstream (`dompdf-embedding.md`, `phpmailer-embedding.md`).
 
 ## What keeps a deprecated call out of own code?
 - `tests/deprecated_calls_test.php` reads every PHP file under `pinegrap/`, `tools/`, `tests/` and at the repository root by token for what PHP 8.1-8.5 deprecates: the functions (free calls, `utf8_encode()`, `strftime()`, `mysqli_ping()`, `lcg_value()`…).

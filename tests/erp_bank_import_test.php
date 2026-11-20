@@ -8,10 +8,11 @@
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
  * erp_bank_read_file() over a small .xlsx and .ods written here and over a
  * bank statement saved by LibreOffice as .xlsx, .ods and .xls
- * (tests/fixtures/erp_bank/), whose rows are compared with those PHPExcel
- * read before the sheet reader took its place. A CSV statement's separator (erp_bank_read_csv()), the one chosen on
- * the column screen (erp_bank_statement_rows()) and the amounts
- * erp_bank_amount() reads are checked too.
+ * (tests/fixtures/erp_bank/), whose rows are those PHPExcel read before
+ * the sheet reader took its place. A CSV statement's separator
+ * (erp_bank_read_csv()), the one chosen on the column screen
+ * (erp_bank_statement_rows()) and the amounts erp_bank_amount() reads are
+ * checked too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -224,73 +225,8 @@ function test_erp_bank_read_file_ods()
 }
 
 /**
- * A statement's rows as the bank import read them with PHPExcel before the
- * sheet reader (formats read, a formula's result, a date by its format),
- * the title block cut; PHPExcel runs in its own PHP process, as it replaces
- * the zip stream wrapper for the rest of the request.
- */
-function erp_bank_test_phpexcel_rows($path)
-{
-	$readers = array('xlsx' => 'Excel2007', 'ods' => 'OOCalc', 'xls' => 'Excel5');
-	$script = tempnam(sys_get_temp_dir(), 'pg_bank_phpexcel');
-	file_put_contents($script, '<?php
-error_reporting(0);
-require ' . var_export(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php', true) . ';
-$book = PHPExcel_IOFactory::createReader(' . var_export($readers[pg_sheet_kind($path)], true) . ')->load(' . var_export($path, true) . ');
-$sheet = $book->getSheet(0);
-$last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
-$out = array();
-for ($row = 1; $row <= $sheet->getHighestDataRow(); $row++) {
-	for ($column = 0; $column <= $last_column; $column++) {
-		$cell = $sheet->getCellByColumnAndRow($column, $row, false);
-		$entry = array("s", "");
-		if ($cell !== null) {
-			try {
-				$value = $cell->getCalculatedValue();
-			} catch (Exception $exception) {
-				$value = $cell->getValue();
-			}
-			if (is_bool($value)) {
-				$entry = array("b", $value ? "1" : "0");
-			} elseif (is_int($value) || is_float($value)) {
-				$entry = array(PHPExcel_Shared_Date::isDateTime($cell) ? "date" : "n", (string) $value);
-			} else {
-				$entry = array("s", (string) $value);
-			}
-		}
-		$out[$row][$column] = $entry;
-	}
-}
-echo serialize($out);
-');
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>/dev/null');
-	unlink($script);
-	$sheet = @unserialize($output);
-
-	if (!is_array($sheet)) {
-		return null;
-	}
-
-	$rows = array();
-
-	foreach ($sheet as $cells) {
-		$row = array();
-
-		foreach ($cells as $entry) {
-			$row[] = trim(($entry[0] === 's') ? $entry[1] : erp_bank_sheet_value($entry[1], $entry[0]));
-		}
-
-		if (implode('', $row) !== '') {
-			$rows[] = $row;
-		}
-	}
-
-	return erp_bank_rows_from_heading($rows);
-}
-
-/**
  * Rows without their trailing empty cells: an .xlsx row ends at its last
- * cell, PHPExcel squared every row to the widest.
+ * cell, an .xls or .ods row is squared to the widest.
  */
 function erp_bank_test_trim_rows($rows)
 {
@@ -306,7 +242,8 @@ function erp_bank_test_trim_rows($rows)
 // One statement saved by LibreOffice as .xlsx, .ods and .xls (a title
 // block, a column left empty, dates with and without a time, amounts with a
 // binary float's noise, a formula total) reads the same rows in each, and
-// the rows PHPExcel read before.
+// the rows PHPExcel read before: $expected is what PHPExcel read from each
+// of the three files, title block cut, when the library was removed.
 function test_erp_bank_read_file_statement_fixtures()
 {
 	$expected = array(
@@ -326,12 +263,6 @@ function test_erp_bank_read_file_statement_fixtures()
 
 		// An .xls or .ods row is squared to the widest, as PHPExcel gave it.
 		pg_assert_same(($extension === 'xlsx') ? erp_bank_test_trim_rows($expected) : $expected, $read['rows'], $extension . ' rows');
-
-		$before = erp_bank_test_phpexcel_rows($path);
-
-		if (pg_assert_true(is_array($before), $extension . ' read by PHPExcel')) {
-			pg_assert_same(erp_bank_test_trim_rows($before), erp_bank_test_trim_rows($read['rows']), $extension . ' as PHPExcel read it');
-		}
 	}
 }
 
