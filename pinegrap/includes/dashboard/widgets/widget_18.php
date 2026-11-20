@@ -264,7 +264,7 @@ function pg_dashboard_widget_18($request, $user)
             $fm_action .= '
             <button type="button" class="btn btn-sm btn-outline theme-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                title="' . lang('Edit this image in the Artifact Canvas') . '"
-               data-pg-image-edit="' . h($fm_item['name']) . '"><i class="bi bi-brush"></i></button>' . pg_image_editor_includes();
+               data-pg-image-edit="' . h($fm_item['name']) . '">' . pg_design_canvas_icon_one_colour() . '</button>' . pg_image_editor_includes();
         }
 
         $fm_note = '';
