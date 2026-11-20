@@ -1,6 +1,6 @@
 ---
 name: place-list
-description: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
+description: The "Map of places" block's list (place-map MP3, MP3b): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
 module: place_list
 ---
 
@@ -11,9 +11,7 @@ module: place_list
 - Same origin only (`pg_request_cross_site()`, 403), then 30 answers a minute per address (`pg_place_list_throttled()`, rule `rate-place-list`, 429), `Cache-Control: private, no-store`.
 
 ## Which fields does an answer carry?
-- By the server's name rule only, never a field the request names (architect, message 7423, for every later step too): the coordinates and address of `platform/place-coordinates.md`, the record's name (`name`, `title`, `branch`, `sube`…), hours (`hours`, `opening_hours`, `calisma_saatleri`…) and phone (`phone`, `tel`, `telefon`…) (`pg_place_list_names()`).
-- An office-use-only field is never taken (`pg_place_list_field_roles()`). A latitude or longitude out of range gives no point (`lat`/`lng` null).
-- The block's own field pickers are step MP3b (architect, message 7423); until then the block uses the name rule.
+- From the saved page, never from the request: the block's own choice, else the name rule (`place-list-fields.md`).
 
 ## What does a designer see that a visitor does not?
 - `note`: why the list is empty (no form list on the page, the collection lacks the two number fields and an address, the page not open to everyone) or that it was cut at 500 and "Near me" is not offered. Given only to a signed-in user with role below 3; `pg_map.js` prints it above the list. A visitor gets an empty list or the places.

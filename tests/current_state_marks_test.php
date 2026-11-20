@@ -39,7 +39,7 @@ function test_current_state_nav_links()
 	$pins = array(
 		'erp_cashflow.php'               => array("(\$active === 'flow') ? ' is-active\" aria-current=\"page' : ''", "(\$active === 'forecast') ? ' is-active\" aria-current=\"page' : ''"),
 		'erp_settings.php'               => array("((\$key === \$doc) ? ' active\" aria-current=\"page' : '')"),
-		'cloudflare.php'                 => array("\$active_24h = (\$period === '24h') ? 'active\" aria-current=\"page' : '';", "\$active_cus = (\$period === 'custom') ? 'active\" aria-current=\"page' : '';"),
+		'cloudflare.php'                 => array("\$active_24h = (\$period === '24h') ? 'is-active\" aria-current=\"page' : '';", "\$active_cus = (\$period === 'custom') ? 'is-active\" aria-current=\"page' : '';"),
 		'view_parasut_inbox.php'         => array("\$tab_incoming_active = (\$tab === 'incoming') ? ' active\" aria-current=\"page' : '';", "\$tab_vkn_active      = (\$tab === 'vkn')      ? ' active\" aria-current=\"page' : '';"),
 		'includes/settings/screen.php'   => array("(\$pg_settings_other_key === \$pg_settings_key) ? ' active\" aria-current=\"page' : ''"),
 		'erp_invoices.php'               => array("((\$edoc_filter === \$edoc_key) ? ' active\" aria-current=\"page' : '')"),

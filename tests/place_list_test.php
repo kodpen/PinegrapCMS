@@ -160,3 +160,94 @@ function test_place_list_script_under_node()
 	pg_assert_true($result['istanbul'], 'dotted capital İ matches i');
 	pg_assert_false($result['miss']);
 }
+
+// The block's own pickers, saved on the block in the page's tree.
+function place_list_test_tree($choice)
+{
+	$attrs = array(array('name' => 'data-pg-map', 'value' => ''));
+
+	if ($choice !== null) {
+		$attrs[] = array('name' => 'data-pg-map-fields', 'value' => is_string($choice) ? $choice : json_encode($choice));
+	}
+
+	return array('type' => 'root', 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'div', '_attrs' => array(array('name' => 'data-pg-map-list', 'value' => '')))),
+			array('type' => 'semantic', 'props' => array('tag' => 'div', '_attrs' => $attrs), 'children' => array()),
+		)),
+	));
+}
+
+function test_place_list_saved_choice_from_tree()
+{
+	$choice = pg_place_list_saved_choice(place_list_test_tree(array('name' => 'Branch', 'hours' => 'Open', 'lat' => 'Y', 'other' => 'x', 'phone' => array('x'))));
+
+	pg_assert_same(array('name' => 'Branch', 'hours' => 'Open', 'lat' => 'Y'), $choice, 'the known parts with a name only');
+	pg_assert_same(array(), pg_place_list_saved_choice(place_list_test_tree(null)), 'no choice: the name rule');
+	pg_assert_same(array(), pg_place_list_saved_choice(place_list_test_tree('{not json')), 'a broken value is no choice');
+	pg_assert_same(array(), pg_place_list_saved_choice('not a tree'));
+	pg_assert_same(array(), pg_place_list_saved_choice(array('children' => array(array('props' => array('_attrs' => array(array('name' => 'data-pg-map-fields', 'value' => '{"name":"Branch"}'))))))), 'a choice off the block does not count');
+}
+
+function test_place_list_chosen_fields()
+{
+	$fields = place_list_test_fields();
+	$fields[] = array('id' => 9, 'name' => 'Branch', 'type' => 'text box', 'kind' => '', 'office' => 0);
+	$fields[] = array('id' => 10, 'name' => 'Y', 'type' => 'text box', 'kind' => 'number', 'office' => 0);
+	$fields[] = array('id' => 11, 'name' => 'Street', 'type' => 'text box', 'kind' => '', 'office' => 0);
+
+	$roles = pg_place_list_field_roles($fields, array('name' => 'Branch', 'lat' => 'Y', 'address' => 'Street'));
+	pg_assert_same(9, $roles['name'], 'a chosen text field');
+	pg_assert_same(10, $roles['lat'], 'a chosen number field');
+	pg_assert_same(array(11), $roles['address'], 'a chosen address is the address alone');
+	pg_assert_same(4, $roles['lng'], 'a part not chosen keeps the name rule');
+	pg_assert_same(5, $roles['hours']);
+
+	// Office-use-only, another kind, another collection's field: refused, the name rule instead.
+	$refused = pg_place_list_field_roles($fields, array('hours' => 'Notes', 'phone' => 'Email', 'name' => 'Missing', 'lat' => 'Branch', 'lng' => 'Notes'));
+	pg_assert_same(5, $refused['hours'], 'an office-use-only field is refused');
+	pg_assert_same(6, $refused['phone'], 'an e-mail field is not text');
+	pg_assert_same(1, $refused['name'], 'a field the collection lacks');
+	pg_assert_same(3, $refused['lat'], 'a text field is no coordinate');
+	pg_assert_same(4, $refused['lng']);
+
+	foreach ($refused as $part => $value) {
+		pg_assert_false(in_array(8, (array) $value, true), $part . ' takes no office-use field');
+	}
+
+	// The pickers can give what the names do not.
+	$plain = array(
+		array('id' => 1, 'name' => 'Where', 'type' => 'text area', 'kind' => '', 'office' => 0),
+		array('id' => 2, 'name' => 'North', 'type' => 'text box', 'kind' => 'number', 'office' => 0),
+		array('id' => 3, 'name' => 'East', 'type' => 'text box', 'kind' => 'number', 'office' => 0),
+	);
+	pg_assert_same(null, pg_place_list_field_roles($plain), 'by name: no place fields');
+	$picked = pg_place_list_field_roles($plain, array('address' => 'Where', 'lat' => 'North', 'lng' => 'East'));
+	pg_assert_same(array(1), $picked['address']);
+	pg_assert_same(array(2, 3), array($picked['lat'], $picked['lng']));
+	pg_assert_same(null, pg_place_list_field_roles($plain, array('address' => 'Where', 'lat' => 'North')), 'still two coordinates and an address');
+}
+
+// A request naming a field gets nothing more: the answer reads the page id
+// and the saved page, never another request value.
+function test_place_list_request_names_no_field()
+{
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
+
+	pg_assert_same(0, preg_match('/\$_(GET|POST|REQUEST|COOKIE)\b/', $fn), 'the module reads no request value');
+	pg_assert_contains("pg_place_list_for_page((int) (\$_GET['page'] ?? 0))", $endpoint, 'the endpoint passes the page id alone');
+	pg_assert_contains('pg_place_list_saved_choice(json_decode((string) pg_page_tree_json(', $fn, 'the choice comes from the saved page');
+}
+
+// The block's panel keeps the choice on the block, under the server's name,
+// and offers no office-use-only field.
+function test_place_list_panel_section()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("_sdSetAttrOn(hit.node, '" . pg_place_list_choice_attr() . "'", $js, 'the panel writes the attribute the server reads');
+	pg_assert_contains("var _SD_PLACE_MAP_PARTS = ['" . implode("', '", pg_place_list_parts()) . "'];", $js, 'the same parts');
+	pg_assert_contains("String(f.office_use_only) === '1') return false;", $js, 'no office-use-only field is offered');
+	pg_assert_contains("cfg.regionType !== 'form_list_view'", $js, 'the list places.php reads');
+}

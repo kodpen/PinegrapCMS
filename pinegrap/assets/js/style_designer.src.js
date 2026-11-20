@@ -51253,6 +51253,8 @@ const StyleDesigner = (function () {
         var isVariantPicker = clsList.indexOf('pg-variant') !== -1;
         // The sideways row of a scroller block (Scroller: Snap Cards).
         var isScrollerRow = clsList.indexOf('pg-snap') !== -1;
+        // The "Map of places" block (data-pg-map): its field pickers.
+        var isPlaceMap = _sdAttr(n, 'data-pg-map') !== null;
         // Carousel root (has 'carousel' class, not carousel-inner/item/indicators/control)
         var isCarousel   = clsList.indexOf('carousel') !== -1
             && clsList.indexOf('carousel-inner')       === -1
@@ -51399,6 +51401,7 @@ const StyleDesigner = (function () {
                (isCarousel ? propsCarouselOptions(n) : '') +
                (isVariantPicker ? propsVariantOptions(n) : '') +
                (isScrollerRow ? propsScrollerOptions(n) : '') +
+               (isPlaceMap ? propsPlaceMapOptions(n) : '') +
                (isAlertRoot ? propsAlertOptions(n) : '') +
                (isPopoverTrigger ? propsPopoverOptions(n) : '') +
                (isTable ? propsTableOptions(n) : '') +
@@ -53546,6 +53549,82 @@ const StyleDesigner = (function () {
         };
         return sect('bi-collection', _sdT('Scroller'), row(_sdT('Slides'),
             '<div class="btn-group btn-group-sm w-100">' + btn('cards', _sdT('Cards')) + btn('wide', _sdT('Wide slides')) + '</div>'));
+    }
+
+    // The parts a "Map of places" block may choose a field for, as
+    // pg_place_list_parts() and pg_place_list_field_fits() on the server.
+    var _SD_PLACE_MAP_PARTS = ['name', 'address', 'hours', 'phone', 'lat', 'lng'];
+
+    // The fields the block chose (data-pg-map-fields), part => field name.
+    function _sdPlaceMapChoice(n) {
+        var v = _sdAttr(n, 'data-pg-map-fields'), out = {}, saved = null;
+        try { saved = v ? JSON.parse(v) : null; } catch (e) { saved = null; }
+        _SD_PLACE_MAP_PARTS.forEach(function (part) {
+            if (saved && typeof saved[part] === 'string' && saved[part] !== '') out[part] = saved[part];
+        });
+        return out;
+    }
+
+    // Whether a form field may hold a part: never office-use-only; a
+    // coordinate a number field, the others a text box or text area.
+    function _sdPlaceMapFits(f, part) {
+        if (!f || String(f.office_use_only) === '1') return false;
+        var type = String(f.type || '');
+        var kind = (type === 'text box' && String(f.collection_kind || '') === 'number') ? 'number' : '';
+        if (part === 'lat' || part === 'lng') return kind === 'number';
+        return type === 'text box' || type === 'text area';
+    }
+
+    // The form of the page's first form list, as places.php finds it
+    // (pg_sw_page_widget(): a component placed on the page itself).
+    function _sdPlaceMapFormId() {
+        var kids = [], id = 0;
+        (function walk(x) {
+            if (!x) return;
+            if (x.type === 'shared_ref') { kids.push(x); return; }
+            if (Array.isArray(x.children)) x.children.forEach(walk);
+        })(tree);
+        kids.some(function (r) {
+            var cfg = _cfCfgOf(parseInt(r.props && r.props.sharedId, 10) || 0);
+            if (!cfg || cfg.regionType !== 'form_list_view') return false;
+            id = parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0;
+            return true;
+        });
+        return id;
+    }
+
+    /**
+     * The Places section of a "Map of places" block: a field of the page's
+     * list for each part, or "Found by name". The choice is kept on the
+     * block (data-pg-map-fields) and places.php reads it from the saved page.
+     */
+    function propsPlaceMapOptions(n) {
+        var formId = _sdPlaceMapFormId();
+        var note = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(t) + '</div>'; };
+        if (!formId) return sect('bi-geo-alt', _sdT('Places'), note(_sdT('Add a form list of a collection to the page to choose its fields here. Until then the fields are found by their names.')));
+        var fields = _formFieldsCache[formId];
+        if (!fields) {
+            _fetchFormFields(formId, function () { _sdSchedulePropsRefresh(); });
+            return sect('bi-geo-alt', _sdT('Places'), note(_sdT('Loading…')));
+        }
+        var choice = _sdPlaceMapChoice(n);
+        var labels = { name: _sdT('Name'), address: _sdT('Address'), hours: _sdT('Opening hours'), phone: _sdT('Phone'), lat: _sdT('Latitude'), lng: _sdT('Longitude') };
+        var h = '';
+        _SD_PLACE_MAP_PARTS.forEach(function (part) {
+            var sel = '<select class="form-control form-control-sm" data-pm-part="' + part + '" data-pm-node-id="' + n._id + '">' +
+                '<option value="">' + esc(_sdT('Found by name')) + '</option>';
+            var known = !choice[part];
+            fields.forEach(function (f) {
+                if (!_sdPlaceMapFits(f, part)) return;
+                var on = choice[part] === String(f.name);
+                if (on) known = true;
+                sel += '<option value="' + esc(String(f.name)) + '"' + (on ? ' selected' : '') + '>' + esc(String(f.label || f.name)) + '</option>';
+            });
+            if (!known) sel += '<option value="' + esc(choice[part]) + '" selected>' + esc(_sdT('Not in the list: found by name')) + '</option>';
+            h += row(labels[part], sel + '</select>');
+        });
+        return sect('bi-geo-alt', _sdT('Places'), h +
+            note(_sdT('The fields of the page\'s form list the places show. Office-use-only fields are never shown; a part left to its name is found by the field\'s name.')));
     }
 
     /**
@@ -57284,6 +57363,21 @@ const StyleDesigner = (function () {
                 var hit = _findNodeAnywhereById(this.getAttribute('data-sc-node-id') || '');
                 if (!hit) return;
                 if (!_sdScrollerSetWide(hit.node, this.getAttribute('data-sc-action') === 'wide', function () { saveState(); })) return;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                render();
+            });
+        });
+
+        // Map of places: the field a part takes, kept on the block.
+        document.querySelectorAll('#sd-properties select[data-pm-part]').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var hit = _findNodeAnywhereById(this.getAttribute('data-pm-node-id') || '');
+                if (!hit) return;
+                saveState();
+                var choice = _sdPlaceMapChoice(hit.node);
+                if (this.value) choice[this.getAttribute('data-pm-part')] = this.value;
+                else delete choice[this.getAttribute('data-pm-part')];
+                _sdSetAttrOn(hit.node, 'data-pg-map-fields', Object.keys(choice).length ? JSON.stringify(choice) : null);
                 if (hit.sid) _sharedDirty[hit.sid] = true;
                 render();
             });
