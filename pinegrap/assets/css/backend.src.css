@@ -23468,7 +23468,17 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-cn-editor .ws-rich-field {
     min-height: 12rem;
 }
-/* The Versions drawer: the version shown is marked in the list */
+/* The Versions drawer: 480 px from the end, a tall sheet on a phone so the
+   version shown stays in sight under the list */
+.ws-cn-versions {
+    --pg-drawer-width: 480px;
+    --pg-drawer-height: 88vh;
+}
+.ws-cn-versions.drawer-bottom {
+    border-start-start-radius: var(--pg-radius-sheet);
+    border-start-end-radius: var(--pg-radius-sheet);
+}
+/* The version shown is marked in the list */
 .ws-cn-version.is-active {
     background: var(--pg-bg-2);
 }

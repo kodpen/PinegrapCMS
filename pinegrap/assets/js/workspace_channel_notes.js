@@ -368,12 +368,11 @@
 
         node.tabIndex = -1;
         node.setAttribute('aria-labelledby', id);
-        node.style.width = 'min(480px, 100%)';
-
+        // 480 px from the end; a sheet from the bottom on a phone (its
+        // sizes: .ws-cn-versions in backend.src.css).
         if (window.matchMedia && window.matchMedia(PHONE).matches) {
             node.classList.remove('drawer-end');
             node.classList.add('drawer-bottom');
-            node.style.width = '';
         }
 
         node.innerHTML = '<div class="drawer-header"><h5 class="drawer-title text-truncate"></h5><button type="button" class="btn-close" data-bs-dismiss="drawer"></button></div>'
