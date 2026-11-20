@@ -10,7 +10,7 @@ module: image_editor
 
 ## What does the description hold?
 - `M.dataCheck(d)` fills the defaults or refuses with a code: `table` (id, `data_table`), `show` chart | table, `kind` bar, stacked_bar, line, area, donut (a plain table's kind is `table`), `label` (a column id), `values` (up to 5 column ids; none for count; a donut one), `group` none | sum | count | average, `sort` none | label | value with `dir`, `format` en | tr, `title` (120 letters, one line), `colours` (up to 5 `#rrggbb`), `theme` light | dark, `font` (`g:Inter` by default), `legend`.
-- DV2 added (#PR): `legendAt` top | bottom, `limit` (0: the kind's own cap, else that many labels or rows, 50 at most), `size` s | m | l (the words at 0.85, 1, 1.2 of the guide's; DV2, #PR).
+- DV2 added (#10892): `legendAt` top | bottom, `limit` (0: the kind's own cap, else that many labels or rows, 50 at most), `size` s | m | l (the words at 0.85, 1, 1.2 of the guide's; DV2, #10892).
 
 ## How are the rows shown?
 - `M.dataSeries(d, columns, rows, words)`: 5000 rows at most; grouping gathers one label's rows in the order they first come; average is over the cells that are numbers; a cell that is no number counts 0 in a chart and its words in a plain table.

@@ -1,6 +1,6 @@
 ---
 name: image-editor-data-menu
-description: The Artifact Canvas's Data menu (DV2, #PR): Data in Import, the two-step picker (tables, then sample cards of the kinds that fit), the layer's panel groups, the actions data_tables and data_rows
+description: The Artifact Canvas's Data menu (DV2, #10892): Data in Import, the two-step picker (tables, then sample cards of the kinds that fit), the layer's panel groups, the actions data_tables and data_rows
 module: image_editor_data
 ---
 
