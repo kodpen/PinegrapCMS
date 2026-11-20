@@ -38,4 +38,4 @@ priority: 6
 - Crop or edit in the cart, a proof sent back for approval, a file on the add-to-cart button, storefront API uploads. Each is a later yes.
 
 ## Whose look?
-- The owner's: the field's settings (FU1), the designer cart with a file, an image and a refusal (FU2), the order view's file row (FU4a).
+- No pictures (`workflow/look-pictures-none.md`): the owner sees the field's settings, the designer cart with a file and the order view's file row on dev after their steps land.

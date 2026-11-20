@@ -43,6 +43,8 @@
         }],
         duplicate: ['duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['delete', function () { this.removeLayers(); }, true],
+        group: ['groupLayers', function () { this.groupLayers(); }],
+        ungroup: ['ungroupLayers', function () { this.ungroupLayers(); }],
         order: ['arrange'],
         front: ['bringFront', function () { this.arrangeLayers('top'); }],
         forward: ['bringForward', function () { this.arrangeLayers('up'); }],
@@ -167,6 +169,8 @@
         s.area = a.area;
         s.can = a.can;
         s.clip = !!(this.clip && this.clip.length);
+        s.group = !!(picked.length > 1 && this.groupState && this.groupState().group);
+        s.ungroup = !!(picked.length > 1 && this.groupState && this.groupState().ungroup);
         s.locked = picked.length > 0 && picked.every(function (l) { return !!l.locked; });
         s.hidden = picked.length > 0 && picked.every(function (l) { return !!l.hidden; });
         s.areas = (picked.length && this.pathfinderItems) ? this.pathfinderItems().length : 0;

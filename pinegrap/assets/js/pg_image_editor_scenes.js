@@ -318,7 +318,7 @@
         }
 
         s.layers.forEach(function (l) {
-            var n = l.hidden ? null : self.layerNode(l);
+            var n = l.hidden ? null : self.layerNode(M.groupLook(l));
 
             if (n) {
                 svg.appendChild(n);

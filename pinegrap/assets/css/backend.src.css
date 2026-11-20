@@ -19120,6 +19120,128 @@ a.ws-chip-message:hover,
 .ws-voice-error .ws-voice-bar {
   opacity: .4;
 }
+/* Calls (workspace_calls.js): the head's two buttons, the ringing card at
+   the top right and the call window at the bottom right, both on the body,
+   so a call stays while the person moves between channels. */
+.ws-call-head {
+  display: inline-flex;
+  gap: var(--ws-space-1);
+}
+.ws-call-rings {
+  position: fixed;
+  top: calc(var(--pg-navbar-h, 3.5rem) + var(--ws-space-2));
+  right: var(--ws-space-3);
+  z-index: 1085;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  width: min(22rem, calc(100vw - 2rem));
+}
+.ws-call-ring,
+.ws-call {
+  box-shadow: var(--pg-shadow-lg);
+}
+.ws-call-ring {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-3);
+}
+.ws-call-ring-text {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  font-weight: var(--pg-weight-strong);
+}
+.ws-call-ring-tools,
+.ws-call-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ws-space-1);
+}
+.ws-call {
+  position: fixed;
+  right: var(--ws-space-3);
+  bottom: var(--ws-space-3);
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  width: min(20rem, calc(100vw - 2rem));
+  padding: var(--ws-space-2);
+}
+.ws-call-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-2);
+}
+.ws-call[data-kind="video"] .ws-call-stage {
+  aspect-ratio: 16 / 9;
+}
+.ws-call-remote {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-call[data-kind="voice"] .ws-call-remote {
+  display: none;
+}
+.ws-call-who {
+  padding: var(--ws-space-3);
+  text-align: center;
+  font-weight: var(--pg-weight-strong);
+}
+.ws-call-self {
+  position: absolute;
+  right: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  width: 28%;
+  border-radius: var(--pg-radius);
+  object-fit: cover;
+}
+.ws-call.is-camera-off .ws-call-self {
+  visibility: hidden;
+}
+.ws-call-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-width: 0;
+}
+.ws-call-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-call-name:hover {
+  text-decoration: underline;
+}
+.ws-call-state {
+  color: var(--pg-fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.ws-call.is-connected .ws-call-state {
+  color: var(--pg-success-fg-emphasis);
+}
+.ws-call-devices {
+  display: grid;
+  gap: var(--ws-space-1);
+}
+.ws-call-devices[hidden] {
+  display: none;
+}
 .ws-composer.ws-voice-recording > :not(.ws-voice-rec) {
   display: none;
 }

@@ -352,6 +352,7 @@ function pg_settings_categories()
                 'pgset-reference-price' => lang('Reference Price'),
                 'pgset-feeds'     => lang('Product Feeds'),
                 'pgset-affiliate' => lang('Affiliate Program'),
+                'pgset-referral'  => lang('Referral programme'),
             ),
             'keywords' => array(
                 'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
@@ -363,6 +364,7 @@ function pg_settings_categories()
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
                 'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv, xml, rss')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
+                'pgset-referral'  => pg_settings_keywords(lang('referral, refer a friend, friend, invite, store credit, reward')),
             ),
             'lists' => array(
                 'product_feed_excluded_groups' => 1,
@@ -984,12 +986,22 @@ function pg_settings_legacy_anchors()
         'pgset-images'     => array('features',   'pgset-images'),
         'pgset-signature'  => array('features',   'pgset-signature'),
         'pgset-seo'        => array('seo',        'pgset-seo'),
+        // The IndexNow key moved onto IndexNow's page of Connections; an old
+        // link to its field lands on the card that shows the connection.
+        'indexnow_key'     => array('seo',        'pgset-seo'),
         'pgsub-site-icon'  => array('seo',        'pgset-site-icon'),
         'pgsub-app'        => array('seo',        'pgset-site-icon'),
         'pgsub-social'     => array('seo',        'pgset-social'),
         'pgsub-structured' => array('seo',        'pgset-structured'),
         'pgset-feeds'      => array('commerce',   'pgset-feeds'),
         'pgset-analytics'  => array('privacy',    'pgset-analytics'),
+        // The Google tag and the Google Analytics figures moved onto Google
+        // Analytics' page of Connections; an old link to one of their fields
+        // lands on the card that shows the connection.
+        'google_analytics' => array('privacy',    'pgset-analytics'),
+        'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
+        'stats_url'        => array('privacy',    'pgset-analytics'),
+        'ga_property'      => array('privacy',    'pgset-analytics'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail

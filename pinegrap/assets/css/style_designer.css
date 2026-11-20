@@ -7509,6 +7509,26 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto[hidden] { display: none; }
 /* Its controls are in the canvas bar's Prototype mode (_sdProtoBuild()). */
+/* The search over the map, under the canvas bar (Ctrl+F, _sdProtoSearchBuild()): the box, the
+   count, the match before and after, Close; the frames with a match ringed
+   in yellow, the one gone to more strongly, beside the selection's outline. */
+.sd-proto { --sd-proto-found: #e8c547; }
+.sd-proto-search {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-proto-search[hidden] { display: none; }
+.sd-proto-search-input { flex: 0 1 280px; min-width: 0; }
+.sd-proto-search-count { min-width: 4.5em; font-size: .75rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-proto-search-none .sd-proto-search-input { border-color: var(--pgc-in); }
+.sd-proto-search .sd-vb-btn:last-child { margin-left: auto; }
+@media (max-width: 767.98px) {
+    .sd-proto-search-input { flex: 1 1 auto; }
+}
+.sd-proto .pgc-node.sd-proto-found { box-shadow: 0 0 0 3px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto .pgc-node.sd-proto-found-on { box-shadow: 0 0 0 6px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto-li.sd-proto-found { box-shadow: inset 3px 0 0 var(--sd-proto-found); }
+.sd-proto-li.sd-proto-found-on { box-shadow: inset 3px 0 0 var(--sd-proto-found); background: color-mix(in srgb, var(--sd-proto-found) 14%, transparent); }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
 /* A double-click on a frame zooms to it, never picks up its words. */
@@ -7923,3 +7943,108 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 /* The picked link (F16): its mark on the picture and its arrow. */
 .sd-proto-hot.sd-proto-hot-picked { border-width: 3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-accent) 35%, transparent); }
 .sd-proto .pgc-edge.sd-proto-edge-picked .pgc-edge-line { stroke-width: 3; }
+/* Content changes that wait for approval, on a page's tab, after its name:
+   the editor's waiting change (the draft pill's shape with the hourglass),
+   the answer to one of their changes (a 13 px icon: applied, dismissed,
+   cannot be applied), a designer's count (the same pill with the number).
+   The tab's own mark opens a note; its target is at least 24 by 24. */
+.sd-tab-cc {
+    position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px;
+    height: 15px; padding: 0 5px; border-radius: 6px;
+    font-size: 9.5px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer;
+}
+.sd-tab-cc[data-cc]::after { content: ""; position: absolute; top: 50%; left: 50%; width: max(100%, 24px); height: 24px; transform: translate(-50%, -50%); }
+.sd-tab-cc:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
+.sd-tab-cc-wait, .sd-tab-cc-count { background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-tab-cc-applied, .sd-tab-cc-dismissed, .sd-tab-cc-stale { height: auto; padding: 0; background: transparent; font-size: 13px; }
+.sd-tab-cc-applied { color: var(--sd-success); }
+.sd-tab-cc-dismissed { color: var(--sd-danger); }
+.sd-tab-cc-stale { color: var(--sd-warning); }
+/* A mark that climbed to a chip or the Pages button is part of it. On a
+   narrow strip (step 4 on) and there, the pill keeps its hourglass only. */
+.sd-tab-cc-up { margin-left: 4px; cursor: inherit; }
+.sd-tab-cc-up .sd-tab-cc-word,
+#sd-tabs-list:is([data-step="4"], [data-step="5"], [data-step="6"]) .sd-tab-cc-word { display: none; }
+.sd-cc-pop {
+    position: fixed; z-index: 1090; width: 300px; max-width: calc(100vw - 16px);
+    padding: 10px 12px; border: 1px solid var(--sd-border-strong); border-radius: 6px;
+    background: var(--sd-raised-bg); color: var(--sd-text); box-shadow: 0 6px 18px color-mix(in srgb, var(--sd-shadow) 45%, transparent); font-size: .8rem;
+}
+.sd-cc-pop-title { margin-bottom: 4px; font-weight: 600; }
+.sd-cc-pop p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.sd-cc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; }
+.sd-cc-pop-acts .sd-vb-btn { padding: .35rem .7rem; border: 1px solid var(--sd-text-muted); color: var(--sd-text); }
+.sd-cc-pop-acts .sd-vb-btn:hover, .sd-cc-pop-acts .sd-vb-btn:focus-visible { border-color: var(--sd-text); background: var(--sd-raised-bg-2); outline: none; }
+/* In a list the mark stands after the row's name and pills. */
+.sd-tabs-all-item .sd-tab-cc, .sd-tabs-list .sd-tab-cc { margin-left: .4rem; cursor: inherit; }
+/* A tab with a waiting change keeps room for its name beside the pill. */
+.sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }
+
+/* ── Moving without dragging (D41 to D44) ─────────────────────────────────
+   The row buttons (one group, on the row under the pointer, with the focus
+   or selected), the focused row, a cut row, the "Move…" window. */
+.sd-tree-list li:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-tree-list li.sd-tree-cut { opacity: .5; }
+.sd-tree-list li.sd-tree-cut > .sd-tree-lbl { text-decoration: line-through dashed; }
+.sd-tree-list li > .sd-tree-lbl ~ .sd-tree-mv:not(.sd-tree-sect-count) {
+    flex-shrink: 0; min-width: auto; overflow: visible;
+}
+.sd-tree-mv { display: inline-flex; gap: 2px; margin-left: auto; padding-left: 4px; }
+.sd-tree-mv-b {
+    width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px;
+    background: transparent; color: var(--sd-text-muted); font-size: 11px; line-height: 20px; cursor: pointer;
+}
+.sd-tree-mv-b:hover { background: var(--sd-accent-soft); color: var(--sd-text); }
+.sd-tree-drag-ghost .sd-tree-mv { display: none; }
+@media (pointer: coarse) { .sd-tree-mv-b { width: 32px; height: 28px; line-height: 28px; } }
+
+.sd-move-dialog { width: min(480px, calc(100vw - 32px)); }
+.sd-move-handle { display: none; }
+.sd-move-head { gap: 8px; }
+.sd-move-icon { color: var(--sd-accent); }
+.sd-move-title { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.3; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sd-move-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.sd-move-search { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px;
+    border: 1px solid var(--sd-input-border); border-radius: 6px; background: var(--sd-input-bg); color: var(--sd-text-muted); }
+.sd-move-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--sd-text); font-size: 13px; }
+.sd-move-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.sd-move-list li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px;
+    border-radius: 6px; cursor: pointer; color: var(--sd-text); }
+.sd-move-list li.sd-move-act { background: var(--sd-hover-bg, var(--sd-accent-soft)); }
+.sd-move-list li.sd-move-on { background: var(--sd-accent-soft); }
+.sd-move-list li.sd-move-more { cursor: default; color: var(--sd-text-muted); font-size: 12px; }
+.sd-move-tile { flex: 0 0 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: var(--sd-raised-bg); }
+.sd-move-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sd-move-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-path { font-size: 11px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-list mark { padding: 0; background: var(--sd-accent-soft); color: inherit; }
+.sd-move-check { color: var(--sd-accent); }
+.sd-move-foot { flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+.sd-move-places { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--sd-raised-bg); }
+.sd-move-place { height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-text-muted); font-size: 12px; cursor: pointer; }
+.sd-move-place.sd-move-place-on { background: var(--sd-accent); color: var(--sd-on-accent); }
+.sd-move-why { flex: 1; min-width: 0; font-size: 12px; color: var(--sd-text-muted); }
+.sd-move-why.sd-move-refused { color: var(--sd-warning); }
+.sd-move-go { margin-left: auto; }
+
+/* A 390 px phone: a sheet of the full height from the bottom, under the top
+   bar, with touch sizes (designer-panels-measures-6.md). */
+@media (max-width: 575.98px) {
+    .sd-move-dialog { position: fixed; inset: 58px 0 0 0; width: 100%; max-width: none; height: auto; max-height: none;
+        margin: 0; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; }
+    .sd-move-dialog:not([open]) { display: none; }
+    .sd-move-handle { display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px;
+        background: var(--sd-border-strong); touch-action: none; }
+    .sd-move-head .btn-close { width: 36px; height: 36px; }
+    .sd-move-body { flex: 1; }
+    .sd-move-search { height: 40px; }
+    .sd-move-list { max-height: none; flex: 1; }
+    .sd-move-list li { min-height: 54px; }
+    .sd-move-tile { flex-basis: 32px; height: 32px; }
+    .sd-move-places { height: 44px; align-items: center; }
+    .sd-move-place { height: 36px; }
+    .sd-move-go { height: 44px; }
+}

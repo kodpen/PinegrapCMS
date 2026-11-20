@@ -54,6 +54,10 @@
         // object uses the clip part's own Split clip, as the panel and the
         // play bar do.
         split: ['scissors', 'actSplit', function () { this.clipSplitHere(this.selected()[0].id); }, false, 'clipSplit'],
+        // Group and Ungroup (pg_image_editor_layers.js), as Ctrl/Cmd+G and
+        // Ctrl/Cmd+Shift+G do.
+        group: ['group', 'groupLayers', function () { this.groupLayers(); }],
+        ungroup: ['ungroup', 'ungroupLayers', function () { this.ungroupLayers(); }],
         duplicate: ['duplicate', 'duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['trash', 'delete', function () { this.removeLayers(); }, true],
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
@@ -112,6 +116,9 @@
             animate: this.tool === 'motion',
             layers: picked.length,
             free: picked.filter(function (l) { return !l.locked; }).length,
+            // Group for several layers, Ungroup for a picked group.
+            group: (picked.length > 1) && !!this.groupState && this.groupState().group,
+            ungroup: (picked.length > 1) && !!this.groupState && this.groupState().ungroup,
             // The ones a nudge moves: an erased or adjusted area stays.
             move: picked.filter(function (l) { return !l.locked && !(Editor.layerTypes[l.type] || {}).fixed; }).length,
             picture: !!(this.board && this.board.pic && this.pictureOn && this.pictureOn()),
