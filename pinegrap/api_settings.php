@@ -1347,6 +1347,13 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 
 	$mcp_short = $addresses['mcp'][0];
 
+	// The compact list: the same server and the same sign-in, with the tools
+	// behind five, so a chat assistant's context is not filled with every
+	// tool's description. Given as the file, for the reason above.
+	$compact = pg_oauth_mcp_compact_addresses();
+
+	$mcp_compact = $compact[1];
+
 	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
 
 	$box = function ($id, $value) use ($button_class) {
@@ -1452,6 +1459,12 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
 		' . $box($id_prefix . '_mcp_short', $mcp_short) . '
 		<div class="form-text">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	</div>
+
+	<div class="form-field mb-5">
+		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_compact_label">' . lang('Compact address for AI assistants') . '</label>
+		' . $box($id_prefix . '_mcp_compact', $mcp_compact) . '
+		<div class="form-text">' . lang('The same server and sign-in, with a short tool list: the assistant finds the tool it needs, reads it and runs it, so its context stays free for your work. Use it with chat assistants such as Claude and ChatGPT; a tool that moves money is still listed by its own name.') . '</div>
 	</div>
 
 	<div class="form-field mb-5">

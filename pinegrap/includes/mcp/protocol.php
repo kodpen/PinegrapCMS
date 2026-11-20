@@ -362,12 +362,26 @@ function pg_mcp_capabilities() {
 function pg_mcp_instructions() {
 
 	return 'Tools for the website ' . pg_mcp_site_name() . ' (' . pg_oauth_host() . '), run with the permissions of the person who connected. '
-		. 'Each tool is an endpoint of the site\'s API. Money is in minor units (1999 is 19.99). '
+		. pg_mcp_instructions_tools(function_exists('pg_mcp_is_compact') && pg_mcp_is_compact()) . ' Money is in minor units (1999 is 19.99). '
 		. 'Lists are paged: pass page.next_cursor back as cursor while page.has_more is true. '
 		. 'Writes that accept dry_run can be checked first with dry_run: true, which writes nothing. '
 		. 'A failed call returns the API\'s error object with a stable code and a message.'
 		. "\n\n" . implode("\n", pg_mcp_instructions_guide())
 		. "\n\nRules:\n" . implode("\n", pg_mcp_instructions_rules());
+
+}
+
+// How the tools are reached: each listed tool on the full address; on the
+// compact one, through the four tools that stand for the rest.
+function pg_mcp_instructions_tools($compact) {
+
+	if ($compact) {
+
+		return 'Each API endpoint is a tool: find it with tools_find, read it with tools_describe, run it with tools_read or tools_write; one that moves money is listed and called by its own name.';
+
+	}
+
+	return 'Each tool is an endpoint of the site\'s API.';
 
 }
 
@@ -409,7 +423,7 @@ function pg_mcp_instructions_rules() {
 function pg_mcp_list_answer($method, $params, $routes, $modern) {
 
 	$lists = array(
-		'tools/list'               => array('tools', 'pg_mcp_tools_list'),
+		'tools/list'               => array('tools', (function_exists('pg_mcp_is_compact') && pg_mcp_is_compact()) ? 'pg_mcp_compact_tools_list' : 'pg_mcp_tools_list'),
 		'resources/list'           => array('resources', 'pg_mcp_resources_list'),
 		'resources/templates/list' => array('resourceTemplates', 'pg_mcp_resource_templates_list'),
 		'prompts/list'             => array('prompts', 'pg_mcp_prompts_list')

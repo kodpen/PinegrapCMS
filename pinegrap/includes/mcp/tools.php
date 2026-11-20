@@ -410,12 +410,22 @@ function pg_mcp_routes() {
 
 }
 
-// tools/call. A refusal is a result with isError set, as MCP asks for errors
+// tools/call. On the compact address the four tools that stand for the rest
+// are answered by pg_mcp_compact_call(); any other name is a route's tool, on
+// both addresses. A refusal is a result with isError set, as MCP asks for errors
 // the model should see and could act on - a missing field, a record that is
 // not there - rather than a protocol error.
 function pg_mcp_tool_call($id, $params, $modern) {
 
 	$name = (isset($params['name']) && is_string($params['name'])) ? $params['name'] : '';
+
+	$arguments = (isset($params['arguments']) && is_array($params['arguments'])) ? $params['arguments'] : array();
+
+	if (pg_mcp_is_compact() && in_array($name, pg_mcp_compact_tool_names(), true)) {
+
+		pg_mcp_compact_call($id, $name, $arguments, $modern);
+
+	}
 
 	$routes = pg_mcp_routes();
 
@@ -424,8 +434,6 @@ function pg_mcp_tool_call($id, $params, $modern) {
 		pg_mcp_error($id, -32602, 'Unknown tool: ' . mb_substr($name, 0, 100), null, 200);
 
 	}
-
-	$arguments = (isset($params['arguments']) && is_array($params['arguments'])) ? $params['arguments'] : array();
 
 	pg_mcp_route_run($routes[$name], $arguments, function ($status_code, $body) use ($id, $modern) {
 
@@ -534,5 +542,516 @@ function pg_mcp_tool_answer($status_code, $body) {
 function pg_mcp_tool_result($id, $status_code, $body, $modern) {
 
 	pg_mcp_answer($id, pg_mcp_tool_answer($status_code, $body), $modern);
+
+}
+
+/* ---------------------------------------------------------------------------
+   The compact list (mcp_compact.php)
+   --------------------------------------------------------------------------- */
+
+// Whether this request came to the compact list's address. Its tools/list
+// names guide_read, the four tools below and the tools that move money; every
+// other tool of the caller is found with tools_find, read with
+// tools_describe and run through tools_read or tools_write. A tool called by
+// its own name runs as on the full address.
+function pg_mcp_is_compact() {
+
+	return defined('PG_MCP_COMPACT') && PG_MCP_COMPACT;
+
+}
+
+// How many names tools_find answers and tools_describe takes at most.
+function pg_mcp_compact_limits() {
+
+	return array('find' => 20, 'describe' => 5);
+
+}
+
+// The four tools of the compact list that stand for the rest.
+function pg_mcp_compact_tool_names() {
+
+	return array('tools_find', 'tools_describe', 'tools_read', 'tools_write');
+
+}
+
+// Whether a route is run only by its own name: a route that moves money or
+// makes a cost. The client's question before such a call then names the
+// action itself rather than tools_write.
+function pg_mcp_route_moves_money($route) {
+
+	return !empty($route['moves_money']);
+
+}
+
+// A tool's area: the first part of its route id (products, design,
+// workspace, erp...).
+function pg_mcp_tool_area($route_id) {
+
+	$segments = explode('.', (string)$route_id);
+
+	return $segments[0];
+
+}
+
+// The areas of the caller's tools, sorted.
+function pg_mcp_compact_areas($routes) {
+
+	$areas = array();
+
+	foreach ($routes as $route) {
+
+		$areas[pg_mcp_tool_area($route['id'])] = true;
+
+	}
+
+	$areas = array_keys($areas);
+
+	sort($areas);
+
+	return $areas;
+
+}
+
+// The first sentence of a tool's description, at most 200 characters: what
+// tools_find answers for each name.
+function pg_mcp_tool_first_sentence($description) {
+
+	$description = trim((string)$description);
+
+	$end = strpos($description, '. ');
+
+	if ($end !== false) {
+
+		$description = substr($description, 0, $end + 1);
+
+	}
+
+	return (mb_strlen($description) > 200) ? rtrim(mb_substr($description, 0, 199)) . '…' : $description;
+
+}
+
+// tools/list on the compact address for a caller whose tools are $routes.
+function pg_mcp_compact_tools_list($routes) {
+
+	$tools = array();
+
+	if (isset($routes['guide_read'])) {
+
+		$tools[] = pg_mcp_tool_from_route($routes['guide_read']);
+
+	}
+
+	$tools = array_merge($tools, pg_mcp_compact_meta_tools(pg_mcp_compact_areas($routes)));
+
+	foreach ($routes as $route) {
+
+		if (pg_mcp_route_moves_money($route)) {
+
+			$tools[] = pg_mcp_tool_from_route($route);
+
+		}
+
+	}
+
+	return $tools;
+
+}
+
+// The four tools that stand for the rest, with the caller's areas as the
+// values tools_find's area takes.
+function pg_mcp_compact_meta_tools($areas) {
+
+	$limits = pg_mcp_compact_limits();
+
+	$name_property = array('type' => 'string', 'description' => 'The tool\'s name, as tools_find answers it.');
+
+	$arguments_property = array('type' => 'object', 'description' => 'The tool\'s own arguments, as tools_describe gives its input schema.');
+
+	$read = array('readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false);
+
+	$tools = array(
+		array(
+			'name'        => 'tools_find',
+			'title'       => 'Find tools',
+			'description' => 'Find the site\'s tools by words, an area or both: answers at most ' . $limits['find'] . ' tool names, best match first, with the first sentence of each, and more true when there are others. Then read the ones you need with tools_describe.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'words' => array('type' => 'string', 'maxLength' => 200, 'description' => 'Words looked for in a tool\'s name and description, such as "product price" or "page content".'),
+					'area'  => array('type' => 'string', 'enum' => array_values($areas), 'description' => 'Only the tools of this area.')
+				)
+			),
+			'annotations' => array('title' => 'Find tools') + $read
+		),
+		array(
+			'name'        => 'tools_describe',
+			'title'       => 'Describe tools',
+			'description' => 'Answers the description and input schema of at most ' . $limits['describe'] . ' tools, and run_with: tools_read for a tool that only reads, tools_write for one that writes, or own_name for one that moves money and is called by its own name.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'names' => array('type' => 'array', 'items' => array('type' => 'string'), 'minItems' => 1, 'maxItems' => $limits['describe'], 'description' => 'Tool names, as tools_find answers them.')
+				),
+				'required'   => array('names')
+			),
+			'annotations' => array('title' => 'Describe tools') + $read
+		),
+		array(
+			'name'        => 'tools_read',
+			'title'       => 'Run a reading tool',
+			'description' => 'Runs a tool that only reads, with its arguments, under that tool\'s own permission and checks; the answer is the tool\'s. A tool that writes is refused here: run it with tools_write.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array('name' => $name_property, 'arguments' => $arguments_property),
+				'required'   => array('name')
+			),
+			'annotations' => array('title' => 'Run a reading tool') + $read
+		),
+		array(
+			'name'        => 'tools_write',
+			'title'       => 'Run a writing tool',
+			'description' => 'Runs a tool that creates, changes, sends or deletes something, with its arguments, under that tool\'s own permission and checks. Tell the person what it will do and wait for their yes first. A tool that only reads is refused here (use tools_read), and so is one that moves money: call that one by its own name.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'name'      => $name_property,
+					'arguments' => $arguments_property,
+					'dry_run'   => array('type' => 'boolean', 'description' => 'Check the call without writing anything, where the tool accepts dry_run: the answer says what would have been done.')
+				),
+				'required'   => array('name')
+			),
+			'annotations' => array(
+				'title'           => 'Run a writing tool',
+				'readOnlyHint'    => false,
+				'destructiveHint' => true,
+				'idempotentHint'  => false,
+				'openWorldHint'   => false
+			)
+		)
+	);
+
+	return $tools;
+
+}
+
+// The words of a tools_find query, lowercased, each at least two characters;
+// a plural's s is dropped so that "products" finds "product".
+function pg_mcp_find_words($words) {
+
+	$found = array();
+
+	foreach (preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower((string)$words), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+
+		if (mb_strlen($word) > 3 && substr($word, -1) === 's' && substr($word, -2) !== 'ss') {
+
+			$word = substr($word, 0, -1);
+
+		}
+
+		if (mb_strlen($word) >= 2) {
+
+			$found[$word] = true;
+
+		}
+
+	}
+
+	return array_keys($found);
+
+}
+
+// tools_find for a caller whose tools are $routes: the tools of $area (all
+// areas when it is ''), ranked by how many of the words their name, summary
+// or description holds (the name counting most), then by name. With no words
+// every tool of the area is a match, by name. Answers array('tools' =>
+// list of name and description, 'more' => bool).
+function pg_mcp_compact_find($routes, $words, $area) {
+
+	$words = pg_mcp_find_words($words);
+
+	$ranked = array();
+
+	foreach ($routes as $name => $route) {
+
+		if (($area !== '') && (pg_mcp_tool_area($route['id']) !== $area)) {
+
+			continue;
+
+		}
+
+		$tool_name = mb_strtolower(str_replace('_', ' ', (string)$name));
+
+		$summary = mb_strtolower(isset($route['summary']) ? (string)$route['summary'] : '');
+
+		$description = mb_strtolower(isset($route['description']) ? (string)$route['description'] : '');
+
+		$matched = 0;
+
+		$score = 0;
+
+		foreach ($words as $word) {
+
+			$weight = (strpos($tool_name, $word) !== false) ? 3 : ((strpos($summary, $word) !== false) ? 2 : ((strpos($description, $word) !== false) ? 1 : 0));
+
+			if ($weight > 0) {
+
+				$matched++;
+
+				$score += $weight;
+
+			}
+
+		}
+
+		if (!empty($words) && ($matched === 0)) {
+
+			continue;
+
+		}
+
+		$ranked[] = array($matched, $score, (string)$name, $route);
+
+	}
+
+	usort($ranked, function ($a, $b) {
+
+		if ($a[0] !== $b[0]) {
+
+			return $b[0] - $a[0];
+
+		}
+
+		if ($a[1] !== $b[1]) {
+
+			return $b[1] - $a[1];
+
+		}
+
+		return strcmp($a[2], $b[2]);
+
+	});
+
+	$limits = pg_mcp_compact_limits();
+
+	$tools = array();
+
+	foreach (array_slice($ranked, 0, $limits['find']) as $row) {
+
+		$tool = pg_mcp_tool_from_route($row[3]);
+
+		$tools[] = array('name' => $tool['name'], 'description' => pg_mcp_tool_first_sentence($tool['description']));
+
+	}
+
+	return array('tools' => $tools, 'more' => count($ranked) > $limits['find']);
+
+}
+
+// How a tool is run on the compact address: tools_read, tools_write or by its
+// own name.
+function pg_mcp_compact_run_with($route) {
+
+	if (pg_mcp_route_moves_money($route)) {
+
+		return 'own_name';
+
+	}
+
+	return ($route['method'] === 'GET') ? 'tools_read' : 'tools_write';
+
+}
+
+// tools_describe: each named tool's description and input schema, and the
+// names that are none of the caller's tools.
+function pg_mcp_compact_describe($routes, $names) {
+
+	$tools = array();
+
+	$unknown = array();
+
+	foreach ($names as $name) {
+
+		if (!isset($routes[$name])) {
+
+			$unknown[] = $name;
+
+			continue;
+
+		}
+
+		$tool = pg_mcp_tool_from_route($routes[$name]);
+
+		$tools[] = array(
+			'name'        => $tool['name'],
+			'description' => $tool['description'],
+			'inputSchema' => $tool['inputSchema'],
+			'run_with'    => pg_mcp_compact_run_with($routes[$name])
+		);
+
+	}
+
+	return array('tools' => $tools, 'unknown' => $unknown);
+
+}
+
+// What a call of one of the four tools comes to, without running anything:
+// array('answer' => body) for tools_find and tools_describe, array('route' =>
+// route, 'arguments' => arguments) for tools_read and tools_write - the route
+// then runs through pg_mcp_route_run() with its own scope, validation, rate
+// limit and log - or array('refuse' => array(status, code, message, field)).
+function pg_mcp_compact_target($routes, $tool, $arguments) {
+
+	$refuse = function ($status, $code, $message, $field = null) {
+
+		return array('refuse' => array($status, $code, $message, $field));
+
+	};
+
+	$limits = pg_mcp_compact_limits();
+
+	if ($tool === 'tools_find') {
+
+		$words = isset($arguments['words']) ? $arguments['words'] : '';
+
+		$area = isset($arguments['area']) ? $arguments['area'] : '';
+
+		if (!is_string($words) || (mb_strlen($words) > 200)) {
+
+			return $refuse(422, 'validation_failed', lang('words must be text of at most 200 characters.'), 'words');
+
+		}
+
+		if (!is_string($area) || (($area !== '') && !in_array($area, pg_mcp_compact_areas($routes), true))) {
+
+			return $refuse(422, 'validation_failed', lang('area must be one of the areas tools_find lists.'), 'area');
+
+		}
+
+		if ((trim($words) === '') && ($area === '')) {
+
+			return $refuse(422, 'validation_failed', lang('Give words, an area or both.'), 'words');
+
+		}
+
+		return array('answer' => pg_mcp_compact_find($routes, $words, $area));
+
+	}
+
+	if ($tool === 'tools_describe') {
+
+		$names = isset($arguments['names']) ? $arguments['names'] : null;
+
+		if (is_string($names)) {
+
+			$names = array($names);
+
+		}
+
+		$valid = is_array($names) && !empty($names) && (count($names) <= $limits['describe']);
+
+		foreach ((is_array($names) ? $names : array()) as $name) {
+
+			$valid = $valid && is_string($name);
+
+		}
+
+		if (!$valid) {
+
+			return $refuse(422, 'validation_failed', sprintf(lang('names must list one to %d tool names.'), $limits['describe']), 'names');
+
+		}
+
+		return array('answer' => pg_mcp_compact_describe($routes, array_values(array_unique($names))));
+
+	}
+
+	$name = (isset($arguments['name']) && is_string($arguments['name'])) ? $arguments['name'] : '';
+
+	if ($name === '') {
+
+		return $refuse(422, 'validation_failed', lang('name is required: the tool\'s name, as tools_find answers it.'), 'name');
+
+	}
+
+	if (!isset($routes[$name])) {
+
+		return $refuse(404, 'not_found', lang('There is no tool of that name. Find one with tools_find.'), 'name');
+
+	}
+
+	$route = $routes[$name];
+
+	$call = isset($arguments['arguments']) ? $arguments['arguments'] : array();
+
+	if (!is_array($call)) {
+
+		return $refuse(422, 'validation_failed', lang('arguments must be an object of the tool\'s own arguments.'), 'arguments');
+
+	}
+
+	if ($tool === 'tools_read') {
+
+		if ($route['method'] !== 'GET') {
+
+			return $refuse(400, 'tool_writes', lang('This tool writes: run it with tools_write.'), 'name');
+
+		}
+
+		return array('route' => $route, 'arguments' => $call);
+
+	}
+
+	if ($route['method'] === 'GET') {
+
+		return $refuse(400, 'tool_reads', lang('This tool only reads: run it with tools_read.'), 'name');
+
+	}
+
+	if (pg_mcp_route_moves_money($route)) {
+
+		return $refuse(400, 'tool_moves_money', lang('This tool moves money: call it by its own name, after the person\'s yes.'), 'name');
+
+	}
+
+	if (array_key_exists('dry_run', $arguments)) {
+
+		$call['dry_run'] = $arguments['dry_run'];
+
+	}
+
+	return array('route' => $route, 'arguments' => $call);
+
+}
+
+// tools/call of one of the four tools on the compact address. A refusal is
+// the API's error object in a result with isError, written as api_fail()
+// writes any refusal of a route, and logged as one.
+function pg_mcp_compact_call($id, $tool, $arguments, $modern) {
+
+	$writer = function ($status_code, $body) use ($id, $modern) {
+
+		pg_mcp_tool_result($id, $status_code, $body, $modern);
+
+	};
+
+	$target = pg_mcp_compact_target(pg_mcp_routes(), $tool, $arguments);
+
+	if (isset($target['refuse'])) {
+
+		api_send_hook($writer);
+
+		list($status, $code, $message, $field) = $target['refuse'];
+
+		api_fail($status, $code, $message, $field);
+
+	}
+
+	if (isset($target['answer'])) {
+
+		call_user_func($writer, 200, $target['answer']);
+
+	}
+
+	pg_mcp_route_run($target['route'], $target['arguments'], $writer);
 
 }

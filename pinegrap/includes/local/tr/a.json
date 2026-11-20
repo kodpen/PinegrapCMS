@@ -8696,6 +8696,8 @@
     "architect, partner, team, contact": "mimar, ortak, ekip, iletişim",
     "architecture": "mimarlik",
     "archive": "arsiv",
+    "area must be one of the areas tools_find lists.": "area, tools_find'ın listelediği alanlardan biri olmalıdır.",
+    "arguments must be an object of the tool's own arguments.": "arguments, aracın kendi argümanlarından oluşan bir nesne olmalıdır.",
     "arrival date": "varış tarihi",
     "arrival time, late, window, punctual": "geliş saati, gecikme, zaman aralığı, dakik",
     "arrival time, time window, morning, afternoon, evening, appointment": "geliş saati, zaman aralığı, sabah, öğleden sonra, akşam, randevu",
