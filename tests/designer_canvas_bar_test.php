@@ -5,8 +5,9 @@
  * The visual designer's canvas bar in three zones (assets/js/
  * style_designer.src.js, createCanvasIframe()): the View menu's badge counts
  * the switches that are on (_sdCanvasBarBadge()), the bar folds by its own
- * width in a fixed order (_sdCanvasBarFold()), and every id the handlers and
- * shortcuts reach stays. The pure functions run under Node; skipped where
+ * width in a fixed order (_sdCanvasBarFold()), every id the handlers and
+ * shortcuts reach stays, and Prototype mode puts the Prototype view's
+ * controls in the same bar. The pure functions run under Node; skipped where
  * there is no Node.
  *
  * @author      Erdal Güral (Kodpen)
@@ -184,6 +185,75 @@ function test_designer_canvas_bar_width_text()
 	}
 
 	pg_assert_same(array('375 px · XS', '576 px · SM', '768 px · MD', '992 px · LG', '1200 px · XL', '1400 px · XXL', '1919 px · XXL', '600 px', '375 px'), $res, 'a page names its breakpoint, an e-mail its width alone');
+}
+
+// Prototype mode in the same bar (D59, D60): the Prototype view has no bar
+// of its own; its controls sit in two zones of the canvas bar after the mode
+// switch, shown while the mode is on, the canvas's zones hidden. No Close
+// button: the switch's Design side leads back. Each mode keeps its zoom.
+function test_designer_canvas_bar_prototype_mode()
+{
+	$js = str_replace("\r\n", "\n", designer_canvas_bar_source());
+	$build = designer_canvas_bar_fn($js, '_sdProtoBuild');
+
+	pg_assert_true($build !== '', 'style_designer.js has _sdProtoBuild()');
+	pg_assert_true(strpos($build, 'sd-proto-bar') === false, 'the view has no bar of its own');
+	pg_assert_true(strpos($build, "_sdT('Close the prototype view')") === false, 'no Close button: the switch leads back');
+	pg_assert_contains("var cbar = document.getElementById('sd-bp-bar');", $build, 'the controls go into the canvas bar');
+	pg_assert_contains("var map = _sdProtoEl('div', 'sd-bp-zone sd-bp-pv sd-bp-pmap');", $build, 'the map\'s zone');
+	pg_assert_contains("var tools = _sdProtoEl('div', 'sd-bp-zone sd-bp-pv sd-bp-ptools');", $build, 'the tools\' zone');
+
+	// D59: the count, − zoom + and Fit for the map; All arrows, Tidy up,
+	// Read again. D60: "N broken", "N to check", Suggest targets, Links and
+	// Play, which the view's own bar held, have their place too.
+	foreach (array('ui.status', 'ui.broken', 'ui.check', 'zoomOut', 'zoomBtn', 'zoomIn', 'fit') as $part) {
+		pg_assert_contains('map.appendChild(' . $part . ');', $build, 'in the map\'s zone: ' . $part);
+	}
+
+	foreach (array('ui.allEdges', 'tidy', 'ui.suggest', 'ui.listToggle', 'ui.play', 'reload') as $part) {
+		pg_assert_contains('tools.appendChild(' . $part . ');', $build, 'in the tools\' zone: ' . $part);
+	}
+
+	foreach (array("_sdT('Zoom Out')", "_sdT('Zoom In')", "_sdT('Reset zoom to 100%')", "_sdT('Fit to screen')", "_sdT('All arrows')", "_sdT('Tidy up')", "_sdT('Read the links again')", "_sdT('Suggest targets')", "_sdT('Links')", "_sdT('Play')") as $text) {
+		pg_assert_contains($text, $build, 'the bar names ' . $text);
+	}
+
+	pg_assert_contains("ui.allEdges.setAttribute('role', 'switch');", $build, '"All arrows" is a switch, not an action');
+	pg_assert_contains("ui.allEdges.setAttribute('aria-checked', on ? 'true' : 'false');", designer_canvas_bar_fn($js, '_sdProtoAllEdges'), 'the switch says its state');
+	pg_assert_contains("set textContent(text) { zoomBtn.textContent = _sdT('{var:1}%', parseInt(text, 10) || 0); }", $build, 'the map\'s zoom is written as the canvas\'s');
+	pg_assert_contains('_sdProto.canvas.view.zoomBy(1 / _sdProto.view.k);', $build, 'a click on it goes back to 100%, as on the canvas');
+	pg_assert_true(strpos($build, "_sdProtoEl('span', 'sd-proto-btn-label'") === false, 'a label folds with the bar (sd-vb-txt), not by the window');
+	pg_assert_contains("cbar.appendChild(map);", $build, 'the zones join the bar');
+
+	pg_assert_contains('_sdCanvasBarMode(true);', designer_canvas_bar_fn($js, '_sdProtoOpen'), 'opening the view turns the bar to Prototype mode');
+	$close = designer_canvas_bar_fn($js, '_sdProtoClose');
+	pg_assert_contains('_sdCanvasBarMode(false);', $close, 'closing it turns the bar back');
+	pg_assert_contains("var btn = document.getElementById('sd-vb-design');", $close, 'the focus goes to the switch\'s Design side');
+	$mode = designer_canvas_bar_fn($js, '_sdCanvasBarMode');
+	pg_assert_contains("bar.classList.toggle('sd-bp-proto', !!proto);", $mode, 'the mode is a class, so the bar is measured again');
+	pg_assert_contains('_sdViewMenuOpen(false);', $mode, 'the View menu closes with its mode');
+
+	$draw = designer_canvas_bar_fn($js, '_sdProtoDraw');
+	pg_assert_contains("_sdProtoStatus(_sdT('{var:1} pages', pages) + ' · ' + _sdT('{var:1} links', count));", $draw, 'the count says the pages and the links');
+	pg_assert_contains('ui.status.parentNode.title = ui.status.textContent;', designer_canvas_bar_fn($js, '_sdProtoStatusFit'), 'a count folded away keeps its words in its zone\'s title');
+	pg_assert_contains("el.style.top = Math.max(4, r.bottom - o.top + 2) + 'px';",designer_canvas_bar_fn($js, '_sdProtoProblemsOpen'), 'the problems list opens on the map, under the bar');
+	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto, .sd-bp-bar.sd-bp-proto')) return;", designer_canvas_bar_fn($js, 'initKeyboard'), 'the editor\'s shortcuts keep off the bar\'s Prototype controls');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	foreach (array(
+		'.sd-bp-bar .sd-bp-pv,',
+		'.sd-bp-bar.sd-bp-proto .sd-bp-canvas,',
+		'.sd-bp-bar.sd-bp-proto .sd-bp-tools,',
+		'.sd-bp-bar.sd-bp-proto .sd-bp-zsep-tools { display:none; }',
+		'.sd-bp-bar.sd-bp-proto .sd-bp-pv { display:flex; }',
+		'.sd-bp-bar[data-fold="1"] .sd-bp-pcount,',
+		'.sd-bp-bar .sd-bp-switch.active .sd-vb-switch',
+	) as $rule) {
+		pg_assert_contains($rule, $css, 'styled: ' . $rule);
+	}
+
+	pg_assert_true(strpos($css, '.sd-proto-bar') === false, 'the view\'s own bar is not styled any more');
+	pg_assert_contains('<span class="sd-bp-zsep sd-bp-zsep-tools" aria-hidden="true"></span>', designer_canvas_bar_fn($js, 'createCanvasIframe'), 'the line before the canvas\'s tools hides with them');
 }
 
 // While fitted the percentage is the frame's real scale, rounded.
