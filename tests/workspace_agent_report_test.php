@@ -137,7 +137,7 @@ function test_workspace_agent_report_labels_and_route()
 	}
 
 	pg_assert_true($route !== null, 'the route is there');
-	pg_assert_same(array('POST', '/workspace/agent-report', 'workspace:write', false, true), array($route['method'], $route['path'], $route['scope'], $route['mcp'], $route['dry_run']));
+	pg_assert_same(array('POST', '/workspace/agent-report', 'workspace:write', 'agent', true), array($route['method'], $route['path'], $route['scope'], $route['mcp'], $route['dry_run']));
 
 	$times = ws_api_agent_report_times(array(array('name' => 'weekly', 'percent' => 1, 'resets_at' => '2027-01-02T03:04:05Z'), array('name' => 'daily', 'percent' => 1, 'resets_at' => 'soon')));
 	pg_assert_same(gmmktime(3, 4, 5, 1, 2, 2027), $times[0]['resets_at'], 'an ISO time read as unix seconds');

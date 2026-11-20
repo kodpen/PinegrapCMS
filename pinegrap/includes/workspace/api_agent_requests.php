@@ -47,7 +47,7 @@ function ws_api_agent_answer_schema()
 function ws_agent_request_api_routes()
 {
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
-    $only = ' For the key of an active application agent (Workspace Settings, Agents) only, used as itself: any other caller 403 forbidden.';
+    $only = ' For an active application agent\'s own key only (Workspace Settings, Agents): any other caller 403 forbidden.';
 
     return array(
         array(
@@ -56,7 +56,7 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_agent_requests_list',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for the calling agent',
             'description' => 'A message that woke the agent in a channel (its handle, its wake rule) made one request for it; a task a person handed to the agent made one with task filled and no message. status open (the default) is what waits to be claimed, oldest first, leaving out a request whose message the writer is editing now; all is the latest 50 of every state.' . $only,
@@ -70,7 +70,7 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests/{id}/claim',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_request_claim',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
@@ -83,11 +83,12 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests/{id}/answer',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_request_answer',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => ws_api_agent_answer_schema(),
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. For a run on a task (task filled) the text is kept on the run and shown on the task, the person who asked is told, and no message is written; it takes text only (422 for no_answer, emoji, conclude or offer_conclude), 403 once the task\'s channel no longer allows the agent. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does go through their own routes: a task POST /workspace/tasks, a poll POST /workspace/channels/{id}/polls, an approval request POST /workspace/channels/{id}/approvals (and POST /workspace/approvals/{id}/decide when asked to approve), a proposed change /workspace/changes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there: close the request with POST /workspace/agent-requests/{id}/fail; 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
+            'description' => 'Writes text under the message that asked, mentioning the asker; no_answer true closes it writing nothing. A task run takes text only. Other work has its own routes: /workspace/tasks, /workspace/channels/{id}/polls, /workspace/channels/{id}/approvals, /workspace/approvals/{id}/decide, /workspace/changes. 403: close it with POST /workspace/agent-requests/{id}/fail. 409 closed, editing (retry in a minute) or edited (claim again, read the new words).' . $only,
+            'details'     => 'The answer is written as the application. For a run on a task the text is kept on the run and shown on the task, the person who asked is told, and no message is written; it answers 422 for no_answer, emoji, conclude or offer_conclude, and 403 once the task\'s channel no longer allows the agent. emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). 403 also when the person who asked can no longer write there. 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer.',
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
@@ -105,7 +106,7 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests/{id}/fail',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_request_fail',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Give a request up',
@@ -121,11 +122,12 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests/{id}/progress',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_request_progress',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Say where the work on a request is',
-            'description' => 'While the agent holds a request (after its claim, before its answer or fail), one short line on where it is ("reading the plans", "waiting for CI, back by 22:30"). The line under the message that asked shows it after "is working on it", with the time of the claim; the answer takes its place, and closing the request clears it. A new note replaces the last. Writes no message, wakes nobody, adds no inbox line. 409 not_claimed before the claim, 409 closed once the request is closed, 429 rate_limited for a second note inside ' . WS_AGENT_PROGRESS_GAP . ' seconds (Retry-After says when), 422 for an empty note or one over ' . WS_AGENT_PROGRESS_MAX . ' characters.' . $only,
+            'description' => 'While the agent holds a request (claimed, not yet closed), one short line on where it is, shown under the message that asked after "is working on it"; a new note replaces the last, the answer takes its place. Writes no message and wakes nobody. 409 not_claimed or closed; 429 rate_limited for a second note inside ' . WS_AGENT_PROGRESS_GAP . ' seconds (Retry-After); 422 for an empty note or one over ' . WS_AGENT_PROGRESS_MAX . ' characters.' . $only,
+            'details'     => 'Examples: "reading the plans", "waiting for CI, back by 22:30". The line shows the time of the claim; closing the request clears it. It adds no inbox line.',
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_PROGRESS_MAX, 'required' => true, 'description' => 'Where the work is, in one short line.'),
@@ -137,10 +139,11 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-requests/{id}/brief',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_agent_request_brief',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'returns'     => 'WorkspaceClaudeBrief',
             'summary'     => 'What the agent is told before it starts',
-            'description' => 'One text: who the agent is, now, who asked, where (the channel or discussion, or the schedule that woke it and the channels it is in), the request inside a data block, the channel\'s memory index and decision lines, the loop-guard text unless the channel switched it off, the site\'s MCP address and the scopes of the key, the routes that close the request, the language of the answer and the rules. A wake request (no message) carries its note as the request.' . $only,
+            'description' => 'One text: who the agent is, now, who asked, where (the channel or discussion, or the schedule that woke it and the channels it is in), the request inside a data block, the channel\'s memory index and decision lines, the loop-guard text unless the channel switched it off, the site\'s MCP address and the scopes of the key, the routes that close the request, the language of the answer and the rules.' . $only,
+            'details'     => 'A wake request (no message) carries its note as the request.',
             'params'      => array($id),
         ),
         array(
@@ -149,7 +152,7 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-wake',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_agent_wake_get',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'returns'     => ws_api_agent_wake_schema(),
             'summary'     => 'The calling agent\'s scheduled wakes',
             'description' => 'every: minutes between two wakes, 0 for a one-time wake or none; next_at: the next wake, null for none; note: what each wake request carries.' . $only,
@@ -161,11 +164,12 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-wake',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_wake_set',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => ws_api_agent_wake_schema(),
             'summary'     => 'Set the calling agent\'s scheduled wakes',
-            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel, on the Agents card or with POST /workspace/channels/{id}/agents/{agent_id}/wake.' . $only,
+            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds.' . $only,
+            'details'     => 'A person sets it with /wake in a channel, on the Agents card or with POST /workspace/channels/{id}/agents/{agent_id}/wake.',
             'params'      => array(
                 array('name' => 'every', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => WS_AGENT_WAKE_EVERY_MAX),
                 array('name' => 'at', 'in' => 'body', 'type' => 'datetime'),
@@ -191,11 +195,12 @@ function ws_agent_request_api_routes()
             'path'        => '/workspace/agent-report',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_agent_report_set',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'dry_run'     => true,
             'returns'     => ws_api_agent_report_schema(),
             'summary'     => 'Report the calling agent\'s model, plan usage and context',
-            'description' => 'The agent tells the site the model it runs on, its plan\'s usage, its context, the project and the git branch it works on, as it reads them; the Agents card and the Activity tab of Channel info show the last report with its age. The site cannot check any of it. A report needs one of the fields; anything outside the rules refuses the whole report with 422. It replaces the previous report: only the last one is kept. An agent leaves out what it cannot read.' . $only,
+            'description' => 'The agent tells the site the model it runs on, its plan\'s usage, its context, the project and the git branch it works on, as it reads them; the Agents card and the Activity tab of Channel info show the last report with its age. A report needs one of the fields; anything outside the rules refuses the whole report with 422. An agent leaves out what it cannot read.' . $only,
+            'details'     => 'The site cannot check any of it. A report replaces the previous one: only the last one is kept.',
             'params'      => array(
                 array('name' => 'model', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_MODEL_MAX, 'description' => 'The model the agent runs on, as it names it; at most 80 characters.'),
                 array('name' => 'windows', 'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string'), 'max_items' => WS_AGENT_REPORT_WINDOWS_MAX,
