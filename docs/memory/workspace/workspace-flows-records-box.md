@@ -31,7 +31,7 @@ description: A list's new posts mailed by themselves to a contact group (records
 - No gap against D1 to D13 was found in the code at the close-out (2026-11-20). Nothing was run on a database: the window, the campaign and the template are checked by unit tests and reading.
 
 ## What is left out, each a later yes?
-- A record set live after its date has passed where no live moment is kept (not sent, and the box says so); a subscriber's own choice of how often; several lists in one mail; the digest as a visitor notification (`plans/visitor-push.md`); an introduction written by AI.
+- A record set live after its date has passed where no live moment is kept (not sent, and the box says so); a subscriber's own choice of how often; several lists in one mail; the digest as a visitor notification (`platform/visitor-push-rules.md`); an introduction written by AI.
 
 ## Whose look?
 - The mail: Owner (2026-11-16, agent channel poll 109): "Evet, böyle çıksın". The two boxes on the canvas: Owner (2026-11-17, agent channel poll 126): "Evet, böyle çıksın".
