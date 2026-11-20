@@ -331,7 +331,7 @@ function test_pick_pack_packing_right_has_its_sign_in_probe()
 
 	$fn = pick_pack_schema_test_source('includes/fn/auth.php');
 
-	pg_assert_true(strpos($fn, '"manage_packing" => $manage_packing,') !== false, 'initialize_user() carries it');
+	pg_assert_true(strpos($fn, '"manage_packing" => $manage_packing,') !== false, 'validate_user() carries it');
 }
 
 function test_pick_pack_packing_right_is_drawn_and_saved_on_the_user_screens()
