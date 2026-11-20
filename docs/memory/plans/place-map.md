@@ -36,5 +36,5 @@ priority: 6
 - Coordinates found by themselves when an address changes; opening hours as data ("open now"); stock locations as places; more places than X8 carries, grouped on the map; routes. Each is a later yes.
 
 ## Whose look?
-- The owner's: the block on a page, with and without the map, on a phone (MP3, MP4).
+- The owner's: the block on a page, with and without the map, on a phone (MP3).
 - Owner: "Evet, böyle çıksın" to "Find from the address" (MP2, poll 105, `workflow/decisions-made-product-67.md`) and to the list (MP3, poll 139, `-74.md`).

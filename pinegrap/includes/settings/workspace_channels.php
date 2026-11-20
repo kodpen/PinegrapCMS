@@ -5,7 +5,7 @@
  * Site Settings - Channels: the channel templates (archive and bring back
  * here, edited on the template screen), the GitHub repositories card (how
  * many are linked; they are linked on GitHub's page of Connections) and the
- * link previews switch.
+ * link previews switch and the Calls card (includes/workspace/calls_settings.php).
  * The mailboxes have a category of their own (includes/settings/mailboxes.php);
  * the voice message transcripts are a card of Assistants and agents
  * (includes/settings/workspace_assistants.php).
@@ -45,6 +45,13 @@ if ($ws_card !== '') {
 
 // ── Link previews ──
 $ws_card = ws_link_preview_settings_card($ws_viewer);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}
+
+// ── Calls ──
+$ws_card = ws_calls_settings_card($ws_viewer);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;

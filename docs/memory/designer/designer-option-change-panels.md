@@ -13,7 +13,7 @@ description: One Options panel select or switch change draws the Options panel a
 - The badges of the rest of the canvas were not rebuilt, so removing and putting back all of them was wasted; the debounced validation (`scheduleValidation()`, 500 ms) still refreshes every badge.
 
 ## How does the Attributes panel find a chip's control?
-- `_sdClassControlIndex(panel, node)` reads the Options panel once per draw (toggle buttons and checkboxes by class, utility, style group and box model selects in document order); `_sdClassControlFind(idx, cls)` looks each chip up in the same order the old per-chip search used. `findControlForClass(cls)` (chip click) builds a one-off index.
+- `_sdClassControlIndex(panel, node)` reads the Options panel once per draw (toggle buttons and checkboxes by class, utility and style group selects in document order); `_sdClassControlFind(idx, cls)` looks each chip up in the same order the old per-chip search used. `findControlForClass(cls)` (chip click) builds a one-off index; `focusClassControl()` shows the spacing box for a class of the hidden spacing rows (`designer-spacing-box.md`).
 
 ## How is it tested?
 - `tests/designer_option_change_panels_test.php` runs the section between `// ── Class control lookup` and `// ── end of class control lookup` under Node with a stand-in panel, and checks the `render()` wiring.

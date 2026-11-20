@@ -351,3 +351,46 @@ function test_courses_progress_goes_with_a_deleted_account()
 	pg_assert_true($forget !== false, 'pg_user_delete() removes the course progress');
 	pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), 'before the account row goes');
 }
+
+function test_courses_lesson_outside_folder_does_not_count()
+{
+	// Lesson 12's page left the course's folder (40); lesson 13's page was
+	// deleted (no folder). Neither gates or counts (Z17).
+	$lessons = array(
+		array('id' => 11, 'page_id' => 101, 'sort_order' => 1, 'open_days' => 0),
+		array('id' => 12, 'page_id' => 102, 'sort_order' => 2, 'open_days' => 0),
+		array('id' => 13, 'page_id' => 103, 'sort_order' => 3, 'open_days' => 0),
+		array('id' => 14, 'page_id' => 104, 'sort_order' => 4, 'open_days' => 0),
+	);
+	$counted = pg_course_lessons_counted($lessons, array(101 => 40, 102 => 41, 104 => 40), 40);
+
+	pg_assert_same(array(11, 14), array_map('intval', array_column($counted, 'id')), 'only the lessons in the folder count');
+	pg_assert_same(array(), pg_course_lessons_counted($lessons, array(101 => 40), 0), 'a course without a folder counts none');
+
+	$state = pg_course_lesson_state($counted, 14, array(11), '2026-11-01', true, '2026-11-20', false);
+	pg_assert_true($state['open'], 'in order: the stray lessons before do not hold lesson 14 back');
+
+	$now = mktime(12, 0, 0, 11, 2, 2026);
+	$row = pg_course_completion_row(7, 5, array_column($counted, 'id'), array(11, 14), false, $now);
+	pg_assert_same(pg_course_kind('complete'), $row['kind'] ?? 0, 'the counted lessons done complete the course');
+}
+
+function test_courses_student_side_reads_counted_lessons()
+{
+	$files = array(
+		'course_action.php'            => file_get_contents(PG_FUNCTIONS_DIR . '/course_action.php'),
+		'includes/fn/course_blocks.php' => file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php'),
+	);
+
+	foreach ($files as $name => $source) {
+		pg_assert_false(strpos($source, 'pg_course_lessons(') !== false, $name . ' reads the counted lessons, not every lesson row');
+		pg_assert_true(strpos($source, 'pg_course_member_lessons(') !== false, $name . ' reads pg_course_member_lessons()');
+	}
+
+	$courses = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/courses.php');
+	foreach (array('pg_course_mark_done', 'pg_course_gate') as $fn) {
+		$at = strpos($courses, 'function ' . $fn . '(');
+		$body = substr($courses, $at, strpos($courses, "\n}\n", $at) - $at);
+		pg_assert_false(strpos($body, 'pg_course_lessons(') !== false, $fn . ' reads the counted lessons');
+	}
+}

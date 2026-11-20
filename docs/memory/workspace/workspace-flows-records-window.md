@@ -6,6 +6,7 @@ description: The flow box Read the records of a list (list_records, #9978): the 
 ## What is it?
 - Step kind `list_records` ("Read the records of a list") in `ws_step_kinds()`, its own run (`ws_step_list_records_do()`), outcomes done and failed, tier read, not a role-3 kind. Code `includes/workspace/flow_records.php`; tests `tests/workspace_flow_records_test.php`.
 - Settings: `page_id`, `only_new` (0/1). Gives `count`, `left_out` and `records`, a JSON list (title, summary, picture, link, date) a For each box reads, 50 at most.
+- A summary is the RSS description cut at a word to 200 characters with "…" (`WS_FLOW_RECORDS_SUMMARY`, `ws_flow_records_summary()`). The whole post overran the list's 32 KB (`WS_FLOW_LOOP_ITEMS_BYTES`); records past it were never mailed, as the window had passed them (hunt of 2026-11-20).
 
 ## How are the records picked?
 - By the feed's own query: `pg_sw_form_feed_pick()` in `includes/fn/widgets.php`, split out of `pg_sw_form_feed_parts()`, which calls it with no extras; `pg_sw_form_feed_pick_sql()` builds it (pure). The box widens it through `$extra` (a function given the list's filters).

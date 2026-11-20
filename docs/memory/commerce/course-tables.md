@@ -16,7 +16,7 @@ module: courses
 - Every writer goes through `pg_course_write_row()`: `INSERT IGNORE` on the key, so a second press or a race writes nothing and returns false. Done stays done; there is no unmark.
 - The first-open row only for a signed-in member who has the folder (`pg_course_first_open_row()`); the caller passes whether they have it.
 - `pg_course_mark_done()` writes the done row, then the completion row once every lesson is done (`pg_course_completion_row()`); a course without lessons is never complete. A completion row is never rewritten, not even when lessons are added later: the certificate's day and code hang on it.
-- A deleted lesson takes its done rows with it (`pg_course_lesson_delete()`), also when its page is deleted or leaves the folder; a completion stays.
+- A lesson removed on the Courses screen takes its done rows (`pg_course_lesson_delete()`); a completion stays. A lesson whose page left the folder counts for nobody (`course-student-hunt.md`).
 
 ## When is a lesson open?
 - `pg_course_lesson_state()`, pure, in this order: an editor passes; a page that is no lesson of the course is not closed; a done lesson stays open; its days since the enrolment day; with "Lessons in order" the lesson before done. Days come first, so a notice names the later of the two.

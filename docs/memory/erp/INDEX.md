@@ -152,6 +152,7 @@
 - erp-return-screen.md: Which invoice the return screen opens for (erp_return_refusal(): issued invoices only) and how it writes quantities and fits a phone (PR #5708).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays. [decision: decisions-made-product-12.md]
+- erp-shared-prices-api.md: An ERP account's "Uses the prices of" over the API (wholesale J11, WS6): price_account_id in the account answer, written by the account update with the panel's one-hop check
 - erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public [decision: here]
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.

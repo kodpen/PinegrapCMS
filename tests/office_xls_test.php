@@ -226,7 +226,7 @@ function test_office_xls_doors_offer_the_copy()
 	pg_assert_true(function_exists('pg_explorer_handle_office_copy') || (strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_files_media.php'), 'function pg_explorer_handle_office_copy(') !== false), 'its handler');
 
 	$folders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
-	pg_assert_contains("'ods', 'xls']", $folders, 'Quick Look and the file window open it');
+	pg_assert_contains("'ods', 'xls', ", $folders, 'Quick Look and the file window open it');
 	pg_assert_contains("type: 'explorer_office_copy'", $folders, 'the file window asks for the copy');
 
 	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');

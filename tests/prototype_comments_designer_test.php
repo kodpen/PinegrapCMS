@@ -175,7 +175,8 @@ function test_proto_comment_part_is_handed_to_designers_and_registered_once()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'beat'"), 'one line in the core runs the part on the heartbeat');
 	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'reload'"), 'the Share prototype dialog reads a loaded list again after a link\'s comments go');
-	pg_assert_same(2, substr_count($core, "_sdPartCall('comments'"), 'nothing else calls the part');
+	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'side'"), 'the Prototype view tells a loaded part whether its Comments tab is in sight');
+	pg_assert_same(3, substr_count($core, "_sdPartCall('comments'"), 'nothing else calls the part');
 
 	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_comments.js');
 	pg_assert_true(strpos($part, "StyleDesigner.definePart('comments'") !== false, 'the part registers itself');

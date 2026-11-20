@@ -5,7 +5,7 @@ description: Workspace calls of two people on the channel screen (CL2, #10522): 
 
 ## Where are the call buttons?
 - In the channel head, before the tour: a telephone (Voice call) and a camera (Video call), `pg-icon-button`s from `PGWsCalls.headButtons()` (`assets/js/workspace_calls.js`, in `workspace.min.js`).
-- Only in a conversation of two people the viewer is a member of (`callable()`): not archived, not a mailbox, discussion or guest room, not an earlier version; only with WebRTC and `CFG.calls` (the database has the call tables). Marked `ws-head-wide`, so a phone's narrow head hides them until CL8.
+- Only in a conversation of two people the viewer is a member of (`callable()`): not archived, not a mailbox, discussion or guest room, not an earlier version; only with WebRTC and `CFG.calls` (the call tables exist and the Calls card's switch is on). Marked `ws-head-wide`, so a phone's narrow head hides them until CL8.
 - A group's call (CL3) and a guest's (CL5) are later steps.
 
 ## How does the other person hear it?
@@ -23,7 +23,7 @@ description: Workspace calls of two people on the channel screen (CL2, #10522): 
 ## How do the two browsers connect?
 - `ws_call_sync` (call_id, call_after) every second while in a call: the call's `ws_call_live_part()` for its own channel, whichever channel is open, without the channel's look. A ping every 30 s (`ws_call_signal` kind ping).
 - Of two members the later joiner (higher member id) sends the offer; candidates arriving before their description wait in a queue. Signals leave one after another.
-- STUN: `ws_call_ice_servers()` gives `stun:stun.l.google.com:19302` until the Calls card (CL6) names others; no TURN yet, so about one pair in ten cannot connect (plan, poll 157).
+- STUN: `ws_call_ice_servers()` gives the Calls card's addresses, else `stun:stun.l.google.com:19302`; the TURN relay and its credentials come only with a granted start or join (`calls-settings.md`). Without a relay about one pair in ten cannot connect (plan, poll 157).
 
 ## What could not be checked?
 - Unit tests: `tests/workspace_calls_screen_test.php` (ring, decline, the pure browser parts under node, the wiring). Two real browsers with a camera were not run (#10522).
