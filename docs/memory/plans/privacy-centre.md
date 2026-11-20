@@ -10,9 +10,9 @@ priority: 6
 ## What is there today?
 - One person at a time: `privacy_export.php` (`core/personal-data-export.md`) and `privacy_erase.php` with its table list `pg_privacy_erase_tables()` (`core/personal-data-erasure.md`), manager and up, from Contacts.
 - Retention only for `audit_log` and `consent_log` (`core/privacy-log-retention.md`, `includes/fn/privacy_retention.php`, a daily pass in slices). Contacts, form submissions and orders: "Not built ... opt-in and off by default".
-- No inventory: nothing lists which tables hold which personal data, for whom and why. The registry of outside services (`api/connections-registry.md`, 78 rows) names each service but not its country or the data it receives.
-- A person's request comes by e-mail; nothing records it or counts its 30 days. The checkout KVKK notice and consent box exist (`commerce/checkout-kvkk-notice.md`).
-- An xlsx writer (`includes/fn/xlsx_write.php`) and the export's PDF summary exist.
+- No inventory. The registry of outside services (`api/connections-registry.md`, 78 rows) names no country or data received.
+- A request comes by e-mail; nothing counts its 30 days. The checkout KVKK notice exists (`commerce/checkout-kvkk-notice.md`).
+- An xlsx writer (`includes/fn/xlsx_write.php`) and the export's PDF exist.
 
 ## What binds it?
 - Every retention rule is opt-in and off by default; a first run shows what it would remove and waits for a person's yes.
@@ -21,11 +21,14 @@ priority: 6
 - Every rule change, run and request step is an audit line; the panel says once that the defaults are no legal advice.
 - No legal period is written into code as a fact: a suggested default the shop can change, empty meaning never.
 
-## What does the architect decide?
-- Schema outside the ERP, the owner's: a `privacy_requests` table for the request box, and where destruction records live (a table of their own, or audit lines kept at least 3 years apart from `audit_log_retention_years`).
-- The public request form: a new root file with the form captcha and an e-mail link that proves the address, or only My Account plus requests typed by staff from an e-mail?
-- Incomplete carts: blank their personal fields after the period (the row stays for the cart recovery figures), or delete the row?
-- Where the screen sits: a Privacy centre under Contacts beside the erase screen (manager and up), or Site Settings › Visitors and privacy?
+## What did the architect decide? (2026-11-20, agent channel message 10557)
+- `privacy_requests` table: the owner's, poll 177 (message 10555); KV4 waits for it; the proposed columns are in KV4.
+- No table for destruction records: one `audit_log` line per rule run (`entity_type = 'privacy_rule'`, counts in `after_json`, no person), beside the erase's `pg_audit('erase', 'person', …)`. `pg_privacy_retention_run()` keeps both kinds at least 3 years, whatever `audit_log_retention_years` says; the Audit trail card says so.
+- Request form: both. My Account and staff-typed requests always; the public `privacy_request.php` is off by default (404 until opened in the Privacy centre), so an update opens no new public endpoint on any site.
+- Incomplete carts: personal fields blanked, contact and user links too; the row stays (cart recovery counts open carts from `orders`). Through the `orders` entry's anonymise action, no second action; the period at least 31 days.
+- Screen: Contacts › "Privacy centre" beside the erase screen, manager and up (`pg_privacy_export_allowed()`'s rule); Site Settings › Visitors and privacy only links to it. Switching a rule, its period and the first run's yes: only the role that may save Site Settings; a manager reads the rules.
+- Also: staff (a panel role) is never removed by a rule; erased data stays in older backups, said once on the screen and the PDF; a rule for closed requests (P6).
+- Form, carts and screen: the architect's reading; the owner may turn them.
 
 ## What is built?
 - Features: `privacy-centre-features.md` (P1 to P12). Steps: `privacy-centre-steps.md`. Claim as `[plan:privacy-centre] <step> — <topic>`.
