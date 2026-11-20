@@ -16,9 +16,10 @@ module: sheet_read
 ## What is refused?
 - Adding, renaming, deleting and moving a sheet (office_sheets.php) write `xl/workbook.xml`, its relationships and `xl/worksheets/` by name, so a workbook kept elsewhere is refused with "The workbook's sheets cannot be changed here." (`sheets_unusual`).
 
-## What still reads a fixed path?
-- The preview's own date-1904 read in `pg_office_xlsx_read()` (office.php) takes `xl/workbook.xml`: a 1904 workbook kept elsewhere shows its dates four years early in the preview only, until that line takes `pg_sheet_xlsx_workbook($zip)['part']`.
-- The product import's fallback first-sheet walk (`pg_products_import_xlsx_first_part()`), used only when `pg_office_xlsx_sheets()` finds nothing, and the upload kind guess (`pg_sheet_import_content_kind()`, which falls back to the file name).
+## What is left?
+- The preview's own date-1904 read in `pg_office_xlsx_read()` (office.php) takes `xl/workbook.xml`: a workbook whose part has another name and counts from 1904 shows its dates four years early in the preview only (the importers read them right). It was left out beside OE3b #10871, which held that function.
+- Architect (2026-11-20): after #10871 lands, one small PR changes that line to `pg_sheet_xlsx_workbook($zip)['part']` with its test (a rels-named workbook with date1904), given out with the next Excel fix.
+- Still a fixed path: the product import's fallback first-sheet walk (`pg_products_import_xlsx_first_part()`), used only when `pg_office_xlsx_sheets()` finds nothing, and the upload kind guess (`pg_sheet_import_content_kind()`, which falls back to the file name).
 
 ## Tests
 - `tests/sheet_read_xlsx_parts_test.php`: `book/main.xml` and `xl/Workbook2.xml` with relative sheet and styles parts and `date1904` read their sheet, the date moved to the 1900 count and the editor's text and date styles; a package without `_rels/.rels` reads as before.

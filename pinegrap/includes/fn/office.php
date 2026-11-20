@@ -455,7 +455,8 @@ function pg_office_part_name($folder, $target)
 /**
  * The sheets of a workbook in their order: name, part, hidden, and type
  * (worksheet; a chart sheet, a dialog sheet or a macro sheet has no cells to
- * change).
+ * change). The workbook part is the one the package names
+ * (pg_sheet_xlsx_workbook()).
  *
  * @param ZipArchive $zip
  * @param string     $refused set to large or damaged when the workbook part or its relationships could not be read whole
@@ -465,14 +466,15 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
 {
     $out = array();
     $refused = '';
-    $book = pg_office_xml($zip, 'xl/workbook.xml', $status);
+    $workbook = pg_sheet_xlsx_workbook($zip);
+    $book = pg_office_xml($zip, $workbook['part'], $status);
     pg_office_refuse($refused, $status);
 
     if ($book === null) {
         return $out;
     }
 
-    $rels = pg_office_rels($zip, 'xl/_rels/workbook.xml.rels', $rels_refused);
+    $rels = pg_office_rels($zip, $workbook['rels'], $rels_refused);
     pg_office_refuse($refused, $rels_refused);
 
     foreach ($book->getElementsByTagName('sheet') as $sheet) {
@@ -482,7 +484,7 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
             continue;
         }
 
-        $part = pg_office_part_name('xl/', $rels[$id]['target']);
+        $part = pg_office_part_name($workbook['folder'], $rels[$id]['target']);
 
         if ($zip->locateName($part) === false) {
             continue;
