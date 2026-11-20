@@ -537,6 +537,13 @@ function pg_consent_catalogue($content)
         $catalogue['marketing'][] = array('software[affiliate_code]', true, lang('Remembers the partner who referred you, so the partner can be credited.'));
     }
 
+    // The visitor journey's browser key (includes/fn/lead_journey_store.php),
+    // written only with the marketing yes, while visitor tracking is on and
+    // its tables are there; 13 months.
+    if ($tracking && function_exists('pg_lead_ready') && pg_lead_ready()) {
+        $catalogue['marketing'][] = array(PG_LEAD_COOKIE, true, lang('Remembers this browser for 13 months, so the visits you make are kept with your contact record once you send a form, subscribe or sign in.'));
+    }
+
     // Auto dialogs (pop-ups) remember which one a visitor saw and closed in
     // one cookie, written by frontend.src.js only with marketing allowed or
     // the notice off; the old per-row cookies are still read for the time a
@@ -602,7 +609,9 @@ function pg_consent_revoke_names()
         'analytics' => array('software[number_of_visits]', 'software[tracking_code]', 'lsid', '_ga', '_ga_*', '_gid', '_gat*'),
         // The pop-ups' cookie and the per-row ones before it; 'software[auto_dialog_*'
         // matches software[auto_dialog_<id>] by prefix.
-        'marketing' => array('software[affiliate_code]', PG_POPUP_COOKIE, 'software[auto_dialog_*'),
+        // The visitor journey's key: the server also deletes its browser row
+        // on the same answer (pg_lead_consent_changed()).
+        'marketing' => array('software[affiliate_code]', PG_POPUP_COOKIE, 'software[auto_dialog_*', 'pg_lead'),
     );
 }
 
@@ -790,6 +799,7 @@ function pg_consent_ui_keys()
         'Remembers the campaign (UTM) that brought you to the site.',
         'Google Analytics: tells visits apart to measure how the site is used.',
         'Remembers the partner who referred you, so the partner can be credited.',
+        'Remembers this browser for 13 months, so the visits you make are kept with your contact record once you send a form, subscribe or sign in.',
         'Checks that a form is sent by a person; loaded only on pages with a form.',
         'Shows the map; the map service receives your address on the internet and the page you are on.',
         'Other services',

@@ -291,3 +291,184 @@ function pg_lead_interest_score(array $events, $now, array $site_weights = array
         'reasons' => $reasons,
     );
 }
+
+/** The name of the browser key's first-party cookie (marketing category). */
+const PG_LEAD_COOKIE = 'pg_lead';
+
+/** How long the browser key's cookie lives, in months. */
+const PG_LEAD_COOKIE_MONTHS = 13;
+
+/** At most this many pages are kept on one visit's row. */
+const PG_LEAD_PAGES_MAX = 50;
+
+/** contact_journey.kind of a tie: the browser was tied to the contact. */
+const PG_LEAD_JOURNEY_TIE = 1;
+
+/**
+ * The cookie notice answer pg_lead_key_verdict() and pg_lead_tie_decision()
+ * read, from the notice's switch and the visitor's choices: 'off' while the
+ * site does not ask, 'yes' or 'no' for an answered marketing category,
+ * 'unanswered' otherwise.
+ *
+ * @param bool  $enabled pg_consent_enabled()
+ * @param array $choices category => bool (pg_consent_parse())
+ * @return string
+ */
+function pg_lead_consent_state($enabled, array $choices)
+{
+    if (!$enabled) {
+        return 'off';
+    }
+
+    if (!array_key_exists('marketing', $choices)) {
+        return 'unanswered';
+    }
+
+    return ($choices['marketing'] === true) ? 'yes' : 'no';
+}
+
+/**
+ * The browser key as the cookie carries it: 64 lowercase hex characters
+ * (32 random bytes), or '' for anything else.
+ *
+ * @param mixed $raw
+ * @return string
+ */
+function pg_lead_key_valid($raw)
+{
+    return (is_string($raw) && preg_match('/^[0-9a-f]{64}$/D', $raw)) ? $raw : '';
+}
+
+/**
+ * What is stored of a browser key: its sha256, so the key itself is kept
+ * only in the visitor's cookie.
+ *
+ * @param string $key
+ * @return string
+ */
+function pg_lead_key_hash($key)
+{
+    return hash('sha256', (string) $key);
+}
+
+/**
+ * When the browser key's cookie runs out: PG_LEAD_COOKIE_MONTHS calendar
+ * months after $now, in UTC, a day the shorter month lacks falling to its
+ * last day.
+ *
+ * @param int $now
+ * @return int
+ */
+function pg_lead_cookie_expires($now)
+{
+    $now = (int) $now;
+    $index = (int) gmdate('Y', $now) * 12 + (int) gmdate('n', $now) - 1 + PG_LEAD_COOKIE_MONTHS;
+    $year = intdiv($index, 12);
+    $month = $index % 12 + 1;
+    $day = min((int) gmdate('j', $now), (int) gmdate('t', gmmktime(0, 0, 0, $month, 1, $year)));
+
+    return gmmktime((int) gmdate('G', $now), (int) gmdate('i', $now), (int) gmdate('s', $now), $month, $day, $year);
+}
+
+/**
+ * A visit's own copy of what the journey needs, cut to its columns: the
+ * channel (pg_visitor_channel()'s answer, given), the campaign (the UTM
+ * campaign, else the tracking code), the referring host and the landing page.
+ *
+ * @param array  $visit   referring_host_name, tracking_code, utm_campaign
+ * @param string $channel
+ * @param string $landing_page
+ * @return array{channel: string, campaign: string, referrer_host: string, landing_page: string}
+ */
+function pg_lead_visit_copy(array $visit, $channel, $landing_page)
+{
+    $cut = function ($value, $length) {
+        $value = trim((string) $value);
+
+        return function_exists('mb_substr') ? mb_substr($value, 0, $length, 'UTF-8') : substr($value, 0, $length);
+    };
+
+    $campaign = trim((string) ($visit['utm_campaign'] ?? ''));
+    if ($campaign === '') {
+        $campaign = (string) ($visit['tracking_code'] ?? '');
+    }
+
+    return array(
+        'channel' => $cut($channel, 20),
+        'campaign' => $cut($campaign, 100),
+        'referrer_host' => $cut(strtolower((string) ($visit['referring_host_name'] ?? '')), 150),
+        'landing_page' => $cut($landing_page, 255),
+    );
+}
+
+/**
+ * A visit's pages with one more seen: the page before it gets the seconds
+ * up to $now, the new one starts at 0. Rows are array(page, seconds, at);
+ * past PG_LEAD_PAGES_MAX the newest pages are dropped, never the landing one.
+ *
+ * @param array[] $pages
+ * @param string  $page
+ * @param int     $now
+ * @return array[]
+ */
+function pg_lead_pages_add(array $pages, $page, $now)
+{
+    $now = (int) $now;
+    $page = function_exists('mb_substr') ? mb_substr((string) $page, 0, 255, 'UTF-8') : substr((string) $page, 0, 255);
+    $last = count($pages) - 1;
+
+    if ($last >= 0 && isset($pages[$last][2])) {
+        $pages[$last][1] = max(0, $now - (int) $pages[$last][2]);
+    }
+
+    if (count($pages) >= PG_LEAD_PAGES_MAX || $page === '') {
+        return $pages;
+    }
+
+    $pages[] = array($page, 0, $now);
+
+    return $pages;
+}
+
+/**
+ * What a page view does with the browser key and its row, from the cookie
+ * notice answer (pg_lead_consent_state()), the cookie as sent (any value),
+ * the browser row the session names and whether the person has a panel role.
+ *
+ * 'verdict' is pg_lead_key_verdict()'s, or 'panel_user' (nothing is read or
+ * written); 'forget' names the row to delete with its untied visits: 'key'
+ * (found by the cookie's key), 'session' (the cookie is gone already, the
+ * session still names the row) or ''; 'delete_cookie' and 'write_key' say
+ * whether the cookie is deleted or a new key written; 'row' whether the
+ * browser row is read or added.
+ *
+ * @param string $consent
+ * @param mixed  $cookie
+ * @param int    $session_browser_id
+ * @param bool   $panel_user
+ * @return array{verdict: string, forget: string, delete_cookie: bool, write_key: bool, row: bool}
+ */
+function pg_lead_sync_plan($consent, $cookie, $session_browser_id, $panel_user)
+{
+    $plan = array('verdict' => 'panel_user', 'forget' => '', 'delete_cookie' => false, 'write_key' => false, 'row' => false);
+
+    if ($panel_user) {
+        return $plan;
+    }
+
+    $key = pg_lead_key_valid($cookie);
+    $plan['verdict'] = pg_lead_key_verdict((string) $consent, $cookie !== null && $cookie !== '');
+
+    if (($plan['verdict'] === 'delete') || ($plan['verdict'] === 'none')) {
+        $plan['forget'] = ($key !== '') ? 'key' : (((int) $session_browser_id > 0) ? 'session' : '');
+        $plan['delete_cookie'] = $plan['verdict'] === 'delete';
+
+        return $plan;
+    }
+
+    // 'write', or 'keep' of a cookie that is no key of ours.
+    $plan['write_key'] = $key === '';
+    $plan['row'] = true;
+
+    return $plan;
+}

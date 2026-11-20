@@ -172,3 +172,204 @@ function test_lead_journey_quick_return()
 	pg_assert_false(pg_lead_is_quick_return(0, LEAD_JOURNEY_TEST_NOW), 'a first visit is no return');
 	pg_assert_false(pg_lead_is_quick_return(LEAD_JOURNEY_TEST_NOW, LEAD_JOURNEY_TEST_NOW), 'the same visit is no return');
 }
+
+function lead_journey_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+// The body of upgrade_2026_11_0_lead_journey(), CREATE TABLE by table.
+function lead_journey_test_step_tables()
+{
+	$source = lead_journey_test_source('includes/migrations/2026.11.0.php');
+	$start = strpos($source, 'function upgrade_2026_11_0_lead_journey()');
+	pg_assert_true($start !== false, 'the step is there');
+	$body = substr($source, (int) $start);
+	$body = substr($body, 0, (int) strpos($body, "\n}\n"));
+
+	preg_match_all('/install_create_table\(\'([a-z_]+)\', "CREATE TABLE \1 \((.*?)\n\t\) (ENGINE=[^"]+)"\);/s', $body, $matches, PREG_SET_ORDER);
+	$tables = array();
+	foreach ($matches as $match) {
+		$tables[$match[1]] = array('body' => $match[2], 'tail' => $match[3]);
+	}
+
+	return $tables;
+}
+
+function lead_journey_test_columns($body)
+{
+	$columns = array();
+	foreach (preg_split('/,\n/', trim($body)) as $line) {
+		$line = trim($line);
+		if (preg_match('/^(PRIMARY|UNIQUE|KEY)\b/', $line)) {
+			continue;
+		}
+		$name = strtok($line, " \t");
+		$columns[$name] = trim(substr($line, strlen($name)));
+	}
+
+	return $columns;
+}
+
+function test_lead_journey_migration_step_shape()
+{
+	$tables = lead_journey_test_step_tables();
+	pg_assert_same(array('lead_browsers', 'lead_visits', 'contact_journey', 'contact_scores'), array_keys($tables), 'the four tables');
+
+	$expected = array(
+		'lead_browsers' => array('id', 'key_hash', 'contact_id', 'consent_at', 'tied_at', 'last_seen_at', 'created_at'),
+		'lead_visits' => array('id', 'browser_id', 'contact_id', 'visitor_id', 'started_at', 'channel', 'campaign', 'referrer_host', 'landing_page', 'pages'),
+		'contact_journey' => array('id', 'contact_id', 'kind', 'at', 'visit_id', 'ref_id', 'detail', 'first_visit_id', 'last_visit_id'),
+		'contact_scores' => array('contact_id', 'interest', 'fit', 'reasons', 'topics', 'points', 'hot', 'hot_at', 'returned_at', 'last_visit_at', 'touched_at', 'scored_at'),
+	);
+
+	$keys = array(
+		'lead_browsers' => array('PRIMARY KEY (id)', 'UNIQUE KEY uniq_key_hash (key_hash)', 'KEY idx_contact (contact_id)', 'KEY idx_last_seen (last_seen_at)'),
+		'lead_visits' => array('PRIMARY KEY (id)', 'KEY idx_browser_started (browser_id, started_at)', 'KEY idx_contact_started (contact_id, started_at)', 'KEY idx_started (started_at)', 'KEY idx_visitor (visitor_id)'),
+		'contact_journey' => array('PRIMARY KEY (id)', 'KEY idx_contact_at (contact_id, at)', 'KEY idx_kind_at (kind, at)', 'KEY idx_at (at)'),
+		'contact_scores' => array('PRIMARY KEY (contact_id)', 'KEY idx_hot_interest (hot, interest)', 'KEY idx_touched (touched_at)'),
+	);
+
+	foreach ($expected as $table => $names) {
+		if (!isset($tables[$table])) {
+			continue;
+		}
+		$columns = lead_journey_test_columns($tables[$table]['body']);
+		pg_assert_same($names, array_keys($columns), $table . ' columns');
+		pg_assert_same('ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci', $tables[$table]['tail'], $table . ' engine and collation');
+
+		foreach ($columns as $name => $definition) {
+			if (strpos($definition, 'TEXT') === 0) {
+				pg_assert_same('TEXT NULL', $definition, $table . '.' . $name . ' TEXT is NULL');
+				continue;
+			}
+			pg_assert_contains('NOT NULL', $definition, $table . '.' . $name . ' NOT NULL');
+			if (strpos($definition, 'AUTO_INCREMENT') === false) {
+				pg_assert_contains('DEFAULT', $definition, $table . '.' . $name . ' has a default');
+			}
+			pg_assert_false((bool) preg_match('/ip|agent/i', $name), $table . '.' . $name . ' is no IP or user agent');
+		}
+
+		foreach ($keys[$table] as $key) {
+			pg_assert_contains($key, $tables[$table]['body'], $table . ' ' . $key);
+		}
+	}
+
+	pg_assert_contains('CHAR(64) CHARACTER SET ascii', $tables['lead_browsers']['body'] ?? '', 'the key hash is ascii');
+
+	$source = lead_journey_test_source('includes/migrations/2026.11.0.php');
+	pg_assert_contains("upgrade_2026_11_0_lead_journey();            // 11.0.261", $source, 'called with its label');
+
+	$install = lead_journey_test_source('install/index.php');
+	foreach (array_keys($expected) as $table) {
+		pg_assert_contains("\t\t'" . $table . "',\n", $install, $table . ' in get_tables()');
+	}
+}
+
+function test_lead_journey_no_key_without_the_yes_at_the_store()
+{
+	foreach (array('no', 'unanswered', 'off') as $consent) {
+		$plan = pg_lead_sync_plan($consent, null, 0, false);
+		pg_assert_false($plan['write_key'], $consent . ': no key written');
+		pg_assert_false($plan['row'], $consent . ': no browser row');
+		pg_assert_same('', $plan['forget'], $consent . ': nothing to delete');
+	}
+
+	$plan = pg_lead_sync_plan('yes', null, 0, false);
+	pg_assert_true($plan['write_key'] && $plan['row'], 'the yes writes a key and its row');
+
+	$key = str_repeat('ab', 32);
+	$plan = pg_lead_sync_plan('yes', $key, 0, false);
+	pg_assert_false($plan['write_key'], 'a key there is kept');
+	pg_assert_true(pg_lead_sync_plan('yes', 'not-a-key', 0, false)['write_key'], 'a cookie that is no key of ours gets a new key');
+
+	pg_assert_same('off', pg_lead_consent_state(false, array('marketing' => true)), 'notice off');
+	pg_assert_same('unanswered', pg_lead_consent_state(true, array('analytics' => true)), 'marketing not answered');
+	pg_assert_same('yes', pg_lead_consent_state(true, array('marketing' => true)), 'marketing yes');
+	pg_assert_same('no', pg_lead_consent_state(true, array('marketing' => false)), 'marketing refused');
+
+	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
+	pg_assert_contains("pg_consent_setcookie('marketing', PG_LEAD_COOKIE", $store, 'the key is written through the notice');
+	pg_assert_contains('INSERT IGNORE INTO lead_browsers (key_hash,', $store, 'only the hash is stored');
+}
+
+function test_lead_journey_refusal_after_a_yes_at_the_store()
+{
+	$key = str_repeat('0f', 32);
+	$plan = pg_lead_sync_plan('no', $key, 9, false);
+	pg_assert_same('key', $plan['forget'], 'the row found by the key goes');
+	pg_assert_true($plan['delete_cookie'], 'the cookie is deleted');
+
+	$plan = pg_lead_sync_plan('no', null, 9, false);
+	pg_assert_same('session', $plan['forget'], 'the notice deleted the cookie already: the session names the row');
+	pg_assert_false($plan['delete_cookie'], 'no cookie to delete');
+
+	pg_assert_true(in_array(PG_LEAD_COOKIE, pg_consent_revoke_names()['marketing'], true), 'the notice deletes the cookie with marketing');
+
+	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
+	pg_assert_contains('DELETE FROM lead_visits WHERE browser_id = ? AND contact_id = 0', $store, 'untied visits go, tied ones stay');
+	pg_assert_contains('pg_lead_consent_changed($changes);', lead_journey_test_source('consent_answer.php'), 'the answer endpoint forgets the browser');
+}
+
+function test_lead_journey_panel_user_gets_no_row()
+{
+	$plan = pg_lead_sync_plan('yes', null, 0, true);
+	pg_assert_same('panel_user', $plan['verdict'], 'a panel user');
+	pg_assert_false($plan['write_key'] || $plan['row'], 'no key and no row');
+	pg_assert_same('panel_user', lead_journey_test_tie(0, 4, 'sign_in', true)['verdict'], 'no tie');
+}
+
+function test_lead_journey_each_tie_path_names_its_act()
+{
+	pg_assert_contains("pg_lead_tie('newsletter', (int) \$pg_fs_link['c']", lead_journey_test_source('confirm_subscription.php'), 'the double opt-in yes');
+	pg_assert_contains("pg_lead_tie('newsletter', (int) \$contact['id']", lead_journey_test_source('email_preferences.php'), 'a yes on the e-mail preferences');
+
+	$auth = lead_journey_test_source('includes/authentication.php');
+	pg_assert_contains('pg_lead_sign_in((int) $user_id);', $auth, 'a sign-in');
+	pg_assert_contains('$signed_in_as_other', $auth, 'signing in as someone else is no act of theirs');
+	pg_assert_contains("pg_lead_tie('sign_in', \$contact_id", lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the account\'s contact');
+
+	foreach (array('newsletter', 'sign_in', 'form', 'campaign_click') as $act) {
+		pg_assert_true(in_array($act, pg_lead_tie_acts(), true), $act . ' is an act');
+	}
+}
+
+function test_lead_journey_tie_back_at_the_store()
+{
+	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
+	pg_assert_contains('pg_lead_tie_back_ids($visits, $browser[\'consent_at\'], pg_lead_keep_start($now))', $store, 'the pure rule picks the visits');
+	pg_assert_contains('AND contact_id = 0", array((string) $contact_id)', $store, 'a visit with a contact is never moved');
+
+	$visits = array(
+		array('id' => 1, 'started_at' => 1000, 'contact_id' => 0),
+		array('id' => 2, 'started_at' => 3000, 'contact_id' => 0),
+		array('id' => 3, 'started_at' => 4000, 'contact_id' => 8),
+	);
+	pg_assert_same(array(2), pg_lead_tie_back_ids($visits, 2000, 0), 'only since the consent, only untied');
+}
+
+function test_lead_journey_store_helpers()
+{
+	pg_assert_same('', pg_lead_key_valid(str_repeat('A', 64)), 'upper case is no key');
+	pg_assert_same('', pg_lead_key_valid(array()), 'an array is no key');
+	pg_assert_same(64, strlen(pg_lead_key_hash('x')), 'sha256');
+
+	pg_assert_same(gmmktime(12, 0, 0, 12, 20, 2027), pg_lead_cookie_expires(LEAD_JOURNEY_TEST_NOW), '13 months');
+	pg_assert_same(gmmktime(0, 0, 0, 2, 28, 2027), pg_lead_cookie_expires(gmmktime(0, 0, 0, 1, 31, 2026)), 'a short month');
+
+	$pages = pg_lead_pages_add(array(), 'home', 100);
+	$pages = pg_lead_pages_add($pages, 'pricing', 130);
+	pg_assert_same(array(array('home', 30, 100), array('pricing', 0, 130)), $pages, 'seconds of the page before');
+
+	$full = array();
+	for ($i = 0; $i < PG_LEAD_PAGES_MAX + 5; $i++) {
+		$full = pg_lead_pages_add($full, 'p' . $i, $i);
+	}
+	pg_assert_same(PG_LEAD_PAGES_MAX, count($full), 'capped');
+	pg_assert_same('p0', $full[0][0], 'the landing page stays');
+
+	$copy = pg_lead_visit_copy(array('referring_host_name' => 'WWW.Example.com', 'tracking_code' => 'news_2026', 'utm_campaign' => ''), 'email', str_repeat('x', 300));
+	pg_assert_same('news_2026', $copy['campaign'], 'the tracking code when no UTM campaign');
+	pg_assert_same('www.example.com', $copy['referrer_host'], 'host lower-cased');
+	pg_assert_same(255, strlen($copy['landing_page']), 'cut to its column');
+}

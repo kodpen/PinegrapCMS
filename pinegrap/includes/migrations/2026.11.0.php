@@ -248,6 +248,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
 	upgrade_2026_11_0_application_review();      // 11.0.258
+	upgrade_2026_11_0_lead_journey();            // 11.0.261
 
 }
 
@@ -8513,5 +8514,84 @@ function upgrade_2026_11_0_application_review() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
+
+}
+
+// 11.0.261 - The visitor journey's own store (owner, poll 194): a browser
+// that said yes to the cookie notice's marketing category (lead_browsers,
+// keyed by the sha256 of its cookie's random key), that browser's visits
+// (lead_visits, their own copy since visitors is trimmed by month), the
+// journey's own rows (contact_journey) and one score row per contact
+// (contact_scores). No column on visitors or contacts; no IP, user agent or
+// form content in any of the four.
+function upgrade_2026_11_0_lead_journey() {
+
+	install_create_table('lead_browsers', "CREATE TABLE lead_browsers (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		key_hash      CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		contact_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		consent_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		tied_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_key_hash (key_hash),
+		KEY idx_contact (contact_id),
+		KEY idx_last_seen (last_seen_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('lead_visits', "CREATE TABLE lead_visits (
+		id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		browser_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		visitor_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		channel        VARCHAR(20) NOT NULL DEFAULT '',
+		campaign       VARCHAR(100) NOT NULL DEFAULT '',
+		referrer_host  VARCHAR(150) NOT NULL DEFAULT '',
+		landing_page   VARCHAR(255) NOT NULL DEFAULT '',
+		pages          TEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_browser_started (browser_id, started_at),
+		KEY idx_contact_started (contact_id, started_at),
+		KEY idx_started (started_at),
+		KEY idx_visitor (visitor_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_journey', "CREATE TABLE contact_journey (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		contact_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		at              INT UNSIGNED NOT NULL DEFAULT 0,
+		visit_id        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		ref_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		detail          VARCHAR(255) NOT NULL DEFAULT '',
+		first_visit_id  BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		last_visit_id   BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_contact_at (contact_id, at),
+		KEY idx_kind_at (kind, at),
+		KEY idx_at (at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_scores', "CREATE TABLE contact_scores (
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		interest       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fit            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		reasons        TEXT NULL,
+		topics         TEXT NULL,
+		points         TEXT NULL,
+		hot            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		hot_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		returned_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_visit_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		touched_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		scored_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (contact_id),
+		KEY idx_hot_interest (hot, interest),
+		KEY idx_touched (touched_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Contacts: the visitor journey tables were added; nothing is recorded until a visitor allows marketing cookies.');
 
 }

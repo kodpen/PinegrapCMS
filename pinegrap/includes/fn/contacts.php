@@ -42,7 +42,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *         keep     left as it is: the consent log is proof of what that
  *                  record answered;
  *         survivor never names a merged contact: a contact a user holds is
- *                  always the one that stays.
+ *                  always the one that stays;
+ *         drop     the merged contacts' rows are deleted: a row worked out
+ *                  from the contact's other rows (contact_scores), which the
+ *                  contact that stays gets again on its next pass.
  * erase:  find     pg_privacy_erase_tables() finds the rows by contact_ids;
  *         scope    found through pg_privacy_erase_scope() (orders, forms,
  *                  ERP accounts) or the person's users;
@@ -69,6 +72,10 @@ function pg_contact_holders()
         'ws_mail_conversations'        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
         'ws_events'                    => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'ws_personal_plans'            => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        'lead_browsers'                => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'lead_visits'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'contact_journey'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'contact_scores'               => array('column' => 'contact_id', 'merge' => 'drop', 'erase' => 'none'),
         'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'ws_wtable_bin_cells'          => array('table' => 'ws_wtable_row_bin', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
@@ -130,7 +137,13 @@ function pg_contact_holders_move($merged_ids, $keep_id)
     foreach (pg_contact_holders() as $key => $holder) {
         $table = isset($holder['table']) ? $holder['table'] : $key;
 
-        if (!in_array($holder['merge'], array('move', 'one', 'cells'), true) || !pg_schema_has($table, $holder['column'])) {
+        if (!in_array($holder['merge'], array('move', 'one', 'cells', 'drop'), true) || !pg_schema_has($table, $holder['column'])) {
+            continue;
+        }
+
+        // One row per contact, worked out again for the contact that stays.
+        if ($holder['merge'] === 'drop') {
+            db_q("DELETE FROM " . $table . " WHERE " . $holder['column'] . " IN (" . implode(',', $merged_ids) . ")") or output_error(lang('Query failed.'));
             continue;
         }
 

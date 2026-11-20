@@ -4142,6 +4142,10 @@ function update_visitor_page_data($page_name, $page_id = 0)
 
              WHERE id = ?";
     $result = db_q($query, $values) or output_error(lang('Query failed.'));
+
+    // The visitor journey's own copy of the visit, only for a browser that
+    // allowed marketing cookies (includes/fn/lead_journey_store.php).
+    pg_lead_page_view($visitor_id, (string) $page_name);
 }
 // this function lowercases a keyword and folds the four forms of the letter i onto one
 // another. turkish treats the dotless "ı" and the dotted "i" as two different letters,
