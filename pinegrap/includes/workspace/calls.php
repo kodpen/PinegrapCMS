@@ -1178,8 +1178,14 @@ function ws_call_js_strings()
         'call_full'       => lang('This call is full.'),
         'call_waiting'    => lang('Waiting for others…'),
         'call_you'        => lang('You'),
-        'call_share'      => lang('Share your screen'),
+        'call_share'      => lang('Share screen'),
         'call_share_stop' => lang('Stop sharing'),
         'call_share_busy' => lang('Someone else is sharing their screen.'),
+        'call_sharing'    => ws_js_template('{var:1} is sharing', 1),
+        'call_self_sharing' => lang('You are sharing your screen'),
+        'call_smaller'    => lang('Make smaller'),
+        'call_larger'     => lang('Make larger'),
+        'call_full_screen' => lang('Full screen'),
+        'call_full_exit'  => lang('Exit full screen'),
     );
 }

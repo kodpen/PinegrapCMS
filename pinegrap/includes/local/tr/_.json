@@ -1306,6 +1306,7 @@
     "{var:1} is required: it is part of the address.": "{var:1} zorunludur: adresin bir parçasıdır.",
     "{var:1} is rewritten by version {var:2}.": "{var:1} tablosunu {var:2} sürümü yeniden yazar.",
     "{var:1} is running low in stock": "{var:1} stokta azaldı",
+    "{var:1} is sharing": "{var:1} paylaşıyor",
     "{var:1} is too large.": "{var:1} çok büyük.",
     "{var:1} is too long.": "{var:1} çok uzun.",
     "{var:1} is working on it": "{var:1} üzerinde çalışıyor",

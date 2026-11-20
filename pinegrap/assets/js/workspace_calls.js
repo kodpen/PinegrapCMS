@@ -7,7 +7,9 @@
  * and the call window that stays at the bottom of the screen while the
  * person moves between channels: a grid of up to four, the one speaking
  * marked; mute, the camera, sharing one's screen (one member at a time),
- * the microphone and camera in use, hang up.
+ * the microphone and camera in use, hang up. Another member's shared
+ * screen is shown large in the same window (the stage), the tiles beside
+ * it, or under it on a narrow screen; it can be made smaller or full screen.
  *
  * Sound and picture go from browser to browser (WebRTC). The site carries
  * only who is in the call and the browsers' connection messages
@@ -236,6 +238,21 @@
         }
 
         return { show: true, on: !!sharer && (sharer === me), busy: !!sharer && (sharer !== me) };
+    }
+
+    // What the window shows of a share: the stage while another member
+    // shares (large, or card-sized when made smaller), the notice while
+    // this member shares, and the labels of the share area's two buttons.
+    function stageState(sharer, me, small, can, full) {
+        var showing = !!sharer && (sharer !== me);
+        var share = shareState(sharer, me, can);
+
+        return {
+            classes: { 'is-showing': showing, 'is-stage': showing && !small, 'is-self-sharing': share.on },
+            share: share,
+            size: small ? { label: 'call_larger', icon: 'bi-arrows-angle-expand' } : { label: 'call_smaller', icon: 'bi-arrows-angle-contract' },
+            full: full ? { label: 'call_full_exit', icon: 'bi-fullscreen-exit' } : { label: 'call_full_screen', icon: 'bi-fullscreen' }
+        };
     }
 
     // ── The ring ──
@@ -605,6 +622,7 @@
         }
 
         names();
+        stageDraw(mine);
         status();
     }
 
@@ -636,6 +654,7 @@
             // The screen's line carries no stream of the member's own.
             if ((held.slot && (event.transceiver === held.slot)) || !stream) {
                 held.screen = new MediaStream([event.track]);
+                stageDraw(mine);
                 return;
             }
 
@@ -824,16 +843,110 @@
     }
 
     function shareDraw(mine) {
-        if (!mine.shareButton) {
+        stageDraw(mine);
+    }
+
+    // The window against the share: the stage, the notice, the share
+    // button and the share area's two buttons.
+    function stageDraw(mine) {
+        if (!mine.node) {
             return;
         }
 
-        var state = shareState(mine.sharer || 0, mine.memberId, true);
+        var full = !!document.fullscreenElement && (document.fullscreenElement === mine.shareArea);
+        var state = stageState(mine.sharer || 0, mine.memberId, !!mine.small, !!mine.shareButton, full);
+        var held = state.classes['is-showing'] ? mine.peers[mine.sharer] : null;
+        var screen = (held && held.screen) || null;
 
-        mine.shareButton.setAttribute('aria-pressed', state.on ? 'true' : 'false');
-        mine.shareButton.classList.toggle('is-active', state.on);
-        mine.shareButton.disabled = state.busy;
-        iconSwap(mine.shareButton, state.on ? 'bi-display-fill' : 'bi-display', t(state.on ? 'call_share_stop' : (state.busy ? 'call_share_busy' : 'call_share')));
+        // Leaving the stage leaves full screen too.
+        if (!state.classes['is-showing'] && full && document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+        }
+
+        Object.keys(state.classes).forEach(function (name) {
+            mine.node.classList.toggle(name, state.classes[name]);
+        });
+        mine.shareArea.hidden = !state.classes['is-showing'];
+        mine.notice.hidden = !state.classes['is-self-sharing'];
+
+        if (mine.shareVideo.srcObject !== screen) {
+            mine.shareVideo.srcObject = screen;
+        }
+
+        mine.shareName.textContent = held ? t('call_sharing', mine.names[mine.sharer] || '') : '';
+        iconSwap(mine.sizeButton, state.size.icon, t(state.size.label));
+
+        if (mine.fullButton) {
+            iconSwap(mine.fullButton, state.full.icon, t(state.full.label));
+        }
+
+        if (mine.shareButton) {
+            mine.shareButton.setAttribute('aria-pressed', state.share.on ? 'true' : 'false');
+            mine.shareButton.classList.toggle('is-active', state.share.on);
+            mine.shareButton.disabled = state.share.busy;
+            iconSwap(mine.shareButton, state.share.on ? 'bi-display-fill' : 'bi-display',
+                state.share.busy ? t('call_sharing', mine.names[mine.sharer] || '') : t(state.share.on ? 'call_share_stop' : 'call_share'));
+        }
+
+        names();
+    }
+
+    // The share area: the shared screen (never cut: contain), the sharer's
+    // name, and its two buttons, larger or smaller and full screen.
+    function shareAreaDraw(mine) {
+        var el = h().el;
+        var area = el('div', 'ws-call-share');
+        var tools = el('div', 'ws-call-share-tools');
+
+        area.hidden = true;
+        mine.shareVideo = el('video', 'ws-call-share-video');
+        mine.shareVideo.autoplay = true;
+        mine.shareVideo.playsInline = true;
+        // The sound comes from the sharer's tile.
+        mine.shareVideo.muted = true;
+        area.appendChild(mine.shareVideo);
+        mine.shareName = el('div', 'ws-call-share-name');
+        area.appendChild(mine.shareName);
+
+        mine.sizeButton = makeButton('pg-icon-button', '', 'bi-arrows-angle-contract', t('call_smaller'));
+        mine.sizeButton.addEventListener('click', function () {
+            mine.small = !mine.small;
+            stageDraw(mine);
+        });
+        tools.appendChild(mine.sizeButton);
+
+        if (document.fullscreenEnabled && area.requestFullscreen) {
+            mine.fullButton = makeButton('pg-icon-button', '', 'bi-fullscreen', t('call_full_screen'));
+            mine.fullButton.addEventListener('click', function () {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(function () {});
+                } else {
+                    area.requestFullscreen().catch(function () {});
+                }
+            });
+            tools.appendChild(mine.fullButton);
+        }
+
+        area.appendChild(tools);
+        mine.shareArea = area;
+
+        return area;
+    }
+
+    // The notice while this member shares: its own screen is not shown.
+    function noticeDraw(mine) {
+        var el = h().el;
+        var notice = el('div', 'alert theme-info small ws-call-notice');
+        var stop = makeButton('pg-button pg-button-danger pg-button-sm', t('call_share_stop'), '');
+
+        notice.hidden = true;
+        notice.setAttribute('role', 'status');
+        notice.appendChild(el('span', '', t('call_self_sharing')));
+        stop.addEventListener('click', function () { shareStop(mine, true); });
+        notice.appendChild(stop);
+        mine.notice = notice;
+
+        return notice;
     }
 
     // ── The window ──
@@ -849,9 +962,13 @@
 
         // The grid: one tile a member, one's own first (its picture never
         // plays its own sound back).
+        var body = el('div', 'ws-call-body');
+
+        body.appendChild(shareAreaDraw(mine));
         mine.grid = el('div', 'ws-call-stage');
         mine.grid.setAttribute('role', 'list');
-        win.appendChild(mine.grid);
+        body.appendChild(mine.grid);
+        win.appendChild(body);
         mine.selfTile = tile(mine, 0);
         mine.selfTile.video.muted = true;
         mine.selfTile.video.srcObject = mine.stream;
@@ -868,6 +985,7 @@
         mine.state = el('span', 'ws-call-state');
         bar.appendChild(mine.state);
         win.appendChild(bar);
+        win.appendChild(noticeDraw(mine));
 
         var tools = el('div', 'ws-call-tools');
 
@@ -917,7 +1035,7 @@
         win.appendChild(tools);
         win.appendChild(panel);
 
-        [mine.muteButton, mine.cameraButton, mine.shareButton, devices].forEach(function (node) {
+        [mine.muteButton, mine.cameraButton, mine.shareButton, devices, mine.sizeButton, mine.fullButton].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
             }
@@ -925,9 +1043,12 @@
 
         mine.node = win;
         document.body.appendChild(win);
+        // Esc, or the browser's own way out of full screen.
+        mine.onFull = function () { stageDraw(mine); };
+        document.addEventListener('fullscreenchange', mine.onFull);
         mine.clock = setInterval(status, 1000);
         mine.meter = setInterval(function () { measure(mine); }, LEVEL_EVERY);
-        names();
+        stageDraw(mine);
         status();
     }
 
@@ -992,16 +1113,22 @@
             return;
         }
 
-        var label = function (held, text) {
-            if (held && (held.name.textContent !== text)) {
+        var label = function (held, text, sharing) {
+            if (held && ((held.name.textContent !== text) || (!!held.sharing !== sharing))) {
                 held.name.textContent = text;
-                held.node.setAttribute('aria-label', text);
+                held.sharing = sharing;
+                held.node.setAttribute('aria-label', sharing ? t('call_sharing', text) : text);
+
+                // The sharer's tile stays, its name marked with a screen.
+                if (sharing) {
+                    held.name.insertBefore(h().icon('bi-display'), held.name.firstChild);
+                }
             }
         };
 
-        label(mine.selfTile, t('call_you'));
+        label(mine.selfTile, t('call_you'), !!mine.sharing);
         Object.keys(mine.peers).forEach(function (id) {
-            label(mine.peers[id].tile, mine.names[id] || '');
+            label(mine.peers[id].tile, mine.names[id] || '', Number(id) === mine.sharer);
         });
     }
 
@@ -1258,6 +1385,14 @@
             mine.audio.close().catch(function () {});
         }
 
+        if (mine.onFull) {
+            document.removeEventListener('fullscreenchange', mine.onFull);
+        }
+
+        if (document.fullscreenElement && mine.shareArea && (document.fullscreenElement === mine.shareArea)) {
+            document.exitFullscreen().catch(function () {});
+        }
+
         if (mine.node) {
             mine.node.remove();
         }
@@ -1294,6 +1429,7 @@
         clock: clock,
         mediaAsk: mediaAsk,
         screenSlot: screenSlot,
-        shareState: shareState
+        shareState: shareState,
+        stageState: stageState
     };
 })();

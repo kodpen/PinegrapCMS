@@ -20,11 +20,12 @@ description: Screen sharing in a Workspace call (CL4, #10908): one share at a ti
 - `getDisplayMedia({ video: true, audio: false })`: the browser lets the person choose a screen, window or tab. The browser's own "Stop sharing" ends the share as the button does. Nothing of the screen reaches the server.
 
 ## Where is the button?
-- In the call window's tools after Mute and the camera: a `pg-icon-button` with `bi-display` "Share your screen"; while sharing `is-active`, `aria-pressed`, `bi-display-fill`, "Stop sharing"; disabled with "Someone else is sharing their screen." while another member shares (`shareState()`). Not drawn where the browser has no `getDisplayMedia` (phones).
+- In the call window's tools after Mute and the camera: `pg-icon-button` `bi-display` "Share screen"; while sharing `is-active`, `aria-pressed="true"`, `bi-display-fill`, "Stop sharing"; disabled with "{name} is sharing" while another member shares (`shareState()`). Not drawn without `getDisplayMedia` (phones only watch).
 
-## Is the shared screen shown large?
-- Not yet: the large stage (the screen large, the tiles beside it, under it on a phone) is not on the Design examples screen; the question went to the architect in #10908.
+## How is a shared screen shown?
+- In the call window's stage: `calls-share-stage.md`.
 
 ## How was it checked?
 - Unit tests: `tests/workspace_calls_share_test.php`.
-- Chromium with fake devices and fake screen capture (`--use-fake-device-for-media-stream`, `--auto-select-desktop-capture-source`), three pages against an in-memory stand-in of the call actions: the two others decoded the sharer's 1440 px screen on the screen line; the third's button was disabled and its share refused; the sharer leaving ended the share and the third could share.
+- Unit tests: `tests/workspace_calls_screen_test.php` (the stage's states and wiring).
+- Chromium with fake devices and fake screen capture (`--use-fake-device-for-media-stream`, `--auto-select-desktop-capture-source`), four pages against an in-memory stand-in of the call actions, with the panel's stylesheets, at 1440 and 390 px: the others decoded the sharer's screen; a held button and a refused share; no sideways scroll, four tiles in view; full screen in and out; the sharer leaving ended the share and left full screen.
