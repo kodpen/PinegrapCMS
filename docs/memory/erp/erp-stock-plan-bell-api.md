@@ -1,6 +1,6 @@
 ---
 name: erp-stock-plan-bell-api
-description: Stock plan low stock bell and GET /erp/stock-plan (PR #NNNN): products announced, the once-per-drop stamp, minimum notice for unplanned products, API fields and filters, MCP tool
+description: Stock plan low stock bell and GET /erp/stock-plan (PR #10687): products announced, the once-per-drop stamp, minimum notice for unplanned products, API fields and filters, MCP tool
 ---
 
 ## What does the low stock bell say for a planned product? (P13)
