@@ -18,6 +18,9 @@ description: The Pop-ups blocks (popup- prefix, group Pop-ups): offer code with 
 - `data-pg-popup-take` on exactly one main action: Copy, Subscribe (a submit button: the form's submit counts too, the beacon is sent once), Shop now, Back to my cart.
 - `data-pg-popup-copy` on Copy, with `data-pg-popup-copied` ("Copied", translated in the designer) and a label span marked `data-pg-popup-copy-label` (`aria-live="polite"`). `software.popup_copy()` copies the text of the pop-up's `[data-pg-popup-code]` and shows the copied text for 2 s (`platform/auto-dialog-content.md`).
 
+## What did the bug hunt read?
+- The pop-up hunt of agent channel message 10243 read Copy (Clipboard API, else a selection and `execCommand('copy')`; the code stays selected when both fail) and the newsletter form clean. The form is markup only and posts to its page, so its CSRF token and rate limit belong to what the operator binds it to.
+
 ## Which rules do they bring?
 - `pg-popup-card` (`max-width: 28rem`; offer, newsletter, cart): the dialog sizes designed content to it.
 - `pg-popup-code` (offer): `--bs-border-style: dashed`, read by Bootstrap's `.border`, and letter spacing. No inline style: icon sizes are `fs-*` utilities.
