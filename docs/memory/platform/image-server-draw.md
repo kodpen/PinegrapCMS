@@ -6,7 +6,7 @@ module: image_draw
 
 ## What does the server draw?
 - `includes/fn/image_draw.php` draws a canvas document as the editor's renderer would, for an agent's canvas no browser has drawn yet (`workspace/agent-canvas-picture.md`) and a translated picture's languages with nobody there (`core/picture-text-auto-server.md`). Loaded where used (Workspace canvases, System Status, the translation job), not by `functions.php` (CV6).
-- Drawn: rectangles, ellipses, lines (fill, stroke, dashes, round corners, mirror); text in a font the server has a file of; Bootstrap icons; pictures (PNG, JPEG, WebP) from files the caller answers for; svg layers through librsvg.
+- Drawn: rectangles, ellipses, lines (fill, stroke, dashes, round corners, mirror); text in a font the server has a file of; Bootstrap icons; pictures (PNG, JPEG, WebP) from files the caller answers for; svg layers through librsvg; data layers given a reader of their rows (`image-server-draw-data.md`).
 - Anything else leaves the whole document to a browser: another layer kind or any unknown non-empty field (a shadow, a warp, a blend), a system font list (`sans`, `serif`: it differs per reader), a face the font link does not load (upright 300/400/600/700/900, italic 400/700), a letter the file lacks.
 - Text only in Latin, Greek, Cyrillic and signs (`pg_image_draw_text_plain()`): no shaped or right-to-left script, no combining mark, no emoji. Roboto lacks `→`, so a text with it waits.
 - Font files: `data/fonts/<family>-<weight>[i].ttf` (the editor's font folder), else the bundled Roboto in `assets/fonts/roboto/`. Nothing is fetched.
