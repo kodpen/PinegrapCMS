@@ -57,3 +57,56 @@ function test_prototype_comments_guest_ping_writes_nothing()
 	pg_assert_true($ping < strpos($door, 'pg_proto_comment_check('), 'before the fields');
 	pg_assert_true($ping < strpos($door, 'pg_proto_comment_burst()'), 'before the burst');
 }
+
+// Runs `$code` in Node with window.PGProtoComments loaded as C; its `out`
+// comes back decoded. Null when Node cannot run.
+function prototype_comments_guest_test_node($code)
+{
+	$out = array();
+	$status = 1;
+
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgpcg');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, "var window = {};\n" . prototype_comments_guest_test_js() . "\nvar C = window.PGProtoComments, out = null;\n" . $code . "\nconsole.log(JSON.stringify(out));");
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+
+	pg_assert_same(0, $status, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// In comment mode every click on the page opens a new box: a guest who
+// clicked the page (or a pin) while writing lost the comment typed so far.
+function test_prototype_comments_guest_typed_text_is_not_dropped_by_another_click()
+{
+	$out = prototype_comments_guest_test_node('out = [C.unsent("a"), C.unsent("  \n "), C.unsent(""), C.unsent(null)];');
+
+	if ($out !== null) {
+		pg_assert_same(array(true, false, false, false), $out);
+	}
+
+	$js = prototype_comments_guest_test_js();
+	$handler = substr($js, strpos($js, "if (kind === 'place')"), 400);
+
+	$place = strpos($handler, 'holding()');
+	$pin = strpos($handler, "kind === 'pin'");
+	pg_assert_true(($place !== false) && ($place < strpos($handler, 'showNew(')), 'a new spot waits for the typed text');
+	pg_assert_true(($pin !== false) && (strpos($handler, 'holding()', $pin) !== false) && (strpos($handler, 'holding()', $pin) < strpos($handler, 'showThread(')), 'a pin waits too');
+	pg_assert_contains("'held' => lang('Send or close this comment first.')", pg_test_function_source('pg_proto_viewer_comments'));
+}
