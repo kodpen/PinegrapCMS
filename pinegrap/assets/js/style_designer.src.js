@@ -7432,7 +7432,15 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-outline" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid-3x3"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Outline')) + '</span><kbd class="sd-vb-kbd">O</kbd><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
-            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>';
+            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            // Prototype comments from Design mode: shown once the comments
+            // part runs (_sdProtoCommentsMark()); it switches to Prototype
+            // mode with the side panel's Comments tab open.
+            '<button type="button" class="sd-vb-row" id="sd-vb-pcomments" role="menuitem" hidden><span class="bi bi-chat-square-text"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Prototype comments')) + '</span></button>';
+        viewMenu.querySelector('#sd-vb-pcomments').addEventListener('click', function () {
+            _sdViewMenuOpen(false);
+            _sdProtoCommentsOpen();
+        });
         ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(wrapper) : document.body).appendChild(viewMenu);
 
         // The sizes as one list: an option per width button, in its order.
@@ -7782,7 +7790,7 @@ const StyleDesigner = (function () {
                 return;
             }
             if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
-            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"]'), function (r) { return r.offsetParent !== null; });
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"], [role="menuitem"]'), function (r) { return r.offsetParent !== null; });
             var at = rows.indexOf(document.activeElement);
             if (at === -1 || !rows.length) return;
             e.preventDefault();
@@ -75101,6 +75109,10 @@ const StyleDesigner = (function () {
         // gone to (-1 for none), the view from before the first one, null
         // when closed.
         search: null,
+        // The side panel's tab (links | comments) and the comments part's
+        // state: running, its open count, whether a comment is unread.
+        side: 'links',
+        pc: { on: false, open: 0, unread: false },
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -75294,8 +75306,21 @@ const StyleDesigner = (function () {
         ui.suggest.hidden = true;
         ui.suggest.setAttribute('aria-haspopup', 'dialog');
         // The links panel (F18): open or closed kept in this browser.
-        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
+        // Links opens the side panel at its Links tab, or closes it when
+        // that tab is the one shown; Comments does the same for its tab.
+        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoSideToggle('links'); });
         ui.listToggle.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Links')));
+        // Prototype comments (style_designer_comments.js): shown once the
+        // part runs, with the open count and the unread mark as its badge
+        // (_sdProtoCommentsDraw()).
+        ui.pcBtn = _sdProtoButton('bi-chat-square-text', _sdT('Prototype comments'), function () { _sdProtoSideToggle('comments'); });
+        ui.pcBtn.id = 'sd-bp-pcomments';
+        ui.pcBtn.classList.add('sd-bp-pc');
+        ui.pcBtn.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Comments')));
+        ui.pcBadge = _sdProtoEl('span', 'sd-bp-pc-badge');
+        ui.pcBadge.hidden = true;
+        ui.pcBtn.appendChild(ui.pcBadge);
+        ui.pcBtn.hidden = true;
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
@@ -75313,12 +75338,13 @@ const StyleDesigner = (function () {
             else _sdProtoSearchOpen();
         });
         ui.searchBtn.setAttribute('aria-expanded', 'false');
-        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
         tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
         tools.appendChild(ui.suggest);
         tools.appendChild(ui.listToggle);
+        tools.appendChild(ui.pcBtn);
         tools.appendChild(ui.play);
         tools.appendChild(reload);
         var zsep = _sdProtoEl('span', 'sd-bp-zsep sd-bp-pv');
@@ -75371,20 +75397,73 @@ const StyleDesigner = (function () {
         ui.zoomedName = _sdProtoEl('span', 'sd-proto-zoomed-name');
         ui.zoomed.appendChild(ui.zoomedName);
         ui.stage.appendChild(ui.zoomed);
-        // The stage and, right of it, the selected page's links (F15).
+        // The stage and, right of it, the side panel (F15): its tabs Links
+        // (the selected page's links) and Comments (the prototype comments,
+        // drawn by the comments part), in the right column's tab pattern.
         ui.root.appendChild(_sdProtoSearchBuild(ui));
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
-        ui.list = _sdProtoEl('aside', 'sd-proto-list');
-        ui.list.id = 'sd-proto-list';
-        ui.list.setAttribute('aria-label', _sdT('Links of the selected page'));
-        ui.listToggle.setAttribute('aria-controls', ui.list.id);
-        ui.body.appendChild(ui.list);
+        ui.side = _sdProtoEl('aside', 'sd-proto-list');
+        ui.side.id = 'sd-proto-list';
+        ui.side.setAttribute('aria-label', _sdT('Prototype'));
+        var sideHead = _sdProtoEl('div', 'sd-panel-header sd-rcol-head sd-proto-side-head');
+        ui.sideTabs = _sdProtoEl('div', 'sd-rcol-tabs');
+        ui.sideTabs.setAttribute('role', 'tablist');
+        var sideTab = function (name, icon, text) {
+            var t = _sdProtoEl('button', 'sd-rcol-tab');
+            t.type = 'button';
+            t.id = 'sd-proto-tab-' + name;
+            t.setAttribute('role', 'tab');
+            t.setAttribute('data-side', name);
+            t.setAttribute('aria-controls', 'sd-proto-' + name);
+            t.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+            t.appendChild(_sdProtoEl('span', 'sd-rcol-tab-txt', text));
+            ui.sideTabs.appendChild(t);
+            return t;
+        };
+        ui.tabLinks = sideTab('links', 'bi-link-45deg', _sdT('Links'));
+        ui.tabComments = sideTab('comments', 'bi-chat-square-text', _sdT('Comments'));
+        ui.tabCount = _sdProtoEl('span', 'sd-proto-tab-count');
+        ui.tabCount.hidden = true;
+        ui.tabComments.appendChild(ui.tabCount);
+        ui.tabComments.hidden = true;
+        // A tab's click shows it; Left and Right move between the shown tabs.
+        ui.sideTabs.addEventListener('click', function (event) {
+            var t = event.target.closest ? event.target.closest('[data-side]') : null;
+            if (t) _sdProtoSide(t.getAttribute('data-side'), true, false);
+        });
+        ui.sideTabs.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            var shown = [ui.tabLinks, ui.tabComments].filter(function (t) { return !t.hidden; });
+            var at = shown.indexOf(document.activeElement);
+            if (at === -1 || shown.length < 2) return;
+            event.preventDefault();
+            var next = shown[(at + (event.key === 'ArrowRight' ? 1 : shown.length - 1)) % shown.length];
+            _sdProtoSide(next.getAttribute('data-side'), true, false);
+            next.focus();
+        });
+        sideHead.appendChild(ui.sideTabs);
+        ui.side.appendChild(sideHead);
+        ui.list = _sdProtoEl('div', 'sd-proto-links');
+        ui.list.id = 'sd-proto-links';
+        ui.list.setAttribute('role', 'tabpanel');
+        ui.list.setAttribute('aria-labelledby', ui.tabLinks.id);
+        ui.side.appendChild(ui.list);
+        ui.comments = _sdProtoEl('div', 'sd-proto-comments');
+        ui.comments.id = 'sd-proto-comments';
+        ui.comments.setAttribute('role', 'tabpanel');
+        ui.comments.setAttribute('aria-labelledby', ui.tabComments.id);
+        ui.comments.hidden = true;
+        ui.side.appendChild(ui.comments);
+        ui.listToggle.setAttribute('aria-controls', ui.side.id);
+        ui.pcBtn.setAttribute('aria-controls', ui.side.id);
+        ui.body.appendChild(ui.side);
         ui.root.appendChild(ui.body);
         area.appendChild(ui.root);
 
         _sdProto.ui = ui;
-        _sdProtoListShow(_sdProtoListStored(), false);
+        _sdProtoSide(_sdProto.side, _sdProtoListStored(), false);
+        _sdProtoCommentsDraw();
         _sdProto.canvas = G.create({
             ui: ui,
             text: function (key, a, b, c) {
@@ -75590,6 +75669,7 @@ const StyleDesigner = (function () {
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdCanvasBarMode(true);
+        _sdProtoCommentsTell();
         _sdProtoLoad();
         _sdProto.ui.viewport.focus({ preventScroll: true });
     }
@@ -75610,6 +75690,7 @@ const StyleDesigner = (function () {
         _sdProtoZoomBack(true);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
+        _sdProtoCommentsTell();
         _sdProtoButtonState();
         // The bar's Prototype controls go with the mode: the focus goes to
         // the switch's side now chosen.
@@ -76274,11 +76355,110 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         if (!ui) return;
         ui.root.classList.toggle('sd-proto-list-open', !!open);
-        ui.listToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
-        ui.listToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // Each bar button is pressed while the panel shows its own tab.
+        var links = !!open && _sdProto.side === 'links';
+        var comments = !!open && _sdProto.side === 'comments';
+        ui.listToggle.setAttribute('aria-pressed', links ? 'true' : 'false');
+        ui.listToggle.setAttribute('aria-expanded', links ? 'true' : 'false');
+        ui.pcBtn.setAttribute('aria-pressed', comments ? 'true' : 'false');
+        ui.pcBtn.setAttribute('aria-expanded', comments ? 'true' : 'false');
         if (keep) {
             try { window.localStorage.setItem('pg_proto_list', open ? '1' : '0'); } catch (e) { /* kept for this visit only */ }
         }
+        _sdProtoCommentsTell();
+    }
+
+    // The side panel at a tab (links | comments), open or closed. Comments
+    // falls back to Links while the comments part does not run. The open
+    // state is kept as the Links button keeps it (keep).
+    function _sdProtoSide(tab, open, keep) {
+        var ui = _sdProto.ui;
+        if (tab !== 'comments' || !_sdProto.pc.on) tab = 'links';
+        _sdProto.side = tab;
+        if (!ui) return;
+        [[ui.tabLinks, ui.list, 'links'], [ui.tabComments, ui.comments, 'comments']].forEach(function (one) {
+            var on = one[2] === tab;
+            one[0].classList.toggle('active', on);
+            one[0].setAttribute('aria-selected', on ? 'true' : 'false');
+            one[0].tabIndex = on ? 0 : -1;
+            one[1].hidden = !on;
+        });
+        _sdProtoListShow(open, keep);
+    }
+
+    // A bar button (Links, Comments): the panel at its tab, or closed when
+    // that tab is the one shown.
+    function _sdProtoSideToggle(tab) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var shown = ui.root.classList.contains('sd-proto-list-open') && _sdProto.side === tab;
+        _sdProtoSide(tab, !shown, true);
+    }
+
+    // ── Prototype comments in the view ──
+    //
+    // The comments part (style_designer_comments.js) draws the list into
+    // the side panel's Comments tab (_sdProtoCommentsPane()) and hands its
+    // count here; the view tells it when that tab is seen or not.
+
+    function _sdProtoCommentsMark(open, unread) {
+        _sdProto.pc = { on: true, open: parseInt(open, 10) || 0, unread: !!unread };
+        var row = document.getElementById('sd-vb-pcomments');
+        if (row) row.hidden = false;
+        _sdProtoCommentsDraw();
+    }
+
+    // The tools zone's button and the Comments tab: the open count as the
+    // badge, amber while a comment is unread.
+    function _sdProtoCommentsDraw() {
+        var ui = _sdProto.ui;
+        var pc = _sdProto.pc;
+        if (!ui) return;
+        ui.pcBtn.hidden = !pc.on;
+        ui.tabComments.hidden = !pc.on;
+        ui.pcBadge.textContent = pc.open > 0 ? String(pc.open) : '';
+        ui.pcBadge.hidden = !(pc.open > 0 || pc.unread);
+        ui.pcBadge.classList.toggle('sd-bp-pc-new', pc.unread);
+        ui.tabCount.textContent = ui.pcBadge.textContent;
+        ui.tabCount.hidden = !(pc.open > 0);
+        var label = _sdT('Prototype comments') + (pc.open > 0 ? ' (' + pc.open + ')' : '') + (pc.unread ? ' · ' + _sdT('New comments') : '');
+        ui.pcBtn.title = label;
+        ui.pcBtn.setAttribute('aria-label', label);
+    }
+
+    function _sdProtoCommentsPane() {
+        return _sdProto.ui ? _sdProto.ui.comments : null;
+    }
+
+    // Whether the Comments tab is in sight, told to a loaded part (its pins
+    // hide while the view is open; the list counts as read while seen).
+    function _sdProtoCommentsTell() {
+        if (!_sdPartLoaded('comments')) return;
+        var ui = _sdProto.ui;
+        var seen = !!(ui && _sdProto.open && _sdProto.side === 'comments' && ui.root.classList.contains('sd-proto-list-open'));
+        _sdPartCall('comments', 'side', [seen, _sdProto.open]).catch(function () { /* told again on the next change */ });
+    }
+
+    // From outside Prototype mode (the View menu, a pin, the bell line's
+    // address): the view opened with the Comments tab. False when the view
+    // cannot open.
+    function _sdProtoCommentsOpen() {
+        if (!_sdProto.open) _sdProtoOpen();
+        if (!_sdProto.open) return false;
+        _sdProtoSide('comments', true, false);
+        return true;
+    }
+
+    // A thread's row: its page's frame selected and brought into view, as
+    // a links panel row does. False for a page not open as a tab.
+    function _sdProtoCommentsFrame(pageId) {
+        var canvas = _sdProto.canvas;
+        var id = '';
+        _pages.forEach(function (p) { if (parseInt(p.page_id, 10) === pageId) id = 'p:' + p.key; });
+        if (!canvas || !id || !_sdProto.byId[id]) return false;
+        canvas.focus(id);
+        canvas.view.reveal(_sdProto.byId[id]);
+        return true;
     }
 
     // A change of the selected frame: the row marks, the panel, Play; a
@@ -76589,7 +76769,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProtoPick(frameId, port, true);
         if (!ui) return;
-        if (!ui.root.classList.contains('sd-proto-list-open')) _sdProtoListShow(true, false);
+        if (!ui.root.classList.contains('sd-proto-list-open') || _sdProto.side !== 'links') _sdProtoSide('links', true, false);
         var li = ui.list.querySelector('.sd-proto-li[data-link="' + (String(frameId) + '|' + port).replace(/"/g, '') + '"]');
         var to = li ? (li.querySelector('.sd-proto-li-target') || li.querySelector('.sd-proto-li-main')) : null;
         if (!to) return;
@@ -90889,6 +91069,11 @@ const StyleDesigner = (function () {
             _sdLegacyRegionForget: _sdLegacyRegionForget,
             _sdPageBodyAttrs: _sdPageBodyAttrs,
             _sdPageFrameRows: _sdPageFrameRows,
+            _sdProtoClose: _sdProtoClose,
+            _sdProtoCommentsFrame: _sdProtoCommentsFrame,
+            _sdProtoCommentsMark: _sdProtoCommentsMark,
+            _sdProtoCommentsOpen: _sdProtoCommentsOpen,
+            _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdSelectRender: _sdSelectRender,
             renderCanvas: renderCanvas,
             renderHtmlTree: renderHtmlTree,
