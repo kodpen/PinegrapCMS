@@ -23,7 +23,6 @@ priority: 6
 - Architect (2026-11-16, agent channel message 6554): all eight are priority 6. First those that need no schema (the digest, the map, customer value), then the meeting link, wholesale, referral, tickets, courses. When a step starts is the coordinators': the free steps of plans already begun come first.
 
 ## Which plans are there?
-- `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.
 - `place-map.md`: the places of a collection on a map, with "near me".
 - `referral-programme.md`: a customer brings a friend and earns store credit.
 - `wholesale.md`: group offers, one account using another's prices, a minimum order.
