@@ -6276,6 +6276,7 @@
     "stay-enquiry": "konaklama-talebi",
     "stay-request": "konaklama-talebi-ayrintisi",
     "stock location, location, warehouse, shop, store, consignment, transfer, stock history": "stock location, location, warehouse, shop, store, consignment, transfer, stock history, stok konumu, konum, depo, magaza, mağaza, dukkan, dükkan, konsinye, stok gecmisi, stok geçmişi",
+    "stock planning, safety days, cover days, dead stock, reorder, purchase order": "stock planning, safety days, cover days, dead stock, reorder, purchase order, stok planlama, emniyet günü, karşılama günü, ölü stok, yeniden sipariş, satın alma siparişi",
     "stock quantity changed": "stok miktarı değişti",
     "stock tracking off": "stok takibi kapandı",
     "stock tracking on": "stok takibi açıldı",

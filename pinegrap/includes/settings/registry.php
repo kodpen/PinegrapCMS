@@ -388,6 +388,7 @@ function pg_settings_categories()
                 'pgset-erp-rules' => lang('Accounting rules'),
                 'pgset-late-fee'  => lang('Late payment fee'),
                 'pgset-efatura-threshold' => lang('e-Fatura threshold'),
+                'pgset-stock-plan' => lang('Stock Planning'),
                 'pgset-erp-templates' => lang('Document Templates'),
             ),
             'keywords' => array(
@@ -396,6 +397,7 @@ function pg_settings_categories()
                 'pgset-erp-rules' => pg_settings_keywords(lang('accounting rules, vat, withholding, exemption code, zero-rated, expense category')),
                 'pgset-late-fee'  => pg_settings_keywords(lang('late payment fee, late fee, interest, overdue, default interest')),
                 'pgset-efatura-threshold' => pg_settings_keywords(lang('e-fatura, threshold, limit, gross sales, system status')),
+                'pgset-stock-plan' => pg_settings_keywords(lang('stock planning, safety days, cover days, dead stock, reorder, purchase order')),
                 'pgset-erp-templates' => pg_settings_keywords(lang('template, invoice template, delivery note, reconciliation letter, pdf, print, html')),
             ),
             'lists' => array(
