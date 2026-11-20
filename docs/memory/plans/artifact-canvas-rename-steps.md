@@ -18,8 +18,8 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
   - Each memory file that names the screen says Artifact Canvas (`grep -rl 'Design Canvas' docs/memory`, about 130 files). File names and code names stay, the owner's quoted words stay, a running plan's files are left to its own close-out.
 
 - AC4 (M) after AC1 and AC2: the canvas's own icon, in its one-colour form (owner 2026-11-13, #9250), on the buttons that open it with another icon today.
-  - Cut in two by held files: AC4a (done, #PRNUM) and AC4b.
-  - AC4a, done (#PRNUM): the canvas card's head, a guest's waiting canvas, `edit_design_file.php`, `edit_file.php`, `design_file_list_edit.php`, widget 18; pinned in `tests/design_canvas_icon_test.php`.
+  - Cut in two by held files: AC4a (done, #10536) and AC4b.
+  - AC4a, done (#10536): the canvas card's head, a guest's waiting canvas, `edit_design_file.php`, `edit_file.php`, `design_file_list_edit.php`, widget 18; pinned in `tests/design_canvas_icon_test.php`.
   - AC4b, left: `view_folders.php` (held by #10519), `translations.php` (held by #10523), `assets/js/workspace.js` (held by #10522), `assets/js/style_designer.src.js` (held by #10507 and #10504).
   - File Manager (`view_folders.php`): "New image" in the New menu and the context menu (`bi-easel`).
   - Channels: the canvas card's head (`workspace_page_card.js`, `bi-easel2`), a guest's waiting canvas (`workspace_guest.js`, `bi-easel`), "Edit the picture" on a note's picture (`workspace.js`, `bi-pencil`).
