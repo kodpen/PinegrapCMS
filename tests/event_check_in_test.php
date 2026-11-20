@@ -253,3 +253,111 @@ function test_check_in_screen_source()
 	pg_assert_contains('BarcodeDetector', $script, 'the browser\'s own barcode reader');
 	pg_assert_false(strpos($script, 'innerHTML') !== false, 'the script writes text only');
 }
+
+function test_check_in_picks_keep_the_newest_dates_under_the_cap()
+{
+	// The pick list reads at most 500 event dates and drops the ended ones
+	// afterwards; without an order the oldest dates filled the 500 and a
+	// new event never reached the list.
+	$sql = pg_check_in_picks_groups_sql();
+
+	pg_assert_contains('GROUP BY calendar_event_id, recurrence_number', $sql, 'one row per event date');
+	pg_assert_contains("(state <> 'void')", $sql, 'void tickets left out');
+	pg_assert_contains('ORDER BY MAX(id) DESC', $sql, 'the dates sold most lately first');
+	pg_assert_true(strpos($sql, 'ORDER BY') < strpos($sql, 'LIMIT 500'), 'ordered before the cap');
+}
+
+function test_check_in_lost_write_answers_from_the_row_read_again()
+{
+	$pick = check_in_test_pick();
+	$staff = check_in_test_staff();
+
+	// Read valid, then the order is cancelled before the UPDATE: the row is
+	// void, and the guest must hear "void", not "already checked in".
+	check_in_test_store('void');
+	$stale = array_merge($GLOBALS['check_in_test_row'], array('state' => 'valid'));
+	$reads = 0;
+	$find = function () use ($stale, &$reads) {
+		$reads++;
+
+		return ($reads === 1) ? $stale : check_in_test_find();
+	};
+
+	pg_assert_same('void', pg_check_in_run($find, $pick, $staff, 'check_in_test_calendar_yes', 'check_in_test_query')['answer'], 'voided between the read and the write');
+
+	// Read valid, then the order is deleted: no row is left.
+	$reads = 0;
+	$gone = function () use ($stale, &$reads) {
+		$reads++;
+
+		return ($reads === 1) ? $stale : null;
+	};
+	$deleted = pg_check_in_run($gone, $pick, $staff, 'check_in_test_calendar_yes', 'check_in_test_query');
+	pg_assert_same('unknown', $deleted['answer'], 'deleted between the read and the write');
+	pg_assert_same(null, $deleted['ticket'], 'and nothing of it shown');
+
+	// The write fails and the row still reads valid: never "used", never
+	// "valid" (it was not marked); the screen asks for a second scan.
+	check_in_test_store();
+	$failed = pg_check_in_run('check_in_test_find', $pick, $staff, 'check_in_test_calendar_yes', function () {
+		return false;
+	});
+	pg_assert_same('failed', $failed['answer'], 'a failed write is its own answer');
+	pg_assert_same('valid', $GLOBALS['check_in_test_row']['state'], 'the ticket stays valid');
+	pg_assert_true(pg_check_in_answer_text('failed', $failed['ticket'])['title'] !== pg_check_in_answer_text('unknown', null)['title'], 'with its own words');
+}
+
+function test_check_in_guest_name_is_the_tickets_page_name()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets_page.php');
+
+	// A product form that asks "Guest name" (variable guest_name, mapped to
+	// no contact field): the ticket shows that name, so the door and the API
+	// show it too, not the buyer's.
+	$tickets = array(
+		array('order_item_id' => 501, 'unit' => 1, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+		array('order_item_id' => 501, 'unit' => 2, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+		array('order_item_id' => 502, 'unit' => 1, 'billing_first_name' => 'Mehmet', 'billing_last_name' => 'Kaya'),
+	);
+	$form_rows = array(
+		array('order_item_id' => 501, 'quantity_number' => 1, 'name' => 'guest_name', 'data' => 'Ayşe Demir', 'contact_field' => null),
+		array('order_item_id' => 501, 'quantity_number' => 2, 'name' => 'first', 'data' => 'Elif', 'contact_field' => 'first_name'),
+		array('order_item_id' => 501, 'quantity_number' => 2, 'name' => 'last', 'data' => 'Şahin', 'contact_field' => 'last_name'),
+		array('order_item_id' => 502, 'quantity_number' => 1, 'name' => 'diet', 'data' => 'Vegan', 'contact_field' => null),
+	);
+
+	$named = pg_check_in_names_from_forms($tickets, $form_rows);
+
+	pg_assert_same('Ayşe Demir', $named[0]['guest_name'], 'a field named for the guest');
+	pg_assert_same('Elif Şahin', $named[1]['guest_name'], 'the contact name fields');
+	pg_assert_same('Mehmet Kaya', $named[2]['guest_name'], 'else the buyer');
+
+	// The name search finds the same names.
+	$sql = pg_check_in_search_sql(pg_check_in_pick_parse('e-12-4'));
+	pg_assert_contains('REGEXP', $sql['sql'], 'the search reads a field named for the guest too');
+	pg_assert_contains(PG_EVENT_TICKET_GUEST_FIELD_PATTERN, implode(' ', array_map('strval', $sql['params'])) . $sql['sql'], 'with the page\'s rule');
+}
+
+function test_check_in_product_label()
+{
+	// A product ticket shown at another pick names its product: the short
+	// description, else the product's name, as the pick list writes it.
+	pg_assert_same('Museum pass', pg_check_in_product_label(array('short_description' => 'Museum pass', 'name' => 'MUS-1')), 'the short description');
+	pg_assert_same('MUS-1', pg_check_in_product_label(array('short_description' => '', 'name' => 'MUS-1')), 'else the name');
+	pg_assert_same('MUS-1', pg_check_in_product_label(array('short_description' => null, 'name' => 'MUS-1')), 'a NULL description too');
+	pg_assert_same('', pg_check_in_product_label(null), 'a product that is gone');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/event_check_in.php');
+	pg_assert_contains('pg_check_in_product_label(db_item(', $source, 'the wrong-event answer reads the label');
+}
+
+function test_check_in_typed_code_kept_while_a_check_runs()
+{
+	// A code typed and sent while a camera scan is still being answered was
+	// not checked, yet the field was emptied: the code was lost.
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/event_check_in.js');
+
+	pg_assert_contains('return Promise.resolve(false);', $script, 'a check refused while one runs says so');
+	pg_assert_contains("check('scan', { code: code }).then(function (ran) {", $script, 'the typed code waits for the answer');
+	pg_assert_contains('if (ran) {', $script, 'and is cleared only when it was checked');
+}
