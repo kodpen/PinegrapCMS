@@ -6,7 +6,8 @@
  * repeated rows, repeated columns and merged ranges: the reader's own cell
  * ceiling and the step over an empty run (PHPExcel_Reader_OOCalc), and
  * pg_products_import_ods_load() (import_products_f.php) as the product
- * importer and the bank statement importer use it. An honest file, laid out
+ * importer uses it; the bank statement importer, which reads through the
+ * sheet reader, is held to the same files. An honest file, laid out
  * the way LibreOffice saves one, reads as before; a few hundred bytes that
  * ask for millions of cells are turned away before they are made.
  *
@@ -297,8 +298,10 @@ function test_ods_cell_ceiling_reader_counts_repeats_and_merges()
 }
 
 // A merged range that covers nothing, runs backwards or reaches past column
-// ZZZ stops the load, with or without a ceiling, instead of being walked
-// without end; it is no range a sheet can hold.
+// ZZZ stops PHPExcel's load, with or without a ceiling, instead of being
+// walked without end; it is no range a sheet can hold. The bank statement
+// importer reads through the sheet reader, where a span makes no cells: the
+// one value is read.
 function test_ods_cell_ceiling_impossible_merge_stops()
 {
 	if (!class_exists('ZipArchive')) {
@@ -315,7 +318,7 @@ function test_ods_cell_ceiling_impossible_merge_stops()
 			pg_assert_true(($result instanceof PHPExcel_Reader_Exception) && !ods_cell_ceiling_test_stopped_at_ceiling($result), $span . ', ceiling ' . $ceiling);
 		}
 
-		pg_assert_same(lang('The file could not be read.'), ods_cell_ceiling_test_bank($path), $span . ', bank statement');
+		pg_assert_same(array(array('m')), ods_cell_ceiling_test_bank($path), $span . ', bank statement');
 		ods_cell_ceiling_test_clean($path);
 	}
 }
@@ -343,9 +346,9 @@ function test_ods_cell_ceiling_importers_turn_away_expansion()
 		'used range one row past' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_PRODUCTS_IMPORT_ODS_MAX_RANGE, 1024) - 1) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>',
 	);
 
-	// The product importer's sheet reader makes no cells of a merged range
-	// (its value stands in the first cell) and reads no sheet but the
-	// first, so those two cost it nothing and are read.
+	// The sheet reader, which both importers read through, makes no cells
+	// of a merged range (its value stands in the first cell) and reads no
+	// sheet but the first, so those two cost nothing and are read.
 	$product_reads = array(
 		'merged range' => array(array('Tarih', 'Tutar'), array('x', '')),
 		'second sheet' => array(array('Tarih', 'Tutar')),
@@ -358,7 +361,7 @@ function test_ods_cell_ceiling_importers_turn_away_expansion()
 
 		$started = microtime(true);
 		pg_assert_same(isset($product_reads[$label]) ? $product_reads[$label] : $large, ods_cell_ceiling_test_products($path), $label . ': product importer');
-		pg_assert_same($large, ods_cell_ceiling_test_bank($path), $label . ': bank statement importer');
+		pg_assert_same(isset($product_reads[$label]) ? $product_reads[$label] : $large, ods_cell_ceiling_test_bank($path), $label . ': bank statement importer');
 		pg_assert_true((microtime(true) - $started) < 5, $label . ': at once');
 
 		ods_cell_ceiling_test_clean($path);

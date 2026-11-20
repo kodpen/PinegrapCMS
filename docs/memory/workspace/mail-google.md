@@ -13,8 +13,8 @@ description: A Gmail or Google Workspace mailbox (MG1): a connected Google accou
 
 ## What does the box form show with Gmail?
 - `ws_mail_google_steps()` between Mail service and User name, while Gmail is chosen: "Sign in with" (`google_way`, not stored) with "A connected Google account" first and "An app password". `ws_mail_google_way()` opens a box with an account or no password (a new one) on the account, a box keeping a password on the app password.
-- The account way: four steps, the "Connect a Google account for mailboxes" button (`ws_mail_connect_form(..., 'google')`, hidden form `pgset_mail_connect_google` in `includes/settings/mailboxes.php`), and "Setting up the Google application": the two redirect addresses (`pg_signin_redirect_uri('google')`, `pg_connect_redirect_uri()`) each with Copy, the Gmail API's enable link, Google's verification warning.
-- The button rule is Microsoft's (architect message 9695): while the Google application is not set up, no button, the reason and a link to `connections.php#connections-google`; a refusal from connect.php is shown on Mailboxes (`pg_connect_flash_take()`). A user below manager is told who connects it.
+- The account way: four steps, the "Connect a Google account for mailboxes" button (`ws_mail_connect_form(..., 'google')`, hidden form `pgset_mail_connect_google` in `includes/settings/mailboxes.php`), and "Setting up the Google application": the two redirect addresses each with Copy, the Gmail API's enable link, Google's verification warning; their words come from `includes/fn/google_cloud.php`, shared with Google's page (`ui/connections-provider-page.md`).
+- The button rule is Microsoft's (architect message 9695): while the Google application is not set up, no button, the reason and a link to `connections.php?service=google`; a refusal from connect.php is shown on Mailboxes (`pg_connect_flash_take()`). A user below manager is told who connects it.
 - The app password way: six steps (2-Step Verification, App passwords, full address as user, Connected account None, Test connection) and three notes.
 
 ## Which Google pages were checked (2026-11-19)?

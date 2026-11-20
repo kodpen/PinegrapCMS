@@ -6,9 +6,10 @@
  * (includes/erp/bank_import.php): erp_bank_sheet_value(), which turns a
  * number cell into the text a CSV would have carried,
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
- * erp_bank_read_file() over a small .xlsx and .ods written here. The older
- * .xls goes through PHPExcel, which is checked on the sandbox rather than
- * here. A CSV statement's separator (erp_bank_read_csv()), the one chosen on
+ * erp_bank_read_file() over a small .xlsx and .ods written here and over a
+ * bank statement saved by LibreOffice as .xlsx, .ods and .xls
+ * (tests/fixtures/erp_bank/), whose rows are compared with those PHPExcel
+ * read before the sheet reader took its place. A CSV statement's separator (erp_bank_read_csv()), the one chosen on
  * the column screen (erp_bank_statement_rows()) and the amounts
  * erp_bank_amount() reads are checked too.
  *
@@ -184,10 +185,6 @@ function test_erp_bank_read_file_ods()
 
 	$zone = date_default_timezone_get();
 
-	// PHPExcel predates PHP 8.2 and raises deprecations of its own while it
-	// loads; they are not what this test is about.
-	$reporting = error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-
 	try {
 
 		foreach (array('UTC', 'Europe/Istanbul', 'America/New_York') as $name) {
@@ -207,10 +204,6 @@ function test_erp_bank_read_file_ods()
 		pg_assert_same(-80050, erp_bank_amount($read['rows'][2][3]), 'minus amount reads back');
 		pg_assert_same('2026-09-24', erp_bank_date($read['rows'][2][0]), 'date with a time reads back');
 
-		// A worksheet's destructor creates PHPExcel's calculation engine, which
-		// raises the same deprecations; collected here rather than at shutdown.
-		gc_collect_cycles();
-
 		// Neither a zip nor an OpenDocument zip reaches the reader.
 		file_put_contents($path, 'not a workbook');
 		pg_assert_same(array(), erp_bank_read_file($path, 'statement.ods')['rows'], 'a broken file');
@@ -224,9 +217,163 @@ function test_erp_bank_read_file_ods()
 		pg_assert_same(array(), erp_bank_read_file($path, 'statement.ods')['rows'], 'a zip without a sheet');
 
 	} finally {
-		error_reporting($reporting);
 		date_default_timezone_set($zone);
 		@unlink($path);
+		rmdir($dir);
+	}
+}
+
+/**
+ * A statement's rows as the bank import read them with PHPExcel before the
+ * sheet reader (formats read, a formula's result, a date by its format),
+ * the title block cut; PHPExcel runs in its own PHP process, as it replaces
+ * the zip stream wrapper for the rest of the request.
+ */
+function erp_bank_test_phpexcel_rows($path)
+{
+	$readers = array('xlsx' => 'Excel2007', 'ods' => 'OOCalc', 'xls' => 'Excel5');
+	$script = tempnam(sys_get_temp_dir(), 'pg_bank_phpexcel');
+	file_put_contents($script, '<?php
+error_reporting(0);
+require ' . var_export(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php', true) . ';
+$book = PHPExcel_IOFactory::createReader(' . var_export($readers[pg_sheet_kind($path)], true) . ')->load(' . var_export($path, true) . ');
+$sheet = $book->getSheet(0);
+$last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
+$out = array();
+for ($row = 1; $row <= $sheet->getHighestDataRow(); $row++) {
+	for ($column = 0; $column <= $last_column; $column++) {
+		$cell = $sheet->getCellByColumnAndRow($column, $row, false);
+		$entry = array("s", "");
+		if ($cell !== null) {
+			try {
+				$value = $cell->getCalculatedValue();
+			} catch (Exception $exception) {
+				$value = $cell->getValue();
+			}
+			if (is_bool($value)) {
+				$entry = array("b", $value ? "1" : "0");
+			} elseif (is_int($value) || is_float($value)) {
+				$entry = array(PHPExcel_Shared_Date::isDateTime($cell) ? "date" : "n", (string) $value);
+			} else {
+				$entry = array("s", (string) $value);
+			}
+		}
+		$out[$row][$column] = $entry;
+	}
+}
+echo serialize($out);
+');
+	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>/dev/null');
+	unlink($script);
+	$sheet = @unserialize($output);
+
+	if (!is_array($sheet)) {
+		return null;
+	}
+
+	$rows = array();
+
+	foreach ($sheet as $cells) {
+		$row = array();
+
+		foreach ($cells as $entry) {
+			$row[] = trim(($entry[0] === 's') ? $entry[1] : erp_bank_sheet_value($entry[1], $entry[0]));
+		}
+
+		if (implode('', $row) !== '') {
+			$rows[] = $row;
+		}
+	}
+
+	return erp_bank_rows_from_heading($rows);
+}
+
+/**
+ * Rows without their trailing empty cells: an .xlsx row ends at its last
+ * cell, PHPExcel squared every row to the widest.
+ */
+function erp_bank_test_trim_rows($rows)
+{
+	return array_map(function ($row) {
+		while (!empty($row) && (end($row) === '')) {
+			array_pop($row);
+		}
+
+		return $row;
+	}, (array) $rows);
+}
+
+// One statement saved by LibreOffice as .xlsx, .ods and .xls (a title
+// block, a column left empty, dates with and without a time, amounts with a
+// binary float's noise, a formula total) reads the same rows in each, and
+// the rows PHPExcel read before.
+function test_erp_bank_read_file_statement_fixtures()
+{
+	$expected = array(
+		array('Tarih', 'Açıklama', '', 'Tutar', 'Bakiye'),
+		array('2026-09-01', 'Kira ödemesi Eylül', '', '-15000', '85000.50'),
+		array('2026-09-03 14:30', 'EFT Gelen: ŞAHİN GÜNEŞ LTD fatura 1042', '', '1234.56', '86235.06'),
+		array('2026-09-15', 'POS satış', '', '0.30', '86235.36'),
+		array('2026-09-30', 'Faiz', '', '12', '86247.36'),
+		array('Toplam', '', '', '-13753.14', ''),
+	);
+
+	foreach (array('xlsx', 'ods', 'xls') as $extension) {
+		$path = dirname(__FILE__) . '/fixtures/erp_bank/statement.' . $extension;
+		$read = erp_bank_read_file($path, 'Hesap Hareketleri.' . strtoupper($extension));
+
+		pg_assert_same('', $read['error'], $extension . ' read');
+
+		// An .xls or .ods row is squared to the widest, as PHPExcel gave it.
+		pg_assert_same(($extension === 'xlsx') ? erp_bank_test_trim_rows($expected) : $expected, $read['rows'], $extension . ' rows');
+
+		$before = erp_bank_test_phpexcel_rows($path);
+
+		if (pg_assert_true(is_array($before), $extension . ' read by PHPExcel')) {
+			pg_assert_same(erp_bank_test_trim_rows($before), erp_bank_test_trim_rows($read['rows']), $extension . ' as PHPExcel read it');
+		}
+	}
+}
+
+// A workbook the reader cannot read keeps the refusal texts it had.
+function test_erp_bank_read_file_refusal_texts()
+{
+	$dir = sys_get_temp_dir() . '/pg_bank_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+
+	try {
+		foreach (array('xlsx', 'ods', 'xls') as $extension) {
+			$path = $dir . '/statement.' . $extension;
+			file_put_contents($path, 'not a workbook');
+			pg_assert_same(array('rows' => array(), 'error' => lang('The file could not be read.')), erp_bank_read_file($path, 'statement.' . $extension), $extension . ' damaged');
+			unlink($path);
+		}
+
+		if (class_exists('ZipArchive')) {
+			$path = $dir . '/statement.ods';
+			$zip = new ZipArchive();
+			$zip->open($path, ZipArchive::CREATE);
+			$zip->addFromString('mimetype', 'application/vnd.oasis.opendocument.spreadsheet');
+			$zip->addFromString('content.xml', '<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"><office:body><office:spreadsheet><table:table table:name="A">'
+				. '<table:table-row table:number-rows-repeated="5"><table:table-cell table:number-columns-repeated="1024"/></table:table-row>'
+				. '</table:table></office:spreadsheet></office:body></office:document-content>');
+			$zip->close();
+			pg_assert_same(array('rows' => array(), 'error' => lang('The file has no lines.')), erp_bank_read_file($path, 'statement.ods'), 'an empty sheet');
+
+			// Rows given before the reader passes a ceiling are dropped.
+			unlink($path);
+			$zip = new ZipArchive();
+			$zip->open($path, ZipArchive::CREATE);
+			$zip->addFromString('mimetype', 'application/vnd.oasis.opendocument.spreadsheet');
+			$zip->addFromString('content.xml', '<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"><office:body><office:spreadsheet><table:table table:name="A">'
+				. '<table:table-row><table:table-cell office:value-type="date" office:date-value="2026-09-01"><text:p>01.09.2026</text:p></table:table-cell><table:table-cell office:value-type="float" office:value="12"><text:p>12</text:p></table:table-cell></table:table-row>'
+				. '<table:table-row><table:table-cell office:value-type="float" office:value="1" table:number-columns-repeated="' . (PG_SHEET_ODS_MAX_CELLS + 1) . '"><text:p>1</text:p></table:table-cell></table:table-row>'
+				. '</table:table></office:spreadsheet></office:body></office:document-content>');
+			$zip->close();
+			pg_assert_same(array('rows' => array(), 'error' => lang('The file is too large.')), erp_bank_read_file($path, 'statement.ods'), 'an .ods past its ceiling');
+			unlink($path);
+		}
+	} finally {
 		rmdir($dir);
 	}
 }

@@ -28,6 +28,6 @@ description: Decisions list, panel part 10 (2026-11-17 on): new screens in the d
 - Drawing A of the sheet of 2026-11-20 (`plans/artifact-canvas-rename/icon-candidates.png`): two round-cornered sheets, the back one hidden behind the front one and tinted, a wave in the accent hue on the front sheet. It replaces drawing B (`decisions-made-panel-7.md`); the one-colour rule of #9250 stays.
 - Owner (2026-11-20), who brought two pictures he liked (two see-through squares with a wave, two overlapping cards) and asked what joining them gives, on the sheet: "bunu yapalım".
 - Where, in his words: "özellikle dosya yönetici, kanallar ve sayfa tasarımcısında olmak üzere ikonun ve adının geçtiği alanlarda adı ve ikonu güncellensin".
-- Not chosen: the first picture as it is, the wave with drawing B's pen anchors, portrait cards, one line that turns into the wave. Until the plan's step AC1 lands the code draws B.
+- Not chosen: the first picture as it is, the wave with drawing B's pen anchors, portrait cards, one line that turns into the wave. The code draws it since the plan's step AC1.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/look-new-parts.md, docs/memory/ui/look-page-widths.md
