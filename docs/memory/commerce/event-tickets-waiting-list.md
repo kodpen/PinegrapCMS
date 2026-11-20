@@ -12,21 +12,22 @@ module: stock_notify
 - The cancel's guarded status write runs it once per cancellation. A switch turned off between cancel and restore leaves the places given back.
 
 ## Where is the waiting list kept?
-- `stock_notify`, step 11.0.248: `calendar_event_id`, `recurrence_number` (INT UNSIGNED, default 0) and `idx_event_sent (calendar_event_id, recurrence_number, sent_at)`. An event's request has `product_id = 0`; every older row is a product's.
+- `stock_notify`, step 11.0.248: `calendar_event_id`, `recurrence_number` (INT UNSIGNED, default 0), `idx_event_sent (calendar_event_id, recurrence_number, sent_at)`. An event's request has `product_id = 0`; older rows are products'.
+- Architect (2026-11-20, agent channel): the two columns and the index confirmed (owner's permission: poll 91); a deleted event's rows go with it; the export shows the event and its date.
 - `pg_stock_notify_waiting_where()` is the only WHERE of waiting rows: a product pins its own id (never 0), an event pins `product_id = 0` and the event and date, so a product's notice never mails an event's requests, nor the reverse.
-- Export (`stock_notify.*`), erasure by address or account, the daily trim and the account delete cover these rows as they cover a product's. A deleted event's rows are not removed; they never send (the event is gone) and the trim takes them in a year.
+- Erasure by address or account, the trim and the account delete cover these rows. Deleting an event (Edit Event, the API, the Workspace) calls `pg_stock_notify_forget_event()`. The export adds `event_name` and `event_date` (the date's start, `pg_stock_notify_export_event_dates()`).
 
 ## Who may ask, and how?
 - Only with `pg_stock_notify_event_on()`: tickets on, calendars on, the 11.0.248 columns there.
 - `pg_stock_notify_event_state()`: `full` (limited and no place left, product sellable), `open`, `none` (no reservations, product gone or off, ended, product out of stock: that is the product's notice).
-- The line: `pg_stock_notify_event_line()` under the no-spots message of the legacy event page and as the designed event page's `reserve_form` on a full date: "Tell me when a place frees", an address (the account's filled in), "Tell me".
-- It posts to `reserve_calendar_event.php` with `waiting_list=1`, after the page, publish, calendar, occurrence, end and access checks, before the cart: rate limit `pg_stock_notify_throttled()` (shared with product requests), then `pg_stock_notify_event_request()`; the answer goes back through the `reserve_calendar_event` liveform.
+- The line, `pg_stock_notify_event_line()`: under the legacy event page's no-spots message, and as the designed page's `reserve_form` on a full date: "Tell me when a place frees", an address, "Tell me".
+- It posts `waiting_list=1` to `reserve_calendar_event.php`, after all its page checks, before the cart: `pg_stock_notify_throttled()` (shared with products), then `pg_stock_notify_event_request()`; the answer returns in the `reserve_calendar_event` liveform.
 - Answers: `added`, `already` (address or account waits for that date), `limit` (`PG_STOCK_NOTIFY_PENDING_LIMIT` across products and dates), `open`, `event`, `email`, `unavailable`.
 
 ## When does the mail go?
 - `pg_stock_notify_event_freed()` after a cancel gave places back and when Edit Event raises Remaining Spots above what was stored (`edit_calendar_event.php`). The API and the Workspace do not call it.
 - `pg_stock_notify_event_send()` reads the date again (must be `open`), then per waiting row: `pg_stock_notify_claim()` (conditional UPDATE) and only then the mail, so two frees at once mail once. Queued while the mail job runs (500), else 10 in the request.
-- Mail only: no SMS, WhatsApp or device push. It names the event and date, links the site, says no place is held: whoever orders first has it.
+- Mail only (no SMS, WhatsApp or push): the event and date, a link to the site, no place held.
 
 Test: `tests/event_waiting_list_test.php` (the step run twice against stubs).
 

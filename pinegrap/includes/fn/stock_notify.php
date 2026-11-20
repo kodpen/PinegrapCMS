@@ -762,9 +762,10 @@ function pg_stock_notify_send($product_id)
 }
 
 /**
- * The statement that removes the requests of a deleted account or product.
+ * The statement that removes the requests of a deleted account, product or
+ * calendar event. An event's are its waiting list rows (product_id 0).
  *
- * @param string $column user_id or product_id
+ * @param string $column user_id, product_id or calendar_event_id
  * @param mixed  $id
  * @return string '' for anything else, so guest requests (user_id 0) are
  *                never touched
@@ -773,11 +774,12 @@ function pg_stock_notify_forget_sql($column, $id)
 {
     $id = is_scalar($id) ? (int) $id : 0;
 
-    if (!in_array($column, array('user_id', 'product_id'), true) || ($id <= 0)) {
+    if (!in_array($column, array('user_id', 'product_id', 'calendar_event_id'), true) || ($id <= 0)) {
         return '';
     }
 
-    return "DELETE FROM stock_notify WHERE " . $column . " = '" . $id . "'";
+    return "DELETE FROM stock_notify WHERE " . $column . " = '" . $id . "'"
+        . (($column === 'calendar_event_id') ? " AND product_id = 0" : '');
 }
 
 /**
@@ -814,6 +816,11 @@ function pg_stock_notify_forget($column, $id)
         return;
     }
 
+    // An event's rows exist only once 11.0.248 added the column.
+    if (($column === 'calendar_event_id') && !pg_stock_notify_event_ready()) {
+        return;
+    }
+
     if (function_exists('pg_site_push_watch_ready') && pg_site_push_watch_ready()) {
         db(pg_stock_notify_forget_watch_sql($column, $id));
     }
@@ -846,6 +853,19 @@ function pg_stock_notify_forget_product($product_id)
 {
     // pg_stock_notify_forget_watch_sql() runs inside, before the requests go.
     pg_stock_notify_forget('product_id', $product_id);
+}
+
+/**
+ * Removes the waiting list of a deleted calendar event (Edit Event's Delete,
+ * the API, the Workspace), so an event given the same id after a MySQL 5.7
+ * restart mails nobody who waited for the old one.
+ *
+ * @param mixed $calendar_event_id
+ * @return void
+ */
+function pg_stock_notify_forget_event($calendar_event_id)
+{
+    pg_stock_notify_forget('calendar_event_id', $calendar_event_id);
 }
 
 /**
@@ -1354,4 +1374,52 @@ function pg_stock_notify_event_line(array $event, $recurrence, $page_id, $send_t
     return pg_stock_notify_event_form_html(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php',
         get_token_field(), $send_to, $page_id, (int) $event['id'], $recurrence,
         defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '');
+}
+
+/**
+ * The start of an event's date as get_calendar_event() writes it (the
+ * site's zone), '' when the event or the date is gone.
+ *
+ * @param int $event_id
+ * @param int $date
+ * @return string
+ */
+function pg_stock_notify_event_start($event_id, $date)
+{
+    $event = ((int) $event_id > 0) ? get_calendar_event((int) $event_id, max(0, (int) $date)) : false;
+
+    return is_array($event) ? (string) $event['start_date_and_time'] : '';
+}
+
+/**
+ * The personal data export's waiting list rows: each event row gets
+ * event_date, its date's start, read once per event and date; a product's
+ * row is left as it is. Pure but for $start.
+ *
+ * @param array    $rows  stock_notify rows (calendar_event_id,
+ *                        recurrence_number)
+ * @param callable $start (event id, date) => the start, '' for none
+ * @return array
+ */
+function pg_stock_notify_export_event_dates(array $rows, $start)
+{
+    $seen = array();
+
+    foreach ($rows as $index => $row) {
+        $event_id = (int) ($row['calendar_event_id'] ?? 0);
+
+        if ($event_id <= 0) {
+            continue;
+        }
+
+        $key = $event_id . ':' . (int) ($row['recurrence_number'] ?? 0);
+
+        if (!isset($seen[$key])) {
+            $seen[$key] = (string) call_user_func($start, $event_id, (int) ($row['recurrence_number'] ?? 0));
+        }
+
+        $rows[$index]['event_date'] = $seen[$key];
+    }
+
+    return $rows;
 }

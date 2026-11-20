@@ -321,6 +321,9 @@ if (!$_POST) {
         $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = ?";
         $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
+        // The event's waiting list goes with it.
+        pg_stock_notify_forget_event($liveform->get_field_value('id'));
+
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event'), $calendar_event_name) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_calendars = new liveform('calendars');

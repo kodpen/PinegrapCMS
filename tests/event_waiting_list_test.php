@@ -287,3 +287,47 @@ PHP;
 	pg_assert_contains('INDEX idx_event_sent (calendar_event_id, recurrence_number, sent_at)', $first[2], 'the index');
 	pg_assert_same(array(), $second, 'nothing the second time');
 }
+
+// A deleted event takes its waiting list with it, wherever it is deleted,
+// and never a product's rows.
+function test_event_waiting_list_forgotten_with_the_event()
+{
+	pg_assert_same("DELETE FROM stock_notify WHERE calendar_event_id = '12' AND product_id = 0", pg_stock_notify_forget_sql('calendar_event_id', 12), 'the event\'s waiting rows only');
+	pg_assert_same('', pg_stock_notify_forget_sql('calendar_event_id', 0), 'no event');
+	pg_assert_same("DELETE FROM stock_notify WHERE product_id = '40'", pg_stock_notify_forget_sql('product_id', 40), 'a product as before');
+	pg_assert_contains("pg_stock_notify_forget('calendar_event_id'", pg_test_function_source('pg_stock_notify_forget_event'), 'the event\'s forget');
+	pg_assert_contains('pg_stock_notify_event_ready()', pg_test_function_source('pg_stock_notify_forget'), 'only once the column is there');
+
+	foreach (array('edit_calendar_event.php', 'includes/api/resources/calendars.php', 'includes/workspace/changes.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$delete = strpos($source, 'DELETE FROM calendar_events WHERE id');
+		$forget = strpos($source, 'pg_stock_notify_forget_event(');
+		pg_assert_true(($delete !== false) && ($forget !== false) && ($forget > $delete), $file . ': the waiting list goes with the event');
+	}
+}
+
+// The personal data export shows an event row's event and date.
+function test_event_waiting_list_export()
+{
+	$asked = array();
+	$start = function ($event_id, $date) use (&$asked) {
+		$asked[] = $event_id . ':' . $date;
+
+		return '2099-01-0' . $date . ' 10:00:00';
+	};
+
+	$rows = pg_stock_notify_export_event_dates(array(
+		array('id' => 1, 'product_id' => 40, 'calendar_event_id' => 0, 'recurrence_number' => 0),
+		array('id' => 2, 'product_id' => 0, 'calendar_event_id' => 12, 'recurrence_number' => 3),
+		array('id' => 3, 'product_id' => 0, 'calendar_event_id' => 12, 'recurrence_number' => 3),
+	), $start);
+
+	pg_assert_false(isset($rows[0]['event_date']), 'a product\'s row is left as it is');
+	pg_assert_same('2099-01-03 10:00:00', $rows[1]['event_date'], 'the date\'s start');
+	pg_assert_same('2099-01-03 10:00:00', $rows[2]['event_date'], 'the same date again');
+	pg_assert_same(array('12:3'), $asked, 'read once per event and date');
+
+	$export = pg_test_function_source('pg_privacy_export_collect');
+	pg_assert_contains('calendar_events.name AS event_name', $export, 'the event\'s name');
+	pg_assert_contains('pg_stock_notify_export_event_dates(', $export, 'and its date');
+}
