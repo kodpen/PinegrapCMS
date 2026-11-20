@@ -239,7 +239,7 @@ description: Generated from the module field of the memory files: each includes/
 - `product_questions`: [[comments-widget-two-forms]], [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]], [[designer-prototype-viewer-links]], [[release-bundle-preview]]
 - `prototype_comments`: [[designer-prototype-comments-door]], [[designer-prototype-comments-list]], [[designer-prototype-comments-task]], [[prototype-comments]]
-- `prototype_links`: [[designer-prototype-share-links]]
+- `prototype_links`: [[designer-prototype-share-links]], [[release-bundle-share-link]]
 - `prototype_map`: [[prototype-map-read]]
 - `push_broker`: [[api-native-push]]
 - `quiet_hours`: [[api-workspace-quiet-hours]], [[quiet-hours]]
