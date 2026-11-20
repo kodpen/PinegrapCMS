@@ -51,3 +51,17 @@ function test_mail_phone_sent_copy_beside_its_label()
 	pg_assert_contains($row, $html, 'the sent copy check box beside its label');
 	pg_assert_contains('<div class="d-flex align-items-center gap-3">' . "\n" . '                        <input class="pg-checkbox" type="checkbox" name="read_sent"', $html, 'as Read the Sent folder is');
 }
+
+function test_mail_phone_pane_status_and_holder_height()
+{
+	// py-0 drew the open conversation's status and holder 23 px high, the
+	// smallest controls of the screen and half a finger on a phone; the
+	// pane's buttons beside them are 31 px. A channel's card keeps it.
+	$script = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'));
+
+	pg_assert_contains('function state(row, message, view, h, roomy) {', $script, 'the pane asks for the full height');
+	pg_assert_contains("var tight = roomy ? ['d-inline-block', 'w-auto', 'ms-2'] : ['d-inline-block', 'w-auto', 'ms-2', 'py-0'];", $script, 'py-0 only on a card');
+	pg_assert_contains("status.classList.add.apply(status.classList, tight);", $script, 'the status');
+	pg_assert_contains("hold.classList.add.apply(hold.classList, tight);", $script, 'the holder');
+	pg_assert_contains("                state(place, message, view, h, true);", $script, 'the pane\'s call');
+}
