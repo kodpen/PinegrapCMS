@@ -129,3 +129,100 @@ function test_ai_connections_data_step_is_called_and_guarded()
 	pg_assert_contains('upgrade_2026_11_0_ai_connections();', $source, 'the open version runs the step');
 	pg_assert_contains('pg_ai_connection_move(pg_ai_connection_key($provider), $agents)', $source, 'the step follows the pure rule, read against the stored connection');
 }
+
+function test_ai_connections_voice_on_openai_by_address()
+{
+	pg_assert_true(pg_ai_connection_voice_on_openai(''), 'no address is OpenAI');
+	pg_assert_true(pg_ai_connection_voice_on_openai(' https://api.openai.com/v1/ '), 'OpenAI\'s base');
+	pg_assert_true(pg_ai_connection_voice_on_openai('https://api.openai.com/v1/audio/speech'), 'the endpoint pasted after it');
+	pg_assert_true(!pg_ai_connection_voice_on_openai('https://api.groq.com/openai/v1'), 'another address');
+	pg_assert_true(!pg_ai_connection_voice_on_openai('https://api.openai.com.evil.test/v1'), 'a look-alike host');
+}
+
+function test_ai_connections_voice_move_first_key_becomes_the_connection()
+{
+	$move = pg_ai_connection_voice_move('', array('url' => '', 'key' => 'sk-voice-1', 'speech_url' => '', 'speech_key' => ''));
+
+	pg_assert_true($move['store'], 'no connection: the transcripts\' key becomes it');
+	pg_assert_same('sk-voice-1', $move['connection'], 'the transcripts\' key');
+	pg_assert_same(array('ws_voice_key'), $move['empty'], 'and is emptied, read from the connection');
+}
+
+function test_ai_connections_voice_move_equal_emptied_different_kept()
+{
+	$move = pg_ai_connection_voice_move('sk-conn-1', array('url' => 'https://api.openai.com/v1', 'key' => 'sk-conn-1', 'speech_url' => '', 'speech_key' => 'sk-other-2'));
+
+	pg_assert_true(!$move['store'], 'an existing connection stays');
+	pg_assert_same(array('ws_voice_key'), $move['empty'], 'the equal key is emptied; the spoken answers\' different key stays');
+}
+
+function test_ai_connections_voice_move_leaves_another_address_alone()
+{
+	$move = pg_ai_connection_voice_move('', array('url' => 'https://api.groq.com/openai/v1', 'key' => 'gsk-groq-1', 'speech_url' => '', 'speech_key' => 'gsk-groq-1'));
+
+	pg_assert_true(!$move['store'], 'a key of another address never becomes OpenAI\'s connection');
+	pg_assert_same(array(), $move['empty'], 'and is kept, with the spoken answers that follow it');
+
+	$move = pg_ai_connection_voice_move('', array('url' => 'https://api.groq.com/openai/v1', 'key' => 'gsk-groq-1', 'speech_url' => 'https://api.openai.com/v1', 'speech_key' => 'sk-speech-1'));
+
+	pg_assert_same('sk-speech-1', $move['connection'], 'spoken answers on OpenAI give theirs');
+	pg_assert_same(array('ws_voice_speech_key'), $move['empty'], 'only the spoken answers\' key moves');
+}
+
+function test_ai_connections_voice_move_run_again_changes_nothing()
+{
+	$voice = array('url' => '', 'key' => 'sk-voice-1', 'speech_url' => '', 'speech_key' => 'sk-speech-2');
+	$first = pg_ai_connection_voice_move('', $voice);
+
+	foreach ($first['empty'] as $name) {
+		$voice[($name === 'ws_voice_key') ? 'key' : 'speech_key'] = '';
+	}
+
+	$again = pg_ai_connection_voice_move($first['connection'], $voice);
+
+	pg_assert_same(array('ws_voice_key'), $first['empty'], 'the first run empties the equal key only');
+	pg_assert_true(!$again['store'], 'run again: nothing is stored');
+	pg_assert_same(array(), $again['empty'], 'run again: nothing is emptied');
+	pg_assert_same('sk-speech-2', $voice['speech_key'], 'the different key still works');
+}
+
+function test_ai_connections_voice_data_step_is_called_and_guarded()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+
+	pg_assert_contains('upgrade_2026_11_0_ai_connections_voice();    // 11.0.241', $source, 'the open version runs the voice step');
+	pg_assert_true(strpos($source, 'upgrade_2026_11_0_ai_connections();') < strpos($source, 'upgrade_2026_11_0_ai_connections_voice();'), 'after the assistants\' step, whose first key wins');
+	pg_assert_contains('pg_ai_connection_voice_move(pg_ai_connection_key(\'openai\')', $source, 'the step follows the pure rule');
+	pg_assert_contains('if (!pg_connect_can_seal()) {', $source, 'a site without an encryption key is skipped');
+}
+
+function test_ai_connections_page_of_a_provider()
+{
+	pg_assert_same('azure_openai', pg_ai_connection_service_of('azure'), 'Azure OpenAI\'s registry key');
+	pg_assert_same('connections.php?service=openai', pg_ai_connection_page_url('openai'), 'its page on Connections');
+	pg_assert_same('', pg_ai_connection_page_url('custom'), 'a custom address has no page');
+}
+
+function test_ai_connections_block_says_state_and_way()
+{
+	$off = pg_ai_connection_block_html('openai', 'OpenAI', false);
+	$on = pg_ai_connection_block_html('anthropic', 'Anthropic', true, array('name' => 'ws_agent[3][key_clear]', 'id' => 'k3', 'attrs' => ' disabled'));
+
+	pg_assert_contains('href="connections.php?service=openai"', $off, 'it leads to the provider\'s page');
+	pg_assert_contains('Connect in Connections', $off, 'not connected: Connect in Connections');
+	pg_assert_contains('Not connected', $off, 'with its state');
+	pg_assert_contains('Manage in Connections', $on, 'connected: Manage in Connections');
+	pg_assert_true(strpos($off, 'type="password"') === false && strpos($on, 'type="password"') === false, 'no key field');
+	pg_assert_contains('Uses its own key', $on, 'a feature with its own key says so');
+	pg_assert_contains('name="ws_agent[3][key_clear]" value="1" id="k3" disabled', $on, 'its box gives the own key up with the Save');
+}
+
+function test_ai_connections_agent_form_takes_no_key_for_a_connection()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agents_settings.php');
+
+	pg_assert_contains('pg_ai_connection_block_html($provider_id,', $source, 'the chosen provider\'s connection under the select');
+	pg_assert_contains("'provider=' . implode('|', \$own_key)", $source, 'the key field only for a provider without a connection');
+	pg_assert_contains('if ($connected && is_string($key) && ($key !== \'\')) {', $source, 'a key typed for a connected provider is not stored');
+	pg_assert_contains('<select class="pg-input pg-input-sm" name="\' . h($name($field)) . \'"', $source, 'the selects post their names');
+}

@@ -147,11 +147,21 @@ function ws_agents_settings_check($viewer, $id, $input)
 
     $providers = ws_model_providers();
 
+    // A provider with a connection takes no key on the form: a typed one is
+    // not stored, only the box that gives up the assistant's own key counts.
+    $connected = ($check['values']['kind'] === 'model') && function_exists('pg_ai_connection_known') && pg_ai_connection_known($check['values']['provider']);
+
+    if ($connected && is_string($key) && ($key !== '')) {
+        $key = null;
+    }
+
     // Without a key of its own an assistant uses its provider's connection.
     if (($check['values']['kind'] === 'model') && $providers[$check['values']['provider']]['key']
         && (($key === '') || (($key === null) && !($current && $current['key_set'])))
-        && !(function_exists('pg_ai_connection_ready') && pg_ai_connection_ready($check['values']['provider']))) {
-        return $fail(lang('Paste the service\'s API key.'), 'key');
+        && !($connected && pg_ai_connection_ready($check['values']['provider']))) {
+        return $connected
+            ? $fail(lang(array('string' => 'Connect {var:1} in Connections first.', 'vars' => ws_model_provider_name($check['values']['provider']))), 'provider')
+            : $fail(lang('Paste the service\'s API key.'), 'key');
     }
 
     // The monthly token limit belongs to a model assistant alone.
@@ -292,7 +302,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         return h((string) ($agent ? $agent[$field] : $default));
     };
     $select = function ($field, $options, $chosen, $extra = '') use ($p, $disabled, $name) {
-        $out = '<select class="pg-input pg-input-sm" name=""' . h($name($field)) . '" id="' . $p . $field . '" data-ws-agent-field="' . $field . '"' . $disabled . $extra . '>';
+        $out = '<select class="pg-input pg-input-sm" name="' . h($name($field)) . '" id="' . $p . $field . '" data-ws-agent-field="' . $field . '"' . $disabled . $extra . '>';
 
         foreach ($options as $key => $label) {
             $out .= '<option value="' . h((string) $key) . '"' . (((string) $key === (string) $chosen) ? ' selected' : '') . '>' . h($label) . '</option>';
@@ -410,7 +420,26 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $rows .= $field('model', lang('Model'), $input('model', $value('model'), ' maxlength="100"'), implode(' · ', $hints), $when_kind('model'), $shown);
         $rows .= $field('base', lang('Address'), $input('base', ($kind === 'model') ? $value('door_url') : '', ' type="url" maxlength="500" placeholder="https://your-resource.openai.azure.com/openai/v1"'), lang('Only for Azure OpenAI and a custom address: the chat API\'s address.'),
             'provider=' . implode('|', $own_address), in_array($chosen, $own_address, true));
-        $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']), lang('Left empty, the key of the provider\'s connection on Connections is used.'), $when_kind('model'), $shown);
+        // A provider with a connection shows it instead of a key field; only
+        // the others (a custom address) take a key on the form.
+        $own_key = array();
+
+        foreach (array_keys(ws_model_providers()) as $provider_id) {
+            if (!function_exists('pg_ai_connection_known') || !pg_ai_connection_known($provider_id)) {
+                $own_key[] = $provider_id;
+                continue;
+            }
+
+            $own = ($agent && ($agent['provider'] === $provider_id) && $agent['key_set'])
+                ? array('name' => $name('key_clear'), 'id' => $p . 'key-use-' . $provider_id, 'attrs' => $disabled)
+                : null;
+            $rows .= '<div class="col-12' . (($shown && ($chosen === $provider_id)) ? '' : ' d-none') . '" data-ws-agent-when="provider=' . h($provider_id) . '">'
+                . pg_ai_connection_block_html($provider_id, ws_model_provider_name($provider_id), pg_ai_connection_ready($provider_id), $own) . '</div>';
+        }
+
+        if ($own_key) {
+            $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']), '', 'provider=' . implode('|', $own_key), $shown && in_array($chosen, $own_key, true));
+        }
 
         if (ws_agent_token_limit_ready()) {
             $limit = $agent ? ws_agent_token_limit((int) $agent['id']) : 0;

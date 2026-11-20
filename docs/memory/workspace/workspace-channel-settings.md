@@ -15,7 +15,7 @@ description: Channel templates, voice transcripts and the GitHub card in Site Se
 - Symptom fixed: the arrow and Cancel held the `settings_workspace_channels.php` address, which `pgSettingsGo()` and the link handler turn into the dialog over the template screen, so they never left it.
 
 ## How does the voice card save?
-- Fields `ws_voice_*` (old `voice_*`), saved with the pane's Save: `ws_voice_settings_input($post, $prefix)`, `ws_voice_settings_check()` (each refused field, marked `ws_voice_<field>`, nothing stored), `ws_voice_settings_write($input, $liveform, $refuse)`. The old screen's `ws_voice_settings_post()` gives the first refusal as its error.
+- Fields `ws_voice_*` (old `voice_*`; `ws_voice_service` the provider since CX9b), saved with the pane's Save: `ws_voice_settings_input($post, $prefix)`, `ws_voice_settings_check()` (each refused field, marked `ws_voice_<field>`, nothing stored), `ws_voice_settings_write($input, $liveform, $refuse)`. The old screen's `ws_voice_settings_post()` gives the first refusal as its error.
 - A write clears both services' last errors and the transcripts' wait, so `ws_voice_settings_changed()` (pure) skips an unchanged card; a typed key or a ticked remove box is a change. Role 0 only: others see the fields disabled, not posted.
 
 ## Where are the GitHub links?

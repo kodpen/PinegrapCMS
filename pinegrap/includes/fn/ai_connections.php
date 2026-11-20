@@ -264,3 +264,119 @@ function pg_ai_connection_try($provider, $key)
 
     return array('ok' => false, 'message' => ws_model_http_error(array('name' => $name), $response));
 }
+
+/**
+ * The registry key of a provider's connection, its page's service. Pure.
+ *
+ * @param string $provider a model provider key
+ * @return string '' for a provider without a connection
+ */
+function pg_ai_connection_service_of($provider)
+{
+    $service = array_search((string) $provider, pg_ai_connection_services(), true);
+
+    return ($service === false) ? '' : (string) $service;
+}
+
+/**
+ * The address of a provider's page on Connections. Pure.
+ *
+ * @param string $provider a model provider key
+ * @return string '' for a provider without a connection
+ */
+function pg_ai_connection_page_url($provider)
+{
+    $service = pg_ai_connection_service_of($provider);
+
+    return ($service === '') ? '' : 'connections.php?service=' . rawurlencode($service);
+}
+
+/**
+ * Under a feature's "Provider" select: the chosen provider's connection with
+ * its state and the way to it on Connections ("Manage in Connections", or
+ * "Connect in Connections" with a line saying it is not connected). A
+ * feature that still keeps a key of its own says so, with a box that gives
+ * it up for the connection's key, posted with the form's Save.
+ *
+ * @param string $provider a model provider key that has a connection
+ * @param string $name     the provider's name
+ * @param bool   $ready    the connection holds a key (pg_ai_connection_ready())
+ * @param array  $own      null, or the own key's box: name, id, attrs (the
+ *                         form's disabled and form="" attributes)
+ * @return string HTML
+ */
+function pg_ai_connection_block_html($provider, $name, $ready, $own = null)
+{
+    $url = pg_ai_connection_page_url($provider);
+    $pill = $ready
+        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>';
+    $line = $ready
+        ? lang(array('string' => 'Calls {var:1} with the key of its connection.', 'vars' => $name))
+        : lang(array('string' => '{var:1} is not connected: connect it before switching this on.', 'vars' => $name));
+    $own_html = '';
+
+    if ($own !== null) {
+        $own_html = '<div class="d-flex flex-wrap align-items-center gap-3"><span class="pg-text-meta">' . h(lang('Uses its own key')) . '</span>'
+            . '<label class="pg-text-2" for="' . h($own['id']) . '"><input class="pg-checkbox" type="checkbox" name="' . h($own['name']) . '" value="1" id="' . h($own['id']) . '"' . $own['attrs'] . '> '
+            . '<span>' . h(lang('Use the connection\'s key')) . '</span></label></div>';
+    }
+
+    return '<div class="d-flex flex-column align-items-start gap-2">'
+        . '<div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $name))) . '</span>' . $pill . '</div>'
+        . '<div class="pg-field-help mt-0">' . h($line) . '</div>'
+        . $own_html
+        . (($url !== '') ? '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($ready ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>' : '')
+        . '</div>';
+}
+
+/**
+ * Is a voice service address OpenAI's own: empty (the default) or OpenAI's
+ * base, with or without the endpoint pasted after it? Pure.
+ *
+ * @param string $url
+ * @return bool
+ */
+function pg_ai_connection_voice_on_openai($url)
+{
+    $url = preg_replace('#/audio/(transcriptions|speech)$#i', '', rtrim(trim((string) $url), '/'));
+
+    return (rtrim((string) $url, '/') === '') || (strtolower(rtrim((string) $url, '/')) === 'https://api.openai.com/v1');
+}
+
+/**
+ * What the data step does with the voice feature's keys, by the same rule
+ * as the assistants' (pg_ai_connection_move()): the transcripts' key, and
+ * the spoken answers' when they go to OpenAI too, are OpenAI keys. Where no
+ * connection exists the first of them becomes it; a key equal to it is
+ * emptied; a key that differs is kept. A key of another address is left
+ * alone. Pure.
+ *
+ * @param string $connection OpenAI's connection key, '' for none
+ * @param array  $voice      url, key, speech_url, speech_key (keys opened)
+ * @return array connection, store (bool), empty (the config_text names to
+ *               empty: ws_voice_key, ws_voice_speech_key)
+ */
+function pg_ai_connection_voice_move($connection, $voice)
+{
+    $transcripts = pg_ai_connection_voice_on_openai($voice['url'] ?? '');
+    $speech_url = trim((string) ($voice['speech_url'] ?? ''));
+    $speech = ($speech_url === '') ? $transcripts : pg_ai_connection_voice_on_openai($speech_url);
+    $keys = array();
+
+    if ($transcripts) {
+        $keys[] = array('id' => 1, 'key' => (string) ($voice['key'] ?? ''));
+    }
+
+    if ($speech) {
+        $keys[] = array('id' => 2, 'key' => (string) ($voice['speech_key'] ?? ''));
+    }
+
+    $move = pg_ai_connection_move($connection, $keys);
+    $names = array(1 => 'ws_voice_key', 2 => 'ws_voice_speech_key');
+    $move['empty'] = array_values(array_map(function ($id) use ($names) {
+        return $names[$id];
+    }, $move['empty']));
+
+    return $move;
+}

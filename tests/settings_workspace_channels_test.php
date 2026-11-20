@@ -83,7 +83,9 @@ function test_settings_workspace_channels_voice_names_read_alike()
 
 	pg_assert_same($input, ws_voice_settings_input($new, 'ws_'), 'both screens read one card');
 	pg_assert_true($input['enabled'], 'the switch');
-	pg_assert_same('https://api.openai.com/v1', $input['url'], 'the address is cleaned');
+	pg_assert_same('', $input['url'], 'OpenAI\'s address is its connection\'s, not kept');
+	pg_assert_same('openai', $input['service'], 'a post without the select is read by its address');
+	pg_assert_same('https://api.groq.com/openai/v1', ws_voice_settings_input(array('voice_url' => ' https://api.groq.com/openai/v1/audio/transcriptions '))['url'], 'another address is cleaned');
 	pg_assert_false($input['speech_enabled'], 'an unticked switch is off');
 	pg_assert_same('', ws_voice_settings_input(array('voice_model' => array('x')))['model'], 'a list is no text');
 }
@@ -174,4 +176,27 @@ function test_settings_workspace_channels_mailbox_refusals_name_their_field()
 	$mail = settings_workspace_channels_test_source('includes/workspace/mail_settings.php');
 	pg_assert_contains("name=\"ws_mail_eml\" value=\"' . (int) \$id . '\"", $mail, 'Bring in is a named button of its own form');
 	pg_assert_contains("ws_mail_eml_form(pg_settings_url('mailboxes'), \$id, true)", $mail, 'posting to the category\'s page');
+}
+
+function test_settings_workspace_channels_voice_provider_rules()
+{
+	pg_assert_same('openai', ws_voice_service(''), 'no address is OpenAI');
+	pg_assert_same('openai', ws_voice_service('https://api.openai.com/v1/audio/transcriptions'), 'OpenAI\'s address');
+	pg_assert_same('custom', ws_voice_service('https://api.groq.com/openai/v1'), 'another address');
+
+	$openai = ws_voice_settings_input(array('voice_service' => 'openai', 'voice_url' => 'https://api.groq.com/openai/v1', 'voice_key' => 'sk-typed-123', 'voice_enabled' => '1'));
+
+	pg_assert_same('', $openai['url'], 'OpenAI keeps no address');
+	pg_assert_same('', $openai['key'], 'nor a typed key: it calls with the connection\'s');
+
+	$stored = array('enabled' => false, 'own_key' => false, 'connected' => false);
+
+	pg_assert_same(array('enabled'), array_keys(ws_voice_settings_check($openai, $stored)), 'the switch cannot be turned on while OpenAI is not connected');
+	pg_assert_same(array(), ws_voice_settings_check($openai, array('connected' => true) + $stored), 'connected: it can');
+	pg_assert_same(array(), ws_voice_settings_check($openai, array('own_key' => true) + $stored), 'its own key still works');
+	pg_assert_same(array(), ws_voice_settings_check($openai, array('enabled' => true) + $stored), 'a switch already on is not refused with every Save');
+
+	$custom = ws_voice_settings_input(array('voice_service' => 'custom', 'voice_url' => '', 'voice_enabled' => '1'));
+
+	pg_assert_same(array('url'), array_keys(ws_voice_settings_check($custom, $stored)), 'another address needs its address');
 }

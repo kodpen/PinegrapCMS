@@ -180,6 +180,18 @@ if ($_POST) {
 				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($ai_name))));
 				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $ai_name)), $_SESSION['sessionusername']);
 
+			} elseif ((($_POST['connection_id'] ?? '') === 'voice') && ($ai_provider === 'openai') && function_exists('ws_voice_schema_ready') && ws_voice_schema_ready()) {
+
+				// Voice message transcripts give up their own key for OpenAI's.
+				if (pg_ai_connection_ready('openai') && (ws_voice_config(true)['service'] === 'openai')) {
+
+					pg_config_text_save('ws_voice_key', '');
+
+					$liveform->add_notice(lang(array('string' => '{var:1} uses the connection\'s key now.', 'vars' => h(lang('Voice message transcripts')))));
+					log_activity(lang(array('string' => 'set the voice message transcripts to use the {var:1} connection', 'vars' => $ai_name)), $_SESSION['sessionusername']);
+
+				}
+
 			} else {
 
 				$ai_agent = ws_model_agent_row(isset($_POST['connection_id']) ? (int) $_POST['connection_id'] : 0);
@@ -704,6 +716,34 @@ function connections_ai_page($page, $id, $name, $provider, $may_manage, $can_sea
 					<span class="connections-row-main">
 						<a class="connections-row-name" href="' . h($agents_url) . '">' . h($agent['name']) . '</a>
 						<span class="pg-text-meta d-block">' . h(lang('Workspace assistant')) . ' · ' . h($line) . '</span>
+					</span>
+					<span class="connections-row-side">' . $side . '</span>
+				</div>';
+
+	}
+
+	// OpenAI's connection also serves the voice message transcripts.
+	if (($provider === 'openai') && function_exists('ws_voice_schema_ready') && ws_voice_schema_ready() && (ws_voice_config()['service'] === 'openai')) {
+
+		$voice = ws_voice_config();
+		$voice_name = lang('Voice message transcripts');
+
+		if ($voice['own_key']) {
+			$line = lang('Uses its own key');
+			$side = $may_manage && $ready
+				? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action" data-action="ai_use_connection" data-id="voice"
+					data-confirm="' . h(lang(array('string' => '{var:1} gives up its own key and calls with the connection\'s key.', 'vars' => $voice_name))) . '">' . h(lang('Use the connection\'s key')) . '</button>'
+				: connections_state_pill('connected');
+		} else {
+			$line = lang('Uses the connection\'s key');
+			$side = connections_state_pill($ready ? 'connected' : 'not_connected');
+		}
+
+		$rows .= '
+				<div class="pg-card-inner-row connections-row">
+					<span class="connections-row-main">
+						<a class="connections-row-name" href="' . h(pg_settings_link(pg_ai_connection_category(), 'pgset-ws-voice')) . '">' . h($voice_name) . '</a>
+						<span class="pg-text-meta d-block">' . h($line) . '</span>
 					</span>
 					<span class="connections-row-side">' . $side . '</span>
 				</div>';
