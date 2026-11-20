@@ -10,7 +10,7 @@ module: event_tickets_page, widgets_event_tickets
 - Drawn with `output_header_secure()` like `booking_manage.php`, on look A's recipes (`pg-card`, `pg-pill`, `pg-button`), light and dark from the panel's theme.
 
 ## What does each ticket show?
-- `pg_event_ticket_view()` (pure) and `pg_event_ticket_card_html()`: state pill (Valid, Used, Void), "Ticket 2 of 4", the event's name, its date range and place (`get_calendar_event()` for the ticket's occurrence, the calendar's own words as the cart prints them) or the product's name, the name, and the code written out beside its QR.
+- `pg_event_ticket_view()` (pure) and `pg_event_ticket_card_html()`: state pill (Valid, Used, Voided; "Void" is the verb in Turkish), "Ticket 2 of 4", the event's name, its date and place (`get_calendar_event()` for the ticket's occurrence; the date by `pg_event_ticket_when()` in the site's date format, numbers only, as the calendar's own range writes English day and month names) or the product's name, the name, and the code written out beside its QR.
 - The code is drawn again from the row (`pg_event_ticket_code()`); the QR (`pg_qr_svg()`, inline SVG only) holds the code. When the redrawn code's hash is not the row's `code_hash`, the card says "This ticket cannot be shown here" and draws no QR.
 - A void ticket draws no QR and no code, is faded, and says its order was cancelled. A used one keeps its QR and says when it was checked in.
 - The name: the guest's from the unit's product form (`pg_event_ticket_guest_name()`: first and last name fields mapped to the contact, else a field whose variable name holds `name`, `guest`, `attendee`, `ad_soyad` or `isim`), else the buyer's billing name.
