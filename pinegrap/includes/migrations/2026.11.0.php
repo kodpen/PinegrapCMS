@@ -233,6 +233,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
+	upgrade_2026_11_0_referral_credit();         // 11.0.245
 
 }
 
@@ -4989,7 +4990,7 @@ function upgrade_2026_11_0_form_fee() {
 function upgrade_2026_11_0_store_credit() {
 
 	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
-	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual','referral') NOT NULL DEFAULT 'gift'");
 	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
 	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
 	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
@@ -7821,5 +7822,40 @@ function upgrade_2026_11_0_ws_calls() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
+
+}
+
+
+// A referral's reward as store credit (11.0.245, includes/fn/referral.php):
+// gift_cards.kind gains 'referral' at the end. A database that ran 11.0.159
+// before this release has the four values; a new install gets all five from
+// 11.0.159 and skips here. The enum is widened from what is there, never
+// narrowed, NOT NULL and its default kept as read.
+function upgrade_2026_11_0_referral_credit() {
+
+	$kind = install_column_info('gift_cards', 'kind');
+
+	if (!is_array($kind) || (stripos((string) $kind['Type'], "'referral'") !== false)) {
+
+		install_skipped('gift_cards.kind already holds referral');
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $kind['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$values[] = "'referral'";
+
+	$default = ((string) $kind['Default'] !== '') ? (string) $kind['Default'] : 'gift';
+
+	install_modify_column('gift_cards', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Store credit: a customer\'s reward for bringing a friend can be kept as store credit of its own kind.');
 
 }
