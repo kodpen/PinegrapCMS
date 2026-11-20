@@ -17,3 +17,4 @@ description: A note written in a channel: the route, who may change it through t
 
 ## What does a message's note_card carry over the API?
 - `id`, `name`, `excerpt`, plus `revision` (the base of `POST /workspace/notes/{id}`), `updated_at` and `can_edit` (the reader's access is owner or edit); `ws_api_message_note_card()`.
+- `changed_by` (a `WorkspaceMessageSender`): the application whose key made the last change, else the person (`workspace-note-changed-by-app.md`).

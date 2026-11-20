@@ -88,5 +88,5 @@ function test_ws_api_note_card_is_declared_on_the_message()
 
 	pg_assert_same('WorkspaceMessageNoteCard?', $schema['note_card'] ?? null, 'note_card on WorkspaceMessage');
 	pg_assert_same('ws_api_message_note_card_schema', $objects['WorkspaceMessageNoteCard'] ?? null, 'the component');
-	pg_assert_same(array('id', 'name', 'excerpt', 'revision', 'updated_at', 'can_edit'), array_keys(ws_api_message_note_card_schema()), 'the card keys');
+	pg_assert_same(array('id', 'name', 'excerpt', 'revision', 'updated_at', 'can_edit', 'changed_by'), array_keys(ws_api_message_note_card_schema()), 'the card keys');
 }

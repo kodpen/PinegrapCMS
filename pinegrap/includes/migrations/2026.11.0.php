@@ -243,6 +243,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
+	upgrade_2026_11_0_ws_note_app();             // 11.0.257
 
 }
 
@@ -8190,5 +8191,22 @@ function upgrade_2026_11_0_stock_holds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
+
+}
+
+// The application that changed a Workspace note (2026.11.0, 11.0.257;
+// includes/workspace/notes.php).
+//
+// Every application key acts for a person, so updated_by alone named that
+// person for every agent that wrote in a note. ws_notes.updated_app_id keeps
+// the application whose key made the last save, ws_note_versions.app_id the
+// one that saved each kept state; 0 means a person saved, which is what every
+// existing row becomes.
+function upgrade_2026_11_0_ws_note_app() {
+
+	install_add_column('ws_notes', 'updated_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
 
 }
