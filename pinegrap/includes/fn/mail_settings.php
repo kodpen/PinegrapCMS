@@ -39,18 +39,34 @@ function pg_mail_settings_keys()
 }
 
 /**
- * Whether the saved settings name a way to send: an SMTP account, a
+ * Whether the saved settings name a way to send: an SMTP server, a
  * connected account or a sending service.
  *
  * @return bool
  */
 function pg_mail_settings_ready()
 {
-    return (
-        defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&
-        defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '' &&
-        defined('SYSTEM_SMTP_PASSWORD') && SYSTEM_SMTP_PASSWORD !== ''
+    return pg_mail_settings_smtp_ready(
+        defined('SYSTEM_SMTP_HOSTNAME') ? (string) SYSTEM_SMTP_HOSTNAME : '',
+        defined('SYSTEM_SMTP_USERNAME') ? (string) SYSTEM_SMTP_USERNAME : '',
+        defined('SYSTEM_SMTP_PASSWORD') ? (string) SYSTEM_SMTP_PASSWORD : ''
     ) || (pg_mail_connection('system') !== null) || (pg_mail_transport() !== 'smtp');
+}
+
+/**
+ * Whether the system SMTP server is one email() can send through: a host,
+ * and a password when a username asks it to sign in. A relay without a
+ * username (localhost, a server that trusts the site's address) signs in to
+ * nothing and sends.
+ *
+ * @param string $host
+ * @param string $user
+ * @param string $password
+ * @return bool
+ */
+function pg_mail_settings_smtp_ready($host, $user, $password)
+{
+    return ((string) $host !== '') && (((string) $user === '') || ((string) $password !== ''));
 }
 
 /**
