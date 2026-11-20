@@ -1,6 +1,6 @@
 ---
 name: lead-journey-rules
-description: The visitor journey's pure rules (includes/fn/lead_journey.php, LJ1a): the browser key verdict, the tie and the move on a shared browser, tying back inside the keep period, the interest score and its half-life
+description: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
 module: lead_journey
 ---
 
