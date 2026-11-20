@@ -3180,7 +3180,6 @@ function ws_notes_js_strings()
         'cn_channel_edit_off'   => lang('Only the people the note is shared with can edit it now.'),
         'cn_show_all'           => lang('Show all'),
         'cn_show_less'          => lang('Show less'),
-        'cn_changed'            => ws_js_template('Changed by {var:1} · {var:2}', 2),
         'cn_versions'           => lang('Versions'),
         'cn_menu'               => lang('Note actions'),
         'cn_open_notes'         => lang('Open on the notes screen'),

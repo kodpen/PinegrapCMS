@@ -7,9 +7,10 @@
  * The card draws the note whole up to a fold of about 18rem, then "Show
  * all" and "Show less" in place of an inner scroll; a card opened stays
  * open while the screen is (a redraw after a change keeps it). Its foot
- * names the owner, who changed it last and when, and "Versions" with their
- * count. Its menu: Read, Edit, Versions, Open on the notes screen and, for
- * the owner, the channel's edit switch ("People who may post here can
+ * names the owner, who changed it last (the server's changed_by: a person
+ * by handle, an agent by its application) and when, and "Versions" with
+ * their count. Its menu: Read, Edit, Versions, Open on the notes screen
+ * and, for the owner, the channel's edit switch ("People who may post here can
  * edit", ws_note_channel_edit).
  *
  * Edit is a window over the channel with the note's writing box; a stale
@@ -68,13 +69,21 @@
         return isOpen ? 'open' : 'folded';
     }
 
-    // Who changed the note last and when, or '' when nobody is named. Pure.
+    // Who changed the note last and when, or '' when nobody is named: the
+    // server's words (changed_by, an agent by its application's name), then
+    // the time. Pure.
     function changedWords(card, t) {
-        if (!card || !card.updated_by) {
+        if (!card || !card.changed_by) {
             return '';
         }
 
-        return t('cn_changed', card.updated_by.name, card.updated || '');
+        return card.changed_by + (card.updated ? ' · ' + card.updated : '');
+    }
+
+    // Who saved a kept version: the server's words, as on the card, or the
+    // plain "Person" when nobody is known. Pure.
+    function versionWho(version, t) {
+        return (version && version.changed_by) ? version.changed_by : t('notes_person');
     }
 
     // The foot's words, in order: the owner, then who changed it last. Pure.
@@ -477,7 +486,7 @@
                 var main = kit.el('div', 'pg-list-row-main');
                 var head = kit.el('div', 'pg-list-row-head');
 
-                head.appendChild(kit.el('span', 'pg-list-row-title', version.by ? version.by.name : kit.t('notes_person')));
+                head.appendChild(kit.el('span', 'pg-list-row-title', versionWho(version, kit.t)));
                 head.appendChild(kit.el('span', 'pg-list-row-time', version.saved));
                 main.appendChild(head);
                 main.appendChild(kit.el('div', 'pg-list-row-text', kit.t('notes_version_size', version.size)));

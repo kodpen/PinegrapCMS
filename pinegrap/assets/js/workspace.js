@@ -28554,8 +28554,10 @@
                     top.appendChild(el('span', 'small fg-secondary', t('notes_version_size', version.size)));
                     item.appendChild(top);
 
-                    if (version.by) {
-                        item.appendChild(el('div', 'small fg-secondary text-truncate', version.by.name));
+                    // The server's words: a person by handle, an agent by its
+                    // application rather than the person behind its key.
+                    if (version.changed_by) {
+                        item.appendChild(el('div', 'small fg-secondary text-truncate', version.changed_by));
                     }
 
                     item.title = version.saved_full || '';

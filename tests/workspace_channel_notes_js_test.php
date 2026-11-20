@@ -110,8 +110,11 @@ function test_workspace_channel_notes_js_foot_words()
 
 	$result = workspace_channel_notes_js_test_node(workspace_channel_notes_js_test_t() . $changed . $foot . '
 console.log(JSON.stringify({
-	both: footWords({ owner: { name: "Ayşe" }, updated_by: { name: "Mehmet" }, updated: "5 min" }, t),
-	ownerOnly: footWords({ owner: { name: "Ayşe" }, updated_by: null }, t),
+	both: footWords({ owner: { name: "Ayşe" }, updated_by: { name: "Mehmet" }, changed_by: "Changed by @mehmet", updated: "5 min" }, t),
+	agent: footWords({ owner: { name: "Ayşe" }, updated_by: { name: "Ayşe" }, updated_app: { name: "Build bot" }, changed_by: "Changed by Build bot", updated: "now" }, t),
+	noTime: footWords({ owner: { name: "Ayşe" }, changed_by: "Changed by @mehmet", updated: "" }, t),
+	ownerOnly: footWords({ owner: { name: "Ayşe" }, updated_by: null, changed_by: "" }, t),
+	noWords: footWords({ owner: { name: "Ayşe" }, updated_by: { name: "Mehmet" }, updated: "5 min" }, t),
 	none: footWords({}, t),
 	nothing: footWords(null, t)
 }));');
@@ -120,10 +123,48 @@ console.log(JSON.stringify({
 		return;
 	}
 
-	pg_assert_same(array('notes_owner(Ayşe)', 'cn_changed(Mehmet,5 min)'), $result['both'], 'the owner, then who changed it last and when');
+	pg_assert_same(array('notes_owner(Ayşe)', 'Changed by @mehmet · 5 min'), $result['both'], 'the owner, then the server\'s words for who changed it last, and when');
+	pg_assert_same(array('notes_owner(Ayşe)', 'Changed by Build bot · now'), $result['agent'], 'an agent\'s change draws the server\'s words naming the application, not the person behind its key');
+	pg_assert_same(array('notes_owner(Ayşe)', 'Changed by @mehmet'), $result['noTime'], 'no time known, the words alone');
 	pg_assert_same(array('notes_owner(Ayşe)'), $result['ownerOnly'], 'nobody named as the changer, no change line');
+	pg_assert_same(array('notes_owner(Ayşe)'), $result['noWords'], 'the script builds no words of its own from updated_by');
 	pg_assert_same(array(), $result['none'], 'nothing known, no words');
 	pg_assert_same(array(), $result['nothing'], 'no card, no words');
+}
+
+function test_workspace_channel_notes_js_version_who()
+{
+	$who = workspace_channel_notes_js_test_function('versionWho');
+
+	pg_assert_true($who !== '', 'versionWho() is in the card\'s script');
+
+	$result = workspace_channel_notes_js_test_node(workspace_channel_notes_js_test_t() . $who . '
+console.log(JSON.stringify({
+	person: versionWho({ by: { name: "Mehmet" }, app: null, changed_by: "Changed by @mehmet" }, t),
+	agent: versionWho({ by: { name: "Ayşe" }, app: { name: "Build bot" }, changed_by: "Changed by Build bot" }, t),
+	unknown: versionWho({ by: null, changed_by: "" }, t),
+	nothing: versionWho(null, t)
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('Changed by @mehmet', $result['person'], 'a version a person saved: the server\'s words with the handle');
+	pg_assert_same('Changed by Build bot', $result['agent'], 'a version an agent saved: the application, not the person behind its key');
+	pg_assert_same('notes_person', $result['unknown'], 'nobody known: the plain "Person"');
+	pg_assert_same('notes_person', $result['nothing'], 'no version: the plain "Person"');
+}
+
+// The notes screen's version list names who saved each version by the
+// server's words, as the card's drawer does.
+function test_workspace_channel_notes_js_notes_screen_versions()
+{
+	$source = workspace_channel_notes_js_test_source('assets/js/workspace.js');
+
+	pg_assert_true(strpos($source, "item.appendChild(el('div', 'small fg-secondary text-truncate', version.changed_by));") !== false, 'the notes screen\'s version list draws changed_by');
+	pg_assert_true(strpos($source, 'version.by.name') === false, 'and no longer the person behind an agent\'s key');
+	pg_assert_same('', preg_match("/'cn_changed'/", workspace_channel_notes_js_test_source('includes/workspace/notes.php')) ? 'kept' : '', 'the script\'s own "Changed by" template is gone');
 }
 
 function test_workspace_channel_notes_js_menu_items()
@@ -177,7 +218,7 @@ function test_workspace_channel_notes_js_hooks()
 	pg_assert_contains(".ws-nb-msg-card-text.ws-cn-fold.is-folded {\n    max-height: 18rem;", $css, 'the stylesheet folds at the script\'s height');
 	pg_assert_contains('var FOLD_REM = 18;', $script, 'the script measures the same fold');
 
-	foreach (array('cn_write', 'cn_channel_edit', 'cn_channel_edit_on', 'cn_channel_edit_off', 'cn_show_all', 'cn_show_less', 'cn_changed', 'cn_versions', 'cn_menu', 'cn_open_notes', 'cn_show', 'cn_put_back_done') as $key) {
+	foreach (array('cn_write', 'cn_channel_edit', 'cn_channel_edit_on', 'cn_channel_edit_off', 'cn_show_all', 'cn_show_less', 'cn_versions', 'cn_menu', 'cn_open_notes', 'cn_show', 'cn_put_back_done') as $key) {
 		pg_assert_contains("'" . $key . "'", $notes, 'the string ' . $key . ' is sent to the screen');
 	}
 }
