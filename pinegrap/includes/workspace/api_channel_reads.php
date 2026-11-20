@@ -6,7 +6,8 @@
  * that no other route gave: its detail (ws_channel_detail()), the Files and
  * Board tabs (ws_channel_files(), ws_channel_board()), the list of earlier
  * versions of its conversation (ws_channel_eras()) and its export as
- * Markdown (ws_channel_export_collect(), ws_channel_export_markdown()).
+ * Markdown (ws_channel_export_collect(), ws_channel_export_markdown()) and
+ * the Activity tab of Channel info (ws_channel_activity()).
  *
  * Every route reads the channel through ws_api_channel_or_404(), the
  * panel's reading rule (ws_can_read_channel()), and gives no more than the
@@ -80,6 +81,18 @@ function ws_channel_read_api_routes()
                 array('name' => 'cancelled', 'in' => 'query', 'type' => 'bool', 'description' => 'With group_by status, a column of the cancelled tasks too.'),
                 array('name' => 'done_all', 'in' => 'query', 'type' => 'bool', 'description' => 'With group_by status, every finished task, not only those of the last 14 days.'),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.activity.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/activity',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_activity_get',
+            'returns'     => 'WorkspaceChannelActivity',
+            'summary'     => 'A channel\'s state, as its Activity tab shows it',
+            'description' => 'The Activity tab of Channel info in one read: the summary of the agents\' states (working, waiting, not seen, ready, paused, and the words of the line), the project (the newest one an agent reported, else the linked repository\'s owner/name; null for neither), a row per agent in the order working, waiting, not seen, ready, paused (while working: who asked and the message when the request is in this channel, since when, the progress note; the reported model, context, project and branch and when it was reported, stale after a day), the requests of the channel\'s agents (waiting with the oldest\'s age, in work, answered and failed today), the polls, agent questions and approvals waiting for a person (oldest first, at most 5, more counts the rest), today\'s decisions (the count and the newest 3), each reported plan window once with the agents that reported it, and the repository\'s numbers of today. Everything an agent reported is as it said it; the site cannot check it (usage_tip). context, project, branch and repository are null where nothing was reported or counted. It only tells: nothing is changed.' . $unread,
+            'params'      => array($id),
         ),
 
         array(
@@ -392,6 +405,56 @@ function ws_api_channel_board_get($params)
         'cancelled' => !empty($params['cancelled']),
         'done_all'  => !empty($params['done_all']),
     ))));
+}
+
+/* ---------------------------------------------------------------------------
+   The Activity tab
+   --------------------------------------------------------------------------- */
+
+// What ws_channel_activity() returns.
+function ws_api_channel_activity_schema()
+{
+    $agent_ref = array(array('id' => 'integer', 'handle' => 'string', 'name' => 'string'));
+
+    return array(
+        'channel_id' => 'integer',
+        'summary'    => array('working' => 'integer', 'waiting' => 'integer', 'late' => 'integer', 'idle' => 'integer', 'paused' => 'integer', 'words' => 'string'),
+        'project'    => 'object?',
+        'agents'     => array(array(
+            'id'          => 'integer',
+            'handle'      => 'string',
+            'name'        => 'string',
+            'kind'        => 'string',
+            'avatar'      => 'string',
+            'role'        => 'string',
+            'role_key'    => 'string',
+            'state'       => 'string',
+            'state_words' => 'string',
+            'usage_high'  => 'boolean',
+            'request'     => 'object?',
+            'model'       => 'string',
+            'reported_at' => 'integer?',
+            'reported'    => 'string',
+            'stale'       => 'boolean',
+            'context'     => 'object?',
+            'project'     => 'string?',
+            'branch'      => 'string?',
+        )),
+        'requests'   => array('waiting' => 'integer', 'oldest_age' => 'string', 'oldest_message_id' => 'integer?', 'working' => 'integer', 'answered' => 'integer', 'failed' => 'integer'),
+        'waiting'    => array('items' => array(array('kind' => 'string', 'message_id' => 'integer', 'text' => 'string', 'age' => 'string', 'created_at' => 'integer')), 'more' => 'integer'),
+        'decisions'  => array('count' => 'integer', 'items' => array(array('message_id' => 'integer', 'text' => 'string'))),
+        'usage'      => array(array('name' => 'string', 'label' => 'string', 'percent' => 'integer', 'resets_at' => 'integer', 'resets' => 'string', 'high' => 'boolean', 'words' => 'string', 'agents' => $agent_ref)),
+        'usage_tip'  => 'string',
+        'repository' => 'object?',
+    );
+}
+
+function ws_api_channel_activity_get($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    api_ok(ws_channel_activity($viewer, $channel, time()));
 }
 
 /* ---------------------------------------------------------------------------

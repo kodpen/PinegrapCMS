@@ -198,6 +198,7 @@ function ws_openapi_objects()
         'WorkspaceChannelBoard'     => 'ws_api_channel_board_schema',
         'WorkspaceChannelBoardCard' => 'ws_api_channel_board_card_schema',
         'WorkspaceChannelEras'      => 'ws_api_channel_eras_schema',
+        'WorkspaceChannelActivity'  => 'ws_api_channel_activity_schema',
         'WorkspaceChannelExport'    => 'ws_api_channel_export_schema',
         'WorkspaceMessage'    => 'ws_api_message_schema',
         'WorkspaceDecision'   => 'ws_api_decision_schema',
