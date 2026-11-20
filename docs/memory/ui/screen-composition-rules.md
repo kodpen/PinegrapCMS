@@ -4,8 +4,8 @@ description: How a settings pane, a form drawer and a connect row are put togeth
 ---
 
 ## Why is this here?
-- Look A's recipes say how a part looks; these lines say how a screen is put together from them. Owner (2026-11-20), of a mailbox's drawer: "bu ayar çorba gibi bir ekran olmuş. epostayı kaldıracak düğme falan yok" (`workflow/screen-drawing-first.md`).
-- Architect (2026-11-20): gathered from the drawings the owner said yes to (`workflow/decisions-made-panel-12.md`, `decisions-made-panel-4.md`) and his words on earlier screens. A drawing he approves later may add a line; the live patterns come with `plans/design-examples-patterns.md`.
+- Look A's recipes say how a part looks; these lines say how a screen is put together from them. Owner (2026-11-20), of a mailbox's drawer: "bu ayar çorba gibi bir ekran olmuş. epostayı kaldıracak düğme falan yok" (`workflow/screen-described-in-plan.md`).
+- Architect (2026-11-20): gathered from the drawings the owner said yes to (`workflow/decisions-made-panel-12.md`, `decisions-made-panel-4.md`) and his words on earlier screens. A plan's screen description keeps them (`workflow/screen-described-in-plan.md`); the live patterns come with `plans/design-examples-patterns.md`.
 
 ## How is a settings pane laid out?
 - A purpose line, then the parts as folded rows: icon tile, name, one line of state in the person's words, a state pill, a chevron; one row open at a time. Never several open cards one under another.

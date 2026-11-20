@@ -199,11 +199,12 @@ queue (`workflow/agent-channel-wake.md`); a worker never waits on one.
    is covered by the open version's single `[FIX]`, `[SECURITY]` and
    `[SCHEME]` lines, written by the merging session from the PR bodies
    (`release/upgrade-changelog-rules.md`).
-10. **A panel screen follows the look and is drawn before it is built.** Whatever a
+10. **A panel screen follows the look and its plan's description.** Whatever a
    step draws in the panel or the Workspace is copied from the Design examples
    screen (`design_examples.php`) and keeps `ui/screen-composition-rules.md`; a
-   new settings pane, form drawer or dialog, tab or kind of screen starts only
-   from a drawing the owner said yes to (`workflow/screen-drawing-first.md`).
+   plan says in words how each screen it adds is put together, and no step
+   waits for a drawing or an approval of a look
+   (`workflow/screen-described-in-plan.md`).
 
 ## When a task is done
 
