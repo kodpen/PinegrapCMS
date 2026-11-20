@@ -952,3 +952,23 @@ function test_legal_documents_submit_order_reads_the_ticked_rule()
 	pg_assert_false((bool) preg_match("/get_field_value\('legal_(preinfo|contract|kvkk)'\) == 1/", $source), 'acceptance read with == 1');
 	pg_assert_same(7, substr_count($source, 'pg_legal_document_ticked('));
 }
+
+// The city line of an address prints the province only when it is not the
+// city again, as the order summary and its e-mail print it: "06100 Ankara",
+// not "06100 Ankara Ankara"; the district before the city unless it repeats it.
+function test_legal_documents_city_line_drops_a_repeated_state()
+{
+	pg_assert_same(array('06100', 'Ankara'), pg_legal_document_city_line('06100', '', 'Ankara', 'ankara'));
+	pg_assert_same(array('34710', 'Moda', 'Kadıköy', 'İstanbul'), pg_legal_document_city_line('34710', 'Moda', 'Kadıköy', 'İstanbul'));
+	pg_assert_same(array('34710', 'Kadıköy', 'İstanbul'), pg_legal_document_city_line('34710', 'Kadıköy', 'Kadıköy', 'İstanbul'));
+
+	$values = pg_legal_document_values(
+		array('billing_zip_code' => '06100', 'billing_city' => 'Ankara', 'billing_state' => 'Ankara', 'total' => 100),
+		array(), array(), array(), array(), 'legal_documents_test_money'
+	);
+
+	pg_assert_same('06100 Ankara', $values['text']['buyer_address']);
+
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+	pg_assert_contains("pg_legal_document_city_line(\$ship_to['zip_code'], \$ship_to['district'] ?? '', \$ship_to['city'], \$ship_to['state'])", $section, 'the delivery address too');
+}

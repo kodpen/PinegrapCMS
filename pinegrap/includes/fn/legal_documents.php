@@ -245,6 +245,34 @@ function pg_legal_document_address(array $lines)
 }
 
 /**
+ * The postcode, district, city and province of an address, for one line of
+ * pg_legal_document_address(): the district only when it is not the city
+ * again (pg_order_view_district()), the province only when it is not the
+ * city again, as the order summary and its e-mail print them
+ * (_pg_sw_list_order_city_line()).
+ *
+ * @param string $zip
+ * @param string $district
+ * @param string $city
+ * @param string $state
+ * @return string[]
+ */
+function pg_legal_document_city_line($zip, $district, $city, $state)
+{
+    $city = trim((string) $city);
+    $state = trim((string) $state);
+
+    if (mb_strtolower($state, 'UTF-8') === mb_strtolower($city, 'UTF-8')) {
+        $state = '';
+    }
+
+    return array_values(array_filter(
+        array(trim((string) $zip), pg_order_view_district($district, $city), $city, $state),
+        'strlen'
+    ));
+}
+
+/**
  * The field values for one order: plain text values and the line table.
  *
  * Amounts are integer minor units; an amount of zero leaves its field empty,
@@ -286,7 +314,7 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
     $buyer_address = pg_legal_document_address(array(
         $order['billing_address_1'] ?? '',
         $order['billing_address_2'] ?? '',
-        array($order['billing_zip_code'] ?? '', $order['billing_city'] ?? '', $order['billing_state'] ?? ''),
+        pg_legal_document_city_line($order['billing_zip_code'] ?? '', '', $order['billing_city'] ?? '', $order['billing_state'] ?? ''),
         $order['billing_country'] ?? '',
     ));
 
@@ -1112,7 +1140,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
                 $ship_to['address_1'],
                 $ship_to['address_2'],
                 // The district before the city, as the order screens print it.
-                array($ship_to['zip_code'], pg_order_view_district($ship_to['district'] ?? '', $ship_to['city']), $ship_to['city'], $ship_to['state']),
+                pg_legal_document_city_line($ship_to['zip_code'], $ship_to['district'] ?? '', $ship_to['city'], $ship_to['state']),
                 // The country in the site's language, as the order summary names it.
                 pg_geo_country_label_site($ship_to['country']),
             )),
