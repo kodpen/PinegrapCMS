@@ -275,8 +275,9 @@ function pg_place_map_load_driver()
 }
 
 /**
- * Looks up one address. Called only from place_coordinates.php, when a
- * button was pressed.
+ * Looks up one address. Called only when something was pressed: from
+ * place_coordinates.php, and from places.php for a visitor's typed address
+ * (pg_place_list_find()).
  *
  * @param string $text
  * @return array pg_place_map_answer(), state also empty

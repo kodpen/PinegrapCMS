@@ -714,6 +714,7 @@
     "Your browser cannot play this recording.": "Tarayıcınız bu kaydı oynatamıyor.",
     "Your browser cannot play this video.": "Tarayıcınız bu videoyu oynatamıyor.",
     "Your browser could not use a passkey here.": "Tarayıcınız burada geçiş anahtarı kullanamadı.",
+    "Your browser did not give a position.": "Tarayıcınız konum vermedi.",
     "Your browser does not support drag and drop file uploads.": "Tarayıcınız sürükle ve bırak dosya yüklemelerini desteklemiyor.",
     "Your browser does not support secure key generation. Please use a modern browser.": "Tarayıcınız güvenli anahtar üretimini desteklemiyor. Lütfen güncel bir tarayıcı kullanın.",
     "Your browser has a secure connection to the CDN or load balancer, which forwards the request to this server over plain HTTP. List it under Settings > Firewall > Trusted Proxies with all of its published address ranges before turning Secure Mode on; Cloudflare is recognised on its own. This page reads no site settings, so it cannot tell whether it is listed already.": "Tarayıcınızın CDN veya yük dengeleyiciyle bağlantısı güvenli; o, isteği bu sunucuya düz HTTP ile iletiyor. Güvenli Modu açmadan önce onu yayımladığı tüm adres aralıklarıyla Ayarlar > Güvenlik Duvarı > Güvenilen Vekil Sunucular arasına ekleyin; Cloudflare kendiliğinden tanınır. Bu sayfa site ayarlarını okumadığı için zaten listede olup olmadığını söyleyemez.",
