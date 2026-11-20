@@ -4,18 +4,21 @@
  *
  * Event tickets (2026.11.0): a completed order's line that gives tickets
  * (a calendar event's reservation, or a product marked "Gives tickets")
- * gets one event_ticket row per unit, 100 a line at most, as gift cards
+ * gets one event_tickets row per unit, 100 a line at most, as gift cards
  * are issued. A ticket keeps its order line and unit, the product, the
  * event and its date when the line has one, and its state: valid, used or
- * void. Its code is drawn again from the row's salt under the site's key
- * (pg_event_ticket_code()) and only its hash is stored, so the door finds
- * a ticket by the code it is shown and the table alone gives no code. A
+ * void. Its code is drawn again from the row's salt under the tickets' own
+ * key (pg_event_ticket_code(), pg_event_tickets_key(): 32 random bytes in
+ * config_text, sealed with the site's key) and only its hash is stored,
+ * so the door finds a ticket by the code it is shown and the table alone
+ * gives no code. A
  * cancelled order voids its tickets and a restored one gives them back,
  * each by one conditional UPDATE. The tickets reach the buyer in a mail of
  * their own through the mail queue: one signed link to the tickets page.
  *
  * The switch "Tickets" (Site Settings, Features) is a config_text row,
- * '1' on, missing off: with it off no line gives tickets.
+ * '1' on, missing off: with it off no line gives tickets. An order that is
+ * deleted takes its tickets with it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -43,7 +46,7 @@ define('PG_EVENT_TICKET_ALPHABET', '0123456789ABCDEFGHJKMNPQRSTVWXYZ');
  */
 function pg_event_tickets_ready()
 {
-    return function_exists('pg_schema_has') && pg_schema_has('event_ticket');
+    return function_exists('pg_schema_has') && pg_schema_has('event_tickets');
 }
 
 /**
@@ -61,7 +64,8 @@ function pg_event_tickets_switch_on()
 }
 
 /**
- * Saves the "Tickets" switch: '1' on, the row removed when off.
+ * Saves the "Tickets" switch: '1' on, the row removed when off. Switched
+ * on, the tickets key is made first when there is none.
  *
  * @param bool $on
  * @return bool
@@ -72,23 +76,98 @@ function pg_event_tickets_switch_save($on)
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
     }
 
+    if ($on) {
+        pg_event_tickets_key_make();
+    }
+
     return (bool) pg_config_text_save(PG_EVENT_TICKETS_SWITCH, $on ? '1' : '');
 }
 
+/** The settings text that holds the tickets' own key, sealed with the site's key. */
+define('PG_EVENT_TICKETS_KEY_SETTING', 'event_tickets_key');
+
 /**
- * The site's key the codes and the tickets link are drawn under, '' when
- * none is set.
+ * Seals a tickets key with the site's key: "cipher:iv", as the reseal
+ * registry's 'iv' kind reads it.
+ *
+ * @param string      $key      64 hex characters
+ * @param string|null $site_key null is ENCRYPTION_KEY
+ * @return string
+ */
+function pg_event_tickets_key_seal($key, $site_key = null)
+{
+    list($cipher, $iv) = encrypt_string_with_iv((string) $key, $site_key);
+
+    return $cipher . ':' . $iv;
+}
+
+/**
+ * Opens a sealed tickets key. AES-CBC carries no MAC, so a value that opens
+ * under a wrong key is told apart by its shape: 64 hex characters.
+ *
+ * @param string      $sealed   "cipher:iv"
+ * @param string|null $site_key null is ENCRYPTION_KEY
+ * @return string the key, '' when there is none or it does not open
+ */
+function pg_event_tickets_key_open($sealed, $site_key = null)
+{
+    $sealed = (string) $sealed;
+
+    if (strpos($sealed, ':') === false) {
+        return '';
+    }
+
+    list($cipher, $iv) = explode(':', $sealed, 2);
+    $key = pg_ssl_keys_open($cipher, $iv, $site_key);
+
+    return (is_string($key) && (preg_match('/^[0-9a-f]{64}$/', $key) === 1)) ? $key : '';
+}
+
+/**
+ * The tickets' own key the codes and the tickets link are drawn under,
+ * '' when none was made yet or it does not open with the site's key. The
+ * door needs no key: it looks a code up by its hash.
  *
  * @return string
  */
 function pg_event_tickets_key()
 {
-    return defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_event_tickets_key_open(pg_config_text(PG_EVENT_TICKETS_KEY_SETTING));
+}
+
+/**
+ * Makes the tickets key once: 32 random bytes, sealed with the site's key.
+ * Only a missing row takes it (pg_config_text_claim()), so a key that exists
+ * never changes; it is made when the switch is saved on, never during an
+ * order's completion.
+ *
+ * @return bool whether a key is there afterwards
+ */
+function pg_event_tickets_key_make()
+{
+    if (!function_exists('pg_config_text_claim')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    if (pg_config_text(PG_EVENT_TICKETS_KEY_SETTING) !== '') {
+        return true;
+    }
+
+    if (!defined('ENCRYPTION_KEY') || ((string) ENCRYPTION_KEY === '')) {
+        return false;
+    }
+
+    return pg_config_text_claim(PG_EVENT_TICKETS_KEY_SETTING, '', pg_event_tickets_key_seal(bin2hex(random_bytes(32))))
+        || ((string) db_value("SELECT value FROM config_text WHERE name = '" . e(PG_EVENT_TICKETS_KEY_SETTING) . "'") !== '');
 }
 
 /**
  * Whether completed orders make tickets now: the switch on, the table
- * there and a key to draw the codes under.
+ * there and the tickets key opening with the site's key.
  *
  * @return bool
  */
@@ -145,15 +224,15 @@ function pg_event_ticket_salt()
 }
 
 /**
- * A ticket's code, drawn from its line, unit and salt under the site's key:
+ * A ticket's code, drawn from its line, unit and salt under the tickets key:
  * twelve characters of Crockford's base 32 (60 bits) in three groups of
  * four. It carries no order number and is drawn again for the holder's
  * page from the row; only its hash is stored. Pure.
  *
  * @param int    $order_item_id
  * @param int    $unit 1 to the line's ticket count
- * @param string $salt event_ticket.code_salt
- * @param string $key  the site's key
+ * @param string $salt event_tickets.code_salt
+ * @param string $key  the tickets key
  * @return string '' without a key, a line, a unit or a salt
  */
 function pg_event_ticket_code($order_item_id, $unit, $salt, $key)
@@ -240,9 +319,9 @@ function pg_event_tickets_query($sql, array $params)
  *                           recurrence_number, reservations, quantity
  * @param int      $order_id
  * @param int      $count    pg_event_tickets_line_count()
- * @param string   $key      the site's key
+ * @param string   $key      the tickets key
  * @param callable $salt     returns a new salt (pg_event_ticket_salt())
- * @return array rows of the event_ticket columns
+ * @return array rows of the event_tickets columns
  */
 function pg_event_tickets_line_rows(array $line, $order_id, $count, $key, $salt = 'pg_event_ticket_salt')
 {
@@ -277,7 +356,7 @@ function pg_event_tickets_line_rows(array $line, $order_id, $count, $key, $salt 
  * @param int           $order_id
  * @param bool|null     $on       null asks pg_event_tickets_on()
  * @param callable|null $query    pg_event_tickets_query() by default
- * @param string|null   $key      null is the site's key
+ * @param string|null   $key      null is pg_event_tickets_key()
  * @return int the tickets made
  */
 function pg_event_tickets_complete_line(array $line, $order_id, $on = null, $query = null, $key = null)
@@ -299,7 +378,7 @@ function pg_event_tickets_complete_line(array $line, $order_id, $on = null, $que
         }
 
         $changed = call_user_func($query,
-            "INSERT IGNORE INTO event_ticket (
+            "INSERT IGNORE INTO event_tickets (
                 order_id, order_item_id, unit, product_id, calendar_event_id, recurrence_number,
                 code_salt, code_hash, state, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'valid', UNIX_TIMESTAMP())",
@@ -327,7 +406,7 @@ function pg_event_tickets_order_cancelled($order_id, $query = null)
     }
 
     $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
-        "UPDATE event_ticket
+        "UPDATE event_tickets
         SET state = 'void', voided_at = UNIX_TIMESTAMP()
         WHERE (order_id = ?) AND (state <> 'void')",
         array((int) $order_id));
@@ -350,9 +429,31 @@ function pg_event_tickets_order_restored($order_id, $query = null)
     }
 
     $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
-        "UPDATE event_ticket
+        "UPDATE event_tickets
         SET state = IF(used_at > 0, 'used', 'valid'), voided_at = 0
         WHERE (order_id = ?) AND (state = 'void')",
+        array((int) $order_id));
+
+    return ($changed === false) ? 0 : (int) $changed;
+}
+
+/**
+ * Removes the tickets of an order that is being deleted: a row left behind
+ * would still pass at the door, and an order line that later gets the same
+ * id would find its units taken and stay without tickets.
+ *
+ * @param int           $order_id
+ * @param callable|null $query pg_event_tickets_query() by default
+ * @return int the tickets removed
+ */
+function pg_event_tickets_delete_for_order($order_id, $query = null)
+{
+    if (((int) $order_id <= 0) || (($query === null) && !pg_event_tickets_ready())) {
+        return 0;
+    }
+
+    $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+        "DELETE FROM event_tickets WHERE order_id = ?",
         array((int) $order_id));
 
     return ($changed === false) ? 0 : (int) $changed;
@@ -382,7 +483,7 @@ function pg_event_ticket_state_after($action, $state, $used_at)
 
 /**
  * The raw token of an order's tickets link: an HMAC of the order under the
- * site's key, drawn again whenever the link is needed. Pure.
+ * tickets key, drawn again whenever the link is needed. Pure.
  *
  * @param int    $order_id
  * @param string $key
@@ -416,7 +517,7 @@ function pg_event_tickets_link_token_valid($order_id, $token, $key)
 }
 
 /**
- * The signed link to an order's tickets page, '' without a key.
+ * The signed link to an order's tickets page, '' without the tickets key.
  *
  * @param int $order_id
  * @return string

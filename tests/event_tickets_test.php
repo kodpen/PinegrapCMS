@@ -65,7 +65,7 @@ function test_event_tickets_one_per_unit_and_the_cap()
 
 	pg_assert_same(3, $made, 'three tickets made');
 	pg_assert_same(3, count($queries), 'one INSERT per unit');
-	pg_assert_contains('INSERT IGNORE INTO event_ticket', $queries[0]['sql'], 'a unit keeps the row it has');
+	pg_assert_contains('INSERT IGNORE INTO event_tickets', $queries[0]['sql'], 'a unit keeps the row it has');
 	pg_assert_same(array(1, 2, 3), array_map(function ($q) { return $q['params'][2]; }, $queries), 'units 1 to 3');
 	pg_assert_same(array(9001, 501, 1, 77, 12, 4), array_slice($queries[0]['params'], 0, 6), 'order, line, unit, product, event and date');
 
@@ -138,6 +138,41 @@ function test_event_tickets_cancel_and_restore()
 	$record = event_tickets_test_recorder();
 	pg_assert_same(0, pg_event_tickets_order_cancelled(0, $record), 'no order, nothing');
 	pg_assert_same(array(), $GLOBALS['event_tickets_test_queries'], 'and no statement');
+}
+
+function test_event_tickets_own_key_sealed_with_the_site_key()
+{
+	$key = str_repeat('ab', 32);
+	$sealed = pg_event_tickets_key_seal($key, 'site-key');
+
+	pg_assert_true(strpos($sealed, ':') !== false, 'stored as cipher:iv');
+	pg_assert_false(strpos($sealed, $key) !== false, 'the key is not stored in the clear');
+	pg_assert_same($key, pg_event_tickets_key_open($sealed, 'site-key'), 'opens with the site key');
+	pg_assert_same('', pg_event_tickets_key_open($sealed, 'other-key'), 'not with another site key');
+	pg_assert_same('', pg_event_tickets_key_open('', 'site-key'), 'none when missing');
+	pg_assert_same('', pg_event_tickets_key_open(pg_event_tickets_key_seal('short', 'site-key'), 'site-key'), 'a value of another shape is no key');
+
+	$reseal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/reseal.php');
+	pg_assert_contains("\$config_text('event_tickets', 'event_tickets_key', 'iv')", $reseal, 'a key reset seals it again');
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets.php');
+	pg_assert_same(1, substr_count($module, 'pg_event_tickets_key_make();'), 'made in one place only');
+	pg_assert_contains("pg_config_text_claim(PG_EVENT_TICKETS_KEY_SETTING, ''", $module, 'only a missing row takes it');
+}
+
+function test_event_tickets_deleted_with_the_order()
+{
+	$record = event_tickets_test_recorder();
+
+	pg_assert_same(1, pg_event_tickets_delete_for_order(9001, $record), 'reports the rows removed');
+	pg_assert_same(array(array('sql' => 'DELETE FROM event_tickets WHERE order_id = ?', 'params' => array(9001))), $GLOBALS['event_tickets_test_queries'], 'one DELETE for the order');
+
+	$record = event_tickets_test_recorder();
+	pg_assert_same(0, pg_event_tickets_delete_for_order(0, $record), 'no order, nothing');
+	pg_assert_same(array(), $GLOBALS['event_tickets_test_queries'], 'and no statement');
+
+	$delete_order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_order.php');
+	pg_assert_contains("pg_event_tickets_delete_for_order(\$order['id']);", $delete_order, 'delete_order.php removes them');
 }
 
 function test_event_tickets_nothing_with_the_switch_off()
@@ -301,17 +336,17 @@ function test_event_tickets_step_run_twice_changes_nothing_the_second_time()
 	list($first, $second) = $result['runs'];
 
 	pg_assert_same(2, count($first), 'the table and the column on the first run');
-	pg_assert_contains('CREATE TABLE event_ticket (', $first[0], 'the table');
+	pg_assert_contains('CREATE TABLE event_tickets (', $first[0], 'the table');
 	pg_assert_contains('UNIQUE KEY idx_line_unit (order_item_id, unit)', $first[0], 'one row per line and unit');
 	pg_assert_contains('UNIQUE KEY idx_code (code_hash)', $first[0], 'the code\'s hash looked up and unique');
 	pg_assert_same('ALTER TABLE `products` ADD `gives_tickets` TINYINT UNSIGNED NOT NULL DEFAULT 0', $first[1], 'the product\'s mark');
 	pg_assert_same(array(), $second, 'the second run writes nothing');
-	pg_assert_true(isset($result['schema']['event_ticket'], $result['schema']['products']['gives_tickets']), 'both are there');
+	pg_assert_true(isset($result['schema']['event_tickets'], $result['schema']['products']['gives_tickets']), 'both are there');
 
 	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_same(1, substr_count($migration, "\tupgrade_2026_11_0_event_tickets();"), 'called once');
 	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_tickets\(\); +// 11\.0\.246\n~', $migration), 'under 11.0.246');
 
 	$install = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
-	pg_assert_contains("\t\t'event_ticket',\n", $install, 'listed in get_tables()');
+	pg_assert_contains("\t\t'event_tickets',\n", $install, 'listed in get_tables()');
 }

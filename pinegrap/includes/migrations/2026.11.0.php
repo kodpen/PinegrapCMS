@@ -7860,7 +7860,7 @@ function upgrade_2026_11_0_ws_calls() {
 
 }
 
-// Event tickets (11.0.246, includes/fn/event_tickets.php): one event_ticket
+// Event tickets (11.0.246, includes/fn/event_tickets.php): one event_tickets
 // row per unit of a completed order line that gives tickets (a calendar
 // event's reservation, or a product marked "Gives tickets"), and that mark
 // on the product. A ticket keeps its order line and unit (unique, so a line
@@ -7872,7 +7872,7 @@ function upgrade_2026_11_0_ws_calls() {
 // completed before the switch is on have no tickets.
 function upgrade_2026_11_0_event_tickets() {
 
-	install_create_table('event_ticket', "CREATE TABLE event_ticket (
+	install_create_table('event_tickets', "CREATE TABLE event_tickets (
 		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
 		order_id          INT UNSIGNED NOT NULL DEFAULT 0,
 		order_item_id     INT UNSIGNED NOT NULL DEFAULT 0,

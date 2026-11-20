@@ -214,6 +214,8 @@ function test_reseal_registry_module_entries()
 		'ws_mail_boxes.settings', 'config.ws_claude_token', 'config_text.value', 'ws_agents.key_sealed',
 		'ws_agents.door_secret_sealed',
 	);
+
+	pg_assert_true(is_array(reseal_test_config_text_entry('event_tickets_key')), 'config_text.event_tickets_key');
 	$found = array();
 
 	foreach (pg_reseal_registry() as $entry) {
@@ -378,4 +380,35 @@ function test_reseal_runs_after_the_sealing_writes()
 	foreach (array('pg_captcha_settings_save(', 'pg_connect_app_save(', 'encrypt_string_with_iv(') as $call) {
 		pg_assert_true(strpos($save, $call) < strpos($save, 'generate_encryption_key()'), $call . ' runs before the key changes');
 	}
+}
+
+function reseal_test_config_text_entry($name)
+{
+	foreach (pg_reseal_registry() as $entry) {
+		if (($entry['table'] === 'config_text') && (strpos($entry['where'], "name = '" . $name . "'") !== false)) {
+			return $entry;
+		}
+	}
+
+	return null;
+}
+
+// The event tickets' own key is sealed again under the new site key and
+// still opens as the same key.
+function test_reseal_event_tickets_key()
+{
+	$entry = reseal_test_config_text_entry('event_tickets_key');
+
+	pg_assert_true(is_array($entry), 'event_tickets_key entry');
+
+	if (!is_array($entry)) {
+		return;
+	}
+
+	$key = str_repeat('c4', 32);
+	$result = pg_reseal_value($entry, pg_event_tickets_key_seal($key, 'old-key'), '', 'old-key', 'new-key');
+
+	pg_assert_same('done', $result['status']);
+	pg_assert_same($key, pg_event_tickets_key_open($result['value'], 'new-key'));
+	pg_assert_same('', pg_event_tickets_key_open($result['value'], 'old-key'));
 }

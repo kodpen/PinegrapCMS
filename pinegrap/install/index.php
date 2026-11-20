@@ -9046,7 +9046,7 @@ function get_tables() {
 		'erp_stock_moves',
 		'erp_waybill_items',
 		'erp_waybills',
-		'event_ticket',
+		'event_tickets',
 		'excluded_transit_dates',
 		'experiment_hourly',
 		'experiment_variants',
