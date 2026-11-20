@@ -621,19 +621,18 @@ function mp_pricing_tax_off_rate($product)
  * from.
  *
  * A price typed on the listing comes first (the account's typed prices are
- * read once a request). Otherwise reads only when the account has a rule:
- * its groups when a category rule is among them, and its cost, listing
- * commission and typed floor in one statement.
+ * read once a request). Otherwise the rules' price (mp_pricing_rule_price_of()),
+ * or the robot's while it sends and the listing is on Win or Grow while
+ * winning (mp_repricer_send_price()).
  *
  * @param array $account     marketplace_accounts row
  * @param array $product     products row: id, brand
  * @param int   $site_price  mp_product_price()
  * @param float $vat_rate    the rate inside the site price
- * @return array ['price' => int, 'rule' => bool, 'own' => bool, 'floor' => int|null]
+ * @return array ['price' => int, 'rule' => bool, 'own' => bool, 'robot' => bool, 'floor' => int|null]
  */
 function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
 {
-    $answer = array('price' => (int) $site_price, 'rule' => false, 'own' => false, 'floor' => null);
     $account_id = (int) ($account['id'] ?? 0);
     $product_id = (int) ($product['id'] ?? 0);
 
@@ -642,13 +641,54 @@ function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
     $own_prices = mp_pricing_account_own_prices($account_id);
 
     if (($product_id > 0) && isset($own_prices[$product_id])) {
-        return array('price' => $own_prices[$product_id], 'rule' => false, 'own' => true, 'floor' => null);
+        return array('price' => $own_prices[$product_id], 'rule' => false, 'own' => true, 'robot' => false, 'floor' => null);
     }
 
     $rules = mp_pricing_account_rules($account_id);
+    $priced = mp_pricing_rule_price_of($account, $rules, $product, $site_price, $vat_rate);
+    $answer = array('price' => $priced['price'], 'rule' => $priced['rule'], 'own' => false, 'robot' => false,
+        'floor' => $priced['floor']);
+    $own = mp_pricing_account_row($rules);
+
+    if (!$priced['rule'] || !is_array($own) || ((int) $own['robot'] !== MP_PRICING_ROBOT_ON)) {
+        return $answer;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_repricer.php');
+
+    $robot = mp_repricer_send_price($own, $priced['figures'], $priced['price'], $priced['floor']);
+
+    if ($robot !== null) {
+        $answer['price'] = $robot;
+        $answer['robot'] = true;
+    }
+
+    return $answer;
+}
+
+/**
+ * The rules' price of a product on an account, with its floor and the
+ * listing's figures.
+ *
+ * Reads only when the account has a rule: the product's groups when a
+ * category rule is among them, and its cost, listing commission, typed
+ * floor and robot columns in one statement.
+ *
+ * @param array $account     marketplace_accounts row
+ * @param array $rules       mp_pricing_account_rules()
+ * @param array $product     products row: id, brand
+ * @param int   $site_price  mp_product_price()
+ * @param float $vat_rate    the rate inside the site price
+ * @return array ['price' => int, 'rule' => bool, 'floor' => int|null, 'figures' => array]
+ */
+function mp_pricing_rule_price_of($account, $rules, $product, $site_price, $vat_rate)
+{
+    $account_id = (int) ($account['id'] ?? 0);
+    $product_id = (int) ($product['id'] ?? 0);
+    $none = array('price' => (int) $site_price, 'rule' => false, 'floor' => null, 'figures' => mp_pricing_figures_of(null));
 
     if (!$rules || ($product_id <= 0)) {
-        return $answer;
+        return $none;
     }
 
     $chains = array();
@@ -665,16 +705,17 @@ function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
     $rule = mp_pricing_pick_rule($rules, $chains, (string) ($product['brand'] ?? ''));
 
     if ($rule === null) {
-        return $answer;
+        return $none;
     }
 
-    $floor = mp_pricing_product_floor($account_id, $rules, mp_pricing_product_figures($account_id, $product_id), $vat_rate);
+    $figures = mp_pricing_product_figures($account_id, $product_id);
+    $floor = mp_pricing_product_floor($account_id, $rules, $figures, $vat_rate);
 
     return array(
         'price' => mp_pricing_channel_price($site_price, $rule, $floor),
         'rule' => true,
-        'own' => false,
         'floor' => $floor,
+        'figures' => $figures,
     );
 }
 
@@ -740,16 +781,16 @@ function mp_pricing_account_own_prices($account_id)
 }
 
 /**
- * A listing's cost, commission, typed floor, typed price and strategy, in
- * one statement.
+ * A listing's cost, commission, typed floor, typed price, strategy and the
+ * robot's columns, in one statement.
  *
  * @param int $account_id
  * @param int $product_id
- * @return array ['cost' => int, 'commission' => float|null, 'own_floor' => int, 'own_price' => int, 'strategy' => int]
+ * @return array mp_pricing_figures_of()
  */
 function mp_pricing_product_figures($account_id, $product_id)
 {
-    $select = array("0 AS cost", "NULL AS commission", "0 AS own_floor", "0 AS own_price", "0 AS strategy");
+    $select = array("0 AS cost", "NULL AS commission");
     $joins = array();
 
     if (pg_schema_has('erp_product_costs', 'avg_cost')) {
@@ -761,24 +802,39 @@ function mp_pricing_product_figures($account_id, $product_id)
         $select[1] = "map.commission AS commission";
     }
 
-    $select[2] = "COALESCE(state.own_floor, 0) AS own_floor";
-    $select[3] = "COALESCE(state.own_price, 0) AS own_price";
-    $select[4] = "COALESCE(state.strategy, 0) AS strategy";
+    foreach (array('own_floor', 'own_price', 'strategy', 'robot_price', 'lost_price', 'lost_at') as $column) {
+        $select[] = "COALESCE(state." . $column . ", 0) AS " . $column;
+    }
+
     $joins[] = "LEFT JOIN marketplace_price_state AS state
             ON (state.account_id = map.account_id) AND (state.product_id = map.product_id)";
 
-    $row = db_item("SELECT " . implode(', ', $select) . "
+    return mp_pricing_figures_of(db_item("SELECT " . implode(', ', $select) . "
         FROM marketplace_product_map AS map
         " . implode("\n        ", $joins) . "
-        WHERE (map.account_id = '" . (int) $account_id . "') AND (map.product_id = '" . (int) $product_id . "')");
+        WHERE (map.account_id = '" . (int) $account_id . "') AND (map.product_id = '" . (int) $product_id . "')"));
+}
 
-    return array(
-        'cost' => is_array($row) ? (int) $row['cost'] : 0,
-        'commission' => (is_array($row) && ($row['commission'] !== null)) ? (float) $row['commission'] : null,
-        'own_floor' => is_array($row) ? (int) $row['own_floor'] : 0,
-        'own_price' => is_array($row) ? (int) $row['own_price'] : 0,
-        'strategy' => is_array($row) ? (int) $row['strategy'] : 0,
+/**
+ * A listing's figures typed from its row, zeros for no row.
+ *
+ * @param array|null $row
+ * @return array ['cost' => int, 'commission' => float|null, 'own_floor' => int, 'own_price' => int,
+ *                'strategy' => int, 'robot_price' => int, 'lost_price' => int, 'lost_at' => int]
+ */
+function mp_pricing_figures_of($row)
+{
+    $row = is_array($row) ? $row : array();
+    $figures = array(
+        'cost' => (int) ($row['cost'] ?? 0),
+        'commission' => (isset($row['commission']) && ($row['commission'] !== null)) ? (float) $row['commission'] : null,
     );
+
+    foreach (array('own_floor', 'own_price', 'strategy', 'robot_price', 'lost_price', 'lost_at') as $column) {
+        $figures[$column] = (int) ($row[$column] ?? 0);
+    }
+
+    return $figures;
 }
 
 /**

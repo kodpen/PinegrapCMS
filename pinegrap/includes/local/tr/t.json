@@ -2759,6 +2759,7 @@
     "The button label can be at most 50 characters long.": "Düğme etiketi en fazla 50 karakter olabilir.",
     "The button that sends the form.": "Formu gönderen düğme.",
     "The buttons come back when it has finished. Refresh this screen in a while.": "İşlem bitince düğmeler geri gelir. Bir süre sonra bu ekranı yenileyin.",
+    "The buybox of a marketplace could not be read": "Bir pazaryerinin buybox bilgisi okunamadı",
     "The buyer and the marketplace will no longer open the PDF at this address. Take it back?": "Alıcı ve pazaryeri PDF'i artık bu adresten açamayacak. Adres geri alınsın mı?",
     "The buyer answered the e-Invoice with a return.": "Alıcı e-Faturaya iade faturasıyla karşılık verdi.",
     "The buyer is registered for e-invoice but Parasut returned no address to send it to.": "Alıcı e-fatura mükellefi ancak Paraşüt gönderilecek bir adres döndürmedi.",
