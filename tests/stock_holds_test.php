@@ -227,8 +227,9 @@ function test_stock_holds_checks_read_units_free()
 	pg_assert_contains('$product[\'inventory_quantity\'] = pg_stock_hold_less_held($product[\'inventory_quantity\'], isset($held[$product[\'id\']]) ? $held[$product[\'id\']] : 0);', $check, 'counted after the location');
 	pg_assert_contains('$at_location = pg_stock_quantity_at($product[\'id\'], $stock_location_id, $product[\'inventory_quantity\']);', $check, 'the location read stays');
 	pg_assert_contains('pg_bundle_check_inventory($liveform, $cart_order_id, $bundle_ids);', $check, 'a bundle cart goes to its check');
-	pg_assert_contains('if ($product[\'inventory_quantity\'] == 0) {', $check, 'nothing left: the line goes');
-	pg_assert_contains('if ($order_item[\'quantity\'] > $product[\'inventory_quantity\']) {', $check, 'too many: the line is cut');
+	pg_assert_contains('$stock = pg_cart_line_stock_allowance($order_item[\'quantity\'], $product[\'inventory_quantity\'], $product[\'starting_inventory_quantity\'], $product[\'minimum_quantity\']);', $check, 'each line against the units left');
+	pg_assert_contains('remove_order_item($order_item[\'id\']);', $check, 'nothing left: the line goes');
+	pg_assert_contains('if ($stock[\'allowed\'] < $order_item[\'quantity\']) {', $check, 'too many: the line is cut');
 	pg_assert_contains('$product[\'inventory_quantity\'] = $product[\'inventory_quantity\'] - $order_item[\'quantity\'];', $check, 'lines share the units');
 	pg_assert_true(strpos($check, '$at_location = pg_stock_quantity_at(') < strpos($check, 'pg_stock_hold_less_held('), 'holds come off the location\'s stock');
 
