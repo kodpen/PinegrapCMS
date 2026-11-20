@@ -4676,6 +4676,7 @@
     "The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.": "Anahtar {var:1} dışındaki her tür kaydı okur ve yalnızca Çalışma Alanı'na ve Görevler'e yazar. Gizli anahtarı yoktur ve hiçbir yerde oturum açamaz: Pinegrap AI bu sitenin içinde çalışır.",
     "The keys are in your {var:1} account.": "Anahtarlar {var:1} hesabınızda.",
     "The kind of a WhatsApp message has at most 16 lower-case letters, digits and _.": "Bir WhatsApp mesajının türü en çok 16 küçük harf, rakam ve _ içerir.",
+    "The kind of an argument is not one the channels read.": "Bağımsız değişkenin türü kanalların okuduğu türlerden biri değil.",
     "The kinds of record the flow's owner may read; the box reads with their rights.": "Akışın sahibinin okuyabildiği kayıt türleri; kutu onun yetkileriyle okur.",
     "The kitchen": "Mutfak",
     "The kitchen opens before the gates do: fruit, vegetables, fish and meat are weighed for every animal by its diet sheet.": "Mutfak kapılardan önce açılır: meyve, sebze, balık ve et her hayvan için beslenme çizelgesine göre tartılır.",
