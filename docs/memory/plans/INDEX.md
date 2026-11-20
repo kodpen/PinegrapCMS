@@ -18,9 +18,6 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - artifact-canvas-rename-steps.md: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the name in every text, memory's label, the canvas's icon on the buttons that open it, close-out
 - artifact-canvas-rename.md: Plan (owner 2026-11-20): the Design Canvas is renamed Artifact Canvas ("Yapıt Tuvali") and gets a new icon, two sheets and a wave; the name and the icon on every screen that shows them; AC1-AC5
-- auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
-- auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
-- auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -28,6 +25,7 @@
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
+- channel-commands-answer-census.md: K28 census (CC12 of channel-commands): an application command's answer today, what one person sees and where it is kept, a phone and a second window; the proposed shape
 - channel-commands-features-2.md: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek, /oluştur for a contact, row, ERP account and event, /kargo, application arguments, an agent's command
 - channel-commands-features.md: Plan channel-commands, features K1 to K14: the registry, the gate that knows the channel, grouped /help and / list, commands as a reply, /hatırlat, /özet, /onay, /güncelleme, /checkin, /akış
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
@@ -108,18 +106,6 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
-- panel-old-screens-census-commerce-done.md: LM1a census: commerce and ERP panel screens already on look A (no step needed) and screen families neither LM1a nor LM1b names
-- panel-old-screens-census-commerce-erp.md: LM1a census, ERP groups E1–E5: invoice and quote documents, lists off the list table driver, ERP reports, records, imports and settings; what each draws its own way, estimated product lines
-- panel-old-screens-census-commerce-shop.md: LM1a census, commerce groups C1–C5: orders, products, customers and offers, marketplaces, shipping and tax forms; screens by root file, what each draws its own way, estimated product lines
-- panel-old-screens-census-commerce.md: LM1a census of old commerce and ERP panel screens against look A (2026-11-15): how it was checked, what every group changes, the twelve groups in order
-- panel-old-screens-census-site-content.md: Census LM1b, content screens against look A: pages, comments, short links, pop-ups, 404 log, accessibility, page tests (S1); menus, regions, ads, styles, themes, design files (S4)
-- panel-old-screens-census-site-forms.md: Census LM1b against look A (S3): submitted forms, form fields, the form list and item views, files (Create File, Edit File, Import Zip), calendars, events, locations, bookings
-- panel-old-screens-census-site-people.md: Census LM1b, people screens against look A (S2): users, sessions, contacts, contact groups, privacy export and erase, email and SMS campaigns, Messages, WhatsApp templates
-- panel-old-screens-census-site-system.md: Census LM1b against look A: visitors and logs (S4: Site Log, Audit Trail, Firewall log, Performance, Search Console), System tools, Translations, settings pages outside the dialog (S6)
-- panel-old-screens-census-site.md: Census LM1b of old panel screens (pages, files, forms, comments, users, visitors, tools, Site Settings) against look A: what each draws its own way, sizes, six step groups
-- panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
-- panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
-- panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())
 - place-map-census-3.md: Census MP1 of place-map, part 3: how the cookie notice lists a service (pg_consent_page_services(), pg_consent_catalogue()), which class the map could go under, and the questions for the architect
 - place-map-census.md: Census MP1 of place-map, part 1: the three address providers' terms on keeping a looked-up coordinate and on showing it on another map (Google, Mapbox, Photon), read 2026-11-16
@@ -129,7 +115,6 @@
 - product-form-uploads-features.md: Plan product-form-uploads, features U1 to U16: the field and its rules, the shopper's upload, who opens the file, where the order shows it, its later life and the sweep of unordered carts
 - product-form-uploads-steps.md: Plan product-form-uploads, steps FU1 to FU6: the field and the file's door, the designer carts, the classic carts, the order's readers and the API, the sweep, close-out
 - product-form-uploads.md: Plan (owner 2026-11-20, agent channel poll 160): a File Upload field in product forms, so a shopper's photo or print file stays with the cart line and the order; steps FU1 to FU6
-- prototype-comments-place.md: Plan (architect 2026-11-20, agent channel message 9873): the Prototype comments button moves into the canvas bar, the list becomes a tab beside the links panel; one step, PN6
 - prototype-next.md: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to a frame, drag a row onto a frame, a badge's target-less links, Ctrl+F, shortest click path, Play's misses; PX1-PX6
 - referral-programme-features.md: Plan referral-programme, features E1 to E15: settings, who can refer, the signed code on the affiliate link's rails, the checks at completion, the reward as a commission row and credit, its take-back
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
@@ -153,7 +138,4 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
-- wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
-- wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
-- wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
 - workspace-calls.md: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls in the Workspace, browser to browser (WebRTC), two people and groups of four at most, guests, screen sharing; steps CL1-CL8

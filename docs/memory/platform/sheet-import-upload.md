@@ -9,7 +9,7 @@ module: sheet_import
 
 ## How does it work?
 - The importer calls `pg_sheet_import_upload('file', <its screen title>)` after its token check and before it looks at the upload. A CSV, a missing file or a failed upload is left untouched for the importer's own checks.
-- A workbook (`pg_sheet_kind()`) with one sheet: the sheet is written to a temporary CSV file (`pg_sheet_import_csv()`) and `$_FILES['file']` is replaced by it (same name, `tmp_name` the CSV); the importer reads it as any CSV.
+- A workbook (by content, `sheet-import-door-safety.md`) with one sheet: the sheet is written to a temporary CSV file (`pg_sheet_import_csv()`) and `$_FILES['file']` is replaced by it (same name, `tmp_name` the CSV); the importer reads it as any CSV.
 - Importers that check `is_uploaded_file()` call `pg_sheet_import_file($upload)` instead, which also takes the CSV this request made. The CSV files and a chosen workbook are removed when the request ends.
 
 ## What does the sheet question do?
@@ -30,4 +30,4 @@ module: sheet_import
 - The accept lists add `PG_SHEET_IMPORT_ACCEPT` (.xlsx,.ods,.xls); `pg_sheet_import_hint()` adds one line under each file field naming the formats.
 
 ## How is it tested?
-- `tests/sheet_import_test.php`: `tests/fixtures/sheet_import/rows.*` (two sheets, LibreOffice 24.2) read by each importer's own CSV path give the same rows as `rows.csv`; the second sheet as short links equals `links.csv`; damaged files, hidden fields, texts. `tests/sheet_import_workbook_test.php`: the product and bank imports read the chosen sheet, a one-sheet file does not ask, an answer puts the file back. The pages were not run in a browser.
+- `tests/sheet_import_test.php`: `tests/fixtures/sheet_import/rows.*` (two sheets, LibreOffice 24.2) read by each importer's own CSV path give the same rows as `rows.csv`; the second sheet as short links equals `links.csv`; damaged files, hidden fields, texts. `tests/sheet_import_workbook_test.php`: the product and bank imports read the chosen sheet, a one-sheet file does not ask, an answer puts the file back.

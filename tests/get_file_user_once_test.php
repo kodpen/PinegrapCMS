@@ -48,7 +48,7 @@ function test_get_file_private_channel_file_reaches_initialize_user_twice()
 	// calls initialize_user() with no guard of its own: the function's own
 	// guard is what keeps that second call quiet.
 	$workspace = strpos($source, '$workspace_file = false;');
-	$folder = strpos($source, '$access_control_type = ($erp_document || $workspace_file)');
+	$folder = strpos($source, '$access_control_type = ($erp_document || $workspace_file || $product_form_upload)');
 
 	pg_assert_true(($workspace !== false) && ($folder !== false) && ($workspace < $folder), 'the workspace block comes before the folder check');
 	pg_assert_true(strpos(substr($source, (int) $workspace, (int) $folder - (int) $workspace), 'initialize_user();') !== false, 'the workspace block reads the visitor');

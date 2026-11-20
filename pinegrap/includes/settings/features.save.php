@@ -43,10 +43,33 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_page_clicks_switch_save((bool) post_value('page_clicks_on'));
     }
 
+    // Maps: the switch and the tiles (includes/fn/place_tiles.php), only
+    // when the card was on the form. An empty key box keeps the saved key.
+    if (array_key_exists('place_map_card', $_POST) && pg_schema_has('config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+        pg_place_tiles_switch_save((bool) post_value('place_map_on'));
+
+        $place_tiles_refusal = pg_place_tiles_save(
+            (string) post_value('place_map_tiles'),
+            (string) post_value('place_map_credit'),
+            (string) post_value('place_map_key'),
+            (bool) post_value('place_map_key_clear'));
+
+        if ($place_tiles_refusal !== '') {
+            $liveform->add_warning(h($place_tiles_refusal));
+        }
+    }
+
     // Courses: one config_text row, '1' on, removed when off, only when its
     // card was on the form.
     if (array_key_exists('courses_card', $_POST) && function_exists('pg_course_switch_save')) {
         pg_course_switch_save((bool) post_value('courses_on'));
+    }
+
+    // Event tickets: one config_text row, '1' on, removed when off, only when
+    // its card was on the form.
+    if (array_key_exists('event_tickets_card', $_POST) && function_exists('pg_event_tickets_switch_save')) {
+        pg_event_tickets_switch_save((bool) post_value('event_tickets_on'));
     }
 
     // Visitor notifications: through the switch's one saver

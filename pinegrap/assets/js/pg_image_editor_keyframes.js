@@ -10,7 +10,8 @@
  * one; dragging a layer on the stage while the playhead stands away from 0
  * sets its place at that moment; a diamond per key on the layer's track
  * (a press seeks to it, a drag moves it, Delete removes it); the path the
- * layer's centre takes, drawn over the stage.
+ * layer's centre takes, drawn over the stage; Attach to, naming the layer
+ * or group whose motion the layer takes (M.attachTargets()).
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -164,6 +165,33 @@
                 self.editKeys(l.id, function () { return []; });
             } }));
         }
+
+        if (!groupOfKey(l.id) && this.attachOffer) {
+            this.attachField(body, l);
+        }
+    };
+
+    // Attach to: the layer or group whose move, turn and size layer l
+    // takes at every moment (M.attachTargets()); Not attached lets it go
+    // where it stands. Nothing when there is nothing to name.
+    Editor.prototype.attachField = function (body, l) {
+        var self = this, offer = this.attachOffer(), now = M.attachOf(l), pick;
+
+        if (!offer.length && !now) {
+            return;
+        }
+
+        pick = el('select', { class: 'pgie-select', 'aria-label': t('attachTo') });
+        pick.appendChild(el('option', { value: '', text: t('attachNone') }));
+        offer.forEach(function (att) {
+            pick.appendChild(el('option', { value: att, text: self.attachLabel(att) }));
+        });
+        pick.value = now;
+        pick.addEventListener('change', function () {
+            self.attachLayer(l.id, pick.value);
+        });
+        body.appendChild(section(t('attachTo'), pick));
+        body.appendChild(el('p', { class: 'pgie-note', text: t('attachNote') }));
     };
 
     // The key at the playhead: its place, size, turn, opacity and ease.

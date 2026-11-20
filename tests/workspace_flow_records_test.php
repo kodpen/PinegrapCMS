@@ -261,6 +261,37 @@ function test_workspace_flow_records_data()
 	pg_assert_same(2, ws_flow_records_data($items, 0, 120)['count'], 'the count is every record');
 }
 
+// A record's summary is its list's description field, which is often the
+// whole post: 50 records with their whole text overran the list's 32 KB
+// and the records past it were never sent, as the window had passed them.
+// The summary is cut at a word to WS_FLOW_RECORDS_SUMMARY characters.
+function test_workspace_flow_records_summary_fits()
+{
+	pg_assert_same('Short text.', ws_flow_records_summary("  Short \n text.  "));
+	pg_assert_same('', ws_flow_records_summary(''));
+
+	$long = ws_flow_records_summary(str_repeat('Çağrı merkezi haberleri ', 400));
+	pg_assert_true(mb_strlen($long, 'UTF-8') <= WS_FLOW_RECORDS_SUMMARY + 1, 'cut');
+	pg_assert_same('…', mb_substr($long, -1, 1, 'UTF-8'), 'marked as cut');
+	pg_assert_false((bool) preg_match('/\s…$/u', $long), 'no space before the mark');
+	pg_assert_same(0, strpos(str_repeat('Çağrı merkezi haberleri ', 400), mb_substr($long, 0, -1, 'UTF-8')), 'a word is not split');
+
+	$items = array();
+
+	for ($i = 0; $i < WS_FLOW_RECORDS_MAX; $i++) {
+		$items[] = array(
+			'title'   => str_repeat('Başlık ', 15),
+			'summary' => ws_flow_records_summary(str_repeat('Uzun bir yazının gövdesi ', 500)),
+			'picture' => 'https://www.example.com/files/' . str_repeat('p', 40) . $i . '.jpg',
+			'link'    => 'https://www.example.com/news/' . str_repeat('l', 50) . $i,
+			'date'    => '2026-11-16 09:00',
+		);
+	}
+
+	pg_assert_same(WS_FLOW_RECORDS_MAX, count(json_decode(ws_flow_records_data($items, 0, WS_FLOW_LOOP_ITEMS_BYTES)['records'], true)), 'every record fits');
+	pg_assert_contains('ws_flow_records_summary(', pg_test_function_source('ws_flow_records_items'));
+}
+
 // Try draws what it would read as the box's texts: one record a line with
 // its date, then the titles left out; nothing when there is none.
 function test_workspace_flow_records_try_texts()

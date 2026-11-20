@@ -325,6 +325,57 @@ function pg_course_lessons($course_id)
 }
 
 /**
+ * The lessons that count for a course: those whose page sits right in the
+ * course's folder (pg_course_lesson_in_folder()). A lesson whose page left
+ * the folder or was deleted gates nothing (Z17): it does not hold back the
+ * lesson after it with "Lessons in order", is not listed to the member and
+ * does not keep the course from completing. The Courses screen names it.
+ * Pure.
+ *
+ * @param array $lessons      pg_course_lessons()
+ * @param array $page_folders page id => its folder id; a missing page has none
+ * @param int   $folder_id    the course's folder
+ * @return array the counted lessons, in the order given
+ */
+function pg_course_lessons_counted(array $lessons, array $page_folders, $folder_id)
+{
+    $out = array();
+
+    foreach ($lessons as $lesson) {
+        if (pg_course_lesson_in_folder($page_folders[(int) $lesson['page_id']] ?? 0, $folder_id)) {
+            $out[] = $lesson;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A course's lessons that count for its members (pg_course_lessons_counted()),
+ * in their order: what the gate, the blocks, the press and the completion
+ * read.
+ *
+ * @param array $course a course row
+ * @return array rows as pg_course_lessons()
+ */
+function pg_course_member_lessons(array $course)
+{
+    $lessons = pg_course_lessons($course['id'] ?? 0);
+    $page_ids = array_unique(array_map('intval', array_column($lessons, 'page_id')));
+    $page_folders = array();
+
+    if ($page_ids) {
+        $rows = db_items("SELECT page_id, page_folder FROM page WHERE page_id IN (" . implode(',', $page_ids) . ")");
+
+        foreach (is_array($rows) ? $rows : array() as $row) {
+            $page_folders[(int) $row['page_id']] = (int) $row['page_folder'];
+        }
+    }
+
+    return pg_course_lessons_counted($lessons, $page_folders, $course['folder_id'] ?? 0);
+}
+
+/**
  * The lesson a page is, with its course, or null for a page that is no
  * lesson.
  *
@@ -466,15 +517,15 @@ function pg_course_mark_done($user_id, $course_id, $lesson_id)
     $now = time();
     $out = array('done' => pg_course_write_row(pg_course_done_row($user_id, $course_id, $lesson_id, $now)), 'completed' => false);
 
+    $course = pg_course_get($course_id);
     $progress = pg_course_member_progress($user_id, $course_id);
-    $lesson_ids = array_map('intval', array_column(pg_course_lessons($course_id), 'id'));
+    $lesson_ids = ($course !== null) ? array_map('intval', array_column(pg_course_member_lessons($course), 'id')) : array();
 
     $out['completed'] = pg_course_write_row(pg_course_completion_row($user_id, $course_id, $lesson_ids, $progress['done_ids'], $progress['completed_at'] > 0, $now));
 
     // Announced only by the press that wrote the completion row, so a
     // second press or a race announces nothing.
     if ($out['completed'] && function_exists('pg_announce')) {
-        $course = pg_course_get($course_id);
         $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . (int) $user_id . "'");
 
         pg_announce('course.completed', array(
@@ -918,7 +969,7 @@ function pg_course_gate($page_id, $folder_id, $access_type)
         $enrolment_day = date('Y-m-d');
     }
 
-    $lessons = pg_course_lessons($course['id']);
+    $lessons = pg_course_member_lessons($course);
     $answer = pg_course_gate_answer(true, $access_type, $lesson, $lessons, $progress['done_ids'], $enrolment_day, date('Y-m-d'), $can_edit);
 
     if (!$answer['closed']) {

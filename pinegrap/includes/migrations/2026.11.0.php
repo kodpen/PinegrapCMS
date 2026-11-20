@@ -236,6 +236,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
+	upgrade_2026_11_0_event_tickets();           // 11.0.247
+	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
+	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
 
 }
 
@@ -7900,5 +7903,118 @@ function upgrade_2026_11_0_ws_app_command_args() {
 	install_add_column('ws_app_commands', 'args', "TEXT NULL");
 
 	install_note('Workspace: an application\'s / command can name its arguments, offered in the channels like a built-in command\'s.');
+
+}
+
+// Event tickets (11.0.247, includes/fn/event_tickets.php): one event_tickets
+// row per unit of a completed order line that gives tickets (a calendar
+// event's reservation, or a product marked "Gives tickets"), and that mark
+// on the product. A ticket keeps its order line and unit (unique, so a line
+// is never ticketed twice), the product, the event and its date, the salt
+// its code is drawn from under the tickets' own key and only the code's hash
+// (unique, the door's lookup), and its state: valid, used (when, by whom)
+// or void (when). products.gives_tickets is added in place where the server
+// allows it, so a large catalogue is not copied. No backfill: orders
+// completed before the switch is on have no tickets.
+function upgrade_2026_11_0_event_tickets() {
+
+	install_create_table('event_tickets', "CREATE TABLE event_tickets (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		unit              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		product_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		calendar_event_id INT UNSIGNED NOT NULL DEFAULT 0,
+		recurrence_number INT UNSIGNED NOT NULL DEFAULT 0,
+		code_salt         CHAR(32) CHARACTER SET ascii NOT NULL DEFAULT '',
+		code_hash         CHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
+		state             ENUM('valid','used','void') NOT NULL DEFAULT 'valid',
+		used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		used_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		voided_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_line_unit (order_item_id, unit),
+		UNIQUE KEY idx_code (code_hash),
+		KEY idx_order (order_id),
+		KEY idx_event (calendar_event_id, recurrence_number, state),
+		KEY idx_product (product_id, state)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (!install_add_columns_instant('products', array('gives_tickets' => "TINYINT UNSIGNED NOT NULL DEFAULT 0"))) {
+
+		install_add_column('products', 'gives_tickets', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	}
+
+	install_note('Event tickets: the table for tickets with a QR code is ready; nothing changes on the site until Tickets is switched on in Site Settings, Features.');
+
+}
+
+// The waiting list of a full event date (11.0.248, includes/fn/stock_notify.php):
+// a request to be told when a place frees is a stock_notify row with the
+// event and its date (recurrence_number, 0 for a single event or shared
+// spots) beside product_id 0, so a product's notice never reads it and an
+// event's never reads a product's. Both columns default to 0, which every
+// existing row is: a product's request. The index is the sender's and the
+// "already waiting" read: the date's waiting rows. stock_notify is small,
+// so a plain ALTER is fine where an instant one is refused.
+function upgrade_2026_11_0_event_waiting_list() {
+
+	$columns = array(
+		'calendar_event_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'recurrence_number' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('stock_notify', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('stock_notify', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('stock_notify', 'idx_event_sent', "INDEX idx_event_sent (calendar_event_id, recurrence_number, sent_at)");
+
+}
+
+// The daily stock record behind stock planning (2026.11.0, 11.0.249;
+// includes/erp/stock_plan.php, erp_stock_plan_job.php). One row per tracked
+// product and site day, written only when it sold or its stock was 0 at the
+// night pass: the units sold and that stock, NULL when unknown (the 365 days
+// filled from past sales). idx_day serves the nightly pruning of rows older
+// than 400 days. The job is added to the general job's list here, so the
+// history starts the first night after the upgrade.
+function upgrade_2026_11_0_erp_stock_days() {
+
+	install_create_table('erp_stock_days', "CREATE TABLE erp_stock_days (
+		product_id  INT UNSIGNED NOT NULL,
+		day         DATE NOT NULL,
+		sold        INT UNSIGNED NOT NULL DEFAULT 0,
+		stock       INT UNSIGNED NULL,
+		PRIMARY KEY (product_id, day),
+		KEY idx_day (day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_column_exists('config', 'job_dispatch') && install_column_exists('config', 'job_dispatch_enabled')) {
+
+		$row = db_item("SELECT job_dispatch_enabled, job_dispatch FROM config LIMIT 1");
+
+		if (!empty($row) && ((int) $row['job_dispatch_enabled'] === 1)) {
+
+			$list = array_values(array_filter(array_map('trim', explode(',', (string) $row['job_dispatch'])), 'strlen'));
+
+			if (!in_array('erp_stock_plan_job', $list, true)) {
+				$list[] = 'erp_stock_plan_job';
+				db_q("UPDATE config SET job_dispatch = ?", array(implode(',', $list)));
+			}
+
+		}
+
+	}
+
+	install_note('Accounting: a daily stock record per product starts tonight, the ground of the coming stock plan.');
 
 }

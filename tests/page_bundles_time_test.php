@@ -95,3 +95,17 @@ function test_page_bundle_bell_row()
 	pg_assert_contains("\$action == 'bundle_held'", pg_test_function_source('pg_notification_display'), 'the bell draws it');
 	pg_assert_contains("'bundle_held'", pg_test_function_source('pg_notification_visible'), 'its person sees it');
 }
+
+// A due bundle whose lock is held (somebody removing a page, a person's
+// publish) is not skipped for good: its time was cleared to claim it, so the
+// time is given back and the next pass of the job publishes it.
+function test_page_bundle_job_busy_gives_the_time_back()
+{
+	$run = pg_test_function_source('pg_page_bundle_job_run');
+	$start = strpos($run, "if (!empty(\$published['busy']))");
+	pg_assert_true($start !== false, 'the busy answer is read');
+
+	$busy = substr($run, $start, strpos($run, 'continue;', $start) - $start);
+	pg_assert_contains("UPDATE page_bundle SET publish_at = ?", $busy, 'the time read is put back');
+	pg_assert_contains("AND status = 'scheduled' AND publish_at = 0", $busy, 'only while the bundle still waits with no time');
+}

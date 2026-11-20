@@ -1098,6 +1098,14 @@ function ws_agent_brief($agent, $row, $scopes)
             $lines[] = 'Read more of it with GET /workspace/channels/' . (int) $row['channel_id'] . '/context?limit=<n>: ask for only as many messages as the request needs.';
         }
 
+        // Typed as the agent's application command (app_commands.php).
+        $command = function_exists('ws_app_command_request_of') ? ws_app_command_request_of($row) : null;
+
+        if ($command) {
+            $lines[] = '';
+            $lines = array_merge($lines, ws_app_command_brief_lines($command));
+        }
+
         // Tagged outside a message (a shared note, a table cell, a task).
         $item = ws_item_of($row);
 

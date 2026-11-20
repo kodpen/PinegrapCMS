@@ -74,7 +74,7 @@ function pg_tr_engines()
             'kind'   => 'server',
             'html'   => true,
             'ready'  => ($google_key !== ''),
-            'reason' => ($google_key !== '') ? '' : lang('No Google Cloud API key is stored. Enter one in Settings > Languages and Translation.'),
+            'reason' => ($google_key !== '') ? '' : lang('No Google Cloud API key is stored. Enter one on Google Cloud Translation\'s page of Connections.'),
         ),
         'chrome' => array(
             'label'  => lang('Browser (Chrome Translator API)'),

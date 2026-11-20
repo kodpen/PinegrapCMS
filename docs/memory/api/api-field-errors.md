@@ -12,6 +12,9 @@ description: External API 422 lists every wrong field in error.errors (field, co
 - A handler's refusal (`api_fail_validation()` in a resource file) stays one error, with no `errors` list.
 - Inside `api_validate_value()` and `api_validate_bounds()` a refusal is `api_field_refuse()`, which throws `ApiFieldRefused`; `api_validate_collect()` catches it and goes on. They are not meant to be called outside it.
 
+## Which body keys are unknown?
+- A key no parameter of the route takes, other than `api_key` and `api_secret`. A parameter declared `in: query` is taken from the body too (the body is merged over the query), so `DELETE /products/12` with `{"permanent": true}` deletes for good. A path parameter's name in the body stays `unknown_field`. Before PR #10615 a query parameter in the body was refused as unknown.
+
 ## Which row codes exist?
 - `required`, `unknown_field`, `not_single`, `not_integer`, `not_minor_units`, `not_number`, `below_min`, `above_max`, `not_boolean`, `not_allowed` (enum), `not_date`, `not_object`, `not_list`, `too_many_items`, `items_not_single`, `too_long`. The sentences are the ones a single refusal gave before.
 

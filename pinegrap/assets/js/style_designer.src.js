@@ -7434,7 +7434,15 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-outline" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid-3x3"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Outline')) + '</span><kbd class="sd-vb-kbd">O</kbd><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
-            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>';
+            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            // Prototype comments from Design mode: shown once the comments
+            // part runs (_sdProtoCommentsMark()); it switches to Prototype
+            // mode with the side panel's Comments tab open.
+            '<button type="button" class="sd-vb-row" id="sd-vb-pcomments" role="menuitem" hidden><span class="bi bi-chat-square-text"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Prototype comments')) + '</span></button>';
+        viewMenu.querySelector('#sd-vb-pcomments').addEventListener('click', function () {
+            _sdViewMenuOpen(false);
+            _sdProtoCommentsOpen();
+        });
         ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(wrapper) : document.body).appendChild(viewMenu);
 
         // The sizes as one list: an option per width button, in its order.
@@ -7784,7 +7792,7 @@ const StyleDesigner = (function () {
                 return;
             }
             if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
-            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"]'), function (r) { return r.offsetParent !== null; });
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"], [role="menuitem"]'), function (r) { return r.offsetParent !== null; });
             var at = rows.indexOf(document.activeElement);
             if (at === -1 || !rows.length) return;
             e.preventDefault();
@@ -14022,6 +14030,12 @@ const StyleDesigner = (function () {
         ],
         'account.store_credit_uses': [
             { __credit_use_order_no: '12301', __credit_use_order_url: '/order?id=1038', __credit_use_date: '14.10.2026', __credit_use_amount: '₺15,00' }
+        ],
+        // An order whose tickets were all used, beside the preview's valid one.
+        'account.tickets': [
+            { __tickets_order_no: '12288', __tickets_order_date: '02.10.2026', __tickets_events: _sdT('Autumn concert'),
+              __tickets_count: '2', __tickets_count_label: _sdT('{var:1} tickets').replace('{var:1}', '2'), __tickets_valid: '0',
+              __tickets_state_label: _sdT('None valid'), __tickets_tone: 'secondary', __tickets_url: '#' }
         ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
@@ -25801,6 +25815,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Subscriptions of the member'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'account.subscriptions' } },
                 { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
                 { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
+                { label: _sdT('Tickets of the member'), type: 'loop_area', icon: 'bi-ticket-perforated', extra: { listSource: 'account.tickets' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -27818,6 +27833,9 @@ const StyleDesigner = (function () {
         if (ctrl.classList.contains('sd-seg-src')) {
             ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
         }
+        // The spacing rows are hidden behind the spacing box: it stands in.
+        var _spRows = ctrl.closest('.sd-sp-rows');
+        if (_spRows) ctrl = _spRows.parentNode.querySelector('.sd-spb-host') || _spRows.parentNode;
         var _hidden = ctrl.closest('.sd-sect-body');
         if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
         _sdRcolShow('options');
@@ -33969,6 +33987,7 @@ const StyleDesigner = (function () {
             counts[t] = _sdMcMark(tpl.content, nodes, false);
         });
         bindMultiPropEvents(nodes);
+        _sdSpBoxBind(nodes);
         _sdMcHead(nodes, alike, shown, counts);
         // Content level: the panel edits only when every element may be edited.
         _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
@@ -34123,14 +34142,6 @@ const StyleDesigner = (function () {
             if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); }
             if (mixed) row.setAttribute('data-sd-mixed', '1');
         });
-        root.querySelectorAll('.sd-bm-v').forEach(function (cell) {
-            var pre = cell.getAttribute('data-bm');
-            if (_sdMcVals(nodes.map(function (n) { return _sdMcValOf(n.props, { prefix: pre }); })).mixed) {
-                cell.textContent = '~';
-                cell.classList.add('sd-bm-mixed');
-            }
-        });
-        root.querySelectorAll('.sd-bm-center').forEach(function (core) { core.textContent = _sdT('{var} elements', nodes.length); });
         if (live) {
             _sdNarrowStack(root);
             _sdSegSync(root);
@@ -34273,19 +34284,6 @@ const StyleDesigner = (function () {
                 if (!sel) return;
                 sel.value = _sdSegNext(sel.value, btn.getAttribute('data-cls') || '', true);
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-        });
-
-        // ── The spacing box: a click steps a side's value for every element ──
-        panel.querySelectorAll('.sd-bm-v').forEach(function (cell) {
-            cell.addEventListener('click', function () {
-                var pre = cell.getAttribute('data-bm');
-                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
-                var cycle = pre.charAt(0) === 'm' ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
-                var next = cycle[(cycle.indexOf(cell.textContent) + 1) % cycle.length];
-                _sdMcCommit(nodes, function (n) {
-                    n.props.cssClass = _sdMcClassWrite(n.props.cssClass, { prefix: pre }, next === '-' ? '' : pre + next);
-                });
             });
         });
     }
@@ -35946,6 +35944,7 @@ const StyleDesigner = (function () {
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdFxBind(selectedNode);
+        _sdSpBoxBind([selectedNode]);
         markModifiedProps();
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
@@ -36850,6 +36849,7 @@ const StyleDesigner = (function () {
             'account.subscriptions': _sdT('One row for every subscription of the signed-in member, newest first, with its pause, resume, cancel and card update forms.'),
             'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
             'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
+            'account.tickets':    _sdT('One row for every order of the signed-in member that holds event tickets, newest first, at most 50, with the link to its tickets page.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -45082,6 +45082,7 @@ const StyleDesigner = (function () {
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
+            out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -46871,6 +46872,51 @@ const StyleDesigner = (function () {
         }).join('') + '</div>';
     }
 
+    // pg_event_tickets_account_html(); rows in account.tickets' shape.
+    /* @pg-site-output */
+    function _sdAccountTicketsHtml(rows) {
+        return '<div class="list-group pg-sw-tickets">' + (rows || []).map(function (r) {
+            return '<a href="' + esc(r.__tickets_url) + '" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2">'
+                + '<span><span class="fw-semibold">' + esc(r.__tickets_events) + '</span>'
+                + '<span class="d-block small text-body-secondary">#' + esc(r.__tickets_order_no) + ' · ' + esc(r.__tickets_order_date) + ' · ' + esc(r.__tickets_count_label) + '</span></span>'
+                + '<span class="badge text-bg-' + esc(r.__tickets_tone) + '">' + esc(r.__tickets_state_label) + '</span></a>';
+        }).join('') + '</div>';
+    }
+
+    // A new list of the member's tickets, as the tickets section draws it.
+    /* @pg-site-output */
+    function _sdAccountTicketsList(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token) {
+            return sem(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        return sem('div', 'list-group', _sdT('Tickets of the member'), {}, [createNode('loop_area', { source: 'account.tickets' }, [
+            sem('a', 'list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2', _sdT('Order'),
+                { href: '#', _bindings: { href: '__tickets_url' } }, [
+                sem('span', '', _sdT('Order'), {}, [
+                    text('span', 'fw-semibold', _sdT('Events and products'), _sdT('Jazz night'), '__tickets_events'),
+                    sem('span', 'd-block small text-body-secondary', _sdT('Order'), {}, [
+                        sem('span', '', '#', { text: '#' }),
+                        text('span', '', _sdT('Order number'), '12340', '__tickets_order_no'),
+                        sem('span', '', '·', { text: ' · ' }),
+                        text('span', '', _sdT('Order date'), '18.11.2026', '__tickets_order_date'),
+                        sem('span', '', '·', { text: ' · ' }),
+                        text('span', '', _sdT('Number of tickets (words)'), _sdT('{var:1} tickets').replace('{var:1}', '4'), '__tickets_count_label')
+                    ])
+                ]),
+                // The badge's colour is a condition on the tone: a class takes no value.
+                sem('span', 'badge text-bg-success', _sdT('State'), _sdPartWhen('__tickets_tone', 'eq', 'success'),
+                    [text('span', '', _sdT('State'), _sdT('{var:1} valid').replace('{var:1}', '4'), '__tickets_state_label')]),
+                sem('span', 'badge text-bg-secondary', _sdT('State'), _sdPartWhen('__tickets_tone', 'eq', 'secondary'),
+                    [text('span', '', _sdT('State'), _sdT('None valid'), '__tickets_state_label')])
+            ])
+        ])]);
+    }
+
     // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
     // in pg_booking_customer_view_rows()' shape.
     /* @pg-site-output */
@@ -47032,6 +47078,7 @@ const StyleDesigner = (function () {
             }));
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
+        if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
         if (section === 'store_credit') {
             var use = function (u) {
                 return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
@@ -47059,7 +47106,8 @@ const StyleDesigner = (function () {
             bookings: _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.'),
             subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
             store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
-            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.')
+            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.'),
+            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.')
         };
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
@@ -48358,7 +48406,8 @@ const StyleDesigner = (function () {
             ['has_past_bookings', _sdT('The member has past bookings')],
             ['has_store_credit', _sdT('The member has store credit or points to convert')],
             ['has_store_credit_cards', _sdT('The member has store credit cards')],
-            ['has_subscriptions', _sdT('The member has subscriptions')]
+            ['has_subscriptions', _sdT('The member has subscriptions')],
+            ['has_tickets', _sdT('The member has orders with event tickets')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -55463,31 +55512,63 @@ const StyleDesigner = (function () {
         h += '</div>';
         return h;
     }
-    function boxModel(n) {
-        var cls = n.props.cssClass || '';
-        function valOf(prefix) { 
-            var c = cls.split(' ').find(function(cl) { return cl.startsWith(prefix); });
-            return c ? c.replace(prefix, '') : '-';
+    // ── The spacing box (Style › Spacing)
+    // The section's body holds the box's place (data-sd-spbox) and today's
+    // ten rows, hidden: they still count, reset and search as before. The
+    // box and the size chooser in the section's head are the part
+    // 'spacing' (style_designer_spacing.js), run the first time the section
+    // is shown; what it writes is the rows' classes (pg_spacing_box.js).
+    // The chosen screen size, for every element, until the editor closes.
+    var _sdSpSize = 'xs';
+
+    // What the part reads and writes: the elements' classes, the chosen
+    // size and the commit of a change (`fn` maps a class list to the new
+    // one) as one undo step.
+    function _sdSpBoxHost(el, nodes) {
+        return {
+            el: el,
+            size: _sdSpSize,
+            classes: nodes.map(function (n) { return (n.props && n.props.cssClass) || ''; }),
+            locked: !!_sdPanelLockReason(nodes),
+            setSize: function (s) { _sdSpSize = s; },
+            commit: function (fn) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason(nodes)) return;
+                var todo = nodes.filter(function (n) { return n.props && fn(n.props.cssClass || '') !== (n.props.cssClass || ''); });
+                if (!todo.length) { renderProperties(); return; }
+                if (nodes.length > 1) {
+                    _sdMcCommit(todo, function (n) { n.props.cssClass = fn(n.props.cssClass || ''); });
+                    return;
+                }
+                saveState();
+                todo[0].props.cssClass = fn(todo[0].props.cssClass || '');
+                _sdRenderNode(todo[0], render);
+            }
+        };
+    }
+
+    // Draws the box once the panel is drawn. While its section is closed
+    // (search mode builds closed bodies) the part waits for the head to
+    // open it before it is loaded for the first time.
+    function _sdSpBoxBind(nodes) {
+        var panel = document.getElementById('sd-properties');
+        var el = panel ? panel.querySelector('[data-sd-spbox]') : null;
+        if (!el || !nodes.length || !nodes[0]) return;
+        var draw = function () {
+            if (!el.isConnected) return;
+            var host = _sdSpBoxHost(el, nodes);
+            _sdPartCall('spacing', 'draw', [host]).catch(_sdPartFailed);
+        };
+        var sectBody = el.closest('.sd-sect-body');
+        var hdr = sectBody ? sectBody.previousElementSibling : null;
+        if (!_sdPartLoaded('spacing') && sectBody && sectBody.style.display === 'none' && hdr) {
+            hdr.addEventListener('click', function first() {
+                hdr.removeEventListener('click', first);
+                draw();
+            });
+            return;
         }
-        var h = '<div class="sd-bm-wrap">';
-        h += '<div class="sd-bm-margin">';
-        h += '<div class="sd-bm-lbl">margin</div>';
-        h += '<div class="sd-bm-v mt" data-bm="mt-" title="' + esc(_sdT('Margin Top')) + '">' + valOf('mt-') + '</div>';
-        h += '<div class="sd-bm-v mr" data-bm="me-" title="' + esc(_sdT('Margin Right')) + '">' + valOf('me-') + '</div>';
-        h += '<div class="sd-bm-v mb" data-bm="mb-" title="' + esc(_sdT('Margin Bottom')) + '">' + valOf('mb-') + '</div>';
-        h += '<div class="sd-bm-v ml" data-bm="ms-" title="' + esc(_sdT('Margin Left')) + '">' + valOf('ms-') + '</div>';
-        
-        h += '<div class="sd-bm-padding">';
-        h += '<div class="sd-bm-lbl">padding</div>';
-        h += '<div class="sd-bm-v pt" data-bm="pt-" title="' + esc(_sdT('Padding Top')) + '">' + valOf('pt-') + '</div>';
-        h += '<div class="sd-bm-v pr" data-bm="pe-" title="' + esc(_sdT('Padding Right')) + '">' + valOf('pe-') + '</div>';
-        h += '<div class="sd-bm-v pb" data-bm="pb-" title="' + esc(_sdT('Padding Bottom')) + '">' + valOf('pb-') + '</div>';
-        h += '<div class="sd-bm-v pl" data-bm="ps-" title="' + esc(_sdT('Padding Left')) + '">' + valOf('ps-') + '</div>';
-        h += '<div class="sd-bm-center">-</div>';
-        h += '</div>';
-        
-        h += '</div></div>';
-        return h;
+        draw();
     }
 
     function rowCss(n) { 
@@ -55901,7 +55982,7 @@ const StyleDesigner = (function () {
             if (!def) { _spContent += '<div class="sd-sp-divider"></div>'; return; }
             _spContent += mkSpRow(def);
         });
-        var spacingHtml = as(_sdT('Spacing'), boxModel(n) + '<div class="sd-sp-section">' + _spContent + '</div>');
+        var spacingHtml = as(_sdT('Spacing'), '<div class="sd-spb-host sd-bm-wrap" data-sd-spbox></div><div class="sd-sp-section sd-sp-rows" hidden>' + _spContent + '</div>');
 
         // Border options
         var borderSides = ['', 'border', 'border-0', 'border-top', 'border-bottom', 'border-start', 'border-end'];
@@ -56703,31 +56784,6 @@ const StyleDesigner = (function () {
                 body.style.display = isOpen ? '' : 'none';
                 if (isOpen) _sdNarrowStack(body);
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
-            });
-        });
-
-        // Visual Box Model inputs
-        document.querySelectorAll('#sd-properties .sd-bm-v').forEach(function(el) {
-            el.addEventListener('click', function() {
-                if (!selectedNode) return;
-                saveState();
-                var prefix = this.dataset.bm;
-                var current = this.innerText;
-                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
-                var cycle = (prefix.startsWith('m')) ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
-                var nextIndex = cycle.indexOf(current) + 1;
-                if (nextIndex >= cycle.length) nextIndex = 0;
-                var nextVal = cycle[nextIndex];
-
-                var clsArray = (selectedNode.props.cssClass || '').split(' ').filter(function(c) {
-                    return c.trim() !== '' && !c.startsWith(prefix);
-                });
-                if (nextVal !== '-') clsArray.push(prefix + nextVal);
-                selectedNode.props.cssClass = clsArray.join(' ').trim();
-                renderProperties();
-                renderCanvas();
-                renderAttrsPanel();
-                renderHtmlTree();
             });
         });
 
@@ -65466,6 +65522,24 @@ const StyleDesigner = (function () {
                 ['__credit_use_amount',    _sdT('Amount spent')]
             ]
         },
+        // The member's orders that hold event tickets
+        // (pg_sw_list_account_ticket_rows()).
+        'account.tickets': {
+            label: _sdT('Tickets of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__tickets_order_no',    _sdT('Order number')],
+                ['__tickets_order_date',  _sdT('Order date')],
+                ['__tickets_events',      _sdT('Events and products')],
+                ['__tickets_count',       _sdT('Number of tickets')],
+                ['__tickets_count_label', _sdT('Number of tickets (words)')],
+                ['__tickets_valid',       _sdT('Valid tickets')],
+                ['__tickets_state_label', _sdT('State')],
+                ['__tickets_tone',        _sdT('State colour (success or secondary)')],
+                ['__tickets_url',         _sdT('Tickets page URL')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -65870,6 +65944,15 @@ const StyleDesigner = (function () {
         __credit_use_order_url: '/order?id=1042',
         __credit_use_date:      '20.10.2026',
         __credit_use_amount:    '₺15,00',
+        __tickets_order_no:     '12340',
+        __tickets_order_date:   '18.11.2026',
+        __tickets_events:       _sdT('Jazz night'),
+        __tickets_count:        '4',
+        __tickets_count_label:  _sdT('{var:1} tickets').replace('{var:1}', '4'),
+        __tickets_valid:        '4',
+        __tickets_state_label:  _sdT('{var:1} valid').replace('{var:1}', '4'),
+        __tickets_tone:         'success',
+        __tickets_url:          '#',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -66072,6 +66155,7 @@ const StyleDesigner = (function () {
         // The subscriptions and the store credit cards likewise.
         if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
         if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
+        if (source === 'account.tickets') return _sdAccountTicketsList(bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -75112,6 +75196,10 @@ const StyleDesigner = (function () {
         // gone to (-1 for none), the view from before the first one, null
         // when closed.
         search: null,
+        // The side panel's tab (links | comments) and the comments part's
+        // state: running, its open count, whether a comment is unread.
+        side: 'links',
+        pc: { on: false, open: 0, unread: false },
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -75305,8 +75393,21 @@ const StyleDesigner = (function () {
         ui.suggest.hidden = true;
         ui.suggest.setAttribute('aria-haspopup', 'dialog');
         // The links panel (F18): open or closed kept in this browser.
-        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
+        // Links opens the side panel at its Links tab, or closes it when
+        // that tab is the one shown; Comments does the same for its tab.
+        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoSideToggle('links'); });
         ui.listToggle.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Links')));
+        // Prototype comments (style_designer_comments.js): shown once the
+        // part runs, with the open count and the unread mark as its badge
+        // (_sdProtoCommentsDraw()).
+        ui.pcBtn = _sdProtoButton('bi-chat-square-text', _sdT('Prototype comments'), function () { _sdProtoSideToggle('comments'); });
+        ui.pcBtn.id = 'sd-bp-pcomments';
+        ui.pcBtn.classList.add('sd-bp-pc');
+        ui.pcBtn.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Comments')));
+        ui.pcBadge = _sdProtoEl('span', 'sd-bp-pc-badge');
+        ui.pcBadge.hidden = true;
+        ui.pcBtn.appendChild(ui.pcBadge);
+        ui.pcBtn.hidden = true;
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
@@ -75324,12 +75425,13 @@ const StyleDesigner = (function () {
             else _sdProtoSearchOpen();
         });
         ui.searchBtn.setAttribute('aria-expanded', 'false');
-        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
         tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
         tools.appendChild(ui.suggest);
         tools.appendChild(ui.listToggle);
+        tools.appendChild(ui.pcBtn);
         tools.appendChild(ui.play);
         tools.appendChild(reload);
         var zsep = _sdProtoEl('span', 'sd-bp-zsep sd-bp-pv');
@@ -75382,20 +75484,73 @@ const StyleDesigner = (function () {
         ui.zoomedName = _sdProtoEl('span', 'sd-proto-zoomed-name');
         ui.zoomed.appendChild(ui.zoomedName);
         ui.stage.appendChild(ui.zoomed);
-        // The stage and, right of it, the selected page's links (F15).
+        // The stage and, right of it, the side panel (F15): its tabs Links
+        // (the selected page's links) and Comments (the prototype comments,
+        // drawn by the comments part), in the right column's tab pattern.
         ui.root.appendChild(_sdProtoSearchBuild(ui));
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
-        ui.list = _sdProtoEl('aside', 'sd-proto-list');
-        ui.list.id = 'sd-proto-list';
-        ui.list.setAttribute('aria-label', _sdT('Links of the selected page'));
-        ui.listToggle.setAttribute('aria-controls', ui.list.id);
-        ui.body.appendChild(ui.list);
+        ui.side = _sdProtoEl('aside', 'sd-proto-list');
+        ui.side.id = 'sd-proto-list';
+        ui.side.setAttribute('aria-label', _sdT('Prototype'));
+        var sideHead = _sdProtoEl('div', 'sd-panel-header sd-rcol-head sd-proto-side-head');
+        ui.sideTabs = _sdProtoEl('div', 'sd-rcol-tabs');
+        ui.sideTabs.setAttribute('role', 'tablist');
+        var sideTab = function (name, icon, text) {
+            var t = _sdProtoEl('button', 'sd-rcol-tab');
+            t.type = 'button';
+            t.id = 'sd-proto-tab-' + name;
+            t.setAttribute('role', 'tab');
+            t.setAttribute('data-side', name);
+            t.setAttribute('aria-controls', 'sd-proto-' + name);
+            t.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+            t.appendChild(_sdProtoEl('span', 'sd-rcol-tab-txt', text));
+            ui.sideTabs.appendChild(t);
+            return t;
+        };
+        ui.tabLinks = sideTab('links', 'bi-link-45deg', _sdT('Links'));
+        ui.tabComments = sideTab('comments', 'bi-chat-square-text', _sdT('Comments'));
+        ui.tabCount = _sdProtoEl('span', 'sd-proto-tab-count');
+        ui.tabCount.hidden = true;
+        ui.tabComments.appendChild(ui.tabCount);
+        ui.tabComments.hidden = true;
+        // A tab's click shows it; Left and Right move between the shown tabs.
+        ui.sideTabs.addEventListener('click', function (event) {
+            var t = event.target.closest ? event.target.closest('[data-side]') : null;
+            if (t) _sdProtoSide(t.getAttribute('data-side'), true, false);
+        });
+        ui.sideTabs.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            var shown = [ui.tabLinks, ui.tabComments].filter(function (t) { return !t.hidden; });
+            var at = shown.indexOf(document.activeElement);
+            if (at === -1 || shown.length < 2) return;
+            event.preventDefault();
+            var next = shown[(at + (event.key === 'ArrowRight' ? 1 : shown.length - 1)) % shown.length];
+            _sdProtoSide(next.getAttribute('data-side'), true, false);
+            next.focus();
+        });
+        sideHead.appendChild(ui.sideTabs);
+        ui.side.appendChild(sideHead);
+        ui.list = _sdProtoEl('div', 'sd-proto-links');
+        ui.list.id = 'sd-proto-links';
+        ui.list.setAttribute('role', 'tabpanel');
+        ui.list.setAttribute('aria-labelledby', ui.tabLinks.id);
+        ui.side.appendChild(ui.list);
+        ui.comments = _sdProtoEl('div', 'sd-proto-comments');
+        ui.comments.id = 'sd-proto-comments';
+        ui.comments.setAttribute('role', 'tabpanel');
+        ui.comments.setAttribute('aria-labelledby', ui.tabComments.id);
+        ui.comments.hidden = true;
+        ui.side.appendChild(ui.comments);
+        ui.listToggle.setAttribute('aria-controls', ui.side.id);
+        ui.pcBtn.setAttribute('aria-controls', ui.side.id);
+        ui.body.appendChild(ui.side);
         ui.root.appendChild(ui.body);
         area.appendChild(ui.root);
 
         _sdProto.ui = ui;
-        _sdProtoListShow(_sdProtoListStored(), false);
+        _sdProtoSide(_sdProto.side, _sdProtoListStored(), false);
+        _sdProtoCommentsDraw();
         _sdProto.canvas = G.create({
             ui: ui,
             text: function (key, a, b, c) {
@@ -75601,6 +75756,7 @@ const StyleDesigner = (function () {
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdCanvasBarMode(true);
+        _sdProtoCommentsTell();
         _sdProtoLoad();
         _sdProto.ui.viewport.focus({ preventScroll: true });
     }
@@ -75621,6 +75777,7 @@ const StyleDesigner = (function () {
         _sdProtoZoomBack(true);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
+        _sdProtoCommentsTell();
         _sdProtoButtonState();
         // The bar's Prototype controls go with the mode: the focus goes to
         // the switch's side now chosen.
@@ -76285,11 +76442,110 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         if (!ui) return;
         ui.root.classList.toggle('sd-proto-list-open', !!open);
-        ui.listToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
-        ui.listToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // Each bar button is pressed while the panel shows its own tab.
+        var links = !!open && _sdProto.side === 'links';
+        var comments = !!open && _sdProto.side === 'comments';
+        ui.listToggle.setAttribute('aria-pressed', links ? 'true' : 'false');
+        ui.listToggle.setAttribute('aria-expanded', links ? 'true' : 'false');
+        ui.pcBtn.setAttribute('aria-pressed', comments ? 'true' : 'false');
+        ui.pcBtn.setAttribute('aria-expanded', comments ? 'true' : 'false');
         if (keep) {
             try { window.localStorage.setItem('pg_proto_list', open ? '1' : '0'); } catch (e) { /* kept for this visit only */ }
         }
+        _sdProtoCommentsTell();
+    }
+
+    // The side panel at a tab (links | comments), open or closed. Comments
+    // falls back to Links while the comments part does not run. The open
+    // state is kept as the Links button keeps it (keep).
+    function _sdProtoSide(tab, open, keep) {
+        var ui = _sdProto.ui;
+        if (tab !== 'comments' || !_sdProto.pc.on) tab = 'links';
+        _sdProto.side = tab;
+        if (!ui) return;
+        [[ui.tabLinks, ui.list, 'links'], [ui.tabComments, ui.comments, 'comments']].forEach(function (one) {
+            var on = one[2] === tab;
+            one[0].classList.toggle('active', on);
+            one[0].setAttribute('aria-selected', on ? 'true' : 'false');
+            one[0].tabIndex = on ? 0 : -1;
+            one[1].hidden = !on;
+        });
+        _sdProtoListShow(open, keep);
+    }
+
+    // A bar button (Links, Comments): the panel at its tab, or closed when
+    // that tab is the one shown.
+    function _sdProtoSideToggle(tab) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var shown = ui.root.classList.contains('sd-proto-list-open') && _sdProto.side === tab;
+        _sdProtoSide(tab, !shown, true);
+    }
+
+    // ── Prototype comments in the view ──
+    //
+    // The comments part (style_designer_comments.js) draws the list into
+    // the side panel's Comments tab (_sdProtoCommentsPane()) and hands its
+    // count here; the view tells it when that tab is seen or not.
+
+    function _sdProtoCommentsMark(open, unread) {
+        _sdProto.pc = { on: true, open: parseInt(open, 10) || 0, unread: !!unread };
+        var row = document.getElementById('sd-vb-pcomments');
+        if (row) row.hidden = false;
+        _sdProtoCommentsDraw();
+    }
+
+    // The tools zone's button and the Comments tab: the open count as the
+    // badge, amber while a comment is unread.
+    function _sdProtoCommentsDraw() {
+        var ui = _sdProto.ui;
+        var pc = _sdProto.pc;
+        if (!ui) return;
+        ui.pcBtn.hidden = !pc.on;
+        ui.tabComments.hidden = !pc.on;
+        ui.pcBadge.textContent = pc.open > 0 ? String(pc.open) : '';
+        ui.pcBadge.hidden = !(pc.open > 0 || pc.unread);
+        ui.pcBadge.classList.toggle('sd-bp-pc-new', pc.unread);
+        ui.tabCount.textContent = ui.pcBadge.textContent;
+        ui.tabCount.hidden = !(pc.open > 0);
+        var label = _sdT('Prototype comments') + (pc.open > 0 ? ' (' + pc.open + ')' : '') + (pc.unread ? ' · ' + _sdT('New comments') : '');
+        ui.pcBtn.title = label;
+        ui.pcBtn.setAttribute('aria-label', label);
+    }
+
+    function _sdProtoCommentsPane() {
+        return _sdProto.ui ? _sdProto.ui.comments : null;
+    }
+
+    // Whether the Comments tab is in sight, told to a loaded part (its pins
+    // hide while the view is open; the list counts as read while seen).
+    function _sdProtoCommentsTell() {
+        if (!_sdPartLoaded('comments')) return;
+        var ui = _sdProto.ui;
+        var seen = !!(ui && _sdProto.open && _sdProto.side === 'comments' && ui.root.classList.contains('sd-proto-list-open'));
+        _sdPartCall('comments', 'side', [seen, _sdProto.open]).catch(function () { /* told again on the next change */ });
+    }
+
+    // From outside Prototype mode (the View menu, a pin, the bell line's
+    // address): the view opened with the Comments tab. False when the view
+    // cannot open.
+    function _sdProtoCommentsOpen() {
+        if (!_sdProto.open) _sdProtoOpen();
+        if (!_sdProto.open) return false;
+        _sdProtoSide('comments', true, false);
+        return true;
+    }
+
+    // A thread's row: its page's frame selected and brought into view, as
+    // a links panel row does. False for a page not open as a tab.
+    function _sdProtoCommentsFrame(pageId) {
+        var canvas = _sdProto.canvas;
+        var id = '';
+        _pages.forEach(function (p) { if (parseInt(p.page_id, 10) === pageId) id = 'p:' + p.key; });
+        if (!canvas || !id || !_sdProto.byId[id]) return false;
+        canvas.focus(id);
+        canvas.view.reveal(_sdProto.byId[id]);
+        return true;
     }
 
     // A change of the selected frame: the row marks, the panel, Play; a
@@ -76600,7 +76856,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProtoPick(frameId, port, true);
         if (!ui) return;
-        if (!ui.root.classList.contains('sd-proto-list-open')) _sdProtoListShow(true, false);
+        if (!ui.root.classList.contains('sd-proto-list-open') || _sdProto.side !== 'links') _sdProtoSide('links', true, false);
         var li = ui.list.querySelector('.sd-proto-li[data-link="' + (String(frameId) + '|' + port).replace(/"/g, '') + '"]');
         var to = li ? (li.querySelector('.sd-proto-li-target') || li.querySelector('.sd-proto-li-main')) : null;
         if (!to) return;
@@ -86542,6 +86798,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each store credit card of the signed-in member.') },
             'l:account.store_credit_uses': { v: 'l-account-orders', k: 'store credit orders spent account list repeat loop',
                                     d: _sdT('Repeats its row for each order that spent the store credit card.') },
+            'l:account.tickets': { v: 'l-account-orders', k: 'member event tickets qr orders account list repeat loop',
+                                    d: _sdT('Repeats its row for each order of the signed-in member that holds event tickets.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
@@ -90891,6 +91149,11 @@ const StyleDesigner = (function () {
             _sdLegacyRegionForget: _sdLegacyRegionForget,
             _sdPageBodyAttrs: _sdPageBodyAttrs,
             _sdPageFrameRows: _sdPageFrameRows,
+            _sdProtoClose: _sdProtoClose,
+            _sdProtoCommentsFrame: _sdProtoCommentsFrame,
+            _sdProtoCommentsMark: _sdProtoCommentsMark,
+            _sdProtoCommentsOpen: _sdProtoCommentsOpen,
+            _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdSelectRender: _sdSelectRender,
             renderCanvas: renderCanvas,
             renderHtmlTree: renderHtmlTree,

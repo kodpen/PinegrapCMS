@@ -722,6 +722,21 @@ function api_fail($status_code, $code, $message, $field = null, $errors = null) 
 
 	}
 
+	// A Bearer token refused while OAuth is off still gets its scheme named.
+	if ($status_code === 401) {
+
+		$extra = api_extra_headers();
+
+		$fallback = isset($extra['WWW-Authenticate']) ? '' : api_bearer_challenge_fallback(api_header('Authorization'));
+
+		if ($fallback !== '') {
+
+			api_extra_headers('WWW-Authenticate', $fallback);
+
+		}
+
+	}
+
 	api_send($status_code, array('error' => $error), $code);
 
 }

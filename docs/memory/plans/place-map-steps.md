@@ -22,14 +22,9 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 
 - MP3b (S) after MP3: the block's field pickers, done (PR #10535; `platform/place-list-fields.md`). Features: X2's pickers.
 
-- MP4 (M) after MP3b: the map and the switch.
-  - Existing files: `includes/settings/features.php` and `features.save.php` (the card with the tile setting), `includes/fn/consent.php` (the map as a service of the notice), the Firewall settings screen (a line to copy when the site's own policy lacks the tile host; the security headers the software sends do not change, X14).
-  - New: `assets/lib/leaflet/` with its licence and `tests/leaflet_library_test.php`.
-  - Tests: no tile request before the class is allowed; the headers the same with the switch on and off.
-  - Pictures: "Show the map", the map with markers and an open card, a phone. To the owner; not marked ready before his look.
-  - Features: X9, X13, X14.
+- MP4 (M) after MP3b: the map and the switch, PR #10581 (`designer/designer-blocks-map.md`). Features: X9, X13, X14.
 
-- MP5 (S) after MP4: near me and a typed address. Existing files: none. In the script and the endpoint. Tests: the lookup's rate limit; nothing typed kept. Features: X11, X12.
+- MP5 (S) after MP4: near me and a typed address, PR #10613 (`platform/place-list-near.md`). In the script and the endpoint. Tests: the lookup's rate limit; nothing typed kept. Features: X11, X12.
 
 - MP6 (S) close-out: every X number checked against the code with its PR; `designer/designer-blocks-map.md` and `platform/place-coordinates.md`; this plan's files and the census deleted and its line in `plans/more-features.md` removed.
 

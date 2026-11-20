@@ -168,7 +168,7 @@ function test_place_map_address_text_and_number()
 	pg_assert_same('0', pg_place_map_number(-0.0000001));
 }
 
-// No lookup without a press: only the endpoint calls it, and the form's and
+// No lookup without a press: only the endpoints call it, and the form's and
 // the list's scripts ask the server inside their click handlers.
 function test_place_map_no_call_without_a_press()
 {
@@ -181,7 +181,14 @@ function test_place_map_no_call_without_a_press()
 	}
 
 	sort($callers);
-	pg_assert_same(array('place_coordinates.php', 'place_map.php'), $callers);
+	pg_assert_same(array('place_coordinates.php', 'place_list.php', 'place_map.php'), $callers);
+
+	// The page's typed-address lookup (place_list.php) asks only for a POST
+	// of places.php, which the page sends on a press of Find.
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	pg_assert_same(1, preg_match_all('/\bpg_place_map_lookup\(\$/', $list), 'one call, in pg_place_list_find()');
+	$places = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
+	pg_assert_true(strpos($places, 'pg_place_list_find(') > strpos($places, "if (\$method === 'POST')"), 'only for a POST');
 
 	foreach (array(pg_place_map_form_script(), pg_place_map_list_script()) as $script) {
 		pg_assert_true(strpos($script, 'fetch(') > strpos($script, 'addEventListener("click"'), 'asked only on a click');

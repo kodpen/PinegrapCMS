@@ -1329,7 +1329,7 @@ function ws_flow_graph_check($graph)
         // time, whose start moments make the window (flow_records.php).
         // An e-mail box draws the records of a records box of the flow.
         if (($node['kind'] === 'email') && function_exists('ws_flow_mail_records_box_problems')) {
-            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph) as $text) {
+            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph, (string) $id) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }

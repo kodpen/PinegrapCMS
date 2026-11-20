@@ -337,6 +337,8 @@
 
             mine.id = result.call_id;
             mine.memberId = result.member_id;
+            // The member's own servers, the relay's credentials among them.
+            mine.ice = result.ice || null;
             draw();
             look();
             mine.pinger = setInterval(function () { send(0, 'ping', ''); }, PING_EVERY);
@@ -421,7 +423,7 @@
     }
 
     function peer(mine, id, offer) {
-        var pc = new RTCPeerConnection({ iceServers: hooks.ice || [] });
+        var pc = new RTCPeerConnection({ iceServers: mine.ice || hooks.ice || [] });
         var held = { pc: pc, queue: [], lostAt: 0 };
 
         mine.peers[id] = held;

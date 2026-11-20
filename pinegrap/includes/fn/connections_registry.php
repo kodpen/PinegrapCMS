@@ -587,7 +587,7 @@ function pg_connections_registry()
         'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
             'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('azure')),
             'covers' => array('model' => array('azure'))),
-        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
+        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
             'state' => array('kind' => 'config', 'names' => array('TRANSLATION_GOOGLE_KEY_ENC'))),
 
         // Protection and delivery.

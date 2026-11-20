@@ -661,7 +661,7 @@ function pg_image_draw_known($layer, $own)
     // and Animate's keys (pg_image_draw_group_opacity(); keys move only
     // in an animation, never at rest): a group draws as its layers do
     // ungrouped, faded by its opacity.
-    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'grp', 'gfx'), $own);
+    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'grp', 'gfx', 'att'), $own);
 
     foreach ($layer as $key => $value) {
         if (!in_array((string) $key, $known, true) && !empty($value)) {

@@ -282,7 +282,7 @@ function test_auto_dialog_page_keeps_nothing_in_the_session()
 	auto_dialog_test_lacks('$_SESSION', $block, 'nothing in the session');
 	auto_dialog_test_lacks('$_COOKIE', $block, 'the cookie is read by the script');
 	pg_assert_contains('$auto_dialogs_page = pg_auto_dialogs_on_page($auto_dialogs, $page_name, $auto_dialogs_cart);', $block, 'the page prints the rows for the page');
-	pg_assert_contains('encode_json($auto_dialogs_page)', $block, 'and only those');
+	pg_assert_contains('pg_auto_dialogs_script_json($auto_dialogs_page)', $block, 'and only those');
 	pg_assert_contains('$auto_dialogs_cart = pg_auto_dialogs_need_cart($auto_dialogs) && pg_auto_dialog_session_has_cart();', $block, 'the cart is asked only while a row is for visitors with a cart');
 	pg_assert_contains("pg_page_cache_personal('popup_cart');", $block, 'a page that prints a cart row is drawn for this visitor');
 	auto_dialog_test_lacks('visit_start_timestamp', $page, 'no other place writes it');

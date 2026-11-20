@@ -88,7 +88,7 @@
 - erp-money-overflow.md: ERP amounts too large for an integer: the typed figure, the exchange rate bound and the home-currency total bound, checked where a document is saved or issued
 - erp-negative-price-lines.md: An order line of a product priced below zero: how the checkout, the ERP invoice, ERP returns and Paraşüt treat it (Paraşüt refuses it, #1297), and where such a line can still come from
 - erp-no-till-hint.md: What the ERP till pickers say when no usable till is set up (erp_no_till_hint()): the screens that call it, the transfer and cheque variants, why the save's refusal texts stay.
-- erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live. [decision: decisions-made-product.md]
+- erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live. [decision: decisions-made-product.md, decisions-made-schema-31.md]
 - erp-number-input-and-display.md: How the ERP reads typed quantities, amounts and rates and writes figures back: decimal comma by store country, separators by panel language, percent text, CSV delimiter, paper size.
 - erp-order-cancel-and-refund.md: How a cancelled or refunded order reaches the ERP: the order card's two reverse steps, cancel or return invoice, the money owed per order (4.66), the card refund by line, orders writes.
 - erp-order-card-invoice-cancel-rules.md: The order documents card's invoice cancel (cash right with allocations, confirm), re-invoicing after a cancel (the note moves over) and its notices.
@@ -152,8 +152,10 @@
 - erp-return-screen.md: Which invoice the return screen opens for (erp_return_refusal(): issued invoices only) and how it writes quantities and fits a phone (PR #5708).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays. [decision: decisions-made-product-12.md]
+- erp-shared-prices-api.md: An ERP account's "Uses the prices of" over the API (wholesale J11, WS6): price_account_id in the account answer, written by the account update with the panel's one-hop check
 - erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public [decision: here]
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
+- erp-stock-days.md: Daily stock record behind Stock Planning (erp_stock_days, 11.0.249): which sales count, bundles as components, sparse rows, night pass, 14-day recount, 365-day fill
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
 - erp-stock-return-cost-rounding.md: A line returned in parts takes back exactly the cost and quantity its stock move recorded: each return's share is the difference of rounded running totals.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.

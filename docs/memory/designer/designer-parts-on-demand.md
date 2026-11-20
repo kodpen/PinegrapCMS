@@ -24,7 +24,8 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `treesearch` (DP13), `move` (DP16): the Overview's search and "Move…" window: `overview-search-map.md`, `overview-move-without-drag.md`.
 - `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
 - `pages` (DP20): `designer-pages-window.md`.
-- The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
+- `spacing` (DP7): Style › Spacing's box, `designer-spacing-box.md`.
+- Assistant code kept in the core, needed at open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
 - D5 is complete.

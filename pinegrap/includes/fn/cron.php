@@ -598,6 +598,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // The daily stock record behind stock planning (erp_stock_days):
+        // yesterday's units and stock, the last 14 days counted again, and
+        // once the 365 days of sales before the record began. Hourly so the
+        // first tick after midnight records the day; once a night is done a
+        // run is one indexed read. The first fill resumes across ticks.
+        'erp_stock_plan_job' => array(
+            'label'       => lang('Daily stock record'),
+            'script'      => 'erp_stock_plan_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
         // Repeating expenses (rent, subscriptions): writes each one that has
         // come due. Daily; a visit to the expenses list runs it too.
         'erp_expense_recurring_job' => array(

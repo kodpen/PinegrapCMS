@@ -2187,8 +2187,9 @@ function select_field_type($field_type = '', $form_type = 'custom')
             break;
     }
     $output_file_upload_field_option = '';
-    // if this is a custom form, then output file upload field type option
-    if ($form_type == 'custom') {
+    // A custom form, a product form and a variant set's form template take a
+    // file; a shipping or billing form does not.
+    if (in_array($form_type, array('custom', 'product', 'product_group'), true)) {
         $output_file_upload_field_option = '<option value="file upload"' . $file_upload_status . '>' . lang('File Upload') . '</option>';
     }
     // Custom forms only, and only where the database can store the value. A

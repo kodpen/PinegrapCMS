@@ -222,7 +222,7 @@ if (!$_POST) {
                             'form_id' => $_REQUEST[$form_type_identifier_id],
                             'page_type' => $page_type,
                             'form_label' => pg_upper_words($form_type_name) . ': ' . h($form_name),
-                            'upload_folder_row' => ($form_type == 'custom'),
+                            'upload_folder_row' => in_array($form_type, array('custom', 'product', 'product_group'), true),
                         )),
                         '
                                         <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>') . '
@@ -243,6 +243,7 @@ if (!$_POST) {
     pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, 0, $name));
     pg_field_form_validate_type($liveform, $_POST['type'] ?? '', $form_type);
     $numbers = pg_field_form_validate_numbers($liveform, $_POST);
+    $upload_rules = pg_field_form_validate_upload($liveform, $_POST, $form_type);
     
     $url_form_type = pg_field_form_express_query($page_type, $form_type);
 
@@ -279,6 +280,22 @@ if (!$_POST) {
 
             $sql_upload_folder_id_column = "upload_folder_id,";
             $sql_upload_folder_id_value = "'" . e($_POST['upload_folder_id'] ?? '') . "',";
+        }
+
+    // A product form's File Upload field: the folder the shoppers' files go
+    // into, under the same check, and its allowed types and largest size.
+    } elseif (pg_field_form_has_upload_rule($form_type, $_POST['type'] ?? '')) {
+        if (check_edit_access($_POST['upload_folder_id']) == false) {
+            log_activity(lang('access denied to set upload folder for product form field because user does not have edit rights to folder'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.'));
+        }
+
+        $sql_upload_folder_id_column = "upload_folder_id,";
+        $sql_upload_folder_id_value = "'" . e($_POST['upload_folder_id'] ?? '') . "',";
+
+        if (pg_schema_has('form_fields', 'rules')) {
+            $sql_upload_folder_id_column .= " rules,";
+            $sql_upload_folder_id_value .= " '" . e((string) $upload_rules) . "',";
         }
     }
     
