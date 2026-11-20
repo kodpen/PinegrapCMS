@@ -88,3 +88,15 @@ function test_list_excel_size_too_big_goes_as_csv()
 	pg_assert_true(pg_list_excel_fits(array('rows' => 1048575, 'cells' => 1048576, 'bytes' => 2097152), 0, 0), 'the heading and 1,048,575 rows fill a sheet');
 	pg_assert_false(pg_list_excel_fits(array('rows' => 1048576, 'cells' => 1048577, 'bytes' => 2097154), 0, 0), 'a row past the sheet\'s last: the CSV is sent');
 }
+
+function test_list_excel_text_excel_can_open()
+{
+	$handle = list_excel_size_test_csv('"name","notes"', '"Ay' . "\xC5" . '","' . str_repeat('a', 40000) . '"', 1);
+	$table = pg_list_excel_table($handle, array(), 'month_day');
+	fclose($handle);
+
+	pg_assert_true(preg_match('//u', $table['rows'][0][0]) === 1, 'a value cut inside a letter becomes valid UTF-8');
+	pg_assert_same(0, strpos($table['rows'][0][0], 'Ay'), 'the readable part stays');
+	pg_assert_same(32767, mb_strlen($table['rows'][0][1]), 'a text longer than an Excel cell holds is cut to 32,767 characters');
+	pg_assert_true(preg_match('//u', pg_list_excel_text(str_repeat('ğ', 40000))) === 1, 'the cut falls between letters');
+}
