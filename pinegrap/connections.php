@@ -356,6 +356,12 @@ if ($_POST) {
 
 	}
 
+	// Meta Conversions API's pixel, sealed token, events and boxes, saved,
+	// tried or removed on its page under the gate of Visitors and privacy.
+	if (in_array($action, array('meta_capi_save', 'meta_capi_remove'), true) && connections_privacy_may_manage($user)) {
+		pg_ad_conversion_meta_post_page($action, $_POST, $liveform);
+	}
+
 	// The Google Cloud Translation key, saved or removed on its page under the
 	// gate of the Translation Engines card it came from; the write returns to
 	// the page. The key is sealed and never drawn back.
@@ -2587,6 +2593,12 @@ if ($provider_page !== '') {
 	// IndexNow's page: its key and the SEO card that shows it.
 	if ($page_id === 'indexnow') {
 		$page = connections_indexnow_page($page, connections_seo_may_manage($user));
+	}
+
+	// Meta Conversions API's page: its pixel and token, the events it gets
+	// and the consent boxes, under the Visitors and privacy gate.
+	if ($page_id === 'meta_capi') {
+		$page = pg_ad_conversion_meta_page($page, connections_privacy_may_manage($user), $can_seal);
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.

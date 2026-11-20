@@ -819,3 +819,6 @@ function pg_ad_conversion_dispatch($budget)
 
     return $sent;
 }
+
+// The services' senders.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_meta.php');
