@@ -1481,7 +1481,7 @@ function ws_api_message_checks($body, $checks)
 
 function ws_api_message_note_card_schema()
 {
-    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string');
+    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string', 'revision' => 'integer', 'updated_at' => 'datetime', 'can_edit' => 'boolean');
 }
 
 /**
@@ -1501,7 +1501,16 @@ function ws_api_message_note_card($row, $note_cards)
         return null;
     }
 
-    return array('id' => (int) $card['id'], 'name' => (string) $card['name'], 'excerpt' => (string) $card['excerpt']);
+    // revision is the base of the next change (POST /workspace/notes/{id});
+    // can_edit says whether the reader may make it.
+    return array(
+        'id'         => (int) $card['id'],
+        'name'       => (string) $card['name'],
+        'excerpt'    => (string) $card['excerpt'],
+        'revision'   => (int) ($card['revision'] ?? 0),
+        'updated_at' => api_time((int) ($card['updated_at'] ?? 0)),
+        'can_edit'   => in_array((string) ($card['access'] ?? ''), array('owner', 'edit'), true),
+    );
 }
 
 function ws_api_message_note_group_card_schema()

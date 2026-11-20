@@ -1633,6 +1633,39 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('channel_id' => $result['channel_id'], 'warning' => $result['error']));
 
+        // A note written in a channel from the composer: the note and its
+        // card in one move; channel_edit lets the channel's posters change it.
+        case 'ws_note_channel_write':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $result = ws_note_channel_write($viewer, $channel, array(
+                'title'        => (string) ($request['title'] ?? ''),
+                'body'         => (string) ($request['body'] ?? ''),
+                'channel_edit' => !empty($request['channel_edit']),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            return ws_action_ok(array('note_id' => $result['note_id'], 'message_id' => $result['message_id'], 'revision' => $result['revision']));
+
+        // The owner's switch on a channel card: may the channel's posters edit?
+        case 'ws_note_channel_edit':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'owner');
+
+            if (!$note) {
+                return ws_action_error(lang('Only the one who wrote a note can share it.'));
+            }
+
+            $result = ws_note_channel_edit_set($viewer, $note, (int) ($request['channel_id'] ?? 0), !empty($request['can_edit']));
+
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+
         // A file attached to a note, kept for those who may read it.
         case 'ws_note_file':
             $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'edit');

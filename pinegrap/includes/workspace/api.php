@@ -67,6 +67,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_quiet_hours.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_access.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_meeting_link.php');
@@ -3189,6 +3190,7 @@ function ws_api_routes()
     // and closing an approval request (api_thread_close.php), and who reads
     // a channel and the versions of its conversation (api_channel_access.php), and
     // the caller's own meeting link (api_meeting_link.php), and a channel's
-    // live call, read only (api_calls.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes(), ws_meeting_link_api_routes(), ws_call_api_routes());
+    // live call, read only (api_calls.php), and a note written in a channel
+    // (api_channel_notes.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes(), ws_meeting_link_api_routes(), ws_call_api_routes(), ws_channel_note_api_routes());
 }

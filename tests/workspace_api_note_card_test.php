@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the note a Workspace API message shares (note_card): the card
- * of a shared note, null once the share is taken back, null on a deleted
+ * of a shared note with its revision and whether the reader may change it,
+ * null once the share is taken back, null on a deleted
  * message, and the schema that declares it.
  *
  * @author      Erdal Güral (Kodpen)
@@ -36,6 +37,8 @@ function ws_api_note_card_test_map()
 			'owner'      => 'Ada',
 			'updated_by' => 'Ada',
 			'updated'    => 'today',
+			'revision'   => 4,
+			'updated_at' => 1767225600,
 		),
 	);
 }
@@ -45,7 +48,23 @@ function test_ws_api_note_card_of_a_shared_note()
 {
 	$card = ws_api_message_note_card(array('id' => 5531, 'deleted_at' => 0), ws_api_note_card_test_map());
 
-	pg_assert_same(array('id' => 88, 'name' => 'Launch checklist', 'excerpt' => 'Book the venue'), $card, 'the shared note');
+	pg_assert_same(88, $card['id'], 'the shared note');
+	pg_assert_same('Launch checklist', $card['name'], 'its name');
+	pg_assert_same('Book the venue', $card['excerpt'], 'its excerpt');
+	pg_assert_same(4, $card['revision'], 'the base of the next change');
+	pg_assert_same(api_time(1767225600), $card['updated_at'], 'when it last changed');
+	pg_assert_same(false, $card['can_edit'], 'a reader may not change it');
+}
+
+// can_edit follows the reader's access: the owner and edit may change it.
+function test_ws_api_note_card_can_edit_follows_access()
+{
+	foreach (array('owner' => true, 'edit' => true, 'view' => false, '' => false) as $access => $can) {
+		$map = ws_api_note_card_test_map();
+		$map[5531]['access'] = $access;
+
+		pg_assert_same($can, ws_api_message_note_card(array('id' => 5531, 'deleted_at' => 0), $map)['can_edit'], 'access ' . $access);
+	}
 }
 
 // A share taken back leaves no ws_note_shares row, so the map has no entry.
@@ -69,5 +88,5 @@ function test_ws_api_note_card_is_declared_on_the_message()
 
 	pg_assert_same('WorkspaceMessageNoteCard?', $schema['note_card'] ?? null, 'note_card on WorkspaceMessage');
 	pg_assert_same('ws_api_message_note_card_schema', $objects['WorkspaceMessageNoteCard'] ?? null, 'the component');
-	pg_assert_same(array('id', 'name', 'excerpt'), array_keys(ws_api_message_note_card_schema()), 'the card keys');
+	pg_assert_same(array('id', 'name', 'excerpt', 'revision', 'updated_at', 'can_edit'), array_keys(ws_api_message_note_card_schema()), 'the card keys');
 }
