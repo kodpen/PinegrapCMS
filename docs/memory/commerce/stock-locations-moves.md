@@ -14,7 +14,8 @@ module: stock_moves
 - Filters in the address: `product` (the SKU, `products.name`, or `#id`, `pg_stock_product_reference()`), `location_id`, `reason`, `from`/`to` (`pg_date_input_iso()`). `pg_stock_move_filters()` drops what is not known; `pg_stock_move_condition()` binds every value, the period from the start of `from` to the end of `to` in the site's zone. An unreadable value stays in its box with `is-invalid` and filters nothing.
 
 ## What does a transfer do?
-- The Transfer dialog posts to the screen (token checked): `pg_stock_transfer()` checks with `pg_stock_transfer_check()` (whole quantity ≥ 1, both locations known, different, the target on), then two `pg_stock_change()` calls with reason `transfer`, `transaction => false`, inside one `START TRANSACTION`; either refused rolls both back. Both moves share the ref `T<time>-<product>-<from>-<to>` (`pg_stock_transfer_ref()`).
+- The Transfer dialog posts to the screen (token checked): `pg_stock_transfer()` checks with `pg_stock_transfer_check()` (whole quantity ≥ 1, both locations known, different, the target on), then two `pg_stock_change()` calls with reason `transfer`, `transaction => false`, inside one `START TRANSACTION`; either refused rolls both back.
+- After a refused second half the total is written again from the rows (a `products` table still MyISAM keeps the first half's sum through the rollback). A bundle is refused (`bundle`, the inventory API's text): its rows are never kept up and the sum would replace its cached stock. Both moves share the ref `T<time>-<product>-<from>-<to>` (`pg_stock_transfer_ref()`).
 - The total does not change, so nothing is announced (`pg_product_stock_changed()`) and no marketplace is queued. A refused transfer comes back with the dialog open, the fields kept and the field marked.
 
 ## What does the product screen show?
