@@ -6,8 +6,8 @@
  * box's form (ws_mail_google_steps(), includes/workspace/mail_settings.php):
  * shown only while that service is chosen, in order, with Google's pages
  * opening in a new tab, and the form's script showing and hiding them when
- * the service changes. Also the Microsoft Connect button, drawn only while
- * the application is set up, and connect.php's answer shown on the category.
+ * the service changes. Also the Google account's state with its link to
+ * Connections, and connect.php's answer shown on the category.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -50,32 +50,12 @@ function test_workspace_mail_google_steps_in_the_box_form()
 	pg_assert_contains('|provider|', ws_mail_settings_script(), 'the service shows and hides them');
 }
 
-function test_workspace_mail_connect_without_the_microsoft_application()
-{
-	if (!function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
-		pg_assert_same('', ws_mail_connect_form(array('role' => 1), 'f', false), 'nothing without the purpose');
-		return;
-	}
-
-	$off = ws_mail_connect_form(array('role' => 1), 'f', false);
-	pg_assert_true(strpos($off, '<button') === false, 'no button while the application is not set up');
-	pg_assert_contains('<a href="connections.php?service=microsoft">' . h(lang('Set up the Microsoft application first')) . '</a>', $off, 'a link to the application');
-
-	$on = ws_mail_connect_form(array('role' => 1), 'f', true);
-	pg_assert_contains('<button type="submit" form="pgset_mail_connect"', $on, 'the button once it is set up');
-	pg_assert_true(strpos($on, 'connections-microsoft') === false);
-
-	pg_assert_true(strpos(ws_mail_connect_form(array('role' => 3), 'f', true), '<button') === false, 'a user below manager is told who can');
-}
-
 function test_workspace_mail_connect_refusal_shown_on_the_category()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mailboxes.php');
 
 	pg_assert_contains('pg_connect_flash_take()', $source, 'connect.php\'s message is read');
 	pg_assert_contains('$liveform->add_error(h($ws_flash[\'text\']))', $source, 'a refusal is written on the page');
-	pg_assert_contains('if (ws_mail_connect_ready($ws_provider)) {', $source, 'a hidden Connect form only for an application that is set up');
-	pg_assert_contains("foreach (array('microsoft', 'google') as \$ws_provider)", $source, 'Microsoft\'s and Google\'s');
 }
 
 function test_workspace_mail_google_ways()
@@ -117,23 +97,11 @@ function test_workspace_mail_google_ways()
 	pg_assert_true(strpos($with, 'style=') === false, 'no inline style');
 }
 
-function test_workspace_mail_connect_google_button()
+function test_workspace_mail_google_account_state_in_the_box_form()
 {
-	if (!function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
-		pg_assert_same('', ws_mail_connect_form(array('role' => 1), 'f', false, 'google'), 'nothing without the purpose');
-		return;
-	}
-
-	$off = ws_mail_connect_form(array('role' => 1), 'f', false, 'google');
-	pg_assert_true(strpos($off, '<button') === false, 'no button while the Google application is not set up');
-	pg_assert_contains('<a href="connections.php?service=google">' . h(lang('Set up the Google application first')) . '</a>', $off, 'a link to the application');
-
-	$on = ws_mail_connect_form(array('role' => 1), 'f', true, 'google');
-	pg_assert_contains('<button type="submit" form="pgset_mail_connect_google"', $on, 'the button submits the Google form');
-	pg_assert_contains('bi-google', $on);
-	pg_assert_contains(h(lang('Connect a Google account for mailboxes')), $on);
-
-	pg_assert_contains('name="provider" value="google"', ws_mail_connect_form(array('role' => 1), null, true, 'google'), 'connect.php is asked for Google');
-	pg_assert_true(strpos(ws_mail_connect_form(array('role' => 3), 'f', true, 'google'), '<button') === false, 'a user below manager is told who can');
-	pg_assert_same('pgset_mail_connect', ws_mail_connect_form_id('microsoft'), 'Microsoft\'s form keeps its id');
+	$unset = ws_mail_connection_html(array('role' => 1), 'google', 0, false, true);
+	pg_assert_contains(h(lang('The Google application is not set up yet.')), $unset, 'the application not set up is said');
+	pg_assert_contains('href="' . h(ws_mail_connections_url('google')) . '" target="_blank" rel="noopener"', $unset, 'Google\'s page in a new tab');
+	pg_assert_contains('bi-google', $unset);
+	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 3), 'google', 1, true, true), '<a ') === false, 'a user below manager is told who can');
 }

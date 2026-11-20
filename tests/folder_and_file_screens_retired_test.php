@@ -102,9 +102,9 @@ function test_folder_and_file_screens_retired_ways_in_open_the_file_manager()
 	pg_assert_contains("'url' => 'view_folders.php?view=files'", folder_and_file_screens_retired_source('includes/dashboard/v2/figures.php'), 'the files figure opens the Files view');
 	pg_assert_contains('<a href="view_folders.php?view=files"', folder_and_file_screens_retired_source('includes/dashboard/widgets/widget_18.php'), 'the heavy images card opens the Files view');
 
-	$search = folder_and_file_screens_retired_source('includes/panel/search.php');
-	pg_assert_contains("'url' => \$base_url . '/view_folders.php?view=files'", $search, 'Files in the panel search opens the Files view');
-	pg_assert_false(strpos($search, "lang('Add Folder')") !== false, 'no Add Folder action');
+	$search = folder_and_file_screens_retired_source('includes/fn/panel_screens.php');
+	pg_assert_contains("'Files', 'bi-folder2-open', 'view_folders.php?view=files'", $search, 'Files in the panel search opens the Files view');
+	pg_assert_false(strpos($search, "'Add Folder'") !== false, 'no Add Folder action');
 
 	pg_assert_contains("go(PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');", folder_and_file_screens_retired_source('optimize.php'), 'optimize goes back to the Files view');
 	pg_assert_contains("header('Location: view_folders.php?view=files');", folder_and_file_screens_retired_source('create_file.php'), 'a created file lands in the Files view');

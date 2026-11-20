@@ -8,7 +8,7 @@ description: Plan stock-holds, features H1 to H9: the hold record, units free, p
 - (H2) Units free for an order = the stock (at the location, with locations) less the unexpired holds of other orders, never below 0. A pure function; the order's own holds are not counted against it.
 
 ## When is it placed?
-- (H3) In `submit_order.php`, after every check has passed and right before the payment is asked for: for each tracked product with back orders off, in id order, under `GET_LOCK('pg_stock_hold_<product id>', 5)`: read the units free, write the row, release the lock. A lock not got in time counts as "not enough".
+- (H3) In `submit_order.php`, after every check has passed and right before the payment is asked for: for each tracked product with back orders off, in id order, under `GET_LOCK(pg_stock_hold_lock_name(), 5)` (`pg_stock_hold_<database hash>_<product id>`; placing is `pg_stock_hold_place()`): read the units free, write the row, release the lock. A lock not got in time counts as "not enough".
 - (H4) Not enough for any line: the order's holds are removed, nothing is charged, the cart is shown again with `check_inventory()`'s notice for that line (cut or removed by its rules, the minimum quantity rule of `commerce/cart-stock-below-minimum.md` included).
 - (H5) A bundle line holds each tracked component for quantity per bundle times the line's quantity; a component also bought alone is one pool, as `pg_bundle_check_inventory()` counts.
 

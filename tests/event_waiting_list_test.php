@@ -331,3 +331,31 @@ function test_event_waiting_list_export()
 	pg_assert_contains('calendar_events.name AS event_name', $export, 'the event\'s name');
 	pg_assert_contains('pg_stock_notify_export_event_dates(', $export, 'and its date');
 }
+
+// A recurring event whose dates share their places keeps its waiting list on
+// date 0, which names no single date: the freed places are read on the last
+// date of the series, so a list is still mailed once the first date is over,
+// and neither the mail nor the export names the first date as the one asked.
+function test_event_waiting_list_shared_places()
+{
+	$shared = event_waiting_list_test_event(array('separate_reservations' => 0, 'total_recurrence_number' => 9));
+
+	pg_assert_true(pg_stock_notify_event_shared($shared), 'a series sharing its places');
+	pg_assert_false(pg_stock_notify_event_shared(event_waiting_list_test_event()), 'separate places per date');
+	pg_assert_false(pg_stock_notify_event_shared(event_waiting_list_test_event(array('recurrence' => 0, 'separate_reservations' => 0))), 'no series');
+
+	pg_assert_same(9, pg_stock_notify_event_read_occurrence($shared, 0), 'the last date of the series');
+	pg_assert_same(4, pg_stock_notify_event_read_occurrence(event_waiting_list_test_event(), 4), 'the date itself');
+	pg_assert_same(0, pg_stock_notify_event_read_occurrence(event_waiting_list_test_event(array('recurrence' => 0)), 0), 'a single event');
+
+	$send = pg_test_function_source('pg_stock_notify_event_send');
+	pg_assert_contains('pg_stock_notify_event_read_occurrence(', $send, 'the sender reads the series\' last date');
+	pg_assert_contains('pg_stock_notify_event_shared(', $send, 'the mail names no single date');
+	pg_assert_contains('pg_stock_notify_event_shared(', pg_test_function_source('pg_stock_notify_event_start'), 'the export names no single date');
+}
+
+// A limit reached on the waiting list speaks of waiting lists, not products.
+function test_event_waiting_list_limit_sentence()
+{
+	pg_assert_false(stripos(pg_stock_notify_event_status_message('limit'), 'product') !== false, 'no products');
+}

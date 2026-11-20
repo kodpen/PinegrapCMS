@@ -21,7 +21,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
   - Features: D50, D51, D52. Keeps K9: Ctrl+P is free today.
   - Done in #10607 (`designer/designer-pages-window.md`).
 
-- DP21 (S) after DP20: suggested groups. New: a pure function from the pages (address, kind) to the suggested groups, with its test; accepted, it is written through `designer/tab_layout`. Features: D53.
+- DP21 (S) after DP20: suggested groups. New: a pure function from the pages (address, kind) to the suggested groups, with its test; accepted, it is written through `designer/tab_layout`. Features: D53. Done in #10708 (`designer/designer-tab-suggested-groups.md`).
 
 ## Which steps has the canvas bar?
 - DP22 (M) after DP1: the zones and the View menu. Done in #10205.

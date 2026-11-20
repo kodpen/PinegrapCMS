@@ -314,3 +314,32 @@ function test_page_clicks_fold_keeps_a_folded_kind()
 	$beacon = pg_page_clicks_parse(page_clicks_test_beacon(array('d' => 'mobile', 'e' => array(array('footer', 'link', 'telegram:', '')))), 'www.example.com');
 	pg_assert_same(array(array('footer', 'link', 'telegram:', '')), $beacon['elements'], 'a Telegram icon link without a label is counted, not dropped');
 }
+
+// The designer's "Clicks" layer (sdDesign.clicks): handed only to whoever
+// may open Visitors (the right validate_visitors_access() asks); the button
+// that turns counting on only to whoever may change Features (role up to 2).
+function test_page_clicks_designer_config_by_right()
+{
+	$admin = pg_page_clicks_designer_config(array('role' => '0', 'manage_visitors' => '0'), true, true, '/pinegrap');
+	pg_assert_same(array('visitors' => true, 'features' => true, 'on' => true, 'ready' => true, 'turnOn' => '/pinegrap/visitors_clicks_switch.php'), $admin, 'the shape the part reads');
+
+	$manager = pg_page_clicks_designer_config(array('role' => 2, 'manage_visitors' => 0), false, true, '/p');
+	pg_assert_true($manager['features'], 'a manager may turn it on');
+	pg_assert_false($manager['on'], 'the switch as read');
+
+	$member = pg_page_clicks_designer_config(array('role' => 3, 'manage_visitors' => '1'), true, false, '/p');
+	pg_assert_true($member['visitors'], 'a user given Visitors sees the layer');
+	pg_assert_false($member['features'], 'but gets no button');
+	pg_assert_false($member['ready'], 'not ready before the upgrade');
+
+	pg_assert_same(null, pg_page_clicks_designer_config(array('role' => 3, 'manage_visitors' => '0'), true, true, '/p'), 'nothing for a user without Visitors');
+	pg_assert_same(null, pg_page_clicks_designer_config(array(), true, true, '/p'), 'nothing for an unknown user');
+}
+
+// The layer's window: the last 30 days up to today, as the report route's
+// default.
+function test_page_clicks_designer_window()
+{
+	$now = strtotime('2026-11-20 15:00:00');
+	pg_assert_same(array('2026-10-22', '2026-11-20'), pg_page_clicks_designer_window($now));
+}

@@ -61,6 +61,8 @@ StyleDesigner.definePart('review', function (K) {
             }).join('') +
         '</ul>' +
         '<div class="sd-review-ft">' +
+            '<button type="button" class="pg-button pg-button-ghost pg-button-sm sd-review-copy"' + (host.several ? ' disabled title="' + esc(_sdT('Copy style takes one element: select only one.')) + '"' : '') + '>' +
+                '<span class="bi bi-brush" aria-hidden="true"></span><span class="pg-btn-label">' + esc(_sdT('Copy style')) + '</span></button>' +
             '<button type="button" class="pg-button pg-button-ghost pg-button-sm sd-review-all"' + (locked ? ' disabled' : '') + '>' +
                 '<span class="bi bi-arrow-counterclockwise" aria-hidden="true"></span><span class="pg-btn-label">' + esc(_sdT('Reset all')) + '</span></button>' +
         '</div>';
@@ -80,6 +82,10 @@ StyleDesigner.definePart('review', function (K) {
                 if (!r) return;
                 _rvFocusAt = Array.prototype.indexOf.call(box.querySelectorAll('.sd-review-reset'), t);
                 host.reset(r.lbl);
+                return;
+            }
+            if (t.classList.contains('sd-review-copy')) {
+                host.copyStyle();
                 return;
             }
             if (t.classList.contains('sd-review-all')) {

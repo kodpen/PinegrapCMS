@@ -1,6 +1,6 @@
 ---
 name: workspace-app-commands
-description: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, workspace:commands, never posted, workspace.app.command to that app alone
+description: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, names, arguments, what a typed one sends, an agent's command, the writer-only answer
 ---
 
 ## What is it?
@@ -14,15 +14,16 @@ description: An application's own / commands (ws_app_commands, 11.0.87, PR #2213
 - Deleting the application (`api_settings.php`) deletes its commands; `api_maintenance_purge()` sweeps orphans. Renaming keeps them.
 
 ## Arguments?
-- A command may define up to eight typed arguments (PR #10322): `workspace-app-command-args.md`.
+- A command may define up to eight typed arguments (PR #10322, column `args` 11.0.246): `workspace-app-command-args.md`. The composer's strip and argument popup then work as for a built-in command.
 
 ## What happens when one is typed?
 - `ws_command_run()`: a `/word` no built-in answers is looked up in `ws_app_commands_live()` (key active, not expired, holds `workspace:commands`, owner still holds it in `ws_owner_scopes()`). Then `ws_app_command_send()`: only where the owner reads the channel (`ws_app_reads_channel()`), `pg_announce('workspace.app.command')` and an ephemeral "Sent to the application …" for the writer. The line is never posted.
 - Anywhere else (no live app, owner cannot read the channel) the unknown-command answer, nothing sent.
 - Payload (`ws_app_command_payload()`): command, app_id, channel_id, channel, channel_kind, thread, parent_id, user_id, text (as the owner reads it), body; `values` only for a command with a definition; `answer_token` once 11.0.252 has run. `ws_webhook_event_app_id()` reads `app_id`, so only that app's subscriptions hear it. The app answers everyone with `POST /workspace/channels/{channel_id}/messages`, or the writer alone with `POST /workspace/commands/answer` (`workspace-app-answers.md`).
-- The picker, `/help`, palette and closest-name hints read them through `ws_commands($viewer)` (a person only; without one no table is read). Without a definition they take free text and have no argument popup; either way no live line, no preview or card and no answer of their own.
-- An application with an agent on its request queue: the line is posted and the agent asked, only where it is allowed (`agent-commands.md`, PR #10586).
+- The picker, `/help`, palette and closest-name hints read them through `ws_commands($viewer)` under the group Agents and applications (a person only; without one no table is read). Without a definition they take free text and have no argument popup; either way no live line, no preview or card.
+- An application with an agent on its request queue: the line is posted under the writer's name and the agent asked, only where it is allowed; elsewhere it is not offered (`agent-commands.md`, PR #10586).
+- The application's answer to the writer alone: `answer_token` and `POST /workspace/commands/answer`, kept 24 hours in `ws_app_answers`, drawn in every window of the writer (`workspace-app-answers.md`, PR #10668).
 
 ## Tests?
-- tests/workspace_app_commands_test.php (check, app_ok, find, entry, payload, audience, scope, routes).
+- tests/workspace_app_commands_test.php (check, app_ok, find, entry, payload, audience, scope, routes, args, agent); tests/workspace_app_answers_test.php.
 - Not run on a real database or in the composer: the registration writes, the 409 race and the "Sent to" answer on screen.

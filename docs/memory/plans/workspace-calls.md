@@ -11,16 +11,16 @@ description: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls i
 - Sound and picture go from browser to browser (WebRTC, every pair connected: a mesh); the site carries only who is in a call and the browsers' connection messages (offer, answer, candidates), read with the channel's own live reads. Nothing of a call's media reaches the server.
 - Two limits, told to the owner in poll 157: about one participant in ten cannot connect directly and needs a relay (TURN) service the site's owner enters; a mesh loads every line, so a call holds four people at most. A larger meeting is the second stage, an outside meeting service, in a plan of its own.
 
-## What is built?
+## Which steps are built?
 - CL1, server (done, #10499; `workspace/calls-server.md`). The three tables by a migration step; start, join, leave, end; a signal sent to one member and read by it only; a call left by everyone, or silent for 2 minutes, ends; signals deleted then. Who may: a channel's members, in a direct conversation both people, a guest in its own room only. Limits on calls started and signals sent a minute. API and MCP: read only (a call's state), nothing starts a call for a person.
 - CL2, two people (done, #10522; `workspace/calls-screen.md`): the head's call buttons, the ring with Accept and Decline, mute, camera, devices, hang up, a window kept across channels; `Permissions-Policy` (`waf/waf-security-headers-hsts.md`).
-- CL3, a group. Up to four in one call, a grid; a fifth sees "This call is full"; who speaks is marked.
-- CL4, screen sharing: one share at a time in a call, shown large.
-- CL5, guests. The guest page shows a room's running call with "Join": no install, no account; the guest's name as the room knows it. A guest never starts a call.
+- CL3 (M) a group. Up to four in one call, a grid; a fifth sees "This call is full"; who speaks is marked.
+- CL4 (M) after CL3: screen sharing, one share at a time in a call, shown large.
+- CL5 (M) after CL4: guests. The guest page shows a room's running call with "Join": no install, no account; the guest's name as the room knows it. A guest never starts a call.
 - CL6, settings (done, #10608; `workspace/calls-settings.md`): the "Calls" card in Site Settings › Channels: on or off (off until turned on), the STUN addresses (the default named on the card), an optional TURN relay (addresses, user, sealed secret; short-lived credentials only with a granted start or join) and "Test the connection" in the browser.
-- CL7, the channel's lines: "Call started", "Call ended" with its length and who took part, a missed call to the one who did not answer; counts as activity, never as a message to an agent.
-- CL8, phone and endurance: the call screen on a phone, the route kept when the network changes (ICE restart), a closed tab leaves the call, a second tab of the same person does not join twice.
-- Order CL1, CL2, CL6, CL3, CL4, CL5, CL7, CL8; one PR each, a and b where a step passes the size.
+- CL7 (S) after CL5: the channel's lines, "Call started", "Call ended" with its length and who took part, a missed call to the one who did not answer; counts as activity, never as a message to an agent.
+- CL8 (M) after CL7: phone and endurance, the call screen on a phone, the route kept when the network changes (ICE restart), a closed tab leaves the call, a second tab of the same person does not join twice.
+- Order CL1, CL2, CL6, CL3, CL4, CL5, CL7, CL8, each waits for the one before it; one PR each, a and b where a step passes the size.
 
 ## Which rules does every step keep?
 - No library, no CDN, no outside service but the STUN and TURN addresses of the card. No recording, no transcript, nothing of the media stored.

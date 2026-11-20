@@ -138,6 +138,10 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Stock holds that ran out a day ago (includes/fn/stock_holds.php): they
+// already count for nothing, the sweep keeps the table small.
+pg_stock_hold_sweep_daily();
+
 // Pre-orders whose date has come or whose stock is in end (includes/fn/
 // preorder.php): the flag is cleared, the back order stays. Once an hour.
 $preorders_ended = pg_preorder_end_hourly();
