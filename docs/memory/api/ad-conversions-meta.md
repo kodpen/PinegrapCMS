@@ -28,4 +28,4 @@ module: ad_conversions_meta
 - The test code goes only with "Send a test event" (a 1.00 purchase without the person, id `pg-test-<time>`), never with a queued event.
 
 ## Registry?
-- Row `meta_capi`, group Analytics and search, `place` `connections.php`, `found_at` `#settings/privacy/pgset-cookies`, state reader `pg_ad_conversion_meta_connected()`; transfer US, contact, order and payment, IP and cookie. `pg_connections_count()` is 79.
+- Row `meta_capi`, group Analytics and search, `place` `connections.php`, `found_at` `#settings/privacy/pgset-cookies`, state reader `pg_ad_conversion_meta_connected()`; transfer US, contact, order and payment, IP and cookie. The registry's count: `connections-registry.md`.

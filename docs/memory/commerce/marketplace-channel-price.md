@@ -5,7 +5,7 @@ module: marketplace_pricing
 ---
 
 ## What does an account send as its price?
-- `mp_product_row()` (`connectors/base.php`) puts `mp_pricing_product_price()` in `price`: the site price with VAT (`mp_product_price()`, kept as `site_price`), moved by the account's rule, never under the floor. `price_rule` says a rule set it.
+- `mp_product_row()` (`connectors/base.php`) puts `mp_pricing_product_price()` in `price`: the listing's own price as typed when it has one (`price_own`, `marketplace-pricing-tab.md`), else the site price with VAT (`mp_product_price()`, kept as `site_price`) moved by the account's rule, never under the floor. `price_rule` says a rule set it.
 - No rule row for the account (every site after the upgrade): the site price as before. The drivers send `price` as both `salePrice` and `listPrice`: no struck-through price.
 
 ## Which rule does a product take?
@@ -24,7 +24,7 @@ module: marketplace_pricing
 - `marketplace_price_state.own_floor` (typed on the listing) only raises it (`mp_pricing_floor_final()`). Tax off: the VAT taken out is the product's own rate, else the zone's.
 
 ## What does the price history get?
-- After a batch is handed over, a row per product whose channel price changed: channel `marketplace:<account id>`, source `rule` (`mp_sync_record_channel_prices()` in `sync.php`, `mp_pricing_history_record()`). Only for an account with `push_price` and at least one rule; refused or deferred products are left out.
+- After a batch is handed over, a row per product whose channel price changed: channel `marketplace:<account id>`, source `rule`, or `panel` for an own price (`mp_sync_record_channel_prices()` in `sync.php`, `mp_pricing_history_record()`). Only for an account with `push_price` and at least one rule or own price; refused or deferred products are left out.
 - Source `repricer` is reserved for the robot's prices (RP4).
 
 ## Where is the buybox read?

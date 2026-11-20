@@ -173,6 +173,42 @@ function pg_look_examples($prefix = 'light')
             . '</div><p class="pg-text-meta">' . h(lang('A title says what happened and with what: no greeting, no label with a colon. Hover shows the quick actions in place of the time.')) . '</p>',
     );
 
+    // A drawer as Application Access' #api_new and Contacts › Privacy centre
+    // draw it: a dialog.drawer opened through pgUI, 480 px off the right edge
+    // (a sheet from the bottom under 576 px), one form inside. Drawn here in
+    // place, without the dialog, so both panes show it.
+    $sections[] = array(
+        'id'      => 'drawer',
+        'title'   => lang('Drawer'),
+        'classes' => array('drawer-header', 'drawer-title', 'btn-close', 'role="tablist"', 'role="tab"', 'aria-selected', 'drawer-body', 'drawer-footer', '.pg-seg', '.pg-seg-item', '.pg-pill', '.pg-button-danger', '.pg-button-quiet', '.pg-button-fill'),
+        'html'    => '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:480px">'
+            . '<div class="drawer-header"><div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
+            . '<p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . h(lang('Erasure')) . ' <span class="pg-pill pg-tone-amber">' . h(lang(array('string' => '{var:1} days left', 'vars' => array(5)))) . '</span></p></div>'
+            . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div>'
+            . '<div class="px-5 pt-3 pb-3 border-bottom"><span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">'
+            . '<button type="button" class="pg-seg-item" role="tab" aria-selected="true" aria-controls="' . $p . '_look_drawer_pane">' . h(lang('Request')) . '</button>'
+            . '<button type="button" class="pg-seg-item" role="tab" aria-selected="false" tabindex="-1">' . h(lang('History')) . '</button></span></div>'
+            . '<div class="drawer-body" role="tabpanel" id="' . $p . '_look_drawer_pane"><label class="pg-field-label" for="' . $p . '_look_drawer_field">' . h(lang('Handled by')) . '</label><input type="text" class="pg-input" id="' . $p . '_look_drawer_field" value="Mehmet Kaya"></div>'
+            . '<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><button type="button" class="pg-button pg-button-danger">' . h(lang('Refuse')) . '</button><span class="flex-grow-1"></span>'
+            . '<button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button><button type="button" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button></div>'
+            . '</div><p class="pg-text-meta">' . h(lang('One form in a dialog.drawer opened through pgUI; tabs as the segmented control with role tab; the danger button at the left of the foot, Save last. A closed record shows plain text and Close only.')) . '</p>',
+    );
+
+    $sections[] = array(
+        'id'      => 'menus',
+        'title'   => lang('Menus'),
+        'classes' => array('.pg-menu-wrap', '.menu', '.pg-menu-end', '.menu-item', '.menu-divider'),
+        'html'    => '<div class="pg-look-line">'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Edit')) . '</button>'
+            . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
+            . '<ul class="menu pg-menu-end">'
+            . '<li><button type="button" class="menu-item"><i class="bi bi-files me-3" aria-hidden="true"></i>' . h(lang('Duplicate')) . '</button></li>'
+            . '<li><hr class="menu-divider"></li>'
+            . '<li><button type="button" class="menu-item fg-emphasis-danger"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></li>'
+            . '</ul></span>'
+            . '</div><p class="pg-text-meta">' . h(lang('A row\'s "more" menu sits last in its actions, after the quiet buttons; a danger item is last, under a divider, and asks a confirm.')) . '</p>',
+    );
+
     return $sections;
 }
 
@@ -299,7 +335,7 @@ function pg_look_examples_not_done()
         array(
             'title' => lang('Not drawn yet'),
             'items' => array(
-                lang('Dialogs and drawers, the settings modal'),
+                lang('Dialogs and the settings modal'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
                 lang('Workspace: channel and lists'),

@@ -173,6 +173,23 @@ if (ECOMMERCE && function_exists('pg_customer_value_job_run')) {
 
 }
 
+// Delivery tower (includes/fn/delivery_tower_passes.php): the measured
+// delivery times rebuilt once a night, and the problem pass once an hour
+// that opens and closes the parcels' delivery problems; both inside
+// PG_DELIVERY_TOWER_TICK_SECONDS of this tick, going on from their place
+// next tick. A tick with nothing due reads two small config_text rows.
+if (ECOMMERCE) {
+
+    $delivery_tower = pg_delivery_tower_job_run(pg_cron_time_left(PG_DELIVERY_TOWER_TICK_SECONDS));
+
+    if (!empty($delivery_tower['pass']['opened'])) {
+
+        log_activity(lang(array('string' => 'general job found {var:1} new delivery problem(s)', 'vars' => array(pg_format_number($delivery_tower['pass']['opened'], 0)))), 'UNKNOWN');
+
+    }
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
@@ -954,6 +971,24 @@ if (pg_privacy_rules_due()) {
     }
 }
 
+// The Privacy centre's request box (includes/fn/privacy_requests.php):
+// requests never proven are swept after 7 days, and open ones are reminded
+// of at 7 and 2 days left, each once. Nothing on a site without the table.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
+
+if (pg_privacy_requests_ready()) {
+
+    $privacy_requests_swept = pg_privacy_requests_sweep();
+    pg_privacy_requests_remind();
+
+    if ($privacy_requests_swept > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} privacy request(s) whose address was never proven',
+            'vars'   => array(pg_format_number($privacy_requests_swept, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Cancelled appointment bookings past 400 days since their last change
 // (includes/fn/booking_retention.php): once a day, five seconds a tick until
 // the pass is through. Nothing to do on a site without the booking tables; a
@@ -976,6 +1011,18 @@ if (pg_booking_retention_due()) {
 // file; a shop with no offer running reads its offers once an hour.
 if (pg_price_history_offer_pass_due()) {
     pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
+// A marketplace account whose price rules changed gets its listings queued
+// again, a batch a statement, five seconds a tick until it is through
+// (includes/fn/marketplace_pricing_settings.php). A tick with nothing owed
+// reads one small file.
+if (ECOMMERCE) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
+
+    if (mp_pricing_requeue_due()) {
+        mp_pricing_requeue_run(MP_PRICING_REQUEUE_BUDGET);
+    }
 }
 
 // Product price history rows older than thirteen months
@@ -1071,6 +1118,9 @@ if (pg_cron_job_is_enabled('api_webhook_job')) {
 // The ad services' events (includes/fn/ad_conversions.php): the 30-day sweep
 // once a day, then the due rows. Its own small budget, apart from the
 // webhook queue, so a slow ad service never holds back an order webhook.
+// GA4's refund rows are written first, from order_refunds, so every place
+// that records a refund is covered (includes/fn/ad_conversions_ga4.php).
+pg_ad_conversion_ga4_queue_refunds();
 pg_ad_conversion_dispatch(10);
 
 // Device notifications, when the operator has switched them on. Same shape and
