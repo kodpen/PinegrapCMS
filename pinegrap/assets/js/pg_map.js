@@ -5,12 +5,20 @@
  * places.php for the places the page's form list shows, draws them as
  * cards in the block's list, and narrows the list as the visitor types a
  * town, a postcode or a name. The block's still picture and sample cards
- * are the canvas's; they leave once the real list is drawn. The map itself
- * comes in a later step: this file draws no tiles and loads nothing else.
+ * are the canvas's; they leave once the real list is drawn.
  *
- * The page gives window.pgMap = {page, endpoint, labels}
- * (pg_place_list_inject()). Without it (the editor's Preview) the block
- * keeps its sample.
+ * While "Maps" is on (Site Settings, Features) the picture's place becomes a
+ * map: Leaflet (assets/lib/leaflet/) with the site's raster tiles, a marker
+ * per place with coordinates, and the place's card in the marker's popup.
+ * With the cookie notice on, neither the library nor a tile is asked for
+ * before the visitor allows marketing: the picture stays with a "Show the
+ * map" button that opens the notice, and the map is drawn on the notice's
+ * pg:consent event, without a reload. With the notice off it is drawn at
+ * once. Off, the picture leaves and the list takes the row.
+ *
+ * The page gives window.pgMap = {page, endpoint, labels, map}
+ * (pg_place_list_inject(), pg_place_tiles_page()). Without it (the editor's
+ * Preview) the block keeps its sample.
  *
  * Distance and order by distance are worked out here, in the browser; no
  * position is sent anywhere. Node loads this file for its tests: the pure
@@ -78,7 +86,53 @@
         });
     }
 
-    var api = { distance: distance, order: order, fold: fold, matches: matches };
+    // Whether the visitor's stored answer allows marketing: the pg_consent
+    // cookie as pg_consent.js writes it ("1" then ".m1" among the answers).
+    function marketingAllowed(cookie) {
+        var match = String(cookie || '').match(/(?:^|;\s*)pg_consent=([^;]*)/);
+
+        if (!match) {
+            return false;
+        }
+
+        var parts = match[1].split('.');
+
+        return parts.shift() === '1' && parts.indexOf('m1') !== -1;
+    }
+
+    // What the block does about the map: 'off' (the list alone), 'wait'
+    // (the picture and its button until marketing is allowed) or 'load'.
+    function gate(map, cookie) {
+        if (!map || !map.on || !map.tiles) {
+            return 'off';
+        }
+
+        return (!map.consent || marketingAllowed(cookie)) ? 'load' : 'wait';
+    }
+
+    // Calls mount once the map may load: at once, or on the cookie notice's
+    // answer that allows marketing. Nothing else loads the map, so no tile
+    // is asked for before. Returns the gate.
+    function whenAllowed(doc, map, cookie, mount) {
+        var state = gate(map, cookie);
+
+        if (state === 'load') {
+            mount();
+        } else if (state === 'wait') {
+            var listen = function (event) {
+                if (event && event.detail && event.detail.marketing) {
+                    doc.removeEventListener('pg:consent', listen);
+                    mount();
+                }
+            };
+
+            doc.addEventListener('pg:consent', listen);
+        }
+
+        return state;
+    }
+
+    var api = { distance: distance, order: order, fold: fold, matches: matches, marketingAllowed: marketingAllowed, gate: gate, whenAllowed: whenAllowed };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -121,7 +175,7 @@
         return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(place.address);
     }
 
-    function card(place) {
+    function card(place, onMap) {
         var item = el('li', 'pg-map-card');
         item.appendChild(el('h3', 'h6 mb-1', place.name || place.address));
 
@@ -152,9 +206,108 @@
             links.appendChild(more);
         }
 
+        if (onMap) {
+            var locate = el('button', 'btn btn-sm btn-link', t('Show on the map'));
+            locate.type = 'button';
+            locate.addEventListener('click', onMap);
+            links.appendChild(locate);
+        }
+
         item.appendChild(links);
 
         return item;
+    }
+
+    // ── The map ─────────────────────────────────────────────────────────
+
+    var library = null;
+
+    // Leaflet's stylesheet and script, once for the page; calls back when
+    // the script has run.
+    function loadLibrary(map, done) {
+        if (root.L && root.L.map) {
+            done();
+            return;
+        }
+
+        if (!library) {
+            library = [];
+
+            var style = root.document.createElement('link');
+            style.rel = 'stylesheet';
+            style.href = map.style;
+            root.document.head.appendChild(style);
+
+            var script = root.document.createElement('script');
+            script.src = map.script;
+            script.onload = function () {
+                library.forEach(function (callback) {
+                    callback();
+                });
+                library = [];
+            };
+            root.document.head.appendChild(script);
+        }
+
+        library.push(done);
+    }
+
+    // The map in the picture's place, a marker per place with coordinates.
+    function mountMap(view, map) {
+        loadLibrary(map, function () {
+            var L = root.L;
+            var box = el('div', 'pg-map-canvas rounded border');
+            box.style.height = '28rem';
+            box.style.maxHeight = '70vh';
+            box.setAttribute('role', 'region');
+            box.setAttribute('aria-label', t('Map of places'));
+
+            view.picture.textContent = '';
+            view.picture.appendChild(box);
+
+            var leaflet = L.map(box, { scrollWheelZoom: false });
+            leaflet.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+            L.tileLayer(map.tiles, { attribution: map.credit, maxZoom: 19 }).addTo(leaflet);
+
+            var points = [];
+
+            view.places.forEach(function (place, index) {
+                if (typeof place.lat !== 'number' || typeof place.lng !== 'number') {
+                    return;
+                }
+
+                var marker = L.marker([place.lat, place.lng], { title: place.name || place.address, alt: place.name || place.address });
+                // The place's card in the popup, as a block rather than a
+                // list item.
+                marker.bindPopup(function () {
+                    var item = card(place);
+                    // Leaflet draws its popup white in either colour mode:
+                    // the card's text takes the light mode's colours there.
+                    var box = el('div', 'pg-map-popup');
+                    box.setAttribute('data-bs-theme', 'light');
+
+                    while (item.firstChild) {
+                        box.appendChild(item.firstChild);
+                    }
+
+                    return box;
+                });
+                marker.on('popupopen', function () {
+                    view.mark(index);
+                });
+                view.markers[index] = marker;
+                points.push([place.lat, place.lng]);
+            });
+
+            if (points.length) {
+                leaflet.fitBounds(points, { padding: [32, 32], maxZoom: 15 });
+            } else {
+                leaflet.setView([20, 0], 2);
+            }
+
+            view.leaflet = leaflet;
+            view.show();
+        });
     }
 
     function draw(block, places, note, cut) {
@@ -172,21 +325,70 @@
             block.setAttribute('data-pg-map-cut', '1');
         }
 
-        // The canvas's picture leaves with its column (no map yet), and the
-        // list's column takes the row; the sample cards leave too.
-        Array.prototype.forEach.call(block.querySelectorAll('[data-pg-map-picture], [data-pg-map-sample]'), function (node) {
-            var gone = node;
+        var map = config.map || {};
+        var picture = block.querySelector('[data-pg-map-picture]');
+        var view = { places: places, picture: picture, markers: [], leaflet: null, cards: [] };
 
-            if (node.hasAttribute('data-pg-map-picture') && node.parentNode && /(^|\s)col(-|\s|$)/.test(node.parentNode.className || '')) {
-                gone = node.parentNode;
-            }
-
-            gone.parentNode.removeChild(gone);
+        // The sample cards leave. The picture keeps its place while a map
+        // may come; otherwise it leaves with its column and the list's
+        // column takes the row.
+        Array.prototype.forEach.call(block.querySelectorAll('[data-pg-map-sample]'), function (node) {
+            node.parentNode.removeChild(node);
         });
 
-        if (/(^|\s)col(-|\s|$)/.test(list.parentNode.className || '')) {
-            list.parentNode.className = list.parentNode.className.replace(/\bcol-(sm|md|lg|xl|xxl)-\d+\b/g, '').replace(/\s+/g, ' ').trim();
+        var state = picture ? gate(map, root.document.cookie) : 'off';
+
+        if (state === 'off') {
+            Array.prototype.forEach.call(block.querySelectorAll('[data-pg-map-picture]'), function (node) {
+                var gone = node;
+
+                if (node.parentNode && /(^|\s)col(-|\s|$)/.test(node.parentNode.className || '')) {
+                    gone = node.parentNode;
+                }
+
+                gone.parentNode.removeChild(gone);
+            });
+
+            if (/(^|\s)col(-|\s|$)/.test(list.parentNode.className || '')) {
+                list.parentNode.className = list.parentNode.className.replace(/\bcol-(sm|md|lg|xl|xxl)-\d+\b/g, '').replace(/\s+/g, ' ').trim();
+            }
         }
+
+        // Until marketing is allowed: the still picture, a button that
+        // opens the cookie notice and a line saying why. The button presses
+        // the notice's own corner button: as a data-pg-cc-open opener it
+        // would hide that corner button for good once the map replaced it.
+        var notice = root.document.querySelector('#pg-cc .pg-cc-fab');
+
+        if (state === 'wait' && notice) {
+            picture.style.position = 'relative';
+
+            var ask = el('div', 'position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center gap-2 text-center p-3 rounded bg-body shadow-sm');
+            ask.style.width = '20rem';
+            ask.style.maxWidth = '90%';
+            var open = el('button', 'btn btn-primary w-100 text-wrap', t('Show the map'));
+            open.type = 'button';
+            open.addEventListener('click', function () {
+                notice.click();
+            });
+            ask.appendChild(open);
+            ask.appendChild(el('p', 'small text-body-secondary mb-0', t('The map shows once you allow marketing in the cookie settings.')));
+            picture.appendChild(ask);
+        }
+
+        view.mark = function (index) {
+            view.cards.forEach(function (item, i) {
+                if (!item) {
+                    return;
+                }
+
+                item.classList.toggle('border-primary', i === index);
+
+                if (i === index && item.scrollIntoView) {
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        };
 
         if (note) {
             var aside = el('p', 'alert alert-warning small', note);
@@ -197,10 +399,28 @@
             var query = search ? search.value : '';
             var shown = 0;
             list.textContent = '';
+            view.cards = [];
 
-            places.forEach(function (place) {
-                if (!query || matches(place, query)) {
-                    list.appendChild(card(place));
+            places.forEach(function (place, index) {
+                var marker = view.markers[index];
+                var match = !query || matches(place, query);
+
+                // The markers follow the search, as the list does.
+                if (marker && view.leaflet) {
+                    if (match && !view.leaflet.hasLayer(marker)) {
+                        marker.addTo(view.leaflet);
+                    } else if (!match && view.leaflet.hasLayer(marker)) {
+                        view.leaflet.removeLayer(marker);
+                    }
+                }
+
+                if (match) {
+                    var item = card(place, (marker && view.leaflet) ? function () {
+                        view.leaflet.setView(marker.getLatLng(), Math.max(view.leaflet.getZoom(), 15));
+                        marker.openPopup();
+                    } : null);
+                    view.cards[index] = item;
+                    list.appendChild(item);
                     shown++;
                 }
             });
@@ -210,11 +430,19 @@
             }
         }
 
+        view.show = show;
+
         if (search) {
             search.addEventListener('input', show);
         }
 
         show();
+
+        if (state !== 'off') {
+            whenAllowed(root.document, map, root.document.cookie, function () {
+                mountMap(view, map);
+            });
+        }
     }
 
     function load() {
