@@ -1,6 +1,6 @@
 ---
 name: image-editor-jpeg-start-quality
-description: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
+description: A JPEG turned, flipped or cropped (Artifact Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 module: image
 ---
 
@@ -11,7 +11,7 @@ module: image
 ## How is it built?
 - `pg_image_jpeg_quality($data)` (`includes/fn/image.php`, pure): the luminance quantisation table (DQT table 0, 8 or 16 bit) against the standard table scaled as libjpeg does for each quality 1-100; the closest sum wins (order-free, so zigzag does not matter). 0 when the bytes are not a JPEG or hold no table. Used under GD and Imagick alike, so both read the same number.
 - `pg_image_jpeg_start_quality($path, $ceiling = 92)`: reads the first 256 KB; the lower of the ceiling and the reading, never below 40 (the panel's lowest); the ceiling when nothing is read (PNG, WebP, a missing file).
-- Design Canvas save and the `estimate` action: `pg_image_editor_export_start()` sets the start on the picture as it was opened (the version base included) when the request chose no quality. The estimate answers `start_quality`.
+- Artifact Canvas save and the `estimate` action: `pg_image_editor_export_start()` sets the start on the picture as it was opened (the version base included) when the request chose no quality. The estimate answers `start_quality`.
 - Export panel: `M.exportStart()`, `M.exportDefaults(start)`, `M.exportRequest(ex, own, start)`; the panel takes `start_quality` from the first estimate and moves the slider to it until the user moves it. Only a quality other than the start is sent.
 - The File Manager's rotate (`includes/explorer/handle_files_media.php`) and Edit File's rotate buttons (`edit_file.php`) encode at `pg_image_jpeg_start_quality()` too.
 

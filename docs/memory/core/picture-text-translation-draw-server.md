@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-draw-server
-description: The Design Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
+description: The Artifact Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
 module: picture_translation
 ---
 
@@ -12,7 +12,7 @@ module: picture_translation
 - That keep is `pg_picture_tr_keep()`, shared with the server's draw (`drawn_by` 0, `picture-text-auto-rows.md`).
 
 ## Where is a language's picture hidden?
-- `pg_picture_tr_hidden_sql()` in both File Manager lists (`includes/explorer/handle_list.php`), the file pickers (`pg_picker_where_for()`) and the Design Canvas's pictures from Files (`pg_image_editor_action_sticker_files()`); Where used answers "could not find the file" for one (`pg_picture_tr_is_picture()`).
+- `pg_picture_tr_hidden_sql()` in both File Manager lists (`includes/explorer/handle_list.php`), the file pickers (`pg_picker_where_for()`) and the Artifact Canvas's pictures from Files (`pg_image_editor_action_sticker_files()`); Where used answers "could not find the file" for one (`pg_picture_tr_is_picture()`).
 - Moves, deletes, the bin, a folder copy and Disk Usage of these pictures: `core/picture-text-translation-doors.md`.
 
 ## Tests?
