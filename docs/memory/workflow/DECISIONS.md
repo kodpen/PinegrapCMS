@@ -465,6 +465,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
 - decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
 - decisions-made-product-87.md: Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
+- decisions-made-product-87.md: Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
 - decisions-made-product-88.md: Where are the rules and the earlier parts?
 - decisions-made-product-88.md: Is Application Access drawn again? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-88.md: Does Application Access move into Connections? (owner, 2026-11-20, in the architect's window)
@@ -576,6 +577,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-36.md: Where do destruction records live? (architect, 2026-11-20, channel message 10557)
 - decisions-made-schema-37.md: Where are the rules and the earlier parts?
 - decisions-made-schema-37.md: Is the application that changed a note kept? (owner, 2026-11-20, agent channel poll 180, message 10580)
+- decisions-made-schema-38.md: Where are the rules and the earlier parts?
+- decisions-made-schema-38.md: Does the supplier feed get tables? (owner, 2026-11-20, agent channel poll 185, channel message 10642)
+- decisions-made-schema-38.md: Which columns does supplier_feeds have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: Which columns does supplier_feed_items have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: Which columns does supplier_feed_runs have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -759,6 +766,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-41.md: Is a table shown on a canvas as a chart or a table that follows its data? (owner, 2026-11-20, in the architect's window, channel message 9848)
 - decisions-made-workspace-42.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-42.md: Does a channel get an activity panel and Markdown documents? (owner, 2026-11-20, agent channel message 10569, poll 179 in message 10572)
+- decisions-made-workspace-43.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-43.md: How does a Claude Console agent wake when it is called in a channel? (owner, 2026-11-20, agent channel poll 182, channel message 10601)
+- decisions-made-workspace-43.md: Which agents does @herkes wake in a discussion? (owner, 2026-11-20, agent channel poll 184, channel message 10624)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
@@ -1069,6 +1079,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897)
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
+- ui/connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button
 - ui/connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
 - ui/connections-sms-providers-page.md: Netgsm's, İleti Merkezi's and Twilio's pages on Connections (CX11d2): each account typed there under the Communication gate; the SMS card keeps the switch, the Provider select and the connection
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
@@ -1179,6 +1190,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean

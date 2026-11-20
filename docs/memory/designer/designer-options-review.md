@@ -17,7 +17,7 @@ description: Options panel "Only what I changed" (DP9, #10699): the switch at th
 - On, `renderProperties()` and `renderMultiProperties()` build every tab and every section's body as the search does, keep them hidden, and `_sdReviewAfter()` asks the part to draw the list from the drawn rows (`_sdReviewRows()`).
 - A reset arrow clicks the row's own dot button (`.sd-chg-reset`), so one element and several reset as the dot does, one undo step each. Disabled where the dot's is, and in a locked panel (K4).
 - "Reset all" asks first (`pgConfirm`, "Reset all changed options?"), then `_sdReviewResetAll()` resets every row inside one `_sdUndoAsOne()`: one undo step. A row is found again after each redraw by tab, card and its place in the card; a row its reset leaves changed is tried once. A toast says how many went back.
-- "Copy style" under the list is D27 (DP10): not drawn before it works, as the identity row's brush.
+- "Copy style" stands under the list beside "Reset all" (dimmed for several elements): `designer-options-copy-style.md`.
 
 ## Where is the code?
 - Core hooks: the block `"Only what I changed": the core's hooks` in `style_designer.src.js` (`_sdReviewFoot`, `_sdReviewAfter`, `_sdReviewSet`, `_sdReviewRows`, `_sdReviewResetAll`, `_sdReviewHost`). `_sdMcMark()` puts `data-mc-n` / `data-mc-of` on a several-element row's label.

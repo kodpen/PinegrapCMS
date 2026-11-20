@@ -116,6 +116,63 @@ function pg_page_clicks_switch_on()
 }
 
 /**
+ * Whether the user may open Visitors: the right validate_visitors_access()
+ * asks, without its error page. Pure.
+ *
+ * @param array $user
+ * @return bool
+ */
+function pg_page_clicks_may_view(array $user)
+{
+    if (!isset($user['role']) || !is_numeric($user['role'])) {
+        return false;
+    }
+
+    return ((int) $user['role'] < 3) || !empty($user['manage_visitors']);
+}
+
+/**
+ * The visual designer's settings for its "Clicks" layer (sdDesign.clicks,
+ * read by assets/js/style_designer_clicks.js): null for whoever may not
+ * open Visitors, so neither the part nor its toggle is handed over.
+ * features: may change Features (role up to 2), which the empty state's
+ * button asks; turnOn: the Visitors section's switch, which saves through
+ * pg_page_clicks_switch_save(). Pure.
+ *
+ * @param array  $user
+ * @param bool   $on       pg_page_clicks_switch_on()
+ * @param bool   $ready    pg_page_clicks_ready()
+ * @param string $software OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY
+ * @return array|null visitors, features, on, ready, turnOn
+ */
+function pg_page_clicks_designer_config(array $user, $on, $ready, $software)
+{
+    if (!pg_page_clicks_may_view($user)) {
+        return null;
+    }
+
+    return array(
+        'visitors' => true,
+        'features' => (int) $user['role'] <= 2,
+        'on'       => (bool) $on,
+        'ready'    => (bool) $ready,
+        'turnOn'   => $software . '/visitors_clicks_switch.php'
+    );
+}
+
+/**
+ * The designer layer's window: the last 30 days up to today, the report
+ * route's default. Pure.
+ *
+ * @param int $now
+ * @return array first and last day, Y-m-d
+ */
+function pg_page_clicks_designer_window($now)
+{
+    return array(date('Y-m-d', (int) $now - (29 * 86400)), date('Y-m-d', (int) $now));
+}
+
+/**
  * Turns the switch on or off. The one saver: the Visitors section's "Turn
  * on" button and the Features card call it. Whoever calls it has checked
  * the right to change Features and the form's token.

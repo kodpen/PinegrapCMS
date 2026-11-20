@@ -29,6 +29,7 @@
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
+- bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
 - bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]
 - bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean [decision: here]
 - bug-hunt-customer-reviews.md: Bug hunt of the store's customer reviews (architect, agent channel message 10333, 2026-11-20): the fault fixed, the issue opened, what was read clean
@@ -149,7 +150,7 @@
 - decisions-made-product-84.md: Decisions list, product part 84 (2026-11-20 on): the sales watch, where the store learns its order rhythm and says when it breaks
 - decisions-made-product-85.md: Decisions list, product part 85 (2026-11-20 on): the site explains itself to AI agents (plan ai-guide): who builds it, the guide's language and doors, the compact tool list, hints on refusals
 - decisions-made-product-86.md: Decisions list, product part 86 (2026-11-20 on): an order sold beyond the stock is flagged now; holding units during payment enters a plan; no lock and no automatic refund
-- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre enters a plan
+- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre and a supplier feed enter plans
 - decisions-made-product-88.md: Decisions list, product part 88 (2026-11-20 on): Application Access drawn again, with starting points, bulk permission choices, a guide per way to connect and an agent set up from the application
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
@@ -183,6 +184,7 @@
 - decisions-made-schema-35.md: Decisions list, schema part 35 (2026-11-20 on): the ad_conversion_events table of plan ad-conversions, the send queue, the event log and the buyer's ids until sent
 - decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
 - decisions-made-schema-37.md: Decisions list, schema part 37 (2026-11-20 on): the application that saved a note, kept on the note and on its versions
+- decisions-made-schema-38.md: Decisions list, schema part 38 (2026-11-20 on): the three tables of the supplier feed: supplier_feeds, supplier_feed_items, supplier_feed_runs; no column on products
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
@@ -230,6 +232,7 @@
 - decisions-made-workspace-40.md: Decisions list, workspace part 40 (2026-11-20 on): voice and video calls in the Workspace, staged: two people and small groups browser to browser first, large meetings later
 - decisions-made-workspace-41.md: Decisions list, workspace part 41 (2026-11-20 on): a Data table shown on a canvas as a chart or a table that follows the data
 - decisions-made-workspace-42.md: Decisions list, workspace part 42 (2026-11-20 on): an Activity tab in Channel info and documents written in a channel, both planned
+- decisions-made-workspace-43.md: Decisions made, workspace part 43 (2026-11-20 on): a Claude Console agent wakes on a schedule, no Anthropic key on the site; @herkes in a discussion: its own agents, a hint line, a bulk add
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel

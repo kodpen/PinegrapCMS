@@ -306,17 +306,16 @@ StyleDesigner.definePart('clicks', function (K) {
         return (DEVICES.indexOf(String(value || '')) > 0) ? String(value) : '';
     }
 
-    // The report's address for one page over the last 30 days (the route's
-    // default window), for one device or all.
-    function address(report, pageId, device) {
-        if (!report || !(pageId > 0)) {
-            return '';
+    // What the designer's read of the figures is asked for one page over
+    // the last 30 days, for one device or all; null for a page not saved.
+    function ask(pageId, device) {
+        if (!(pageId > 0)) {
+            return null;
         }
 
         var d = deviceOf(device);
 
-        return report + ((report.indexOf('?') < 0) ? '?' : '&') + 'page_id=' + encodeURIComponent(String(pageId))
-            + (d ? '&device=' + encodeURIComponent(d) : '');
+        return d ? { page_id: pageId, device: d } : { page_id: pageId };
     }
 
     var AREAS = null;
@@ -377,7 +376,7 @@ StyleDesigner.definePart('clicks', function (K) {
 
     // The editor's own settings for the layer (sdDesign.clicks, handed by
     // the designer screen): visitors (may open Visitors), features (may
-    // change Features), on, ready, report, turnOn.
+    // change Features), on, ready, turnOn.
     function settings() {
         var d = K.design;
 
@@ -529,7 +528,7 @@ StyleDesigner.definePart('clicks', function (K) {
     function load() {
         var s = settings();
         var page = activePage();
-        var url = address(s.report, page ? parseInt(page.page_id, 10) : 0, state.device);
+        var asked = ask(page ? parseInt(page.page_id, 10) : 0, state.device);
         var seq = ++state.seq;
 
         state.report = null;
@@ -539,7 +538,7 @@ StyleDesigner.definePart('clicks', function (K) {
             return Promise.resolve(null);
         }
 
-        if (!url) {
+        if (!asked) {
             clearCanvas();
             drawPanel('<p class="small mb-0">' + esc(_sdT('Save the page first to see its clicks.')) + '</p>');
             return Promise.resolve(null);
@@ -547,20 +546,25 @@ StyleDesigner.definePart('clicks', function (K) {
 
         refresh();
 
-        return fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (r) { return r.ok ? r.json() : null; })
+        // The editor's own read (sub-action page_clicks of the designer's
+        // panel endpoint): the page's figures as GET /reports/page-clicks
+        // gives them, under the session and the Visitors right.
+        return K._pgApiPost('page_clicks', asked)
             .then(function (body) {
                 if (seq !== state.seq || !H) {
                     return null;
                 }
 
-                var answer = (body && body.data && typeof body.data === 'object') ? body.data : body;
+                if (!body || body.status !== 'success') {
+                    throw new Error('refused');
+                }
 
-                state.report = (answer && answer.page) ? answer.page : { views: 0, reach: [], elements: [], other: 0 };
+                state.report = body.page ? body.page : { views: 0, reach: [], elements: [], other: 0 };
                 refresh();
 
                 return state.report;
-            }, function () {
+            })
+            .catch(function () {
                 if (seq === state.seq && H) {
                     drawPanel('<p class="small mb-0">' + esc(_sdT('The figures could not be loaded. Check the connection and try again.')) + '</p>');
                 }
@@ -655,7 +659,7 @@ StyleDesigner.definePart('clicks', function (K) {
         name: nameOf,
         match: match,
         lines: lines,
-        address: address,
+        ask: ask,
         deviceOf: deviceOf,
         empty: empty,
         list: list,

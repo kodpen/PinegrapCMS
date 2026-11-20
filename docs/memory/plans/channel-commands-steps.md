@@ -4,17 +4,17 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
 ---
 
 ## Which steps come first?
-- CC1 (M) The engine; nothing changes on screen.
+- CC1 (M) The engine; nothing changes on screen. Done in #10007 and #10016.
   - New: `includes/workspace/command_registry.php` (`ws_command_registry()`, the entries of a group in a function of their own, so two later steps do not write the same lines), `tests/workspace_command_registry_test.php`.
   - Existing: `includes/workspace/commands.php`: the literal list of `ws_commands()`, the switch of `ws_command_run()`, the branches of `ws_command_suggest()`, `ws_command_offered()` and `ws_api_command_kind()` become lookups. A `case` body moves into a runner function unchanged; no `lang()` text is touched.
   - Tests, red first: every key has a runner that exists; the ordered keys equal today's; an application's command named as a built-in is shadowed. `tests/workspace_commands_test.php` and `tests/workspace_command_run_test.php` stay green.
   - Memory: `workspace/workspace-command-registry.md` rewritten for the entry; the census files deleted, what lasts moved there.
-  - Cut: CC1a done (#10007, list, names, gate, API class); CC1b done (#10016, runners, live lines).
+  - Cut: CC1a (list, names, gate, API class), CC1b (runners, live lines).
   - Features: K1 to K3.
 
-- CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
-  - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
-  - CC2b done (#10166): the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
+- CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply. Done in #10057 and #10166.
+  - CC2a: the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
+  - CC2b: the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
 
 - CC3 (M) after CC2: /hatırlat and /özet.
   - CC3 done (#10186): K8 /hatırlat, K9 /özet (`workspace/workspace-command-remind-recap.md`).
@@ -34,9 +34,9 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Pictures: the list with flows, /akış's argument list, a started flow's line.
   - Features: K13, K14.
 
-- CC6 (M) after CC2: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek. Over the size: CC6a (the first three) and CC6b.
-  - CC6a done (#10250): K15 /bildirim, K16 /davet, K17 /ayrıl (`workspace/workspace-command-notify-invite-leave.md`).
-  - CC6b done (#10277): K18 /konu, K19 /ara, K20 /bellek (`workspace/workspace-command-topic-search-memory.md`).
+- CC6 (M) after CC2: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek. Over the size: CC6a (the first three) and CC6b. Done in #10250 and #10277.
+  - CC6a: K15 /bildirim, K16 /davet, K17 /ayrıl (`workspace/workspace-command-notify-invite-leave.md`).
+  - CC6b: K18 /konu, K19 /ara, K20 /bellek (`workspace/workspace-command-topic-search-memory.md`).
   - Tests: each right refused as the menu refuses it; /ayrıl writes nothing before the card's confirm; /bildirim's three words in both languages and without a value; /davet with somebody already in; /ara posts nothing.
   - Pictures: /ayrıl's card, /bildirim's and /davet's answers.
   - Features: K15 to K20.

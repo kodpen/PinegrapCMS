@@ -79,7 +79,7 @@ function pg_agent_guide_registry() {
 			'title'  => 'Store',
 			'when'   => 'Before working on products, orders or the store\'s settings.',
 			'module' => 'store',
-			'tools'  => array('products.', 'orders.', 'store.')
+			'tools'  => array('products.', 'product_groups.', 'inventory.', 'orders.', 'store.')
 		),
 		'workspace' => array(
 			'title'  => 'Workspace',

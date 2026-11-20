@@ -16,7 +16,7 @@ description: A Workspace mailbox on Microsoft 365 or Outlook.com (G4): purpose m
 
 ## What does the box form show?
 - Mail service "Microsoft 365 or Outlook.com" (`connection` => true) fills the server; a "Connected account" select lists `pg_connect_accounts(purpose mail_read)` and keeps a gone one named; the user defaults to the box address when an account is chosen; no password is asked (`$signs_in` false). The saved account must serve `mail_read`.
-- A "Connect a Microsoft account for mailboxes" button posts to `connect.php` (`ws_mail_connect_form()`) for a manager and above, the right connect.php asks for site accounts; others read who can.
+- The account is connected on Microsoft's page of Connections ("Connect an account for mailboxes"); the Mailboxes card shows its state and leads there (`ui/connections-mailboxes-accounts.md`).
 
 ## What stays unverified?
 - No Microsoft tenant in the cloud session: the real XOAUTH2 exchange, the token's audience and Graph sending were never run. Exchange Online writes Authentication-Results without an authserv-id, so such a box's senders stay unverified until a checking server is set by hand (`mail-ingest.md`).
