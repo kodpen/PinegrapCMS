@@ -15,7 +15,7 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
   - Tests, red first: the switch off changing nothing, each save A2 leaves alone, one waiting change per page and editor, a second save replacing it, an unchanged save withdrawing it.
   - Features: A1 to A4, A16.
 
-- PA3 (M) after PA2: the editor's side. Existing files: `assets/js/style_designer.src.js` (the tab's state, the waiting change laid on the canvas, "Withdraw"), the page load of the designer's panel actions. Pictures to the owner. Features: A5, A6.
+- PA3 Done (#10188): the editor's side (`designer/content-proposals-editor-side.md`). Existing files: `assets/js/style_designer.src.js` (the tab's state, the waiting change laid on the canvas, "Withdraw"), the page load of the designer's panel actions. Features: A5, A6.
   - Architect (2026-11-16, agent channel message 6485): also the tab's count of waiting changes (A7), and the answer shown to the editor opening the page (applied, dismissed with its reason, stale), read from the same rows: role 3 has no bell, so A9 and A12 for role 3 end here.
 
 - PA4a Done (#9930): the designer's side, first part: the module's own list (`content_changes.php`), Compare, apply, stale, dismiss with its reason, take back, History naming both. Features: A7 (the list), A8 to A11.

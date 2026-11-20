@@ -1864,7 +1864,7 @@ function get_submitted_product_form_content_without_form_fields($order_item_id, 
 
             data,
 
-            name,
+            " . pg_form_data_name_sql() . " AS name,
 
             type,
 

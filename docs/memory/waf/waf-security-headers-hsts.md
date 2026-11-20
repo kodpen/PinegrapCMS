@@ -11,6 +11,7 @@ description: Security headers are sent outside waf_run(), independent of the fir
 - Sent only when Secure Mode is on (`url_scheme === 'https://'`; the box is passive on screen until then and forced to 0 on save) AND `check_if_request_is_secure()` is true. That function is the ONLY answer to "is this https?" (direct TLS, or a forwarded header from a trusted peer: `platform/proxy-https-trust.md`, `test_secure_mode.php`); never write a second definition.
 - For that reason HSTS goes with CSP from the init phase.
 - `Permissions-Policy` is written with `(self)`, not `()`; `payment` is deliberately absent.
+- Its `camera=(self), microphone=(self)` is what lets the Workspace's calls and voice messages and the guest page's call through; a guarded frame (live pages, `includes/fn/guarded_frame.php`) sends `()` for both. Narrowing them site-wide would stop the site chat's voice and a barcode scanner (`workspace/calls-screen.md`).
 
 ## Who sends X-Content-Type-Options and Referrer-Policy?
 - Never write `X-Content-Type-Options` with `header()`: call `waf_send_nosniff()` (`pg_send_nosniff()` outside waf.php). When the site's IIS `web.config` adds it in `<customHeaders>` (the rule `includes/server_config.php` writes, kept for the static files PHP never serves), PHP sends no copy (`waf_server_adds_header()`): IIS appends its value to PHP's and its `<remove>` reaches only headers IIS added, so every page had `nosniff, nosniff`. Apache's `Header always set` replaces PHP's copy; nginx is not detected.

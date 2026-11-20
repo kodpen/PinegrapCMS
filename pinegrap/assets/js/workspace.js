@@ -8699,6 +8699,20 @@
         };
     }
 
+    // What the calls' module (workspace_calls.js) takes from this screen:
+    // the helpers, the public route the browsers ask for, the mention's
+    // sound switch for the ring, and the way to a call's conversation.
+    function callHooks() {
+        return {
+            helpers: featureHelpers(),
+            me: CFG.me,
+            ice: (CFG.calls && CFG.calls.ice) || [],
+            ring: (CFG.calls && CFG.calls.ring) || 45,
+            soundOn: function () { return soundOn(CFG.api_url, CFG.me); },
+            openChannel: function (channelId) { app.open(channelId, 0); }
+        };
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Channels screen
     // ═══════════════════════════════════════════════════════════════════
@@ -11499,6 +11513,13 @@
             var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
+
+            // A voice or video call, in a conversation of two people.
+            var callTools = window.PGWsCalls ? window.PGWsCalls.headButtons(channel, { calls: !!CFG.calls, era: !!self.era, thread: !!self.isThread }, callHooks()) : null;
+
+            if (callTools) {
+                actions.appendChild(callTools);
+            }
 
             // The tour shows the workspace around this screen, so it is
             // played again from here; its last step points at this button.
@@ -22604,6 +22625,11 @@
 
                     if (data.sound) {
                         self.soundHeard(data.sound);
+                    }
+
+                    // A call ringing the person in any channel of theirs.
+                    if (window.PGWsCalls && CFG.calls) {
+                        window.PGWsCalls.rings(data.rings || [], callHooks());
                     }
 
                     // The channel list is drawn again only when it changed: every

@@ -4037,6 +4037,7 @@
     "Somebody has this page open in the Page Design Studio. Try again when they are done.": "Bu sayfayı şu anda başka biri Sayfa Tasarım Stüdyosu'nda açmış. İşi bitince yeniden deneyin.",
     "Somebody has voted, so these two no longer change.": "Oy verildiği için bu iki ayar artık değişmez.",
     "Somebody has voted, so whether the poll takes several answers and whether it is anonymous no longer change.": "Oy verildiği için oylamanın birden çok seçime izin verip vermediği ve anonim olup olmadığı artık değişmez.",
+    "Somebody has {var:1} open in the Page Design Studio. Take the bundle back when they are done.": "{var:1} birinin Sayfa Tasarım Stüdyosu'nda açık. İşi bitince paketi geri alın.",
     "Somebody is waiting on an answer to the {var:1} sent in this week.": "Bu hafta gönderilen {var:1} için yanıt bekleyen biri var.",
     "Somebody mentioned you here since you last looked.": "Son bakışınızdan bu yana burada biri sizi andı.",
     "Somebody on this task is away then. Only a lead or somebody with the team board can hand it over anyway.": "Bu görevdeki biri o tarihte izinde. Yine de vermek için ekip lideri ya da ekip panosu yetkisi olan biri gerekir.",
