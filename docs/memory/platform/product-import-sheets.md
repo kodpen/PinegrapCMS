@@ -4,7 +4,8 @@ description: How the product import turns a .xlsx, .ods or .xls upload into its 
 ---
 
 ## Which path reads which file?
-- `pg_products_import_to_csv($path, $file_name, &$error)` picks by extension (`pg_sheet_kind()`): .xlsx and .xlsm keep the importer's own walk (`pg_products_import_xlsx_to_csv()`, rows written as they go past); .ods and .xls go through the sheet reader (`pg_products_import_sheet_to_csv()` → `pg_sheet_rows()`, `pg_sheet_cell_text()`), first sheet. No PHPExcel since #10501; the library is removed (#10528).
+- `pg_products_import_to_csv($path, $file_name, &$error, $sheet = 0)` picks by extension (`pg_sheet_kind()`): .xlsx and .xlsm keep the importer's own walk (`pg_products_import_xlsx_to_csv()`, rows written as they go past); .ods and .xls go through the sheet reader (`pg_products_import_sheet_to_csv()` → `pg_sheet_rows()`, `pg_sheet_cell_text()`).
+- `$sheet` counts worksheets only, as `pg_sheet_names()` does; the .xlsx walk finds that part through `pg_office_xlsx_sheets()` (the old first-`<sheet>` lookup only when that list cannot be read). Products > Import passes the sheet chosen in the sheet question (`sheet-import-upload.md`); the workspace callers read the first. No PHPExcel since #10501; the library is removed (#10528).
 - The same function serves Products > Import, the workflow table import (`workspace/workflow-table-import.md`) and a channel's bulk product drafts (`workspace/workspace-bulk-sources.md`).
 
 ## What is a row?

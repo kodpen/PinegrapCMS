@@ -4,7 +4,7 @@ description: ERP bank statement import (4.102): readers (the sheet reader for wo
 ---
 
 ## Which files are read? (`includes/erp/bank_import.php`, 2026.4.4 step 4.102)
-- CSV (`erp_bank_read_csv()`); `.xlsx`/`.xlsm`, `.xls` and `.ods` through the sheet reader (`pg_sheet_rows()`, `platform/sheet-reader.md`, #10503), first sheet; a date cell is known by its format. Tested on one statement as .xlsx, .ods, .xls (`tests/fixtures/erp_bank/`). `.numbers` and `.pdf` are refused by name. At most `ERP_BANK_IMPORT_MAX_ROWS` (3000) rows.
+- CSV (`erp_bank_read_csv()`); `.xlsx`/`.xlsm`, `.xls` and `.ods` through the sheet reader (`pg_sheet_rows()`, `platform/sheet-reader.md`, #10503), first sheet, or the one chosen when the workbook has more (`platform/sheet-import-upload.md`); a date cell is known by its format. Tested on one statement as .xlsx, .ods, .xls (`tests/fixtures/erp_bank/`). `.numbers` and `.pdf` are refused by name. At most `ERP_BANK_IMPORT_MAX_ROWS` (3000) rows.
 - A reader error drops the rows read: `large` (.ods ceilings) "The file is too large.", others "The file could not be read.". An .xls/.ods row is squared to the widest; an .xlsx row ends at its last cell.
 - The columns chosen are remembered per bank account (the last statement's `mapping`).
 - Every format goes through `erp_bank_read_file()` and comes out as the same rows of cells: a number cell becomes CSV-like text (`erp_bank_sheet_value()`: a date `Y-m-d` or `Y-m-d H:i`, other numbers with a point and two decimals), and the bank's title block is cut off (`erp_bank_rows_from_heading()`: the row above the first dated amount is the heading).

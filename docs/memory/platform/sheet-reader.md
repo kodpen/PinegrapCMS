@@ -15,7 +15,7 @@ module: sheet_read
 - `array('t' => type, 'v' => string)`: `s` text, `n` number, `b` boolean (`1`/`0`), `d` date (day count from 1899-12-30; a 1904 workbook is moved to that count; a time alone is a fraction of a day), `e` error (`#DIV/0!`).
 - A number's text is the file's: .xlsx its `<v>`, .ods its `office:value` (PHPExcel gave a float's text: `2.5E+15`, `1.0E-7`), .xls `(string)` of the float, as PHPExcel gave it.
 - `pg_sheet_cell_text($cell, $time_format = 'Y-m-d H:i:s')` is the product importer's text. The bank import keeps `erp_bank_sheet_value()` (time `Y-m-d H:i`, two decimals) on `v` and the type (`erp_bank_xls_cell()`); its `$error` maps to the import's texts: `large` "The file is too large.", the rest "The file could not be read."
-- Both importers read the first sheet (index 0) today.
+- Both importers read the first sheet (index 0), or the one the sheet question chose when a workbook has more than one (`sheet-import-upload.md`).
 
 ## How is each format read?
 - .xlsx: the preview's helpers (`pg_office_xlsx_sheets()`, `pg_office_xlsx_date_styles()`, `pg_office_xlsx_cell_parts()`), with no row, column or string limit: `pg_office_xlsx_strings($path, $part, false)` drops the preview's count and byte limits. The workbook, rels and styles keep the 8 MB DOM ceiling (`office-dom-ceiling.md`). A cell past column ZZZ refuses the file (`read`), as PHPExcel refused it, instead of padding a row to millions of cells.
