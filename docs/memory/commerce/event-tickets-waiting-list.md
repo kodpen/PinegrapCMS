@@ -13,7 +13,7 @@ module: stock_notify
 
 ## Where is the waiting list kept?
 - `stock_notify`, step 11.0.248: `calendar_event_id`, `recurrence_number` (INT UNSIGNED, default 0), `idx_event_sent (calendar_event_id, recurrence_number, sent_at)`. An event's request has `product_id = 0`; older rows are products'.
-- Architect (2026-11-20, agent channel): the two columns and the index confirmed (owner's permission: poll 91); a deleted event's rows go with it; the export shows the event and its date.
+- Architect (2026-11-20, agent channel message 10143): the two columns and the index confirmed (owner's permission: poll 91); a deleted event's rows go with it; the export shows the event and its date.
 - `pg_stock_notify_waiting_where()` is the only WHERE of waiting rows: a product pins its own id (never 0), an event pins `product_id = 0` and the event and date, so a product's notice never mails an event's requests, nor the reverse.
 - Erasure by address or account, the trim and the account delete cover these rows. Deleting an event (Edit Event, the API, the Workspace) calls `pg_stock_notify_forget_event()`. The export adds `event_name` and `event_date` (the date's start, `pg_stock_notify_export_event_dates()`).
 
