@@ -692,6 +692,7 @@
     "{var:1} account(s) opened from contacts with orders.": "Siparişi olan kişilerden {var:1} cari hesap açıldı.",
     "{var:1} account(s) over their credit limit": "Kredi limitini aşan {var:1} cari",
     "{var:1} account(s) sent to {var:2}.": "{var:1} cari {var:2} tarafına gönderildi.",
+    "{var:1} accounts use this account's prices, so it keeps its own:": "Bu carinin fiyatlarını {var:1} cari kullanıyor, bu yüzden kendi fiyatlarında kalır:",
     "{var:1} active": "{var:1} etkin",
     "{var:1} active session{suffix:1}": "{var:1} etkin oturum",
     "{var:1} added": "{var:1} eklendi",

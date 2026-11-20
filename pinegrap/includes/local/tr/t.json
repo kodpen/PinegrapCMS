@@ -8617,6 +8617,7 @@
     "This access token belongs to another Meta app. Generate it for the app whose App ID is entered above.": "Bu erişim anahtarı başka bir Meta uygulamasına ait. Anahtarı, Uygulama Kimliği yukarıda girilen uygulama için oluşturun.",
     "This access token expires on {var:1}. Generate a system user token that never expires.": "Bu erişim anahtarının süresi {var:1} tarihinde doluyor. Süresi hiç dolmayan bir sistem kullanıcısı anahtarı oluşturun.",
     "This account already has an opening balance.": "Bu carinin açılış bakiyesi zaten var.",
+    "This account buys at the prices of {var:1}. Its own prices below are kept and are used again when it stops.": "Bu cari {var:1} carisinin fiyatlarından alıyor. Aşağıdaki kendi fiyatları saklanır ve bu bırakılınca yeniden kullanılır.",
     "This account can sign in with Google.": "Bu hesap Google ile giriş yapabilir.",
     "This account can sign in with {var:1}.": "Bu hesap {var:1} ile giriş yapabilir.",
     "This account does not receive reminder e-mails.": "Bu cari hatırlatma e-postası almıyor.",
