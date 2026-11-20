@@ -576,6 +576,7 @@
     "{date}: today's date": "{date}: bugünün tarihi",
     "{done} of {size} sent": "{done} / {size} gönderildi",
     "{folders} folders, {files} files": "{folders} klasör, {files} dosya",
+    "{km} km": "{km} km",
     "{name} is downloaded.": "{name} indirildi.",
     "{name} is saved in Files.": "{name} Dosyalara kaydedildi.",
     "{notebook}: the notebook the note goes into": "{notebook}: notun gireceği defter",

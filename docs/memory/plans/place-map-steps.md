@@ -24,7 +24,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 
 - MP4 (M) after MP3b: the map and the switch, PR #10581 (`designer/designer-blocks-map.md`). Features: X9, X13, X14.
 
-- MP5 (S) after MP4: near me and a typed address. Existing files: none. In the script and the endpoint. Tests: the lookup's rate limit; nothing typed kept. Features: X11, X12.
+- MP5 (S) after MP4: near me and a typed address, PR #PRNUM (`platform/place-list-near.md`). In the script and the endpoint. Tests: the lookup's rate limit; nothing typed kept. Features: X11, X12.
 
 - MP6 (S) close-out: every X number checked against the code with its PR; `designer/designer-blocks-map.md` and `platform/place-coordinates.md`; this plan's files and the census deleted and its line in `plans/more-features.md` removed.
 
