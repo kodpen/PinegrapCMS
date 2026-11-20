@@ -374,7 +374,21 @@ function ws_agent_instructions_writing_lines()
         $lines[] = '- ' . $line;
     }
 
+    $lines[] = '- ' . ws_agent_instructions_note_line();
+
     return $lines;
+}
+
+/**
+ * The line that keeps a plan or a long explanation in one note shared in
+ * the channel, changed in place on its revision, rather than in a run of
+ * messages. It names only the site's routes. Pure.
+ *
+ * @return string
+ */
+function ws_agent_instructions_note_line()
+{
+    return 'A plan or a long explanation goes into one note shared in the channel, not into a run of messages: write it once with POST /workspace/channels/{id}/notes, then change it in place with POST /workspace/notes/{id} and the revision you last read (409: it changed meanwhile; read it, merge, write again). Its first line says up to which PR or message it is written.';
 }
 
 /**

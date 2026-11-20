@@ -113,3 +113,28 @@ function test_workspace_writing_rules_guide_section()
 	pg_assert_true(strlen($text) <= $sizes['topic'], 'the topic holds ' . strlen($text) . ' bytes');
 	pg_assert_true(is_string(pg_agent_guide_topic_text($registry, 'workspace', array('workspace'), 'writing')), 'the section reads alone');
 }
+
+// The note line sits in the writing block, names the site's note routes and
+// no repository tool, and the block stays within the cap of the lines plus
+// the one line.
+function test_workspace_writing_rules_note_line_in_agent_instructions()
+{
+	$agent = array('id' => 7, 'kind' => 'app', 'handle' => 'mimar', 'name' => 'Architect', 'role' => 'architect', 'door_kind' => 'poll');
+	$channels = array(array('id' => 25, 'name' => 'dev', 'wake_rule' => 'mention', 'wake_prefix' => '', 'agents' => array()));
+	$text = ws_agent_instructions_text($agent, $channels, 'https://shop.example/pinegrap/integration.php');
+	$line = ws_agent_instructions_note_line();
+	$block = implode("\n", ws_agent_instructions_writing_lines());
+
+	pg_assert_contains("\n- " . $line . "\n", $block . "\n", 'an item of the writing block');
+	pg_assert_contains($line, $text, 'the line is in the instructions');
+	pg_assert_contains('POST /workspace/channels/{id}/notes', $line, 'the new note route');
+	pg_assert_contains('POST /workspace/notes/{id}', $line, 'the change route');
+	pg_assert_contains('revision', $line, 'changed on its revision');
+	pg_assert_contains('up to which PR or message', $line, 'the first line');
+	pg_assert_same(0, preg_match('#tools/|ws_note|\.php\b|\bgit\b|github#i', $line), 'no repository tool');
+	pg_assert_true(strlen($line) <= 400, 'the line holds ' . strlen($line) . ' characters, at most 400');
+
+	$without = str_replace("\n- " . $line, '', $text);
+
+	pg_assert_false(ws_agent_instructions_version($without) === ws_agent_instructions_version($text), 'the version changes');
+}

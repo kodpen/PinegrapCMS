@@ -21,3 +21,7 @@ description: tools/ws_note.php new|read|update: a session keeps a plan or a long
 - 0 written or read; 1 the site refused, or no answer (stderr names the key to repeat with); 2 usage, a missing setting, an empty or too long file (60,000 characters, the title 200).
 - A 409 `changed_meanwhile` prints `note N changed since revision R (<the site's words>); nothing was written: read it again, merge, update again`, exits 1 and leaves `PATH.ws_note` as it was.
 - Pure parts tested in `tests/ws_note_tool_test.php`.
+
+## What does the site tell an application agent?
+- The last item of the writing block in its instructions, `ws_agent_instructions_note_line()` (KD4b): a plan or a long explanation goes into one note shared in the channel (`POST /workspace/channels/{id}/notes`), changed in place with `POST /workspace/notes/{id}` and the revision last read (a 409: read, merge, write again); its first line says up to which PR or message it is written.
+- It names the site's routes only, never this repository's tool. Adding it changed every agent's `instructions_version`. Pinned in `tests/workspace_writing_rules_test.php` (in the block and the text, no repository tool, at most 400 characters).
