@@ -33,6 +33,55 @@ $_SESSION['software']['ecommerce']['view_customer_report']['period'] = $period;
 $summary = pg_customer_value_summary();
 $symbol = BASE_CURRENCY_SYMBOL;
 $may_see_names = (bool) validate_contacts_access($user, true);
+$may_make_groups = pg_customer_value_may_make_groups($user);
+
+// "Make a contact group" on a cell: a group filled by the rules that stand
+// for the cell, then the group editor opened on it.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    validate_token_field();
+
+    $cell = pg_customer_value_cell_from($_POST['make_group'] ?? null);
+
+    if (!$may_make_groups || ($cell === null)) {
+        log_activity(lang('access denied to add contact group'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied.'));
+    }
+
+    $group_id = pg_customer_value_group_create($user, $cell[0], $cell[1]);
+
+    if ($group_id < 1) {
+        output_error('Query failed.');
+    }
+
+    include_once('liveform.class.php');
+    $liveform_edit_contact_group = new liveform('edit_contact_group', $group_id);
+    $liveform_edit_contact_group->add_notice(lang('The contact group has been created. It is filled by rules that count every order but a cart, by contact, so its size can differ from the cell of the report.'));
+
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $group_id);
+    exit();
+}
+
+// The top customers as a CSV, names included: only for a reader who may
+// read contacts.
+if (($_GET['csv'] ?? '') === 'top') {
+    if (!$may_see_names) {
+        output_error(lang('Access denied.'), 403);
+    }
+
+    if ($summary === null) {
+        output_error(lang('The figures are worked out from your orders by the scheduled jobs. They appear here after the next run.'));
+    }
+
+    $names = pg_customer_value_order_names(array_merge(
+        array_column((array) $summary['top']['all'], 0),
+        array_column((array) $summary['top']['year'], 0)
+    ));
+
+    pg_list_excel_capture(array('rank' => 'number', 'last_order_number' => 'number', 'orders' => 'number', 'value' => 'money'), lang('Top customers'));
+    pg_csv_download_start('top_customers.csv');
+    print implode("\n", pg_customer_value_top_csv($summary, $names)) . "\n";
+    exit();
+}
 
 $output_periods = '';
 
@@ -153,9 +202,9 @@ if ($summary !== null) {
 
     // Groups by fixed bounds: the last order's age against the number of
     // orders, all time.
-    $ages = array(lang('Within 30 days'), lang('31 to 90 days'), lang('91 to 180 days'), lang('181 to 365 days'), lang('More than 365 days'));
+    $ages = pg_customer_value_age_labels();
     $group_names = pg_customer_value_group_names();
-    $band_labels = array(lang('1 order'), lang('2 to 3 orders'), lang('4 or more orders'));
+    $band_labels = pg_customer_value_band_labels();
     $rows = '';
 
     foreach ($ages as $age => $label) {
@@ -164,7 +213,9 @@ if ($summary !== null) {
         for ($band = 0; $band <= 2; $band++) {
             $cell = isset($summary['cells'][$age][$band]) ? $summary['cells'][$age][$band] : array(0, 0);
             $cells .= '<td class="text-end" data-label="' . h($band_labels[$band]) . '"><span class="d-block">' . h(lang(array('string' => '{var:1} customer{suffix:1}', 'vars' => pg_format_number((int) $cell[0], 0), 'suffix' => ((int) $cell[0] == 1) ? '' : 's'))) . '</span>'
-                . '<small class="fg-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small></td>';
+                . '<small class="fg-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small>'
+                . ($may_make_groups ? '<button type="submit" name="make_group" value="' . $age . '-' . $band . '" class="pg-button pg-button-quiet pg-button-sm d-block ms-auto pg-customer-group-make" aria-label="' . h(lang('Make a contact group') . ': ' . pg_customer_value_cell_group_name($age, $band)) . '"><i class="bi bi-people me-1" aria-hidden="true"></i>' . h(lang('Make a contact group')) . '</button>' : '')
+                . '</td>';
         }
 
         $rows .= '<tr><th scope="row" class="fw-normal">' . h($label) . '</th>' . $cells . '</tr>';
@@ -180,11 +231,14 @@ if ($summary !== null) {
         <section class="pg-card pg-report-frame" aria-labelledby="pg_customer_groups_title">
             <div class="pg-report-frame-head"><h3 class="pg-report-frame-title" id="pg_customer_groups_title">' . h(lang('Customer groups')) . '</h3><span class="pg-report-frame-note">' . h(lang('Every customer of all time, by the age of their last order and their number of orders. The bounds are fixed: 30, 90, 180 and 365 days; 1, 2 to 3, and 4 or more orders.')) . '</span></div>
             <div class="pg-report-frame-body">
+                ' . ($may_make_groups ? '<form action="view_customer_report.php" method="post">' . get_token_field() : '') . '
                 <table class="pg-report-table pg-customer-groups">
                     <thead><tr><th>' . h(lang('Last order')) . '</th><th class="text-end">' . h($band_labels[0]) . '</th><th class="text-end">' . h($band_labels[1]) . '</th><th class="text-end">' . h($band_labels[2]) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
+                ' . ($may_make_groups ? '</form>' : '') . '
                 <p class="small fg-secondary m-3 pg-customer-group-terms">' . implode('<span class="pg-customer-group-sep"> · </span>', $legend) . '</p>
+                ' . ($may_make_groups ? '<p class="small fg-secondary m-3">' . h(lang('Make a contact group opens a group filled by rules for that cell. The rules count every order but a cart, by contact, so the size of the group can differ from the cell.')) . '</p>' : '') . '
             </div>
         </section>';
 
@@ -268,6 +322,7 @@ print
     ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
+        'secondary' => (($summary !== null) && $may_see_names) ? array(array('label' => lang('Export top customers'), 'url' => 'view_customer_report.php?csv=top', 'icon' => 'bi-download'), pg_list_excel_action('view_customer_report.php?csv=top')) : '',
         'search' => (($summary !== null) ? '<div class="pg-seg pg-customer-periods" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
             . (($output_as_of !== '') ? '<span class="pg-report-range"><i class="bi bi-clock-history" aria-hidden="true"></i>' . $output_as_of . '</span>' : ''),
     ), array('class' => 'pg-report-tools')) . '

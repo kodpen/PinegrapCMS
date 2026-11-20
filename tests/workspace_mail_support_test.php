@@ -113,12 +113,12 @@ function test_workspace_mail_support_form()
 {
 	$plain = ws_mail_box_form('workspace_settings.php', workspace_mail_support_test_box('{"support":false,"first_reply_hours":8}'), array());
 
-	pg_assert_contains('<input type="checkbox" name="support" value="1" id="ws_mail_3_support">', $plain, 'a plain box: switch off');
+	pg_assert_contains('<input class="pg-switch" type="checkbox" name="support" value="1" id="ws_mail_3_support">', $plain, 'a plain box: switch off');
 	pg_assert_contains('<div class="md:col-12 d-none" data-ws-mail-when="support=1">', $plain, 'its support half hidden');
 	pg_assert_contains('value="8"', $plain, 'the kept target still in the hidden half');
 
 	$support = ws_mail_box_form('workspace_settings.php', workspace_mail_support_test_box('{"first_reply_hours":8}'), array());
-	pg_assert_contains('<input type="checkbox" name="support" value="1" id="ws_mail_3_support" checked>', $support, 'a box saved before the switch: on');
+	pg_assert_contains('<input class="pg-switch" type="checkbox" name="support" value="1" id="ws_mail_3_support" checked>', $support, 'a box saved before the switch: on');
 	pg_assert_contains('<div class="md:col-12" data-ws-mail-when="support=1">', $support);
 	pg_assert_true(strpos($support, 'data-ws-mail-new') === false, 'not a new box');
 

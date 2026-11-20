@@ -466,6 +466,7 @@ if (!$_POST) {
                                 . pg_submitted_form_status_row(lang('Status'), $status, false)
                                 . pg_submitted_form_status_row(lang('Reference Code'), $reference_code, false)
                                 . pg_submitted_form_status_row(lang('Custom Form'), h($form_name), false)
+                                . pg_coll_rows_parent_row(pg_coll_rows_parent_of($custom_form_page_id, $reference_code))
                                 . $output_quiz_score_row
                                 . $output_payment
                                 . pg_submitted_form_status_row(lang('Submitted Date'), get_relative_time(array('timestamp' => $submitted_timestamp)) . $submitted_username, false)
@@ -486,7 +487,7 @@ if (!$_POST) {
                                 . pg_submitted_form_status_row(lang('IP Address'), h($output_ip_address)) . '
                                         </dl>'),
                             pg_save_bar_return_button() . '
-                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
+                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_coll_rows_delete_question(lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))), count((array) pg_coll_rows_held_ids(array($id))), false)) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
                         ) . '
                     </form>' . $output_payment_form . '
                     ' . ($history_enabled ? pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) : '') . '
@@ -722,6 +723,19 @@ if (!$_POST) {
             pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls, (string) $id);
         }
 
+        // The rows of a collection's rows fields, checked before anything is
+        // written (includes/fn/collection_rows.php); a record saved
+        // incomplete asks no row field to be filled. An office use only
+        // rows field is written by whoever the save loop below lets write it.
+        $rows_office_access = (
+            ($user['role'] < 3)
+            || ((check_edit_access($folder_id) == true) && ($user['manage_forms'] == TRUE))
+            || ($user['id'] == $form_editor_user_id)
+        );
+        pg_coll_rows_screen_check($liveform, $page_id, (string) $id,
+            !($liveform->field_in_session('save_for_later_button') || $liveform->field_in_session('incomplete_button')),
+            $rows_office_access);
+
         // If hooks are enabled and visitor is editing this form from a form item view page,
         // and there is hook code, then run it.
         if (
@@ -923,6 +937,10 @@ if (!$_POST) {
                 $new_address_name = update_submitted_form_address_name($id);
             }
 
+            // The rows of its rows fields, before the record's revision is
+            // taken, so its History holds the list as saved.
+            $rows_failed = pg_coll_rows_screen_write($liveform, $page_id, $id, ($new_complete == 1), $user['id'], $rows_office_access);
+
             pg_record_revision_after($id, $revision_before, $restore_revision ? 'restore' : 'edit', $user['id']);
 
             // If the form was incomplete before and has now been completed,
@@ -970,6 +988,10 @@ if (!$_POST) {
                 // add notice that submitted form has been saved
                 $liveform_form_item_view->add_notice($message);
 
+                foreach ($rows_failed as $rows_message) {
+                    $liveform_form_item_view->add_warning($rows_message);
+                }
+
                 $send_to = $_POST['send_to'];
 
                 // If the visitor is not at an ugly URL and pretty URLs are enabled,
@@ -1005,6 +1027,10 @@ if (!$_POST) {
                 
                 // add notice that submitted form has been saved
                 $liveform_view_submitted_forms->add_notice($message);
+
+                foreach ($rows_failed as $rows_message) {
+                    $liveform_view_submitted_forms->add_warning($rows_message);
+                }
                 
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_submitted_forms.php');
             }

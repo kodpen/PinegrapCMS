@@ -218,6 +218,48 @@ JS
 	pg_assert_same(array(16, 32, 3, 'task_2', 'M0 0 C48 0 -38 20 10 20'), $result['helpers'], 'the geometry helpers');
 }
 
+// zoomTo(): one box whole in the middle of the viewport (800 x 600 here),
+// 48 px clear of its edges, its size from the host, the zoom within the
+// host's bounds; a box taller than the viewport at the smallest zoom shows
+// its top; no box, or a viewport not laid out, leaves the view as it is.
+function test_graph_canvas_zoom_to_a_box()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function round(v) { return { x: Math.round(v.x * 100) / 100, y: Math.round(v.y * 100) / 100, k: Math.round(v.k * 1000) / 1000 }; }
+view.zoomTo({ x: 100, y: 200 });
+out.small = round(state.view);
+var sized = G.viewport({ ui: ui, view: function (next) { if (next) { state.view = next; } return state.view; }, items: function () { return state.nodes; },
+    size: function (item) { return { w: item.w, h: item.h }; }, zoomMin: 0.1 });
+sized.zoomTo({ x: 1000, y: 500, w: 248, h: 352 });
+out.frame = round(state.view);
+out.label = ui.zoomLabel.textContent;
+sized.zoomTo({ x: 0, y: 100, w: 248, h: 9000 });
+out.tall = round(state.view);
+state.view = { x: 7, y: 8, k: 0.5 };
+sized.zoomTo(null);
+out.none = round(state.view);
+var flat = ui.viewport.getBoundingClientRect;
+ui.viewport.getBoundingClientRect = function () { return { left: 0, top: 0, width: 0, height: 0 }; };
+sized.zoomTo({ x: 0, y: 0, w: 248, h: 352 });
+ui.viewport.getBoundingClientRect = flat;
+out.unlaid = round(state.view);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('x' => -8, 'y' => -180, 'k' => 2), $result['small'], 'a small box at most at the zoom\'s upper bound, in the middle');
+	pg_assert_same(array('x' => -1209.36, 'y' => -667.91, 'k' => 1.432), $result['frame'], 'a frame whole, 48 px clear above and below');
+	pg_assert_same('143%', $result['label'], 'the zoom label follows');
+	pg_assert_same(array('x' => 387.6, 'y' => 38, 'k' => 0.1), $result['tall'], 'taller than the viewport at the smallest zoom: its top 48 px in');
+	pg_assert_same(array('x' => 7, 'y' => 8, 'k' => 0.5), $result['none'], 'no box: the view stays');
+	pg_assert_same(array('x' => 7, 'y' => 8, 'k' => 0.5), $result['unlaid'], 'a viewport not laid out: the view stays');
+}
+
 // The canvas's pointer and keys (create()): a drag on the empty canvas pans
 // once it passes 4 px; the adapter's own kind goes to its move and release;
 // a press the adapter takes is forgotten; a second finger cancels the drag

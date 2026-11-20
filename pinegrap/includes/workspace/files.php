@@ -915,6 +915,47 @@ function ws_file_preview_width($wanted)
 }
 
 /**
+ * The address a tile draws a channel's picture from: its 320 px copy, which
+ * get_file.php makes after its Workspace access checks, in the picture's own
+ * format (the copy ws_file_preview() makes for the API at that size), instead
+ * of the original. A GIF (it may move), a vector or an address that already
+ * asks for a width stays as it is. Pure.
+ *
+ * @param string $url the picture's address, with or without a query
+ * @return string
+ */
+function ws_file_thumb_url($url)
+{
+    $url = (string) $url;
+    $question = strpos($url, '?');
+    $path = ($question === false) ? $url : substr($url, 0, $question);
+    $query = ($question === false) ? '' : substr($url, $question + 1);
+
+    if (preg_match('/(^|&)(w|f)=/i', $query)) {
+        return $url;
+    }
+
+    $dot = strrpos($path, '.');
+    $extension = ($dot === false) ? '' : strtolower(substr($path, $dot + 1));
+
+    if (!in_array($extension, array('jpg', 'jpeg', 'jpe', 'png', 'webp'), true)) {
+        return $url;
+    }
+
+    return $url . (($question === false) ? '?' : '&') . 'w=' . ws_file_thumb_width();
+}
+
+/**
+ * The width of a channel picture's tile copy, in pixels. Pure.
+ *
+ * @return int
+ */
+function ws_file_thumb_width()
+{
+    return 320;
+}
+
+/**
  * A smaller copy of a channel's picture, for a phone that shows a channel's
  * pictures in a list before anyone opens one.
  *

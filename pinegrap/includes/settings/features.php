@@ -330,7 +330,7 @@ $pg_settings_cards[] = '
         if ($page_rebuild_ready) {
             $output_page_rebuild_field = '
                             <div class="col-12 ">
-                                <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
+                                <button type="submit" name="submit_rebuild_pages" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
                                 <div class="form-text">' . lang('Page Design Studio pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
                             </div>';
         }
@@ -358,12 +358,12 @@ $pg_settings_cards[] = '
 
         $output_image_upload_cap_field .= '
                             <div class="pg-f-xs">
-                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Design Canvas (MB)') . '</label>
+                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Artifact Canvas (MB)') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">MB</span>
                                     <input type="text" name="image_editor_upload_max_mb" id="image_editor_upload_max_mb" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h(pg_image_editor_upload_max_mb()) . '" />
                                 </label>
-                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the Design Canvas, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
+                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the Artifact Canvas, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
                             </div>';
 
         $output_image_settings_card =
@@ -518,6 +518,41 @@ if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('co
                                         <label class="pg-text-2" for="courses_on">' . h(lang('Courses with ordered and timed lessons')) . '</label>
                                     </div>
                                     <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="courses_on_help">' . h(lang('A course is a private folder a product already opens: its pages become lessons that open in order or some days after enrolment, and each member\'s progress is kept. On, the Pages menu offers the Courses screen.')) . '</p>
+                                </div>
+                            </div>
+                        </div>';
+}
+
+// Visitor notifications (includes/fn/site_push.php): off on every site, a new
+// install too, until it is switched on here. Read and saved only through the
+// module's one reader and saver. With it off the "Notify me" block draws
+// nothing and site_push.php takes no subscription. App mode, its own switch
+// that also starts off, works only beside it (pg_site_push_app_mode()).
+if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-site-push" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Visitor notifications')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="site_push_card" value="1"/>
+                                    <div class="row gy-12">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_site_push_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_on" name="site_push_on"/></div>
+                                                <label for="site_push_on">' . h(lang('Let visitors turn on notifications from this site')) . '</label>
+                                                <div class="form-text">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_site_push_app_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_app_on" name="site_push_app_on"/></div>
+                                                <label for="site_push_app_on">' . h(lang('App mode')) . '</label>
+                                                <div class="form-text">' . h(lang('A visitor who adds the site to the home screen opens it as an app, without the browser\'s address bar. On an iPhone, notifications reach only a site added this way. A page that cannot be loaded without a connection shows an offline page. Works while visitor notifications are on and a site icon is set.')) . '</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>';
@@ -698,8 +733,8 @@ $pg_settings_cards[] = '
                                             </div>' : '') . '
                                         </div>
                                         <div class="col-12">
-                                            <button type="submit" name="submit_test_tsa" value="1" class="btn btn-sm btn-outline theme-secondary">
-                                                <i class="bi bi-clock-history me-1"></i>' . lang('Test The Time Stamp') . '
+                                            <button type="submit" name="submit_test_tsa" value="1" class="pg-button pg-button-quiet pg-button-sm">
+                                                <i class="bi bi-clock-history"></i>' . lang('Test The Time Stamp') . '
                                             </button>
                                             <div class="form-text">' . lang('Saves this card and then asks the authority to stamp a throwaway digest, so the answer describes what was just entered. No counter is spent beyond that one stamp.') . '</div>
                                         </div>

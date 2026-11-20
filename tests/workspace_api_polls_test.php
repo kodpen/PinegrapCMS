@@ -99,7 +99,7 @@ function test_ws_api_poll_present_closed_at()
 
 	pg_assert_same(api_time($closed), $present['closed_at']);
 	pg_assert_same(null, ws_api_poll_present(array('id' => 14, 'closed_at' => 0, 'closes_at' => 0, 'voters' => 0, 'options' => array(), 'result_id' => 0))['closed_at'], 'open');
-	pg_assert_same('string?', ws_api_poll_schema()['closed_at'] ?? null, 'declared');
+	pg_assert_same('datetime?', ws_api_poll_schema()['closed_at'] ?? null, 'declared');
 	pg_assert_same(array_keys(ws_api_poll_schema()), array_keys($present), 'the answer has the declared fields in order');
 }
 

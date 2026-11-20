@@ -6225,6 +6225,10 @@ const StyleDesigner = (function () {
         // row, a nav or a grid; with two classes' weight alone a hidden
         // button in a d-flex row would stay visible.
         '.sd-wrap.sd-state-off:not(#sd-state-shown) { display:none !important; }',
+        // The Listen block's root is hidden until the page's script finds a
+        // voice (pg_listen.js); the canvas draws it as it will look. Its
+        // pause and stop stay hidden: the canvas shows it idle.
+        '.sd-wrap > [data-pg-listen][hidden] { display:flex !important; flex-wrap:wrap; align-items:center; gap:.5rem; }',
         '.sd-session-chips { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; pointer-events:auto; }',
         '.sd-session-chips.sd-chips-wrap { flex-wrap:wrap; row-gap:2px; }',
         '.sd-session-chip { font:600 .6rem/1.3 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; padding:1px 7px; border:1px solid rgba(99,102,241,.45); border-radius:3px; background:#fff; color:#6366f1; cursor:pointer; }',
@@ -7222,6 +7226,14 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-fx-flat.sd-binding-off.sd-selected > ' + _SD_FX_EL + ' { opacity:.75; filter:none; }',
         '.sd-wrap.sd-fx-flat.sd-binding-off::after { display:none; }',
         '.sd-wrap.sd-fx-flat.sd-cond::before { display:none; }',
+        // A "Notify me" block is hidden in its markup until its script finds
+        // a browser that can subscribe; the canvas draws it as it will look
+        // before the visitor presses (its other states stay hidden).
+        '[data-pg-push][hidden] { display:block !important; }',
+        // A course block is hidden in its markup until its script has the
+        // member's view; the canvas draws it as it will look (its status
+        // line, Continue and empty line stay hidden).
+        '[data-pg-course][hidden] { display:block !important; }',
     ];
 
     // The canvas stylesheet for this design: everything for a Bootstrap design,
@@ -10107,6 +10119,7 @@ const StyleDesigner = (function () {
         // element lacks them); the debounced pass below refreshes them.
         applyIssueBadges(_redrawn);
         scheduleValidation();
+        _sdLinkMarksSoon();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
     }
@@ -25306,6 +25319,13 @@ const StyleDesigner = (function () {
         searchWrap.innerHTML =
             '<span class="bi bi-search"></span>' +
             '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">';
+        // Over the search: the selected element's identity row and its
+        // tabs (_sdPropsHead()).
+        var propsHead = document.createElement('div');
+        propsHead.id = 'sd-props-head';
+        propsHead.className = 'sd-props-head';
+        propsHead.hidden = true;
+        optPane.appendChild(propsHead);
         optPane.appendChild(searchWrap);
         if (props) optPane.appendChild(props);
         outer.insertBefore(designPane, outer.firstChild);
@@ -25400,6 +25420,8 @@ const StyleDesigner = (function () {
 
         if (!q) {
             _sdPropsSearchEmpty('');
+            // The search drew every tab: the open one is drawn alone again.
+            if (panel.querySelector('[data-sd-otab-all]')) { renderProperties(); return; }
             // Restore bodies that were temporarily expanded during search
             panel.querySelectorAll('.sd-sect-body[data-search-expanded]').forEach(function(body) {
                 body.style.display = 'none';
@@ -25411,9 +25433,10 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // The bodies of closed cards are held back; the search draws the
-        // panel with all of them first (renderProperties() filters again).
-        if (panel.querySelector('[data-sd-lazy]')) { renderProperties(); return; }
+        // The bodies of closed cards and the tabs not open are held back;
+        // the search draws the panel with all of them first
+        // (renderProperties() filters again).
+        if (panel.querySelector('[data-sd-lazy], [data-sd-held]')) { renderProperties(); return; }
 
         var isSect = function(el) {
             return el.classList.contains('sd-props-section') || el.classList.contains('sd-app-sect');
@@ -27753,11 +27776,10 @@ const StyleDesigner = (function () {
     // Scroll & highlight the right-panel control for a given class
     function focusClassControl(cls) {
         var ctrl = findControlForClass(cls);
-        // The control may sit in a closed card whose body was not drawn.
-        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy]')) {
-            _sdSectAllOnce = true;
-            renderProperties();
-            ctrl = findControlForClass(cls);
+        // The control may sit in a closed card whose body was not drawn, or
+        // in a tab that is not open.
+        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy], #sd-properties [data-sd-held]')) {
+            ctrl = _sdOptReveal(function () { return findControlForClass(cls); });
         }
         if (!ctrl) return;
         // A button group's select is hidden: its selected segment stands in.
@@ -33406,7 +33428,7 @@ const StyleDesigner = (function () {
         });
     }
 
-    // ── Multi-select: shared helpers ─────────────────────────────────────────
+    // ── Several elements selected (the Options panel) ─────────────────────────
     // Returns the uniform class within a mutex group across all nodes, or null if mixed.
     function _mcUniformGroup(nodes, groupArr) {
         var vals = nodes.map(function(n) {
@@ -33418,22 +33440,13 @@ const StyleDesigner = (function () {
         return vals.every(function(v) { return v === vals[0]; }) ? vals[0] : null;
     }
 
-    // ── Tag-specific intersection options for multi-select ────────────────────
-    function renderMcOptions(nodes) {
-        function _role(n) {
-            if (n.type === 'content') return 'c:' + (n.props.contentType || '');
-            if (n.type === 'semantic') {
-                var tag = (n.props.tag || '').toLowerCase();
-                var cls = (n.props.cssClass || '').split(/\s+/);
-                if (tag === 'div' && cls.indexOf('alert') !== -1 && cls.indexOf('alert-heading') === -1) return 's:alert';
-                return 's:' + tag;
-            }
-            return n.type;
-        }
-        var roles = nodes.map(_role);
-        if (!roles.every(function(r) { return r === roles[0]; })) return ''; // mixed roles → no tag-options
-
-        var role = roles[0];
+    // The own section of several elements of one kind, named after the kind
+    // (`title`): the options they share by role (_sdMcRole()), and a line
+    // saying what stays with each element. A text, a link and a picture
+    // address are never offered: they belong to one element.
+    function renderMcOptions(nodes, title) {
+        var roles = nodes.map(_sdMcRole);
+        var role = roles.every(function(r) { return r === roles[0]; }) ? roles[0] : '';
 
         // Uniform prop helpers
         function _unifProp(prop) {
@@ -33454,36 +33467,33 @@ const StyleDesigner = (function () {
         }
         function _unifGroup(groupArr) { return _mcUniformGroup(nodes, groupArr); }
 
-        // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup (cssClass mutation)
+        // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup
+        // (cssClass mutation). A select holds the choices it is given; one
+        // whose values differ gets "— Multiple —" from _sdMcMark().
         function _mcSel(prop, opts, uVal) {
-            var isMixed = uVal === null;
             var h = '<select class="form-control form-control-sm" data-mc-prop="' + prop + '">';
-            h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
-                h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                h += '<option value="' + esc(o[0]) + '"' + (uVal !== null && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
             return h + '</select>';
         }
         function _mcGroupSel(groupArr, opts, uVal) {
-            var isMixed = uVal === null;
             var h = '<select class="form-control form-control-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
-            h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
+            h += '<option value="">' + _sdT('Default') + '</option>';
             opts.forEach(function(o) {
-                h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                h += '<option value="' + esc(o[0]) + '"' + (uVal !== null && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
             return h + '</select>';
         }
         // Boolean switch — data-mc-prop (n.props boolean) or data-mc-cls-toggle (cssClass toggle)
         function _mcSwProp(prop, uVal) {
-            var isMixed = uVal === null;
-            return '<label class="sd-prop-switch"' + (isMixed ? ' data-mc-mixed="1"' : '') + '>' +
-                '<input type="checkbox" class="sd-sw-inp" data-mc-prop="' + prop + '"' + (!isMixed && uVal ? ' checked' : '') + '>' +
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-mc-prop="' + prop + '"' + (uVal ? ' checked' : '') + '>' +
                 '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span></label>';
         }
         function _mcSwCls(cls, uVal) {
-            var isMixed = uVal === null;
-            return '<label class="sd-prop-switch"' + (isMixed ? ' data-mc-mixed="1"' : '') + '>' +
-                '<input type="checkbox" class="sd-sw-inp" data-mc-cls-toggle="' + esc(cls) + '"' + (!isMixed && uVal ? ' checked' : '') + '>' +
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-mc-cls-toggle="' + esc(cls) + '"' + (uVal ? ' checked' : '') + '>' +
                 '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span></label>';
         }
 
@@ -33492,25 +33502,22 @@ const StyleDesigner = (function () {
         var relOpts    = [['',_sdT('Default')],['nofollow','nofollow'],['noopener','noopener'],['noreferrer','noreferrer'],['noopener noreferrer','noopener noreferrer']];
 
         if (role === 'c:button') {
-            // href / text intentionally omitted (unique-per-element rule)
             h += row(_sdT('Disabled'), _mcSwProp('disabled', _unifBool('disabled')));
             h += row(_sdT('Active'),   _mcSwProp('active',   _unifBool('active')));
             h += row(_sdT('Size'),    _mcSel('size', [['',_sdT('Default')],['sm',_sdT('Small')],['lg',_sdT('Large')]], _unifProp('size')));
         } else if (role === 'c:link') {
-            // href intentionally hidden (unique-per-element rule)
             h += row(_sdT('Target'),   _mcSel('target', targetOpts, _unifProp('target')));
             h += row(_sdT('Relationship'),   _mcSel('rel',    relOpts,    _unifProp('rel')));
         } else if (role === 'c:image') {
-            // alt / src intentionally hidden (unique-per-element rule).
             // Loading reads and writes the loading attribute, as on a single
             // image (_sdImgLoading()).
             var _ldVals = nodes.map(_sdImgLoading);
             var _ldUnif = _ldVals.every(function(v) { return v === _ldVals[0]; }) ? _ldVals[0] : null;
             h += row(_sdT('Loading attribute'), _mcSel('loading', [['',_sdT('Default')],['lazy',_sdT('Lazy')],['eager',_sdT('Eager')]], _ldUnif));
         } else if (role === 'c:heading') {
+            // No empty choice: a heading always has a level.
             h += row(_sdT('Level'), _mcSel('tag', [['h1','H1'],['h2','H2'],['h3','H3'],['h4','H4'],['h5','H5'],['h6','H6']], _unifProp('tag')));
         } else if (role === 's:a') {
-            // href intentionally hidden (unique-per-element rule)
             h += row(_sdT('Target'), _mcSel('target', targetOpts, _unifProp('target')));
         } else if (role === 's:button') {
             h += row(_sdT('Disabled'), _mcSwCls('disabled', _unifClsTgl('disabled')));
@@ -33522,116 +33529,122 @@ const StyleDesigner = (function () {
             h += row(_sdT('Type'), _mcGroupSel(alertGroups, variantOpts, uVariant));
         }
 
-        if (!h) return '';
-        return sect('bi-sliders', _sdT('Options'), h);
+        h += '<div class="sd-mc-note"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
+            esc(_sdT('Text, link, image address, translation and data binding belong to each element; they show when one element is selected.')) + '</span></div>';
+        // The card keeps the id of the section once named Options.
+        return sect('bi-sliders', esc(title), h, _sdT('Options'));
     }
 
-    // ── Multi-select bulk editor (Properties panel) ───────────────────────────
-    // Uses the SAME rendering pipeline as single-node mode (rowCss + renderMcOptions),
-    // then post-processes the DOM to show "— Multiple —" for controls where values differ.
+    // A copy of `base` holding only the classes every one of `nodes` has:
+    // the builders draw the selection's shared values from it.
+    function _sdMcProxy(nodes, base) {
+        var proxy = JSON.parse(JSON.stringify(base));
+        var counts = {};
+        nodes.forEach(function (n) {
+            (n.props.cssClass || '').split(/\s+/).filter(function (c, i, a) { return c && a.indexOf(c) === i; }).forEach(function (c) {
+                counts[c] = (counts[c] || 0) + 1;
+            });
+        });
+        proxy.props.cssClass = Object.keys(counts).filter(function (c) { return counts[c] === nodes.length; }).join(' ');
+        return proxy;
+    }
+
+    // The name of an element's kind ("Heading"), not the name given to it.
+    function _sdMcKindName(n) {
+        var props = {};
+        Object.keys(n.props || {}).forEach(function (k) { if (k !== 'customName') props[k] = n.props[k]; });
+        return getNodeLabel({ type: n.type, props: props, children: n.children });
+    }
+
+    // The panel of several elements selected (Shift or Ctrl), drawn as the
+    // single element's (renderProperties()): the identity row, the tabs,
+    // only the sections every element shares. Content is drawn only for
+    // elements of one kind. A control reads "— Multiple —" where the
+    // values differ (_sdMcMark()); a change is written to every element as
+    // one undo step (_sdMcCommit()).
     function renderMultiProperties() {
         var nodes = selectedNodes.length > 1 ? selectedNodes.slice() : [];
         var panel = document.getElementById('sd-properties');
         if (!panel || nodes.length < 2) return;
-
-        // Build a proxy node: cssClass = intersection of ALL nodes' classes.
-        // rowCss() reads n.props.cssClass → proxy ensures only common classes are pre-selected.
-        var proxy = JSON.parse(JSON.stringify(nodes[0]));
-        var clsCounts = {};
-        nodes.forEach(function(n) {
-            (n.props.cssClass || '').split(/\s+/).filter(Boolean).forEach(function(c) {
-                clsCounts[c] = (clsCounts[c] || 0) + 1;
-            });
-        });
-        proxy.props.cssClass = Object.keys(clsCounts).filter(function(c) {
-            return clsCounts[c] === nodes.length;
-        }).join(' ');
-
-        // Tag-specific options — same function as single-node mode (handles mixed-type guard internally)
-        var optHtml = renderMcOptions(nodes);
-
-        // Universal CSS controls — temporarily point selectedNode to proxy so that
-        // colorSelectGroup() (which reads selectedNode directly) reflects intersection classes.
-        var _prevSelected = selectedNode;
-        selectedNode = proxy;
-        var cssHtml = rowCss(proxy);
-        selectedNode = _prevSelected;
-
-        panel.innerHTML = '<div class="sd-tab-content">' + (optHtml || '') + cssHtml + '</div>';
-        _sdHideBootstrapControls(panel);
-
-        // Post-process: inject "— Multiple —" where values differ across selected nodes
-        _postProcessMultiPanel(nodes, panel);
-
-        // Bind multi-aware events
-        bindMultiPropEvents(nodes);
-
+        var kinds = nodes.map(_sdPanelKind);
+        var alike = kinds.every(function (k) { return k === kinds[0]; });
         var srch = document.getElementById('sd-props-search');
+        var all = _sdSectAllOnce || !!(srch && srch.value.trim());
+        _sdSectAllOnce = false;
+        // A Style or Advanced section opens by its rule when it holds for
+        // every element (_sdOptOpenByDefault()).
+        var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+        });
+        // Layout's rows follow the same context; a row any element holds a
+        // value in is drawn (rowCss()).
+        _sdSectBuild = { cards: {}, lazy: null, ctx: ctx,
+            lay: { several: true, cls: nodes.map(function (n) { return (n.props || {}).cssClass || ''; }).join(' ') } };
+        // colorSelectGroup() reads selectedNode: the copy stands in for it.
+        var prev = selectedNode;
+        var proxy = selectedNode = _sdMcProxy(nodes, nodes[0]);
+        var own = _sdSectTakeOwn(alike ? renderMcOptions(nodes, _sdMcKindName(nodes[0])) : '');
+        // Text when every element has it; without the display sizes when
+        // one of them is not a text element.
+        var textHtml = '';
+        var ofText = function (n) { var p = n.props || {}; return _sdOptIsText(n.type, p.tag, p.contentType); };
+        if (nodes.every(function (n) { var p = n.props || {}; return _sdMcHasText(n.type, p.tag, p.contentType); })) {
+            var plain = nodes.filter(function (n) { return !ofText(n); })[0];
+            textHtml = propsTextOptions(plain ? _sdMcProxy(nodes, plain) : proxy);
+        }
+        var keyed = _sdSectTakeKeyed(textHtml + rowCss(proxy));
+        selectedNode = prev;
+        _sdSectBuild = null;
+        var plan = _sdOptPlan(_sdMcPieces(alike, [
+            { key: 'own', html: own.own + own.rest },
+            { key: 'element', html: keyed.rest }
+        ].concat(keyed.keyed)));
+        var shown = _sdOptTabsShown(plan);
+        _sdOptTab = _sdOptTabPick(_sdOptTab, shown);
+        var drawn = '';
+        shown.forEach(function (t) {
+            if (all || t === _sdOptTab) drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + plan[t] + '</div>';
+            else _sdOptHeld[t] = plan[t];
+        });
+        panel.innerHTML = '<div class="sd-tab-content"' + (all ? ' data-sd-otab-all="1"' : '') +
+            (Object.keys(_sdOptHeld).length ? ' data-sd-held="1"' : '') + '>' + drawn + '</div>';
+        var ownSid = /data-sd-card="([^"]+)"/.exec(own.own);
+        var ownCard = ownSid ? panel.querySelector('[data-sd-card="' + ownSid[1] + '"]') : null;
+        if (ownCard) ownCard.setAttribute('data-sd-sum', _sdT('shared options'));
+        _sdHideBootstrapControls(panel);
+        _postProcessMultiPanel(nodes, panel);
+        var counts = {};
+        panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { counts[pane.getAttribute('data-sd-otab')] = _sdMcMark(pane, nodes, true); });
+        Object.keys(_sdOptHeld).forEach(function (t) {
+            var tpl = document.createElement('template');
+            tpl.innerHTML = _sdOptHeld[t];
+            _sdHideBootstrapControls(tpl.content);
+            _postProcessMultiPanel(nodes, tpl.content);
+            counts[t] = _sdMcMark(tpl.content, nodes, false);
+        });
+        bindMultiPropEvents(nodes);
+        _sdMcHead(nodes, alike, shown, counts);
+        // Content level: the panel edits only when every element may be edited.
+        _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
     }
 
-    // Post-processes the multi-select panel DOM to mark controls with mixed values.
+    // The head over the search: the identity row of the selection, the
+    // tabs and the strip saying a change goes to all.
+    function _sdMcHead(nodes, alike, shown, counts) {
+        var names = [];
+        nodes.forEach(function (n) { var k = _sdMcKindName(n); if (names.indexOf(k) === -1) names.push(k); });
+        var ups = nodes.map(function (n) { var r = _sdAnyParent(n); return r ? r.parent : null; });
+        var same = !!ups[0] && ups.every(function (p) { return p === ups[0]; });
+        _sdPropsHead(nodes[0], shown, counts, {
+            id: _sdMcIdRow({ count: nodes.length, icon: _sdIdIcon(nodes[0]), kindName: alike ? names[0] : '', parent: same ? getNodeLabel(ups[0]) : '', kinds: names }),
+            tail: _sdMcStrip(nodes.length)
+        });
+    }
+
+    // The per-element background controls (inline styles) are not offered
+    // for several elements.
     function _postProcessMultiPanel(nodes, panel) {
-        var MIXED = _sdT('— Multiple —');
-
-        function prependMixed(selEl) {
-            // Deselect all existing options, then insert the mixed sentinel at the top.
-            Array.prototype.forEach.call(selEl.options, function(o) { o.selected = false; });
-            var opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = MIXED;
-            opt.selected = true;
-            selEl.insertBefore(opt, selEl.firstChild);
-        }
-
-        // 1. data-stylegroup selects (rowCss: display, typography, colors, border, flex, etc.)
-        panel.querySelectorAll('select[data-stylegroup]').forEach(function(selEl) {
-            var groupArr = selEl.getAttribute('data-stylegroup').split(',').filter(Boolean);
-            if (_mcUniformGroup(nodes, groupArr) === null) prependMixed(selEl);
-        });
-
-        // Update color picker trigger buttons that correspond to mixed hidden selects
-        panel.querySelectorAll('.sd-cp').forEach(function(cpWrap) {
-            var hiddenSel = cpWrap.querySelector('select[data-stylegroup]');
-            if (!hiddenSel) return;
-            var groupArr = hiddenSel.getAttribute('data-stylegroup').split(',').filter(Boolean);
-            if (_mcUniformGroup(nodes, groupArr) === null) {
-                var trigger = cpWrap.querySelector('.sd-cp-trigger');
-                if (trigger) {
-                    var swatch = trigger.querySelector('.sd-color-preview');
-                    if (swatch) swatch.className = 'sd-color-preview sd-color-preview-none';
-                    var lbl = trigger.querySelector('.sd-cp-label');
-                    if (lbl) lbl.textContent = MIXED;
-                }
-            }
-        });
-
-        // 2. data-util selects (spacing — prefix-based: mt-, p-, etc.)
-        panel.querySelectorAll('select[data-util]').forEach(function(selEl) {
-            var prefix = selEl.getAttribute('data-util');
-            var vals = nodes.map(function(n) {
-                var found = '';
-                (n.props.cssClass || '').split(/\s+/).forEach(function(c) {
-                    if (c.indexOf(prefix) === 0) found = c;
-                });
-                return found;
-            });
-            if (!vals.every(function(v) { return v === vals[0]; })) prependMixed(selEl);
-        });
-
-        // 3. data-util-toggle checkboxes (e.g. bg-gradient)
-        panel.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(inp) {
-            var cls = inp.getAttribute('data-util-toggle');
-            var onVals = nodes.map(function(n) {
-                return (' ' + (n.props.cssClass || '') + ' ').indexOf(' ' + cls + ' ') !== -1;
-            });
-            var allOn  = onVals.every(Boolean);
-            var allOff = onVals.every(function(v) { return !v; });
-            inp.checked = allOn;
-            inp.indeterminate = !allOn && !allOff;
-        });
-
-        // 4. Hide the complex per-node background controls (inline styles — not shared in multi-mode)
         var bcpRow = panel.querySelector('#sd-bcp-row');
         if (bcpRow) {
             var prev = bcpRow.previousElementSibling;
@@ -33642,16 +33655,197 @@ const StyleDesigner = (function () {
         if (bgImgGrp) bgImgGrp.style.display = 'none';
     }
 
+    // The controls of the several-element panel that write, and what each
+    // writes (_sdMcSpec()).
+    var _SD_MC_CTRL = 'select[data-stylegroup], select[data-util], input[data-util-toggle], select[data-prop], input[data-prop], textarea[data-prop], ' +
+        '[data-mc-prop], [data-mc-stylegroup], [data-mc-cls-toggle], input[data-nodeattr], select[data-nodeattr]';
+    // The props whose classes _syncSizingClassesToCssClass() writes.
+    var _SD_SIZING_PROPS = ['aspectRatioEnabled', 'aspectRatio', 'srOnly', 'placeholderMode', 'placeholderAnim', 'focusRing'];
+
+    function _sdMcSpecOf(el) {
+        var a = function (n) { return el.getAttribute(n); };
+        return _sdMcSpec({
+            stylegroup: a('data-stylegroup') || a('data-mc-stylegroup'),
+            util: el.tagName === 'SELECT' ? a('data-util') : '',
+            toggle: a('data-util-toggle') || a('data-mc-cls-toggle'),
+            prop: a('data-prop') || a('data-mc-prop'),
+            mc: el.hasAttribute('data-mc-prop'),
+            bool: el.type === 'checkbox',
+            attr: a('data-nodeattr')
+        });
+    }
+
+    // A row's controls: its own and those of its per-size box (or of the
+    // box its arrow opens: Min and Max, Top to Left).
+    function _sdMcCtrls(row) {
+        var list = Array.prototype.slice.call(row.querySelectorAll(_SD_MC_CTRL));
+        var t = row.querySelector(':scope > .sd-sp-toggle[data-sp-target]');
+        var box = row.nextElementSibling;
+        if (t && box && box.id === t.getAttribute('data-sp-target')) list = list.concat(Array.prototype.slice.call(box.querySelectorAll(_SD_MC_CTRL)));
+        return list;
+    }
+
+    // An element's value of a control; an image's loading is its attribute.
+    function _sdMcRead(n, s) {
+        return (s.mc && s.prop === 'loading') ? String(_sdImgLoading(n) || '') : _sdMcValOf(n.props, s);
+    }
+
+    // The default of a prop for element `n`, as the changed dot reads it
+    // (markModifiedProps()); '' for a class, a toggle or an attribute.
+    function _sdMcDefault(n, s) {
+        if (!s.prop || (s.mc && s.prop === 'loading')) return '';
+        if (_SD_CHG_SKIP_PROPS[s.prop]) return undefined;
+        var d = _sdPropDefaults(n);
+        if (d && Object.prototype.hasOwnProperty.call(d, s.prop)) return d[s.prop];
+        return Object.prototype.hasOwnProperty.call(_SD_DS_DEFAULTS, s.prop) ? _SD_DS_DEFAULTS[s.prop] : undefined;
+    }
+
+    // Draws control `c` of `row` mixed: a select gets "— Multiple —", its
+    // button group no segment selected and each value present framed, with
+    // a muted line spelling them; a colour its swatch split in two; a field
+    // "— Multiple —" for a placeholder; a switch half set.
+    function _sdMcDrawMixed(c, info, row) {
+        var MIXED = _sdT('— Multiple —');
+        if (c.type === 'checkbox') { c.checked = false; c.indeterminate = true; return; }
+        if (c.tagName !== 'SELECT') { c.value = ''; c.placeholder = MIXED; c.classList.add('sd-mixed'); return; }
+        Array.prototype.forEach.call(c.options, function (o) { o.selected = false; });
+        var opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = MIXED;
+        opt.setAttribute('data-mc-mixed', '1');
+        c.insertBefore(opt, c.firstChild);
+        opt.selected = true;
+        c.classList.add('sd-mixed');
+        var labelOf = function (v) {
+            var o = Array.prototype.filter.call(c.options, function (x) { return x.value === v && !x.hasAttribute('data-mc-mixed'); })[0];
+            return o ? o.textContent : _sdT('Default');
+        };
+        var grp = c.parentNode;
+        if (grp && grp.classList.contains('sd-seg-grp')) {
+            grp.querySelectorAll('.sd-seg').forEach(function (b) { b.classList.toggle('sd-seg-has', info.present.indexOf(b.getAttribute('data-seg-val')) !== -1); });
+            if (row.classList.contains('sd-prop-row')) {
+                var line = document.createElement('div');
+                line.className = 'sd-mc-spell';
+                line.textContent = _sdMcSpell(info, labelOf);
+                row.appendChild(line);
+            }
+        } else if (grp && grp.classList.contains('sd-align-grp')) {
+            grp.querySelectorAll('.sd-align-btn').forEach(function (b) {
+                b.classList.remove('sd-align-active');
+                b.classList.toggle('sd-seg-has', info.present.indexOf(b.getAttribute('data-cls')) !== -1);
+            });
+        }
+        var cp = c.closest('.sd-cp');
+        if (!cp) return;
+        var dots = info.present.slice(0, 2).map(function (v) {
+            var b = Array.prototype.filter.call(cp.querySelectorAll('.sd-cp-option'), function (x) { return x.getAttribute('data-val') === v; })[0];
+            var d = b ? b.querySelector('.sd-color-preview') : null;
+            return d ? Array.prototype.filter.call(d.classList, function (k) { return k !== 'sd-color-preview'; }).join(' ') : 'sd-color-preview-none';
+        });
+        var sw = cp.querySelector('.sd-cp-trigger .sd-color-preview');
+        if (sw) {
+            sw.className = 'sd-color-preview sd-color-split';
+            sw.innerHTML = dots.map(function (d) { return '<span class="' + esc(d) + '"></span>'; }).join('');
+        }
+        var lab = cp.querySelector('.sd-cp-label');
+        if (lab) { lab.textContent = MIXED; lab.classList.add('sd-mixed'); }
+    }
+
+    // Marks the rows under `root` for `nodes`: a control whose values
+    // differ is drawn mixed; a row changed in every element gets the dot, in
+    // some of them a ring, with a tip saying in how many; the spacing box
+    // shows "~" for a side that differs and the count in its core. On the
+    // panel (`live`) the dots get their reset button. Returns the count of
+    // the cards at the top (_sdSectHeadsFill()), a tab's badge.
+    function _sdMcMark(root, nodes, live) {
+        root.querySelectorAll('.sd-prop-row, .sd-sp-row').forEach(function (row) {
+            var lbl = row.querySelector(':scope > .sd-prop-label, :scope > .sd-sp-label');
+            if (!lbl) return;
+            var flags = nodes.map(function () { return false; });
+            var mixed = false;
+            _sdMcCtrls(row).forEach(function (c) {
+                var s = _sdMcSpecOf(c);
+                if (!s) return;
+                var vals = nodes.map(function (n) { return _sdMcRead(n, s); });
+                vals.forEach(function (v, i) { if (_sdMcChanged(s, v, _sdMcDefault(nodes[i], s))) flags[i] = true; });
+                var info = _sdMcVals(vals);
+                if (info.mixed) { mixed = true; _sdMcDrawMixed(c, info, row); }
+            });
+            var dot = _sdMcDot(flags);
+            lbl.classList.toggle('sd-prop-modified', !!dot.kind);
+            lbl.classList.toggle('sd-chg-some', dot.kind === 'ring');
+            if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); }
+            if (mixed) row.setAttribute('data-sd-mixed', '1');
+        });
+        root.querySelectorAll('.sd-bm-v').forEach(function (cell) {
+            var pre = cell.getAttribute('data-bm');
+            if (_sdMcVals(nodes.map(function (n) { return _sdMcValOf(n.props, { prefix: pre }); })).mixed) {
+                cell.textContent = '~';
+                cell.classList.add('sd-bm-mixed');
+            }
+        });
+        root.querySelectorAll('.sd-bm-center').forEach(function (core) { core.textContent = _sdT('{var} elements', nodes.length); });
+        if (live) {
+            _sdNarrowStack(root);
+            _sdSegSync(root);
+            _sdChgResetButtons(root);
+            root.querySelectorAll('.sd-chg-reset').forEach(function (b) {
+                var l = b.nextElementSibling;
+                if (!l || !l.dataset.mcTip) return;
+                b.title = l.dataset.mcTip;
+                b.classList.toggle('sd-chg-ring', l.classList.contains('sd-chg-some'));
+            });
+        }
+        return _sdSectHeadsFill(root);
+    }
+
+    // Writes value `val` of a control (`s`) into element `n`.
+    function _sdMcWrite(n, s, val) {
+        if (s.group || s.prefix || s.toggle) { n.props.cssClass = _sdMcClassWrite(n.props.cssClass, s, val); return; }
+        if (s.attr) { setNodeAttr(n, s.attr, val); return; }
+        if (s.mc && s.prop === 'loading') { _sdSetImgLoading(n, val); return; }
+        n.props[s.prop] = s.bool ? (val === true || val === '1' || val === 'true') : val;
+        // A style-backed prop lives in its prop alone (_sdInlineStyleProps()).
+        _sdInlineStyleProps(n).forEach(function (m) { if (m.prop === s.prop) setAttrStyleProp(n, m.css, ''); });
+        // The preset the switch shows is written with it.
+        if (s.prop === 'aspectRatioEnabled' && n.props[s.prop] && !n.props.aspectRatio) n.props.aspectRatio = '16x9';
+        if (_SD_SIZING_PROPS.indexOf(s.prop) !== -1) _syncSizingClassesToCssClass(n);
+    }
+
+    // Runs `fn` on every element of `nodes` as one undo step, marks the
+    // shared components they live in to be saved, and draws again.
+    function _sdMcCommit(nodes, fn) {
+        _sdUndoAsOne(_saveStateRun, function () {
+            _sdMcApply(nodes, function () { saveState(); }, function (n) {
+                fn(n);
+                var sid = _resolveSharedSid(n);
+                if (sid) _sharedDirty[sid] = true;
+            });
+        });
+        renderCanvas();
+        renderProperties();
+        renderAttrsPanel();
+        renderHtmlTree();
+    }
+
+    // The reset arrow of a row of the several-element panel: every control
+    // of the row back to its default in every element, one undo step.
+    function _sdMcRowReset(lbl) {
+        var row = lbl.closest('.sd-prop-row, .sd-sp-row');
+        var nodes = selectedNodes.slice();
+        if (!row || nodes.length < 2) return;
+        var specs = _sdMcCtrls(row).map(_sdMcSpecOf).filter(Boolean);
+        _sdMcCommit(nodes, function (n) {
+            specs.forEach(function (s) {
+                var def = _sdMcDefault(n, s);
+                _sdMcWrite(n, s, def === undefined ? '' : def);
+            });
+        });
+    }
+
     function bindMultiPropEvents(nodes) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
-
-        function _refresh() {
-            renderCanvas();
-            renderProperties(); // re-enters renderMultiProperties since selectedNodes.length > 1
-            renderAttrsPanel();
-            renderHtmlTree();
-        }
 
         // ── Collapsible section headers ──
         panel.querySelectorAll('.sd-sect-hdr').forEach(function(hdr) {
@@ -33662,6 +33856,7 @@ const StyleDesigner = (function () {
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
+                if (isOpen) _sdNarrowStack(body);
                 var sid = hdr.dataset.sid;
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
@@ -33678,34 +33873,6 @@ const StyleDesigner = (function () {
                 bpsEl.style.display = isOpen ? 'none' : '';
                 this.classList.toggle('sd-sp-open', !isOpen);
                 this.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
-            });
-        });
-
-        // ── data-stylegroup selects (rowCss: display, typography, colors, border, flex, etc.) ──
-        panel.querySelectorAll('select[data-stylegroup]').forEach(function(selEl) {
-            selEl.addEventListener('change', function() {
-                var groupArr = this.getAttribute('data-stylegroup').split(',').filter(Boolean);
-                var allGroupWords = {};
-                groupArr.forEach(function(g) {
-                    g.trim().split(/\s+/).forEach(function(w) { if (w) allGroupWords[w] = true; });
-                });
-                var val = this.value;
-                var valWords = val ? val.trim().split(/\s+/).filter(Boolean) : [];
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && !allGroupWords[c];
-                    });
-                    valWords.forEach(function(w) { arr.push(w); });
-                    n.props.cssClass = arr.join(' ').trim();
-                    // Mark the containing widget cache dirty so the edit is
-                    // flushed to the server on save. Without this, prop panel
-                    // changes inside a widget mutate the cached tree object
-                    // but never get pushed back to shared_components.tree_json.
-                    var _sid = _resolveSharedSid(n);
-                    if (_sid) _sharedDirty[_sid] = true;
-                });
-                _refresh();
             });
         });
 
@@ -33736,102 +33903,43 @@ const StyleDesigner = (function () {
             });
         });
 
-        // ── data-util selects (spacing — rowCss: mt-, p-, etc.) ──
-        panel.querySelectorAll('select[data-util]').forEach(function(selEl) {
-            selEl.addEventListener('change', function() {
-                var prefix = this.getAttribute('data-util');
-                var val    = this.value; // e.g. 'mt-3' or '' for default
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && c.indexOf(prefix) !== 0;
-                    });
-                    if (val) arr.push(val);
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
+        // ── Every control that writes: its value goes to every element. A
+        //    length that is not valid is not written (_sdLenCheck()). ──
+        panel.querySelectorAll(_SD_MC_CTRL).forEach(function (el) {
+            var s = _sdMcSpecOf(el);
+            if (!s) return;
+            el.addEventListener('change', function () {
+                if (el.getAttribute('data-sd-len')) {
+                    var why = _sdLenCheck('len', el.value);
+                    _sdFieldInvalid(el, why);
+                    if (why) return;
+                }
+                var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
+                _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
             });
         });
 
-        // ── data-util-toggle checkboxes (e.g. bg-gradient — rowCss) ──
-        panel.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(inp) {
-            inp.addEventListener('change', function() {
-                var cls     = this.getAttribute('data-util-toggle');
-                var checked = this.checked;
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) { return c && c !== cls; });
-                    if (checked) arr.push(cls);
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
+        // ── Alignment icons: set the hidden select, which writes ──
+        panel.querySelectorAll('.sd-align-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var grp = btn.closest('.sd-align-grp');
+                var sel = grp ? grp.querySelector('select[data-stylegroup]') : null;
+                if (!sel) return;
+                sel.value = _sdSegNext(sel.value, btn.getAttribute('data-cls') || '', true);
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
 
-        // ── data-mc-stylegroup selects (renderMcOptions: alert variant, etc.) ──
-        panel.querySelectorAll('select[data-mc-stylegroup]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                var group = this.getAttribute('data-mc-stylegroup').split(',');
-                var allGroupWords = {};
-                group.forEach(function(g) {
-                    g.trim().split(/\s+/).forEach(function(w) { if (w) allGroupWords[w] = true; });
+        // ── The spacing box: a click steps a side's value for every element ──
+        panel.querySelectorAll('.sd-bm-v').forEach(function (cell) {
+            cell.addEventListener('click', function () {
+                var pre = cell.getAttribute('data-bm');
+                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
+                var cycle = pre.charAt(0) === 'm' ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
+                var next = cycle[(cycle.indexOf(cell.textContent) + 1) % cycle.length];
+                _sdMcCommit(nodes, function (n) {
+                    n.props.cssClass = _sdMcClassWrite(n.props.cssClass, { prefix: pre }, next === '-' ? '' : pre + next);
                 });
-                var val      = this.value;
-                var valWords = val ? val.trim().split(/\s+/).filter(Boolean) : [];
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(function(c) {
-                        return c && !allGroupWords[c];
-                    });
-                    valWords.forEach(function(w) { arr.push(w); });
-                    n.props.cssClass = arr.join(' ').trim();
-                });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-prop selects (renderMcOptions: target, rel, loading, tag-level) ──
-        // An image's loading choice is its loading attribute (_sdSetImgLoading()).
-        panel.querySelectorAll('select[data-mc-prop]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                var prop = this.getAttribute('data-mc-prop');
-                var val  = this.value;
-                saveState();
-                nodes.forEach(function(n) {
-                    if (prop === 'loading') _sdSetImgLoading(n, val);
-                    else n.props[prop] = val;
-                });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-prop checkboxes (renderMcOptions: disabled, active — boolean props) ──
-        panel.querySelectorAll('input[type="checkbox"][data-mc-prop]').forEach(function(el) {
-            if (el.closest('[data-mc-mixed]')) el.indeterminate = true;
-            el.addEventListener('change', function() {
-                var prop    = this.getAttribute('data-mc-prop');
-                var checked = this.checked;
-                saveState();
-                nodes.forEach(function(n) { n.props[prop] = checked; });
-                _refresh();
-            });
-        });
-
-        // ── data-mc-cls-toggle checkboxes (renderMcOptions: s:button disabled cssClass toggle) ──
-        panel.querySelectorAll('input[type="checkbox"][data-mc-cls-toggle]').forEach(function(el) {
-            if (el.closest('[data-mc-mixed]')) el.indeterminate = true;
-            el.addEventListener('change', function() {
-                var cls    = this.getAttribute('data-mc-cls-toggle');
-                var newVal = this.checked;
-                saveState();
-                nodes.forEach(function(n) {
-                    var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
-                    var idx = arr.indexOf(cls);
-                    if (newVal  && idx === -1) arr.push(cls);
-                    if (!newVal && idx !== -1) arr.splice(idx, 1);
-                    n.props.cssClass = arr.join(' ');
-                });
-                _refresh();
             });
         });
     }
@@ -34017,19 +34125,41 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdTrLoad(n) {
+    // Where node `n`'s translations go: the drawn box, or the head of the
+    // closed Translation card, whose body is built when it opens.
+    function _sdTrTarget(n) {
+        if (!n) return null;
         var box = document.getElementById('sd-tr-box');
-        if (!box || !n) return;
+        if (box) return box.getAttribute('data-node') === String(n._id || '') ? box : null;
+        var card = document.querySelector('#sd-properties [data-sd-key="tr"]');
+        return (card && selectedNode === n) ? card : null;
+    }
+
+    function _sdTrPut(el, data) {
+        if (el.id === 'sd-tr-box') { _sdTrDraw(el, data); return; }
+        // The closed card: its state in the head (_sdTrState()), or no card
+        // when the element has no wording to translate, as the box does.
+        var segs = data.segments || [];
+        if (!segs.length) { el.parentNode.removeChild(el); return; }
+        var hdr = el.querySelector(':scope > .sd-sect-hdr');
+        if (!hdr) return;
+        hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (x) { x.remove(); });
+        hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(_sdTrState(segs, _sdTrConfig().languages.map(function (l) { return l.code; }))));
+    }
+
+    function _sdTrLoad(n) {
+        var box = _sdTrTarget(n);
+        if (!box) return;
         var node = { type: n.type, props: n.props || {} };
         var key = JSON.stringify(node);
-        if (_sdTrCache[key]) { _sdTrDraw(box, _sdTrCache[key]); return; }
+        if (_sdTrCache[key]) { _sdTrPut(box, _sdTrCache[key]); return; }
         var seq = ++_sdTrSeq;
         clearTimeout(_sdTrTimer);
         _sdTrTimer = setTimeout(function () {
             _sdTrCall({ action: 'node', node: node }).then(function (data) {
                 _sdTrCache[key] = data;
-                var now = document.getElementById('sd-tr-box');
-                if (seq === _sdTrSeq && now && now.getAttribute('data-node') === String(n._id || '')) _sdTrDraw(now, data);
+                var now = _sdTrTarget(n);
+                if (seq === _sdTrSeq && now) _sdTrPut(now, data);
             }).catch(function (err) {
                 var now = document.getElementById('sd-tr-box');
                 if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note fg-danger">' + esc(err.message) + '</div>';
@@ -34139,7 +34269,7 @@ const StyleDesigner = (function () {
             h += '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-3" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
                 '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
         }
-        return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
+        return _sdSectKey(sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>'), 'link');
     }
 
     // Every change goes through the text: parsed, changed, written back, as
@@ -35066,11 +35196,13 @@ const StyleDesigner = (function () {
     }
 
     // A changed row's value for a summary: a colour's name and dot class,
-    // a select's chosen option, a field's text, a switch's own label.
+    // a select's chosen option, a field's text, a switch's own label;
+    // `mixed` when its values differ across several elements (_sdMcMark()).
     function _sdChgRowOf(lbl) {
         var row = lbl.closest('.sd-prop-row, .sd-sp-row');
         var out = { changed: true, text: '', swatch: '' };
         if (!row) return out;
+        if (row.hasAttribute('data-sd-mixed')) out.mixed = true;
         var cp = row.querySelector('.sd-cp');
         if (cp) {
             var dot = cp.querySelector('.sd-cp-trigger .sd-color-preview');
@@ -35094,44 +35226,149 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The count and the summary of every section card on the panel, from
+    // The count and the summary of every section card under `root`, from
     // the dots markModifiedProps() put on its rows: on screen for a drawn
-    // body, on a detached copy for a held-back one.
-    function _sdSectHeadsFill(panel) {
-        panel.querySelectorAll('[data-sd-card]').forEach(function (card) {
+    // body, on a detached copy for a held-back one. Bind data sums up its
+    // bound fields; Translation's state comes from _sdTrLoad(). Returns
+    // the changed rows of the cards at the top, a tab's count.
+    function _sdSectHeadsFill(root) {
+        var total = 0;
+        root.querySelectorAll('[data-sd-card]').forEach(function (card) {
             var hdr = card.querySelector(':scope > .sd-sect-hdr');
             var body = card.querySelector(':scope > .sd-sect-body');
-            if (!hdr || !body) return;
+            var key = card.getAttribute('data-sd-key');
+            if (!hdr || !body || key === 'tr') return;
             var sid = body.getAttribute('data-sd-lazy');
-            var root = body;
+            var rowsAt = body;
             if (sid) {
-                root = _sdSectExpand(sid);
-                markModifiedProps(root);
+                rowsAt = _sdSectExpand(sid);
+                markModifiedProps(rowsAt);
             }
-            var rows = Array.prototype.map.call(root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
+            var rows = Array.prototype.map.call(rowsAt.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
             var sum = _sdChgSummary(rows);
+            if (key === 'bind') {
+                var bound = _sdBindSum(Array.prototype.map.call(rowsAt.querySelectorAll('select[data-bind-prop]'), function (s) {
+                    var o = s.value ? s.options[s.selectedIndex] : null;
+                    return o ? o.text : '';
+                }));
+                bound.count = sum.count;
+                sum = bound;
+            }
+            // A card whose head keeps a word while open ("shared options").
+            var keep = card.getAttribute('data-sd-sum');
+            if (keep) sum = { count: sum.count, kind: 'keep', text: keep, swatch: '' };
+            var outer = card.parentElement ? card.parentElement.closest('[data-sd-card]') : null;
+            if (!outer || !root.contains(outer)) total += sum.count;
             hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
             hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(sum));
         });
+        return total;
     }
 
-    // Opens the closed card whose held-back body holds element `id` and
-    // draws the panel again; true when there was one.
+    // Draws the panel with every tab and every section's body, finds the
+    // element `find()` returns, opens the cards around it and draws its tab
+    // with it; returns the element as drawn then, or null.
+    function _sdOptReveal(find) {
+        _sdSectAllOnce = true;
+        renderProperties();
+        var el = find();
+        if (el) {
+            for (var c = el.closest('[data-sd-card]'); c; c = c.parentElement ? c.parentElement.closest('[data-sd-card]') : null) {
+                try { localStorage.setItem('sd_cs_' + c.getAttribute('data-sd-card'), '0'); } catch (e) {}
+            }
+            var pane = el.closest('[data-sd-otab]');
+            if (pane) _sdOptTab = pane.getAttribute('data-sd-otab');
+        }
+        renderProperties();
+        return el ? find() : null;
+    }
+
+    // Opens the closed card, or the tab not drawn, that holds element `id`
+    // and draws the panel again; true when there was one.
     function _sdSectOpenFor(id) {
         var needle = 'id="' + id + '"';
-        var hit = Object.keys(_sdPanelLazy).filter(function (sid) { return String(_sdPanelLazy[sid]).indexOf(needle) !== -1; });
-        if (!hit.length) return false;
-        hit.forEach(function (sid) { try { localStorage.setItem('sd_cs_' + sid, '0'); } catch (e) {} });
-        renderProperties();
-        return true;
+        var has = function (map) { return Object.keys(map).some(function (k) { return String(map[k]).indexOf(needle) !== -1; }); };
+        if (!has(_sdPanelLazy) && !has(_sdOptHeld)) return false;
+        return !!_sdOptReveal(function () { return document.getElementById(id); });
     }
 
     // The kind of element the panel showed last (_sdPanelKind()); '' after
     // a panel of another sort (none, read-only, several, a text's inner).
     var _sdPanelLastKind = '';
-    // Set for one draw: build every section's body (the search, a jump to a
-    // control in a closed section).
+    // Set for one draw: build every section's body and draw every tab (the
+    // search, a jump to a control in a closed section or another tab).
     var _sdSectAllOnce = false;
+    // The open tab of the single element's panel, and the markup of the
+    // tabs not drawn, by tab.
+    var _sdOptTab = 'content';
+    var _sdOptHeld = {};
+
+    // What the open rules of Style and Advanced read for node `n`
+    // (_sdOptOpenByDefault()): a text element, a flex box, a parent that is
+    // one, a Show by the visit condition set.
+    function _sdOptCtx(n) {
+        var p = n.props || {};
+        var up = _sdAnyParent(n);
+        var par = up ? up.parent : null;
+        return {
+            text: _sdOptIsText(n.type, p.tag, p.contentType),
+            flex: _sdOptIsFlex(n.type, p.cssClass),
+            parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            visit: _sdCondRowsOf(n).length > 0
+        };
+    }
+
+    // The changed rows of a tab not drawn: its markup on a detached copy,
+    // marked as the panel would be.
+    function _sdOptHeldCount(html) {
+        var t = document.createElement('template');
+        t.innerHTML = html;
+        _sdHideBootstrapControls(t.content);
+        markModifiedProps(t.content);
+        return _sdSectHeadsFill(t.content);
+    }
+
+    // The head over the Options search: the identity row and the tab strip
+    // of the single element's panel, or of several elements (`mc`: { id,
+    // the identity row's markup; tail, the strip under the tabs }); hidden
+    // for every other panel.
+    function _sdPropsHead(node, shown, counts, mc) {
+        var head = document.getElementById('sd-props-head');
+        if (!head) return;
+        head.hidden = !node;
+        head.innerHTML = node ? (mc ? mc.id : _sdIdentityRow(node)) + _sdOptTabStrip(shown, _sdOptTab, counts) + (mc ? mc.tail : '') : '';
+        if (!node) return;
+        if (!mc) _sdIdentityBind(head, node);
+        var strip = head.querySelector('.sd-otabs');
+        if (!strip) return;
+        strip.addEventListener('click', function (e) {
+            var t = e.target.closest ? e.target.closest('.sd-otab') : null;
+            if (t) _sdOptTabGo(t.getAttribute('data-otab'), false);
+        });
+        // Left and Right move between the tabs, as in a tab list.
+        strip.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sdOptTabGo(_sdOptTabNext(_sdOptTab, shown, e.key === 'ArrowRight' ? 1 : -1), true);
+        });
+    }
+
+    // Opens tab `tab` of the Options panel at its top. A search in the box
+    // is cleared: a tab shows its own sections.
+    function _sdOptTabGo(tab, focus) {
+        var panel = document.getElementById('sd-properties');
+        var box = document.getElementById('sd-props-search');
+        var searching = !!(box && box.value.trim());
+        if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
+        if (box) box.value = '';
+        _sdPropsSearchEmpty('');
+        _sdOptTab = tab;
+        panel.scrollTop = 0;
+        renderProperties();
+        var btn = focus ? document.querySelector('#sd-props-head .sd-otab[data-otab="' + tab + '"]') : null;
+        if (btn) btn.focus();
+    }
 
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
@@ -35139,11 +35376,16 @@ const StyleDesigner = (function () {
         _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
         _sdControlsInit(panel);
-        var _kind = _sdPanelKind(selectedNode);
+        // Several elements: a kind of its own, so their tab is kept for
+        // the same kinds selected again (_sdMcKind()).
+        var _kind = selectedNodes.length > 1 ? _sdMcKind(selectedNodes.map(_sdPanelKind)) : _sdPanelKind(selectedNode);
         var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
+        _sdOptTab = _sdOptTabKeep(_kind, _sdPanelLastKind, _sdOptTab);
         _sdPanelLastKind = '';
         _sdPanelLazy = {};
+        _sdOptHeld = {};
         _sdSectBuild = null;
+        _sdPropsHead(null);
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -35231,7 +35473,9 @@ const StyleDesigner = (function () {
                 if (_mBtn) _mBtn.addEventListener('click', function() { mergeCells(_cellsForMerge.slice()); });
                 return;
             }
+            _sdPanelLastKind = _kind;
             renderMultiProperties();
+            panel.scrollTop = _keepScroll;
             return;
         }
 
@@ -35251,12 +35495,12 @@ const StyleDesigner = (function () {
         migrateNodeLinkProps(selectedNode);
 
         _sdPanelLastKind = _kind;
-        // While the search has text every body is built: it looks through
-        // all of them.
+        // While the search has text every body is built and every tab
+        // drawn: it looks through all of them.
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {} };
+        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -35278,18 +35522,17 @@ const StyleDesigner = (function () {
 
         // An element drawing a Bootstrap icon through its class gets the icon
         // picker an icon node has (_sdBiIconSection()).
-        optHtml = _sdBiIconSection(selectedNode) + optHtml;
+        optHtml = _sdSectKey(_sdBiIconSection(selectedNode), 'icon') + optHtml;
 
         // Search and SERP: the part of the page a site search result points at.
-        optHtml += propsSearchSection(selectedNode);
+        optHtml += _sdSectKey(propsSearchSection(selectedNode), 'search');
 
         // Interactions: the node's entrance, hover, click, sticky,
         // parallax or scroll-linked effect (props._fx).
         optHtml += propsInteractions(selectedNode);
 
-        // Data binding section — shown ONLY when selectedNode is inside a system widget.
-        // Renders nothing for nodes outside system widgets (zero overhead in the common case).
-        optHtml = propsDataBinding(selectedNode) + optHtml;
+        // Bind data, or Show by the visit alone (_sdBindKeyed()).
+        optHtml = _sdBindKeyed(propsDataBinding(selectedNode)) + optHtml;
 
         // Ancestor context sections — walk up the tree, show the nearest
         // "notable" ancestor's key options at the top of the panel.
@@ -35326,15 +35569,28 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The Appearance section runs in the same flow as the options. The
-        // element's own section comes first, under the identity row.
-        var _restHtml = _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode);
+        // Each section goes to its tab by its key (_sdOptPlan()). Only the
+        // open tab is drawn; the others are held back, counted. The search
+        // and a jump to a control draw every tab.
+        var _keyed = _sdSectTakeKeyed(_sdSectKey(_sdTrSection(selectedNode), 'tr') + optHtml + rowCss(selectedNode));
         var _build = _sdSectBuild;
         _sdSectBuild = null;
         _sdPanelLazy = _build.lazy || {};
-        panel.innerHTML = _sdIdentityRow(selectedNode) + '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
-            _sdPartSettingsBox(selectedNode) + _own.own + _restHtml + '</div>';
-        _sdIdentityBind(panel, selectedNode);
+        var _plan = _sdOptPlan([
+            { key: 'shortcut', html: _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) + _sdPartSettingsBox(selectedNode) },
+            { key: 'own', html: _own.own },
+            { key: 'context', html: ctxHtml },
+            { key: 'element', html: _keyed.rest }
+        ].concat(_keyed.keyed));
+        var _shown = _sdOptTabsShown(_plan);
+        _sdOptTab = _sdOptTabPick(_sdOptTab, _shown);
+        var _drawn = '';
+        _shown.forEach(function (t) {
+            if (_allBodies || t === _sdOptTab) _drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + _plan[t] + '</div>';
+            else _sdOptHeld[t] = _plan[t];
+        });
+        panel.innerHTML = '<div class="sd-tab-content"' + (_allBodies ? ' data-sd-otab-all="1"' : '') +
+            (Object.keys(_sdOptHeld).length ? ' data-sd-held="1"' : '') + '>' + _drawn + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         _sdPartSettingsBind(selectedNode);
@@ -35344,9 +35600,12 @@ const StyleDesigner = (function () {
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdFxBind(selectedNode);
-        _sdTrLoad(selectedNode);
         markModifiedProps();
-        _sdSectHeadsFill(panel);
+        var _counts = {};
+        panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
+        Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
+        _sdTrLoad(selectedNode);
+        _sdPropsHead(selectedNode, _shown, _counts);
         panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
@@ -35475,7 +35734,7 @@ const StyleDesigner = (function () {
     // runs to fill it.
     function propsInteractions(n) {
         if (!_sdFxTakes(n)) return '';
-        return sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>');
+        return _sdSectKey(sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>'), 'interactions');
     }
 
     // Fills the section's body once the panel is drawn. A collapsed
@@ -50098,14 +50357,14 @@ const StyleDesigner = (function () {
             ? _sdBoundHrefNotice(n)
             : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
 
-        return sect('bi-link-45deg', _sdT('Link Options'),
+        return _sdSectKey(sect('bi-link-45deg', _sdT('Link Options'),
             row(_sdT('URL'), urlRowLO) +
             row(_sdT('Target'), sel('target', [['',_sdT('Default')],['_blank',_sdT('New Tab (_blank)')],['_self',_sdT('Same Window')],['_parent',_sdT('Parent')],['_top', _sdT('Top Window')]], target)) +
             row(_sdT('Relationship'), sel('rel', relOpts, rel)) +
             row(_sdT('Style'), linkStyleSel) +
             (lsVal === 'btn' ? _sdBtnClassRows(cls) : '') +
             row(_sdT('Stretch'), swAttr('data-util-toggle="stretched-link"', isStretched) + _sdStretchHint(isStretched))
-        );
+        ), 'link');
     }
 
     // What a stretched link covers, said while it is on: the nearest box
@@ -50182,7 +50441,7 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
-        return sect('bi-type', _sdT('Text Options'),
+        return _sdSectKey(sect('bi-type', _sdT('Text'),
             _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
@@ -50197,8 +50456,9 @@ const StyleDesigner = (function () {
             row(_sdT('Monospace'),    swAttr('data-util-toggle="font-monospace"', hasCls('font-monospace'))) +
             row(_sdT('No Wrap'),      swAttr('data-util-toggle="text-nowrap"', hasCls('text-nowrap'))) +
             row(_sdT('Truncate'),     swAttr('data-util-toggle="text-truncate"', hasCls('text-truncate'))) +
-            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break')))
-        );
+            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break'))),
+            _sdT('Text Options')
+        ), 'text');
     }
 
     // ── Unified Link / Button / Input / Select / Textarea options panel ───────
@@ -54148,22 +54408,117 @@ const StyleDesigner = (function () {
     }
 
     // Takes the element's own section out of `html` (the markup of its own
-    // options): the first card in it, drawn open unless this browser closed
-    // it. Returns { own, rest }.
+    // options): the first card at its top level that is not another tab's
+    // (Text options), drawn open unless this browser closed it. Returns
+    // { own, rest }.
     function _sdSectTakeOwn(html) {
         var b = _sdSectBuild;
-        var m = b ? /data-sd-card="([^"]+)"/.exec(html) : null;
-        var o = m ? b.cards[m[1]] : null;
-        if (!o || html.indexOf(o.html) === -1) return { own: '', rest: html };
+        var re = /data-sd-card="([^"]+)"/g, m, o = null;
+        while (b && !o && (m = re.exec(html))) {
+            var c = b.cards[m[1]];
+            var at = c ? html.indexOf(c.html) : -1;
+            if (at === -1 || _sdHtmlDepth(html.slice(0, at)) !== 0) continue;
+            if (c.key && _sdOptTabOf(c.key) !== 'content') { re.lastIndex = Math.max(re.lastIndex, at + c.html.length); continue; }
+            o = c;
+        }
+        if (!o) return { own: '', rest: html };
         var rest = html.replace(o.html, function () { return ''; });
         o.open = _sdSectOpenRead(o.stored, true);
         if (o.open && b.lazy) delete b.lazy[o.sid];
         return { own: _sdSectCard(o), rest: rest };
     }
 
-    // Property HTML helpers
-    function sect(icon, title, body) {
-        var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
+    // The card built at the start of `html` while the single element's
+    // panel is built, or null. `loose`: its markup may have been changed
+    // after it was built.
+    function _sdSectAt(html, loose) {
+        var b = _sdSectBuild;
+        html = String(html || '');
+        var m = b ? /^<div[^>]*\sdata-sd-card="([^"]+)"/.exec(html) : null;
+        var o = m ? b.cards[m[1]] : null;
+        return (o && (loose || html.indexOf(o.html) === 0)) ? o : null;
+    }
+
+    // Gives the card at the start of `html` its key, the section's name for
+    // its tab (_sdOptTabOf()); any other markup is returned as it is.
+    function _sdSectKey(html, key) {
+        var o = _sdSectAt(html);
+        if (!o) return html;
+        var was = o.html.length;
+        o.key = key;
+        // A Style or Advanced section opens by its own rule while this
+        // browser kept nothing for it (_sdOptOpenByDefault()); its body is
+        // held back or drawn to match.
+        var b = _sdSectBuild;
+        if (b.ctx && _sdOptTabOf(key) !== 'content') {
+            o.open = _sdSectOpenRead(o.stored, _sdOptOpenByDefault(key, b.ctx));
+            if (b.lazy) {
+                if (o.open) delete b.lazy[o.sid];
+                else b.lazy[o.sid] = o.body;
+            }
+        }
+        o.html = _sdSectCard(o);
+        return o.html + String(html).slice(was);
+    }
+
+    // Gives the card at the start of `html` a word of context in its head
+    // (_sdSectCard()'s `tag`); any other markup is returned as it is.
+    function _sdSectTag(html, tag) {
+        var o = _sdSectAt(html);
+        if (!o) return html;
+        var was = o.html.length;
+        o.tag = tag;
+        o.html = _sdSectCard(o);
+        return o.html + String(html).slice(was);
+    }
+
+    // Takes the keyed cards at the top level of `html` out of it, in their
+    // order. Returns { keyed: [{ key, html }], rest }.
+    function _sdSectTakeKeyed(html) {
+        var b = _sdSectBuild, keyed = [], rest = String(html || '');
+        if (!b) return { keyed: keyed, rest: rest };
+        var re = /data-sd-card="([^"]+)"/g, m;
+        while ((m = re.exec(rest))) {
+            var o = b.cards[m[1]];
+            var at = (o && o.key) ? rest.indexOf(o.html) : -1;
+            if (at === -1 || _sdHtmlDepth(rest.slice(0, at)) !== 0) continue;
+            keyed.push({ key: o.key, html: o.html });
+            re.lastIndex = Math.max(re.lastIndex, at + o.html.length);
+        }
+        keyed.forEach(function (k) { rest = rest.replace(k.html, function () { return ''; }); });
+        return { keyed: keyed, rest: rest };
+    }
+
+    // propsDataBinding() puts its extra rows (Show by the visit) before the
+    // last '</div></div>' of its card, the end of the body. A closed card
+    // has no body drawn, so they are moved into the body it holds back and
+    // the card is drawn again from it.
+    function _sdSectSlotFix(html) {
+        var o = _sdSectAt(html, true);
+        html = String(html || '');
+        if (!o || html === o.html) return html;
+        var at = o.html.lastIndexOf('</div></div>');
+        var add = html.length - o.html.length;
+        if (at < 0 || add <= 0 || html.slice(0, at) !== o.html.slice(0, at) || html.slice(at + add) !== o.html.slice(at)) return html;
+        o.body += html.substr(at, add);
+        if (_sdSectBuild.lazy && Object.prototype.hasOwnProperty.call(_sdSectBuild.lazy, o.sid)) _sdSectBuild.lazy[o.sid] = o.body;
+        o.html = _sdSectCard(o);
+        return o.html;
+    }
+
+    // propsDataBinding()'s card in its tab: Show by the visit alone (no
+    // field to bind) is Advanced's, a card with fields is Bind data.
+    function _sdBindKeyed(html) {
+        html = _sdSectSlotFix(html);
+        var o = _sdSectAt(html);
+        return o ? _sdSectKey(html, o.head === _sdT('Show by the visit') ? 'visit' : 'bind') : html;
+    }
+
+    // Property HTML helpers. `idName`: the name the card's id is made
+    // from when it is not `title` (a renamed section keeps its id, so the
+    // open state this browser kept under sd_cs_<sid> stays).
+    function sect(icon, title, body, idName) {
+        var sid = 'sdsc' + (icon + (idName || title)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
         // A card's head carries no icon: the arrow, the name, the count.
         return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
@@ -54854,8 +55209,9 @@ const StyleDesigner = (function () {
         }
 
         // ── Appearance collapsible sub-section wrapper ──
-        function as(title, content) {
-            var sid = 'sdsc-ap-' + title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        // `idName` as sect()'s: a renamed section keeps its id.
+        function as(title, content, idName) {
+            var sid = 'sdsc-ap-' + (idName || title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             return _sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr', title, content);
         }
 
@@ -54996,7 +55352,7 @@ const StyleDesigner = (function () {
             _overflowRow +
             _arHtml +
         '</div>';
-        var dsHtml = as(_sdT('Display &amp; Sizing'), _dsBody);
+        var dsHtml = as(_sdT('Size and display'), _dsBody, _sdT('Display &amp; Sizing'));
 
         // ── Flexbox ──
         // All flex utilities support responsive variants: flex-{bp}-row, justify-content-{bp}-center, etc.
@@ -55013,21 +55369,42 @@ const StyleDesigner = (function () {
         var orderValues    = [['first',_sdT('First')],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['last',_sdT('Last')]];
         var gapValues      = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
 
-        var _fxBody = '<div class="sd-sp-section">' +
-            mkRespRow(_sdT('Flex Container'),  'd-',                flexContValues, _sdT('Default')) +
-            mkRespRow(_sdT('Direction'),       'flex-',             dirValues,      _sdT('Default')) +
-            mkRespRow(_sdT('Grow'),            'flex-',             growValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Shrink'),          'flex-',             shrinkValues,   _sdT('Default')) +
-            mkRespRow(_sdT('Fill'),            'flex-',             fillValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Justify Content'), 'justify-content-',  jcValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Align Items'),     'align-items-',      aiValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Align Content'),   'align-content-',    acValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Flex Wrap'),       'flex-',             wrapValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Align Self'),      'align-self-',       asValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Flex Order'),      'order-',            orderValues,    _sdT('Default')) +
-            mkRespRow(_sdT('Gap'),             'gap-',              gapValues,      _sdT('Default')) +
-        '</div>';
-        var fxHtml = as(_sdT('Flexbox'), _fxBody);
+        // Layout reads the context (D19, _sdLayPlan()): a flex box gets its
+        // box rows, the child of one its own rows under the tag "parent:
+        // flex", neither only "Make it a container"; a row holding a value
+        // is drawn whatever the context. The note names the rows left out
+        // (D20). Several elements: the context holds for all of them, a row
+        // is held by any of them (renderMultiProperties()).
+        var _layB = _sdSectBuild || {};
+        var _layCtx = _layB.ctx || _sdOptCtx(n);
+        var _laySeveral = !!(_layB.lay && _layB.lay.several);
+        var _layCls = _laySeveral ? _layB.lay.cls : cls;
+        var _layRows = {
+            container:    [_sdT('Flex Container'),  'd-',               flexContValues],
+            direction:    [_sdT('Direction'),       'flex-',            dirValues],
+            wrap:         [_sdT('Flex Wrap'),       'flex-',            wrapValues],
+            justify:      [_sdT('Justify Content'), 'justify-content-', jcValues],
+            alignItems:   [_sdT('Align Items'),     'align-items-',     aiValues],
+            alignContent: [_sdT('Align Content'),   'align-content-',   acValues],
+            gap:          [_sdT('Gap'),             'gap-',             gapValues],
+            alignSelf:    [_sdT('Align Self'),      'align-self-',      asValues],
+            order:        [_sdT('Flex Order'),      'order-',           orderValues],
+            grow:         [_sdT('Grow'),            'flex-',            growValues],
+            shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
+            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+        };
+        var _layHeld = {};
+        Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
+        var _layPlan = _sdLayPlan(_layCtx, _layHeld);
+        var _fxBody = '<div class="sd-sp-section">';
+        _layPlan.rows.forEach(function (id, i) {
+            // A line between the box rows and the element's own.
+            if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
+            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+        });
+        _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
+        var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
+        if (_layPlan.tag) fxHtml = _sdSectTag(fxHtml, _sdT('parent: flex'));
 
         // dsHtml and fxHtml live in separate slots of the final return — Colors + Border should sit
         // between Display&Sizing and Flexbox (those are the most-used properties after Display),
@@ -55133,7 +55510,7 @@ const StyleDesigner = (function () {
         function _radList(prefix) {
             return _radSizes.map(function (n) { return prefix + n; });
         }
-        var borderHtml = as(_sdT('Border'),
+        var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
             row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
@@ -55141,12 +55518,13 @@ const StyleDesigner = (function () {
             row(_sdT('Top Radius'),    selStyleGroup(n.props, _radList('rounded-top-'),    'Default')) +
             row(_sdT('Right Radius'),  selStyleGroup(n.props, _radList('rounded-end-'),    'Default')) +
             row(_sdT('Bottom Radius'), selStyleGroup(n.props, _radList('rounded-bottom-'), 'Default')) +
-            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default'))
+            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')),
+            _sdT('Border')
         );
 
-        // Colors — consolidates Text Col + Bg Col + Shadow under one appearance roof.
-        // Shadow moved here from its own section so all visual tweaks are in one place.
-        // Also includes custom background image/color/gradient inline-style customization.
+        // Color and background: text and background colours, opacities and
+        // the custom background image/color/gradient inline style. The
+        // shadow is in Shadow and effect.
         var _bgImgRaw = getAttrStyleProp(n, 'background-image');
         var _bgImgUrl = '', _bgGradType = 'none', _bgGradStr = '';
         if (/^linear-gradient/i.test(_bgImgRaw))      { _bgGradType = 'linear'; _bgGradStr = _bgImgRaw; }
@@ -55321,7 +55699,7 @@ const StyleDesigner = (function () {
                 '</div>' +
             '</div>';
 
-        var colorsHtml = as(_sdT('Colors'),
+        var colorsHtml = as(_sdT('Color and background'),
             row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
@@ -55330,9 +55708,8 @@ const StyleDesigner = (function () {
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Opacity'),      selStyleGroup(n.props, ['opacity-0','opacity-25','opacity-50','opacity-75','opacity-100'], 'Default')) +
-            '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Shadow'),       selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
-            bgSection
+            bgSection,
+            _sdT('Colors')
         );
 
         // ── Tooltip ──
@@ -55345,15 +55722,17 @@ const StyleDesigner = (function () {
             row(_sdT('Text'),      '<input type="text" class="form-control form-control-sm" data-prop="tooltipTitle" value="' + esc(_ttTitle) + '" placeholder="' + esc(_sdT('Tooltip text...')) + '">')
         );
 
-        // ── Styling (placeholder / focus-ring etc.) ──
-        // New consolidated section. Currently hosts Placeholder (loading skeleton) and Focus
-        // Ring switches. Future: migrate Border/Colors/Effects here for a single visual-tweak
-        // panel — deferred to keep this change scoped.
-        var stylingHtml = as(_sdT('Styling'),
+        // ── Shadow and effect ──
+        // The shadow, then the loading placeholder and the focus ring (the
+        // section once named Styling, whose card id it keeps).
+        var stylingHtml = as(_sdT('Shadow and effect'),
+            row(_sdT('Shadow'),      selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
+            '<div class="sd-sp-divider"></div>' +
             row(_sdT('Placeholder'), sw('placeholderMode', !!p.placeholderMode)) +
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing))
+            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)),
+            _sdT('Styling')
         );
 
         // ── Accessibility ──
@@ -55373,9 +55752,11 @@ const StyleDesigner = (function () {
             row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="' + esc(_sdT('id of describing element')) + '">')
         );
 
-        // Section order — Colors first (most visual), then layout:
-        //   Colors → Display&Sizing → Border → Styling → Spacing → Flexbox → Tooltip → Accessibility
-        return colorsHtml + lHtml + borderHtml + stylingHtml + spacingHtml + fxHtml + tooltipHtml + accessibilityHtml;
+        // Each section with the key of its tab (_sdOptTabOf()); the panel of
+        // one element or of several puts them in its tabs' order (_sdOptPlan()).
+        return _sdSectKey(colorsHtml, 'colors') + _sdSectKey(lHtml, 'display') + _sdSectKey(borderHtml, 'border') +
+            _sdSectKey(stylingHtml, 'styling') + _sdSectKey(spacingHtml, 'spacing') + _sdSectKey(fxHtml, 'flexbox') +
+            _sdSectKey(tooltipHtml, 'tooltip') + _sdSectKey(accessibilityHtml, 'accessibility');
     }
     function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, ' $1'); }
     // The Options row label of an element prop drawn by the generic loops:
@@ -56844,8 +57225,7 @@ const StyleDesigner = (function () {
                 // Sync sizing-managed CSS classes into node.props.cssClass when any of the
                 // related props change. This keeps the Attrs panel + cssClass field in sync
                 // with the Display & Sizing toggles. See _syncSizingClassesToCssClass().
-                var _SIZING_PROPS = ['aspectRatioEnabled', 'aspectRatio', 'srOnly', 'placeholderMode', 'placeholderAnim', 'focusRing'];
-                if (_SIZING_PROPS.indexOf(prop) !== -1) {
+                if (_SD_SIZING_PROPS.indexOf(prop) !== -1) {
                     _syncSizingClassesToCssClass(selectedNode);
                 }
                 // Class-based row/col on a `semantic` div: re-serialize the
@@ -61278,16 +61658,18 @@ const StyleDesigner = (function () {
         return String(cur) !== String(def);
     }
 
-    // A section's head from its rows, each { changed, text, swatch } (the
-    // swatch is a colour dot's class, '' for none): `count` its changed
-    // rows; the summary is the first changed row's colour with its name
-    // ('color'), else its value ('value'), 'none' when that value is
-    // empty, and 'default' when no row is changed.
+    // A section's head from its rows, each { changed, text, swatch, mixed }
+    // (the swatch is a colour dot's class, '' for none; mixed when the
+    // selected elements hold different values): `count` its changed rows;
+    // the summary is the first changed row's 'mixed', else its colour with
+    // its name ('color'), else its value ('value'), 'none' when that value
+    // is empty, and 'default' when no row is changed.
     function _sdChgSummary(rows) {
         var changed = (rows || []).filter(function (r) { return r && r.changed; });
         var out = { count: changed.length, kind: 'default', text: '', swatch: '' };
         if (!changed.length) return out;
         var first = changed[0];
+        if (first.mixed) { out.kind = 'mixed'; return out; }
         var text = String(first.text == null ? '' : first.text).replace(/\s+/g, ' ').trim();
         if (first.swatch) { out.kind = 'color'; out.swatch = String(first.swatch); out.text = text; }
         else if (text) { out.kind = 'value'; out.text = text; }
@@ -61331,7 +61713,19 @@ const StyleDesigner = (function () {
         if (!sum) return '<span class="sd-sect-sum"></span>';
         var badge = sum.count ? '<span class="sd-sect-count">' + sum.count + '</span>' : '';
         var inner;
-        if (sum.kind === 'color') {
+        if (sum.kind === 'state') {
+            // A state ("EN · not translated"): a badge, amber while
+            // something is missing.
+            return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line"><span class="sd-sect-state' + (sum.warn ? ' is-warn' : '') + '">' + esc(sum.text) + '</span></span></span>';
+        }
+        if (sum.kind === 'keep') {
+            // A word that stays while the section is open ("shared options").
+            return badge + '<span class="sd-sect-sum sd-sect-sum-keep"><span class="sd-sect-sum-line"><span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.text) + '</span></span></span>';
+        }
+        if (sum.kind === 'word' || sum.kind === 'mixed') {
+            // A word of the panel given whole ("not bound", "multiple").
+            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.kind === 'mixed' ? _sdT('multiple') : sum.text) + '</span>';
+        } else if (sum.kind === 'color') {
             inner = '<span class="sd-color-preview ' + esc(sum.swatch) + '" aria-hidden="true"></span>' +
                 '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
         } else if (sum.kind === 'value') {
@@ -61345,21 +61739,335 @@ const StyleDesigner = (function () {
     }
 
     // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
-    // (markup), open, lazy, sum }. A closed card of the single element's
-    // panel (lazy) carries no body: it is built when the card opens.
+    // (markup), open, lazy, sum, key, tag }. A closed card of the single
+    // element's panel (lazy) carries no body: it is built when the card
+    // opens. `key` names the section for its tab (_sdOptTabOf()); `tag` is
+    // a word of context shown at the head's right while the card is open
+    // ("parent: flex").
     function _sdSectCard(o) {
         var open = !!o.open;
         var hold = !open && o.lazy;
-        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '">' +
+        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '"' + (o.key ? ' data-sd-key="' + o.key + '"' : '') + '>' +
             '<div class="' + o.hdrCls + ' sd-sect-hdr' + (open ? ' sd-sect-open' : '') + '" data-sid="' + o.sid + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
                 '<span class="sd-sect-chev bi bi-chevron-right" aria-hidden="true"></span>' +
                 '<span class="sd-sect-title">' + o.head + '</span>' +
+                (o.tag ? '<span class="sd-sect-tag">' + esc(o.tag) + '</span>' : '') +
                 _sdSectHeadExtras(o.sum || null) +
             '</div>' +
             '<div class="sd-sect-body"' + (hold ? ' data-sd-lazy="' + o.sid + '"' : '') + (open ? '' : ' style="display:none"') + '>' + (hold ? '' : o.body) + '</div>' +
         '</div>';
     }
     // ── end of what counts as changed
+
+    // ── The Options tabs: pure helpers ──
+    // No DOM and no editor state: the tab each section of the single
+    // element's panel goes to, the tabs' order and strip, and the closed
+    // Translation and Bind data summaries.
+    // tests/designer_options_tabs_test.php runs them under Node.
+
+    var _SD_OPT_TABS = ['content', 'style', 'advanced'];
+
+    // The tab of a section by the key its builder gives it: Text (text),
+    // Spacing, Color and background (colors), Border and corner (border),
+    // Size and display (display) and Shadow and effect (styling) in Style;
+    // Layout (flexbox), Show by the visit, Accessibility, Tooltip, Search
+    // and SERP and Interactions in Advanced. The element's own section and
+    // its other sections, Link, Bind data, Translation and a section
+    // without a key stay with the element, in Content.
+    var _SD_OPT_TAB_OF = {
+        text: 'style', spacing: 'style', colors: 'style', border: 'style', display: 'style', styling: 'style',
+        flexbox: 'advanced', visit: 'advanced', accessibility: 'advanced', tooltip: 'advanced', search: 'advanced', interactions: 'advanced'
+    };
+    function _sdOptTabOf(key) {
+        return Object.prototype.hasOwnProperty.call(_SD_OPT_TAB_OF, key) ? _SD_OPT_TAB_OF[key] : 'content';
+    }
+
+    // Each tab's order. Content: the shortcut bars, the element's own
+    // section, its other sections (Quick Layouts), its icon, Link, the
+    // parent's options, Translation, Bind data; a key not listed ranks with
+    // the element's. Style: Text, Spacing, Color and background, Border and
+    // corner, Size and display, Shadow and effect. Advanced: Layout, Show by
+    // the visit, Accessibility, Tooltip, Search and SERP, Interactions.
+    var _SD_OPT_RANK = {
+        content: { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 },
+        style: { text: 0, spacing: 1, colors: 2, border: 3, display: 4, styling: 5 },
+        advanced: { flexbox: 0, visit: 1, accessibility: 2, tooltip: 3, search: 4, interactions: 5 }
+    };
+
+    // The markup of each tab from the panel's pieces [{ key, html }] in the
+    // order they were built, each tab in its order above; pieces of one
+    // rank keep the order they were built in. Nothing is dropped.
+    function _sdOptPlan(pieces) {
+        var by = { content: [], style: [], advanced: [] };
+        (pieces || []).forEach(function (p, i) {
+            if (!p || !p.html) return;
+            var tab = _sdOptTabOf(p.key);
+            var ranks = _SD_OPT_RANK[tab];
+            var r = Object.prototype.hasOwnProperty.call(ranks, p.key) ? ranks[p.key] : (tab === 'content' ? ranks.element : 99);
+            by[tab].push({ html: p.html, rank: r, at: i });
+        });
+        var out = {};
+        _SD_OPT_TABS.forEach(function (t) {
+            by[t].sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
+            out[t] = by[t].map(function (c) { return c.html; }).join('');
+        });
+        return out;
+    }
+
+    // Whether a Style or Advanced section opens while this browser kept
+    // nothing for it (a kept state wins, _sdSectOpenRead()). `ctx`:
+    // { text, flex, parentFlex, visit } from _sdOptCtx(). Text opens on a
+    // text element, Spacing always, Layout on a flex box or the child of
+    // one, Show by the visit when a condition is set; the others stay
+    // closed.
+    function _sdOptOpenByDefault(key, ctx) {
+        ctx = ctx || {};
+        if (key === 'text') return !!ctx.text;
+        if (key === 'spacing') return true;
+        if (key === 'flexbox') return !!(ctx.flex || ctx.parentFlex);
+        if (key === 'visit') return !!ctx.visit;
+        return false;
+    }
+
+    // A text element: a heading, a paragraph or a span, the elements whose
+    // Text section offers the display sizes (propsTextOptions()). `type`,
+    // `tag` and `ct` (the content type) as the node has them.
+    function _sdOptIsText(type, tag, ct) {
+        if (type === 'semantic') return /^(h[1-6]|p|span)$/.test(String(tag || ''));
+        return type === 'content' && (ct === 'heading' || ct === 'paragraph');
+    }
+
+    // Bootstrap 5.3's classes that draw an element as a flex box.
+    var _SD_FLEX_CLASSES = ['row', 'hstack', 'vstack', 'nav', 'navbar', 'navbar-nav', 'btn-group', 'btn-group-vertical',
+        'btn-toolbar', 'input-group', 'input-group-text', 'list-group', 'card', 'breadcrumb', 'pagination',
+        'carousel-indicators', 'modal-dialog-centered', 'modal-content', 'modal-header', 'modal-footer', 'offcanvas',
+        'offcanvas-header', 'toast-header', 'progress', 'progress-stacked', 'progress-bar', 'accordion-button'];
+
+    // A flex box: d-flex or d-inline-flex at any screen size, or a grid row
+    // or one of Bootstrap's flex components (_SD_FLEX_CLASSES) while no
+    // display class at the base draws it otherwise. A class of the design's
+    // own stylesheet is not read.
+    function _sdOptIsFlex(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) return true;
+        if (/ d-(none|inline|inline-block|block|grid|inline-grid|table|table-row|table-cell) /.test(s)) return false;
+        if (type === 'row') return true;
+        return _SD_FLEX_CLASSES.some(function (c) { return s.indexOf(' ' + c + ' ') !== -1; });
+    }
+
+    // The tabs drawn, in their order: a tab without a section is not.
+    function _sdOptTabsShown(plan) {
+        return _SD_OPT_TABS.filter(function (t) { return !!(plan && String(plan[t] || '').trim()); });
+    }
+
+    // The tab that opens: the one asked for when it is drawn, else the
+    // first one drawn.
+    function _sdOptTabPick(want, shown) {
+        shown = shown || [];
+        return shown.indexOf(want) !== -1 ? want : (shown[0] || 'content');
+    }
+
+    // The tab for the next panel: an element of the same kind keeps it;
+    // another kind, or a panel of another sort before it, opens Content.
+    function _sdOptTabKeep(kind, lastKind, tab) {
+        return (kind && kind === lastKind && _SD_OPT_TABS.indexOf(tab) !== -1) ? tab : 'content';
+    }
+
+    // The tab Left (dir < 0) or Right moves to among the drawn ones, round
+    // from the last to the first.
+    function _sdOptTabNext(cur, shown, dir) {
+        shown = shown || [];
+        if (!shown.length) return cur;
+        var at = shown.indexOf(cur);
+        if (at === -1) return shown[0];
+        return shown[(at + (dir < 0 ? shown.length - 1 : 1)) % shown.length];
+    }
+
+    // The tab strip: a tab list of the drawn tabs, the open one selected
+    // and the only one reached with Tab. A tab's badge counts its changed
+    // rows (`counts` by tab) and is left out at 0.
+    function _sdOptTabStrip(shown, open, counts) {
+        if (!shown || !shown.length) return '';
+        var names = { content: _sdT('Content'), style: _sdT('Style'), advanced: _sdT('Advanced') };
+        var icons = { content: 'bi-card-text', style: 'bi-palette', advanced: 'bi-gear' };
+        return '<div class="sd-otabs" role="tablist" aria-label="' + esc(_sdT('Option tabs')) + '">' +
+            shown.map(function (t) {
+                var on = t === open;
+                var n = (counts && counts[t]) || 0;
+                return '<button type="button" class="sd-otab' + (on ? ' active' : '') + '" role="tab" data-otab="' + t + '" aria-controls="sd-properties"' +
+                    ' aria-selected="' + (on ? 'true' : 'false') + '" tabindex="' + (on ? '0' : '-1') + '"' +
+                    (n ? ' aria-label="' + esc(_sdT('{var:1}, {var:2} changed', [names[t], n])) + '"' : '') + '>' +
+                    '<span class="bi ' + icons[t] + '" aria-hidden="true"></span>' +
+                    '<span class="sd-otab-txt">' + esc(names[t]) + '</span>' +
+                    (n ? '<span class="sd-otab-count" aria-hidden="true">' + n + '</span>' : '') +
+                '</button>';
+            }).join('') +
+        '</div>';
+    }
+
+    // The closed Translation card's summary: the codes of the languages a
+    // segment still lacks ("EN · not translated"), else "translated".
+    // `segs` as the server sends them ({ translations: { code: { text } } }).
+    function _sdTrState(segs, codes) {
+        var missing = (codes || []).filter(function (c) {
+            return (segs || []).some(function (s) {
+                var t = ((s && s.translations) || {})[c];
+                return !(t && t.text);
+            });
+        });
+        if (missing.length) {
+            return { count: 0, kind: 'state', warn: true, text: _sdT('{var} · not translated', missing.map(function (c) { return String(c).toUpperCase(); }).join(', ')) };
+        }
+        return { count: 0, kind: 'state', warn: false, text: _sdT('translated') };
+    }
+
+    // The closed Bind data card's summary: the first bound field, else
+    // "not bound". `bound` holds each binding's chosen name, '' unbound.
+    function _sdBindSum(bound) {
+        var first = (bound || []).map(function (t) { return String(t == null ? '' : t).trim(); }).filter(Boolean)[0];
+        return first ? { count: 0, kind: 'value', text: first, swatch: '' } : { count: 0, kind: 'word', text: _sdT('not bound'), swatch: '' };
+    }
+
+    // How many <div>s a cut of markup leaves open: 0 at the start of a
+    // top-level block, where a keyed card may be taken out.
+    function _sdHtmlDepth(prefix) {
+        var s = String(prefix || '');
+        return (s.match(/<div\b/g) || []).length - (s.match(/<\/div>/g) || []).length;
+    }
+    // ── end of the Options tabs
+
+    // ── Layout by context: pure helpers ──
+    // No DOM and no editor state: the rows Advanced › Layout draws for an
+    // element from its own display and its parent's (D19), the note naming
+    // the rows left out (D20) and the classes "Make it a container"
+    // writes. Run under Node by tests/designer_options_tabs_test.php.
+
+    // Layout's rows in their order: a flex box's own (`box`), then the ones
+    // the child of a flex box sets on itself (`item`). `name` is the group
+    // the note names a row by; Flex Container has none, the button stands
+    // for it.
+    var _SD_LAY_ROWS = [
+        { id: 'container', of: 'box', name: '' },
+        { id: 'direction', of: 'box', name: 'direction' },
+        { id: 'wrap', of: 'box', name: 'wrap' },
+        { id: 'justify', of: 'box', name: 'alignment' },
+        { id: 'alignItems', of: 'box', name: 'alignment' },
+        { id: 'alignContent', of: 'box', name: 'alignment' },
+        { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'alignSelf', of: 'item', name: 'self' },
+        { id: 'order', of: 'item', name: 'order' },
+        { id: 'grow', of: 'item', name: 'grow' },
+        { id: 'shrink', of: 'item', name: 'shrink' },
+        { id: 'fill', of: 'item', name: 'grow' }
+    ];
+
+    // The group of a row: 'box', 'item', or '' for no row of Layout.
+    function _sdLayOf(id) {
+        for (var i = 0; i < _SD_LAY_ROWS.length; i++) {
+            if (_SD_LAY_ROWS[i].id === id) return _SD_LAY_ROWS[i].of;
+        }
+        return '';
+    }
+
+    // What Layout draws. `ctx`: { flex: the element is a flex box,
+    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // for a row holding a value, drawn whatever the context so nothing set
+    // is out of sight. Returns { rows: the ids drawn, in order; make:
+    // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
+    // { box, item }, the names of the groups with a row left out, in
+    // order, each once }.
+    function _sdLayPlan(ctx, held) {
+        ctx = ctx || {};
+        held = held || {};
+        var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
+        _SD_LAY_ROWS.forEach(function (r) {
+            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+                out.rows.push(r.id);
+                return;
+            }
+            var names = out.hidden[r.of];
+            if (r.name && names.indexOf(r.name) === -1) names.push(r.name);
+        });
+        return out;
+    }
+
+    // Whether a row holds a value: its class (`prefix` and a value) at the
+    // base or at a screen size (`prefix`, the size, a value: flex-md-grow-1).
+    function _sdLayHeld(cls, prefix, values) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return ['', 'sm-', 'md-', 'lg-', 'xl-', 'xxl-'].some(function (bp) {
+            return (values || []).some(function (v) {
+                return have.indexOf(' ' + prefix + bp + (Array.isArray(v) ? v[0] : v) + ' ') !== -1;
+            });
+        });
+    }
+
+    // A group's name in the note.
+    function _sdLayName(key) {
+        switch (key) {
+            case 'direction': return _sdT('direction');
+            case 'wrap': return _sdT('line wrapping');
+            case 'alignment': return _sdT('alignment');
+            case 'gap': return _sdT('gap');
+            case 'self': return _sdT('own alignment');
+            case 'order': return _sdT('flex order');
+            case 'grow': return _sdT('grow');
+            case 'shrink': return _sdT('shrink');
+        }
+        return '';
+    }
+
+    // The groups' names as a sentence lists them: "a, b and c".
+    function _sdLayList(keys) {
+        var names = (keys || []).map(_sdLayName).filter(Boolean);
+        if (names.length < 2) return names.join('');
+        return names.slice(0, -1).join(', ') + ' ' + _sdT('and') + ' ' + names[names.length - 1];
+    }
+
+    // The note under Layout's rows: why each group is left out, naming it,
+    // and "Make it a container" while the element is not a flex box; ''
+    // when nothing is left out. `several`: the panel of several elements.
+    function _sdLayNoteHtml(plan, several) {
+        var hid = (plan && plan.hidden) || { box: [], item: [] };
+        var make = !!(plan && plan.make);
+        var says = [];
+        if (hid.box.length) {
+            says.push(several
+                ? _sdT('Not every selected element is a flex container; the {var} rows are hidden.', _sdLayList(hid.box))
+                : _sdT('This element is not a flex container; the {var} rows are hidden.', _sdLayList(hid.box)));
+        }
+        if (hid.item.length) {
+            says.push(several
+                ? _sdT('Not every selected element has a flex parent; the {var} rows are hidden.', _sdLayList(hid.item))
+                : _sdT('Its parent is not a flex container; the {var} rows are hidden.', _sdLayList(hid.item)));
+        }
+        if (!says.length && !make) return '';
+        return '<div class="sd-lay-note" role="note">' +
+            '<span class="bi bi-info-circle" aria-hidden="true"></span>' +
+            '<span class="sd-lay-note-txt">' + esc(says.join(' ')) + '</span>' +
+            (make ? '<button type="button" class="sd-lay-make" data-sd-lay-make="1">' +
+                esc(several ? _sdT('Make them containers') : _sdT('Make it a container')) + '</button>' : '') +
+        '</div>';
+    }
+
+    // The classes after "Make it a container": a display class other than
+    // d-none becomes d-flex at its own screen size (d-block → d-flex,
+    // d-md-grid → d-md-flex), so a size that hid the element still hides
+    // it; d-flex is added at the base while the base has no display class
+    // or no size draws a flex box yet. The Flex Container row's classes.
+    function _sdLayMakeCls(cls) {
+        var out = [];
+        String(cls || '').split(/\s+/).filter(Boolean).forEach(function (w) {
+            var m = /^d-((?:sm|md|lg|xl|xxl)-)?(?:inline|inline-block|block|grid|inline-grid|table|table-row|table-cell)$/.exec(w);
+            if (!m) { out.push(w); return; }
+            var c = 'd-' + (m[1] || '') + 'flex';
+            if (out.indexOf(c) === -1) out.push(c);
+        });
+        var s = ' ' + out.join(' ') + ' ';
+        if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
+        return out.join(' ');
+    }
+    // ── end of layout by context
 
     // ── The Options panel controls: pure helpers ──
     // No DOM and no editor state here: how a row's control is drawn and
@@ -61422,7 +62130,8 @@ const StyleDesigner = (function () {
 
     // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:
     // `attrs` its attributes but the class (one of them data-stylegroup,
-    // data-prop or data-util, which writes it), the labels kept as written.
+    // data-prop or data-util, or the several-element panel's data-mc-prop
+    // or data-mc-stylegroup, which writes it), the labels kept as written.
     // Null for anything else: other markup around it, an id other code may
     // hold, several choices, a group, an option with attributes of its own.
     function _sdSelParse(html) {
@@ -61430,7 +62139,7 @@ const StyleDesigner = (function () {
         if (!m || /<select|<optgroup/i.test(m[2])) return null;
         var head = m[1];
         if (/\s(id|multiple)(=|\s|$)/i.test(head)) return null;
-        if (!/\sdata-(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
+        if (!/\sdata-(?:mc-)?(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
         var opts = [];
         var re = /<option\b([^>]*)>([\s\S]*?)<\/option>/g;
         var o;
@@ -61496,6 +62205,186 @@ const StyleDesigner = (function () {
     }
     // ── end of the Options panel controls
 
+    // ── Several elements selected: pure helpers ──
+    // No DOM and no editor state: what the Options panel shows and writes
+    // with several elements selected (renderMultiProperties()), run under
+    // Node by tests/designer_options_multiple_test.php.
+
+    // The kind of shared options a node offers: 'c:' + a content's type,
+    // 's:' + a semantic tag ('s:alert' for an alert box), else its type.
+    function _sdMcRole(n) {
+        var p = (n && n.props) || {};
+        if (n.type === 'content') return 'c:' + (p.contentType || '');
+        if (n.type === 'semantic') {
+            var tag = String(p.tag || '').toLowerCase();
+            var cls = String(p.cssClass || '').split(/\s+/);
+            if (tag === 'div' && cls.indexOf('alert') !== -1 && cls.indexOf('alert-heading') === -1) return 's:alert';
+            return 's:' + tag;
+        }
+        return n.type;
+    }
+
+    // The panel's kind for elements of `kinds` (_sdPanelKind() each): the
+    // tab is kept for the same kind selected again, never shared with the
+    // single element's panel.
+    function _sdMcKind(kinds) {
+        kinds = kinds || [];
+        var alike = kinds.length && kinds.every(function (k) { return k === kinds[0]; });
+        return 'several:' + (alike ? kinds[0] : 'mixed');
+    }
+
+    // The panel's pieces: elements of different kinds draw no Content
+    // (their own options are not shared), so Style opens.
+    function _sdMcPieces(alike, pieces) {
+        return alike ? pieces : (pieces || []).filter(function (p) { return p && _sdOptTabOf(p.key) !== 'content'; });
+    }
+
+    // Whether an element has the Text section (propsTextOptions()).
+    function _sdMcHasText(type, tag, ct) {
+        if (type === 'semantic') return /^(h[1-6]|p|span|a|button)$/.test(String(tag || ''));
+        return type === 'content' && /^(heading|paragraph|link|button)$/.test(String(ct || ''));
+    }
+
+    // What a control writes, from its attributes: { group } for a class
+    // group, { prefix } for a spacing value, { toggle } for a class switch,
+    // { prop, bool, mc } for a prop, { attr } for an attribute; null for
+    // anything else.
+    function _sdMcSpec(o) {
+        o = o || {};
+        if (o.stylegroup) return { group: String(o.stylegroup).split(',').filter(function (g) { return g.trim(); }) };
+        if (o.util) return { prefix: String(o.util) };
+        if (o.toggle) return { toggle: String(o.toggle) };
+        if (o.prop) return { prop: String(o.prop), bool: !!o.bool, mc: !!o.mc };
+        if (o.attr) return { attr: String(o.attr) };
+        return null;
+    }
+
+    // Whether class `c` is a spacing prefix's own value ('p-3', 'm-auto'),
+    // not a screen size's ('p-sm-3') or another side's ('pt-3').
+    function _sdMcOfPrefix(c, prefix) {
+        return c.indexOf(prefix) === 0 && /^(\d+|auto)$/.test(c.slice(prefix.length));
+    }
+
+    // An element's value of a control: a group's entry whose words it all
+    // has (the last), a prefix's class, '1' for a toggle or a switch on,
+    // a prop or an attribute as text; '' when unset.
+    function _sdMcValOf(props, spec) {
+        props = props || {};
+        var cls = String(props.cssClass || '').split(/\s+/).filter(Boolean);
+        var found = '';
+        if (spec.group) {
+            spec.group.forEach(function (g) {
+                var words = g.trim().split(/\s+/);
+                if (words.every(function (w) { return cls.indexOf(w) !== -1; })) found = g;
+            });
+            return found;
+        }
+        if (spec.prefix) {
+            cls.forEach(function (c) { if (_sdMcOfPrefix(c, spec.prefix)) found = c; });
+            return found;
+        }
+        if (spec.toggle) return cls.indexOf(spec.toggle) !== -1 ? '1' : '';
+        if (spec.attr) {
+            (props._attrs || []).forEach(function (a) { if (a && a.name === spec.attr) found = String(a.value || ''); });
+            return found;
+        }
+        var v = props[spec.prop];
+        if (spec.bool) return (v === true || v === 'true' || v === '1') ? '1' : '';
+        return v == null ? '' : String(v);
+    }
+
+    // Whether one element's value `v` of a control differs from the
+    // default `def`: a class, a toggle or an attribute when set; a prop as
+    // the panel compares it (_sdChgDiffers()), never while unset or
+    // without a default.
+    function _sdMcChanged(spec, v, def) {
+        if (!spec.prop) return v !== '';
+        if (def === undefined) return false;
+        if (spec.bool) return _sdChgDiffers('checkbox', v === '1', def);
+        return v !== '' && _sdChgDiffers('text', v, def);
+    }
+
+    // The values of one control across the elements: `mixed` when they
+    // differ, `value` the shared one, `present` each once in the order met,
+    // `counts` how many hold each.
+    function _sdMcVals(vals) {
+        var present = [], counts = {};
+        (vals || []).forEach(function (v) {
+            v = v == null ? '' : String(v);
+            if (!Object.prototype.hasOwnProperty.call(counts, v)) { counts[v] = 0; present.push(v); }
+            counts[v]++;
+        });
+        var mixed = present.length > 1;
+        return { mixed: mixed, value: mixed ? '' : (present[0] || ''), present: present, counts: counts };
+    }
+
+    // The muted line under a mixed button group: "— Multiple —: 2 × H2,
+    // 1 × H3", the values by `labelOf`, the most held first.
+    function _sdMcSpell(info, labelOf) {
+        var order = info.present.slice().sort(function (a, b) {
+            return (info.counts[b] - info.counts[a]) || (info.present.indexOf(a) - info.present.indexOf(b));
+        });
+        return _sdT('— Multiple —') + ': ' + order.map(function (v) { return _sdT('{var:1} × {var:2}', [info.counts[v], labelOf(v)]); }).join(', ');
+    }
+
+    // A row's changed dot from whether each element changed it: 'full'
+    // when all did, 'ring' when some did, '' when none; `n` of `of`.
+    function _sdMcDot(flags) {
+        flags = flags || [];
+        var n = flags.filter(Boolean).length;
+        return { kind: !n ? '' : (n === flags.length ? 'full' : 'ring'), n: n, of: flags.length };
+    }
+
+    // The dot's tip: in how many elements the row is changed.
+    function _sdMcDotTip(dot) {
+        if (!dot || !dot.kind) return '';
+        return dot.kind === 'full' ? _sdT('Changed in all {var} elements', dot.of) : _sdT('Changed in {var:1} of {var:2} elements', [dot.n, dot.of]);
+    }
+
+    // Classes `cls` with control `spec` set to `val`: the group's, the
+    // prefix's or the toggle's classes taken out, then the value's words
+    // put in ('' leaves the default; a toggle goes in for any value).
+    function _sdMcClassWrite(cls, spec, val) {
+        var drop = {};
+        (spec.group || []).forEach(function (g) { g.trim().split(/\s+/).forEach(function (w) { drop[w] = 1; }); });
+        if (spec.toggle) drop[spec.toggle] = 1;
+        var arr = String(cls || '').split(/\s+/).filter(function (c) {
+            return c && !drop[c] && !(spec.prefix && _sdMcOfPrefix(c, spec.prefix));
+        });
+        var add = spec.toggle ? (val ? [spec.toggle] : []) : String(val || '').split(/\s+/).filter(Boolean);
+        add.forEach(function (w) { if (arr.indexOf(w) === -1) arr.push(w); });
+        return arr.join(' ');
+    }
+
+    // Writes a change to every element as one undo step: one snapshot
+    // (`save`) first, then `write` for each element.
+    function _sdMcApply(nodes, save, write) {
+        save();
+        (nodes || []).forEach(function (n, i) { write(n, i); });
+    }
+
+    // The identity row of several elements. o: { count, icon (the kind's),
+    // kindName ('' for different kinds), parent (the shared parent's name,
+    // else ''), kinds (the names of the kinds) }.
+    function _sdMcIdRow(o) {
+        var path = o.parent ? _sdT('All in the same parent: {var}', o.parent) : (o.kinds || []).join(' · ');
+        return '<div class="sd-id-row">' +
+            '<span class="sd-id-icon sd-id-icon-mc bi ' + (o.kindName ? o.icon : 'bi-layers') + '" aria-hidden="true"><span class="sd-id-count">' + o.count + '</span></span>' +
+            '<div class="sd-id-main">' +
+                '<div class="sd-id-line"><span class="sd-id-name">' + esc(_sdT('{var} elements selected', o.count)) + '</span>' +
+                    '<span class="sd-id-tag">' + esc(o.kindName || _sdT('mixed')) + '</span></div>' +
+                (path ? '<div class="sd-id-path sd-id-path-mc" title="' + esc(path) + '"><span class="sd-id-path-txt">' + esc(path) + '</span></div>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    // The strip over the search: a change goes to every element.
+    function _sdMcStrip(count) {
+        return '<div class="sd-mc-strip" role="note"><span class="bi bi-layers" aria-hidden="true"></span><span>' +
+            esc(_sdT('A change is written to all {var} elements at once', count)) + '</span></div>';
+    }
+    // ── end of several elements selected
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
@@ -61512,6 +62401,32 @@ const StyleDesigner = (function () {
         type: 'dropdown', expanded: false, alignment: '', dark: false,
         show_arrow: true, auto_close: 'true'
     };
+
+    // Display & Sizing inline-style props default to '' (string) or false (toggle).
+    // They live outside the component/structural defaults tables, so they are
+    // listed here: their labels turn blue when set and click-to-reset works.
+    var _SD_DS_DEFAULTS = {
+        top: '', right: '', bottom: '', left: '',
+        zIndex: '',
+        width: '', minWidth: '', maxWidth: '',
+        height: '', minHeight: '', maxHeight: '',
+        overflow: '', overflowX: '', overflowY: '',
+        aspectRatioEnabled: false, aspectRatio: '16x9', aspectRatioCustom: ''
+    };
+    // Props that are intentionally free-form: never marked as changed.
+    var _SD_CHG_SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
+
+    // The factory defaults of node `n`'s props: its component's or its
+    // content's defaultProps, a structural type's table above; null without.
+    function _sdPropDefaults(n) {
+        if (!n) return null;
+        var p = n.props || {};
+        var def = null;
+        if (n.type === 'component') def = COMPONENTS[p.componentType];
+        else if (n.type === 'content') def = CONTENT[p.contentType];
+        else return STRUCTURAL_DEFAULTS[n.type] || null;
+        return def ? def.defaultProps || null : null;
+    }
 
     /**
      * Mark the label of each Options-panel row as "modified" (the changed dot) when its control's
@@ -61531,19 +62446,9 @@ const StyleDesigner = (function () {
         if (!root) return;
 
         // Resolve defaults for direct [data-prop] controls
-        var defaults = null;
-        if (selectedNode.type === 'component') {
-            var comp = COMPONENTS[selectedNode.props.componentType];
-            if (comp) defaults = comp.defaultProps || null;
-        } else if (selectedNode.type === 'content') {
-            var cnt = CONTENT[selectedNode.props.contentType];
-            if (cnt) defaults = cnt.defaultProps || null;
-        } else if (STRUCTURAL_DEFAULTS[selectedNode.type]) {
-            defaults = STRUCTURAL_DEFAULTS[selectedNode.type];
-        }
-
-        // Props that are intentionally free-form — don't mark as "modified"
-        var SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
+        var defaults = _sdPropDefaults(selectedNode);
+        var SKIP_PROPS = _SD_CHG_SKIP_PROPS;
+        var DS_DEFAULTS = _SD_DS_DEFAULTS;
 
         function markRow(el, defVal) {
             var isModified = el.type === 'checkbox'
@@ -61564,18 +62469,6 @@ const StyleDesigner = (function () {
                 lbl.title = '';
             }
         }
-
-        // Display & Sizing inline-style props default to '' (string) or false (toggle).
-        // They live outside the component/structural defaults tables, so rule #1 skips them —
-        // add them here so their labels turn blue when set and click-to-reset works.
-        var DS_DEFAULTS = {
-            top: '', right: '', bottom: '', left: '',
-            zIndex: '',
-            width: '', minWidth: '', maxWidth: '',
-            height: '', minHeight: '', maxHeight: '',
-            overflow: '', overflowX: '', overflowY: '',
-            aspectRatioEnabled: false, aspectRatio: '16x9', aspectRatioCustom: ''
-        };
 
         // 1. Direct [data-prop] controls (Container, Row, Col, Area, Semantic, Component/Content props
         //    + Display & Sizing inline-style props)
@@ -61924,8 +62817,29 @@ const StyleDesigner = (function () {
         if (grp.isConnected) _sdSegSync(grp);
     }
 
-    // Installed once on #sd-properties: the segments' clicks and the reset
-    // button's, whatever part of the panel was drawn later.
+    // "Make it a container" in Advanced › Layout: the selected element, or
+    // every selected element not yet a flex box, takes the Flex Container
+    // row's classes (_sdLayMakeCls()) as one undo step; the panel is drawn
+    // again with the box rows.
+    function _sdLayMake() {
+        var several = selectedNodes.length > 1;
+        var nodes = (several ? selectedNodes.slice() : [selectedNode]).filter(function (n) {
+            return n && n.props && !_sdOptIsFlex(n.type, n.props.cssClass);
+        });
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!nodes.length || _sdPanelLockReason(nodes)) return;
+        if (several) {
+            _sdMcCommit(nodes, function (n) { n.props.cssClass = _sdLayMakeCls(n.props.cssClass); });
+            return;
+        }
+        saveState();
+        nodes[0].props.cssClass = _sdLayMakeCls(nodes[0].props.cssClass);
+        _sdRenderNode(nodes[0], render);
+    }
+
+    // Installed once on #sd-properties: the segments' clicks, the reset
+    // button's and "Make it a container", whatever part of the panel was
+    // drawn later.
     function _sdControlsInit(panel) {
         if (panel._sdCtl) return;
         panel._sdCtl = true;
@@ -61934,10 +62848,14 @@ const StyleDesigner = (function () {
             if (!t || !t.closest) return;
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
+            var mk = t.closest('[data-sd-lay-make]');
+            if (mk && panel.contains(mk)) { if (!mk.disabled) _sdLayMake(); return; }
             var rb = t.closest('.sd-chg-reset');
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
             if (!lbl || !lbl.classList.contains('sd-prop-modified')) return;
+            // Several elements: the row back to its default in all of them.
+            if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
         });
     }
@@ -73117,9 +74035,10 @@ const StyleDesigner = (function () {
         var _pvBsJsRow = _pvJsRows.some(function (f) { return f.meta === 'bootstrap-js'; });
         if (_pvFw.js && !_pvBsJsRow) _pvJsInject += '    <script src="' + esc(_pvFw.js) + '"><\/script>\n';
         // The platform scripts the page's markup asks for, as on the front
-        // end; deferred, so they run after the framework's script.
+        // end; deferred, so they run after the framework's script. A script
+        // that reads labels gets them first, as on the front end.
         _sdPageScriptFiles(html).forEach(function (src) {
-            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+            _pvJsInject += _sdPreviewListenLabels(src, window.sdListenLabels) + '    <script src="' + esc(src) + '" defer><\/script>\n';
         });
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
@@ -73164,6 +74083,16 @@ const StyleDesigner = (function () {
         return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
     }
 
+    // The labels pg_listen.js reads (window.pgListenLabels), written before
+    // the script `src` as pg_listen_inject() writes them on the published
+    // page. `labels` is that page's pg_listen_labels() in the page's
+    // language (designer_screen.php prints it as window.sdListenLabels).
+    // '' for any other script, or without labels.
+    function _sdPreviewListenLabels(src, labels) {
+        if (!labels || !/\/assets\/js\/pg_listen\.js(?:[?#]|$)/.test(String(src || ''))) return '';
+        return '    <script>window.pgListenLabels = ' + JSON.stringify(labels).replace(/</g, '\\u003c') + ';<\/script>\n';
+    }
+
     // The editor's own ?v= stamp (designer_screen.php prints it on this
     // script), added to the platform scripts the Preview loads so a copy
     // cached before an upgrade is not used; the page uses ?v= too.
@@ -73187,7 +74116,9 @@ const StyleDesigner = (function () {
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
-        { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' }
+        { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
+        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' },
+        { test: /\sdata-pg-course(?=[\s=>\/])/i, file: 'assets/js/pg_course.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -73441,7 +74372,16 @@ const StyleDesigner = (function () {
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
         link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
         edgeTo: {},
-        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
+        // The "+" handle (_sdProtoGrip()): the mark it stands beside, the
+        // mark under the pointer, the zoom the marks' reach was set at.
+        grip: { hot: null, hover: null, k: 0, soon: 0, hide: 0 },
+        // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
+        // back to, null when not; the last tap (_sdProtoTap()).
+        zoom: null, tap: null,
+        // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
+        // null when none.
+        rowDrag: null,
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
     // widget requests among them, and at most this many alive; past it the
@@ -73596,7 +74536,12 @@ const StyleDesigner = (function () {
         tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
-        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // Fit shows everything, so a zoom to a frame is forgotten.
+        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () {
+            if (!_sdProto.canvas) return;
+            _sdProtoZoomForget();
+            _sdProto.canvas.view.fit();
+        }));
         // All arrows: the other frames' arrows drawn faintly too; the choice
         // is kept in this browser.
         ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
@@ -73645,6 +74590,23 @@ const StyleDesigner = (function () {
         ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.live);
+        // "All" and the frame's name in the canvas's corner while the view
+        // is zoomed to a frame: "All" puts back the view from before.
+        ui.zoomed = _sdProtoEl('div', 'sd-proto-zoomed');
+        ui.zoomed.hidden = true;
+        var all = _sdProtoEl('button', 'sd-proto-zoomed-all');
+        all.type = 'button';
+        all.title = _sdT('Back to the whole map (Esc)');
+        all.innerHTML = '<span class="bi bi-arrow-left" aria-hidden="true"></span>';
+        all.appendChild(_sdProtoEl('span', '', _sdT('All')));
+        all.addEventListener('click', function () {
+            _sdProtoZoomBack();
+            ui.viewport.focus({ preventScroll: true });
+        });
+        ui.zoomed.appendChild(all);
+        ui.zoomedName = _sdProtoEl('span', 'sd-proto-zoomed-name');
+        ui.zoomed.appendChild(ui.zoomedName);
+        ui.stage.appendChild(ui.zoomed);
         // The stage and, right of it, the selected page's links (F15).
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
@@ -73692,19 +74654,26 @@ const StyleDesigner = (function () {
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             // The core reads the view on every pan and zoom (and changes it
             // in place): the pictures near the view are made again soon
-            // after it settles.
+            // after it settles; a new zoom resizes the handle and the small
+            // marks' reach.
             view: function (next) {
                 if (next) _sdProto.view = next;
                 _sdProtoPicSoon();
+                _sdProtoZoomSoon();
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
+            // The selected page's foot button ("Show the whole page",
+            // "Show less") keeps its own clicks and keys.
+            ownClicks: '.sd-proto-pic-foot-on',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
             // 'connect' once it moves, so what may take the arrow lights up.
+            // The "+" handle beside a mark is that mark (_sdProtoGrip()).
             press: function (event, next) {
-                var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var grip = event.target.closest ? event.target.closest('.sd-proto-grip') : null;
+                var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
@@ -73733,10 +74702,18 @@ const StyleDesigner = (function () {
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
+                // A frame or chip pressed and let go without a move is a
+                // tap; anything else breaks a pair of taps.
+                _sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);
             },
             cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
-                if (event.key === 'Escape') { _sdProtoClose(); return true; }
+                // Esc goes back from a frame zoomed to, else closes the view.
+                if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }
+                // Enter on a frame zooms to it, as a double-click does; 0
+                // fits everything (the core's key), so the zoom is forgotten.
+                if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));
+                if (event.key === '0') _sdProtoZoomForget();
                 // The open tab's undo history, as on the canvas; the map is
                 // read again after it.
                 var name = String(event.key || '').toLowerCase();
@@ -73761,14 +74738,28 @@ const StyleDesigner = (function () {
         });
         _sdProto.canvas.bind();
         // The pointer on a mark or a links panel row lifts its arrow out of
-        // the others.
+        // the others; on a drawable mark of the selected frame it shows
+        // the "+" handle, which stands for its mark.
+        ui.grip = _sdProtoEl('span', 'sd-proto-grip');
+        ui.grip.hidden = true;
+        ui.grip.setAttribute('aria-hidden', 'true');
+        ui.grip.appendChild(_sdProtoEl('span', 'sd-proto-grip-dot bi bi-plus-lg'));
         ui.root.addEventListener('pointerover', function (event) {
             if (_sdProto.drawing) return;
-            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
-            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
-            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            var t = event.target;
+            var hot = !t.closest ? null : (t.closest('.sd-proto-grip') ? _sdProto.grip.hot : t.closest('.sd-proto-hot, .sd-proto-li[data-link]'));
+            var mark = hot && hot.classList.contains('sd-proto-hot') ? hot : null;
+            var link = mark ? _sdProtoHotLink(mark) : null;
+            var id = link ? link.frame + '|' + link.port : (hot && !mark ? hot.getAttribute('data-link') : '');
             _sdProtoLift(id || '');
+            // A held button (a press, a drag: the canvas holds the pointer)
+            // leaves the handle where it is.
+            if (!event.buttons) _sdProtoGripHover(mark);
         });
+        ui.root.addEventListener('pointerleave', function () { if (!_sdProto.drawing) _sdProtoGripHover(null); });
+        // Tab onto a drawable mark shows its handle too.
+        ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
+        ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
         window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
         // A drawn arrow let go of, on a target or not.
         ['pointerup', 'pointercancel'].forEach(function (type) {
@@ -73810,6 +74801,9 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoButtonState() {
+        // The canvas's link marks hide while the view is open and are read
+        // again when it closes (an arrow may have changed a link).
+        _sdLinkMarksSoon();
         var btn = document.getElementById('sd-vb-proto');
         if (!btn) return;
         btn.classList.toggle('active', _sdProto.open);
@@ -73835,10 +74829,15 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
+        clearTimeout(_sdProto.grip.hide);
+        _sdProto.grip.hover = null;
+        _sdProtoGrip(null);
+        _sdProtoZoomBack(true);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
@@ -73946,6 +74945,12 @@ const StyleDesigner = (function () {
     // picture cannot show (F3); from the middle of the box until the
     // picture has loaded.
     function _sdProtoPort(item, port) {
+        // The core asks on every route of an arrow: its leg follows.
+        _sdProtoLegsSoon();
+        return _sdProtoPortAt(item, port);
+    }
+
+    function _sdProtoPortAt(item, port) {
         var rects = _sdProto.pics.rects[item.id];
         var to = _sdProto.edgeTo[item.id + '|' + port];
         return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
@@ -73989,7 +74994,9 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.drawing = !!on;
         _sdProtoLift('');
-        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+        if (!ui) return;
+        ui.svg.classList.toggle('sd-proto-drawing', !!on);
+        ui.boxes.classList.toggle('sd-proto-drawing', !!on);
     }
 
     // One arrow lifted out of the others ('' for none): drawn last, the
@@ -74000,11 +75007,85 @@ const StyleDesigner = (function () {
         _sdProto.lifted = id;
         var old = ui.svg.querySelector('.sd-proto-edge-lift');
         if (old) old.classList.remove('sd-proto-edge-lift');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-leg-lift')).forEach(function (n) { n.classList.remove('sd-proto-leg-lift'); });
         var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
         ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        ui.boxes.classList.toggle('sd-proto-lifting', !!group);
         if (!group) return;
         group.classList.add('sd-proto-edge-lift');
         ui.svg.appendChild(group);
+        // Its leg inside the frame goes with it.
+        var leg = ui.boxes.querySelector('.sd-proto-leg[data-edge="' + id.replace(/"/g, '') + '"]');
+        if (leg) leg.classList.add('sd-proto-leg-lift');
+    }
+
+    // The legs of the arrows shown, drawn once after the core has routed
+    // them (it asks portAt for each), the focus changed or a picture loaded.
+    function _sdProtoLegsSoon() {
+        if (_sdProto.legsSoon || !window.requestAnimationFrame) return;
+        _sdProto.legsSoon = window.requestAnimationFrame(function () {
+            _sdProto.legsSoon = 0;
+            _sdProtoLegs();
+        });
+    }
+
+    // An arrow starts on its link: the core routes it from the frame's
+    // edge, so for each arrow shown the view draws, over its frame's
+    // picture, the leg from the middle of the link's mark to that point on
+    // the edge (PGProtoHotspots.markLeg()) and a dot on the mark, in the
+    // arrow's colour; a link without a mark (the foot, no picture yet) has
+    // none. _sdProtoLift() and _sdProtoDrawing() lift and fade the legs
+    // with their arrows.
+    function _sdProtoLegs() {
+        var ui = _sdProto.ui;
+        var l = _sdProto.layout;
+        if (!ui) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-legs')).forEach(function (n) { n.parentNode.removeChild(n); });
+        if (!l || !_sdProto.open) return;
+        var H = window.PGProtoHotspots;
+        var G = window.PGGraphCanvas;
+        var layers = {};
+        l.edges.forEach(function (e) {
+            var from = _sdProto.byId[e.from];
+            var rects = from ? _sdProto.pics.rects[from.id] : null;
+            if (!rects || !rects[e.port]) return;
+            var group = ui.svg.querySelector('g.pgc-edge[data-edge="' + String(e.id).replace(/"/g, '') + '"]');
+            if (!group || window.getComputedStyle(group).display === 'none') return;
+            var leg = H.markLeg(rects[e.port], _sdProtoPortAt(from, e.port));
+            if (!leg) return;
+            var layer = layers[from.id];
+            if (!layer) {
+                var node = ui.boxes.querySelector('[data-node="' + String(from.id).replace(/"/g, '') + '"]');
+                if (!node) return;
+                // Frame units start at the frame's outer corner, the
+                // layer at the inside of its border.
+                var style = window.getComputedStyle(node);
+                layer = G.svgEl('svg', 'sd-proto-legs');
+                layer.setAttribute('aria-hidden', 'true');
+                layer.setAttribute('width', String(from.w));
+                layer.setAttribute('height', String(from.h));
+                layer.style.left = -(parseFloat(style.borderLeftWidth) || 0) + 'px';
+                layer.style.top = -(parseFloat(style.borderTopWidth) || 0) + 'px';
+                node.appendChild(layer);
+                layers[from.id] = layer;
+            }
+            var list = group.classList;
+            var state = list.contains('pgc-edge-in') ? 'in' : (list.contains('pgc-edge-faint') ? 'faint' : 'out');
+            var g = G.svgEl('g', 'sd-proto-leg sd-proto-leg-' + state + (e.mark === 'broken' ? ' sd-proto-leg-broken' : '') + (e.id === _sdProto.lifted ? ' sd-proto-leg-lift' : ''));
+            g.setAttribute('data-edge', e.id);
+            var line = G.svgEl('line', 'sd-proto-leg-line');
+            line.setAttribute('x1', String(leg.x1));
+            line.setAttribute('y1', String(leg.y1));
+            line.setAttribute('x2', String(leg.x2));
+            line.setAttribute('y2', String(leg.y2));
+            var dot = G.svgEl('circle', 'sd-proto-leg-dot');
+            dot.setAttribute('cx', String(leg.x1));
+            dot.setAttribute('cy', String(leg.y1));
+            dot.setAttribute('r', '3');
+            g.appendChild(line);
+            g.appendChild(dot);
+            layer.appendChild(g);
+        });
     }
 
     // A loaded picture's marks (F5): a rounded rectangle over each link's
@@ -74014,7 +75095,7 @@ const StyleDesigner = (function () {
     function _sdProtoHots(item, pic) {
         var H = window.PGProtoHotspots;
         var canvas = _sdProto.canvas;
-        var rects = H.picRects(item.rows, pic.marks, item.sharedId);
+        var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);
         var old = pic.box.querySelector('.sd-proto-hots');
         if (old) old.parentNode.removeChild(old);
         var layer = _sdProtoEl('div', 'sd-proto-hots');
@@ -74025,8 +75106,8 @@ const StyleDesigner = (function () {
             hot.setAttribute('data-row', String(i));
             hot.style.left = r.x + 'px';
             hot.style.top = r.y + 'px';
-            hot.style.width = Math.max(6, r.w) + 'px';
-            hot.style.height = Math.max(6, r.h) + 'px';
+            hot.style.width = Math.max(H.MARK.min, r.w) + 'px';
+            hot.style.height = Math.max(H.MARK.min, r.h) + 'px';
             var name = row.from ? row.from + ' › ' + row.label : row.label;
             hot.title = name + (row.href ? ' · ' + row.href : '');
             hot.setAttribute('role', 'button');
@@ -74105,8 +75186,12 @@ const StyleDesigner = (function () {
             byGroup[gid].keys.push(p.key);
         });
         // partH: the shared parts' measured heights, so each frame is as
-        // tall as its part (_sdProtoPicLoaded()).
-        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };
+        // tall as its part (_sdProtoPicLoaded()); openH: the page opened
+        // whole and its height (_sdProtoPicFull()).
+        var P = _sdProto.pics;
+        var openH = {};
+        if (P.full && P.pageH[P.full]) openH[P.full] = P.pageH[P.full];
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: P.partH, openH: openH };
     }
 
     // Tidy up: every frame and chip back in the arrangement, after a
@@ -74146,6 +75231,68 @@ const StyleDesigner = (function () {
             _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
+        _sdProtoLegsSoon();
+    }
+
+    // ── Zoom to a frame ──
+    // A double-click on a frame (two taps on it, PGProtoHotspots.zoomTap())
+    // or Enter on a frame in focus shows that frame whole in the middle (the
+    // core's zoomTo()). Esc or "All" puts back the view from before the
+    // first zoom; Fit, a new arrangement and closing the view forget it.
+
+    // A release on the canvas: `item` the frame or chip of a tap (pressed
+    // and let go without a move), null for anything else (a link mark, its
+    // handle, an arrow, the empty canvas). The canvas captures the pointer,
+    // so the frame gets no dblclick of its own.
+    function _sdProtoTap(item) {
+        var tap = { id: item ? String(item.id) : '', time: Date.now() };
+        var id = window.PGProtoHotspots.zoomTap(_sdProto.tap, tap, _sdProto.layout);
+        _sdProto.tap = id ? null : tap;
+        if (id) _sdProtoZoomTo(id);
+    }
+
+    function _sdProtoZoomTo(id) {
+        var item = id ? _sdProto.byId[String(id)] : null;
+        if (!item || item.kind === 'chip' || !_sdProto.canvas) return false;
+        var v = _sdProto.view;
+        if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };
+        _sdProto.zoom.id = item.id;
+        _sdProto.canvas.view.zoomTo(item);
+        _sdProtoZoomShow();
+        _sdProto.canvas.announce(_sdT('{var}: zoomed in. Esc goes back to the whole map.', _sdProtoFrameName(item)));
+        return true;
+    }
+
+    // Back to the view from before the first zoom, announced unless `quiet`
+    // (the view is closing: the next opening shows it). False when the view
+    // is not zoomed to a frame.
+    function _sdProtoZoomBack(quiet) {
+        var z = _sdProto.zoom;
+        if (!z) return false;
+        _sdProto.zoom = null;
+        _sdProto.view = { x: z.back.x, y: z.back.y, k: z.back.k };
+        _sdProtoZoomShow();
+        if (!_sdProto.canvas) return true;
+        _sdProto.canvas.view.apply();
+        if (!quiet) _sdProto.canvas.announce(_sdT('The whole map'));
+        return true;
+    }
+
+    function _sdProtoZoomForget() {
+        _sdProto.zoom = null;
+        _sdProtoZoomShow();
+    }
+
+    // "All" and the zoomed frame's name (none once it is gone) in the
+    // canvas's corner while zoomed.
+    function _sdProtoZoomShow() {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.zoomed) return;
+        var z = _sdProto.zoom;
+        var item = z ? _sdProto.byId[z.id] : null;
+        ui.zoomed.hidden = !z;
+        ui.zoomedName.textContent = item ? _sdProtoFrameName(item) : '';
+        ui.zoomedName.hidden = !item;
     }
 
     // The selected frame's marks until a frame shows its page: its own rows
@@ -74161,6 +75308,8 @@ const StyleDesigner = (function () {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
             r.tabIndex = -1;
         });
+        _sdProtoGrip(null);
+        _sdProto.layout.frames.forEach(function (item) { _sdProtoPicFoot(item, id); });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
         // The selected frame shows all its marks, another frame those that
@@ -74191,6 +75340,110 @@ const StyleDesigner = (function () {
             notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
             ui.boxes.appendChild(note);
         });
+        // The marks shown take their reach; the handle comes back on the
+        // mark under the pointer or in focus when it is still drawable.
+        _sdProtoReach();
+        _sdProtoGripFor();
+    }
+
+    // A mark's place and size as drawn, in its picture's units.
+    function _sdProtoHotRect(hot) {
+        return { x: parseFloat(hot.style.left) || 0, y: parseFloat(hot.style.top) || 0, w: parseFloat(hot.style.width) || 0, h: parseFloat(hot.style.height) || 0 };
+    }
+
+    // A mark shown under 12 screen pixels wide or high takes presses 4
+    // screen pixels around it (PGProtoHotspots.markReach(); the CSS draws
+    // that edge from --sd-proto-reach). Set when the marks shown change and
+    // when the zoom does.
+    function _sdProtoReach() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var k = _sdProto.view.k;
+        _sdProto.grip.k = k;
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.sd-proto-hot-own, .sd-proto-hot-lit, .sd-proto-hot-shared'), function (hot) {
+            var reach = window.PGProtoHotspots.markReach(_sdProtoHotRect(hot), k);
+            hot.classList.toggle('sd-proto-hot-reach', reach > 0);
+            if (reach > 0) hot.style.setProperty('--sd-proto-reach', reach + 'px');
+            else hot.style.removeProperty('--sd-proto-reach');
+        });
+    }
+
+    // After a pan or zoom: at a new zoom the reach and the handle are set
+    // again, once on the next frame.
+    function _sdProtoZoomSoon() {
+        var g = _sdProto.grip;
+        if (g.soon || !window.requestAnimationFrame) return;
+        g.soon = window.requestAnimationFrame(function () {
+            g.soon = 0;
+            if (!_sdProto.open || _sdProto.view.k === g.k) return;
+            _sdProtoReach();
+            if (g.hot) _sdProtoGrip(g.hot);
+        });
+    }
+
+    // Whether a mark gets the "+" handle: a drawable mark (K2) of the
+    // selected frame, still on the canvas.
+    function _sdProtoGripOk(el) {
+        var ui = _sdProto.ui;
+        return !!(el && ui && el.classList && el.classList.contains('sd-proto-hot-own') && el.classList.contains('sd-proto-hot-draw') && ui.boxes.contains(el));
+    }
+
+    // The handle goes to the mark under the pointer, else to the mark in
+    // focus (`focus`, the element taking it, when given), else away.
+    function _sdProtoGripFor(focus) {
+        var g = _sdProto.grip;
+        if (!arguments.length) focus = document.activeElement;
+        _sdProtoGrip(_sdProtoGripOk(g.hover) ? g.hover : (_sdProtoGripOk(focus) ? focus : null));
+    }
+
+    // The pointer onto a mark (null: off every mark). Off a mark the handle
+    // stays a moment, so the pointer can cross from a tall mark onto it.
+    function _sdProtoGripHover(mark) {
+        var g = _sdProto.grip;
+        clearTimeout(g.hide);
+        g.hide = 0;
+        if (mark) {
+            g.hover = mark;
+            if (g.hot !== mark) _sdProtoGripFor();
+            return;
+        }
+        if (!g.hover) return;
+        g.hide = setTimeout(function () {
+            g.hide = 0;
+            g.hover = null;
+            _sdProtoGripFor();
+        }, 250);
+    }
+
+    // The round "+" handle beside a drawable mark of the selected frame
+    // (null hides it): 20 screen pixels at any zoom, on the side
+    // PGProtoHotspots.markGrip() gives, in the mark's own layer. It stands
+    // for its mark: a press on it is the mark's press (a drag draws the
+    // link's arrow, a click picks the link); the keyboard keeps L.
+    function _sdProtoGrip(hot) {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.grip) return;
+        var el = ui.grip;
+        if (!hot) {
+            _sdProto.grip.hot = null;
+            el.hidden = true;
+            if (el.parentNode) el.parentNode.removeChild(el);
+            return;
+        }
+        var layer = hot.parentNode;
+        var others = [];
+        Array.prototype.forEach.call(layer.querySelectorAll('.sd-proto-hot-own'), function (n) { if (n !== hot) others.push(_sdProtoHotRect(n)); });
+        var at = window.PGProtoHotspots.markGrip(_sdProtoHotRect(hot), { w: layer.clientWidth, h: layer.clientHeight }, _sdProto.view.k, others);
+        _sdProto.grip.hot = hot;
+        el.className = 'sd-proto-grip sd-proto-grip-' + at.side;
+        el.style.left = at.x + 'px';
+        el.style.top = at.y + 'px';
+        el.style.width = at.w + 'px';
+        el.style.height = at.h + 'px';
+        el.style.transform = 'scale(' + at.scale + ')';
+        el.title = hot.title;
+        if (el.parentNode !== layer) layer.appendChild(el);
+        el.hidden = false;
     }
 
     // ── The links panel and the problems (F15-F20, F24) ──
@@ -74241,11 +75494,14 @@ const StyleDesigner = (function () {
     // picked link that is not the frame's own nor one into it is let go.
     function _sdProtoFocused(id) {
         var l = _sdProto.link;
+        // The page opened whole closes when another frame, or none, is selected.
+        if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);
         if (l) {
             var edge = (_sdProto.layout ? _sdProto.layout.edges : []).filter(function (e) { return e.id === l.frame + '|' + l.port; })[0];
             if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
         }
         _sdProtoFocusMarks(id);
+        _sdProtoLegsSoon();
         _sdProtoPicked();
         _sdProtoListDraw();
         _sdProtoPlayState();
@@ -74315,9 +75571,11 @@ const StyleDesigner = (function () {
         return target.kind === 'chip' ? _sdProtoChipText(target) : _sdProtoFrameName(target);
     }
 
-    // The selected frame's links (F15): out, each with "Change target" and
-    // "Open in the editor" (F17); in, a shared part's said so; a page's
-    // shared parts, each selecting its frame. From the marked layout
+    // The selected frame's links (F15): out, each with its target as a
+    // control opening the target menu ("Choose a page" for a link without
+    // one; text on a row that may not be drawn) and "Open in the editor"
+    // (F17); in, a shared part's said so; a page's shared parts, each
+    // selecting its frame. From the marked layout
     // (PGProtoHotspots.listOf()), never from the canvas.
     function _sdProtoListDraw() {
         var ui = _sdProto.ui;
@@ -74361,9 +75619,11 @@ const StyleDesigner = (function () {
             var main = _sdProtoEl('button', 'sd-proto-li-main');
             main.type = 'button';
             main.appendChild(_sdProtoMarkIcon(row.mark));
+            var shows = window.PGProtoHotspots.rowTarget(row);
+            var where = shows.state === 'broken' ? _sdProtoWhy(row.why) : (shows.state === 'empty' ? '' : _sdProtoTargetName(row));
             var text = _sdProtoEl('span', 'sd-proto-li-text');
             text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
-            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : (row.mark === 'empty' ? _sdT('No target') : '→ ' + _sdProtoTargetName(row))));
+            if (!shows.control) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', shows.state === 'empty' ? _sdT('No target') : (shows.state === 'broken' ? where : '→ ' + where)));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
             var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };
@@ -74374,18 +75634,31 @@ const StyleDesigner = (function () {
                 if (menuKey && row.drawable && change(main)) event.preventDefault();
             });
             var li = line(outBox, data.id + '|' + row.port, main);
+            _sdProtoRowDraggable(li, main, data.id, row.port);
+            li.classList.add('sd-proto-li-out');
             if (row.why) li.classList.add('sd-proto-li-broken');
             if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
             var acts = _sdProtoEl('span', 'sd-proto-li-acts');
-            if (row.drawable) {
-                main.setAttribute('aria-keyshortcuts', 'L');
-                var changeBtn = _sdProtoListButton('sd-proto-li-act', 'bi-signpost-split', _sdT('Change target'), function () { change(changeBtn); });
-                acts.appendChild(changeBtn);
-            }
             acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
                 _sdProtoOpenRow(data.id, row.port);
             }));
             li.appendChild(acts);
+            // The target as a control on its own line under the label, so
+            // it is in reach at the panel's narrowest; it opens the same
+            // target menu as L on the row or on the link's mark.
+            if (shows.control) {
+                main.setAttribute('aria-keyshortcuts', 'L');
+                var pick = _sdProtoEl('button', 'sd-proto-li-target sd-proto-li-target-' + shows.state);
+                pick.type = 'button';
+                pick.title = _sdT('Change target');
+                pick.setAttribute('aria-haspopup', 'menu');
+                pick.setAttribute('aria-label', shows.state === 'empty' ? _sdT('Choose a page') : _sdT('Change target: {var:1}', where));
+                pick.appendChild(_sdProtoEl('span', 'sd-proto-li-target-name', shows.state === 'empty' ? _sdT('Choose a page') : where));
+                pick.appendChild(_sdProtoEl('span', 'bi bi-chevron-down sd-proto-li-caret'));
+                pick.lastChild.setAttribute('aria-hidden', 'true');
+                pick.addEventListener('click', function () { change(pick); });
+                li.appendChild(pick);
+            }
         });
 
         var inBox = section(_sdT('Incoming · {var:1}', data.incoming.length));
@@ -74400,7 +75673,8 @@ const StyleDesigner = (function () {
             if (link.shared) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdT('shared part')));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(link.frame, link.port, false); });
-            line(inBox, link.frame + '|' + link.port, main);
+            var li = line(inBox, link.frame + '|' + link.port, main);
+            _sdProtoRowDraggable(li, main, link.frame, link.port);
         });
 
         if (data.parts.length) {
@@ -74535,6 +75809,7 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
         _sdProto.lifted = '';
         ui.svg.classList.remove('sd-proto-lifting');
+        ui.boxes.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
@@ -74601,8 +75876,15 @@ const StyleDesigner = (function () {
             _sdProtoFocused(focusOn);
         }
         _sdProtoAllEdges(_sdProtoAllEdgesOn());
-        if (first) canvas.view.fit();
-        else canvas.view.apply();
+        // A new arrangement starts from Fit, so a zoom to a frame is
+        // forgotten; a redraw keeps it and names its frame again.
+        if (first) {
+            _sdProtoZoomForget();
+            canvas.view.fit();
+        } else {
+            canvas.view.apply();
+            _sdProtoZoomShow();
+        }
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
@@ -74627,8 +75909,18 @@ const StyleDesigner = (function () {
         box.style.height = item.thumb + 'px';
         box.setAttribute('data-pic', item.id);
         box.appendChild(_sdProtoEl('div', 'sd-proto-pic-fade'));
-        var foot = _sdProtoEl('div', 'sd-proto-pic-foot');
+        // The count of links it cannot show; on the selected long page the
+        // button opening it whole, and on the open page the one closing it
+        // (_sdProtoPicFoot()).
+        var foot = _sdProtoEl('button', 'sd-proto-pic-foot');
+        foot.type = 'button';
+        foot.tabIndex = -1;
         foot.hidden = true;
+        foot.addEventListener('click', function () {
+            if (!foot.classList.contains('sd-proto-pic-foot-on')) return;
+            _sdProtoPicFull(_sdProto.pics.full === item.id ? null : item.id);
+            foot.focus({ preventScroll: true });
+        });
         box.appendChild(foot);
         _sdProto.pics.boxes[item.id] = box;
         return box;
@@ -74680,6 +75972,8 @@ const StyleDesigner = (function () {
         P.live = {};
         P.boxes = {};
         P.rects = {};
+        // A redraw keeps the page opened whole; closing the view closes it.
+        if (all) P.full = null;
         clearTimeout(P.settle);
         clearTimeout(P.refill);
     }
@@ -74800,14 +76094,25 @@ const StyleDesigner = (function () {
     // tall as its part is drawn again at its height.
     function _sdProtoPicLoaded(item, pic) {
         var H = window.PGProtoHotspots;
+        var P = _sdProto.pics;
         var doc = null;
         try { doc = pic.frame.contentDocument; } catch (e) { doc = null; }
         if (!doc || !doc.documentElement) return;
+        // Measured at the cut's height; the page opened whole is then drawn
+        // as tall as its page, its viewport heights pinned first.
+        if (pic.frame.getAttribute('height') !== H.PIC_FRAME.height) pic.frame.setAttribute('height', H.PIC_FRAME.height);
+        var height = doc.documentElement.scrollHeight;
+        if (item.kind === 'page') P.pageH[item.id] = height;
+        var open = item.kind === 'page' && P.full === item.id;
+        pic.cut = open ? H.picOpenCut(height) : H.FRAME.pic.cut;
+        if (open) {
+            _sdProtoPicPinVh(doc);
+            pic.frame.setAttribute('height', String(pic.cut));
+        }
         pic.marks = Array.prototype.map.call(doc.querySelectorAll('[data-pg-pic]'), function (el) {
             var r = el.getBoundingClientRect();
             return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
         });
-        var height = doc.documentElement.scrollHeight;
         if (item.kind === 'shared') {
             // The part's own height: the lowest edge of what the body holds
             // (the document is at least the frame's 1600 high).
@@ -74819,18 +76124,98 @@ const StyleDesigner = (function () {
             if (H.picPartBox(height) !== item.thumb) _sdProtoPicSettle();
         }
         pic.box.classList.add('sd-proto-pic-on');
-        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(height));
-        var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
-        var footEl = pic.box.querySelector('.sd-proto-pic-foot');
-        if (footEl) {
-            footEl.hidden = !foot.below;
-            footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
-        }
+        pic.long = H.picLong(height, pic.cut);
+        pic.box.classList.toggle('sd-proto-pic-long', pic.long);
+        pic.below = H.picFoot(item.rows, pic.marks, item.sharedId, pic.cut).below;
+        _sdProtoPicFoot(item, _sdProto.canvas.focused());
         _sdProtoHots(item, pic);
     }
 
-    // The shared frames measured since the last arrangement get their
-    // heights: soon after the last of them, everything is placed again
+    // A picture's foot (PGProtoHotspots.picFootState()): "+N links below",
+    // on the selected long page also "Show the whole page", on the page
+    // opened whole "Show less"; only then a button the canvas leaves alone.
+    function _sdProtoPicFoot(item, selected) {
+        var P = _sdProto.pics;
+        var box = P.boxes[item.id];
+        var el = box ? box.querySelector('.sd-proto-pic-foot') : null;
+        if (!el) return;
+        var pic = P.live[item.id];
+        var shown = !!(pic && pic.frame && box.classList.contains('sd-proto-pic-on'));
+        var st = window.PGProtoHotspots.picFootState({ below: shown ? pic.below : 0, long: shown && pic.long, open: P.full === item.id, selected: selected === item.id, page: item.kind === 'page' });
+        var parts = [];
+        if (st.below) parts.push(st.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', st.below));
+        if (st.action === 'open') parts.push(_sdT('Show the whole page'));
+        if (st.action === 'close') parts.push(_sdT('Show less'));
+        el.hidden = !shown || st.hidden;
+        el.textContent = parts.join(' · ');
+        el.classList.toggle('sd-proto-pic-foot-on', !!st.action);
+        el.tabIndex = st.action ? 0 : -1;
+        if (st.action) el.setAttribute('aria-expanded', st.action === 'close' ? 'true' : 'false');
+        else el.removeAttribute('aria-expanded');
+    }
+
+    // Opens the page frame `id` whole (null closes it): one at a time,
+    // nothing kept. Its picture is drawn again as tall as its page, up to
+    // FRAME.pic.full page pixels, every link it shows marked, and the
+    // frames below moved down as for a measured shared part.
+    function _sdProtoPicFull(id) {
+        var P = _sdProto.pics;
+        var was = P.full;
+        if (id && !(_sdProto.byId[id] && _sdProto.byId[id].kind === 'page')) id = null;
+        if (was === id) return;
+        P.full = id;
+        [was, id].forEach(function (one) {
+            var pic = one ? P.live[one] : null;
+            if (pic && pic.frame && _sdProto.byId[one]) _sdProtoPicLoaded(_sdProto.byId[one], pic);
+            else if (one && _sdProto.byId[one]) _sdProtoPicFoot(_sdProto.byId[one], _sdProto.canvas.focused());
+        });
+        _sdProtoPicSettle();
+    }
+
+    // Writes the viewport heights of a picture's document as the pixels
+    // they are in the 1600-high frame (PGProtoHotspots.picVh()), in its
+    // style rules and style attributes, so drawing it taller does not
+    // stretch a full-height section. A style sheet of another origin
+    // cannot be read; Bootstrap's vh-100 and min-vh-100 are pinned beside.
+    function _sdProtoPicPinVh(doc) {
+        if (doc.documentElement.getAttribute('data-pg-vh')) return;
+        doc.documentElement.setAttribute('data-pg-vh', '1');
+        var H = window.PGProtoHotspots;
+        var cut = H.FRAME.pic.cut;
+        var fix = function (style) {
+            for (var i = 0; i < style.length; i++) {
+                var name = style[i];
+                var value = style.getPropertyValue(name);
+                if (!/v(h|max)/i.test(value)) continue;
+                var next = H.picVh(value, cut);
+                if (next !== value) style.setProperty(name, next, style.getPropertyPriority(name));
+            }
+        };
+        var walk = function (rules) {
+            Array.prototype.forEach.call(rules || [], function (rule) {
+                if (rule.style) fix(rule.style);
+                if (rule.cssRules) walk(rule.cssRules);
+                // An @import's sheet (another origin's cannot be read).
+                if (rule.styleSheet) {
+                    var imported = null;
+                    try { imported = rule.styleSheet.cssRules; } catch (e) { imported = null; }
+                    walk(imported);
+                }
+            });
+        };
+        Array.prototype.forEach.call(doc.styleSheets, function (sheet) {
+            var rules = null;
+            try { rules = sheet.cssRules; } catch (e) { rules = null; }
+            walk(rules);
+        });
+        Array.prototype.forEach.call(doc.querySelectorAll('[style]'), function (el) { fix(el.style); });
+        var pin = doc.createElement('style');
+        pin.textContent = '.vh-100{height:' + cut + 'px!important}.min-vh-100{min-height:' + cut + 'px!important}';
+        (doc.head || doc.documentElement).appendChild(pin);
+    }
+
+    // The shared frames measured since the last arrangement, and the page
+    // opened whole or closed (_sdProtoPicFull()), get their heights: soon after the last of them, everything is placed again
     // (a moved frame keeps its place), the boxes resized and moved where
     // they are, their arrows routed again. The pictures stay.
     function _sdProtoPicSettle() {
@@ -74878,6 +76263,7 @@ const StyleDesigner = (function () {
             return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
         }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height });
         order.slice(SD_PROTO_PIC.alive).forEach(function (id) {
+            if (id === P.full) return;
             var pic = P.live[id];
             if (pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
             pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');
@@ -74916,18 +76302,22 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // The href an arrow from a frame's row to `to` writes, null where none
-    // may go: a link of a tree, to a tab's frame or a chip of a site page,
-    // another site or a contact address, never from a tab that is not
-    // opened to the operator.
-    function _sdProtoArrowHref(from, to, port) {
-        var H = window.PGProtoHotspots;
+    // Whether a frame's link may be pointed elsewhere here (K2): a link of a
+    // tree, never on a tab that is not opened to the operator.
+    function _sdProtoMayDraw(from, port) {
         var row = _sdProtoRow(from, port);
-        if (!row || !H.drawable(row) || !to) return null;
+        if (!row || !window.PGProtoHotspots.drawable(row)) return false;
         var key = _sdProtoFrameTab(from);
         var page = key ? _pgPageByKey(key) : null;
-        if (!page || page.access === 'locked') return null;
-        return H.hrefTo(to, _sdProto.env);
+        return !!(page && page.access !== 'locked');
+    }
+
+    // The href an arrow from a frame's row to `to` writes, null where none
+    // may go: a link _sdProtoMayDraw() allows, to a tab's frame or a chip of
+    // a site page, another site or a contact address.
+    function _sdProtoArrowHref(from, to, port) {
+        if (!to || !_sdProtoMayDraw(from, port)) return null;
+        return window.PGProtoHotspots.hrefTo(to, _sdProto.env);
     }
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
@@ -74993,6 +76383,160 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // ── A links panel row carried onto the canvas ──
+    // A row of a link that may be drawn (out of the selected frame or into
+    // it) pressed and moved past 4 px is carried: a ghost with its label
+    // follows the pointer, the link's arrow is drawn from its frame to the
+    // pointer, and the frame or chip under the pointer that may take it
+    // lights up as for an arrow drawn from a mark. Let go there, the link
+    // is written by _sdProtoConnect() as such an arrow is (K1 to K3); let
+    // go anywhere else, Esc, a cancelled pointer or the view's closing
+    // write nothing. The keyboard keeps L on the row (the target menu).
+    function _sdProtoRowDraggable(li, main, frameId, port) {
+        if (!window.PGProtoHotspots.drawable(_sdProtoRow(_sdProto.byId[frameId], port))) return;
+        li.classList.add('sd-proto-li-drag');
+        main.title = _sdT('Drag onto a page to set the target');
+        li.addEventListener('pointerdown', function (event) { _sdProtoRowDragStart(event, li, frameId, port); });
+    }
+
+    function _sdProtoRowDragStart(event, li, frameId, port) {
+        if (!event.isPrimary || event.button !== 0) return;
+        if (event.target.closest && event.target.closest('.sd-proto-li-act')) return;
+        // A tab that is not opened to the operator draws nothing (K2).
+        if (!_sdProtoMayDraw(_sdProto.byId[frameId], port)) return;
+        _sdProtoRowDragEnd(false);
+        var label = li.querySelector('.sd-proto-li-label');
+        _sdProto.rowDrag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, frame: frameId, port: port, li: li, label: label ? label.textContent : '', moved: false, over: null, ghost: null };
+        window.addEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.addEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.addEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.addEventListener('keydown', _sdProtoRowDragKey, true);
+    }
+
+    function _sdProtoRowDragMove(event) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d || !ui || event.pointerId !== d.id) return;
+        if (!d.moved) {
+            if (Math.abs(event.clientX - d.sx) + Math.abs(event.clientY - d.sy) < 4) return;
+            d.moved = true;
+            _sdProtoMenuClose(false);
+            _sdProtoDrawing(true);
+            ui.root.classList.add('sd-proto-row-drag');
+            d.li.classList.add('sd-proto-li-dragged');
+            d.ghost = _sdProtoEl('div', 'sd-proto-ghost');
+            d.ghost.setAttribute('aria-hidden', 'true');
+            ui.root.appendChild(d.ghost);
+            // Held only once it is a drag, so a click still picks the link.
+            try { d.li.setPointerCapture(d.id); } catch (e) {}
+            try { window.getSelection().removeAllRanges(); } catch (e) {}
+        }
+        event.preventDefault();
+        var hit = _sdProtoRowDropAt(d, event.clientX, event.clientY);
+        var to = hit ? hit.to : null;
+        _sdProtoRowDragOver(d, to);
+        d.ghost.textContent = to ? d.label + ' → ' + (to.kind === 'chip' ? _sdProtoChipText(to) : _sdProtoFrameName(to)) : d.label;
+        var box = ui.root.getBoundingClientRect();
+        d.ghost.style.left = Math.max(4, Math.min(event.clientX - box.left + 14, box.width - d.ghost.offsetWidth - 4)) + 'px';
+        d.ghost.style.top = Math.max(4, Math.min(event.clientY - box.top + 14, box.height - d.ghost.offsetHeight - 4)) + 'px';
+        _sdProtoRowDragLine(d, event.clientX, event.clientY);
+    }
+
+    function _sdProtoRowDragUp(event) {
+        var d = _sdProto.rowDrag;
+        if (!d || event.pointerId !== d.id) return;
+        var hit = (d.moved && event.type === 'pointerup') ? _sdProtoRowDropAt(d, event.clientX, event.clientY) : null;
+        _sdProtoRowDragEnd(d.moved);
+        if (hit) _sdProtoConnect(hit.from, hit.to, d.port);
+    }
+
+    function _sdProtoRowDragKey(event) {
+        var d = _sdProto.rowDrag;
+        if (event.key !== 'Escape') return;
+        // A row carried: Esc drops it and leaves the view open.
+        if (d && d.moved) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        _sdProtoRowDragEnd(false);
+    }
+
+    // The drag let go of; `eat` swallows the click its pointer's release
+    // makes, so a row carried back onto the panel picks nothing.
+    function _sdProtoRowDragEnd(eat) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d) return;
+        _sdProto.rowDrag = null;
+        window.removeEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.removeEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.removeEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.removeEventListener('keydown', _sdProtoRowDragKey, true);
+        if (!d.moved || !ui) return;
+        _sdProtoRowDragOver(d, null);
+        if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
+        d.li.classList.remove('sd-proto-li-dragged');
+        ui.root.classList.remove('sd-proto-row-drag');
+        ui.temp.classList.add('pgc-hidden');
+        _sdProtoDrawing(false);
+        if (eat) {
+            var swallow = function (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            };
+            window.addEventListener('click', swallow, true);
+            setTimeout(function () { window.removeEventListener('click', swallow, true); }, 0);
+        }
+    }
+
+    // Whether a pointer at (clientX, clientY) is on the canvas itself: not
+    // on the bar, the links panel or a control over the canvas.
+    function _sdProtoOnCanvas(clientX, clientY) {
+        var ui = _sdProto.ui;
+        var under = ui ? document.elementFromPoint(clientX, clientY) : null;
+        return !!(under && ui.viewport.contains(under));
+    }
+
+    // The link of a carried row and the frame or chip under the pointer
+    // that may take it ({ from, to }), else null. The map may have been
+    // read again meanwhile: the frame and its row are found anew.
+    function _sdProtoRowDropAt(d, clientX, clientY) {
+        var from = _sdProto.byId[d.frame];
+        var row = _sdProtoRow(from, d.port);
+        if (!row || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) return null;
+        var hit = window.PGProtoHotspots.rowDrop(row, _sdProto.items, _sdProto.canvas.view.point(clientX, clientY), _sdProto.env);
+        return (hit && _sdProtoArrowHref(from, hit.item, d.port) !== null) ? { from: from, to: hit.item } : null;
+    }
+
+    // The frame or chip a carried row would point its link at, lit with
+    // the core's target class (null: none).
+    function _sdProtoRowDragOver(d, item) {
+        var ui = _sdProto.ui;
+        var id = item ? item.id : null;
+        if (!ui || d.over === id) return;
+        d.over = id;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.pgc-target')).forEach(function (n) { n.classList.remove('pgc-target'); });
+        var box = id ? ui.boxes.querySelector('[data-node="' + String(id).replace(/"/g, '') + '"]') : null;
+        if (box) box.classList.add('pgc-target');
+    }
+
+    // The carried link's arrow, drawn as the core draws one being drawn:
+    // from its mark's side of its frame facing the pointer, to the pointer;
+    // hidden while the pointer is off the canvas.
+    function _sdProtoRowDragLine(d, clientX, clientY) {
+        var ui = _sdProto.ui;
+        var from = _sdProto.byId[d.frame];
+        if (!from || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) {
+            ui.temp.classList.add('pgc-hidden');
+            return;
+        }
+        var at = _sdProto.canvas.view.point(clientX, clientY);
+        var rects = _sdProto.pics.rects[from.id];
+        var p = window.PGProtoHotspots.markPort(from, rects ? (rects[d.port] || null) : undefined, { x: at.x, y: at.y, w: 0, h: 0 });
+        ui.temp.setAttribute('d', window.PGGraphCanvas.curve(from.x + p.x, from.y + p.y, at.x, at.y).d);
+        ui.temp.classList.remove('pgc-hidden');
     }
 
     // ── Suggest targets (F30 to F34) ──
@@ -79617,6 +81161,7 @@ const StyleDesigner = (function () {
             _pgTabsSyncBusy();
             _collabSetMode(res.may_edit !== false, res.holder || null);
             _collabSyncNotes(res.notes);
+            if (typeof res.proto_comments === 'number' && (res.proto_comments > 0 || _sdPartLoaded('comments')) && _sdPartUrls('comments')) _sdPartCall('comments', 'beat', [res.proto_comments]).catch(function () { /* the next beat asks again */ });
             return res;
         }).catch(function () { return null; });
     }
@@ -80824,7 +82369,7 @@ const StyleDesigner = (function () {
     function _pgPrototypeShareDialog(startPageId) {
         if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
-        var state = { pages: [], durations: [], canShow: true };
+        var state = { pages: [], durations: [], canShow: true, comments: false };
         var when = function (unix) {
             if (!(unix > 0)) return '';
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
@@ -80860,6 +82405,11 @@ const StyleDesigner = (function () {
                         '<div class="mb-3"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
                             '<input type="password" class="form-control form-control-sm" id="ps-password" data-ps-password autocomplete="new-password" maxlength="128">' +
                             '<div class="form-text">' + esc(_sdT('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) + '</div></div>' +
+                        // Offered once the site keeps prototype comments.
+                        '<div class="mb-3 d-none" data-ps-comments-field>' +
+                            '<label class="form-field"><input class="check" type="checkbox" data-ps-comments>' +
+                                '<span>' + esc(_sdT('Allow comments')) + '</span></label>' +
+                            '<div class="form-text">' + esc(_sdT('Whoever opens the link can pin comments with their name on the pages and answer them.')) + '</div></div>' +
                         '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
                         '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
@@ -80929,21 +82479,30 @@ const StyleDesigner = (function () {
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
-                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+                         (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
+                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
+                         (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
+            // A revoked link is listed only while its comments are kept:
+            // "Delete comments" is all it offers.
+            var revoked = l.state === 'revoked';
+            var count = l.comment_count > 0 ? l.comment_count : 0;
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
-                l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
+                revoked ? _sdT('Revoked: {var}', when(l.revoked_at)) :
+                    (l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never')),
                 _sdT('Opened {var} times', String(l.uses)),
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
-            var showable = state.canShow && l.can_show;
-            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '">' +
+            if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            var showable = state.canShow && l.can_show && !revoked;
+            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
                            '<div class="me-auto">' + badges + '<code class="fg-secondary">' + esc(l.hint) + '…</code></div>' +
                            '<div class="btn-group btn-group-sm" role="group">' +
                                (showable ? '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
                                            '<button type="button" class="btn btn-outline theme-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
-                               '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                               (l.comment_count > 0 ? '<button type="button" class="btn btn-outline theme-danger" data-ps-comments-delete><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Delete comments')) + '</button>' : '') +
+                               (revoked ? '' : '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>') +
                            '</div>' +
                        '</div>' +
                        '<div class="fg-secondary mt-1">' + facts.map(esc).join(' · ') +
@@ -80967,6 +82526,8 @@ const StyleDesigner = (function () {
                 state.pages = res.pages || [];
                 state.durations = res.durations || [];
                 state.canShow = res.can_show !== false;
+                state.comments = res.comments_ready === true;
+                el.querySelector('[data-ps-comments-field]').classList.toggle('d-none', !state.comments);
                 if (!startEl.options.length) fillPages();
                 fillDurations();
                 render(res.links || []);
@@ -80994,9 +82555,36 @@ const StyleDesigner = (function () {
                 return;
             }
             var item = e.target.closest('[data-ps-id]');
-            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke]');
+            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke],[data-ps-comments-delete]');
             if (!item || !btn || btn.disabled) return;
             var id = parseInt(item.getAttribute('data-ps-id'), 10);
+            // Every comment of the link, open and resolved, with their
+            // answers; asked first.
+            if (btn.hasAttribute('data-ps-comments-delete')) {
+                var drop = function () {
+                    btn.disabled = true;
+                    _pgApiPost('proto_comment_delete', { style_id: styleId, link_id: id }).then(function (res) {
+                        btn.disabled = false;
+                        if (!res || res.status !== 'success') {
+                            sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                            return;
+                        }
+                        sdToast(esc(_sdT('The comments of this link were deleted.')), 'success');
+                        // The editor's Comments list, once loaded, drops them
+                        // too: a deletion need not move the heartbeat's stamp.
+                        if (_sdPartLoaded('comments')) _sdPartCall('comments', 'reload', []).catch(function () { /* read again on the next change */ });
+                        load();
+                    }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                };
+                var ask = _sdT('Delete the {var} comments and answers of this link? They cannot be brought back.', item.getAttribute('data-ps-count') || '0');
+                if (typeof window.pgConfirm === 'function') {
+                    window.pgConfirm({ title: _sdT('Delete comments'), message: ask, confirmText: _sdT('Yes, delete'), cancelText: _sdT('No'), variant: 'danger' })
+                        .then(function (ok) { if (ok) drop(); });
+                } else if (window.confirm(ask)) {
+                    drop();
+                }
+                return;
+            }
             if (btn.hasAttribute('data-ps-revoke')) {
                 var revoke = function () {
                     btn.disabled = true;
@@ -81071,7 +82659,8 @@ const StyleDesigner = (function () {
                 audience: audience(),
                 start_page_id: parseInt(startEl.value, 10) || 0,
                 duration: parseInt(durationEl.value, 10) || 0,
-                password: passwordEl.value
+                password: passwordEl.value,
+                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0
             }).then(function (res) {
                 createBtn.disabled = false;
                 if (!res || res.status !== 'success') {
@@ -84881,7 +86470,11 @@ const StyleDesigner = (function () {
                 !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
             if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
             if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
-            return attr(n, 'hidden') !== null;
+            // A Listen, "Notify me" or course block's root is hidden until
+            // its script shows it; the canvas draws it (IFRAME_CSS), so the
+            // sketch does too.
+            return attr(n, 'hidden') !== null && attr(n, 'data-pg-listen') === null &&
+                attr(n, 'data-pg-push') === null && attr(n, 'data-pg-course') === null;
         }
         // A block that is itself a dropdown shows its menu open.
         function kids(n) {
@@ -86657,6 +88250,306 @@ const StyleDesigner = (function () {
             if (sbCount) sbCount.textContent = _sdT('Validate');
             sbBtn.title = _sdT('Validate the HTML');
         }
+    }
+
+    // ── Link marks on the canvas ──────────────────────────────────────
+    // A link of the open page that is broken (no page at its address, the
+    // page it was kept by is gone) or has no target ('' or '#') gets a mark
+    // at the right edge of its element; a click on the mark selects the
+    // element (a text's link is picked inside the text) and focuses its
+    // link field in the Options panel. The links and their marks are the
+    // Prototype view's own: PGProtoHotspots.design() over the open tab, the
+    // prototype_map read, mark(), canvasMarks(). The read is asked once the
+    // redraws pause, once per set of addresses, and kept a while; the
+    // answer for a set the open tab no longer has is dropped. The marks are
+    // buttons in the editor's document over the canvas frame: the canvas,
+    // its markup and its chrome stay as they are.
+    // pause: ms after the last redraw; reads: answers kept; ttl: ms an
+    // answer (or a read on its way) counts for.
+    var SD_LINK_MARKS = { pause: 600, reads: 6, ttl: 60000 };
+    // key: the tab `list` is of; list: its canvasMarks(); run: the last
+    // run's { key, tabs, designed, sig }; reads: answers by request, each
+    // { at, read }, order: their requests, oldest first; asking: the
+    // requests on their way, by when they were sent; els: the canvas
+    // elements of `shown`, the list they were found for ({ i, el }), found
+    // again once `dirty` (the list or the canvas changed); drawn: what the
+    // buttons say; layer, doc, area, observer, sizer, raf, resize: the
+    // drawing and what redraws it.
+    var _sdLinkMarks = { timer: 0, key: '', list: [], run: null, reads: {}, order: [], asking: {}, shown: [], els: [], dirty: true, drawn: '', layer: null, doc: null, area: null, observer: null, sizer: null, raf: 0, resize: false };
+
+    function _sdLinkMarksSoon() {
+        clearTimeout(_sdLinkMarks.timer);
+        _sdLinkMarks.timer = setTimeout(_sdLinkMarksRun, SD_LINK_MARKS.pause);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksRun() {
+        var S = _sdLinkMarks;
+        var H = window.PGProtoHotspots;
+        var key = _activeKey;
+        // The Prototype view reads the links itself; its closing runs this.
+        if (_sdProto.open) return;
+        if (!H || typeof H.canvasMarks !== 'function' || !tree || !key) {
+            S.run = null;
+            S.key = '';
+            S.list = [];
+            _sdLinkMarksPlace();
+            return;
+        }
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs.filter(function (t) { return t.key === key; }), _sharedCache);
+        var request = H.canvasRequest(designed);
+        var sig = JSON.stringify(request);
+        var run = S.run = { key: key, tabs: tabs, designed: designed, sig: sig };
+        var kept = S.reads[sig];
+        if (!request.hrefs.length && !request.page_ids.length) {
+            _sdLinkMarksShow(run, {}, true);
+            return;
+        }
+        if (kept && Date.now() - kept.at < SD_LINK_MARKS.ttl) {
+            _sdLinkMarksShow(run, kept.read, true);
+            return;
+        }
+        // Another tab shows its links without a target at once and its
+        // broken ones once the read answers; the same tab keeps its marks
+        // meanwhile.
+        if (S.key !== key) _sdLinkMarksShow(run, {}, false);
+        if (S.asking[sig] && Date.now() - S.asking[sig] < SD_LINK_MARKS.ttl) return;
+        S.asking[sig] = Date.now();
+        var answer = function (read) {
+            delete S.asking[sig];
+            var ok = !!(read && read.status === 'success');
+            if (ok) {
+                if (!S.reads[sig]) S.order.push(sig);
+                S.reads[sig] = { at: Date.now(), read: read };
+                while (S.order.length > SD_LINK_MARKS.reads) delete S.reads[S.order.shift()];
+            }
+            // Without an answer no link is called broken.
+            if (S.run && S.run.sig === sig) _sdLinkMarksShow(S.run, ok ? read : {}, ok);
+        };
+        _pgApiPost('prototype_map', request).then(answer, function () { answer(null); });
+    }
+
+    function _sdLinkMarksShow(run, read, known) {
+        var H = window.PGProtoHotspots;
+        _sdLinkMarks.key = run.key;
+        _sdLinkMarks.list = H.canvasMarks(H.mark(run.designed, read, run.tabs), known);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksPlace() {
+        if (_sdLinkMarks.raf) return;
+        _sdLinkMarks.raf = requestAnimationFrame(function () {
+            _sdLinkMarks.raf = 0;
+            _sdLinkMarksDraw();
+        });
+    }
+
+    // Drawn again when the canvas is drawn, scrolled, zoomed (a style on
+    // its <html>) or resized, and when the editor's window is resized or
+    // the canvas area scrolled.
+    function _sdLinkMarksBind(area) {
+        var S = _sdLinkMarks;
+        if (!S.resize) {
+            S.resize = true;
+            window.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (area !== S.area) {
+            if (S.area) S.area.removeEventListener('scroll', _sdLinkMarksPlace);
+            S.area = area;
+            area.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+        }
+        if (canvasDoc === S.doc) return;
+        if (S.observer) S.observer.disconnect();
+        if (S.sizer) S.sizer.disconnect();
+        S.sizer = null;
+        S.doc = canvasDoc;
+        S.dirty = true;
+        S.observer = new MutationObserver(function () {
+            S.dirty = true;
+            _sdLinkMarksPlace();
+        });
+        S.observer.observe(canvasDoc.body, { childList: true, subtree: true });
+        S.observer.observe(canvasDoc.documentElement, { attributes: true, attributeFilter: ['style'] });
+        var win = canvasDoc.defaultView;
+        if (win) {
+            win.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+            win.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (window.ResizeObserver) {
+            S.sizer = new ResizeObserver(function () { _sdLinkMarksPlace(); });
+            S.sizer.observe(canvasDoc.body);
+            if (win && win.frameElement) S.sizer.observe(win.frameElement);
+        }
+    }
+
+    // The marks of the open tab over the part of the canvas frame the
+    // canvas area shows; none while the Prototype view is open. A mark of
+    // a link being written in is left out. A scroll or a resize measures
+    // the elements found before; the buttons are moved in place while what
+    // they say stays the same, so a focused mark keeps its focus.
+    function _sdLinkMarksDraw() {
+        var S = _sdLinkMarks;
+        var frame = canvasIframe;
+        var area = frame ? frame.closest('.sd-iframe-area') : null;
+        var host = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!S.list.length || S.key !== _activeKey || _sdProto.open || !canvasDoc || !canvasDoc.body || !host) {
+            if (S.layer) S.layer.hidden = true;
+            return;
+        }
+        _sdLinkMarksBind(area);
+        if (!S.layer) {
+            S.layer = document.createElement('div');
+            S.layer.className = 'sd-lm-layer';
+            S.layer.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('[data-lm]') : null;
+                var link = btn ? S.shown[parseInt(btn.getAttribute('data-lm'), 10)] : null;
+                if (link) _sdLinkMarkOpen(link);
+            });
+        }
+        if (S.layer.parentNode !== host) host.appendChild(S.layer);
+        var fr = frame.getBoundingClientRect();
+        var ar = area.getBoundingClientRect();
+        var hr = host.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var w = Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left;
+        var h = Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top;
+        if (w <= 0 || h <= 0) {
+            S.layer.hidden = true;
+            return;
+        }
+        S.layer.hidden = false;
+        S.layer.style.left = (left - hr.left) + 'px';
+        S.layer.style.top = (top - hr.top) + 'px';
+        S.layer.style.width = w + 'px';
+        S.layer.style.height = h + 'px';
+        // getBoundingClientRect() inside the frame answers in the canvas's
+        // CSS pixels: the zoom on its <html> (read as the comment pins read
+        // it) and the Fit scale draw them larger or smaller.
+        var docEl = canvasDoc.documentElement;
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        if (S.dirty || S.shown !== S.list || S.els.some(function (e) { return !e.el.isConnected; })) {
+            S.dirty = false;
+            S.shown = S.list;
+            S.els = [];
+            S.list.forEach(function (link, i) {
+                _sdLinkMarkEls(link).forEach(function (el) { S.els.push({ i: i, el: el }); });
+            });
+        }
+        var marks = [];
+        S.els.forEach(function (e) {
+            if (e.el.isContentEditable) return;
+            var at = _sdLinkMarkAt(e.el.getBoundingClientRect(), fr.left - left, fr.top - top, k, w, h);
+            if (!at) return;
+            var link = S.shown[e.i];
+            var m = SD_PROTO_MARKS[link.mark] || SD_PROTO_MARKS.broken;
+            var says = _sdT('{var:1} “{var:2}”: open its link field', [m.text(), link.label]);
+            var why = link.why ? _sdProtoWhy(link.why) : '';
+            marks.push({ at: at, html: '<button type="button" class="sd-lm sd-lm-' + esc(link.mark) + '" data-lm="' + e.i + '"' +
+                ' title="' + esc(says + (why ? '\n' + why : '')) + '" aria-label="' + esc(says + (why ? '. ' + why : '')) + '">' +
+                '<span class="bi ' + m.icon + '" aria-hidden="true"></span></button>' });
+        });
+        var drawn = marks.map(function (m) { return m.html; }).join('');
+        if (drawn !== S.drawn) {
+            S.drawn = drawn;
+            S.layer.innerHTML = drawn;
+        }
+        marks.forEach(function (m, j) {
+            var btn = S.layer.children[j];
+            btn.style.left = m.at.x + 'px';
+            btn.style.top = m.at.y + 'px';
+        });
+    }
+
+    // Where a mark goes in a `w` x `h` layer: at the right edge of the
+    // link's box `r` (in canvas pixels, drawn `k` times their size, the
+    // canvas's top left at `fx`, `fy`), 10 px under its top or at its
+    // middle when that is higher, kept 9 px inside the layer; null for a
+    // box with no size or out of view.
+    function _sdLinkMarkAt(r, fx, fy, k, w, h) {
+        if (!(r.right > r.left || r.bottom > r.top)) return null;
+        var left = fx + r.left * k;
+        var right = fx + r.right * k;
+        var top = fy + r.top * k;
+        var bottom = fy + r.bottom * k;
+        if (right <= 0 || bottom <= 0 || left >= w || top >= h) return null;
+        var y = top + Math.min(10, (bottom - top) / 2);
+        return { x: Math.round(Math.min(Math.max(right, 9), w - 9)), y: Math.round(Math.min(Math.max(y, 9), h - 9)) };
+    }
+
+    // The node of a mark's link: in the page's tree, or in the tree of the
+    // shared component it belongs to.
+    function _sdLinkMarkNode(link) {
+        var cached = link.sharedId ? _sharedCache[link.sharedId] : null;
+        var root = link.sharedId ? (cached && cached.tree) : tree;
+        return root ? findNodeById(link.nodeId, root) : null;
+    }
+
+    // The canvas elements a link's mark goes on: its node's element, for a
+    // link inside a text that link (_sdLinkNth()); one for each place a
+    // shared component is drawn at; none while its node is not drawn.
+    function _sdLinkMarkEls(link) {
+        var node = _sdLinkMarkNode(link);
+        return node ? _sdIssueWrapsOf(node).map(function (wrap) {
+            var el = _sdWrapEl(wrap) || wrap;
+            return (link.source === 'text') ? (_sdLinkNth(el, link.index, wrap) || el) : el;
+        }) : [];
+    }
+
+    // The nth <a href> inside `el`, counted as htmlLinks() counts a text's
+    // links; the designer's chrome left out and, given `wrap`, the links of
+    // the child nodes drawn in their own wrappers.
+    function _sdLinkNth(el, index, wrap) {
+        var n = 0;
+        var links = el.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            if (wrap && links[i].closest('.sd-wrap') !== wrap) continue;
+            if (links[i].closest(_SD_FX_CHROME)) continue;
+            if (n++ === index) return links[i];
+        }
+        return null;
+    }
+
+    // The link field of the Options panel `panel`: a text's picked link,
+    // the element's own address, the button of a link kept by page id back
+    // to a typed address, or the notice of an address that is bound.
+    function _sdLinkFieldOf(panel) {
+        if (!panel) return null;
+        return panel.querySelector('#sd-inner-href') || panel.querySelector('input[data-prop="href"]') ||
+            panel.querySelector('.sd-bound-href-note [data-sd-page-unlink]') || panel.querySelector('.sd-bound-href-note');
+    }
+
+    // A mark clicked: its link selected (a text's link picked inside the
+    // text), the Options panel shown, a docked one opened, and the link
+    // field drawn (in a closed card or a tab not drawn), shown and focused.
+    function _sdLinkMarkOpen(link) {
+        var node = _sdLinkMarkNode(link);
+        if (!node) return;
+        var path = null;
+        if (link.source === 'text' && _sdTextInnerHost(node) && _sdTextInnerPickable(node)) {
+            var box = document.createElement('div');
+            box.appendChild(_sdIlParse(node.props.text));
+            var a = _sdLinkNth(box, link.index, null);
+            path = a ? _sdTextInnerPathOf(box, a) : null;
+        }
+        _sdTextInnerSelect(node, path);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        _sdRcolShow('options');
+        _sdDockSetOpen('right', true);
+        var find = function () { return _sdLinkFieldOf(document.getElementById('sd-properties')); };
+        var field = find();
+        if (!field || !field.offsetParent) field = _sdOptReveal(find) || field;
+        if (!field) return;
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.classList.add('sd-ctrl-flash');
+        setTimeout(function () { field.classList.remove('sd-ctrl-flash'); }, 1200);
+        field.focus({ preventScroll: true });
     }
 
     // The audit panel: HTML warnings from the tree walk (instant, with a

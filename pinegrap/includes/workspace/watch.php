@@ -209,6 +209,12 @@ function ws_events_catalog()
         'page.updated'     => array('label' => lang('A page is changed'), 'when' => lang('When a page is changed in the designer or through the API'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
     );
 
+    // A member completed a course, about the member's contact
+    // (pg_course_mark_done()); listed once the courses tables exist.
+    if (function_exists('pg_course_ready') && pg_course_ready()) {
+        $catalog['course.completed'] = array('label' => lang('A course is completed'), 'when' => lang('When a member completes a course'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+    }
+
     // Content review: a page or a collection record whose review date has
     // passed, checked against the items its creator may edit
     // (ws_events_creator_sees()). The record is the page, or the record as a
@@ -691,8 +697,9 @@ function ws_events_record_of($event, $payload)
             return array('contact', (int) ($payload['id'] ?? 0));
 
         // A WhatsApp message: the contact of its number, none for a number
-        // no contact has.
+        // no contact has. A course completed: the member's contact.
         case 'whatsapp.received':
+        case 'course.completed':
             return ((int) ($payload['contact_id'] ?? 0) > 0) ? array('contact', (int) $payload['contact_id']) : array('', 0);
 
         case 'stock.low':

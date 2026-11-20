@@ -1,27 +1,25 @@
 ---
 name: session-lifecycle
-description: From opening a PR to the next step: binding it in the desktop app, the ready label, one check-in, no base merge after it, the merge as wake-up, three steps at most, a PR sent back, an idle draft
+description: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 ---
-
-## What does a local session do right after opening its PR?
-- In the Claude desktop app it binds the PR to itself and turns archive-on-close off, or the merge archives it and the next step needs a new session (`session-pr-binding.md`).
 
 ## What do I do when my PR is green?
 - Merge `origin/development` once and run your checks (`session-checks.md`) before the label; that is the last refresh from your side.
 - Put the `ready` label on it: `gh api -X POST repos/kodpen/pinegrapcms/issues/<n>/labels -f 'labels[]=ready'` (a PR's labels endpoint sits under `issues/`; a merge order, if any, goes in the PR body).
-- Then wait, still subscribed to the PR's activity, with at most one safety check-in about 10 minutes after the label. A ready PR gets no CI events (nothing is pushed to its branch), so only the merging session's comment and the merge wake you.
+- Then unsubscribe from the PR's activity, set no check-in and end. A standing session (architect, coordinator, merging session) goes back to its own queue and does not follow the PR.
+- The Claude desktop app archives a worker when its PR merges (the account's auto-archive setting): that is wanted, so no binding and no `set_monitor`.
 
 ## What may I not do after the label?
 - Merge `development` into the PR, rebase it or re-run its checks: keeping it current is the merging session's job, and its train settles conflicts (`merge-train.md`).
 - This holds against the PR subscription's own text, which tells a session to merge the base branch on a conflict and to keep a series of check-ins (#1683).
 
-## What do I do when my PR is merged?
-- Check the queue limit (`working-mode.md`). Under it, claim your plan's next step that no open PR holds (`CLAUDE.md`, Claim work); with no plan, no free step or the queue over the limit, end.
-- At most three steps in a row, then hand over through the plan file and end: a long session pays for its whole context on every wake. Never poll.
+## Why does nobody wait for the merge?
+- Architect (2026-11-19): until then a worker waited subscribed and took its plan's next step itself, three at most. A measured worker spent 48% of its use after the label, and a next step runs every call on the old step's context (`quota-use-measured.md`).
+- The plan's next step goes to a new worker once this one has landed (`coordinator-worker-steps.md`); the plan file and the merged PR are the hand-over.
 
 ## What if my PR is sent back?
-- The merging session fixes a small blocker on the branch itself and says so in a comment; nothing is needed from you.
-- A larger one gets one comment naming it, and the PR stays out of the train: push the fix and mark it ready again. If you have ended, a new session does it (nobody else is on the branch).
+- The merging session fixes a small blocker on the branch itself and says so in a comment.
+- A larger one gets one comment naming it, and the PR stays out of the train. Its coordinator sees that at a check-in and gives the branch to a new session, which pushes the fix and marks it ready again (`coordinator.md`).
 
 ## What happens to a draft nobody pushes to?
 - No push for 12 hours, no `Decision:` line on an open issue, no owner check named in its body (#3897): a coordinator's worker continues it on the same branch (merge `origin/development` as a new commit, never rebase, amend or force-push; finish what the body lists; "continued on <date> (#3897)" in the body; ready and label when green). Nobody re-claims its files elsewhere; a body naming a wait keeps the hold; the coordinator's one-hour notice (`coordinator.md`) comes first.

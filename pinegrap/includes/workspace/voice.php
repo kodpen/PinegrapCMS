@@ -210,6 +210,21 @@ function ws_voice_key_shape_ok($key)
 }
 
 /**
+ * Which provider the transcripts go to: 'openai' for OpenAI's own address
+ * (also when none is entered), whose key is OpenAI's connection on
+ * Connections, else 'custom', an address with a key of its own. Pure.
+ *
+ * @param string $url as stored or posted
+ * @return string openai | custom
+ */
+function ws_voice_service($url)
+{
+    $url = ws_voice_url_clean($url);
+
+    return (($url === '') || (strtolower($url) === ws_voice_default_url())) ? 'openai' : 'custom';
+}
+
+/**
  * The name the consent lines give the service a recording is sent to: the
  * company for the services people know, otherwise the host itself.
  *
@@ -236,8 +251,9 @@ function ws_voice_provider_name($url)
  * config_text. The key is never part of it, only whether one is stored.
  *
  * @param bool $fresh read config again
- * @return array enabled, url (the entered one, may be ''), model, key_set,
- *               error, hold_until, provider
+ * @return array enabled, url (the entered one, may be ''), model, key_set
+ *               (its own or OpenAI's connection), error, hold_until,
+ *               provider, service (ws_voice_service()), own_key, connected
  */
 function ws_voice_config($fresh = false)
 {
@@ -246,22 +262,28 @@ function ws_voice_config($fresh = false)
     if (!ws_voice_schema_ready()) {
         return array(
             'enabled' => false, 'url' => '', 'model' => '', 'key_set' => false, 'error' => '', 'hold_until' => 0,
-            'provider' => ws_voice_provider_name(''),
+            'provider' => ws_voice_provider_name(''), 'service' => 'openai', 'own_key' => false, 'connected' => false,
         );
     }
 
     if (($config === null) || $fresh) {
         $row = (array) db_item("SELECT ws_voice_enabled, ws_voice_hold_until FROM config LIMIT 1");
         $url = pg_config_text('ws_voice_url');
+        $service = ws_voice_service($url);
+        $own_key = (strpos(pg_config_text('ws_voice_key'), ':') !== false);
+        $connected = ($service === 'openai') && function_exists('pg_ai_connection_ready') && pg_ai_connection_ready('openai');
 
         $config = array(
             'enabled'    => ((int) ($row['ws_voice_enabled'] ?? 0) === 1),
             'url'        => $url,
             'model'      => pg_config_text('ws_voice_model'),
-            'key_set'    => (strpos(pg_config_text('ws_voice_key'), ':') !== false),
+            'key_set'    => $own_key || $connected,
             'error'      => pg_config_text('ws_voice_error'),
             'hold_until' => (int) ($row['ws_voice_hold_until'] ?? 0),
             'provider'   => ws_voice_provider_name($url),
+            'service'    => $service,
+            'own_key'    => $own_key,
+            'connected'  => $connected,
         );
     }
 
@@ -269,22 +291,28 @@ function ws_voice_config($fresh = false)
 }
 
 /**
- * The service's key, read back; empty when none is stored or it cannot be
- * read (the site's encryption key was changed).
+ * The key the transcripts are called with: the feature's own when one is
+ * stored, else, for OpenAI's address, the key of OpenAI's connection on
+ * Connections. Empty when there is none to read (the site's encryption key
+ * was changed).
  *
  * @return string
  */
 function ws_voice_key()
 {
     $sealed = ws_voice_schema_ready() ? pg_config_text('ws_voice_key') : '';
+    $own = '';
 
-    if (($sealed === '') || (strpos($sealed, ':') === false) || !function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
-        return '';
+    if (($sealed !== '') && (strpos($sealed, ':') !== false) && function_exists('decode_ssl_keys') && defined('ENCRYPTION_KEY')) {
+        list($cipher, $iv) = explode(':', $sealed, 2);
+        $own = trim((string) decode_ssl_keys($cipher, $iv));
     }
 
-    list($cipher, $iv) = explode(':', $sealed, 2);
+    if (($own !== '') || !ws_voice_schema_ready() || (ws_voice_service(pg_config_text('ws_voice_url')) !== 'openai') || !function_exists('pg_ai_connection_key')) {
+        return $own;
+    }
 
-    return (string) decode_ssl_keys($cipher, $iv);
+    return pg_ai_connection_key('openai');
 }
 
 /**
@@ -305,7 +333,9 @@ function ws_voice_missing()
         $missing[] = lang('Transcripts are switched off.');
     }
 
-    if (!$config['key_set']) {
+    if (!$config['key_set'] && ($config['service'] === 'openai')) {
+        $missing[] = lang('OpenAI is not connected: connect it on Connections.');
+    } elseif (!$config['key_set']) {
         $missing[] = lang('No key is entered for the transcription service.');
     } elseif (ws_voice_key() === '') {
         $missing[] = lang('The stored key cannot be read any more: enter it again.');
@@ -454,9 +484,9 @@ function ws_voice_channel_set($viewer, $channel, $allowed)
  *
  * @param array  $post
  * @param string $prefix
- * @return array enabled, url, model, key, key_clear, speech_enabled,
- *               speech_url, speech_model, speech_voice, speech_key,
- *               speech_key_clear
+ * @return array enabled, service, url, model, key, key_clear,
+ *               speech_enabled, speech_url, speech_model, speech_voice,
+ *               speech_key, speech_key_clear
  */
 function ws_voice_settings_input($post, $prefix = '')
 {
@@ -466,11 +496,21 @@ function ws_voice_settings_input($post, $prefix = '')
         return is_scalar($value) ? trim((string) $value) : '';
     };
 
+    // OpenAI is called with its connection's key, so its address and a typed
+    // key are not kept; a post without the select is read by its address.
+    $url = ws_voice_url_clean($text('url'));
+    $service = $text('service');
+
+    if (($service !== 'openai') && ($service !== 'custom')) {
+        $service = ws_voice_service($url);
+    }
+
     return array(
         'enabled'          => ($text('enabled') !== ''),
-        'url'              => ws_voice_url_clean($text('url')),
+        'service'          => $service,
+        'url'              => ($service === 'openai') ? '' : $url,
         'model'            => $text('model'),
-        'key'              => $text('key'),
+        'key'              => ($service === 'openai') ? '' : $text('key'),
         'key_clear'        => ($text('key_clear') !== ''),
         'speech_enabled'   => ($text('speech_enabled') !== ''),
         'speech_url'       => ws_voice_speech_url_clean($text('speech_url')),
@@ -486,14 +526,26 @@ function ws_voice_settings_input($post, $prefix = '')
  * key, speech_url, speech_model, speech_voice, speech_key), in the card's
  * order. Pure; whether the site can seal a key is asked by the write.
  *
- * @param array $input ws_voice_settings_input()
+ * Transcripts cannot be switched on for OpenAI while it is not connected
+ * and the feature keeps no key of its own ($stored).
+ *
+ * @param array $input  ws_voice_settings_input()
+ * @param array $stored enabled, own_key, connected (ws_voice_config()); empty
+ *                      leaves the switch unchecked
  * @return array field => sentence
  */
-function ws_voice_settings_check($input)
+function ws_voice_settings_check($input, $stored = array())
 {
     $refused = array();
 
-    if (($input['url'] !== '') && !ws_voice_url_valid($input['url'])) {
+    if ($input['enabled'] && $stored && empty($stored['enabled']) && (($input['service'] ?? '') === 'openai')
+        && empty($stored['connected']) && !(!empty($stored['own_key']) && empty($input['key_clear']))) {
+        $refused['enabled'] = lang(array('string' => 'Connect {var:1} in Connections first.', 'vars' => 'OpenAI'));
+    }
+
+    if ((($input['service'] ?? '') === 'custom') && ($input['url'] === '')) {
+        $refused['url'] = lang('Type the service\'s address.');
+    } elseif (($input['url'] !== '') && !ws_voice_url_valid($input['url'])) {
         $refused['url'] = lang('The service\'s address starts with https:// and ends before /audio/transcriptions, for example https://api.openai.com/v1');
     }
 
@@ -539,7 +591,8 @@ function ws_voice_settings_changed($input, $transcript, $speech)
 {
     return ($input['key'] !== '') || $input['key_clear'] || ($input['speech_key'] !== '') || $input['speech_key_clear']
         || ($input['enabled'] !== (bool) $transcript['enabled'])
-        || ($input['url'] !== (string) $transcript['url'])
+        || (($input['url'] !== (string) $transcript['url'])
+            && !((($input['service'] ?? '') === 'openai') && (ws_voice_service((string) $transcript['url']) === 'openai')))
         || ($input['model'] !== (string) $transcript['model'])
         || ($input['speech_enabled'] !== (bool) $speech['enabled'])
         || ($input['speech_url'] !== (string) $speech['url'])
@@ -631,7 +684,7 @@ function ws_voice_settings_post($viewer, $liveform)
     }
 
     $input = ws_voice_settings_input($_POST);
-    $refused = ws_voice_settings_check($input);
+    $refused = ws_voice_settings_check($input, ws_voice_config(true));
 
     if ($refused) {
         $liveform->add_error(reset($refused));
@@ -734,14 +787,18 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
         $status_list .= '<li>' . h($sentence) . '</li>';
     }
 
+    $openai = ($config['service'] === 'openai');
+    // OpenAI's switch stays off until it is connected or the feature keeps
+    // a key of its own; the script frees it for another address.
+    $locked = $openai && !$config['enabled'] && !$config['key_set'];
     $key_field = '';
 
     if ($admin) {
         $key_field = '
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_key">' . h(lang('The service\'s key')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="password" name="' . $prefix . 'voice_key" id="ws_voice_key" value="" autocomplete="new-password" placeholder="' . h($config['key_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-…') . '">
-                                ' . ($config['key_set'] ? '
+                                <input class="form-control form-control-sm font-monospace" type="password" name="' . $prefix . 'voice_key" id="ws_voice_key" value="" autocomplete="new-password" placeholder="' . h($config['own_key'] ? lang('Stored. Type a new one to replace it.') : 'sk-…') . '">
+                                ' . ($config['own_key'] ? '
                                 <div class="form-field mt-1">
                                     <input class="check" type="checkbox" name="' . $prefix . 'voice_key_clear" value="1" id="ws_voice_key_clear">
                                     <label class="small" for="ws_voice_key_clear">' . h(lang('Remove the stored key')) . '</label>
@@ -752,7 +809,7 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
 
     $fields = '
                             <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_enabled" value="1" id="ws_voice_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_enabled" value="1" id="ws_voice_enabled" data-ws-voice-lock="' . ($locked ? '1' : '0') . '"' . ($config['enabled'] ? ' checked' : '') . (($disabled !== '') ? $disabled : ($locked ? ' disabled' : '')) . '></div>
                                 <label class="" for="ws_voice_enabled">' . h(lang('Write voice messages out as text')) . '</label>
                                 <div class="form-text">' . h(lang(array(
                                     'string' => 'The sound of a voice message is sent to {var:1} with the key below, and the text written from it is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:2} minutes are not sent.',
@@ -760,16 +817,28 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
                                 ))) . '</div>
                             </div>
                             <div class="mb-5">
+                                <label class="pg-field-label" for="ws_voice_service">' . h(lang('Provider')) . '</label>
+                                <select class="pg-input pg-input-sm" name="' . $prefix . 'voice_service" id="ws_voice_service" data-ws-voice-service' . $disabled . '>
+                                    <option value="openai"' . ($openai ? ' selected' : '') . '>OpenAI</option>
+                                    <option value="custom"' . ($openai ? '' : ' selected') . '>' . h(lang('Custom address')) . '</option>
+                                </select>
+                            </div>
+                            <div class="mb-5' . ($openai ? '' : ' d-none') . '" data-ws-voice-when="openai">' . (function_exists('pg_ai_connection_block_html')
+                                ? pg_ai_connection_block_html('openai', 'OpenAI', pg_ai_connection_ready('openai'), ($admin && $openai && $config['own_key']) ? array('name' => $prefix . 'voice_key_clear', 'id' => 'ws_voice_key_use', 'attrs' => '') : null)
+                                : '') . '</div>
+                            <div class="' . ($openai ? 'd-none' : '') . '" data-ws-voice-when="custom">
+                            <div class="mb-5">
                                 <label class="form-label" for="ws_voice_url">' . h(lang('The service\'s address')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="url" name="' . $prefix . 'voice_url" id="ws_voice_url" value="' . h($config['url']) . '" placeholder="' . h(ws_voice_default_url()) . '" autocomplete="off"' . $disabled . '>
-                                <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/transcriptions. Left empty, OpenAI is used.')) . '</div>
+                                <input class="form-control form-control-sm font-monospace" type="url" name="' . $prefix . 'voice_url" id="ws_voice_url" value="' . h($openai ? '' : $config['url']) . '" placeholder="https://…" autocomplete="off"' . $disabled . '>
+                                <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/transcriptions.')) . '</div>
+                            </div>
                             </div>
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_model">' . h(lang('Model')) . '</label>
                                 <input class="form-control form-control-sm font-monospace" type="text" name="' . $prefix . 'voice_model" id="ws_voice_model" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
                             </div>
-                            ' . $key_field . '
-                            ' . ws_voice_speech_settings_part($admin, $prefix) . '
+                            <div class="' . ($openai ? 'd-none' : '') . '" data-ws-voice-when="custom">' . $key_field . '</div>
+                            ' . ws_voice_speech_settings_part($admin, $prefix) . ws_voice_settings_script() . '
 ';
     $status = '
                         <div class="ws-claude-status">
@@ -849,6 +918,16 @@ function ws_voice_speech_settings_part($admin, $prefix = '')
         $voices .= '<option value="' . h($name) . '"></option>';
     }
 
+    // Speech follows the transcripts' provider: with OpenAI and no address of
+    // its own it takes OpenAI's connection, so its address and key show only
+    // for another address; a key it still keeps says so.
+    $transcripts = ws_voice_config();
+    $follows = ($config['url'] === '');
+    $own_shown = !$follows || ($transcripts['service'] !== 'openai');
+    $own_line = ($admin && $follows && $config['own_key'])
+        ? '<div class="mb-5' . ($own_shown ? ' d-none' : '') . '" data-ws-voice-when="openai"><div class="d-flex flex-wrap align-items-center gap-3"><span class="pg-text-meta">' . h(lang('Uses its own key')) . '</span>'
+            . '<label class="pg-text-2" for="ws_voice_speech_key_use"><input class="pg-checkbox" type="checkbox" name="' . $prefix . 'voice_speech_key_clear" value="1" id="ws_voice_speech_key_use"> <span>' . h(lang('Use the connection\'s key')) . '</span></label></div></div>'
+        : '';
     $key_field = '';
 
     if ($admin) {
@@ -874,12 +953,15 @@ function ws_voice_speech_settings_part($admin, $prefix = '')
                                     'vars'   => array($config['provider'], WS_VOICE_SPEECH_MAX_CHARS),
                                 ))) . '</div>
                             </div>
+                            ' . $own_line . '
+                            <div class="' . ($own_shown ? '' : 'd-none') . '"' . ($follows ? ' data-ws-voice-when="custom"' : '') . '>
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_speech_url">' . h(lang('The speech service\'s address')) . '</label>
                                 <input class="form-control form-control-sm font-monospace" type="url" name="' . $prefix . 'voice_speech_url" id="ws_voice_speech_url" value="' . h($config['url']) . '" placeholder="' . h($config['base']) . '" autocomplete="off"' . $disabled . '>
                                 <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/speech. Left empty, the transcripts\' address is used.')) . '</div>
                             </div>
                             ' . $key_field . '
+                            </div>
                             <div class="row g-5 mb-5">
                                 <div class="sm:col-6">
                                     <label class="form-label" for="ws_voice_speech_model">' . h(lang('Model')) . '</label>
@@ -915,6 +997,47 @@ function ws_voice_speech_settings_status()
                             <div class="small mb-5">' . h($config['provider']) . ' · <code>' . h(($config['model'] !== '') ? $config['model'] : ws_voice_speech_default_model()) . '</code> · <code>' . h(($config['voice'] !== '') ? $config['voice'] : ws_voice_speech_default_voice()) . '</code></div>
                             ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $list . '</ul>' : '') . '
                             ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '');
+}
+
+/**
+ * The script of the card's "Provider" select: shows the chosen provider's
+ * parts (data-ws-voice-when) and frees the switch for another address,
+ * which takes its own key. Delegated to the document: the settings dialog
+ * draws its panes again.
+ *
+ * @return string HTML
+ */
+function ws_voice_settings_script()
+{
+    return '
+        <script>
+        (function () {
+            if (window.pgWsVoiceServiceBound) {
+                return;
+            }
+
+            window.pgWsVoiceServiceBound = true;
+
+            document.addEventListener(\'change\', function (event) {
+                var select = event.target.closest ? event.target.closest(\'[data-ws-voice-service]\') : null;
+                var box = select ? select.closest(\'.ws-voice-connection, form\') : null;
+
+                if (!box) {
+                    return;
+                }
+
+                box.querySelectorAll(\'[data-ws-voice-when]\').forEach(function (part) {
+                    part.classList.toggle(\'d-none\', part.getAttribute(\'data-ws-voice-when\') !== select.value);
+                });
+
+                var power = box.querySelector(\'[data-ws-voice-lock="1"]\');
+
+                if (power) {
+                    power.disabled = (select.value === \'openai\');
+                }
+            });
+        })();
+        </script>';
 }
 
 /* ---------------------------------------------------------------------------

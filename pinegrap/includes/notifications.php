@@ -216,6 +216,12 @@ function pg_notification_visible($notification, $rights)
 		return ($target > 0);
 	}
 
+	// A guest's comment on a prototype link: addressed to the link's maker
+	// (includes/fn/prototype_comments.php).
+	if ($action == 'prototype_comment') {
+		return ($target > 0);
+	}
+
 	if ($action == 'software_update') {
 		return ($rights['role'] < 3);
 	}
@@ -699,6 +705,20 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
 
+	} elseif ($action == 'prototype_comment') {
+
+		// The row keeps the page's name and the comment's id; the guest's name
+		// and the design are read through it, the words in the reader's
+		// language (includes/fn/prototype_comments.php).
+		$proto_words = pg_proto_comment_bell_display($notification);
+		$display['title']  = h($proto_words['title']);
+		$display['short']  = h($proto_words['short']);
+		$display['brief']  = h($proto_words['brief']);
+		$display['url']    = $proto_words['url'];
+		$display['icon']   = 'assets/images/notification-general.png';
+		$display['badge']  = 'assets/images/notification-general-badge.png';
+		$display['action'] = $action;
+
 	} elseif ($action == 'erp_overdue') {
 
 		// The row carries the counts and the formatted total the way an order
@@ -1138,7 +1158,7 @@ function pg_notification_module($action)
 		return 'erp';
 	}
 
-	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale'), true)) {
+	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale', 'prototype_comment'), true)) {
 		return 'content';
 	}
 

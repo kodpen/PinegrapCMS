@@ -175,16 +175,24 @@ function test_workspace_channel_panes_flow_width()
 	pg_assert_same(2, substr_count($css, '--ws-shadow-soft: '), 'defined for the light and the dark theme');
 }
 
-function test_workspace_channel_panes_decisions_are_a_card_grid()
+// The Decisions tab is one list of cards down the pane, as wide as the pane
+// up to about 72rem: the columns it flowed in grew the pane sideways.
+function test_workspace_channel_panes_decisions_are_one_list()
 {
 	$css = workspace_channel_look_css();
 	$pane = workspace_channel_look_block($css, '.ws-pane-decisions');
 
-	pg_assert_contains('columns: var(--ws-flow-col);', $pane, 'the decisions flow in columns: no gap under a short card');
-	pg_assert_contains(".ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {\n  column-span: all;", $css, 'the empty state and the skeleton span the columns');
+	pg_assert_false(strpos($pane, 'columns:') !== false, 'the decisions no longer flow in columns');
+	pg_assert_false(strpos($css, '.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {') !== false, 'so nothing has to span them');
+	pg_assert_contains('flex-direction: column;', $pane, 'one card under the other');
+	pg_assert_contains('overflow-x: hidden;', $pane, 'and the pane never scrolls sideways');
+	pg_assert_true((bool) preg_match('/--ws-decision-max: (\d+)rem;/', $pane, $m) && (int) $m[1] >= 64 && (int) $m[1] <= 80, 'a card is at most about 72rem wide');
+
+	$child = workspace_channel_look_block($css, '.ws-pane-decisions > *');
+	pg_assert_contains('width: 100%;', $child, 'as wide as the pane');
+	pg_assert_contains('max-width: var(--ws-decision-max);', $child, 'up to the cap');
 
 	$card = workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg');
-	pg_assert_contains('break-inside: avoid;', $card, 'a decision is never cut between two columns');
 	pg_assert_contains('border: 1px solid var(--pg-border-color);', $card, 'each decision is a card framed on four sides');
 	pg_assert_contains('box-shadow: var(--ws-shadow-soft);', $card, 'with a soft shadow');
 	pg_assert_false(strpos($css, '.ws-pane-decisions > .ws-msg-decision') !== false, 'no green start edge on a decision');
@@ -194,10 +202,45 @@ function test_workspace_channel_panes_decisions_are_a_card_grid()
 	pg_assert_contains('margin-inline-start: auto;', workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg .ws-msg-meta > .btn'), 'Show in conversation ends the head line');
 	pg_assert_false((bool) preg_match('/\.ws-pane-decisions[^{]*\.btn[^{]*\{[^}]*(opacity: 0|visibility: hidden|display: none)/', $css), 'and is always shown, not only on hover');
 
-	preg_match('/\n        loadList: function \(action, emptyText\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
-	$list = $match[1] ?? '';
+	$list = workspace_channel_look_list();
 	pg_assert_contains("var node = self.messageNode(message, null);", $list, 'a decision is still drawn as the conversation draws it');
 	pg_assert_contains("t('show_in_conversation')", $list, 'with its way back to the conversation');
+}
+
+// The body of loadList() in workspace.js, which draws the Decisions tab.
+function workspace_channel_look_list()
+{
+	preg_match('/\n        loadList: function \(action, emptyText\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
+
+	return $match[1] ?? '';
+}
+
+// A decision longer than about eight lines is folded behind Show more /
+// Show less; its head line stays above the fold.
+function test_workspace_channel_panes_long_decision_is_folded()
+{
+	$list = workspace_channel_look_list();
+	pg_assert_contains("node.querySelector('.ws-msg-main > .ws-msg-body')", $list, 'the decision\'s own text is folded, not a quote in it');
+	pg_assert_contains("body.classList.add('ws-folded');", $list, 'every text starts folded for the measure');
+	pg_assert_contains('self.foldLong(bodies);', $list, 'and is measured once all are drawn');
+
+	preg_match('/\n        foldLong: function \(bodies\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
+	$fold = $match[1] ?? '';
+	pg_assert_contains('body.scrollHeight > body.clientHeight + 2', $fold, 'a text is long when it runs past the cap');
+	pg_assert_contains("body.classList.remove('ws-folded');", $fold, 'a short one is opened again');
+	pg_assert_contains("lookButton('pg-button pg-button-ghost pg-button-sm ws-fold-toggle', t('pane_show_more')", $fold, 'a long one gets Show more from the look\'s recipes');
+	pg_assert_contains("t(open ? 'pane_show_less' : 'pane_show_more')", $fold, 'which turns to Show less once open');
+	pg_assert_contains("toggle.setAttribute('aria-expanded'", $fold, 'and says so to a screen reader');
+	pg_assert_contains("body.insertAdjacentElement('afterend', toggle);", $fold, 'under the text, so the head line stays above it');
+
+	$css = workspace_channel_look_css();
+	$folded = workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg .ws-msg-main > .ws-msg-body.ws-folded');
+	pg_assert_contains('max-height: calc(1.55em * 8);', $folded, 'the fold is at about eight lines');
+	pg_assert_contains('overflow: hidden;', $folded, 'and hides the rest');
+
+	$strings = ws_file_edit_js_strings();
+	pg_assert_same('Show more', $strings['pane_show_more'] ?? '', 'Show more is a screen text');
+	pg_assert_same('Show less', $strings['pane_show_less'] ?? '', 'and Show less');
 }
 
 function test_workspace_channel_panes_file_groups_are_cards()
@@ -270,19 +313,22 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a phone still shows the picked column');
 }
 
-function test_workspace_channel_panes_memory_is_cards()
+function test_workspace_channel_panes_memory_is_rows_under_projects()
 {
 	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
 
 	pg_assert_false(strpos($memory, 'list-group') !== false, 'no list-group rows');
-	pg_assert_contains("var intro = el('div', 'ws-memory-intro');", $memory, 'the hint is a card');
-	pg_assert_contains('intro.appendChild(add);', $memory, 'with New record in it');
-	pg_assert_contains("el('div', 'ws-memory-entry d-flex align-items-start gap-3'", $memory, 'each record is a card');
+	pg_assert_false(strpos($memory, 'btn btn-') !== false, 'buttons from look A only');
+	pg_assert_contains("var box = el('details', 'ws-memory-project');", $memory, 'a project heading folds');
+	pg_assert_contains("var row = el('div', 'ws-memory-row'", $memory, 'each record is a row');
+	pg_assert_contains("el('div', 'ws-memory-line pg-text-meta', entry.first_line)", $memory, 'with the first line of its text');
+	pg_assert_contains("el('div', 'ws-memory-date pg-text-meta', dayShown(entry.updated_at))", $memory, 'and its change date');
+	pg_assert_contains("var section = el('section', 'ws-memory-part');", $memory, 'the general memory and the channel\'s are parts');
 
 	$css = workspace_channel_look_css();
-	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-intro'), 'the hint card has a border');
-	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-entry'), 'and so does a record');
-	pg_assert_contains('display: grid;', workspace_channel_look_block($css, '.ws-memory-list'), 'records are a grid');
+	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-part'), 'a part is a card');
+	pg_assert_contains('display: grid;', workspace_channel_look_block($css, '.ws-memory-row'), 'a row lines up its columns');
+	pg_assert_contains('transform: rotate(90deg);', workspace_channel_look_block($css, '.ws-memory-project[open] .ws-memory-chevron'), 'an open heading turns its chevron');
 }
 
 function test_workspace_channel_panes_empty_states_are_dashed_cards()

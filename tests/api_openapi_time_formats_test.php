@@ -165,6 +165,44 @@ function test_api_openapi_time_formats_module_fields_follow_their_presenters()
 	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspaceCustomerQuote', 'issue_date')['format']), 'issue_date is passed through unchecked');
 }
 
+// The channel, message, task and note objects of the Workspace and the
+// design objects: api_time() moments, DATE columns and Y-m-d days.
+function test_api_openapi_time_formats_workspace_and_design_fields_follow_their_presenters()
+{
+	$moments = array(
+		'WorkspaceMessage'    => array('created_at', 'forwards[].created_at'),
+		'WorkspacePoll'       => array('closes_at', 'closed_at', 'withdrawn_at', 'answered_at'),
+		'WorkspaceApproval'   => array('created_at', 'guests[].link_expires_at', 'people[].decided_at'),
+		'WorkspaceTask'       => array('completed_at', 'created_at', 'updated_at'),
+		'WorkspaceTaskTime'   => array('started_at', 'created_at'),
+		'WorkspaceNote'       => array('created_at', 'updated_at'),
+		'DesignPage'          => array('publish_at', 'unpublish_at', 'updated_at'),
+		'DesignView'          => array('publish_at', 'unpublish_at'),
+		'DesignPrototypeLink' => array('expires_at', 'last_used_at', 'revoked_at'),
+	);
+
+	$days = array(
+		'WorkspaceTask'       => array('start_date', 'due_date'),
+		'WorkspaceRecurrence' => array('end_date', 'next_date', 'opens_date'),
+		'WorkspacePlanRow'    => array('days[].date'),
+		'WorkspaceTaskTime'   => array('worked_on'),
+	);
+
+	foreach (array('date-time' => $moments, 'date' => $days) as $format => $fields) {
+		foreach ($fields as $object => $paths) {
+			foreach ($paths as $path) {
+				$schema = api_openapi_time_formats_test_field($object, $path);
+				pg_assert_same($format, isset($schema['format']) ? $schema['format'] : null, $object . '.' . $path);
+			}
+		}
+	}
+
+	// A time of day, and a day that may be empty, stay strings.
+	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspaceTask', 'due_time')['format']), 'due_time is HH:MM');
+	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspacePlanRow', 'days[].events[].time')['format']), 'events[].time is HH:MM');
+	pg_assert_false(isset(api_openapi_time_formats_test_field('WorkspacePlanRow', 'days[].task_items[].moved_from')['format']), 'moved_from may be empty');
+}
+
 // Every word a declaration uses is one api_openapi_field_words() maps: a word
 // it does not know would reach the document as a type OpenAPI does not have.
 function test_api_openapi_time_formats_every_word_is_known()

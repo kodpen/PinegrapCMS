@@ -10,6 +10,8 @@ module: record_revisions
 - Saving a loaded revision is the normal edit save (validation, required fields, hooks) with source `restore`; `restore_revision` counts only for a revision of this item and a record manager. A save that comes back with errors keeps `&revision=N`, and the posted values are not overwritten.
 - Files (`pg_record_revision_restore_plan()`, pure): a revision's file whose `files` row still exists is pointed at again on save (`pg_record_revision_restore_files()`), unless this save uploaded or removed a file in that field; the current file is not deleted (newer revisions refer to it). A file deleted since is `gone`: not restored, the screen says so for that field. A revision without a file, and a signature (never redrawn), leave the current value (`kept`).
 
+- A Record rows field: Load puts the revision's list into the rows editor, only the rows that still exist (`collection-rows-delete-history.md`).
+
 ## Where are the tests?
 - `tests/record_revision_history_test.php` (decode, compare, restore plan, form value, shown text). The screen itself has no test: it needs a database.
 

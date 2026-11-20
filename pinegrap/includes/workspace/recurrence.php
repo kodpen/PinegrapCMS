@@ -1160,6 +1160,8 @@ function ws_recurrence_spawn($series, $date)
         'channel_id'       => $channel_id,
         'assignees'        => ws_task_assignee_ids($template['id']),
         'refs'             => $refs,
+        // A copy keeps the mark of the task it repeats.
+        'app_id'           => (int) ($template['app_id'] ?? 0),
     ));
 
     if (!$result['ok']) {

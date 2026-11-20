@@ -213,10 +213,15 @@
 
     // ---- a layer dragged at a moment ----
 
-    // The movable layer drawn under p at the playhead: its keyed place, not
-    // its rest, is where it shows.
-    Editor.prototype.keyHit = function (p, inset) {
-        var end = this.motionEnd(), now = this.motionNow(), slack = (inset || 4) / this.view.k, layers = this.doc.layers;
+    // The movable layer drawn under p at the playhead: its keyed place, size
+    // and turn, not its rest, is where it shows (M.restPoint()). inset: how
+    // far inside its box a press must be, in screen px (a handle: 10). A
+    // finger (pointer 'touch', no inset) takes a layer up to its box's edge
+    // and a selected one as far as its reach outside (M.touchReach()); a
+    // mouse or a pen 4 px inside, as before.
+    Editor.prototype.keyHit = function (p, inset, pointer) {
+        var end = this.motionEnd(), now = this.motionNow(), k = this.view.k, layers = this.doc.layers, sel = this.sel;
+        var finger = !inset && (pointer === 'touch');
 
         for (var i = layers.length - 1; i >= 0; i--) {
             var l = layers[i];
@@ -225,9 +230,12 @@
                 continue;
             }
 
-            var st = M.motionAt(l, now, end);
+            // A screen px in the layer's px at rest: the view's zoom and the
+            // moment's scale.
+            var st = M.motionAt(l, now, end), q = M.restPoint(l, st, p[0], p[1]), px = 1 / (k * (st.scale || 1));
+            var margin = !finger ? (inset || 4) * px : ((sel.indexOf(l.id) >= 0) ? -M.touchReach(pointer, 4) * px : 0);
 
-            if ((st.opacity > 0) && M.insideBox(l, p[0] - st.x, p[1] - st.y, slack)) {
+            if ((st.opacity > 0) && q && M.insideBox(l, q[0], q[1], margin)) {
                 return l;
             }
         }
@@ -247,7 +255,7 @@
             return this.motionDown(e);
         }
 
-        hit = h ? this.keyHit(p, 10) : this.keyHit(p);
+        hit = h ? this.keyHit(p, 10) : this.keyHit(p, 0, e.pointerType);
 
         if (!hit) {
             return this.motionDown(e);

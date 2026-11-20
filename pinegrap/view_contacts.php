@@ -366,7 +366,7 @@ if ($filter != 'all_duplicate_contacts') {
 }
 
 // if user requested to export contacts, export contacts
-if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
+if ((($_GET['submit_data'] ?? '') == 'Export Contacts') || pg_list_excel_asked()) {
     $output_affiliate_headings = '';
     $output_affiliate_values = '';
 
@@ -422,6 +422,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
              " . $list_filter['where'] . "
              GROUP BY contacts.id
              ORDER BY contacts.last_name, contacts.first_name";
+
+    // Export to Excel holds the file back from here; an error screen still
+    // passes through as it is.
+    pg_list_excel_capture(array('expiration_date' => 'date', 'affiliate_commission_rate' => 'number'), lang('Contacts'));
 
     // The query runs before the download starts, so a failure shows the
     // error screen instead of writing its HTML into the file.
@@ -1088,6 +1092,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down me-1"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    ' . pg_list_excel_button() . '
                                 </div>
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>

@@ -478,8 +478,10 @@ function ws_dashboard_signals($viewer)
     // Finished work is a different set of rows - done, by whoever ticked it
     // off, assigned or not - so it is a second pass rather than a branch of
     // the join above. The team's figure rides along and is kept only for
-    // whoever holds the board, which is where everybody's work is visible.
-    $done = db_item("SELECT COUNT(*) AS team_count,
+    // whoever holds the board, which is where everybody's work is visible;
+    // it leaves agent channels' tasks out as the board does, while the
+    // reader's own figure counts whatever the channel.
+    $done = db_item("SELECT " . ws_tasks_agent_count_sql(ws_tasks_agent_out_sql('channel_id')) . " AS team_count,
             SUM(CASE WHEN completed_by = '" . $me . "' THEN 1 ELSE 0 END) AS mine_count
         FROM ws_tasks
         WHERE status = 'done' AND completed_at >= '" . (int) $week_ago . "'");

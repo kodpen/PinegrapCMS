@@ -119,7 +119,7 @@ function api_orders_create($params) {
 	$found = array();
 
 	foreach (api_rows("SELECT id, name, short_description, price, selection_type, enabled,
-			inventory, inventory_quantity, taxable, tax_rate
+			inventory, inventory_quantity, taxable, tax_rate, gift_card
 		FROM products
 		WHERE id IN ('" . implode("', '", array_map('intval', $ids)) . "')") as $row) {
 
@@ -141,6 +141,15 @@ function api_orders_create($params) {
 		}
 
 		$product = $found[$product_id];
+
+		// A gift card needs the recipient form of the site's checkout.
+		$refusal = local_sale_product_refusal($product);
+
+		if ($refusal !== '') {
+
+			api_fail_validation(lang(array('string' => 'Product {var:1}: {var:2}', 'vars' => array($product_id, $refusal))), 'items');
+
+		}
 
 		// A donation enters the cart with the amount given, none at the counter.
 		$price = ($product['selection_type'] === 'donation') ? 0 : (int)$product['price'];

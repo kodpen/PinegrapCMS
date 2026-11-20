@@ -24,6 +24,7 @@ class PackedBoxList extends \SplMinHeap
      * Compare elements in order to place them correctly in the heap while sifting up.
      * @see \SplMinHeap::compare()
      */
+    #[\ReturnTypeWillChange]
     public function compare($boxA, $boxB)
     {
         $choice = $boxA->getItems()->count() - $boxB->getItems()->count();

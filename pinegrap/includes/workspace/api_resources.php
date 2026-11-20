@@ -307,13 +307,13 @@ function ws_api_channel_schema()
         'archived'        => 'boolean',
         'agent_channel'   => 'boolean',
         'unread'          => 'integer',
-        'last_message_at' => 'string?',
+        'last_message_at' => 'datetime?',
         'watch'              => 'boolean?',
         'claude_allowed'     => 'boolean?',
         'ai_allowed'         => 'boolean?',
         'voice_allowed'      => 'boolean?',
         'summary'            => 'string?',
-        'summary_updated_at' => 'string?',
+        'summary_updated_at' => 'datetime?',
     );
 }
 
@@ -882,7 +882,7 @@ function ws_api_channel_member_schema()
         'name'      => 'string',
         'username'  => 'string',
         'role'      => 'string',
-        'joined_at' => 'string?',
+        'joined_at' => 'datetime?',
     );
 }
 
@@ -1110,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null, $feedback = null, $highlights = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -1156,6 +1156,18 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $threads = ws_api_message_threads($viewer, array($row['id']));
     }
 
+    // Right or Wrong on an agent's reply, for the asker and the channel's
+    // managers only (agent_feedback.php).
+    if ($feedback === null) {
+        $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, array($row['id'])) : array();
+    }
+
+    // Readers' highlights and the text they index (api_highlights.php).
+    if ($highlights === null) {
+        $highlights = ws_api_message_highlights_map($viewer, array($row));
+    }
+
+    $highlight = $highlights[(int) $row['id']] ?? null;
     $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
@@ -1183,7 +1195,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
             $app = ws_proposal_sender($app, $proposals[(int) $row['id']]);
         }
 
-        $sender = array('user_id' => null, 'name' => $app['name']);
+        $sender = ws_api_message_app_sender($app);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
     } elseif (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender')) {
@@ -1264,7 +1276,37 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
         // The card of its first web address (link_preview.php).
         'link_preview'   => ws_api_message_link_preview($row, $link_previews),
+        // Right or Wrong on an agent's reply (POST
+        // /workspace/messages/{id}/agent-feedback): verdict '' while
+        // unmarked, null for anybody but the asker and the managers.
+        'feedback'       => $deleted ? null : ($feedback[(int) $row['id']] ?? null),
+        // Readers' highlights (POST /workspace/messages/{id}/highlights):
+        // quote and occurrence index highlight_text, the body as the panel
+        // draws it for this reader, white space folded.
+        'highlights'        => $highlight ? $highlight['rows'] : array(),
+        'highlight_text'    => $highlight ? $highlight['text'] : '',
+        'can_highlight_all' => $highlight ? $highlight['can_all'] : false,
         'created_at'  => api_time($row['created_at']),
+    );
+}
+
+/**
+ * The sender of an application's message, from ws_app_sender(): app_id
+ * keys a run of its lines, and agent, claude and ai say it answers people,
+ * so its one-line messages never fold. Pure.
+ *
+ * @param array $app ws_app_sender(), or ws_proposal_sender() over it
+ * @return array user_id (null), name, app_id, agent, claude, ai
+ */
+function ws_api_message_app_sender($app)
+{
+    return array(
+        'user_id' => null,
+        'name'    => (string) ($app['name'] ?? ''),
+        'app_id'  => ((int) ($app['app_id'] ?? 0) > 0) ? (int) $app['app_id'] : null,
+        'agent'   => !empty($app['agent']),
+        'claude'  => !empty($app['claude']),
+        'ai'      => !empty($app['ai']),
     );
 }
 
@@ -1303,11 +1345,15 @@ function ws_api_message_schema()
             'sender'              => 'WorkspaceMessageSender?',
             'text'                => 'string',
             'file_name'           => 'string',
-            'created_at'          => 'string?',
+            'created_at'          => 'datetime?',
         )),
         'via'         => 'WorkspaceMessageVia?',
         'link_preview'   => 'WorkspaceMessageLinkPreview?',
-        'created_at'  => 'string',
+        'feedback'       => 'WorkspaceMessageFeedback?',
+        'highlights'        => 'WorkspaceMessageHighlight[]',
+        'highlight_text'    => 'string',
+        'can_highlight_all' => 'boolean',
+        'created_at'  => 'datetime',
     );
 }
 
@@ -1350,9 +1396,17 @@ function ws_api_message_mail_schema()
 // workspace itself, carrying no file, with no discussion started from it.
 // An object written inline cannot say it may be null, so each is declared
 // on its own.
+// app_id, agent, claude and ai come on an application's message only
+// (ws_api_message_app_sender()).
 function ws_api_message_sender_schema()
 {
-    return array('user_id' => 'integer?', 'name' => 'string');
+    return array('user_id' => 'integer?', 'name' => 'string', 'app_id' => 'integer?', 'agent' => 'boolean', 'claude' => 'boolean', 'ai' => 'boolean');
+}
+
+// The mark on an agent's reply (ws_agent_feedback_offer()).
+function ws_api_message_feedback_schema()
+{
+    return array('verdict' => 'string', 'reason' => 'string');
 }
 
 function ws_api_message_file_schema()
@@ -1376,19 +1430,19 @@ function ws_api_message_voice_schema()
         'language'       => 'string?',
         'provider'       => 'string?',
         'model'          => 'string?',
-        'transcribed_at' => 'string?',
+        'transcribed_at' => 'datetime?',
     );
 }
 
 function ws_api_message_thread_schema()
 {
-    return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
+    return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'datetime?', 'closed' => 'boolean');
 }
 
 // One item of a message's checklist (ws_api_message_checks()).
 function ws_api_message_check_schema()
 {
-    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?', 'app_id' => 'integer?');
+    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'datetime?', 'app_id' => 'integer?');
 }
 
 /**
@@ -1457,7 +1511,7 @@ function ws_api_message_note_group_card_schema()
         'name'     => 'string',
         'color'    => 'string',
         'owner'    => 'WorkspaceMessageSender?',
-        'notes'    => array(array('id' => 'integer', 'name' => 'string', 'updated_at' => 'string?')),
+        'notes'    => array(array('id' => 'integer', 'name' => 'string', 'updated_at' => 'datetime?')),
     );
 }
 
@@ -1711,8 +1765,8 @@ function ws_api_poll_schema()
         'multiple'          => 'boolean',
         'anonymous'         => 'boolean',
         'closed'            => 'boolean',
-        'closes_at'         => 'string?',
-        'closed_at'         => 'string?',
+        'closes_at'         => 'datetime?',
+        'closed_at'         => 'datetime?',
         'voters'            => 'integer',
         'voted'             => 'boolean',
         'can_vote'          => 'boolean',
@@ -1724,7 +1778,7 @@ function ws_api_poll_schema()
             'recommended' => 'boolean', 'other' => 'boolean', 'my_text' => 'string')),
         'result_message_id' => 'integer?',
         'withdrawn'         => 'boolean',
-        'withdrawn_at'      => 'string?',
+        'withdrawn_at'      => 'datetime?',
         'can_withdraw'      => 'boolean',
         'can_ask_again'     => 'boolean',
         'again_of'          => 'integer?',
@@ -1735,7 +1789,7 @@ function ws_api_poll_schema()
         'asked'             => array(array('user_id' => 'integer', 'name' => 'string')),
         'can_answer'        => 'boolean',
         'answered_by'       => 'object?',
-        'answered_at'       => 'string?',
+        'answered_at'       => 'datetime?',
         'answer'            => 'string',
     );
 }
@@ -1823,12 +1877,14 @@ function ws_api_messages_present($viewer, $rows)
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
     $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
+    $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array();
+    $highlights = ws_api_message_highlights_map($viewer, $rows);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews, $feedback, $highlights);
     }
 
     return $out;
@@ -3504,7 +3560,7 @@ function ws_api_channel_group_access_schema()
         'user_id'    => 'integer',
         'name'       => 'string',
         'granted_by' => 'string?',
-        'granted_at' => 'string?',
+        'granted_at' => 'datetime?',
         'group_id'   => 'integer',
         'group_path' => 'string',
     );
@@ -3859,7 +3915,7 @@ function ws_api_message_reader_agent_schema()
         'name'   => 'string',
         'handle' => 'string',
         'state'  => 'string',
-        'at'     => 'string?',
+        'at'     => 'datetime?',
     );
 }
 
@@ -3876,7 +3932,7 @@ function ws_api_message_read_receipts_schema()
 // One read receipt given.
 function ws_api_message_read_receipt_schema()
 {
-    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'string?');
+    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'datetime?');
 }
 
 // What ws_api_messages_mention_invite() answers.
@@ -3978,6 +4034,68 @@ function ws_api_messages_readers($params)
         'agents'     => array_map('ws_api_message_reader_agent', array_merge($seen['agents_seen'], $seen['agents_waiting'], $seen['agents_quiet'])),
         'ack'        => $ack,
     ));
+}
+
+/**
+ * POST /workspace/messages/{id}/agent-feedback: the person marks an agent's
+ * answer right or wrong, or takes the mark back, through the panel's one
+ * writer (ws_agent_feedback_mark()) and its refusals.
+ */
+function ws_api_messages_agent_feedback($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can mark an agent\'s answer; an application key or an OAuth connection cannot do it for them.'));
+
+    if (!ws_agent_feedback_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $message_id = (int) $params['id'];
+    $verdict = (string) ($params['verdict'] ?? '');
+    $verdict = ($verdict === '') ? null : $verdict;
+    $reason = (string) ($params['reason'] ?? '');
+    $place = ws_agent_feedback_place($viewer, $message_id);
+    $check = ws_agent_feedback_check($viewer, $place['request'], $place['message'], $place['can_read'], $place['can_manage'], $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($check);
+
+    api_dry_run_stop(($verdict === null) ? 'cleared' : 'marked', 'workspace_agent_feedback', array('message_id' => $message_id, 'verdict' => (string) $verdict));
+
+    $marked = ws_agent_feedback_mark($viewer, $message_id, $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($marked);
+
+    api_ok(array('feedback' => array('verdict' => (string) $verdict, 'reason' => ($verdict === null) ? '' : (string) ($marked['reason'] ?? ''))));
+}
+
+/**
+ * Answers a refusal of ws_agent_feedback_check() or ws_agent_feedback_mark()
+ * with its own status; returns on ok.
+ *
+ * @param array $result ok; or status, error, field
+ */
+function ws_api_agent_feedback_refusal($result)
+{
+    if (!empty($result['ok'])) {
+        return;
+    }
+
+    $status = (int) ($result['status'] ?? 422);
+
+    if ($status === 404) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    if ($status === 403) {
+        api_fail(403, 'forbidden', (string) $result['error']);
+    }
+
+    if ($status === 503) {
+        api_fail(503, 'service_unavailable', (string) $result['error']);
+    }
+
+    api_fail_validation((string) $result['error'], $result['field'] ?? null);
 }
 
 /**
@@ -5086,16 +5204,16 @@ function ws_api_approval_schema()
         'answer'            => 'string',
         'answer_label'      => 'string?',
         'record'            => 'WorkspaceApprovalRecord?',
-        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
-        'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
-        'agents'            => array(array('agent' => 'string', 'handle' => 'string?', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
+        'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?')),
+        'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?', 'link_expires_at' => 'datetime?')),
+        'agents'            => array(array('agent' => 'string', 'handle' => 'string?', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'datetime?')),
         'outcome'           => 'string',
         'requested_by'      => 'WorkspacePerson?',
         'closed_by'         => 'WorkspacePerson?',
         'result_message_id' => 'integer?',
-        'closes_at'         => 'string?',
-        'closed_at'         => 'string?',
-        'created_at'        => 'string',
+        'closes_at'         => 'datetime?',
+        'closed_at'         => 'datetime?',
+        'created_at'        => 'datetime',
     );
 }
 
@@ -5397,6 +5515,9 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
         'department_id'     => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
         'channel_id'        => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
         'creator_id'        => (int) $task['creator_id'],
+        // The application that created it, null for a person (and for every
+        // task before the upgrade); name is null for a deleted application.
+        'created_by_app'    => ws_task_app_present((int) ($task['app_id'] ?? 0), ws_task_app_names(array((int) ($task['app_id'] ?? 0)))),
         'assignees'         => $assignees,
         'refs'              => $refs,
         'completed_at'      => ((int) $task['completed_at'] > 0) ? api_time($task['completed_at']) : null,
@@ -5432,17 +5553,18 @@ function ws_api_task_schema()
         'description'       => 'string',
         'status'            => 'string',
         'priority'          => 'string',
-        'start_date'        => 'string?',
-        'due_date'          => 'string?',
+        'start_date'        => 'date?',
+        'due_date'          => 'date?',
         'due_time'          => 'string?',
         'remind_minutes'    => 'integer?',
         'estimate_minutes'  => 'integer',
         'department_id'     => 'integer?',
         'channel_id'        => 'integer?',
         'creator_id'        => 'integer',
+        'created_by_app'    => 'object?',
         'assignees'         => array('integer'),
         'refs'              => array(array('type' => 'string', 'id' => 'integer')),
-        'completed_at'      => 'string?',
+        'completed_at'      => 'datetime?',
         'recurrence_id'     => 'integer?',
         'checklist_done'    => 'integer',
         'checklist_total'   => 'integer',
@@ -5452,11 +5574,11 @@ function ws_api_task_schema()
         'time_minutes'      => 'integer',
         'delegate'          => 'string?',
         'delegated_by'      => 'integer?',
-        'delegated_at'      => 'string?',
+        'delegated_at'      => 'datetime?',
         'assistant_working' => 'string?',
         'waiting_changes'   => 'integer',
-        'created_at'        => 'string',
-        'updated_at'        => 'string',
+        'created_at'        => 'datetime',
+        'updated_at'        => 'datetime',
         'warnings'          => array('string'),
     );
 }
@@ -5505,6 +5627,8 @@ function ws_api_tasks_list($params)
         'limit'         => (int) ($params['limit'] ?? 100),
         // Agent channels' tasks are left out unless asked for or named.
         'agent_channels' => ws_agent_channel_mode($params['agent_channels'] ?? ''),
+        // Made by people, or by applications (created_by_app).
+        'made_by'        => ws_task_made_by_mode($params['made_by'] ?? ''),
     );
 
     if (!empty($params['ref_type']) && !empty($params['ref_id'])) {
@@ -5548,8 +5672,47 @@ function ws_api_tasks_list($params)
 function ws_api_tasks_get($params)
 {
     $viewer = ws_api_viewer();
+    $task = ws_api_task_or_404($viewer, $params['id']);
+    $out = ws_api_task_present($viewer, $task);
 
-    api_ok(ws_api_task_present($viewer, ws_api_task_or_404($viewer, $params['id'])));
+    // The linked tasks as the panel's drawer draws them, so a client needs no
+    // read per linked task; null when the links table is not there.
+    $out['links'] = ws_task_links_detail($viewer, $task, ws_can_edit_task($viewer, $task, $out['assignees']));
+
+    api_ok($out);
+}
+
+// What GET /workspace/tasks/{id} returns: the task and its links.
+function ws_api_task_detail_schema()
+{
+    return ws_api_task_schema() + array('links' => 'WorkspaceTaskLinks?');
+}
+
+// The links of GET /workspace/tasks/{id}, as ws_task_links_detail() answers
+// them (task_links.php).
+function ws_api_task_links_schema()
+{
+    return array(
+        'blocked_by' => array('WorkspaceTaskLink'),
+        'blocks'     => array('WorkspaceTaskLink'),
+        'can_edit'   => 'boolean',
+        'max'        => 'integer',
+    );
+}
+
+// One linked task; title is empty for a task the reader cannot see, status
+// and status_label for one that no longer exists.
+function ws_api_task_link_schema()
+{
+    return array(
+        'id'           => 'integer',
+        'number'       => 'string',
+        'title'        => 'string',
+        'status'       => 'string',
+        'status_label' => 'string',
+        'open'         => 'boolean',
+        'visible'      => 'boolean',
+    );
 }
 
 /**
@@ -5851,7 +6014,7 @@ function ws_api_task_note_schema()
         'author'     => array('kind' => 'string', 'id' => 'integer', 'name' => 'string'),
         'text'       => 'string',
         'edited'     => 'boolean',
-        'created_at' => 'string',
+        'created_at' => 'datetime',
     );
 }
 
@@ -5929,9 +6092,9 @@ function ws_api_recurrence_schema()
         'frequency'     => 'string',
         'interval'      => 'integer',
         'weekdays'      => array('integer'),
-        'end_date'      => 'string?',
-        'next_date'     => 'string?',
-        'opens_date'    => 'string?',
+        'end_date'      => 'date?',
+        'next_date'     => 'date?',
+        'opens_date'    => 'date?',
         'occurrences'   => 'integer',
         'status'        => 'string',
         'ended_reason'  => 'string?',
@@ -6209,7 +6372,7 @@ function ws_api_plan_row_schema()
         'name'        => 'string',
         'unscheduled' => 'integer',
         'days'        => array(array(
-            'date'       => 'string',
+            'date'       => 'date',
             'workday'    => 'boolean',
             'leave'      => 'boolean',
             'holiday'    => 'boolean',
@@ -6305,14 +6468,18 @@ function ws_api_plan_present($row)
 function ws_api_plan_get($params)
 {
     $viewer = ws_api_viewer();
-    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0));
+    // Agent channels' tasks are left out unless asked for, as on the panel's
+    // board; agent_channels counts the ones the viewer may read, so a client
+    // knows whether to offer its toggle.
+    $board = ws_board($viewer, (string) ($params['from'] ?? ''), (int) ($params['days'] ?? 7), (int) ($params['department_id'] ?? 0),
+        false, 0, ws_agent_channel_mode($params['agent_channels'] ?? ''));
     $out = array();
 
     foreach ($board['rows'] as $row) {
         $out[] = ws_api_plan_present($row);
     }
 
-    api_ok_list($out, count($out));
+    api_ok_list($out, count($out), null, null, array('agent_channels' => (int) ($board['agent_channels'] ?? 0)));
 }
 
 /* ---------------------------------------------------------------------------
@@ -6412,8 +6579,8 @@ function ws_api_decision_schema()
         'locked'        => 'boolean',
         'claude_change' => 'WorkspaceDecisionChange?',
         'file'          => 'WorkspaceDecisionFile?',
-        'decided_at'    => 'string',
-        'created_at'    => 'string',
+        'decided_at'    => 'datetime',
+        'created_at'    => 'datetime',
     );
 }
 
@@ -6792,11 +6959,11 @@ function ws_api_change_schema()
         'error'               => 'string',
         'requested_by'        => 'WorkspacePerson?',
         'decided_by'          => 'WorkspacePerson?',
-        'decided_at'          => 'string?',
+        'decided_at'          => 'datetime?',
         'decision_message_id' => 'integer?',
         'can_apply'           => 'boolean',
         'can_dismiss'         => 'boolean',
-        'created_at'          => 'string?',
+        'created_at'          => 'datetime?',
     );
 }
 
@@ -6891,9 +7058,65 @@ function ws_api_task_seen_sql($viewer, $alias)
 }
 
 /**
+ * SQL for the discussions a person is a member of, opened on messages of the
+ * given channels: the candidates ws_api_readable_thread_ids() checks, each
+ * read as a channel there.
+ *
+ * @param int   $user_id
+ * @param int[] $parent_ids
+ * @return string empty when no channel is given
+ */
+function ws_api_thread_ids_sql($user_id, $parent_ids)
+{
+    $parent_ids = array_values(array_unique(array_filter(array_map('intval', (array) $parent_ids))));
+
+    if (empty($parent_ids) || ((int) $user_id <= 0)) {
+        return '';
+    }
+
+    return "SELECT t.channel_id FROM ws_threads t
+        INNER JOIN ws_channel_members m ON m.channel_id = t.channel_id AND m.user_id = '" . (int) $user_id . "'
+        WHERE t.parent_channel_id IN (" . implode(',', $parent_ids) . ")";
+}
+
+/**
+ * The ids of the discussions the owner may read, opened in the given
+ * channels: those they are a member of while they read the channel it is
+ * about (ws_can_read_channel()); for the application Claude works through,
+ * only those Claude may be asked in.
+ *
+ * @param array $viewer
+ * @param int[] $parent_ids ws_api_readable_channel_ids()
+ * @return int[]
+ */
+function ws_api_readable_thread_ids($viewer, $parent_ids)
+{
+    $sql = (function_exists('ws_threads_ready') && ws_threads_ready()) ? ws_api_thread_ids_sql($viewer['id'] ?? 0, $parent_ids) : '';
+
+    if ($sql === '') {
+        return array();
+    }
+
+    $claude = ws_api_is_claude();
+    $ids = array();
+
+    foreach ((array) db_values($sql) as $id) {
+        $channel = ws_channel((int) $id);
+
+        if (!$channel || !ws_can_read_channel($viewer, $channel) || ($claude && !ws_claude_channel_allowed($channel))) {
+            continue;
+        }
+
+        $ids[] = (int) $id;
+    }
+
+    return $ids;
+}
+
+/**
  * Which proposed changes the owner may read, as SQL over ws_ai_changes c:
- * those under answers in the channels the owner reads, and those waiting on
- * the tasks they see.
+ * those under answers in the channels and discussions the owner reads, and
+ * those waiting on the tasks they see.
  *
  * @param array $viewer
  * @return string
@@ -6902,6 +7125,7 @@ function ws_api_changes_reach_sql($viewer)
 {
     $reach = array();
     $channel_ids = ws_api_readable_channel_ids($viewer);
+    $channel_ids = array_merge($channel_ids, ws_api_readable_thread_ids($viewer, $channel_ids));
 
     if (!empty($channel_ids)) {
         $reach[] = "c.channel_id IN (" . implode(',', $channel_ids) . ")";
@@ -7262,10 +7486,10 @@ function ws_api_assistant_request_schema()
         'requested_by'     => 'WorkspacePerson?',
         'reply_message_id' => 'integer?',
         'error'            => 'string',
-        'created_at'       => 'string?',
-        'sent_at'          => 'string?',
-        'claimed_at'       => 'string?',
-        'answered_at'      => 'string?',
+        'created_at'       => 'datetime?',
+        'sent_at'          => 'datetime?',
+        'claimed_at'       => 'datetime?',
+        'answered_at'      => 'datetime?',
         'prompt_version'   => 'string?',
     );
 }
@@ -7782,8 +8006,8 @@ function ws_api_note_schema()
         'channel_id'  => 'integer?',
         'text'        => 'string?',
         'body'        => 'string?',
-        'created_at'  => 'string?',
-        'updated_at'  => 'string?',
+        'created_at'  => 'datetime?',
+        'updated_at'  => 'datetime?',
         'revision'    => 'integer?',
         'group_id'    => 'integer?',
         'locked'      => 'boolean',
@@ -8028,13 +8252,13 @@ function ws_api_task_time_schema()
         'task_id'    => 'integer',
         'user_id'    => 'integer',
         'minutes'    => 'integer',
-        'worked_on'  => 'string',
+        'worked_on'  => 'date',
         'note'       => 'string',
         'billable'   => 'boolean',
         'invoice_id' => 'integer?',
         'running'    => 'boolean',
-        'started_at' => 'string?',
-        'created_at' => 'string',
+        'started_at' => 'datetime?',
+        'created_at' => 'datetime',
     );
 }
 

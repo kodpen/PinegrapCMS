@@ -156,7 +156,9 @@ class VolumePacker //implements LoggerAwareInterface
      * @param int $depthLeft
      * @return OrientatedItem|false
      */
-    protected function findBestOrientation(Item $item, OrientatedItem $prevItem = null, Item $nextItem = null, $widthLeft, $lengthLeft, $depthLeft) {
+    // Pinegrap: "?Type" instead of "Type $x = null", which PHP 8.4 reports;
+    // the default sat before required parameters, so it was never used.
+    protected function findBestOrientation(Item $item, ?OrientatedItem $prevItem, ?Item $nextItem, $widthLeft, $lengthLeft, $depthLeft) {
 
         $orientations = $this->findPossibleOrientations($item, $prevItem, $widthLeft, $lengthLeft, $depthLeft);
 
@@ -195,7 +197,8 @@ class VolumePacker //implements LoggerAwareInterface
      * @param int $depthLeft
      * @return OrientatedItem[]
      */
-    protected function findPossibleOrientations(Item $item, OrientatedItem $prevItem = null, $widthLeft, $lengthLeft, $depthLeft) {
+    // Pinegrap: "?OrientatedItem" without the unused default, as above.
+    protected function findPossibleOrientations(Item $item, ?OrientatedItem $prevItem, $widthLeft, $lengthLeft, $depthLeft) {
 
         //$orientations = [];
         $orientations = array();

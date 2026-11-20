@@ -1,0 +1,59 @@
+[
+	{
+		"about": "words go in by layer id and field; an untranslated text and an unknown id change nothing; only a changed text layer is fitted",
+		"doc": { "v": 1, "artboard": { "width": 100, "height": 50 }, "layers": [
+			{ "id": "t1", "type": "text", "text": "Sale", "size": 40, "x": 10, "y": 5, "w": 80, "h": 50, "align": "center" },
+			{ "id": "t2", "type": "text", "text": "199 TL only", "size": 20 },
+			{ "id": "s1", "type": "sticker", "kind": "burst", "label": "New" },
+			{ "id": "r1", "type": "rect", "color": "#ff0000" }
+		] },
+		"texts": [
+			{ "id": "t1", "field": "text", "text": "Rebajas" },
+			{ "id": "t2", "field": "text", "text": null },
+			{ "id": "s1", "field": "label", "text": "Nuevo" },
+			{ "id": "x", "field": "text", "text": "Lost" }
+		],
+		"words": ["Rebajas", "199 TL only", "Nuevo", ""],
+		"fitted": ["t1"]
+	},
+	{
+		"about": "the source's own words are no change: nothing is fitted",
+		"doc": { "v": 1, "artboard": { "width": 100, "height": 50 }, "layers": [
+			{ "id": "t1", "type": "text", "text": "Pinegrap", "size": 40 }
+		] },
+		"texts": [{ "id": "t1", "field": "text", "text": "Pinegrap" }],
+		"words": ["Pinegrap"],
+		"fitted": []
+	},
+	{
+		"about": "an empty translation keeps the source's words; a text layer is not read by the label field",
+		"doc": { "v": 1, "artboard": { "width": 100, "height": 50 }, "layers": [
+			{ "id": "t1", "type": "text", "text": "Sale", "size": 40 },
+			{ "id": "t2", "type": "text", "text": "Now", "size": 40 }
+		] },
+		"texts": [{ "id": "t1", "field": "label", "text": "Rebajas" }, { "id": "t2", "field": "text", "text": "" }],
+		"words": ["Sale", "Now"],
+		"fitted": []
+	},
+	{
+		"about": "a layer id written as a number meets the store's text id",
+		"doc": { "v": 1, "artboard": { "width": 100, "height": 50 }, "layers": [
+			{ "id": 7, "type": "text", "text": "Open", "size": 30 }
+		] },
+		"texts": [{ "id": "7", "field": "text", "text": "Offen" }],
+		"words": ["Offen"],
+		"fitted": ["7"]
+	},
+	{
+		"about": "no list of layers: nothing to draw",
+		"doc": { "v": 1, "artboard": { "width": 100, "height": 50 }, "layers": { "t1": { "id": "t1", "type": "text", "text": "Sale" } } },
+		"texts": [{ "id": "t1", "field": "text", "text": "Rebajas" }],
+		"none": true
+	},
+	{
+		"about": "no document: nothing to draw",
+		"doc": null,
+		"texts": [],
+		"none": true
+	}
+]

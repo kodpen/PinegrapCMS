@@ -1216,8 +1216,9 @@
         } else {
             // A redacted area takes the press only inside its outline; an
             // erased or adjusted area is the picture's own, so a press in a
-            // see-through hole takes the picture with it.
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q) { return !M.pictureArea(l) && M.areaHit(l, q); });
+            // see-through hole takes the picture with it. A selected layer
+            // within a finger's reach keeps the press (pickedReach()).
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q) { return !M.pictureArea(l) && M.areaHit(l, q); }, this.pickedReach(e));
 
             if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
                 b.pic = false;
@@ -1800,5 +1801,85 @@
 
             return self.request(body);
         });
+    };
+
+    // ---- The queue's drawing: a waiting row drawn with no editor open ----
+
+    // Shared by "Draw the waiting pictures" (picture_queue.js), the panel's
+    // background draw (picture_auto.js) and the Design Canvas after a Save.
+    // A painter on the editor's prototype draws one picture: what
+    // drawLanguage() reads from an open editor.
+    function drawer(fileId) {
+        var d = Object.create(Editor.prototype);
+
+        d.langFileId = fileId;
+
+        return d;
+    }
+
+    // A picture's live document and languages (action picture_languages),
+    // read once per cache; null when it cannot be read or has no words.
+    function pictureLanguages(fileId, cache) {
+        if (!cache[fileId]) {
+            cache[fileId] = drawer(fileId).request({ action: 'picture_languages', file_id: fileId }).then(function (r) {
+                return (r && (r.status === 'success') && r.words) ? r : null;
+            }, function () {
+                return null;
+            });
+        }
+
+        return cache[fileId];
+    }
+
+    // One row (a picture and a language) as the Languages list draws it,
+    // unless it was drawn meanwhile or a text is no longer translated
+    // (M.languageRowPlan()). Answers { status: drawn | look | skipped |
+    // failed, message } with the server's message of a refusal.
+    X.drawWaiting = function (fileId, code, cache) {
+        return pictureLanguages(fileId, cache || {}).then(function (data) {
+            var lang = data ? data.languages.filter(function (l) { return l.code === code; })[0] : null;
+            var plan = M.languageRowPlan(lang);
+
+            if (plan !== 'draw') {
+                return { status: plan, message: '' };
+            }
+
+            return drawer(fileId).drawLanguage(data, lang).then(function (r) {
+                return { status: M.languageRowStatus(r), message: (r && r.message) || '' };
+            });
+        }).then(null, function () {
+            return { status: 'failed', message: '' };
+        });
+    };
+
+    // Every row of one picture that waits and may be drawn
+    // (M.languagesWaiting()), one after another.
+    X.drawPicture = function (fileId) {
+        var cache = {};
+
+        return pictureLanguages(fileId, cache).then(function (data) {
+            return M.languagesWaiting(data ? data.languages : []).reduce(function (chain, code) {
+                return chain.then(function () {
+                    return X.drawWaiting(fileId, code, cache);
+                });
+            }, Promise.resolve());
+        });
+    };
+
+    // A Save of the file the Languages list belongs to turned its drawn
+    // languages out of date: they are drawn again at once, with no press,
+    // as the queue draws them, after the editor has closed. A copy is
+    // another file and has no row.
+    var finishLanguages = Editor.prototype.finish;
+
+    Editor.prototype.finish = function (result) {
+        var fileId = this.langFileId, first = !this.finished;
+        var listed = !!(this.langData && this.langData.words && this.langData.languages && this.langData.languages.length);
+
+        finishLanguages.apply(this, arguments);
+
+        if (first && fileId && listed && result && result.file && (Number(result.fileId) === Number(fileId))) {
+            X.drawPicture(fileId);
+        }
     };
 }(window.PgImageEditor.parts));

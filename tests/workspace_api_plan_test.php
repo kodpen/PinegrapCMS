@@ -6,7 +6,9 @@
  * a cell carries the board's task entries with their flags (the due day, a
  * projected copy of a repeating task, a moved copy, a copy waiting for an
  * overdue one) and the plan items the grid placed on the day, and a row
- * carries the count of the person's undated tasks.
+ * carries the count of the person's undated tasks. The board leaves agent
+ * channels' tasks out unless asked, and a single task (GET
+ * /workspace/tasks/{id}) carries its links in the drawer's shape.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -108,4 +110,76 @@ function test_ws_api_plan_schema_declares_the_new_keys()
 	pg_assert_same(array_keys($schema['days'][0]), array_keys($row['days'][0]), 'day keys');
 	pg_assert_same(array_keys($schema['days'][0]['task_items'][0]), array_keys($row['days'][0]['task_items'][0]), 'task item keys');
 	pg_assert_same(array_keys($schema['days'][0]['events'][0]), array_keys($row['days'][0]['events'][0]), 'event keys');
+}
+
+function ws_api_plan_test_route($id)
+{
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === $id) {
+			return $route;
+		}
+	}
+
+	return null;
+}
+
+function ws_api_plan_test_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
+
+// The board leaves agent channels' tasks out as the panel's board does, takes
+// include or only, and answers how many agent channels the owner may read.
+function test_ws_api_plan_get_takes_the_agent_channels_mode()
+{
+	$route = ws_api_plan_test_route('workspace.plan.get');
+	$param = null;
+
+	foreach ($route['params'] as $candidate) {
+		if ($candidate['name'] === 'agent_channels') {
+			$param = $candidate;
+		}
+	}
+
+	pg_assert_true($param !== null, 'the route takes agent_channels');
+	pg_assert_same(array('include', 'only'), $param['values']);
+	pg_assert_same('integer', $route['returns']['agent_channels'], 'the count is declared beside list');
+
+	$source = ws_api_plan_test_source('ws_api_plan_get');
+
+	pg_assert_contains("ws_agent_channel_mode(\$params['agent_channels'] ?? '')", $source);
+	pg_assert_contains("'agent_channels' =>", $source);
+}
+
+// A single task carries its links in the drawer's shape; the list keeps the
+// bare ids.
+function test_ws_api_task_get_carries_the_drawer_links()
+{
+	pg_assert_same('WorkspaceTaskDetail', ws_api_plan_test_route('workspace.tasks.get')['returns']);
+	pg_assert_same(array('list' => 'WorkspaceTask'), ws_api_plan_test_route('workspace.tasks.list')['returns']);
+
+	$detail = ws_api_task_detail_schema();
+
+	pg_assert_same(array_merge(array_keys(ws_api_task_schema()), array('links')), array_keys($detail));
+	pg_assert_same('WorkspaceTaskLinks?', $detail['links'], 'null without the links table');
+
+	$objects = ws_openapi_objects();
+
+	pg_assert_same('ws_api_task_links_schema', $objects['WorkspaceTaskLinks']);
+	pg_assert_same('ws_api_task_link_schema', $objects['WorkspaceTaskLink']);
+
+	// Every key the drawer's function answers is declared, and no other.
+	$source = ws_api_plan_test_source('ws_task_links_detail');
+	preg_match_all("/'([a-z_]+)'\\s*=>/", $source, $found);
+	$declared = array_merge(array_keys(ws_api_task_links_schema()), array_keys(ws_api_task_link_schema()));
+	$answered = array_unique($found[1]);
+
+	sort($declared);
+	sort($answered);
+	pg_assert_same($declared, array_values($answered));
+
+	pg_assert_contains('ws_task_links_detail(', ws_api_plan_test_source('ws_api_tasks_get'));
 }

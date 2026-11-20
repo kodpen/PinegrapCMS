@@ -1054,6 +1054,7 @@ function api_openapi_objects()
 {
     $objects = array(
         'Meta'         => 'api_meta_schema',
+        'MetaWorkspace' => 'api_meta_workspace_schema',
         'Product'      => 'api_product_schema',
         'ProductBundle' => 'api_product_bundle_schema',
         'ProductGroup' => 'api_product_group_schema',
@@ -1151,6 +1152,7 @@ function api_openapi_objects()
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',
+        'CustomerValueReport' => 'api_customer_value_report_schema',
         'VitalsReport'   => 'api_vitals_report_schema',
         'PageClicksReport' => 'api_page_clicks_report_schema',
         'PageClicksElement' => 'api_page_clicks_element_schema',
@@ -1163,6 +1165,8 @@ function api_openapi_objects()
         'DesignRevision' => 'api_design_revision_schema',
         'DesignRestore'  => 'api_design_restore_schema',
         'DesignPrototypeLink' => 'api_design_prototype_link_schema',
+        'DesignBundle'   => 'api_design_bundle_schema',
+        'DesignBundlePage' => 'api_design_bundle_page_schema',
         'DesignPrototypeLinkCreated' => 'api_design_prototype_link_created_schema',
         'AuthSession'    => 'api_auth_session_schema',
         'Me'             => 'api_auth_me_schema',

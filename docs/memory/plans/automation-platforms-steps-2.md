@@ -24,5 +24,5 @@ description: Plan automation-platforms, steps AU8 to AU10 and the order of all t
 
 ## What waits for what?
 - Waiting for nothing: AU1, AU3, AU4, AU7, AU8. AU2 waits for AU1; AU5 and AU6 for AU4; AU9 for AU8's yes, AU3 and AU4; AU10 for AU5, AU6 and AU9.
-- Two steps that edit the same file are not open together: AU4 to AU6 and AU9 on `includes/api/resources/webhooks.php`; AU10 and plan `api-clean-modern`'s AM12 on `includes/api/console_view.php`.
+- Two steps that edit the same file are not open together: AU4 to AU6 and AU9 on `includes/api/resources/webhooks.php`. AU10 also edits `includes/api/console_view.php`, where the Conventions section lives (`api/api-docs-conventions.md`).
 - Suggested beginning: AU1, AU4 and AU8 side by side.

@@ -1260,11 +1260,55 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
 }
 .sd-sect-sum-txt.sd-sect-sum-whole { flex: 0 0 auto; min-width: max-content; }
+/* A state in a closed section's head ("EN · not translated"): a badge,
+   amber while something is missing. */
+.sd-sect-state {
+    flex: 0 0 auto; padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+    background: var(--sd-raised-bg-2); color: var(--sd-text-muted);
+    font-size: 10.5px; font-weight: 750; line-height: 1.3;
+}
+.sd-sect-state.is-warn { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .sd-sect-hdr.sd-sect-open .sd-sect-sum,
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }
+/* Several elements: the kind's own section keeps "shared options" in its
+   head while open (data-sd-sum, _sdSectHeadsFill()). */
+.sd-sect-hdr.sd-sect-open .sd-sect-sum.sd-sect-sum-keep { display: block; }
 /* A section the search shows rows of has its arrow open. */
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-chev { transform: rotate(90deg); }
+/* A word of context at the right of an open section's head ("parent:
+   flex" on Advanced › Layout, _sdSectCard()); it stands after the count,
+   where a closed section shows its summary. */
+.sd-sect-tag {
+    order: 1; flex: 0 1 auto; min-width: 0; margin-left: auto;
+    padding: 1px 7px; border-radius: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    background: var(--sd-raised-bg-2); color: var(--sd-label);
+    font-size: 10.5px; font-weight: 650; line-height: 1.5;
+}
+.sd-sect-hdr:not(.sd-sect-open) > .sd-sect-tag { display: none; }
+/* Advanced › Layout's note: which rows the context hides and why, and
+   "Make it a container" beside it; the button goes under the words when
+   they would get narrower than 120 px. */
+.sd-lay-note {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 9px;
+    margin-top: 8px; padding: 10px 11px; border-radius: 10px;
+    background: var(--sd-input-bg); border: 1px solid var(--sd-panel-border);
+    color: var(--sd-label); font-size: 12px; line-height: 1.45;
+}
+.sd-sp-section > .sd-lay-note:first-child { margin-top: 0; }
+.sd-lay-note > .bi { flex-shrink: 0; color: var(--sd-text-muted); font-size: 15px; }
+.sd-lay-note-txt { flex: 1 1 120px; min-width: 0; }
+.sd-lay-make {
+    flex-shrink: 0; height: 26px; margin-left: auto; padding: 0 10px; border-radius: 8px;
+    background: var(--sd-raised-bg-2); border: 1px solid var(--sd-border-strong);
+    color: var(--sd-text); font-size: 11.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+    transition: background-color .12s;
+}
+.sd-lay-make:hover { background: color-mix(in srgb, var(--sd-text) 6%, var(--sd-raised-bg-2)); }
+.sd-lay-make:focus-visible { outline: 0; border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring); }
+.sd-lay-make:disabled { opacity: .5; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .sd-lay-make { transition: none; } }
 
 /* The identity row (60): icon box 36, the name and its tag, the path's
    last three steps, the menu. */
@@ -1312,6 +1356,72 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-id-step:not(:last-child),
 .sd-rcol-narrow .sd-id-sep { display: none; }
 .sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
+/* Several elements selected: the count on the icon's lower right corner
+   (18, the accent ground, a 2 px ring of the panel's ground); the path's
+   place holds one line, the shared parent or the kinds, cut at its end. */
+.sd-id-icon-mc { position: relative; }
+.sd-id-count {
+    position: absolute; right: -6px; bottom: -6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent);
+    box-shadow: 0 0 0 2px var(--sd-panel-bg);
+    font-size: 11px; font-weight: 650; line-height: 1;
+}
+.sd-id-path-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-rcol-narrow .sd-id-path-mc::before { content: none; }
+/* The strip under the tabs: a change goes to every selected element. */
+.sd-mc-strip {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 12px 8px; padding: 6px 10px; border-radius: 8px;
+    background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+    color: var(--sd-text); font-size: 12px; line-height: 1.35;
+}
+.sd-mc-strip .bi { flex-shrink: 0; color: var(--sd-accent); }
+/* The line in the kind's own section: what belongs to one element. */
+.sd-mc-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 4px 0 6px 14px; color: var(--sd-text-muted); font-size: 12px; line-height: 1.4;
+}
+.sd-mc-note .bi { flex-shrink: 0; margin-top: 1px; }
+/* The head over the Options search: the identity row, then the tabs. */
+.sd-props-head { flex-shrink: 0; background: var(--sd-panel-bg); }
+.sd-props-head[hidden] { display: none; }
+/* The three tabs (40): the holder 4 around them, a tab 30 high, 4 apart,
+   12 from the sides; the open tab has the raised ground. A tab's badge
+   counts its changed rows, filled with the accent on the open tab. */
+.sd-otabs {
+    display: flex; gap: 4px; height: 40px; padding: 4px; margin: 0 12px 8px;
+    background: var(--sd-input-bg); border-radius: 11px;
+}
+.sd-otab {
+    position: relative; flex: 1 1 0; min-width: 0; height: 30px; padding: 0 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 0; border-radius: 8px; background: transparent; cursor: pointer;
+    color: var(--sd-text-muted); font-size: 12.5px; font-weight: 600; line-height: 1;
+}
+.sd-otab .bi { font-size: 13px; flex-shrink: 0; }
+.sd-otab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-otab.active { color: var(--sd-text); background: var(--sd-raised-bg-2); font-weight: 630; }
+.sd-otab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-otab-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-otab-count {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-width: 18px; height: 17px; padding: 0 5px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text);
+    font-size: 10.5px; font-weight: 750; line-height: 1;
+}
+.sd-otab.active .sd-otab-count { background: var(--sd-accent); color: var(--sd-panel-bg); }
+/* Under 300 px a tab carries no icon; its badge sits on its top right
+   corner, 16 high in a ring of the holder's ground, and takes no width. */
+.sd-rcol-narrow .sd-otab .bi { display: none; }
+.sd-rcol-narrow .sd-otab-count {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    box-shadow: 0 0 0 2px var(--sd-input-bg);
+}
+/* A tab's sections start under the search. */
+.sd-otab-pane { padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .sd-sect-chev { transition: none; } }
 /* A row: the changed dot's place (14), the label column (92), a gap of
    10, the control; at least 32 high, 6 apart. The dot's reset button
@@ -1528,6 +1638,26 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-canvas-wrapper { position:relative; }
 
+/* The link marks over the canvas (_sdLinkMarksDraw()): red on a broken
+   link, amber on a link without a target, at the right edge of its
+   element. The layer covers the part of the canvas frame in view and lets
+   every other click through; it stays under the Prototype view and the
+   docked panels. */
+.sd-lm-layer { position: absolute; z-index: 20; overflow: hidden; pointer-events: none; }
+.sd-lm {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--sd-panel-bg); border-radius: 50%;
+    background: var(--sd-danger); color: var(--sd-panel-bg);
+    font-size: 10.5px; line-height: 1;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+    cursor: pointer; pointer-events: auto;
+}
+.sd-lm.sd-lm-empty { background: var(--sd-warning); }
+.sd-lm:hover { filter: brightness(1.12); }
+.sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
@@ -1656,6 +1786,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     -webkit-user-select: none; user-select: none;
 }
 .sd-bm-v:hover { background: color-mix(in srgb, var(--sd-text) 25%, transparent); }
+/* A side whose value differs across the selected elements ("~"). */
+.sd-bm-v.sd-bm-mixed { color: var(--sd-accent); box-shadow: inset 0 0 0 1px var(--sd-accent-line); }
 .sd-bm-v.mt { top: 2px; left: 50%; transform: translateX(-50%); }
 .sd-bm-v.mb { bottom: 2px; left: 50%; transform: translateX(-50%); }
 .sd-bm-v.ml { left: 4px; top: 50%; transform: translateY(-50%); }
@@ -3254,6 +3386,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background: var(--sd-accent-strong); color: var(--sd-on-accent); box-shadow: var(--sd-segment-shadow);
 }
 .sd-seg:focus-visible, .sd-align-btn:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+/* Several elements whose values differ: no segment selected, each value
+   present framed with a 1 px accent line. */
+.sd-seg.sd-seg-has, .sd-align-btn.sd-seg-has { color: var(--sd-text); box-shadow: inset 0 0 0 1px var(--sd-accent); }
 .sd-seg:disabled, .sd-align-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 /* Ensure button group fits inside both sd-sp-row (3rd col) and sd-sp-bp-item (2nd col) */
 .sd-sp-row .sd-align-grp,
@@ -3402,6 +3537,25 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-chg-reset:not(:disabled):hover { background: var(--sd-accent-soft); }
 .sd-chg-reset:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
 .sd-chg-reset:disabled { cursor: default; }
+/* Several elements: a row changed in only some of them has a hollow ring
+   (2 px accent) in the dot's place (_sdMcMark()). */
+.sd-chg-reset.sd-chg-ring::before { width: 8px; height: 8px; background: transparent; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+
+/* ── A value that differs across the selected elements ──
+   "— Multiple —" in grey italics in a field, a dropdown or a colour's
+   name; a colour's swatch split in two; a button group's values spelled
+   on a muted line under the row. */
+select.sd-mixed, .sd-cp-label.sd-mixed { font-style: italic; color: var(--sd-text-muted); }
+select.sd-mixed option { font-style: normal; color: var(--sd-text); }
+input.sd-mixed::placeholder { font-style: italic; color: var(--sd-text-muted); }
+.sd-color-preview.sd-color-split { display: inline-flex; overflow: hidden; }
+.sd-color-split > span { flex: 1 1 50%; min-width: 0; height: 100%; }
+.sd-mc-spell {
+    flex: 1 1 100%; padding-left: 102px; margin-top: -2px;
+    color: var(--sd-text-muted); font-size: 11px; line-height: 1.35;
+}
+.sd-prop-row.sd-row-stack > .sd-mc-spell,
+.sd-rcol-narrow .sd-prop-row > .sd-mc-spell { padding-left: 0; }
 
 /* ── A row that stands its control under its label ──
    Always (.sd-row-stack: the group does not fit beside the label) or
@@ -7341,6 +7495,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
+/* A double-click on a frame zooms to it, never picks up its words. */
+.sd-proto .pgc-boxes { -webkit-user-select: none; user-select: none; }
+/* Zoomed to a frame (_sdProtoZoomShow()): "All" and the frame's name in the
+   canvas's top left corner, over the map. */
+.sd-proto-zoomed {
+    position: absolute; top: 8px; left: 8px; z-index: 3; max-width: calc(100% - 16px);
+    display: flex; align-items: center; gap: 8px;
+    padding: 2px 12px 2px 2px; border-radius: 14px;
+    background: #2a2f36; color: var(--sd-text); font-size: .75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-proto-zoomed[hidden] { display: none; }
+.sd-proto-zoomed-all {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border: 0; border-radius: 12px;
+    background: var(--sd-accent-strong); color: #fff; font: inherit; font-weight: 600; line-height: 1.5; cursor: pointer;
+}
+.sd-proto-zoomed-all:hover { filter: brightness(1.1); }
+.sd-proto-zoomed-all:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.sd-proto-zoomed-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.sd-proto-zoomed-name[hidden] { display: none; }
 .sd-proto .pgc-node {
     padding: 0; background: #2a2f36; color: var(--sd-text);
     box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -7392,7 +7567,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 1px 8px; border-radius: 10px; white-space: nowrap;
     background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
 }
+.sd-proto-pic-foot { border: 0; font-family: inherit; line-height: 1.5; cursor: default; }
 .sd-proto-pic-foot[hidden] { display: none; }
+/* The selected long page's foot opens it whole, the open page's closes it
+   (_sdProtoPicFoot()). */
+.sd-proto-pic-foot.sd-proto-pic-foot-on { cursor: pointer; background: var(--sd-accent-strong); color: #fff; }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:hover { filter: brightness(1.1); }
+.sd-proto-pic-foot.sd-proto-pic-foot-on:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 /* The selected frame's name in the accent colour (F2). */
 .sd-proto .pgc-selected .sd-proto-name { color: var(--sd-accent); }
 @media (prefers-reduced-motion: reduce) {
@@ -7480,6 +7661,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    selected frame's marks (F23). */
 .sd-proto-hot.sd-proto-hot-own.sd-proto-hot-draw { cursor: grab; }
 .sd-proto-hot:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
+/* A mark under 12 px on screen takes presses 4 px around it
+   (_sdProtoReach(); --sd-proto-reach is those pixels in the picture's
+   units, the 2px border added). */
+.sd-proto-hot.sd-proto-hot-reach::before { content: ''; position: absolute; inset: calc(-2px - var(--sd-proto-reach, 0px)); }
+/* The "+" handle beside the drawable mark under the pointer or in focus
+   (_sdProtoGrip()): its box spans the gap from the mark and is scaled to
+   20 px on screen at any zoom; the round handle at its far end. */
+.sd-proto-grip { position: absolute; z-index: 3; display: flex; align-items: center; box-sizing: border-box; transform-origin: 0 0; pointer-events: auto; cursor: grab; }
+.sd-proto-grip[hidden] { display: none; }
+.sd-proto-grip-right { justify-content: flex-end; }
+.sd-proto-grip-left { justify-content: flex-start; }
+.sd-proto-grip-below { flex-direction: column; justify-content: flex-end; }
+.sd-proto-grip-above { flex-direction: column; justify-content: flex-start; }
+.sd-proto-grip-dot {
+    display: flex; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: 12px; line-height: 1;
+    box-shadow: 0 0 0 1px var(--sd-on-accent), 0 1px 4px rgba(0,0,0,.45);
+}
+.sd-proto-grip:hover .sd-proto-grip-dot { filter: brightness(1.15); }
+/* While an arrow is drawn the handle steps aside. */
+.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-grip { visibility: hidden; }
 /* The pointer on a mark or a links panel row lifts its arrow: drawn last,
    thicker, the others faded. */
 .sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift) { opacity: .25; }
@@ -7488,6 +7690,22 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    the drawn one goes at full strength to the pointer. */
 .sd-proto .pgc-edges.sd-proto-drawing .pgc-edge { opacity: .2; }
 .sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp { stroke: var(--sd-accent); stroke-width: 3; stroke-dasharray: none; opacity: 1; }
+/* An arrow's leg inside its frame (_sdProtoLegs()): from the middle of its
+   link's mark to where the arrow leaves the frame's edge, a dot on the
+   mark; in the arrow's colour, lifted and faded with it. */
+.sd-proto-legs { position: absolute; z-index: 1; overflow: visible; pointer-events: none; }
+.sd-proto-leg-line { stroke: var(--pgc-line); stroke-width: 2; }
+.sd-proto-leg-dot { fill: var(--pgc-line); }
+.sd-proto-leg-out .sd-proto-leg-line { stroke: var(--pgc-accent); }
+.sd-proto-leg-out .sd-proto-leg-dot { fill: var(--pgc-accent); }
+.sd-proto-leg-in .sd-proto-leg-line { stroke: var(--pgc-in); stroke-dasharray: 6 4; }
+.sd-proto-leg-in .sd-proto-leg-dot { fill: var(--pgc-in); }
+.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-line { stroke: #ff6b6b; stroke-dasharray: 6 4; }
+.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-dot { fill: #ff6b6b; }
+.sd-proto-leg-faint { opacity: var(--pgc-faint, .3); }
+.sd-proto .pgc-boxes.sd-proto-lifting .sd-proto-leg:not(.sd-proto-leg-lift) { opacity: .25; }
+.sd-proto .sd-proto-leg.sd-proto-leg-lift .sd-proto-leg-line { stroke-width: 3; }
+.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-leg { opacity: .2; }
 .sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
 .sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Section headings (groups()), read at the zoom a large design fits at. */
@@ -7509,6 +7727,93 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-menu-item[aria-checked="true"] { color: var(--sd-accent); font-weight: 600; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Prototype comments (assets/js/style_designer_comments.js) ──
+   The toolbar's Comments button (beside the Assistant's), the pins over the
+   canvas frame and the list over the right column. Colours come from the
+   chrome's tokens only (designer/designer-chrome-tokens.md): a pin is the
+   warning amber with the panel's ground as its text, a resolved one the
+   success green. */
+.sd-pc-btn { width: auto; gap: .35rem; padding: 0 .55rem; position: relative; }
+.sd-pc-btn[aria-expanded="true"] { background: rgba(var(--sd-accent-rgb), .22); border-color: var(--sd-accent-line); }
+.sd-pc-btn-txt { font-size: .8rem; }
+.sd-pc-btn-count {
+    min-width: 18px; height: 18px; padding: 0 .3rem; border-radius: 999px;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: .68rem; font-weight: 700; line-height: 18px; text-align: center;
+}
+.sd-pc-btn-dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--sd-warning); }
+@media (max-width: 1279.98px) { .sd-pc-btn-txt { display: none; } }
+
+.sd-pc-layer { position: fixed; z-index: 1040; overflow: hidden; pointer-events: none; }
+.sd-pc-pin {
+    position: absolute; transform: translate(-4px, -100%);
+    min-width: 26px; height: 26px; padding: 0 .4rem;
+    border: 2px solid var(--sd-text); border-radius: 13px 13px 13px 2px;
+    background: var(--sd-warning); color: var(--sd-panel-bg); font: 700 .75rem/22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--sd-shadow) 45%, transparent); cursor: pointer; pointer-events: auto;
+}
+.sd-pc-pin:hover, .sd-pc-pin:focus-visible { background: color-mix(in srgb, var(--sd-warning) 80%, var(--sd-text)); outline: none; }
+.sd-pc-pin.is-resolved { background: var(--sd-success); }
+.sd-pc-pin.is-focus { box-shadow: 0 0 0 3px var(--sd-accent), 0 2px 8px color-mix(in srgb, var(--sd-shadow) 45%, transparent); }
+
+.sd-pc-panel {
+    position: fixed; top: 96px; right: 16px; bottom: 16px; z-index: 1060;
+    width: min(380px, calc(100vw - 32px));
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--sd-panel-bg); color: var(--sd-text);
+    border: 1px solid var(--sd-panel-border); border-radius: 10px;
+    box-shadow: 0 12px 40px color-mix(in srgb, var(--sd-shadow) 55%, transparent); font-size: .82rem;
+}
+.sd-pc-panel[hidden] { display: none; }
+.sd-pc-head { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-bottom: 1px solid var(--sd-panel-border); }
+.sd-pc-head > .bi { color: var(--sd-warning); }
+.sd-pc-title { flex: 1; margin: 0; font-size: .9rem; font-weight: 600; color: var(--sd-text); }
+.sd-pc-tabs { display: flex; gap: .25rem; padding: .5rem .75rem 0; border-bottom: 1px solid var(--sd-panel-border); }
+.sd-pc-tab {
+    border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--sd-text-muted);
+    padding: .3rem .5rem .45rem; font-size: .8rem; cursor: pointer;
+}
+.sd-pc-tab.is-active { color: var(--sd-text); border-bottom-color: var(--sd-accent); }
+.sd-pc-tab-count { margin-left: .2rem; padding: 0 .35rem; border-radius: 999px; background: var(--sd-raised-bg-2); font-size: .7rem; }
+.sd-pc-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .5rem .75rem .75rem; }
+.sd-pc-empty { color: var(--sd-text-muted); text-align: center; padding: 1.25rem .5rem; line-height: 1.5; margin: 0; }
+.sd-pc-page + .sd-pc-page { margin-top: .75rem; }
+.sd-pc-page-name {
+    display: flex; align-items: baseline; gap: .4rem; margin: .25rem 0 .4rem;
+    font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--sd-text-muted);
+}
+.sd-pc-page-note { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sd-pc-threads, .sd-pc-answers { list-style: none; margin: 0; padding: 0; }
+.sd-pc-thread {
+    display: flex; gap: .55rem; padding: .55rem .6rem; margin-bottom: .45rem;
+    border: 1px solid var(--sd-panel-border); border-radius: 8px; background: var(--sd-raised-bg);
+}
+.sd-pc-thread.is-focus { border-color: var(--sd-accent-line); }
+.sd-pc-num {
+    flex: 0 0 auto; min-width: 22px; height: 22px; padding: 0 .3rem; border: 0; border-radius: 11px 11px 11px 2px;
+    background: var(--sd-warning); color: var(--sd-panel-bg); font-size: .7rem; font-weight: 700; cursor: pointer;
+}
+.sd-pc-thread.is-resolved .sd-pc-num { background: var(--sd-success); }
+.sd-pc-body { flex: 1 1 auto; min-width: 0; }
+.sd-pc-meta { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.sd-pc-name { font-weight: 600; color: var(--sd-text); }
+.sd-pc-link { font-size: .7rem; color: var(--sd-text-muted); }
+.sd-pc-time { margin-left: auto; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-pc-text { margin: .2rem 0 0; white-space: pre-line; word-break: break-word; line-height: 1.5; }
+.sd-pc-answers { margin-top: .45rem; padding-left: .6rem; border-left: 2px solid var(--sd-border-strong); }
+.sd-pc-answer + .sd-pc-answer { margin-top: .4rem; }
+.sd-pc-gone { margin-top: .25rem; font-size: .74rem; color: var(--sd-warning); }
+.sd-pc-resolved { margin-top: .35rem; font-size: .74rem; color: var(--sd-success); }
+.sd-pc-actions, .sd-pc-confirm { display: flex; align-items: center; gap: .25rem; margin-top: .4rem; flex-wrap: wrap; }
+.sd-pc-confirm > span { flex: 1 1 100%; color: var(--sd-danger); }
+.sd-pc-answer-form { margin-top: .45rem; }
+.sd-pc-answer-form textarea {
+    background: var(--sd-input-bg); color: var(--sd-text); border-color: var(--sd-input-border); font-size: .8rem;
+}
+.sd-pc-answer-form textarea::placeholder { color: var(--sd-text-muted); }
+.sd-pc-answer-foot { display: flex; align-items: center; gap: .5rem; margin-top: .35rem; }
+.sd-pc-answer-foot .form-text { flex: 1; margin: 0; font-size: .7rem; }
+
 /* The stage and, right of it, the selected page's links (F15); from
    1,100 px open beside the stage, below it over the stage's right side;
    the bar's Links button opens and closes it (F18). */
@@ -7543,6 +7848,34 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-li-acts { display: flex; flex: none; gap: 2px; padding-top: 3px; }
 .sd-proto-li-act { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--sd-text-muted); cursor: pointer; }
 .sd-proto-li-act:hover, .sd-proto-li-act:focus-visible { background: rgba(255,255,255,.08); color: var(--sd-text); outline: none; }
+/* An outgoing row's target: a box with a caret under the label, opening
+   the target menu; it takes the row's width beside the mark's indent and
+   cuts a long name, so nothing passes the panel's right edge. */
+.sd-proto-li-out { flex-wrap: wrap; }
+.sd-proto-li-target {
+    display: flex; align-items: center; gap: 4px; flex: 1 1 100%; min-width: 0;
+    margin: -3px 0 6px 32px; padding: 2px 6px; border: 1px solid var(--sd-panel-border); border-radius: 4px;
+    background: color-mix(in srgb, var(--sd-text) 4%, transparent); color: var(--sd-text); font: inherit; text-align: left; cursor: pointer;
+}
+.sd-proto-li-target:hover { border-color: color-mix(in srgb, var(--sd-text) 35%, transparent); }
+.sd-proto-li-target:focus-visible { border-color: var(--sd-accent); box-shadow: 0 0 0 1px var(--sd-accent); outline: none; }
+.sd-proto-li-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-li-caret { flex: none; font-size: .65rem; color: var(--sd-text-muted); }
+.sd-proto-li-target-empty .sd-proto-li-target-name { color: var(--pgc-in); }
+.sd-proto-li-target-broken { border-color: color-mix(in srgb, #ff6b6b 60%, transparent); }
+.sd-proto-li-target-broken .sd-proto-li-target-name { color: #ff6b6b; }
+/* A row carried onto the canvas: on a touch screen an up or down
+   swipe still scrolls the panel and a sideways one carries the row; the
+   row fades while a ghost with its label follows the pointer. */
+.sd-proto-li-drag { touch-action: pan-y; }
+.sd-proto-li-dragged { opacity: .45; }
+.sd-proto.sd-proto-row-drag,
+.sd-proto.sd-proto-row-drag * { cursor: grabbing; user-select: none; }
+.sd-proto-ghost {
+    position: absolute; z-index: 6; max-width: 280px; padding: 3px 8px; border-radius: 4px; pointer-events: none;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: .75rem; line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
 /* "N broken" in the bar (F19) and its list; a frame's count (F20). */
 .sd-proto-broken {
     flex: none; padding: 1px 8px; border: 1px solid #ff6b6b; border-radius: 10px;

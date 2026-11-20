@@ -67,7 +67,7 @@ function test_settings_commerce_rates_percent_boxes_open_a_decimal_keyboard()
 {
 	$source = settings_commerce_rates_test_source('includes/settings/commerce.php');
 	foreach (array('ecommerce_surcharge_percentage', 'affiliate_default_commission_rate') as $name) {
-		pg_assert_contains('name="' . $name . '" id="' . $name . '" class="form-ghost" size="', $source, $name);
+		pg_assert_contains('name="' . $name . '" id="' . $name . '" class="form-ghost text-end" size="', $source, $name);
 		pg_assert_true((bool) preg_match('/name="' . $name . '"[^\n]*inputmode="decimal"/', $source), $name . ' opens a decimal keyboard');
 	}
 	pg_assert_true((bool) preg_match('/name="ecommerce_reward_program_points"[^\n]*inputmode="numeric"/', $source), 'the goal stays a whole number keyboard');

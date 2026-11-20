@@ -180,12 +180,12 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 pg-title-section">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Main Informations') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control', 'required'=>'required')) . '
                                         </div>
@@ -198,9 +198,9 @@ if (!$_POST) {
                             </div>',
                         pg_design_file_form_summary_card($output_file_missing, $summary_rows) . '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 pg-title-section">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Activate Theme to Make it Live') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="form-field my-3">
                                         <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'no-bs')) . '</div>

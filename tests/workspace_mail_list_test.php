@@ -210,8 +210,9 @@ function test_workspace_mail_pane_html()
 	);
 	$html = ws_mail_pane_html($pane, '/pg/');
 
-	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text');
-	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support · #support', $html, 'customer, mailbox, channel');
+	pg_assert_contains('<h2 class="h5 mb-1 text-break" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text, a run with no space breaking inside the pane');
+	pg_assert_contains('<div class="small fg-secondary text-break">Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'customer and mailbox on the muted line, the channel left it; a long address breaks too');
+	pg_assert_contains('<div class="mt-1">' . ws_mail_pane_channel_pill('support', '/pg/workspace.php?channel=3&message=90') . '</div>', $html, 'the channel as a pill under it');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $html, 'the card in its channel');
 	pg_assert_contains('<article class="ws-mail-item ws-mail-in text-break">', $html);
 	pg_assert_contains('<article class="ws-mail-item ws-mail-out text-break">', $html);
@@ -229,13 +230,38 @@ function test_workspace_mail_pane_html()
 
 	// The pane the server draws for the screen's address (?conversation=).
 	$page = ws_mail_pane_page_html($pane, '/pg/', 'messages_mail.php?view=sent');
-	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
+	pg_assert_contains('<h2 class="h5 mb-1 text-break" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $page, 'Open in channel stays');
 	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="messages_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
 
 	$missing = ws_mail_pane_page_html(null, '/pg/', 'messages_mail.php');
 	pg_assert_contains('<p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>', $missing, 'one it may not read');
 	pg_assert_contains('href="messages_mail.php" data-ws-mail-close', $missing);
+
+	// With the Workspace off no channel opens, so none is named.
+	$off = ws_mail_pane_html($pane, '/pg/', '', false);
+
+	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $off);
+	pg_assert_same(false, strpos($off, 'ws-mail-pane-channel'), 'no pill');
+	pg_assert_same(false, strpos($off, '#support'), 'no channel name');
+}
+
+function test_workspace_mail_pane_channel_pill()
+{
+	$text = lang(array('string' => 'In #{var:1}', 'vars' => 'sales'));
+
+	pg_assert_same('<a class="pg-pill pg-tone-blue ws-mail-pane-channel" href="/pg/workspace.php?channel=3&amp;message=90" title="' . h($text) . '">'
+		. '<span class="ws-mail-pane-channel-text">' . h($text) . '</span></a>',
+		ws_mail_pane_channel_pill('sales', '/pg/workspace.php?channel=3&message=90'), 'a link to the card in its channel, the whole words in its title');
+	pg_assert_contains('In #sales', lang(array('string' => 'In #{var:1}', 'vars' => 'sales', 'language' => 'en')), 'the English words');
+	pg_assert_contains('#sales', lang(array('string' => 'In #{var:1}', 'vars' => 'sales', 'language' => 'tr')), 'the Turkish words name it too');
+	pg_assert_true(lang(array('string' => 'In #{var:1}', 'language' => 'tr', 'if_known' => true)) !== null, 'translated');
+
+	$odd = ws_mail_pane_channel_pill('<b>"x"</b>', '/pg/workspace.php?channel=3&message=90" onclick="x');
+
+	pg_assert_contains('#&lt;b&gt;&quot;x&quot;&lt;/b&gt;', $odd, 'the name escaped');
+	pg_assert_same(false, strpos($odd, '<b>'), 'no markup from the name');
+	pg_assert_contains('message=90&quot; onclick=&quot;x"', $odd, 'the address escaped');
 }
 
 function test_workspace_mail_side_count()
@@ -267,7 +293,7 @@ function test_workspace_mail_list_wiring()
 
 	pg_assert_contains('$viewer = ws_screen_gate($user, false, true);', $page, 'members only');
 	pg_assert_contains('ws_mail_list($viewer, $filters, $now)', $page);
-	pg_assert_contains("ws_screen_assets(\$viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings())))", $page, 'the script and its words');
+	pg_assert_contains("ws_screen_assets(\$viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings() + ws_mail_menu_js_strings())))", $page, 'the script and its words, with the pin\'s');
 	pg_assert_contains('data-ws-mail-pane', $page, 'the pane beside the list');
 	pg_assert_contains('$pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters), ws_enabled());', $page, 'the address\'s conversation drawn by the server');
 	pg_assert_true(strpos($page, 'ws_mail_pane_open($viewer, $open)') < strpos($page, '$list = ws_mail_list($viewer, $filters, $now);'), 'read before the list and the menu count are drawn');

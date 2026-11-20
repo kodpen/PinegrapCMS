@@ -8,6 +8,7 @@ description: Plan designer-panels: the list of differences between a landed step
 ## What is this list for?
 - Owner (2026-11-17, agent channel message 8922): the Page Design Studio looks and behaves differently from the pictures, in many settings; noted, not started (`workflow/decisions-made-product-73.md`).
 - Architect (2026-11-17, message 8933): the close-out DP25 compares every landed step with its accepted picture, screenshot beside drawing, and brings the owner the differences as one list; fixes are cut from that list. Nothing below is work before he has seen the list.
+- Owner (2026-11-17, message 9287): when the higher-priority steps run out, the sessions may go into the page studio, "çizimlerdekilere göre bugün çok eksikleri var". Until then the list only grows; then it is cut into steps and given out, the connections' merges first (`workflow/plan-order-begun-first.md`).
 
 ## How is a line added?
 - Whoever meets a difference adds one line under the next heading: the screen and its width, what the accepted picture shows, what the build shows, the step and the picture or message that shows it.

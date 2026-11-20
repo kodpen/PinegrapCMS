@@ -114,8 +114,8 @@ function test_api_design_page_times_and_restore_present()
 {
 	$schema = api_design_page_schema();
 
-	pg_assert_same('string?', $schema['publish_at']);
-	pg_assert_same('string?', $schema['unpublish_at']);
+	pg_assert_same('datetime?', $schema['publish_at']);
+	pg_assert_same('datetime?', $schema['unpublish_at']);
 
 	$page    = array('id' => 41);
 	$restore = api_design_restore_present($page, 5, 0, false, array('a'));
@@ -137,8 +137,8 @@ function test_api_design_view_declares_the_times()
 	$schema = api_design_view_schema();
 
 	pg_assert_same('boolean', $schema['draft']);
-	pg_assert_same('string?', $schema['publish_at']);
-	pg_assert_same('string?', $schema['unpublish_at']);
+	pg_assert_same('datetime?', $schema['publish_at']);
+	pg_assert_same('datetime?', $schema['unpublish_at']);
 }
 
 // The routes: a read of the revisions, a restore and a schedule write that

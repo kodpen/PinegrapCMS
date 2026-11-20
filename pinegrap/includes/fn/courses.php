@@ -453,7 +453,8 @@ function pg_course_record_first_open($user_id, $course_id, $has_folder)
  * Marks a lesson done for a member, once, and completes the course when it
  * was the last lesson left. A completion row is never rewritten, not even
  * when lessons are added later: the certificate's day and code hang on it. The caller has checked the folder access, that
- * the lesson is open and, for a quiz lesson, the score.
+ * the lesson is open and, for a quiz lesson, the score. A new completion
+ * is announced as course.completed for webhooks and flows.
  *
  * @param int $user_id
  * @param int $course_id
@@ -469,6 +470,21 @@ function pg_course_mark_done($user_id, $course_id, $lesson_id)
     $lesson_ids = array_map('intval', array_column(pg_course_lessons($course_id), 'id'));
 
     $out['completed'] = pg_course_write_row(pg_course_completion_row($user_id, $course_id, $lesson_ids, $progress['done_ids'], $progress['completed_at'] > 0, $now));
+
+    // Announced only by the press that wrote the completion row, so a
+    // second press or a race announces nothing.
+    if ($out['completed'] && function_exists('pg_announce')) {
+        $course = pg_course_get($course_id);
+        $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+        pg_announce('course.completed', array(
+            'id'           => (int) $course_id,
+            'name'         => ($course !== null) ? (string) $course['name'] : '',
+            'user_id'      => (int) $user_id,
+            'contact_id'   => ($contact_id > 0) ? $contact_id : null,
+            'completed_at' => gmdate('Y-m-d\TH:i:s\Z', $now),
+        ));
+    }
 
     return $out;
 }
@@ -509,6 +525,26 @@ function pg_course_lesson_delete($lesson_id)
     }
 
     return (bool) db_q("DELETE FROM course_lesson WHERE id = ?", array((string) $lesson_id));
+}
+
+/**
+ * Removes every progress row of an account that is being deleted: its
+ * lessons done, its first opens and its completions. Called by
+ * pg_user_delete(): a new account given the same id must not inherit them,
+ * and the Courses screen must not count a deleted member.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_course_forget_user($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !pg_course_ready()) {
+        return false;
+    }
+
+    return (bool) db_q("DELETE FROM course_progress WHERE user_id = ?", array((string) $user_id));
 }
 
 /**

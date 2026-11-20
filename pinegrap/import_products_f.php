@@ -41,7 +41,9 @@ function pg_products_import_is_spreadsheet($file_name)
     return in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'));
 }
 
-// The PHPExcel reader for one extension.
+// The PHPExcel reader for one extension. Only the bank statement import
+// (includes/erp/bank_import.php) still reads through PHPExcel; the product
+// import reads through the sheet reader.
 //
 // Named rather than auto-detected: createReaderForFile() opens the file with
 // every reader in turn until one stops complaining, which on a large workbook
@@ -134,8 +136,8 @@ define('PG_PRODUCTS_IMPORT_ODS_MAX_RANGE', 1024 * 1024);
 
 // Read an OpenDocument file with PHPExcel inside the ceilings above: the
 // workbook, or null with $error set to the sentence to show. $data_only is the
-// reader's setReadDataOnly(): the product importer wants values, the bank
-// statement importer the formats that tell a date.
+// reader's setReadDataOnly(); the bank statement importer reads with the
+// formats that tell a date.
 function pg_products_import_ods_load($path, $data_only, &$error)
 {
     $error = pg_products_import_ods_check($path);
@@ -178,47 +180,6 @@ function pg_products_import_ods_load($path, $data_only, &$error)
     return $book;
 }
 
-// One cell, as the text the importer would have read out of a CSV.
-//
-// A file this software wrote holds nothing but strings, so the common case is
-// already right. A file an operator built by hand is not: a price typed into
-// Excel is a number, and a date is a day count since 1900 that reaches the
-// importer as "45678" unless it is turned back into a date here.
-function pg_products_import_cell($cell)
-{
-    if ($cell === null) {
-        return '';
-    }
-
-    // A formula is worth the calculation: an operator who built the sheet with
-    // one meant its answer, not its text. A formula the engine cannot work out
-    // falls back to what is written rather than stopping the import.
-    try {
-        $value = $cell->getCalculatedValue();
-    } catch (Exception $exception) {
-        $value = $cell->getValue();
-    }
-
-    if ($value === null) {
-        return '';
-    }
-
-    if (is_bool($value)) {
-        return $value ? '1' : '0';
-    }
-
-    if (PHPExcel_Shared_Date::isDateTime($cell)) {
-
-        $stamp = PHPExcel_Shared_Date::ExcelToPHP((float) $value);
-
-        // A whole day carries no time of day, so it is not given one: the
-        // importer's date columns are days.
-        return gmdate((((float) $value) == floor((float) $value)) ? 'Y-m-d' : 'Y-m-d H:i:s', $stamp);
-    }
-
-    return (string) $value;
-}
-
 // Turn an uploaded spreadsheet into a CSV file and return its path.
 //
 // Returns '' and fills $error when the file cannot be read. The caller owns
@@ -227,95 +188,48 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
 {
     $error = '';
 
-    $reader_name = pg_products_import_reader($file_name);
+    $kind = pg_sheet_kind($file_name);
 
-    if ($reader_name == '') {
+    if ($kind == '') {
         $error = lang('The file was empty.');
         return '';
     }
 
-    // A .xlsx is read without PHPExcel, for the same reason it is written
-    // without it: the library holds an object per cell, and a catalog of
-    // thirty thousand products is two and a half million of them. It is also
-    // the format this software exports, so an operator who takes the catalog
-    // out, edits it and brings it back never leaves this path.
-    //
-    // The older Excel format and OpenDocument stay with PHPExcel. They are a
-    // binary record stream and a different zip respectively, they arrive
-    // rarely, and reading a format somebody else wrote is what a library is
-    // worth carrying for.
-    if (($reader_name == 'Excel2007') && (class_exists('ZipArchive'))) {
+    // A .xlsx keeps its own walk below: it is the format this software
+    // exports, so an operator who takes the catalog out, edits it and brings
+    // it back never leaves that path, and its rows are written as they go
+    // past. The older Excel format and OpenDocument are read by the sheet
+    // reader (includes/fn/sheet_read.php).
+    if (($kind == 'xlsx') && class_exists('ZipArchive')) {
         return pg_products_import_xlsx_to_csv($source_path, $error);
     }
 
-    // Formatting, column widths and merged cells are of no interest to an
-    // importer that wants values, and skipping them is the difference between
-    // a workbook of ten thousand products opening and not.
-    if ($reader_name == 'OOCalc') {
+    return pg_products_import_sheet_to_csv($source_path, $kind, $error);
+}
 
-        // An OpenDocument file is measured before the reader holds its parts,
-        // and read within a ceiling on the cells it makes.
-        $book = pg_products_import_ods_load($source_path, true, $error);
+// Turn the first sheet of a workbook into the CSV the importer reads, through
+// the sheet reader, and return its path.
+//
+// The rows are held until the sheet has been read to its end: a reader error
+// late in the file drops what came before it, and every row is squared off
+// to the widest one in the sheet, so a short line never reads the next
+// column's value. An .ods is held to the reader's cell ceilings and an .xls
+// is read whole by the reader anyway, so this costs no more than the file.
+function pg_products_import_sheet_to_csv($source_path, $kind, &$error)
+{
+    $error = '';
+    $reader_error = '';
+    $rows = array();
+    $width = 0;
 
-        if ($book === null) {
-            return '';
-        }
-
-    } else {
-
-        require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
-
-        try {
-
-            $reader = PHPExcel_IOFactory::createReader($reader_name);
-            $reader->setReadDataOnly(true);
-
-            $book = $reader->load($source_path);
-
-        } catch (Exception $exception) {
-            $error = lang('The file could not be read.');
-            return '';
-        }
-    }
-
-    $sheet = $book->getSheet(0);
-
-    if (!$sheet) {
-        $book->disconnectWorksheets();
-        $error = lang('The file was empty.');
-        return '';
-    }
-
-    $last_row = $sheet->getHighestDataRow();
-    $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
-
-    $path = tempnam(sys_get_temp_dir(), 'pg_import_');
-
-    if ($path === false) {
-        $book->disconnectWorksheets();
-        $error = lang('The file could not be read.');
-        return '';
-    }
-
-    $handle = fopen($path, 'w');
-
-    if ($handle === false) {
-        $book->disconnectWorksheets();
-        unlink($path);
-        $error = lang('The file could not be read.');
-        return '';
-    }
-
-    $written = 0;
-
-    for ($row_number = 1; $row_number <= $last_row; $row_number++) {
+    foreach (pg_sheet_rows($source_path, $kind, $reader_error) as $cells) {
 
         $row = array();
         $filled = false;
 
-        for ($column_number = 0; $column_number <= $last_column; $column_number++) {
+        foreach ($cells as $cell) {
 
-            $value = pg_products_import_cell($sheet->getCellByColumnAndRow($column_number, $row_number, false));
+            $value = pg_sheet_cell_text($cell);
 
             if ($value !== '') {
                 $filled = true;
@@ -324,27 +238,54 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
             $row[] = $value;
         }
 
-        // A row of empty cells is what a spreadsheet leaves behind when
-        // somebody clears one, and the importer would read it as a product
-        // with no name. Skipped -- except that a blank line inside the data
-        // would shift nothing, so only truly empty rows go.
-        if (!$filled) {
-            continue;
+        if (count($row) > $width) {
+            $width = count($row);
         }
 
-        fputcsv($handle, $row, ',', '"', '\\');
-        $written++;
+        // A row of empty cells is what a spreadsheet leaves behind when
+        // somebody clears one, and the importer would read it as a product
+        // with no name.
+        if ($filled) {
+            $rows[] = $row;
+        }
     }
 
-    fclose($handle);
-    $book->disconnectWorksheets();
-    unset($book);
+    if ($reader_error !== '') {
+        $error = ($reader_error === 'large') ? lang('The file is too large.')
+            : (($reader_error === 'sheet') ? lang('The file was empty.') : lang('The file could not be read.'));
+        return '';
+    }
 
-    if ($written == 0) {
-        unlink($path);
+    if (empty($rows)) {
         $error = lang('The file was empty.');
         return '';
     }
+
+    $path = tempnam(sys_get_temp_dir(), 'pg_import_');
+
+    if ($path === false) {
+        $error = lang('The file could not be read.');
+        return '';
+    }
+
+    $handle = fopen($path, 'w');
+
+    if ($handle === false) {
+        unlink($path);
+        $error = lang('The file could not be read.');
+        return '';
+    }
+
+    foreach ($rows as $row) {
+
+        while (count($row) < $width) {
+            $row[] = '';
+        }
+
+        fputcsv($handle, $row, ',', '"', '\\');
+    }
+
+    fclose($handle);
 
     return $path;
 }

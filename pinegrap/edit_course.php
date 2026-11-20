@@ -85,6 +85,7 @@ $course_lessons = ($course_input !== null) ? $course_input['lessons'] : (($cours
 $course_learners = ($course !== null) ? pg_course_learners($course) : array();
 
 if (($course_view === 'learners') && (($_GET['csv'] ?? '') === '1')) {
+    pg_list_excel_capture(array(2 => 'date', 3 => 'number', 4 => 'number', 5 => 'date', 6 => 'date'), lang('Learners'));
     pg_csv_download_start('course-' . $course_id . '-learners.csv');
 
     foreach (pg_course_learners_csv_rows($course_learners) as $csv_row) {
@@ -106,14 +107,18 @@ if ($course !== null) {
 
 if ($course_view === 'learners') {
     $course_toolbar['search'] = pg_list_table_search_box('edit_course_learners');
-    $course_toolbar['secondary'] = array('label' => lang('Download CSV'), 'url' => 'edit_course.php?id=' . $course_id . '&view=learners&csv=1', 'icon' => 'bi-download');
+    $course_toolbar['secondary'] = array(
+        array('label' => lang('Download CSV'), 'url' => 'edit_course.php?id=' . $course_id . '&view=learners&csv=1', 'icon' => 'bi-download'),
+        pg_list_excel_action('edit_course.php?id=' . $course_id . '&view=learners&csv=1'),
+    );
 }
 
 $course_shell_properties = array(
     'title' => $course_title,
     'extra classes' => 'courses pg-measure-edit',
     'icon' => 'page',
-    'heading' => $course_title,
+    // output_header() prints the heading as markup; the name is staff text.
+    'heading' => h($course_title),
     'heading_description' => ($course_view === 'learners')
         ? lang('Every member with the course\'s folder: when they enrolled, how far they are and when they completed.')
         : lang('The private folder the course\'s product opens, and its pages as lessons in their order.'),
@@ -244,21 +249,7 @@ $course_quiz_options = function ($chosen) use ($course_quizzes) {
 };
 
 $course_lesson_row = function (array $lesson) use ($course_page_options, $course_quiz_options) {
-    $quiz = (int) $lesson['quiz_page_id'] > 0;
-
-    return '<tr data-pg-course-lesson>
-        <td class="pg-text-meta fg-secondary pg-tabular align-middle" data-pg-course-number></td>
-        <td class="pg-course-cell-page" data-label="' . h(lang('Lesson page')) . '"><input type="hidden" name="lesson_id[]" value="' . (int) $lesson['id'] . '" />
-            <select name="lesson_page[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Lesson page')) . '" data-pg-course-page>' . $course_page_options($lesson['page_id'], lang('Choose a page')) . '</select></td>
-        <td class="pg-course-cell-days" data-label="' . h(lang('Opens after')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_days[]" inputmode="numeric" maxlength="4" class="text-end" value="' . (int) $lesson['open_days'] . '" aria-label="' . h(lang('Opens after')) . '" /><span class="pg-input-end">' . h(lang('days')) . '</span></span></td>
-        <td class="pg-course-cell-quiz" data-label="' . h(lang('Quiz to pass')) . '"><select name="lesson_quiz[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Quiz to pass')) . '" data-pg-course-quiz>' . $course_quiz_options($lesson['quiz_page_id']) . '</select></td>
-        <td class="pg-course-cell-score" data-label="' . h(lang('Score needed')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_score[]" inputmode="numeric" maxlength="3" class="text-end" value="' . ($quiz ? (int) $lesson['quiz_pass_score'] : '') . '" aria-label="' . h(lang('Score needed')) . '"' . ($quiz ? '' : ' disabled') . ' data-pg-course-score /><span class="pg-input-end">%</span></span></td>
-        <td class="pg-course-cell-actions text-end text-nowrap">
-            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="-1" aria-label="' . h(lang('Move up')) . '"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
-            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="1" aria-label="' . h(lang('Move down')) . '"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-            <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-remove aria-label="' . h(lang('Remove lesson')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-        </td>
-    </tr>';
+    return pg_course_lesson_row_html($lesson, $course_page_options($lesson['page_id'], lang('Choose a page')), $course_quiz_options($lesson['quiz_page_id']));
 };
 
 $course_rows = '';
@@ -450,12 +441,19 @@ echo $course_shell . '
                 return;
             }
 
+            // Read-only, never disabled: a disabled field is left out of the
+            // post and the rows\' scores would shift.
             var score = event.target.closest(\'tr\').querySelector(\'[data-pg-course-score]\');
+            var none = (event.target.value === \'0\');
 
-            score.disabled = (event.target.value === \'0\');
+            score.readOnly = none;
+            score.tabIndex = none ? -1 : 0;
 
-            if (score.disabled) {
+            if (none) {
                 score.value = \'\';
+                score.setAttribute(\'aria-disabled\', \'true\');
+            } else {
+                score.removeAttribute(\'aria-disabled\');
             }
         });
 

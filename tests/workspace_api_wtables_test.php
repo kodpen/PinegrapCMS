@@ -275,3 +275,29 @@ function test_ws_api_wtables_objects_declared()
 		pg_assert_true(isset($objects[$name]) && function_exists($objects[$name]), $name . ' is declared');
 	}
 }
+
+// An import's map pairs each source column with one table column: two
+// sources into one column would show one in the dry run and write the
+// other, so the pairing is refused.
+function test_ws_api_wtables_import_pairs()
+{
+	$names = array('Phone', 'Mobile', '2025');
+	$columns = array(5 => array('id' => 5, 'type' => 'text'), 6 => array('id' => 6, 'type' => 'money'));
+
+	$pairs = ws_api_wtable_import_pairs($names, $columns, array('Phone' => 5, '2025' => '6', 'Mobile' => 0));
+	pg_assert_true($pairs['ok']);
+	pg_assert_same(array(0 => 5, 2 => 6), $pairs['pairs'], 'a column id 0 leaves the source out');
+
+	$twice = ws_api_wtable_import_pairs($names, $columns, array('Phone' => 5, 'Mobile' => 5));
+	pg_assert_false($twice['ok'], 'one column for two sources');
+	pg_assert_true(strpos($twice['message'], '5') !== false, 'the column is named');
+
+	pg_assert_false(ws_api_wtable_import_pairs($names, $columns, array('Fax' => 5))['ok'], 'a source the file lacks');
+	pg_assert_false(ws_api_wtable_import_pairs($names, $columns, array('Phone' => 9))['ok'], 'a column the table lacks');
+
+	// JSON turns a numeric object key into an integer.
+	$types = json_decode('{"2025": "money", "Phone": ""}', true);
+	pg_assert_same('', ws_api_wtable_import_types_refusal($names, $types), 'a year as a column name');
+	pg_assert_true(ws_api_wtable_import_types_refusal($names, array('Fax' => 'text')) !== '', 'a source the file lacks');
+	pg_assert_true(ws_api_wtable_import_types_refusal($names, array('Phone' => 'person')) !== '', 'a type an import does not make');
+}

@@ -3,8 +3,9 @@
  *
  * Draws a Word or Excel file the server read for a preview
  * (includes/fn/office.php): a workbook as sheet tabs over a table, a
- * document as the safe HTML the server made. Loaded on first use by the file
- * manager and the Workspace; nothing here reads a file itself.
+ * document as the safe HTML the server made, a .csv or .tsv as a sheet under
+ * the choice of its separator and character set. Loaded on first use by the
+ * file manager and the Workspace; nothing here reads a file itself.
  *
  *   var view = window.pgOfficeView.render(container, office, strings, options)
  *
@@ -17,6 +18,11 @@
  *             onChange  called with the number of changes whenever it may
  *                       have moved: a value kept or undone, a key typed
  *             onSave    called on Ctrl+S / Cmd+S inside the view
+ *           for a .csv (kind 'csv', only looked at):
+ *             reread    function (choice, done): reads the file again with
+ *                       choice.delimiter and choice.encoding and calls
+ *                       done(office) or done(null, message); without it
+ *                       the choice is not drawn
  *
  * The view returned (for a workbook, and for a document read for editing)
  * tells the caller what was changed: view.kind ('xlsx' or 'docx'),
@@ -1455,6 +1461,100 @@
         };
     }
 
+    // A .csv or .tsv: its sheet under a choice of the separator and the
+    // character set it is read with, set to the ones the server guessed or
+    // was last asked for. A change asks the window that drew the view to
+    // read the file again (options.reread(choice, done)): done(office)
+    // draws the answer in this one's place, done(null, message) says why
+    // not and leaves the sheet as it was. Only looked at: nothing comes
+    // back to save.
+    function renderCsv(container, office, strings, options) {
+        var reread = (options && typeof options.reread === 'function') ? options.reread : null;
+        var used = office.csv || {};
+        var bar = el('div', 'office-choice');
+        var problem = el('div', 'pg-field-help pg-field-error office-choice-problem');
+        var busy = false;
+
+        function group(label, name, choices) {
+            var wrap = el('div', 'office-choice-group');
+            var seg = el('div', 'pg-seg');
+
+            seg.setAttribute('role', 'group');
+            seg.setAttribute('aria-label', label);
+
+            choices.forEach(function (choice) {
+                var item = el('button', 'pg-seg-item', choice[1]);
+
+                item.type = 'button';
+                item.setAttribute('data-csv-' + name, choice[0]);
+                item.setAttribute('aria-pressed', (choice[0] === used[name]) ? 'true' : 'false');
+
+                item.addEventListener('click', function () {
+                    if (busy || choice[0] === used[name]) {
+                        return;
+                    }
+
+                    var asked = { delimiter: used.delimiter || '', encoding: used.encoding || '' };
+
+                    asked[name] = choice[0];
+                    busy = true;
+                    bar.setAttribute('aria-busy', 'true');
+                    problem.textContent = '';
+
+                    reread(asked, function (answer, message) {
+                        busy = false;
+                        bar.removeAttribute('aria-busy');
+
+                        if (!container.isConnected) {
+                            return;
+                        }
+
+                        if (answer && answer.kind === 'csv') {
+                            window.pgOfficeView.render(container, answer, strings, options);
+
+                            // The key or click that made the change keeps its place.
+                            var again = container.querySelector('.office-choice [data-csv-' + name + '="' + choice[0] + '"]');
+
+                            if (again) {
+                                again.focus();
+                            }
+
+                            return;
+                        }
+
+                        problem.textContent = message || '';
+                    });
+                });
+
+                seg.appendChild(item);
+            });
+
+            wrap.appendChild(el('span', 'pg-text-meta', label));
+            wrap.appendChild(seg);
+
+            return wrap;
+        }
+
+        if (reread) {
+            bar.appendChild(group(strings.csv_delimiter || '', 'delimiter', [
+                ['comma', strings.csv_comma || ''],
+                ['semicolon', strings.csv_semicolon || ''],
+                ['tab', strings.csv_tab || '']
+            ]));
+            bar.appendChild(group(strings.csv_encoding || '', 'encoding', [
+                ['utf-8', strings.csv_utf8 || ''],
+                ['windows-1254', strings.csv_1254 || '']
+            ]));
+            problem.setAttribute('role', 'status');
+            bar.appendChild(problem);
+            container.appendChild(bar);
+        }
+
+        renderBook(container, office, strings, null);
+
+        return null;
+    }
+
     window.pgOfficeView = {
         render: function (container, office, strings, options) {
             strings = strings || {};
@@ -1463,6 +1563,10 @@
 
             if (office && office.kind === 'xlsx') {
                 return renderBook(container, office, strings, options || null);
+            }
+
+            if (office && office.kind === 'csv') {
+                return renderCsv(container, office, strings, options || null);
             }
 
             if (office && office.kind === 'docx') {

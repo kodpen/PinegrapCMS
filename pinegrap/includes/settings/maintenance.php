@@ -57,7 +57,7 @@ $pg_settings_cards[] = '
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                                     <span class="pg-title-section">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
-                                    <button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
+                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
@@ -73,7 +73,7 @@ $pg_settings_cards[] = '
                                                     <div class="alert theme-secondary py-3 small">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
                                                     <textarea id="cron_job_general_dispatch" aria-label="' . h(lang('General job command')) . '">' . $cron_job_general . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
-                                                    <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
+                                                    <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
                                                 </div>' . $output_job_dispatch_switches . '
                                             </div>
                                         </div>
@@ -116,68 +116,68 @@ $pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<
                                         </div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_general_title">' . lang('General Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_general_title">' . lang('General Jobs') . '</h4>
                                         <p>' . lang('Every site needs a scheduled task for the general job: it runs the jobs selected under "Run Cron Jobs Automatically", publishes scheduled comments and keeps the health address and the alerts working. While it does not run, the health address answers 503.') . '</p>
                                         <textarea id="cron_job_general" aria-labelledby="cron_job_general_title">' . $cron_job_general . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_webhook_title">' . lang('Webhook Delivery Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_webhook_title">' . lang('Webhook Delivery Jobs') . '</h4>
                                         <p>' . lang('The webhook delivery job sends the events your integrations asked to hear about: a new order, a cancelled order, a stock change. It usually needs no scheduled task of its own - the general job runs it on every turn as long as "Webhook delivery" is selected in the list further down this page, and on a site with no subscriptions that costs a single indexed read.') . '</p>
                                         <div class="alert theme-secondary">' . lang('NOTE: Schedule the command below only if you want an event delivered within a minute of it happening, without waiting for the general job. It is the same work either way; a dedicated task simply runs it more often.') . '</div>
                                         <textarea id="cron_job_webhook" aria-labelledby="cron_job_webhook_title">' . $cron_job_webhook . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_webhook', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_push_title">' . lang('Device Notification Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_push_title">' . lang('Device Notification Jobs') . '</h4>
                                         <p>' . lang('The device notification job wakes the phones and computers your operators have turned notifications on for: a new order, a submitted form, a new comment, an unanswered chat message. Like the webhook job it runs inside the general job on every turn as long as "Device notifications" is selected in the list further down this page, so it needs no scheduled task of its own.') . '</p>
                                         <div class="alert theme-secondary">' . lang('NOTE: A chat message waits a minute before it is sent, so that a message somebody has already read on screen does not arrive on their phone as well. The delay an operator feels is that wait plus however often this job runs.') . '</div>
                                         <textarea id="cron_job_push" aria-labelledby="cron_job_push_title">' . $cron_job_push . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_push', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_exchange_rates_title">' . lang('Exchange Rates Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_exchange_rates_title">' . lang('Exchange Rates Jobs') . '</h4>
                                         <p>' . lang('The exchange rates job is an optional feature which only needs to be enabled if you are using the multi-currency e-commerce feature and want exchange rates for currencies to be updated automatically. Exchange rates can be manually updated via the Admin Panel.') . '</p>
                                         <textarea id="cron_job_exchange_rates" aria-labelledby="cron_job_exchange_rates_title">' . $cron_job_exchange_rates . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_exchange_rates', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_email_campaign_title">' . lang('Email Campaign Jobs') . '</h5>
-                                        <p>' . lang(array('string' => 'The e-mail campaign job is an alternative to users manually sending e-mail campaigns from the Software. It is a script that can be scheduled to automatically send e-mail Campaigns. Also, the e-mail campaign job allows e-mail campaigns to be scheduled to be sent at a later time. If you are interested in using the e-mail campaign job, please complete {var:1}.', 'vars' => array('<a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/smtp_settings.php">' . lang('campaign smtp settings') . '</a>'))) . '</p>
+                                        <h4 class="pg-group-label" id="cron_job_email_campaign_title">' . lang('Email Campaign Jobs') . '</h4>
+                                        <p>' . lang(array('string' => 'The e-mail campaign job is an alternative to users manually sending e-mail campaigns from the Software. It is a script that can be scheduled to automatically send e-mail Campaigns. Also, the e-mail campaign job allows e-mail campaigns to be scheduled to be sent at a later time. If you are interested in using the e-mail campaign job, please complete {var:1}.', 'vars' => array('<a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-campaign') . '">' . lang('campaign smtp settings') . '</a>'))) . '</p>
                                         <div class="alert theme-danger">' . lang('WARNING: Once the e-mail campaign job is enabled, it will send e-mails for all campaigns where the status was "Ready to Send", so please make sure you update the status for old, incomplete, e-mail campaigns to be "Cancelled" before you enable the e-mail campaign job.') . '</div>
                                         <textarea id="cron_job_email_campaign" aria-labelledby="cron_job_email_campaign_title">' . $cron_job_email_campaign . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_email_campaign', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_search_index_title">' . lang('Update Search Index Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_search_index_title">' . lang('Update Search Index Jobs') . '</h4>
                                         <p>' . lang('The update search index job is an alternative to clicking the Update Search Index button on the Pages tab. It does the spidering of your website and updates the search index with any new or changed content it finds. Since this is an intensive script that may slow down your site while it runs, you should not run it more than once an hour at the most. Less frequently is even better.') . '</p>
                                         <textarea id="cron_job_search_index" aria-labelledby="cron_job_search_index_title">' . $cron_job_search_index . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_seo_score_title">' . lang('SEO Score Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_seo_score_title">' . lang('SEO Score Jobs') . '</h4>
                                         <p>' . lang('The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.') . '</p>
                                         <textarea id="cron_job_seo_score" aria-labelledby="cron_job_seo_score_title">' . $cron_job_seo_score . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_seo_analyze_title">' . lang('SEO Structure Analysis Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_seo_analyze_title">' . lang('SEO Structure Analysis Jobs') . '</h4>
                                         ' . $output_warnings_for_seo_analyze . '
                                         <p>' . lang('The SEO structure analysis job renders each page in the background and examines the resulting HTML: heading order, image alt text, internal links and orphan pages. This is the expensive half of the SEO score, so it works within a time budget and may need several runs to get through a large site for the first time.') . '</p>
                                         <div class="alert theme-secondary">' . lang('NOTE: Schedule this job to run after the SEO score job, because a catalog page is scored from the products it lists.') . '</div>
                                         <textarea id="cron_job_seo_analyze" aria-labelledby="cron_job_seo_analyze_title">' . $cron_job_seo_analyze . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_requrring_payment_title">' . lang('Recurring Payment Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_requrring_payment_title">' . lang('Recurring Payment Jobs') . '</h4>
                                         <p>' . lang('The recurring payment job is an optional feature which only needs to be enabled if you want actions to be performed when a recurring payment profile is disabled (i.e. suspended, cancelled, or expired) (e.g. credit card declined). This job requires the PayPal Website Payments Pro payment gateway. The following actions can be performed when the recurring payment profile is disabled. These options can be set in the properties for the product that creates the recurring payment profile.') . '<br>
                                         ' . lang('Expire membership.') . '<br>
                                         ' . lang('Revoke private access.') . '<br>
@@ -186,23 +186,23 @@ $pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<
                                         <div class="alert theme-secondary">' . lang('NOTE: The Recurring Payment Job is NOT REQUIRED for setting up Recurring Products. That is handled through your payment gateway automatically once an Order is submitted for one or more recurring products through your Pinegrap website.') . '</div>
                                         <textarea id="cron_job_requrring_payment" aria-labelledby="cron_job_requrring_payment_title">' . $cron_job_requrring_payment . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_requrring_payment', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_membership_title">' . lang('Membership Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_membership_title">' . lang('Membership Jobs') . '</h4>
                                         <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can turn it on and set it up in Accounts and sign-in, Registration &amp; Membership card. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
                                         <textarea id="cron_job_membership" aria-labelledby="cron_job_membership_title">' . $cron_job_membership . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
-                                        <h5 id="cron_job_auto_backup_title">' . lang('Auto Backup Jobs') . '</h5>
+                                        <h4 class="pg-group-label" id="cron_job_auto_backup_title">' . lang('Auto Backup Jobs') . '</h4>
                                         ' . $output_warnings_for_auto_backup . '
                                         <p>' . lang('The auto backup job is an optional feature that must be enabled only if you want the automatic backup feature.') . '</p>
                                         <div class="alert theme-secondary">' . lang('NOTE: Auto Backup feature is available by default but can be disabled by a developer from the config.php file. This feature can only be operated once a day.') . '</div>
                                         <textarea id="cron_job_auto_backup" aria-labelledby="cron_job_auto_backup_title">' . $cron_job_auto_backup . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a week') . '</div>
+                                        <div class="form-text">' . lang('Recommended Schedule: Once a week') . '</div>
                                     </div>
                                 </div>', !empty($pg_settings_in_dialog));
 
@@ -312,8 +312,8 @@ if ($backup_settings_ready) {
                                 <div class="form-text">' . h($backup_cloud_help) . '</div>
                             </div>' . ($backup_cloud_ready ? '
                             <div class="col-12">
-                                <button type="submit" form="pgset_backup_connect_' . $backup_cloud_type . '" class="btn btn-sm btn-outline theme-primary rounded-pill">
-                                    <i class="bi ' . h($backup_cloud_provider['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $backup_cloud_provider['label']))) . '</button>
+                                <button type="submit" form="pgset_backup_connect_' . $backup_cloud_type . '" class="pg-button pg-button-quiet pg-button-sm">
+                                    <i class="bi ' . h($backup_cloud_provider['icon']) . '" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $backup_cloud_provider['label']))) . '</button>
                             </div>' : '') . '
                         </div>
                     </div>';
@@ -444,7 +444,7 @@ if ($backup_settings_ready) {
                             </div>' . (($backup_remote_status !== '') ? '
                             <div class="col-12">' . $backup_remote_status . '</div>' : '') . '
                             <div class="col-12">
-                                <button type="submit" name="backup_remote_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                                <button type="submit" name="backup_remote_test" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
                             </div>
                         </div>
                     </div>';
@@ -490,7 +490,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="pg-title-section">' . lang('Backups') . '</span>
-                <a href="backups.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Backup Manager') . '</a>
+                <a href="backups.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-archive" aria-hidden="true"></i>' . lang('Backup Manager') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . $output_backup_settings . '
@@ -573,7 +573,7 @@ if (!$object_storage_ready) {
 
         foreach (pg_file_storage_actions($object_storage_switch) as $object_storage_action) {
             $output_object_storage_buttons .= '
-                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="btn btn-sm btn-outline theme-secondary me-2"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . ' me-1" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
+                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="pg-button pg-button-quiet pg-button-sm me-2"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . '" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
         }
 
         $output_object_storage_files = '
@@ -635,7 +635,7 @@ if (!$object_storage_ready) {
                         </div>
                     </div>
                     <div class="col-12">
-                        <button type="submit" name="object_storage_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                        <button type="submit" name="object_storage_test" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
                         <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>' . $output_object_storage_last_test . '
                     </div>' . $output_object_storage_files;
 }
@@ -825,7 +825,7 @@ if (!$notify_ready) {
                                 <div class="col-12"><div class="form-label">' . lang('Workspace') . '</div></div>'
                                 . $notify_checks('notify_target_events[' . $notify_id . ']', 'notify_event_' . $notify_id, $notify_event_options, (array) ($notify_target['events'] ?? array())) . '
                                 <div class="col-12 d-flex flex-wrap gap-7 align-items-center">
-                                    <button type="submit" name="notify_test" value="' . h($notify_id) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test') . '</button>
+                                    <button type="submit" name="notify_test" value="' . h($notify_id) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-send" aria-hidden="true"></i>' . lang('Save and send a test') . '</button>
                                     <div class="form-field">
                                         <input value="1" class="check" type="checkbox" id="notify_delete_' . h($notify_id) . '" name="notify_target_delete[' . h($notify_id) . ']"/>
                                         <label for="notify_delete_' . h($notify_id) . '">' . lang('Delete this target') . '</label>

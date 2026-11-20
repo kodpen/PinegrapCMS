@@ -60,7 +60,7 @@ function pg_menu_form_cards($liveform, $form = array())
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 lg:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<menu>') . '</div>
@@ -235,7 +235,7 @@ function pg_menu_form_class_field($liveform, $name, $label, $prefix, $help)
                                                     'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
-                                            <div class="form-text text-end">' . $help . '</div>
+                                            <div class="form-text">' . $help . '</div>
                                         </div>';
 }
 

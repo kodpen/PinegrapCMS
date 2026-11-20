@@ -202,9 +202,11 @@ function test_picture_translation_module_loaded()
 	pg_assert_true(function_exists('pg_picture_tr_saved'), 'loaded');
 }
 
-// Runs $script with the editor's model as M and answers its JSON; null
-// without Node.
-function picture_translation_node($script)
+// Runs $script with a script of assets/js (the editor's model unless named)
+// as $name, M by default, and answers its JSON; null without Node. The script
+// goes through a file, never `node -e`: on Windows the shell's quoting turns
+// the double quotes of an inline script into spaces.
+function picture_translation_node($script, $module = 'pg_image_editor_model.js', $name = 'M')
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -224,7 +226,7 @@ function picture_translation_node($script)
 		return null;
 	}
 
-	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n" . $script);
+	file_put_contents($file, 'var ' . $name . ' = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/' . $module) . ');' . "\n" . $script);
 
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
@@ -349,7 +351,8 @@ function test_picture_translation_draw_refusals()
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
 	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_canvas('), 'before a canvas\'s picture is taken');
 	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_photo('), 'before a photo\'s is drawn');
-	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+	pg_assert_true(strpos($body, 'pg_picture_tr_keep(') > strpos($body, 'pg_picture_tr_draw_refusal('), 'a draw is kept once it is taken');
+	pg_assert_true(strpos(picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep'), 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
 	pg_assert_true(strpos($body, "'missing'  => pg_picture_tr_untranslated(\$texts)") !== false, 'the draw counts the texts not translated');
 	pg_assert_true(strpos($body, 'count($texts), count($texts) - pg_picture_tr_untranslated($texts))') !== false, 'the state after a draw is read from the real count');
 
@@ -451,39 +454,26 @@ function test_picture_translation_queue_sql()
 	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($url(array(\'draw\' => 1', $screen, 'the group\'s button is quiet');
 }
 
-// The queue's script: the count left and the state a draw's answer gives.
+// The queue's script: the count left, a row's reason, edit link, button and
+// end line. The state a draw's answer gives is the shared drawing's
+// (tests/picture_auto_test.php).
 function test_picture_translation_queue_script()
 {
-	if (!function_exists('exec')) {
-		pg_assert_true(true, 'exec is not available');
-		return;
-	}
-
-	$out = array();
-	$code = 1;
-	@exec('node -e ' . escapeshellarg('var Q = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/picture_queue.js') . ');'
-		. 'console.log(JSON.stringify({'
+	$r = picture_translation_node('console.log(JSON.stringify({'
 		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
-		. ' drawn: Q.statusOf({ status: "success", state: "drawn" }),'
-		. ' look: Q.statusOf({ status: "success", state: "look" }),'
-		. ' refused: Q.statusOf({ status: "error", message: "No" }),'
-		. ' none: Q.statusOf(null),'
-		. ' skipped: Q.statusOf("skipped"),'
 		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
 		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
 		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
 		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
 		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
-		. '}));') . ' 2>&1', $out, $code);
+		. '}));', 'picture_queue.js', 'Q');
 
-	if (($code !== 0) && (strpos(implode("\n", $out), 'not found') !== false)) {
+	if ($r === null) {
 		pg_assert_true(true, 'Node is not available');
 		return;
 	}
 
-	$r = json_decode(implode("\n", $out), true);
-
-	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
+	pg_assert_same(array('left' => 3,
 		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
-		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
+		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
 }

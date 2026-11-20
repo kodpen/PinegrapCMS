@@ -9,6 +9,8 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 - Orders "Multiple files" zip (`view_orders.php`): each entry (`orders.csv`, `ship_tos.csv`, `order_items.csv`, `shipping_tracking_numbers.csv`) starts with the mark. One file per kind of record, not per order.
 - Products CSV (`pg_products_export_csv()` in `export_products_f.php`, behind Products > Export and the File/Catalog Manager): writes the mark itself after its own headers, because `pg_products_export_disposition()` carries the `filename*` UTF-8 file name that `pg_csv_download_start()` would lose. `import_products.php` reads through `pg_csv_open()`; the Workspace table reader strips the mark too.
 
+- Each list's CSV export has an Export to Excel beside it, built from the same CSV: `platform/list-excel-export.md`.
+
 ## How is a time written in an export?
 - `pg_csv_export_time($timestamp)`: the site's day/month order, the site clock with seconds and the zone (`4/3/2026 17:05:09 +03` on a 24-hour site, `4/3/2026 5:05:09 PM +03` otherwise).
 

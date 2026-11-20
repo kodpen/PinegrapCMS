@@ -183,6 +183,10 @@ function ws_task_brief($task, $assignees)
     $blockers = array_key_exists('_ws_blockers', $task) ? (array) $task['_ws_blockers'] : (ws_task_links_open_map(array($task['id']))[(int) $task['id']] ?? array());
     $waiting = array_key_exists('_ws_waiting', $task) ? (int) $task['_ws_waiting'] : (int) (ws_task_delegation_waiting_map(array($task['id']))[(int) $task['id']] ?? 0);
 
+    // The application that created it (ws_tasks.app_id, 0 before the upgrade).
+    $app_id = (int) ($task['app_id'] ?? 0);
+    $app = ws_task_app_present($app_id, ($app_id > 0) ? ws_task_app_names(array($app_id)) : array());
+
     return array(
         'id'               => (int) $task['id'],
         'number'           => ws_task_number($task['id']),
@@ -200,6 +204,8 @@ function ws_task_brief($task, $assignees)
         'department_id'    => (int) $task['department_id'],
         'channel_id'       => (int) $task['channel_id'],
         'creator_id'       => (int) $task['creator_id'],
+        'created_by_app'   => $app,
+        'made_by_label'    => ws_task_app_label($app),
         // A copy of a repeating task (includes/workspace/recurrence.php).
         'recurring'        => ((int) ($task['recurrence_id'] ?? 0) > 0),
         'assignees'        => array_values($people),
@@ -552,7 +558,8 @@ function ws_task_create_check($viewer, $data)
  * @param array $viewer
  * @param array $data    title, description, status, priority, start_date, due_date,
  *                       estimate_minutes, department_id, channel_id, source_message_id,
- *                       assignees (ids), refs (tokens)
+ *                       assignees (ids), refs (tokens), app_id (the application
+ *                       that creates it, 0 for a person; left out: the request's)
  * @return array ok, error, field, task_id
  */
 function ws_task_create($viewer, $data)
@@ -592,6 +599,14 @@ function ws_task_create($viewer, $data)
 
     if ($task_id <= 0) {
         return array('ok' => false, 'error' => lang('The task could not be saved.'), 'field' => '', 'task_id' => 0);
+    }
+
+    // The application that created it (an API key, an OAuth connection, a
+    // flow run one started, an assistant's proposal), 0 for a person.
+    $app_id = ws_task_app_of($data, ws_task_request_app());
+
+    if (($app_id > 0) && ws_task_app_ready()) {
+        db("UPDATE ws_tasks SET app_id = '" . $app_id . "' WHERE id = '" . $task_id . "'");
     }
 
     ws_task_set_assignees($viewer, $task_id, $assignees, true);
@@ -1152,6 +1167,18 @@ function ws_tasks_agent_out_sql($column = 't.channel_id', $agents = null)
 }
 
 /**
+ * A count of the rows a condition keeps, for a SELECT that counts other rows
+ * beside it: COUNT(*) when there is no condition. Pure.
+ *
+ * @param string $condition ws_tasks_agent_out_sql(), '' for none
+ * @return string
+ */
+function ws_tasks_agent_count_sql($condition)
+{
+    return ((string) $condition === '') ? 'COUNT(*)' : 'COALESCE(SUM(CASE WHEN ' . $condition . ' THEN 1 ELSE 0 END), 0)';
+}
+
+/**
  * Whether ws_tasks_agent_rule() keeps a task in this channel (a task in no
  * channel is no agent channel's task).
  *
@@ -1171,6 +1198,174 @@ function ws_tasks_agent_keeps($rule, $channel_id)
 }
 
 /**
+ * Whether ws_tasks.app_id is there: files land before the upgrade, and until
+ * then every task reads as a person's.
+ *
+ * @return bool
+ */
+function ws_task_app_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('ws_tasks', 'app_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The application the request writes as: an application key or an OAuth
+ * connection; 0 for the panel, a scheduled run and a person's own device.
+ *
+ * @return int
+ */
+function ws_task_request_app()
+{
+    if (!function_exists('api_current_app') || !is_array(api_current_app()) || !function_exists('ws_api_writer_app_id')) {
+        return 0;
+    }
+
+    return max(0, (int) ws_api_writer_app_id());
+}
+
+/**
+ * The application a new task is marked with. Pure. A route that knows it
+ * names it in app_id (a flow run an application started, an assistant's
+ * proposal, a repeating task's copy), 0 for a person; otherwise the request's.
+ *
+ * @param array $data        the fields ws_task_create() takes
+ * @param int   $request_app ws_task_request_app()
+ * @return int
+ */
+function ws_task_app_of($data, $request_app)
+{
+    $app_id = array_key_exists('app_id', (array) $data) ? (int) $data['app_id'] : (int) $request_app;
+
+    return max(0, $app_id);
+}
+
+/**
+ * The "Made by agents" filter as given: '' (all), people (without them) or
+ * apps (them alone). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_task_made_by_mode($value)
+{
+    $value = is_string($value) ? $value : '';
+
+    return in_array($value, array('people', 'apps'), true) ? $value : '';
+}
+
+/**
+ * The filter as an SQL condition. Pure. "Created by me" lists an
+ * application's task only when they alone are asked for: the person did not
+ * write it. Before the upgrade every task is a person's.
+ *
+ * @param string $mode   ws_task_made_by_mode()
+ * @param string $scope  the list's scope
+ * @param bool   $ready  ws_task_app_ready()
+ * @param string $column
+ * @return string '' when nothing is filtered
+ */
+function ws_task_made_by_sql($mode, $scope, $ready, $column = 't.app_id')
+{
+    $mode = ws_task_made_by_mode($mode);
+
+    if (!$ready) {
+        return ($mode === 'apps') ? '0 = 1' : '';
+    }
+
+    if (($mode === '') && ($scope === 'created')) {
+        $mode = 'people';
+    }
+
+    if ($mode === 'people') {
+        return $column . ' = 0';
+    }
+
+    return ($mode === 'apps') ? $column . ' > 0' : '';
+}
+
+/**
+ * The names of a set of applications, in one query; a deleted one is
+ * missing.
+ *
+ * @param int[] $app_ids
+ * @return string[] id => name
+ */
+function ws_task_app_names($app_ids)
+{
+    static $cache = array();
+
+    $ids = array();
+
+    foreach ((array) $app_ids as $app_id) {
+        if (((int) $app_id > 0) && !array_key_exists((int) $app_id, $cache)) {
+            $ids[(int) $app_id] = (int) $app_id;
+        }
+    }
+
+    if (!empty($ids)) {
+        foreach ($ids as $app_id) {
+            $cache[$app_id] = null;
+        }
+
+        foreach ((array) db_items("SELECT id, name FROM api_apps WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+            $cache[(int) $row['id']] = (string) $row['name'];
+        }
+    }
+
+    $out = array();
+
+    foreach ((array) $app_ids as $app_id) {
+        if (isset($cache[(int) $app_id])) {
+            $out[(int) $app_id] = $cache[(int) $app_id];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The application that created a task, as the API and the screens carry it.
+ * Pure.
+ *
+ * @param int      $app_id ws_tasks.app_id
+ * @param string[] $names  ws_task_app_names()
+ * @return array|null id, name (null for a deleted application); null for a person
+ */
+function ws_task_app_present($app_id, $names)
+{
+    if ((int) $app_id <= 0) {
+        return null;
+    }
+
+    return array('id' => (int) $app_id, 'name' => isset($names[(int) $app_id]) ? (string) $names[(int) $app_id] : null);
+}
+
+/**
+ * "Made by <application>" beside the creator. Pure but for lang().
+ *
+ * @param array|null $app ws_task_app_present()
+ * @return string '' for a person's task
+ */
+function ws_task_app_label($app)
+{
+    if (!is_array($app)) {
+        return '';
+    }
+
+    if ((string) ($app['name'] ?? '') === '') {
+        return lang('Made by an application');
+    }
+
+    return lang(array('string' => 'Made by {var:1}', 'vars' => (string) $app['name']));
+}
+
+/**
  * Tasks for a list, filtered, with only what the reader may see.
  *
  * @param array $viewer
@@ -1180,7 +1375,8 @@ function ws_tasks_agent_keeps($rule, $channel_id)
  *                       updated_since, delegate (any | none | an assistant's
  *                       key), limit, agent_channels ('' | include |
  *                       only; only the readers that pass it leave agent
- *                       channels' tasks out: ws_tasks_agent_rule())
+ *                       channels' tasks out: ws_tasks_agent_rule()),
+ *                       made_by ('' | people | apps: ws_task_made_by_sql())
  * @return array[] briefs
  */
 function ws_tasks_list($viewer, $filters)
@@ -1289,6 +1485,14 @@ function ws_tasks_list($viewer, $filters)
         }
     }
 
+    // Made by agents: all, without them, or them alone ("Created by me"
+    // leaves them out unless they alone are asked for).
+    $made_by_sql = ws_task_made_by_sql($filters['made_by'] ?? '', $scope, ws_task_app_ready());
+
+    if ($made_by_sql !== '') {
+        $where[] = $made_by_sql;
+    }
+
     $limit = max(1, min(500, (int) ($filters['limit'] ?? 200)));
 
     $rows = (array) db_items("SELECT DISTINCT t.* FROM ws_tasks t" . $join
@@ -1306,6 +1510,7 @@ function ws_tasks_list($viewer, $filters)
     $times = ws_task_time_totals($ids);
     $blockers = ws_task_links_open_map($ids);
     $waiting = ws_task_delegation_waiting_map($ids);
+    ws_task_app_names(array_column($rows, 'app_id'));
     $out = array();
 
     foreach ($rows as $row) {

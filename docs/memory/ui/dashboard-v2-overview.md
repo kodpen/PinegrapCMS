@@ -20,7 +20,7 @@ description: The new dashboard as a whole: the per-person switch beside the unto
 
 ## How are charts drawn and when do cards refresh?
 - Inline SVG drawn by `pg_dash.js` with `role="img"` and a label; Chart.js is not loaded on this page. A tone also differs in text, never colour alone. Tips: `dashboard-v2-chart-tips.md`.
-- `pg_dashboard_v2_card_timing()`: `engagement`, `firewall`, `visitors` are asked for again at the session's refresh time (`pg_dashboard_refresh_seconds()`, at least 10 s); the rest on load and when a period or compare changes. A hidden tab skips it; coming back asks at once. The slow `gsearch`, `ga`, `flows` are asked for on their own beside the batch.
+- `pg_dashboard_v2_card_timing()`: `engagement`, `firewall`, `visitors`, `mail` are asked for again at the session's refresh time (`pg_dashboard_refresh_seconds()`, at least 10 s); the rest on load and when a period or compare changes. A hidden tab skips it; coming back asks at once. The slow `gsearch`, `ga`, `flows` are asked for on their own beside the batch.
 
 ## Where is the rest?
 - Table, layout JSON, actions, card contract: `dashboard-v2-storage.md`. Edit mode, share, side panel, cards, looks, width, phone: the other `dashboard-v2-*.md`. Owner decisions: `workflow/decisions-made-product-17.md`.

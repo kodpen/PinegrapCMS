@@ -217,7 +217,7 @@ function pg_auto_dialog_form_open_fields()
             lang('Visitors with a cart') => 'cart',
         )),
         'place' => array(lang('Place'), array(
-            lang('Centre') => 'centre',
+            lang('In the centre') => 'centre',
             lang('Bar at the top') => 'top',
             lang('Bar at the bottom') => 'bottom',
             lang('Corner') => 'corner',
@@ -284,4 +284,38 @@ function pg_auto_dialog_form_open_values($liveform)
     }
 
     return pg_auto_dialog_open_settings($sent);
+}
+
+/**
+ * What is wrong with what a pop-up shows, field => message: a content value
+ * that is not offered (url, component); for a designed pop-up, a component
+ * that is not given, missing or a system widget. A blank content is the
+ * address. The component is looked up through $found (its rows => the ids
+ * that exist; pg_auto_dialog_components_found() by default).
+ *
+ * @param array         $sent   content, component_id
+ * @param callable|null $found
+ * @return array
+ */
+function pg_auto_dialog_form_content_problems($sent, $found = null)
+{
+    $raw = $sent['content'] ?? '';
+    $value = is_scalar($raw) && !is_bool($raw) ? strtolower(trim((string) $raw)) : null;
+
+    if (($value === null) || (($value !== '') && !in_array($value, pg_auto_dialog_content_choices(), true))) {
+        return array('content' => lang(array('string'=>'{var:1} must be one of: {var:2}','vars'=>array(lang('Content'), implode(', ', pg_auto_dialog_content_choices())))));
+    }
+
+    if ($value !== 'component') {
+        return array();
+    }
+
+    $content = pg_auto_dialog_content($sent);
+    $ids = ($content['component_id'] > 0) ? call_user_func(($found === null) ? 'pg_auto_dialog_components_found' : $found, array($content)) : array();
+
+    if (!in_array($content['component_id'], array_map('intval', (array) $ids), true)) {
+        return array('component_id' => lang('Choose a shared component for the designed pop-up.'));
+    }
+
+    return array();
 }

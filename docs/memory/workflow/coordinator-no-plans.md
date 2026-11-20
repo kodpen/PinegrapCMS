@@ -21,7 +21,7 @@ description: Design template plans are paused (2026-11-09) but for the lines the
 - Why: coordinators gave template steps out while feature plan steps waited.
 
 ## Is a bug hunt given out?
-- Only in an area the architect named, one per coordinator at a time (owner, 2026-11-15): `bug-hunt.md`.
+- Only in an area the architect named, at most three per coordinator at a time (architect, 2026-11-20): `bug-hunt.md`.
 
 ## Are open bug issues given out?
 - Yes, since 2026-11-13: an open `bug` issue is work for every coordinator, given out like a plan step, one per worker and PR (`test-coordinator.md`).

@@ -921,6 +921,12 @@ function pg_privacy_erase_tables()
             'name'            => '',
             'created_user_id' => 0,
         )),
+        // A staff member's answer under a guest's prototype comment stays in
+        // its thread without their name or account.
+        'prototype_comments' => array('find' => $user, 'action' => 'anonymise', 'fields' => array(
+            'author_name' => '{name}',
+            'user_id'     => 0,
+        )),
         // What a Fediverse account sent goes whole, as a block or a Delete
         // of the account removes it (_pg_privacy_erase_apply_remote_comments()).
         'remote_comments' => array('table' => 'comments', 'find' => array('remote_actor' => 'actors'), 'action' => 'delete', 'fields' => array()),
@@ -1084,6 +1090,7 @@ function pg_privacy_erase_labels()
         'erp_quotes'                   => lang('Quotes'),
         'erp_waybills'                 => lang('Waybills'),
         'comments'                     => lang('Comments and reviews'),
+        'prototype_comments'           => lang('Prototype comment answers'),
         'remote_comments'              => lang('Fediverse comments'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
@@ -1861,14 +1868,15 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
 /**
  * The person's live bookings still to come are cancelled first, the way the
  * agenda cancels one (status and slot in one UPDATE, so the slot opens
- * again), without the mails: the person is being erased. Then the personal
- * columns of all their bookings are replaced.
+ * again, and hold_until 0, so a deposit paid later never books it again),
+ * without the mails: the person is being erased. Then the personal columns
+ * of all their bookings are replaced.
  */
 function _pg_privacy_erase_apply_bookings($where, array $fields, array $scope, $name)
 {
     $now = time();
 
-    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
+    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
 
     _pg_privacy_erase_write('bookings', $where, $fields, $name);
 }

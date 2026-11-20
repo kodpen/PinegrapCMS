@@ -31,6 +31,14 @@
 
     X.icons.more = 'M5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0zM10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0zM16 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0z';
     X.icons.invert = 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 3.5v17M12 8.5l6.6-3.4M12 13l8.3-4.2M12 17.5l7.4-3.8';
+    X.icons.nudgeLeft = 'M19 12H5M11 6l-6 6 6 6';
+    X.icons.nudgeRight = 'M5 12h14M13 6l6 6-6 6';
+    X.icons.nudgeUp = 'M12 19V5M6 11l6-6 6 6';
+    X.icons.nudgeDown = 'M12 5v14M6 13l6 6 6-6';
+
+    // A nudge arrow held this long moves 10 px, then again at every repeat
+    // while it stays down; a shorter press is a click: 1 px.
+    var NUDGE_HOLD = 400, NUDGE_REPEAT = 120;
 
     // A command: its icon, its label's key, what it does (this is the
     // editor), whether it removes something (drawn in the danger colour)
@@ -51,6 +59,11 @@
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
         pictureLayer: ['layers', 'pictureLayer', function () { this.pictureToLayer(); }],
         removePicture: ['trash', 'delete', function () { this.deletePicture(); }, true],
+        // The arrows: icons only, a click 1 px, held 10 px (nudgeHold()).
+        nudgeLeft: ['nudgeLeft', 'actNudgeLeft', function (b) { this.nudgeClick(b, 'left'); }],
+        nudgeUp: ['nudgeUp', 'actNudgeUp', function (b) { this.nudgeClick(b, 'up'); }],
+        nudgeDown: ['nudgeDown', 'actNudgeDown', function (b) { this.nudgeClick(b, 'down'); }],
+        nudgeRight: ['nudgeRight', 'actNudgeRight', function (b) { this.nudgeClick(b, 'right'); }],
         erase: ['eraser', 'areaErase', function () { this.areaErase(); }, true],
         keep: ['crop', 'areaKeep', function () { this.areaKeep(); }],
         copy: ['layers', 'areaCopy', function () { this.areaCopy(); }],
@@ -99,6 +112,8 @@
             animate: this.tool === 'motion',
             layers: picked.length,
             free: picked.filter(function (l) { return !l.locked; }).length,
+            // The ones a nudge moves: an erased or adjusted area stays.
+            move: picked.filter(function (l) { return !l.locked && !(Editor.layerTypes[l.type] || {}).fixed; }).length,
             picture: !!(this.board && this.board.pic && this.pictureOn && this.pictureOn()),
             area: (this.tool === 'area') && !!this.areaSelected && this.areaSelected(),
             pin: !!this.chosenPin && (this.chosenPin() !== null),
@@ -144,12 +159,18 @@
             this.actBar.textContent = '';
 
             list.forEach(function (item) {
-                var c = COMMANDS[item.name], b = button('pgie-act' + (c[3] ? ' pgie-act-danger' : ''), t((object && c[4]) || c[1]), c[0], function () {
+                var arrow = item.name.indexOf('nudge') === 0;
+                var c = COMMANDS[item.name], b = button('pgie-act' + (c[3] ? ' pgie-act-danger' : '') + (arrow ? ' pgie-actnudge' : ''), t((object && c[4]) || c[1]), c[0], function () {
                     c[2].call(self, b);
-                }, true);
+                }, !arrow);
 
                 b.disabled = !!item.off;
                 b.setAttribute('data-act', item.name);
+
+                if (arrow) {
+                    self.nudgeHold(b, item.name.slice(5).toLowerCase());
+                }
+
                 self.actBar.appendChild(b);
             });
         }
@@ -245,6 +266,59 @@
                 }
             });
         });
+    };
+
+    // A click on an arrow nudges 1 px (an Enter or a Space on it too); the
+    // click a held press ends with has moved the layers already.
+    Editor.prototype.nudgeClick = function (b, dir) {
+        if (b.pgHeld && (Date.now() - b.pgHeld < 1000)) {
+            b.pgHeld = 0;
+            return;
+        }
+
+        b.pgHeld = 0;
+        this.nudge(dir, false);
+    };
+
+    // An arrow held down: 10 px once it is held NUDGE_HOLD ms, again every
+    // NUDGE_REPEAT ms until it is let go or the finger leaves it; all of it
+    // one undo step with the nudges before it (nudge()).
+    Editor.prototype.nudgeHold = function (b, dir) {
+        var self = this, wait = 0, repeat = 0, held = false;
+        var stop = function () {
+            window.clearTimeout(wait);
+            window.clearInterval(repeat);
+            wait = 0;
+            repeat = 0;
+        };
+
+        b.addEventListener('pointerdown', function (e) {
+            if ((e.button > 0) || b.disabled) {
+                return;
+            }
+
+            stop();
+            held = false;
+            b.pgHeld = 0;
+            wait = window.setTimeout(function () {
+                held = true;
+                self.nudge(dir, true);
+                repeat = window.setInterval(function () {
+                    if (!b.isConnected || !self.nudge(dir, true)) {
+                        stop();
+                    }
+                }, NUDGE_REPEAT);
+            }, NUDGE_HOLD);
+        });
+        b.addEventListener('pointerup', function () {
+            stop();
+            b.pgHeld = held ? Date.now() : 0;
+        });
+        ['pointercancel', 'pointerleave'].forEach(function (type) {
+            b.addEventListener(type, stop);
+        });
+        // A long press would open the browser's own menu over the bar.
+        b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     };
 
     // Above an open sheet that overlaps the stage's bottom (a phone held

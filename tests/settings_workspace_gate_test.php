@@ -63,7 +63,7 @@ function test_settings_workspace_gate_heading_and_keys()
 {
 	$categories = settings_workspace_gate_test_categories();
 
-	pg_assert_same(19, count($categories), 'the registry\'s categories are read');
+	pg_assert_same(20, count($categories), 'the registry\'s categories are read');
 	pg_assert_same(settings_workspace_gate_test_workspace_keys(), array_slice(array_keys($categories), -3), 'the three Workspace categories close the list');
 
 	foreach ($categories as $key => $category) {
@@ -122,7 +122,7 @@ function test_settings_workspace_gate_manager_without_right_is_refused()
 	$reader = array('manager' => true, 'workspace' => false);
 	$open = array_keys(pg_settings_categories_for(array('role' => 2), $reader, $categories));
 
-	pg_assert_same(15, count($open), 'every other category');
+	pg_assert_same(16, count($open), 'every other category');
 	pg_assert_false(in_array('mailboxes', $open, true), 'Mailboxes is refused too');
 
 	foreach (settings_workspace_gate_test_workspace_keys() as $key) {

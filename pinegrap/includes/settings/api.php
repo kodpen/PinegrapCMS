@@ -49,28 +49,28 @@ $output_api_not_ready = '
 // ── Application API ──
 $output_api_switches = '
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('plug', 'system') . '
                             <div class="switch"><input value="1"' . $api_enabled_checked . ' class="" type="checkbox" id="api_enabled" name="api_enabled"/></div>
                             <label class="" for="api_enabled">' . lang('Enable the application API') . '</label>
                             <div class="form-text">' . lang('When this is off every call is answered with 503, whatever key it carries. The application keys are kept and work again as soon as the API is turned back on.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('lock', 'system') . '
                             <div class="switch"><input value="1"' . $api_require_https_checked . ' class="" type="checkbox" id="api_require_https" name="api_require_https"/></div>
                             <label class="" for="api_require_https">' . lang('Require HTTPS') . '</label>
                             <div class="form-text">' . lang('The key and secret travel with every call, so a call over plain HTTP is refused with 403. Turn this off only on an internal network that has no certificate.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('file-earmark-code', 'system') . '
                             <div class="switch"><input value="1"' . $api_openapi_public_checked . ' class="" type="checkbox" id="api_openapi_public" name="api_openapi_public"/></div>
                             <label class="" for="api_openapi_public">' . lang('Publish the API description without credentials') . '</label>
                             <div class="form-text">' . lang('The description at /openapi.json names every endpoint and parameter. It is served to anyone only while this is on; otherwise it needs a valid application key like every other call.') . '</div>
                         </div>
                     </div>' . ($api_device_switch_ready ? '
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('phone', 'system') . '
                             <div class="switch"><input value="1"' . $api_device_switch_checked . ' class="" type="checkbox" id="api_team_devices" name="api_team_devices"/></div>
                             <label class="" for="api_team_devices">' . lang('Team devices') . '</label>
                             <div class="form-text">' . lang('Staff sign in on the team app with their own user name and password, and each gets at most what their own account may do. While this is on, saving adds the Workspace, tasks, and read access to orders, contacts, products, bookings, files, comments and commissions to the Team devices application; off, it is disabled and its devices are kept.') . '</div>
@@ -110,7 +110,7 @@ $output_api_storage = '
                         <label for="api_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                            <input type="number" name="api_log_retention_days" id="api_log_retention_days" class="form-ghost" value="' . (int) $api_log_retention_days . '" min="1" max="3650" inputmode="numeric" style="text-align: right;"/>
+                            <input type="number" name="api_log_retention_days" id="api_log_retention_days" class="form-ghost text-end" value="' . (int) $api_log_retention_days . '" min="1" max="3650" inputmode="numeric"/>
                         </label>
                         <div class="form-text">' . lang('Requests older than this are removed from the API log once a day by the cron job. Between 1 and 3650 days.') . '</div>
                     </div>';
@@ -155,7 +155,7 @@ $output_integration_links = '';
 foreach (pg_settings_integration_links($user) as $integration_link) {
     $output_integration_links .= '
                         <a class="pg-card-inner-row fs-sm fw-medium fg-primary text-decoration-none" href="' . h($integration_link['url']) . '">
-                            <i class="bi ' . h($integration_link['icon']) . ' fg-secondary" aria-hidden="true"></i>
+                            <span class="pg-icon-tile pg-icon-tile-lg pg-tone-system" aria-hidden="true"><i class="bi ' . h($integration_link['icon']) . '"></i></span>
                             <span class="flex-grow-1">' . h($integration_link['label']) . '</span>
                             <i class="bi bi-chevron-right fg-secondary" aria-hidden="true"></i>
                         </a>';

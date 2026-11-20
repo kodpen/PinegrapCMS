@@ -1,6 +1,6 @@
 ---
 name: log-warnings-forms-default-screens
-description: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (plan php-error-log-clean, EL5): what each screen now does when a row, a page or a posted key is missing
+description: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (#10304, `error-reporting.md`): what each screen now does when a row, a page or a posted key is missing
 ---
 
 ## What does the default View Order screen draw when the site has no View Order page?

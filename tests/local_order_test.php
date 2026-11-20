@@ -152,3 +152,77 @@ function test_local_order_screen_hands_over_its_cart()
 	pg_assert_true(($number !== false) && ($claim < $number), 'claimed, then numbered');
 	pg_assert_contains("pg_announce('order.created', array('id' => \$order_id, 'order_number' => (int) \$order_number));", $order, 'order.created');
 }
+
+// A gift card line (one a cart held before the counter refused them) is
+// refused by the completion and the API with the reason, not as a stock
+// shortfall; switched off, it says so first.
+function test_local_order_gift_card_line_is_refused()
+{
+	$reason = local_sale_product_refusal(array('gift_card' => 1));
+	$errors = pg_local_order_line_errors(array(
+		local_order_test_line(1, 10, 1),
+		local_order_test_line(2, 40, 1, array('gift_card' => '1')),
+		local_order_test_line(3, 41, 1, array('gift_card' => '1', 'enabled' => 0)),
+	));
+
+	pg_assert_same(array(2, 3), array_keys($errors), 'the gift card lines are named');
+	pg_assert_same($reason, $errors[2], 'with the reason');
+	pg_assert_contains('switched off', $errors[3], 'switched off first');
+
+	$res = pg_local_order_check(array('id' => 1, 'role' => 0), 9, array(local_order_test_line(1, 10, 1), local_order_test_line(2, 40, 1, array('gift_card' => '1'))), array('pay_method' => 'card'));
+	pg_assert_false($res['ok'], 'refused');
+	pg_assert_same($reason, $res['message'], 'the reason on top');
+	pg_assert_same(array(2), array_keys($res['line_errors']), 'on its line');
+
+	$stock = pg_local_order_check(array('id' => 1, 'role' => 0), 9, array(local_order_test_line(1, 10, 2, array('inventory' => 1, 'inventory_quantity' => 1))), array('pay_method' => 'card'));
+	pg_assert_contains('no longer fit the stock', $stock['message'], 'a stock shortfall keeps its words');
+
+	$api = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/resources/orders_create.php');
+	$refuse = strpos($api, '$refusal = local_sale_product_refusal($product);');
+	pg_assert_contains('inventory, inventory_quantity, taxable, tax_rate, gift_card', $api, 'the API reads the column');
+	pg_assert_true(($refuse !== false) && ($refuse < strpos($api, '$rows[] = array_merge(')), 'the API refuses before a line is kept');
+}
+
+// The counter runs the site checkout's line stages and their follow-up for
+// the buyer, not the operator its user_id names: a membership, folder
+// access, reward points and contact groups were skipped.
+function test_local_order_runs_the_site_line_stages()
+{
+	$order = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/local_order.php');
+	$from = strpos($order, '// 5. What each line does');
+	$block = ($from === false) ? '' : substr($order, $from, (int) strpos($order, '// 6. Tell whoever', $from) - $from);
+
+	pg_assert_true($block !== '', 'the step is found');
+	pg_assert_contains("\$buyer_id = pg_order_rights_user_id(array('type' => 'local', 'contact_id' => \$contact_id));", $block, 'the buyer\'s account');
+	pg_assert_contains('$collected = pg_order_complete_lines($order_id, $site_lines,', $block, 'the line stages');
+	pg_assert_contains("'user_id' => (\$buyer_id > 0) ? \$buyer_id : '',", $block, 'for the buyer');
+	pg_assert_contains("'contact_id' => \$contact_id,", $block, 'and the buyer\'s contact');
+	pg_assert_contains('pg_order_complete_private_access($buyer_id);', $block, 'the store\'s private folder');
+	pg_assert_contains("pg_order_complete_rewards((\$buyer_id > 0) ? \$buyer_id : '', \$contact_id, \$collected['reward_points'], \$order_number, \$buyer_email)", $block, 'the reward points');
+	pg_assert_contains('pg_order_complete_contact_groups($contact_id, $contact_groups);', $block, 'the contact groups');
+
+	// The order is numbered and its customer written before the stages run.
+	$customer = strpos($order, "contact_id = '\" . (int) \$contact_id . \"',");
+	pg_assert_true(($customer !== false) && ($from !== false) && ($customer < $from), 'the customer first');
+}
+
+// A counter sale's rights belong to its buyer; a site order's to its user.
+function test_local_order_rights_user()
+{
+	pg_assert_same(5, pg_order_rights_user_id(array('id' => 1, 'type' => '', 'contact_id' => 9, 'user_id' => '5')), 'a site order: its user');
+	pg_assert_same(0, pg_order_rights_user_id(array('id' => 1, 'type' => 'local', 'contact_id' => 0, 'user_id' => '5')), 'a walk-in counter sale: nobody, not the operator');
+	pg_assert_same(0, pg_order_rights_user_id(array('id' => 1, 'type' => null, 'contact_id' => 0, 'user_id' => '')), 'a guest order');
+
+	$completion = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
+	$points = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_points.php');
+
+	pg_assert_contains("SELECT user_id FROM user WHERE user_contact = '\" . \$contact_id . \"' ORDER BY user_id ASC LIMIT 1", $completion, 'the contact\'s account');
+
+	// What a cancellation, a restore and a refunded return take back follows
+	// the same account.
+	pg_assert_contains('pg_order_folder_access_take_back(pg_order_folder_access_lines($order[\'id\']), pg_order_rights_user_id($order), $order[\'id\']);', $completion, 'cancelled access');
+	pg_assert_same(3, substr_count($completion, 'pg_order_rights_user_id($order)'), 'cancelled, restored and refunded access');
+	pg_assert_contains(' . pg_order_rights_orders_sql($user_id) . ', $completion, 'another order holding the access');
+	pg_assert_same(2, substr_count($points, 'pg_order_rights_user_id($order)'), 'cancelled and refunded points');
+	pg_assert_same(0, substr_count($points, "pg_credit_points_take_back(\$order['user_id']"), 'never the order\'s user_id');
+}

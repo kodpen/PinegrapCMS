@@ -129,7 +129,9 @@ function test_page_scripts_preview_table_mirrors_the_server()
 	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php')
 		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php')
 		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/listen.php')
-		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/site_push_block.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php');
 	foreach ($rows as $file) {
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $file), $file . ' exists');
 		pg_assert_true(strpos($server, "'/" . $file) !== false || strpos($server, "'" . $file . "'") !== false, $file . ' is added by the server');
@@ -151,6 +153,18 @@ function test_page_scripts_preview_table_mirrors_the_server()
 	$map = pg_place_list_pattern();
 	$map = substr($map, 1, strrpos($map, '/') - 1);
 	pg_assert_same('assets/js/pg_map.js', isset($rows[$map]) ? $rows[$map] : null, 'the Preview loads pg_map.js with the server\'s expression');
+
+	// The "Notify me" block's script, found with the server's expression.
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_block.php');
+	$push = pg_site_push_block_pattern();
+	$push = substr($push, 1, strrpos($push, '/') - 1);
+	pg_assert_same('assets/js/pg_site_push.js', isset($rows[$push]) ? $rows[$push] : null, 'the Preview loads pg_site_push.js with the server\'s expression');
+
+	// The course blocks' script, found with the server's expression.
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php');
+	$course = pg_course_blocks_pattern();
+	$course = substr($course, 1, strrpos($course, '/') - 1);
+	pg_assert_same('assets/js/pg_course.js', isset($rows[$course]) ? $rows[$course] : null, 'the Preview loads pg_course.js with the server\'s expression');
 }
 
 // The framework's script is the fallback for a page without the design's

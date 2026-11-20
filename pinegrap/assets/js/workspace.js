@@ -1363,7 +1363,8 @@
         return officeViewLoading;
     }
 
-    // A PDF, a video, or a Word or Excel file, large, without leaving the screen.
+    // A PDF, a video, a Word or Excel file, or a .csv or .tsv as a sheet,
+    // large, without leaving the screen.
     //
     // An Excel workbook or a Word document is offered for editing to whoever
     // may write in its channel (ws_file_office with edit): the changed cells
@@ -1453,6 +1454,22 @@
                 var writable = editing && !!(data.can_replace || data.can_send);
                 var state = { view: null, saving: false };
                 var save = null;
+
+                // A .csv or .tsv, only looked at, is read again with the
+                // separator and character set chosen above its sheet.
+                if (data.office && data.office.kind === 'csv') {
+                    window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, {
+                        reread: function (choice, done) {
+                            api('ws_file_office', { message_id: file.message_id, delimiter: choice.delimiter, encoding: choice.encoding }).then(function (again) {
+                                done(again.office);
+                            }).catch(function (error) {
+                                done(null, (error && error.message) ? error.message : t('error_generic'));
+                            });
+                        }
+                    });
+
+                    return;
+                }
 
                 state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
                     editable: true,
@@ -2657,6 +2674,9 @@
     var DRAFT_PREFIX = 'ws-draft:';
     var DRAFT_DAYS = 14;
     var DRAFT_KEEP = 50;
+
+    // The pictures the Files tab's gallery draws at a time (drawFiles()).
+    var FILE_PAGE = 60;
 
     function draftKey(site, viewer, channelId, threadId) {
         var thread = parseInt(threadId, 10) || 0;
@@ -5530,7 +5550,7 @@
     // the screen's language. A discussion's box leaves out what runs only
     // in the channel itself (where: channel, ws_command_runs_here()). Each
     // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread, recapHere) {
+    function commandPickerRows(commands, query, inThread, recapHere, flowsHere) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
@@ -5543,6 +5563,12 @@
             // /recap only where the catch-up line offers "Sum up what I
             // missed" (recapHere false); left as it was when not told.
             if ((recapHere === false) && (item.key === 'recap')) {
+                return;
+            }
+
+            // /flow only where Add › Start a flow lists a flow (flowsHere
+            // false); left as it was when not told.
+            if ((flowsHere === false) && (item.key === 'flow')) {
                 return;
             }
 
@@ -5601,6 +5627,32 @@
         });
 
         return out;
+    }
+
+    // The channel's flows as rows of the "/" list and of /flow's argument
+    // list: every flow with nothing typed, else those whose name, or a word
+    // of it, starts with what is typed (Turkish letters folded). A row
+    // carries its flow: picking it starts the flow, it writes nothing.
+    function flowPickerRows(flows, query, meta) {
+        var typed = foldText(String(query || '').trim());
+
+        return (flows || []).filter(function (flow) {
+            var name = foldText(String(flow.name || ''));
+
+            return !typed || (name.indexOf(typed) === 0) || (name.indexOf(' ' + typed) !== -1);
+        }).map(function (flow) {
+            return { label: flow.name, meta: meta, icon: 'bi-play-circle', flow: flow };
+        });
+    }
+
+    // The "/" list with the channel's flows after the commands, under a
+    // header of their own whatever is typed: a flow is no command.
+    function commandPickerAddFlows(rows, flowRows, header) {
+        if (!flowRows.length) {
+            return rows;
+        }
+
+        return rows.concat([{ header: true, label: header }], flowRows);
     }
 
     // Where a list of people or records opens at the caret (placePicker()):
@@ -6174,6 +6226,14 @@
                 var info = el('div', 'd-flex flex-wrap gap-3 align-items-center small fg-secondary mb-5');
                 info.appendChild(el('span', 'badge theme-secondary', task.status_label));
                 info.appendChild(el('span', '', t('created_by', task.creator, task.created_label)));
+
+                // "Made by <application>" beside the creator (ws_tasks.app_id).
+                if (task.made_by_label) {
+                    var madeBy = el('span', 'ws-task-made-by');
+                    madeBy.appendChild(icon('bi-robot', 'me-1'));
+                    madeBy.appendChild(document.createTextNode(task.made_by_label));
+                    info.appendChild(madeBy);
+                }
 
                 if (task.channel) {
                     var channelLink = el('a', 'pg-link-body-emphasis', '#' + task.channel.name);
@@ -7306,6 +7366,24 @@
         return rows;
     }
 
+    // The Decisions tab's choice in an agent channel: this channel's
+    // decisions, or every agent channel's. Pure.
+    function decisionScope(value) {
+        return (value === 'agents') ? 'agents' : 'channel';
+    }
+
+    // Whether the channel form shows the Agent channel switch: once the
+    // database has the column, to a channel's manager (never on a
+    // discussion), and on a new channel, whose maker manages it; not on
+    // the form that turns a note into a channel. Pure.
+    function agentChannelSwitchShown(channel, ready, fromNote) {
+        if (!ready || fromNote) {
+            return false;
+        }
+
+        return !channel || (!!channel.can_manage && (channel.kind !== 'thread'));
+    }
+
     // The tabs of the Channel settings drawer: General always, the others
     // when the channel has something to show there, in the drawer's order.
     // Pure.
@@ -7826,6 +7904,33 @@
         dept.id = nextId('ws-ch-dept-');
         general.appendChild(formRow(t('department'), dept));
 
+        // The Agent channel switch, as /agent-channel on|off
+        // (agent_channel.php): a row of Site Settings, the switch at its end.
+        var agentSwitch = null;
+
+        if (agentChannelSwitchShown(channel, !!CFG.agent_channels, !!defaults.note_id)) {
+            var agentCard = el('div', 'pg-card-inner mb-5');
+            var agentRow = agentCard.appendChild(el('div', 'pg-card-inner-row ws-switch-row'));
+            var agentWords = el('div', 'flex-grow-1 min-w-0');
+
+            agentSwitch = el('input', 'pg-switch');
+            agentSwitch.type = 'checkbox';
+            agentSwitch.id = nextId('ws-ch-agent-');
+            agentSwitch.checked = channel ? !!channel.agent_channel : !!defaults.agent_channel;
+
+            var agentLabel = el('label', 'pg-list-row-title', t('agent_channel_label'));
+            var agentHelp = el('div', 'pg-text-meta', t('agent_channel_help'));
+
+            agentLabel.htmlFor = agentSwitch.id;
+            agentHelp.id = agentSwitch.id + '-help';
+            agentSwitch.setAttribute('aria-describedby', agentHelp.id);
+            agentWords.appendChild(agentLabel);
+            agentWords.appendChild(agentHelp);
+            agentRow.appendChild(agentWords);
+            agentRow.appendChild(agentSwitch);
+            general.appendChild(agentCard);
+        }
+
         var members = null;
 
         if (!channel) {
@@ -8021,6 +8126,10 @@
 
             if (watch) {
                 data.watch = watch.value();
+            }
+
+            if (agentSwitch) {
+                data.agent_channel = agentSwitch.checked ? 1 : 0;
             }
 
             if (!channel && defaults.group_id) {
@@ -8714,6 +8823,8 @@
                 }
             } else if (query.panel === 'archived') {
                 self.showArchived();
+            } else if (query.panel === 'memory') {
+                self.showMemory();
             } else if ((query.panel === 'audit') && BOOT.me.rights.staff) {
                 self.showAudit();
             }
@@ -8794,6 +8905,7 @@
                     home: function () { self.showHome(true); },
                     scheduled: function () { self.showScheduled(true); },
                     archived: function () { self.showArchived(); },
+                    memory: function () { self.showMemory(); },
                     audit: function () { self.showAudit(); }
                 },
                 openChannel: function (id) { self.open(id, 0); },
@@ -10024,6 +10136,23 @@
             }).catch(fail);
         },
 
+        // The general memory the agent channels share, read outside a
+        // channel (assets/js/workspace_memory.js); ws_memory_list refuses
+        // whoever keeps none.
+        showMemory: function () {
+            if (!window.PGWsMemory) {
+                return;
+            }
+
+            var node = offcanvas('ws-memory-general', t('mem_general'));
+            var body = clear(node.querySelector('.drawer-body'));
+            // Wide enough for a row's tags and date beside its name.
+            node.style.width = 'min(48rem, 100vw)';
+            node.querySelector('.drawer-footer').classList.add('d-none');
+            window.PGWsMemory.mount(body, { general: true });
+            showOffcanvas(node);
+        },
+
         showAudit: function () {
             var self = this;
             var node = offcanvas('ws-audit', t('private_channels_audit'));
@@ -10997,8 +11126,11 @@
 
                 self.channel = data.channel;
                 self.era = data.era || null;
-                // Whether Add › Start a flow has a flow to offer here.
+                // Whether Add › Start a flow has a flow to offer here, and
+                // which: the "/" list and /flow offer the same, read once
+                // as the channel opens.
                 self.flowsHere = !!data.flows_here;
+                self.flowsList = data.flows || [];
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
                 self.openItems = data.open_items || [];
@@ -11579,9 +11711,9 @@
             }
         },
 
-        // The marks on the tabs: how many decisions and open tasks there are,
-        // and whether the summary is written, so a tab says it holds
-        // something before it is opened.
+        // The marks on the tabs: how many decisions, open tasks and files
+        // there are, and whether the summary is written, so a tab says it
+        // holds something before it is opened.
         drawTabMarks: function () {
             var self = this;
             var counts = (self.channel && self.channel.tab_counts) || null;
@@ -11590,7 +11722,7 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -14586,31 +14718,82 @@
                 box.appendChild(self.claudeStateLine(state));
             });
 
+            // The column's width decides whether "since" keeps its word:
+            // measured again whenever the box is resized, and once the
+            // panel's font has loaded (it changes the label's width).
+            var fit = function () {
+                Array.prototype.forEach.call(box.children, function (line) {
+                    self.claudeStateFit(line);
+                });
+            };
+
+            if (typeof window.ResizeObserver === 'function') {
+                new window.ResizeObserver(fit).observe(box);
+            }
+
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(fit);
+            }
+
             return box;
         },
 
+        // When the first line cannot hold everything, the word of "since
+        // HH:MM" goes before the label is cut: the time stays, the whole
+        // phrase in its title. A label is then cut only when it is too long
+        // by itself.
+        claudeStateFit: function (line) {
+            var label = line.querySelector('.ws-claude-label');
+
+            if (!label || !line.querySelector('.ws-claude-since-word')) {
+                return;
+            }
+
+            line.classList.remove('ws-claude-tight');
+
+            if (label.scrollWidth > label.clientWidth) {
+                line.classList.add('ws-claude-tight');
+            }
+        },
+
+        // Icon, then the label, since and Stop on one row, and the progress
+        // note last: on that row when the whole of it fits, on a line of
+        // its own under the label when it does not (backend.src.css).
         claudeStateLine: function (state) {
             var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
+            var body = el('div', 'ws-claude-body');
+            var head = el('div', 'ws-claude-head');
+            var label = el('span', 'ws-claude-label', state.label);
 
+            // A label too long for the column is cut with an ellipsis; the
+            // title keeps the whole of it.
+            label.title = state.label || '';
             line.appendChild(icon(state.icon));
-            line.appendChild(el('span', '', state.label));
+            line.appendChild(body);
+            body.appendChild(head);
+            head.appendChild(label);
 
-            // While an agent holds the request: its last progress note and
-            // since when it holds it (agent_shown.php). The answer's line
+            // While an agent holds the request: since when it holds it and
+            // its last progress note (agent_shown.php). The answer's line
             // takes their place.
-            if (state.note) {
-                line.appendChild(el('span', 'ws-claude-note', '· ' + state.note));
-            }
-
             if (state.since) {
-                line.appendChild(el('span', 'ws-claude-since', '· ' + state.since));
+                var since = el('span', 'ws-claude-since');
+                var at = /\d{1,2}:\d{2}\s*$/.exec(state.since);
+                var time = at ? at[0].trim() : state.since;
+                var word = at ? state.since.slice(0, at.index) : '';
+
+                since.title = state.since;
+                since.setAttribute('aria-label', state.since);
+                since.appendChild(el('span', 'ws-claude-since-word', '· ' + word));
+                since.appendChild(el('span', '', time));
+                head.appendChild(since);
             }
 
             // A request to an MCP agent can be stopped while it waits or
             // runs, by the one who asked or an administrator (mcp_agent.php).
             if (state.cancel) {
-                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+                var stop = el('a', 'ws-claude-stop ms-1', t('mcp_agent_stop'));
 
                 stop.href = '#';
                 stop.addEventListener('click', function (event) {
@@ -14627,7 +14810,11 @@
                     });
                 });
 
-                line.appendChild(stop);
+                head.appendChild(stop);
+            }
+
+            if (state.note) {
+                body.appendChild(el('span', 'ws-claude-note', state.note));
             }
 
             return line;
@@ -15812,6 +15999,15 @@
 
         // ── Polls ──
 
+        // Whether this box offers the channel's flows (the "/" list, /flow):
+        // where Add › Start a flow is offered.
+        flowsOffered: function () {
+            var self = this;
+
+            return !!(CFG.flows && CFG.flows.nav && self.flowsHere && (self.flowsList || []).length && !self.isThread && !self.era
+                && self.channel && ((self.channel.kind === 'public') || (self.channel.kind === 'private')));
+        },
+
         // Add › Start a flow: the flows the person may start in this
         // channel (ws_flows_runnable_in()), each with its last run's flag.
         flowStarter: function () {
@@ -15862,19 +16058,22 @@
         // Starts a flow from the drawer, asked first as the canvas asks. The
         // token stays with the flow until the server answers, so a start sent
         // again after a lost answer gets the run the first one started.
+        // From the "/" list or /flow there is no button: the flow itself
+        // keeps a second pick away while it is asked or sent.
         startFlowHere: function (flow, control, node) {
             var self = this;
             var channelId = self.channel.id;
+            var hold = control || flow;
 
-            if (control.disabled) {
+            if (hold.disabled) {
                 return;
             }
 
-            control.disabled = true;
+            hold.disabled = true;
 
             ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
                 if (!yes) {
-                    control.disabled = false;
+                    hold.disabled = false;
                     return null;
                 }
 
@@ -15883,7 +16082,11 @@
                 // start_token, not token: api() sends the CSRF token as token.
                 return api('ws_flow_run_start', { flow_id: flow.id, channel_id: channelId, start_token: flow.startToken }).then(function (data) {
                     flow.startToken = null;
-                    hideOffcanvas(node);
+                    hold.disabled = false;
+
+                    if (node) {
+                        hideOffcanvas(node);
+                    }
                     toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
 
                     if (self.channel && (self.channel.id === channelId)) {
@@ -15895,7 +16098,7 @@
                     flow.startToken = null;
                 }
 
-                control.disabled = false;
+                hold.disabled = false;
                 fail(error);
             });
         },
@@ -18097,23 +18300,8 @@
 
             self.input = input;
 
-            // On a phone the box is one row, the field between this switch
-            // and Send (or the microphone); the switch opens the row of
-            // tools under it. A wider screen always shows that row.
-            var toolsSwitch = button('btn btn-sm btn-text theme-secondary ws-composer-more', '', 'bi-plus-lg', t('composer_tools'));
-
-            toolsSwitch.setAttribute('aria-expanded', 'false');
-            toolsSwitch.addEventListener('click', function () {
-                var open = !box.classList.contains('is-tools-open');
-
-                box.classList.toggle('is-tools-open', open);
-                toolsSwitch.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-                if (typeof self.fit === 'function') {
-                    self.fit();
-                }
-            });
-            box.appendChild(toolsSwitch);
+            // The field on top, the row of tools with Send under it, on a
+            // phone as on a wide screen.
             box.appendChild(input);
 
             // The row under the box, in order: the inserts, then the box's own
@@ -19453,6 +19641,24 @@
                     return;
                 }
 
+                // /flow with a flow of the channel named: asked and started as
+                // Start a flow does; without one, Start a flow's list opens.
+                if (result.command && ((result.command.type === 'flow_start') || (result.command.type === 'flow_form'))) {
+                    self.clearInput();
+
+                    if (result.command.type === 'flow_form') {
+                        self.flowStarter();
+                        return;
+                    }
+
+                    var named = (self.flowsList || []).filter(function (flow) {
+                        return flow.id === result.command.flow.id;
+                    })[0] || result.command.flow;
+
+                    self.startFlowHere(named, null, null);
+                    return;
+                }
+
                 // /memory without a text: the Memory tab's New entry form,
                 // filled with what the line carried (an answered message's
                 // link); the box empties, its text is in the form.
@@ -20653,6 +20859,12 @@
                 return;
             }
 
+            // /flow: the channel's flows; a pick starts one.
+            if (source === 'flows') {
+                show(self.flowsOffered() ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : []);
+                return;
+            }
+
             // What /create makes: a product, a group.
             if (source === 'kinds') {
                 show(fixed(values.kinds, 'bi-plus-square'));
@@ -20930,14 +21142,17 @@
             // again under the headers of their groups.
             if (mode === 'command') {
                 var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
-                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap));
+                var flowsHere = !inThread && self.flowsOffered();
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere);
+                // The channel's flows by name, after the commands.
+                var flowRows = flowsHere ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : [];
                 var shown;
 
-                self.drawPicker(commands);
+                self.drawPicker(commandPickerAddFlows(commands, flowRows, t('cmd_flows')));
                 shown = self.picker.querySelector('.ws-picker-list');
 
                 if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {
-                    self.drawPicker(commandPickerGroups(commands, BOOT.command_groups));
+                    self.drawPicker(commandPickerAddFlows(commandPickerGroups(commands, BOOT.command_groups), flowRows, t('cmd_flows')));
                 }
 
                 return;
@@ -21207,7 +21422,7 @@
                 }
 
                 var index = rows.indexOf(item);
-                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : '') + (item.flow ? ' ws-picker-flow-row' : ''));
                 row.type = 'button';
 
                 if (item.glyph) {
@@ -21446,6 +21661,25 @@
                 return;
             }
 
+            // A flow of the "/" list or of /flow's list: the command line goes,
+            // and the flow is asked and started as Start a flow does.
+            if (item.flow) {
+                if (this.rich) {
+                    this.rich.replaceTyped(this.beforeCaret().length, { text: '' });
+                } else {
+                    var line = this.input;
+
+                    line.value = line.value.slice(line.selectionStart);
+                    line.selectionStart = line.selectionEnd = 0;
+                }
+
+                this.closePicker();
+                this.drawCommandStrip(null);
+                this.autosize();
+                this.startFlowHere(item.flow, null, null);
+                return;
+            }
+
             // A titled block: what was typed goes, the block comes in its place.
             if (item.block) {
                 var self = this;
@@ -21559,11 +21793,39 @@
         loadList: function (action, emptyText) {
             var self = this;
             var pane = self.pane;
+            var channel = self.channel;
+            // An agent channel's Decisions tab reads this channel's decisions
+            // or every agent channel's (agent_channel.php); the choice stays
+            // while the screen is open.
+            var scoped = (action === 'ws_channel_decisions') && !!channel.agent_channel;
+            var scope = scoped ? decisionScope(self.decisionScope) : 'channel';
 
             pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
-            api(action, { channel_id: self.channel.id }).then(function (data) {
+            api(action, { channel_id: channel.id, scope: scope }).then(function (data) {
+                if ((self.channel !== channel) || (self.pane !== pane)) {
+                    return;
+                }
+
                 clear(pane);
+
+                if (scoped) {
+                    var holder = el('div', 'ws-decisions-scope');
+                    var seg = formParts.seg(t('dec_scope'), [['channel', t('dec_scope_channel')], ['agents', t('dec_scope_agents')]], function (value) {
+                        if (value !== scope) {
+                            self.decisionScope = value;
+                            clear(pane);
+                            self.loadList(action, emptyText);
+                        }
+                    });
+
+                    Object.keys(seg.items).forEach(function (key) {
+                        seg.items[key].setAttribute('aria-pressed', (key === scope) ? 'true' : 'false');
+                        seg.items[key].classList.toggle('is-active', key === scope);
+                    });
+                    holder.appendChild(seg.node);
+                    pane.appendChild(holder);
+                }
 
                 if (!data.messages.length) {
                     var empty = el('div', 'ws-empty');
@@ -21573,14 +21835,65 @@
                     return;
                 }
 
+                var bodies = [];
+
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
                     var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
-                    jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
-                    node.querySelector('.ws-msg-meta').appendChild(jump);
+                    var meta = node.querySelector('.ws-msg-meta');
+
+                    jump.addEventListener('click', function () { self.open(message.channel_id || channel.id, message.id); });
+
+                    // Made in another agent channel: the card names it.
+                    if (message.channel_name) {
+                        meta.appendChild(el('span', 'ws-decision-where pg-text-meta', t('dec_in_channel', message.channel_name)));
+                    }
+
+                    meta.appendChild(jump);
                     pane.appendChild(node);
+
+                    var body = node.querySelector('.ws-msg-main > .ws-msg-body');
+
+                    if (body) {
+                        body.classList.add('ws-folded');
+                        bodies.push(body);
+                    }
                 });
+
+                self.foldLong(bodies);
             }).catch(fail);
+        },
+
+        // A decision longer than about eight lines stays folded (.ws-folded
+        // caps its height) behind Show more / Show less; its head line with
+        // Show in conversation stays above it. All heights are read first,
+        // then the classes and buttons changed, so the pane is laid out
+        // once, not once per card.
+        foldLong: function (bodies) {
+            var long = bodies.filter(function (body) {
+                return body.scrollHeight > body.clientHeight + 2;
+            });
+
+            bodies.forEach(function (body) {
+                if (long.indexOf(body) < 0) {
+                    body.classList.remove('ws-folded');
+                }
+            });
+
+            long.forEach(function (body) {
+                var toggle = lookButton('pg-button pg-button-ghost pg-button-sm ws-fold-toggle', t('pane_show_more'), 'bi-chevron-down');
+
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function () {
+                    var open = body.classList.toggle('ws-folded') === false;
+
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    clear(toggle);
+                    toggle.appendChild(icon(open ? 'bi-chevron-up' : 'bi-chevron-down', ''));
+                    toggle.appendChild(document.createTextNode(t(open ? 'pane_show_less' : 'pane_show_more')));
+                });
+                body.insertAdjacentElement('afterend', toggle);
+            });
         },
 
         // The channel's files: the pictures as a gallery that opens in the
@@ -21588,13 +21901,40 @@
         drawFiles: function () {
             var self = this;
             var pane = self.pane;
+            // The server gives the files a page at a time, newest first:
+            // every page read so far, whether older files are left, where
+            // the next page starts and how many picture tiles the reader
+            // has asked for.
+            var loaded = [];
+            var older = false;
+            var cursor = 0;
+            var tiles = FILE_PAGE;
 
             pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
-            api('ws_channel_files', { channel_id: self.channel.id }).then(function (data) {
+            // The next page; the tab is drawn again with it, where it was.
+            var loadPage = function () {
+                var params = { channel_id: self.channel.id };
+
+                if (cursor > 0) {
+                    params.before = cursor;
+                }
+
+                api('ws_channel_files', params).then(function (data) {
+                    loaded = loaded.concat(data.messages || []);
+                    older = !!data.more;
+                    cursor = data.before || 0;
+
+                    var top = pane.scrollTop;
+                    draw();
+                    pane.scrollTop = top;
+                }).catch(fail);
+            };
+
+            var draw = function () {
                 clear(pane);
 
-                var withFile = data.messages.filter(function (message) { return !!message.file; });
+                var withFile = loaded.filter(function (message) { return !!message.file; });
                 var images = withFile.filter(function (message) { return message.file.image; });
                 var videos = withFile.filter(function (message) { return message.file.kind === 'video'; });
                 // Voice messages and other sound files under their own title,
@@ -21656,16 +21996,21 @@
                     var pictures = el('section', 'ws-file-group');
                     pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
+                    var shown = 0;
+                    var more = null;
 
-                    images.forEach(function (message, index) {
+                    // One tile; the viewer still steps through every picture.
+                    var drawTile = function (message, index) {
                         var tile = el('button', 'ws-gallery-tile');
                         tile.type = 'button';
                         tile.title = message.file.name;
 
                         var img = el('img');
-                        img.src = message.file.url;
                         img.alt = message.file.name;
                         img.loading = 'lazy';
+                        img.decoding = 'async';
+                        // The picture's small copy; the viewer opens the original.
+                        img.src = message.file.thumb || message.file.url;
                         tile.appendChild(img);
 
                         var caption = el('span', 'ws-gallery-caption');
@@ -21676,9 +22021,51 @@
                         tile.addEventListener('click', function () { viewImages(gallery, index); });
                         onContext(tile, function () { return fileMenu(message, index); });
                         grid.appendChild(tile);
-                    });
+                    };
+
+                    // The gallery is drawn FILE_PAGE tiles at a time: a
+                    // channel with hundreds of pictures builds and loads only
+                    // the first page until Show more asks for the next.
+                    var drawPage = function () {
+                        images.slice(shown, shown + FILE_PAGE).forEach(function (message, offset) {
+                            drawTile(message, shown + offset);
+                        });
+                        shown = Math.min(images.length, shown + FILE_PAGE);
+
+                        if (more) {
+                            more.remove();
+                            more = null;
+                        }
+
+                        // Pictures read but not drawn come first; then the
+                        // server's next page, which may hold more.
+                        if (shown < images.length || older) {
+                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', (shown < images.length)
+                                ? t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)) : t('files_older'), 'bi-chevron-down');
+                            more.addEventListener('click', showMore);
+                            pictures.appendChild(more);
+                        }
+                    };
+
+                    var showMore = function () {
+                        tiles = shown + FILE_PAGE;
+
+                        if (shown < images.length) {
+                            drawPage();
+                        } else {
+                            more.disabled = true;
+                            loadPage();
+                        }
+                    };
 
                     pictures.appendChild(grid);
+
+                    // Drawn again after a page arrived: as many tiles as the
+                    // reader had asked for.
+                    do {
+                        drawPage();
+                    } while (shown < Math.min(tiles, images.length));
+
                     pane.appendChild(pictures);
                 }
 
@@ -21768,7 +22155,19 @@
 
                 fileRows(t('voice_and_audio'), audios);
                 fileRows(t('documents'), others);
-            }).catch(fail);
+
+                // Older files of every kind come with the server's next page.
+                if (older) {
+                    var olderButton = lookButton('pg-button pg-button-quiet pg-button-sm ws-files-older', t('files_older'), 'bi-chevron-down');
+                    olderButton.addEventListener('click', function () {
+                        olderButton.disabled = true;
+                        loadPage();
+                    });
+                    pane.appendChild(olderButton);
+                }
+            };
+
+            loadPage();
         },
 
         drawTasks: function () {
@@ -23702,6 +24101,15 @@
                 sub.appendChild(agentChannel);
             }
 
+            // A task an application created says so beside the rest.
+            if (task.made_by_label) {
+                var madeBy = el('span', 'ws-task-made-by ms-1');
+                madeBy.appendChild(document.createTextNode('· '));
+                madeBy.appendChild(icon('bi-robot', 'me-1'));
+                madeBy.appendChild(document.createTextNode(task.made_by_label));
+                sub.appendChild(madeBy);
+            }
+
             if (window.PGWsTaskTime) {
                 window.PGWsTaskTime.rowTags(sub, task, partHelpers());
             }
@@ -23846,7 +24254,7 @@
     function startTasks(root) {
         clear(root);
 
-        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '' };
+        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '', made_by: '' };
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
@@ -23971,6 +24379,17 @@
         });
         bar.appendChild(agents);
 
+        // Made by agents: all, without them, or them alone; hidden until
+        // tasks carry the mark (made_by_ready).
+        var madeBy = select([['', t('task_made_by_all')], ['people', t('task_made_by_people')], ['apps', t('task_made_by_apps')]], '');
+        madeBy.classList.add('w-auto', 'd-none');
+        madeBy.setAttribute('aria-label', t('task_made_by'));
+        madeBy.addEventListener('change', function () {
+            state.made_by = madeBy.value;
+            load();
+        });
+        bar.appendChild(madeBy);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -24008,6 +24427,7 @@
                         task.agent_channel_name = names[task.channel_id] || '';
                     });
                     agents.shown(data.agent_channels || 0);
+                    madeBy.classList.toggle('d-none', !data.made_by_ready);
                     taskRows(listBody, data.tasks, load);
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
@@ -24270,6 +24690,15 @@
 
                         var item = button('ws-board-item' + (task.due ? ' ws-item-due' : '') + (task.priority === 'urgent' ? ' ws-item-urgent' : ''), task.title);
                         item.title = task.title + ' · ' + t('minutes_short', task.minutes) + (task.estimated ? '' : ' · ' + t('not_estimated'));
+
+                        // "Made by <application>" under the title.
+                        if (task.made_by) {
+                            var madeBy = el('span', 'ws-task-made-by ws-board-made-by');
+                            madeBy.appendChild(icon('bi-robot', 'me-1'));
+                            madeBy.appendChild(document.createTextNode(task.made_by));
+                            item.appendChild(madeBy);
+                            item.title += ' · ' + task.made_by;
+                        }
 
                         if (task.progress) {
                             item.classList.add('ws-item-progress');

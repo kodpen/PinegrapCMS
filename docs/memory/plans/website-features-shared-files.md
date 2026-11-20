@@ -11,8 +11,8 @@ description: The existing files that steps of more than one website-side plan to
 - `includes/migrations/2026.11.0.php` and `install/index.php` (`get_tables()`): CM1, CH1, PN1, VP1, RB1; PA2 if its census asks for a column. Step labels are taken from the open version's call list (`release/version-numbering.md`).
 - `functions.php` (a module's `require_once`): CM1, CH1, PN1, VP1, RB1.
 - `job.php` (a sweep or a pass of the general job): CM1, CH1, CH3, OG1, VP2, RB4.
-- `assets/js/style_designer.src.js`: RW1 (the Kind, the canvas sample), RW6 (the list's dynamic value), LS1 and VP3 (a row in `_SD_PAGE_SCRIPTS`), CM4 and PN3 (a part's registration), PA3 (the tab's state).
-- `get_page_content.php`: LS1 and VP3 (a script for a mark in the markup), OG2 (the share image).
+- `assets/js/style_designer.src.js`: RW1 (the Kind, the canvas sample), RW6 (the list's dynamic value), VP3 (a row in `_SD_PAGE_SCRIPTS`), CM4 and PN3 (a part's registration), PA3 (the tab's state).
+- `get_page_content.php`: VP3 (a script for a mark in the markup), OG2 (the share image).
 - `includes/settings/features.php` and `features.save.php` (a Features card): CM2, VP3, PA2.
 - The API schema (`includes/api/schema.php`): RW4, CM3, CH4, RB7; PN2 for the link routes' "Allow comments".
 - A report route's object names (`api_openapi_objects()` in `includes/api/openapi.php`) and a new resource file's `require_once` (`includes/api/bootstrap.php`): CM3 (#9913); CH4 and RB7 when theirs are new objects or files.

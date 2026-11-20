@@ -569,8 +569,10 @@ function pg_booking_agenda_ws_busy($user_id, $from, $until)
 
     $departments = array_map('intval', (array) db_values("SELECT department_id FROM ws_department_members WHERE user_id = '" . (int) $user_id . "'"));
 
+    // skipped arrived with the holiday calendars' "Do not count".
+    $skipped = pg_schema_has('ws_events', 'skipped') ? 'ws_events.skipped' : '0 AS skipped';
     $rows = db_items(
-        "SELECT ws_events.starts_at, ws_events.ends_at, ws_events.all_day
+        "SELECT ws_events.starts_at, ws_events.ends_at, ws_events.all_day, " . $skipped . "
         FROM ws_events
         WHERE
             ws_events.starts_at < '" . (int) $until . "'
@@ -581,11 +583,27 @@ function pg_booking_agenda_ws_busy($user_id, $from, $until)
                 OR (ws_events.scope = 'people' AND EXISTS (SELECT 1 FROM ws_event_people WHERE ws_event_people.event_id = ws_events.id AND ws_event_people.user_id = '" . (int) $user_id . "'))
             )");
 
+    return pg_booking_agenda_ws_ranges((array) $rows);
+}
+
+/**
+ * The busy ranges of Workspace calendar rows (pure). An all-day event is
+ * stored up to 23:59:59 of its last day and takes that whole second too; a
+ * holiday read from a calendar and left out (skipped) is a working day and
+ * takes none, as in the Workspace calendar.
+ *
+ * @param array $rows rows with starts_at, ends_at, all_day, skipped
+ * @return array list of array(start, end)
+ */
+function pg_booking_agenda_ws_ranges($rows)
+{
     $busy = array();
 
-    // An all-day event is stored up to 23:59:59 of its last day; it takes
-    // that whole second too.
     foreach ((array) $rows as $row) {
+        if (!empty($row['skipped'])) {
+            continue;
+        }
+
         $busy[] = array((int) $row['starts_at'], (int) $row['ends_at'] + (!empty($row['all_day']) ? 1 : 0));
     }
 

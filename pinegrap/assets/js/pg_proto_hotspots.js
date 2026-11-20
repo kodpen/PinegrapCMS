@@ -931,9 +931,10 @@
     // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
     // `inner` units inside a box with the thumbnail's padding and border;
     // the picture starts `x`, `y` into its box, and the foot's middle sits
-    // `foot` above the box's lower edge. `row`: the line a frame with no
-    // picture keeps under its head.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
+    // `foot` above the box's lower edge; the selected page opened whole
+    // shows at most `full` page pixels (picOpenCut()). `row`: the line a
+    // frame with no picture keeps under its head.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, full: 6400, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
 
     // How layout() arranges the frames: eight a row, the gap between frames
     // and between rows, a section heading's height, and the gap between a
@@ -986,7 +987,8 @@
     // Where everything of a marked design goes on the canvas and which
     // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each its
     // head and its picture (a shared part's as tall as opts.partH gives its
-    // page pixels, picPartBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
+    // page pixels, picPartBox(); the page opened whole as opts.openH gives,
+    // picOpenBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
     // outside the design's tabs; an arrow (id '<frame id>|<port>') from
     // each row to the tab frame it opens or to its chip. The places come
     // from the graph canvas core's arrange() (window.PGGraphCanvas, read
@@ -1033,7 +1035,10 @@
                 // as tall as it is, between the sketch strip and the cut.
                 var pic = Array.isArray(frame.sketch);
                 var partH = isObject(opts.partH) ? opts.partH[frame.id] : null;
-                var thumb = !pic ? 0 : (group[0] === 'page' ? picSize().box : picPartBox(partH));
+                // The one page opened whole (opts.openH, its id => the
+                // page's height) is as tall as its page, up to the limit.
+                var openH = (group[0] === 'page' && isObject(opts.openH) && has(opts.openH, 'p:' + frame.key)) ? opts.openH['p:' + frame.key] : null;
+                var thumb = !pic ? 0 : (group[0] === 'page' ? (openH !== null ? picOpenBox(openH) : picSize().box) : picPartBox(partH));
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -1263,6 +1268,53 @@
         return Math.min(size.h, Math.max(FRAME.thumb - FRAME.pic.edge, h)) + FRAME.pic.edge;
     }
 
+    // How many page pixels the page opened whole shows: its height, at
+    // least the cut and at most `full`.
+    function picOpenCut(height) {
+        var p = FRAME.pic;
+
+        return Math.min(p.full, Math.max(p.cut, Math.round(Number(height) || 0)));
+    }
+
+    // The box of the page opened whole, in canvas units (a frame's `thumb`).
+    function picOpenBox(height) {
+        return Math.round(picOpenCut(height) * picSize().scale) + FRAME.pic.edge;
+    }
+
+    // What a picture's foot is (`o`: below, the links it cannot show;
+    // long, the page runs past what is shown; open, the page is shown
+    // whole; selected, its frame is the selected one; page, a page frame,
+    // not a shared part). The selected long page's foot is the button
+    // opening it whole ('open'), the open page's the one closing it
+    // ('close'); else it is the count, hidden at none. Answers { hidden,
+    // action, below }.
+    function picFootState(o) {
+        o = isObject(o) ? o : {};
+
+        var below = Math.max(0, parseInt(o.below, 10) || 0);
+        var action = '';
+
+        if (o.page && o.open) {
+            action = 'close';
+        } else if (o.page && o.selected && o.long) {
+            action = 'open';
+        }
+
+        return { hidden: action === '' && below === 0, action: action, below: below };
+    }
+
+    // A CSS value with its viewport-height units (vh, svh, lvh, dvh, and
+    // vmax, the height in a 1280-wide picture) written as the pixels they
+    // are in a viewport `viewH` high. The page opened whole is drawn in a
+    // taller frame; pinned first, a min-vh-100 section keeps its height.
+    function picVh(value, viewH) {
+        var h = Number(viewH) || 0;
+
+        return String(value === null || value === undefined ? '' : value).replace(/(^|[^\w.-])(-?(?:\d+\.?\d*|\.\d+))(?:[sld]?vh|vmax)(?![\w-])/gi, function (all, lead, n) {
+            return lead + round2(Number(n) * h / 100) + 'px';
+        });
+    }
+
     function round2(value) {
         return Math.round(value * 100) / 100;
     }
@@ -1284,10 +1336,13 @@
     // link is not seen when its elements have no size, start at or under
     // the cut or lie outside the page's width, or when it has none (a menu
     // or region, a link not written). A page frame reads no shared
-    // component's marker; a shared frame (sharedId) only its own.
-    function picRects(rows, marks, sharedId) {
+    // component's marker; a shared frame (sharedId) only its own. `cut`:
+    // the page pixels shown, FRAME.pic.cut when not given (the page opened
+    // whole: picOpenCut()).
+    function picRects(rows, marks, sharedId, cut) {
         var p = FRAME.pic;
         var scale = p.inner / p.page;
+        var end = Number(cut) > 0 ? Number(cut) : p.cut;
         var first = {};
         var out = {};
 
@@ -1302,11 +1357,11 @@
             var h = Number(m.h) || 0;
             var key = str(m.pic);
 
-            if (w <= 0 || h <= 0 || top >= p.cut || left + w <= 0 || left >= p.page || has(first, key)) {
+            if (w <= 0 || h <= 0 || top >= end || left + w <= 0 || left >= p.page || has(first, key)) {
                 return;
             }
 
-            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, p.cut) - top) * scale) };
+            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, end) - top) * scale) };
         });
 
         (Array.isArray(rows) ? rows : []).forEach(function (row) {
@@ -1323,12 +1378,12 @@
     // The foot of a frame's picture: how many of its links it cannot show
     // (picRects() finds no place for them: under the cut, hidden, in a
     // closed menu, in a menu or region, not written). Two rows of one
-    // element count once. Answers { links, below }.
-    function picFoot(rows, marks, sharedId) {
+    // element count once; `cut` as picRects(). Answers { links, below }.
+    function picFoot(rows, marks, sharedId, cut) {
         var list = (Array.isArray(rows) ? rows : []).filter(isObject).map(function (row, i) {
             return { port: 'f' + i, nodeId: row.nodeId, source: row.source, index: row.index };
         });
-        var seen = picRects(list, marks, sharedId);
+        var seen = picRects(list, marks, sharedId, cut);
         var counted = {};
         var links = 0;
         var below = 0;
@@ -1402,6 +1457,114 @@
         return { x: round2(x), y: side === 'bottom' ? h : 0, side: side };
     }
 
+    // The leg of an arrow inside its frame: from the middle of its link's
+    // mark (`rect`, picRects()) to its port on the frame's edge (`port`,
+    // markPort()), in frame units from the frame's top left. The core
+    // routes from the edge only, so the view draws this part itself. null
+    // when the link has no mark on the picture (the foot, no picture yet).
+    function markLeg(rect, port) {
+        if (!isObject(rect) || !isObject(port)) {
+            return null;
+        }
+
+        return {
+            x1: round2(FRAME.pic.x + (Number(rect.x) || 0) + (Number(rect.w) || 0) / 2),
+            y1: round2(FRAME.head + FRAME.pic.y + (Number(rect.y) || 0) + (Number(rect.h) || 0) / 2),
+            x2: round2(Number(port.x) || 0),
+            y2: round2(Number(port.y) || 0)
+        };
+    }
+
+    // A mark as the view draws it and reaches it: at least `min` frame
+    // units each way; the "+" handle `grip` screen pixels across and `gap`
+    // from its mark; a mark under `small` screen pixels wide or high takes
+    // presses `reach` screen pixels around it.
+    var MARK = { min: 6, grip: 20, gap: 4, small: 12, reach: 4 };
+
+    // How far around a mark (`rect`, picRects()) a press still takes it at
+    // zoom `k`, in frame units: MARK.reach screen pixels when the mark as
+    // drawn is under MARK.small screen pixels wide or high, else 0.
+    function markReach(rect, k) {
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+
+        if (!isObject(rect)) {
+            return 0;
+        }
+
+        var w = Math.max(MARK.min, Number(rect.w) || 0) * zoom;
+        var h = Math.max(MARK.min, Number(rect.h) || 0) * zoom;
+
+        return (w < MARK.small || h < MARK.small) ? round2(MARK.reach / zoom) : 0;
+    }
+
+    // Where the "+" handle of a drawable mark goes, a drag from it drawing
+    // the mark's arrow. `rect` is the mark (picRects(), drawn at least
+    // MARK.min), `room` ({ w, h }) the marks' layer over the picture, `k`
+    // the zoom, `others` the other marks shown on that picture. The handle
+    // is MARK.grip screen pixels at any zoom, MARK.gap from the mark, and
+    // its box spans the gap so the pointer crosses onto it: right of the
+    // mark, level with its middle; else left of it, under it or over it,
+    // the first that stays inside the picture's box (the layer and the
+    // box's padding, FRAME.pic.x and .y) and covers no other mark; else
+    // the first inside the box; else over the mark's right end. Answers
+    // { side, x, y } (its box's top left in the layer's units), { w, h }
+    // (its box in screen pixels) and `scale` (1 / k, to draw it at), or
+    // null without a mark.
+    function markGrip(rect, room, k, others) {
+        if (!isObject(rect)) {
+            return null;
+        }
+
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+        var area = isObject(room) ? room : {};
+        var p = FRAME.pic;
+        var x = Number(rect.x) || 0;
+        var y = Number(rect.y) || 0;
+        var w = Math.max(MARK.min, Number(rect.w) || 0);
+        var h = Math.max(MARK.min, Number(rect.h) || 0);
+        // The handle and, with its gap, its box's length, in frame units.
+        var size = MARK.grip / zoom;
+        var span = (MARK.grip + MARK.gap) / zoom;
+        var minX = -p.x;
+        var maxX = (Number(area.w) || 0) + p.x;
+        var minY = -p.y;
+        var maxY = (Number(area.h) || 0) + p.y;
+        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(v, hi)); };
+        var level = clamp(y + h / 2 - size / 2, minY, maxY - size);
+        var under = clamp(x + w / 2 - size / 2, minX, maxX - size);
+        var sides = [
+            { side: 'right', x: x + w, y: level, w: span, h: size, room: x + w + span <= maxX },
+            { side: 'left', x: x - span, y: level, w: span, h: size, room: x - span >= minX },
+            { side: 'below', x: under, y: y + h, w: size, h: span, room: y + h + span <= maxY },
+            { side: 'above', x: under, y: y - span, w: size, h: span, room: y - span >= minY }
+        ];
+        var covers = function (one) {
+            return (Array.isArray(others) ? others : []).some(function (o) {
+                if (!isObject(o)) {
+                    return false;
+                }
+
+                var ox = Number(o.x) || 0;
+                var oy = Number(o.y) || 0;
+
+                return one.x < ox + Math.max(MARK.min, Number(o.w) || 0) && ox < one.x + one.w
+                    && one.y < oy + Math.max(MARK.min, Number(o.h) || 0) && oy < one.y + one.h;
+            });
+        };
+        var fit = sides.filter(function (one) { return one.room; });
+        var pick = fit.filter(function (one) { return !covers(one); })[0] || fit[0] || sides[0];
+        var across = pick.side === 'right' || pick.side === 'left';
+
+        return {
+            side: pick.side,
+            x: round2(clamp(pick.x, minX, maxX - pick.w)),
+            y: round2(clamp(pick.y, minY, maxY - pick.h)),
+            w: across ? MARK.grip + MARK.gap : MARK.grip,
+            h: across ? MARK.grip : MARK.grip + MARK.gap,
+            scale: Math.round(10000 / zoom) / 10000
+        };
+    }
+
     // The attributes of a picture's frame: only `allow-same-origin`, so the
     // view reads its document and no script of it runs; it takes no focus
     // and no pointer and says nothing to a screen reader (the rows list the
@@ -1440,9 +1603,10 @@
 
     // Whether a picture runs past its cut and gets the fade: only when the
     // page is taller than the cut. A page that ends at it (a short page
-    // with min-vh-100 fills the 1600-high frame exactly) gets none.
-    function picLong(height) {
-        return Number(height) > FRAME.pic.cut;
+    // with min-vh-100 fills the 1600-high frame exactly) gets none. `cut`:
+    // the page pixels shown, the cut when not given.
+    function picLong(height, cut) {
+        return Number(height) > (Number(cut) > 0 ? Number(cut) : FRAME.pic.cut);
     }
 
     // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
@@ -1873,6 +2037,18 @@
         };
     }
 
+    // How a links panel row (one of listOf()'s outgoing) shows where its
+    // link goes: { control, state }. `control` is true for a row an arrow
+    // may be drawn from, whose target is a button opening the target menu;
+    // a read-only row keeps it as text. `state` is 'empty' for a link
+    // without a target, 'broken' for a broken one, else 'set'.
+    function rowTarget(row) {
+        var r = isObject(row) ? row : {};
+        var state = (r.mark === 'empty') ? 'empty' : ((str(r.why) !== '') ? 'broken' : 'set');
+
+        return { control: !!r.drawable, state: state };
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -1988,6 +2164,51 @@
         return out;
     }
 
+    // The links the designer's canvas marks, from a design marked by mark():
+    // each drawable link (drawable(): a link of a tree, never a classic
+    // menu's or a region's) that is broken or has no target ('' or '#'),
+    // the page frames' first, then the shared components', in document
+    // order. Each: { nodeId, sharedId (0 on a page), source, index (the
+    // nth link of a text), mark ('broken' or 'empty'), label, href, why
+    // (brokenWhy(), '' for an empty link) }. `known` false: the map read
+    // has not answered, so no link is called broken and only the empty
+    // ones are listed.
+    function canvasMarks(marked, known) {
+        var out = [];
+
+        function frame(item, sharedId) {
+            rowsOf(item).forEach(function (row) {
+                var broken = (row.mark === 'broken' && known !== false);
+
+                if (!drawable(row) || !(broken || row.mark === 'empty')) {
+                    return;
+                }
+
+                out.push({ nodeId: row.nodeId, sharedId: sharedId, source: row.source, index: row.index, mark: row.mark, label: row.label, href: row.href, why: broken ? brokenWhy(row) : '' });
+            });
+        }
+
+        ((marked && Array.isArray(marked.pages)) ? marked.pages : []).forEach(function (page) { frame(page, 0); });
+        ((marked && Array.isArray(marked.shared)) ? marked.shared : []).forEach(function (one) { frame(one, parseInt(one.id, 10) || 0); });
+
+        return out;
+    }
+
+    // What the map read is asked for the canvas marks: the design's
+    // addresses but the empty ones (mark() calls those empty without the
+    // read) and the pages its links are kept by; no menu or region, whose
+    // links get no mark (canvasMarks()).
+    function canvasRequest(designed) {
+        var request = (designed && isObject(designed.request)) ? designed.request : {};
+
+        return {
+            hrefs: (Array.isArray(request.hrefs) ? request.hrefs : []).filter(function (href) { return !emptyHref(href); }),
+            page_ids: Array.isArray(request.page_ids) ? request.page_ids.slice() : [],
+            menus: [],
+            regions: []
+        };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -2001,6 +2222,77 @@
         var heading = (laid.headings || []).filter(function (h) { return h.kind === 'group' && h.x === frame.x && h.y + GRID.head === frame.y; })[0];
 
         return { x: frame.x, y: heading ? heading.y : frame.y };
+    }
+
+    // A second tap on the same frame within this many milliseconds is a
+    // double-click, as the Flows canvas reads a box's double tap: the
+    // canvas captures the pointer, so the frame gets no dblclick.
+    var ZOOM_TAP = 450;
+
+    // The frame a tap zooms to: `last` and `tap` ({ id, time }) are where
+    // the last tap and this one ended (a frame's or chip's id, '' for
+    // anything else) and when. Both on one frame of the layout, this one
+    // less than ZOOM_TAP ms later: its id; else null.
+    function zoomTap(last, tap, laid) {
+        if (!isObject(last) || !isObject(tap) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var id = String(tap.id || '');
+        var gap = Number(tap.time) - Number(last.time);
+
+        if (!id || String(last.id || '') !== id || !(gap >= 0 && gap < ZOOM_TAP)) {
+            return null;
+        }
+
+        return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
+    }
+
+    // ── A links panel row dropped on the canvas ──
+
+    // The item of `items` (frames and chips, { id, x, y, w, h } in canvas
+    // units) whose box holds the point `at` ({ x, y }), edges included; of
+    // two that overlap the later one, drawn on top; null over none.
+    function itemAt(items, at) {
+        if (!Array.isArray(items) || !isObject(at)) {
+            return null;
+        }
+
+        var x = Number(at.x);
+        var y = Number(at.y);
+
+        if (!isFinite(x) || !isFinite(y)) {
+            return null;
+        }
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+            var left = isObject(item) ? Number(item.x) : NaN;
+            var top = isObject(item) ? Number(item.y) : NaN;
+
+            if (x >= left && y >= top && x <= left + (Number(item.w) || 0) && y <= top + (Number(item.h) || 0)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    // Where a links panel row dropped at `at` (canvas units) points its
+    // link: { item, href }, the frame or chip under the point (itemAt())
+    // and the href an arrow ending there writes (hrefTo()). null for a row
+    // no arrow is drawn from (drawable()), over nothing, or over what takes
+    // no arrow (a shared part's frame, an anchor's, a hidden or a broken
+    // chip).
+    function rowDrop(row, items, at, env) {
+        if (!drawable(row)) {
+            return null;
+        }
+
+        var item = itemAt(items, at);
+        var href = item ? hrefTo(item, env) : null;
+
+        return (href === null) ? null : { item: item, href: href };
     }
 
     // What the selected frame (its id, null for none) shows of a layout:
@@ -2292,7 +2584,15 @@
         picFoot: picFoot,
         picRects: picRects,
         picPartBox: picPartBox,
+        picOpenCut: picOpenCut,
+        picOpenBox: picOpenBox,
+        picFootState: picFootState,
+        picVh: picVh,
         markPort: markPort,
+        markLeg: markLeg,
+        MARK: MARK,
+        markReach: markReach,
+        markGrip: markGrip,
         markState: markState,
         picOrder: picOrder,
         picRefill: picRefill,
@@ -2322,11 +2622,18 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
+        itemAt: itemAt,
+        rowDrop: rowDrop,
         focusOf: focusOf,
         fitStart: fitStart,
+        ZOOM_TAP: ZOOM_TAP,
+        zoomTap: zoomTap,
         listOf: listOf,
+        rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        canvasMarks: canvasMarks,
+        canvasRequest: canvasRequest,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,

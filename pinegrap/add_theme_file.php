@@ -61,9 +61,9 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 pg-title-section">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
@@ -142,9 +142,9 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 pg-title-section">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Description') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="col-12 my-3">
                                         <label for="description" class="form-label">' . lang('File Description') . '</label>

@@ -3,11 +3,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the agent channel switch (ws_channels.agent_channel). A channel
- * manager turns a channel into an agent channel with /agent-channel on|off;
+ * manager turns a channel into an agent channel with /agent-channel on|off,
+ * the Agent channel switch of Channel settings or the New channel form;
  * its decisions then stay apart from the team's: the decisions screen, the
  * dashboard and GET /workspace/decisions leave them out unless asked for
- * (agent_channels include|only) or the channel is named. The channel's own
- * Decisions tab and who may read a decision do not change.
+ * (agent_channels include|only) or the channel is named. An agent channel's
+ * Decisions tab and its agents' brief read the decisions of every agent
+ * channel the reader may read, so a new agent channel starts with what the
+ * old ones decided. Who may read a decision does not change.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -91,6 +94,126 @@ function ws_agent_channel_filter($channels, $mode, $named = 0)
 }
 
 /**
+ * The agent channels a person may read, archived ones included (a deleted
+ * channel's decisions are gone with it), keyed by id with their names.
+ *
+ * @param array $viewer
+ * @return array[]
+ */
+function ws_agent_channel_readable($viewer)
+{
+    if (!ws_agent_channel_ready()) {
+        return array();
+    }
+
+    return ws_agent_channel_filter(ws_timeline_channels($viewer), 'only');
+}
+
+/**
+ * Which decisions an agent channel's Decisions tab asked for. Pure.
+ *
+ * @param mixed $value
+ * @return string channel (this channel's) | agents (every agent channel's)
+ */
+function ws_agent_channel_scope($value)
+{
+    return (strtolower(trim((string) $value)) === 'agents') ? 'agents' : 'channel';
+}
+
+/**
+ * The channels whose decisions a channel's list reads: every readable agent
+ * channel when an agent channel asks for them all, otherwise the channel
+ * alone. The channel itself is always kept. Pure.
+ *
+ * @param array   $channel  a ws_channels row
+ * @param array[] $readable ws_agent_channel_readable(), keyed by id
+ * @param string  $scope    ws_agent_channel_scope()
+ * @return int[]
+ */
+function ws_agent_channel_decision_ids($channel, $readable, $scope)
+{
+    $id = (int) ($channel['id'] ?? 0);
+
+    if (!ws_agent_channel_is($channel) || (ws_agent_channel_scope($scope) !== 'agents')) {
+        return array($id);
+    }
+
+    $ids = array_map('intval', array_keys((array) $readable));
+
+    if (!in_array($id, $ids, true)) {
+        array_unshift($ids, $id);
+    }
+
+    return array_values(array_unique($ids));
+}
+
+/**
+ * Names the channel of each decision read from another agent channel, so the
+ * Decisions tab says where it was made. Pure.
+ *
+ * @param array[] $messages ws_message_payload() rows
+ * @param int     $channel_id the channel the tab belongs to
+ * @param array[] $readable   ws_agent_channel_readable(), keyed by id
+ * @return array[] each with channel_name ('' for the channel's own)
+ */
+function ws_agent_channel_decision_names($messages, $channel_id, $readable)
+{
+    foreach ((array) $messages as $index => $message) {
+        $id = (int) ($message['channel_id'] ?? 0);
+        $messages[$index]['channel_name'] = (($id !== (int) $channel_id) && isset($readable[$id])) ? (string) ($readable[$id]['name'] ?? '') : '';
+    }
+
+    return (array) $messages;
+}
+
+/**
+ * Switches a channel to an agent channel or back: a channel manager only,
+ * never a discussion; a system line names who switched it. The command,
+ * Channel settings and the New channel form all come here.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param bool  $want
+ * @return array ok, error, changed, message_id
+ */
+function ws_agent_channel_set($viewer, $channel, $want)
+{
+    $out = array('ok' => false, 'error' => '', 'changed' => false, 'message_id' => 0);
+
+    if (!ws_agent_channel_ready()) {
+        $out['error'] = lang('The database has to be updated first.');
+        return $out;
+    }
+
+    if ((string) ($channel['kind'] ?? '') === 'thread') {
+        $out['error'] = lang('A discussion follows its channel; switch the channel itself.');
+        return $out;
+    }
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        $out['error'] = lang('Only a manager of this channel may switch it.');
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $want = (bool) $want;
+
+    if ($want === ws_agent_channel_is($channel)) {
+        return $out;
+    }
+
+    db("UPDATE ws_channels SET agent_channel = '" . ($want ? 1 : 0) . "' WHERE id = '" . (int) $channel['id'] . "'");
+
+    $out['changed'] = true;
+    $out['message_id'] = ws_message_system((int) $channel['id'], lang(array(
+        'string' => $want ? '{var:1} made this an agent channel: its decisions stay apart from the other channels\' decisions.' : '{var:1} turned the agent channel off: its decisions are listed with the other channels\' decisions again.',
+        'vars'   => '<@user:' . (int) $viewer['id'] . '>',
+    )));
+
+    return $out;
+}
+
+/**
  * What the text after /agent-channel asks for.
  *
  * @param string $text
@@ -149,32 +272,23 @@ function ws_command_agent_channel($viewer, $channel, $text)
         return array('type' => 'error', 'error' => lang('Write on or off after /agent-channel, or nothing to see its state.'));
     }
 
-    if ((string) ($channel['kind'] ?? '') === 'thread') {
-        return array('type' => 'error', 'error' => lang('A discussion follows its channel; switch the channel itself.'));
-    }
-
-    $on = ws_agent_channel_is($channel);
-
     if ($action === 'show') {
-        return array('type' => 'ephemeral', 'html' => h(ws_agent_channel_sentence($on)));
+        if ((string) ($channel['kind'] ?? '') === 'thread') {
+            return array('type' => 'error', 'error' => lang('A discussion follows its channel; switch the channel itself.'));
+        }
+
+        return array('type' => 'ephemeral', 'html' => h(ws_agent_channel_sentence(ws_agent_channel_is($channel))));
     }
 
-    if (!ws_can_manage_channel($viewer, $channel)) {
-        return array('type' => 'error', 'error' => lang('Only a manager of this channel may switch it.'));
+    $result = ws_agent_channel_set($viewer, $channel, $action === 'on');
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
     }
 
-    $want = ($action === 'on');
-
-    if ($want === $on) {
-        return array('type' => 'ephemeral', 'html' => h(ws_agent_channel_sentence($on)));
+    if (!$result['changed']) {
+        return array('type' => 'ephemeral', 'html' => h(ws_agent_channel_sentence(ws_agent_channel_is($channel))));
     }
 
-    db("UPDATE ws_channels SET agent_channel = '" . ($want ? 1 : 0) . "' WHERE id = '" . (int) $channel['id'] . "'");
-
-    $id = ws_message_system((int) $channel['id'], lang(array(
-        'string' => $want ? '{var:1} made this an agent channel: its decisions stay apart from the other channels\' decisions.' : '{var:1} turned the agent channel off: its decisions are listed with the other channels\' decisions again.',
-        'vars'   => '<@user:' . (int) $viewer['id'] . '>',
-    )));
-
-    return array('type' => 'done', 'message_id' => $id);
+    return array('type' => 'done', 'message_id' => $result['message_id']);
 }

@@ -25,7 +25,7 @@ description: Decisions list, panel part 9 (2026-11-14 on): assistant chat after 
 
 ## Does the Site Settings dialog keep its place after a save? (owner, 2026-11-15, in the architect's window)
 - His words on the "Assistants and agents" pane: "mesela ayarlarda şu anda kaydedince kaldığım yer kapanıp sayfanın üzerine kayıyorum. bunun yerine yar penceresinde bir mesaj yeterli olur. ve gördüğün gibi ayar ekranları modern değil ve karman çorman düğmeler kayıyor bilgiler eksik vs."
-- Yes: after a save the pane stays where it was scrolled, the drawer he saved from stays open, and the dialog says "saved" in one message. The agents' settings are redrawn and say plainly what each door is for. Plan: `plans/agents-card-settings.md`.
+- Yes: after a save the pane stays where it was scrolled, the drawer he saved from stays open, and the dialog says "saved" in one message. The agents' settings are redrawn and say plainly what each door is for. Built: `ui/settings-modal-save-place.md`, `workspace/agent-door-words.md`, `workspace/workspace-agent-settings.md`.
 
 ## Do the fields of add and edit screens take the look's field label and input? (owner, 2026-11-15, agent channel poll under message 4811)
 - Yes. His vote: "Evet, yeni görünüm (Önerilen)"; the other choices were "Bugünkü kalsın" and "Değişiklik istiyorum". The poll closed with his vote (result message 4926).

@@ -184,13 +184,14 @@ $increase_day['stop_year'] = $increase_day['new_year'];
 $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['forms']['view_submitted_forms'] ?? array()));
 
 // if user requested to export forms, export forms
-if (($_GET['submit_data'] ?? '') == 'Export Forms') {
+if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0] ?? '');
     } else {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
 
+    pg_list_excel_capture(array('submitted' => 'date', 'last_modified' => 'date', 'quiz_score' => 'number'), lang('Forms'));
     pg_csv_download_start('forms.csv');
 
     // The import recognises these leading columns (pg_submitted_form_import_fixed_columns()).
@@ -472,7 +473,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $output_unpaid_filter = '<a class="btn btn-sm btn-outline theme-warning m-1' . ($unpaid_on ? ' active' : '') . '" role="button" aria-pressed="' . ($unpaid_on ? 'true' : 'false') . '" title="' . h(lang('Show only the forms whose fee is not paid yet')) . '" href="view_submitted_forms.php?payment=' . ($unpaid_on ? 'any' : 'unpaid') . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Unpaid') . '</a>';
     }
 
-    $output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
+    // On a site with Record rows fields the question names the rows that go
+    // too: the selection is counted by delete_submitted_forms.php (rows_count)
+    // and the script below puts the answer on the button.
+    $output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)'))))) . '"' . (pg_coll_rows_in_use() ? ' data-pg-rows-count="1"' : '') . '><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     // if the advanced filters are off
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
@@ -696,9 +700,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     // if mass deletion is allowed, then prepare to output delete forms button
     if (MASS_DELETION == true) {
+        // The rows that go with every form the filters match.
+        $mass_rows_count = 0;
+
+        if (pg_coll_rows_in_use()) {
+            $mass_ids = array();
+            $mass_result = db_q("SELECT forms.id " . $list_filter['from'] . " " . $list_filter['where'], $list_filter['params']);
+
+            while ($mass_result && ($mass_row = mysqli_fetch_assoc($mass_result))) {
+                $mass_ids[] = (int) $mass_row['id'];
+            }
+
+            $mass_rows_count = count((array) pg_coll_rows_held_ids($mass_ids));
+        }
+
         $output_delete_forms_button = ' 
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link pg-link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
+            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link pg-link-danger py-0 m-1" data-confirm-content="' . h(pg_coll_rows_delete_question(lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.'), $mass_rows_count, true)) . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
         </div>';
     }
 
@@ -760,6 +778,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link pg-link-secondary py-0 m-1" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_submitted_forms.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Forms" class="btn btn-link pg-link-secondary py-0 m-1" onclick="return export_forms()"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    ' . pg_list_excel_button('pg-button pg-button-ghost', 'onclick="return export_forms()"') . '
                                 </div>
                                 ' . $output_delete_forms_button . '
                             </form>
@@ -796,13 +815,53 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 <script>
     // Delete Selected posts what the list has selected
     // (delete_submitted_forms.php resolves it with the list\'s own query and
-    // the user\'s rights).
+    // the user\'s rights). On a site with Record rows fields its question is
+    // asked again of the server as the selection changes, so it names the
+    // rows that go with the selected forms.
     (function () {
         var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_submitted_forms"]\');
+        var button = document.querySelector(\'button[value="Delete Selected"][data-pg-rows-count]\');
+        var question = button ? button.getAttribute(\'data-confirm-content\') : \'\';
+        var timer = null;
+        var asked = 0;
+
+        function countRows(count) {
+            if (!button || !window.fetch || !window.FormData) {
+                return;
+            }
+
+            button.setAttribute(\'data-confirm-content\', question);
+            clearTimeout(timer);
+            asked++;
+
+            if (!count) {
+                return;
+            }
+
+            var mine = asked;
+
+            timer = setTimeout(function () {
+                var body = new FormData();
+
+                body.append(\'token\', document.form.token.value);
+                body.append(\'selection\', document.form.selection.value);
+                body.append(\'rows_count\', \'1\');
+
+                fetch(\'delete_submitted_forms.php\', { method: \'POST\', body: body, credentials: \'same-origin\' })
+                    .then(function (response) { return response.ok ? response.json() : null; })
+                    .then(function (data) {
+                        if (mine === asked && data && typeof data.question === \'string\') {
+                            button.setAttribute(\'data-confirm-content\', data.question);
+                        }
+                    })
+                    .catch(function () {});
+            }, 300);
+        }
 
         if (root) {
             root.addEventListener(\'pg-list-table:selection\', function (event) {
                 document.form.selection.value = JSON.stringify(event.detail.payload);
+                countRows(event.detail.count);
             });
         }
     }());

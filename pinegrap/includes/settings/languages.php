@@ -97,7 +97,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     $output_translation_rows .= '
                         <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '" role="group" aria-labelledby="tr_name_' . h($translation_code) . '">
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
-                                <span class="badge theme-secondary font-monospace">' . h($translation_code) . '</span>
+                                <span class="font-monospace pg-text-meta">' . h($translation_code) . '</span>
                                 <strong class="me-auto" id="tr_name_' . h($translation_code) . '">' . h($translation_label) . '</strong>
                                 <div class="form-field mb-0">
                                     <div class="switch"><input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/></div>
@@ -160,7 +160,7 @@ $output_translation_rows_have_language = ($output_translation_rows !== '');
 
 if ($output_translation_rows === '') {
     $output_translation_rows = '
-                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the designs are then served under its address prefix as well.') . '</div>';
+                        <div class="pg-text-meta">' . lang('No target language yet. Add one below: the pages of the designs are then served under its address prefix as well.') . '</div>';
 }
 
 // Languages that can still be added: the known list minus the source and
@@ -184,7 +184,7 @@ $output_translation_languages = '
                         </div>
                     </div>
                     <div class="col-12" role="group" aria-labelledby="translation_targets_title">
-                        <div class="form-label" id="translation_targets_title">' . lang('Target languages') . '</div>
+                        <h3 class="pg-group-label" id="translation_targets_title">' . lang('Target languages') . '</h3>
                         <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
                         <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about).') . '</div>' . ($translation_auto_column ? '
@@ -211,7 +211,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <span class="pg-title-section">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
-                <a class="btn btn-sm btn-outline theme-primary rounded-pill px-5" href="translations.php"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
+                <a class="pg-button pg-button-quiet pg-button-sm" href="translations.php"><i class="bi bi-translate" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . ($translation_settings_ready ? $output_translation_languages : $output_translation_not_ready) . '
@@ -359,8 +359,8 @@ $pg_settings_cards[] = '
 // ── Translation Engines ──
 
 $output_translation_google_state = $translation_google_key_stored
-    ? '<span class="badge theme-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . lang('A key is stored') . '</span>'
-    : '<span class="badge theme-secondary">' . lang('No key stored') . '</span>';
+    ? '<span class="pg-pill pg-tone-teal">' . lang('A key is stored') . '</span>'
+    : '<span class="pg-pill pg-tone-gray">' . lang('No key stored') . '</span>';
 
 // Whether the two AI engines can run here, in one line each.
 $translation_ai_state = '';
@@ -371,8 +371,8 @@ if ($translation_settings_ready) {
 
         if ($translation_ai_engine) {
             $translation_ai_state .= '<br/>' . ($translation_ai_engine['ready']
-                ? '<span class="badge theme-success me-1"><i class="bi bi-check-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . lang('ready')
-                : '<span class="badge theme-secondary me-1"><i class="bi bi-dash-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . h($translation_ai_engine['reason']));
+                ? h($translation_ai_engine['label']) . ': <span class="pg-pill pg-tone-teal">' . lang('ready') . '</span>'
+                : h($translation_ai_engine['label']) . ': ' . h($translation_ai_engine['reason']));
         }
     }
 }

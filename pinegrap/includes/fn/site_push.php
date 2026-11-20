@@ -40,6 +40,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 define('PG_SITE_PUSH_SWITCH', 'site_push');
 /**
+ * The settings text of the "App mode" switch beside it: '1' on, missing off.
+ * An iPhone delivers web push only to a site added to its home screen as an
+ * app, so the manifest says standalone and the worker answers a lost page
+ * load with an offline page.
+ */
+define('PG_SITE_PUSH_APP_SWITCH', 'site_push_app');
+/**
  * Subscriptions and stops one address may post in the window.
  */
 define('PG_SITE_PUSH_WRITE_LIMIT', 10);
@@ -165,6 +172,59 @@ function pg_site_push_switch_save($on)
 function pg_site_push_enabled()
 {
     return pg_site_push_switch_on() && pg_site_push_ready();
+}
+
+/**
+ * Whether the "App mode" switch is on. The one reader.
+ *
+ * @return bool
+ */
+function pg_site_push_app_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text(PG_SITE_PUSH_APP_SWITCH) === '1';
+}
+
+/**
+ * Turns app mode on or off. The one saver; whoever calls it has checked the
+ * right to change Features and the form's token.
+ *
+ * @param bool $on
+ * @return bool written
+ */
+function pg_site_push_app_save($on)
+{
+    if (!function_exists('pg_config_text_save')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return (bool) pg_config_text_save(PG_SITE_PUSH_APP_SWITCH, pg_site_push_switch_value((bool) $on));
+}
+
+/**
+ * Whether the site runs as an app: its own switch and visitor notifications
+ * both on. Switching notifications off takes app mode with it, so the site
+ * is back to a plain browser tab.
+ *
+ * @return bool
+ */
+function pg_site_push_app_mode()
+{
+    return pg_site_push_app_on() && pg_site_push_enabled();
+}
+
+/**
+ * The manifest's display for app mode on or off. Pure.
+ *
+ * @param bool $app
+ * @return string
+ */
+function pg_site_push_app_display($app)
+{
+    return $app ? 'standalone' : 'browser';
 }
 
 /**

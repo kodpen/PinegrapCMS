@@ -616,6 +616,11 @@ function pg_page_bundle_delete_locked($bundle)
 
     db("DELETE FROM page_bundle_item WHERE bundle_id = '$id'");
 
+    // The share links of its preview end with it, and never open a later
+    // bundle given the same id.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+    pg_proto_links_revoke_bundle($id);
+
     return array('ok' => true, 'error' => '');
 }
 
@@ -722,27 +727,14 @@ function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'draft_page_id' => 0);
     };
 
-    if (!pg_page_bundle_may_change($bundle['status'])) {
-        return $fail(lang('A published bundle cannot be changed.'));
+    $checked = pg_page_bundle_add_copy_check($bundle, $live_page_id);
+
+    if ($checked['error'] !== '') {
+        return $fail($checked['error']);
     }
 
-    $live = pg_experiment_sheet_live_page($live_page_id);
-
-    if (!$live) {
-        return $fail(lang('Only a page of a visual design that is on the site can be copied into a bundle.'));
-    }
-
+    $live = $checked['live'];
     $live_id = (int) $live['page_id'];
-
-    if (pg_experiment_sheet_ready() && db_value("SELECT id FROM experiments WHERE page_id = '$live_id' AND status <> 'ended' LIMIT 1")) {
-        return $fail(lang('This page has an open experiment; end it before adding a copy of the page to a bundle.'));
-    }
-
-    $taken = pg_page_bundle_add_refusal(0, $live_id);
-
-    if ($taken !== '') {
-        return $fail($taken);
-    }
 
     $folder = pg_page_draft_ready() ? (int) pg_page_draft_folder_id(true) : 0;
 
@@ -788,6 +780,72 @@ function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
 }
 
 /**
+ * The checks of "Add a copy of a page", before anything is copied: the
+ * bundle still changes, the page is a live visual-design page with no open
+ * experiment and no replacement waiting in another open bundle. Shared by
+ * pg_page_bundle_add_copy() and the API's dry run.
+ *
+ * @param array $bundle       pg_page_bundle_get()
+ * @param int   $live_page_id
+ * @return array error ('' when it may be copied), live (the page row)
+ */
+function pg_page_bundle_add_copy_check($bundle, $live_page_id)
+{
+    if (!pg_page_bundle_may_change($bundle['status'])) {
+        return array('error' => lang('A published bundle cannot be changed.'), 'live' => null);
+    }
+
+    $live = pg_experiment_sheet_live_page($live_page_id);
+
+    if (!$live) {
+        return array('error' => lang('Only a page of a visual design that is on the site can be copied into a bundle.'), 'live' => null);
+    }
+
+    $live_id = (int) $live['page_id'];
+
+    if (pg_experiment_sheet_ready() && db_value("SELECT id FROM experiments WHERE page_id = '$live_id' AND status <> 'ended' LIMIT 1")) {
+        return array('error' => lang('This page has an open experiment; end it before adding a copy of the page to a bundle.'), 'live' => null);
+    }
+
+    $taken = pg_page_bundle_add_refusal(0, $live_id);
+
+    return array('error' => $taken, 'live' => ($taken === '') ? $live : null);
+}
+
+/**
+ * The checks of "Add a draft", before anything is written: the bundle still
+ * changes, the page is a visual-design draft outside the bin, no open
+ * experiment's variant and in no other open bundle. Shared by
+ * pg_page_bundle_add_draft() and the API's dry run.
+ *
+ * @param array $bundle        pg_page_bundle_get()
+ * @param int   $draft_page_id
+ * @return string the refusal, '' when it may be added
+ */
+function pg_page_bundle_add_draft_check($bundle, $draft_page_id)
+{
+    if (!pg_page_bundle_may_change($bundle['status'])) {
+        return lang('A published bundle cannot be changed.');
+    }
+
+    $draft_page_id = (int) $draft_page_id;
+    $page = ($draft_page_id > 0)
+        ? db_item("SELECT page_id, page_name, page_folder FROM page
+            WHERE page_id = '$draft_page_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . " LIMIT 1")
+        : null;
+
+    if (!is_array($page) || !pg_page_is_draft($page['page_folder'])) {
+        return lang('Only a draft of a visual design can be added to a bundle.');
+    }
+
+    if (pg_experiment_variant_hold($draft_page_id)) {
+        return lang('This draft is a variant in an open experiment, so it cannot be added to a bundle.');
+    }
+
+    return pg_page_bundle_add_refusal($draft_page_id, 0);
+}
+
+/**
  * Adds a draft of a visual design to a bundle, as a new page. An open
  * experiment's variant and a draft in another open bundle are refused; a
  * publish time of the draft's own is cleared, since the bundle publishes it.
@@ -803,30 +861,13 @@ function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'time_cleared' => false);
     };
 
-    if (!pg_page_bundle_may_change($bundle['status'])) {
-        return $fail(lang('A published bundle cannot be changed.'));
+    $error = pg_page_bundle_add_draft_check($bundle, $draft_page_id);
+
+    if ($error !== '') {
+        return $fail($error);
     }
 
     $draft_page_id = (int) $draft_page_id;
-    $page = ($draft_page_id > 0)
-        ? db_item("SELECT page_id, page_name, page_folder FROM page
-            WHERE page_id = '$draft_page_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . " LIMIT 1")
-        : null;
-
-    if (!is_array($page) || !pg_page_is_draft($page['page_folder'])) {
-        return $fail(lang('Only a draft of a visual design can be added to a bundle.'));
-    }
-
-    if (pg_experiment_variant_hold($draft_page_id)) {
-        return $fail(lang('This draft is a variant in an open experiment, so it cannot be added to a bundle.'));
-    }
-
-    $taken = pg_page_bundle_add_refusal($draft_page_id, 0);
-
-    if ($taken !== '') {
-        return $fail($taken);
-    }
-
     $written = pg_page_bundle_insert_item($bundle, $draft_page_id, 0, '', $user);
 
     if (($written['error'] !== '') || ($written['id'] <= 0)) {

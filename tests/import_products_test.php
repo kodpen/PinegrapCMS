@@ -5,8 +5,8 @@
  * Tests for taking a product spreadsheet in (import_products_f.php):
  * pg_products_import_xlsx_date(), which turns a day count into the importer's
  * date text, and pg_products_import_to_csv() over a small .ods written here,
- * which goes through PHPExcel's OpenDocument reader. Also the price and row
- * cell readers of an import file in includes/fn/ecommerce.php
+ * which goes through the sheet reader (includes/fn/sheet_read.php). Also the
+ * price and row cell readers of an import file in includes/fn/ecommerce.php
  * (pg_products_import_price_cents() needs product_builder.php), the reason a
  * refused price or stock cell is given, and the import loop's handling of a
  * product in the Recycle Bin.
@@ -113,9 +113,11 @@ function test_products_import_ods_to_csv()
 			fclose($handle);
 			unlink($csv_path);
 
+			// A time alone is a fraction of a day from 30 December 1899, as
+			// in a .xlsx (PHPExcel gave it 1 January 1970).
 			pg_assert_same(array(
 				array('name', 'full_description', 'price', 'enabled', 'summer', 'winter', 'opens'),
-				array('Çay bardağı', "First line\nSecond line", '19.99', '1', '2026-07-15', '2026-01-02 13:45:00', '1970-01-01 08:05:30'),
+				array('Çay bardağı', "First line\nSecond line", '19.99', '1', '2026-07-15', '2026-01-02 13:45:00', '1899-12-30 08:05:30'),
 			), $rows, $name . ' rows');
 		}
 
