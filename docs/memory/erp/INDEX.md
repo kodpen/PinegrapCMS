@@ -99,6 +99,7 @@
 - erp-order-profit-deductions.md: Marketplace deductions on an order's profit (#10657): Trendyol settlements, one cost row per record (settlement:<id>), currency, the resumable read, what is skipped [decision: here]
 - erp-order-profit-label-price.md: A carrier label's price as the order's shipping cost row (NP3): which drivers give it, how it is read and converted, its source_ref, cancel, Accounting off
 - erp-order-profit-payment-fee.md: The fee a payment service kept (#10655): pg_payment_answer()'s fee keys from iyzico, Stripe and PayPal, the conversion, the gateway cost row written by submit_order.php
+- erp-order-profit-profitability.md: Accounting › Profitability (#10698): product by channel by period from erp_order_profit, the split of an order over its lines, the workbook, the cost rates and target margin card
 - erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes [decision: here]
 - erp-order-profit-screens.md: Where an order's profit is seen (#10664): the Profit card of view_order.php, the order list's Profit column and "Sold at a loss" filter, the gate, includes/erp/order_profit_view.php [decision: here]
 - erp-order-refund-lines-noted.md: The order screen's refund by lines on an order without an ERP invoice notes the lines it gave back (lines:<id>=<qty>) on order_refunds.notes, so the same line is not refunded twice (#7129) [decision: decisions-made-product-32.md]
