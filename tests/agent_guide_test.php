@@ -287,7 +287,7 @@ function test_agent_guide_opening_instructions_point_at_it()
 function test_agent_guide_tool_guidance_line()
 {
 	$registry = pg_agent_guide_registry();
-	$listed = agent_guide_test_listed_all();
+	$listed = pg_agent_guide_listed($registry, array_keys(agent_guide_test_routes()), pg_agent_guide_modules_on());
 
 	foreach (array('design.pages.get', 'forms.submission_create', 'products.list') as $route_id) {
 		$topic = pg_agent_guide_topic_of_route($registry, $listed, $route_id);

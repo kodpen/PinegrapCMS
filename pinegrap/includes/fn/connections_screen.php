@@ -656,7 +656,9 @@ function pg_connections_screen_page_providers()
 
 /**
  * The cards of a service's page, in their order: "status", on Google's
- * page "signin" (the Sign in with Google application, for who may open the
+ * and Microsoft's pages "mailboxes" (Connect an account for mailboxes, for
+ * a manager who may open the Mailboxes settings, drawn inside Status), on
+ * Google's page "signin" (the Sign in with Google application, for who may open the
  * Accounts and sign-in settings, drawn inside Connection details above the
  * connected accounts' application that falls back to it), "details" (its
  * provider's application, for a manager; an AI provider's key, for who may
@@ -679,12 +681,19 @@ function pg_connections_screen_page_providers()
  *                    and figures), 'languages' (bool: may open Languages
  *                    and Translation, the Google Cloud Translation key),
  *                    'contact' (bool: may open Communication, the
- *                    WhatsApp, İYS and SMS providers' accounts)
+ *                    WhatsApp, İYS and SMS providers' accounts),
+ *                    'mailboxes' (bool: may open Mailboxes, the accounts
+ *                    that read mailboxes)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
 {
     $cards = array('status');
+
+    // connect.php connects the site's own accounts for a manager only.
+    if (in_array($id, array('google', 'microsoft'), true) && !empty($can['manager']) && !empty($can['mailboxes'])) {
+        $cards[] = 'mailboxes';
+    }
 
     if (($id === 'google') && !empty($can['signin'])) {
         $cards[] = 'signin';
@@ -711,6 +720,29 @@ function pg_connections_screen_page_cards($id, $can)
     }
 
     return $cards;
+}
+
+/**
+ * Where connecting an account for mailboxes returns to when it was started
+ * from Site Settings (the Mailboxes card or a box's form): a settings page
+ * of the panel, in the shape connect.php keeps (pg_connect_return_path())
+ * and a path pg_safe_redirect_path() lets through unchanged. Anything else
+ * is refused with '', and the provider's page is returned to. Pure.
+ *
+ * @param mixed $asked the page's mail_return parameter
+ * @return string the address, or ''
+ */
+function pg_connections_screen_mail_return($asked)
+{
+    if (!is_string($asked) || !preg_match('/^settings_[a-z_]{1,40}\.php(#[A-Za-z0-9_\-]{1,60})?$/', $asked)) {
+        return '';
+    }
+
+    if (pg_connect_return_path($asked) !== $asked || pg_safe_redirect_path('/' . $asked, '/') !== '/' . $asked) {
+        return '';
+    }
+
+    return $asked;
 }
 
 /**

@@ -138,3 +138,21 @@ function test_cart_recovery_popup_touches()
 	pg_assert_same(false, pg_cart_recovery_popup_touches('taken', 12, 0), 'an order with no line: no touch');
 	pg_assert_same(false, pg_cart_recovery_popup_touches(null, 12, 1), 'no event: no touch');
 }
+
+function test_cart_recovery_never_left_drops_its_touches()
+{
+	$done = 1800000000;
+
+	// Cart 12:00, pop-up 12:05, order 12:20: never left, its touch goes.
+	$out = pg_cart_recovery_outcome($done - 1200, $done, array(5 => $done - 900));
+	pg_assert_same(true, pg_cart_recovery_drop_touches($out, $done - 1200), 'a cart never left loses its touches');
+
+	// The same cart completed the next day was left: the touch stays.
+	$out = pg_cart_recovery_outcome($done - 86400, $done, array(5 => $done - 86100));
+	pg_assert_same(false, pg_cart_recovery_drop_touches($out, $done - 86400), 'a left cart keeps its touches');
+	pg_assert_same(5, $out['touch_id'], 'and the page touch recovers it');
+
+	// An unknown start time decides nothing: the touches stay.
+	$out = pg_cart_recovery_outcome(0, $done, array(5 => $done - 900));
+	pg_assert_same(false, pg_cart_recovery_drop_touches($out, 0), 'no start time: nothing deleted');
+}

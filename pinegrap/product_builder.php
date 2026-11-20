@@ -2584,6 +2584,7 @@ function pg_pb_delete_product($product_id)
     pg_price_history_forget($product_id);
     pg_wishlist_forget_product($product_id);
     pg_stock_notify_forget_product($product_id);
+    pg_stock_hold_forget_product($product_id);
 
     // The "!= 0" guard is inherited from edit_products.php: product_id 0 means
     // "belongs to a page", and dropping that guard deletes every page form.

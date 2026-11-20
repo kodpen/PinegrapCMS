@@ -41,7 +41,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-code-*`: 6 files.
 - `designer-content-*`: 6 files.
 - `designer-interactions-*`: 6 files; start at `designer-interactions.md`.
-- `designer-options-*`: 12 files; start at `designer-options-overview.md`.
+- `designer-options-*`: 13 files; start at `designer-options-overview.md`.
 - `designer-prototype-*`: 9 files.
 - `email-designs-*`: 6 files; start at `email-designs.md`.
 - `form-list-*`: 8 files.

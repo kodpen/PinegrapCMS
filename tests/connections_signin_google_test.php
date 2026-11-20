@@ -59,7 +59,7 @@ function test_connections_signin_google_card_keeps_the_sign_in_gate()
 	$save = strpos($screen, "if (\$action === 'signin_google_save') {");
 	pg_assert_true($save !== false, 'the save action is there');
 	pg_assert_contains('if (connections_signin_may_manage($user)) {', substr($screen, $save, 200), 'the save asks the gate first');
-	pg_assert_contains("'signin'  => (\$provider_page === 'google') && connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
+	pg_assert_contains("'signin'    => (\$provider_page === 'google') && connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
 }
 
 function test_connections_signin_google_fields_moved_to_the_page()

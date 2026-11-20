@@ -61,6 +61,9 @@ function delete_order($request) {
     // door.
     pg_event_tickets_delete_for_order($order['id']);
 
+    // The units held for the order while its payment ran.
+    pg_stock_hold_release($order['id']);
+
     // The order's cost rows and its profit (Accounting): kept for the order
     // alone. The typed rates (erp_cost_rates) belong to no order and stay.
     if (pg_schema_has('erp_order_profit')) {

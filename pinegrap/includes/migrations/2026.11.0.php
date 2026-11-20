@@ -242,6 +242,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
+	upgrade_2026_11_0_stock_holds();             // 11.0.253
 
 }
 
@@ -8162,5 +8163,32 @@ function upgrade_2026_11_0_erp_stock_plan() {
 	install_add_column('erp_accounts', 'lead_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Accounting: a stock plan per product is worked out every night from the daily record, and a supplier card can hold a lead time.');
+
+}
+
+// Units held for an order while its payment runs (2026.11.0, 11.0.253;
+// includes/fn/stock_holds.php). One row per order, product and stock location
+// (0 on a site without locations): the units and when the claim runs out,
+// Unix time as the order tables keep it. A row is a claim for minutes, never
+// a stock figure: products and product_stock are not touched. The unique key
+// lets placing again replace a row; (product, location, expires_at) serves
+// the read of a product's live holds, expires_at the general job's sweep.
+function upgrade_2026_11_0_stock_holds() {
+
+	install_create_table('stock_holds', "CREATE TABLE stock_holds (
+		id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity     INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_order_product_location (order_id, product_id, location_id),
+		KEY idx_product_location_expires (product_id, location_id, expires_at),
+		KEY idx_expires (expires_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
 
 }

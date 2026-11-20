@@ -697,9 +697,7 @@ function pg_stock_notify_send($product_id)
 
         // The devices that asked are told beside the mail or the text,
         // never instead: a notification unseen for a day is dropped.
-        if ($push_on) {
-            pg_stock_notify_push_send((int) $row['id'], $name, $path);
-        }
+        $pushed = $push_on ? pg_stock_notify_push_send((int) $row['id'], $name, $path) : 0;
 
         $to = pg_stock_notify_email((string) $row['email_address']);
 
@@ -745,7 +743,7 @@ function pg_stock_notify_send($product_id)
             continue;
         }
 
-        email(array(
+        $went = email(array(
             'to'                 => $to,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
@@ -754,6 +752,15 @@ function pg_stock_notify_send($product_id)
             'body'               => $mail['body'],
             'queue'              => $queued,
         ));
+
+        // A mail that failed in the request told nobody: the row waits for
+        // the product's next announcement, unless a device or WhatsApp
+        // message told the visitor already.
+        if (!$told && ($pushed === 0) && pg_stock_notify_mail_unsent($went, function_exists('pg_mail_last_error_permanent') && pg_mail_last_error_permanent())) {
+            pg_stock_notify_unclaim((int) $row['id']);
+            unset($mailed[strtolower($to)]);
+            continue;
+        }
 
         $sent++;
     }
@@ -1008,6 +1015,40 @@ function pg_stock_notify_event_date(array $event, $recurrence)
 }
 
 /**
+ * Whether a recurring event's dates share their places (separate
+ * reservations off): its waiting rows are on date 0, which names no single
+ * date. Pure.
+ *
+ * @param array $event recurrence, separate_reservations
+ * @return bool
+ */
+function pg_stock_notify_event_shared(array $event)
+{
+    return ((int) ($event['recurrence'] ?? 0) === 1) && ((int) ($event['separate_reservations'] ?? 0) !== 1);
+}
+
+/**
+ * The occurrence a freed place is read on: the date itself, but the last
+ * date of the series (its stored repeat count) for a recurring event whose
+ * dates share their places, since such a place can be taken on any date
+ * until the series ends. Read on date 0, the first date, the list of a
+ * series whose first date was over was never mailed. Pure.
+ *
+ * @param array $event recurrence, separate_reservations,
+ *                     total_recurrence_number
+ * @param int   $date  the date the places are counted on
+ * @return int
+ */
+function pg_stock_notify_event_read_occurrence(array $event, $date)
+{
+    if (pg_stock_notify_event_shared($event)) {
+        return max(0, (int) ($event['total_recurrence_number'] ?? 0));
+    }
+
+    return max(0, (int) $date);
+}
+
+/**
  * What an event's date is for the waiting list: none (it takes no
  * reservations, its product is gone or off, it has ended), full (its places
  * are limited and none is left, while its product could be sold) or open
@@ -1102,7 +1143,7 @@ function pg_stock_notify_event_status_message($status)
         case 'email':
             return lang('Please enter a valid e-mail address.');
         case 'limit':
-            return lang('You are already waiting for many products. Please try again later.');
+            return lang('You are already on many waiting lists. Please try again later.');
         case 'unavailable':
             return lang('The waiting list is not available on this site.');
     }
@@ -1219,6 +1260,11 @@ function pg_stock_notify_event_send($event_id, $date)
     }
 
     $event = get_calendar_event($event_id, $date);
+    $shared = is_array($event) && pg_stock_notify_event_shared($event);
+
+    if ($shared) {
+        $event = get_calendar_event($event_id, pg_stock_notify_event_read_occurrence($event, $date));
+    }
 
     if (pg_stock_notify_event_state($event ? $event : null, time()) !== 'open') {
         return 0;
@@ -1234,7 +1280,9 @@ function pg_stock_notify_event_send($event_id, $date)
         ORDER BY stock_notify.id
         LIMIT " . ($queued ? PG_STOCK_NOTIFY_SEND_QUEUED : PG_STOCK_NOTIFY_SEND_INLINE));
 
-    $start = strtotime((string) $event['start_date_and_time']);
+    // Shared places were asked for on no single date: the mail names the
+    // event alone.
+    $start = $shared ? false : strtotime((string) $event['start_date_and_time']);
     $when = ($start !== false) ? (function_exists('get_absolute_time') ? get_absolute_time(array('timestamp' => $start, 'size' => 'long')) : date('Y-m-d H:i', $start)) : '';
     $mail = pg_stock_notify_event_mail((string) $event['name'], (string) $when, URL_SCHEME . HOSTNAME_SETTING . PATH);
     $mailed = array();
@@ -1257,7 +1305,7 @@ function pg_stock_notify_event_send($event_id, $date)
 
         $mailed[strtolower($to)] = true;
 
-        email(array(
+        $went = email(array(
             'to'                 => $to,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
@@ -1266,6 +1314,14 @@ function pg_stock_notify_event_send($event_id, $date)
             'body'               => $mail['body'],
             'queue'              => $queued,
         ));
+
+        // A mail that failed in the request told nobody: the row waits for
+        // the next freed place.
+        if (pg_stock_notify_mail_unsent($went, function_exists('pg_mail_last_error_permanent') && pg_mail_last_error_permanent())) {
+            pg_stock_notify_unclaim((int) $row['id']);
+            unset($mailed[strtolower($to)]);
+            continue;
+        }
 
         $sent++;
     }
@@ -1285,6 +1341,34 @@ function pg_stock_notify_claim($row_id)
     db("UPDATE stock_notify SET sent_at = UNIX_TIMESTAMP() WHERE (id = '" . (int) $row_id . "') AND (sent_at = 0)");
 
     return (int) mysqli_affected_rows(db::$con);
+}
+
+/**
+ * Puts a claimed row back to waiting: its mail could not go out, so the
+ * next announcement tries it again. Only the sender that claimed it calls
+ * this, so the row is still its own.
+ *
+ * @param int $row_id
+ * @return void
+ */
+function pg_stock_notify_unclaim($row_id)
+{
+    db("UPDATE stock_notify SET sent_at = 0 WHERE (id = '" . (int) $row_id . "') AND (sent_at > 0)");
+}
+
+/**
+ * Whether a claimed row's mail did not go out and may be tried again: email()
+ * failed, sending in the request without the queue, and not for good (a
+ * failure for good, such as no way to send at all, would only fail again).
+ * Pure.
+ *
+ * @param bool $sent      email()'s answer
+ * @param bool $permanent pg_mail_last_error_permanent()
+ * @return bool
+ */
+function pg_stock_notify_mail_unsent($sent, $permanent)
+{
+    return !$sent && !$permanent;
 }
 
 /**
@@ -1378,7 +1462,8 @@ function pg_stock_notify_event_line(array $event, $recurrence, $page_id, $send_t
 
 /**
  * The start of an event's date as get_calendar_event() writes it (the
- * site's zone), '' when the event or the date is gone.
+ * site's zone), '' when the event or the date is gone, or when the event's
+ * dates share their places.
  *
  * @param int $event_id
  * @param int $date
@@ -1388,7 +1473,8 @@ function pg_stock_notify_event_start($event_id, $date)
 {
     $event = ((int) $event_id > 0) ? get_calendar_event((int) $event_id, max(0, (int) $date)) : false;
 
-    return is_array($event) ? (string) $event['start_date_and_time'] : '';
+    // A series sharing its places was asked for on no single date.
+    return (is_array($event) && !pg_stock_notify_event_shared($event)) ? (string) $event['start_date_and_time'] : '';
 }
 
 /**
