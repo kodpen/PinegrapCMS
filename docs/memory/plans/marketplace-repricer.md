@@ -21,7 +21,8 @@ priority: 6
 - The site's own price is never changed by the robot.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10697)
-- Schema: three tables, no column on `marketplace_product_map` or `marketplace_accounts`: `marketplace_price_rules` (account, category or brand rows: percent, fixed, rounding; the account row holds the robot's step, minimum margin, try-first), `marketplace_price_state` (per listing: strategy, own price, own floor, last buybox read, robot price, state), `marketplace_price_log` (each robot change, reason, sent or not; 90 days). Asked of the owner in poll 186 (message 10696).
+- Schema: three tables, no column on `marketplace_product_map` or `marketplace_accounts`: `marketplace_price_rules` (account, category or brand rows: percent, fixed, rounding; the account row holds the robot's step, minimum margin, try-first), `marketplace_price_state` (per listing: strategy, own price, own floor, last buybox read, robot price, state), `marketplace_price_log` (each robot change, reason, sent or not; 90 days).
+  - The owner said yes in poll 186 (message 10696): "Evet, üç tablo eklensin"; the columns: architect, channel message 10721, kept in the schema decisions list.
 - Floor: R4. Grow while winning allowed by probing (R6). n11: rules and floor, Fixed only; a buybox read is a connector's ability, so Hepsiburada joins without touching the robot.
 - Price history: source `rule` for a channel row from rules or the site price, `repricer` for the robot's; a hand price keeps `panel` / `api`. A row only when a price enters the queue, none in try-first. The channel names the account (two stores on one marketplace sell at their own prices); RP1 fixes `commerce/product-price-history.md` if its `<code>` names the provider.
 - An upgrade changes no running site: no rule sends today's price; the robot stays off until switched on per account.
