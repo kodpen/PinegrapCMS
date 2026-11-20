@@ -131,6 +131,28 @@ function test_cart_recovery_weak_step_and_carts()
 	pg_assert_true($carts[1]['returned'], 'a later touch clicked');
 }
 
+function test_cart_recovery_weak_carts_completed_late()
+{
+	$from = 1800000000;
+	$row = array('channel' => 'email', 'clicked_at' => 0, 'restored_at' => 0, 'recovered' => 0, 'completed_at' => 0);
+
+	$carts = pg_cart_recovery_weak_carts(array(
+		// Completed 8 days after its only touch: late.
+		array('order_id' => 1, 'sent_at' => $from + 10, 'completed_at' => $from + 10 + 8 * 86400) + $row,
+		// Completed an hour after a pop-up on a fresh cart: not recovered, not late either.
+		array('order_id' => 2, 'channel' => 'page', 'sent_at' => $from + 10, 'completed_at' => $from + 3610) + $row,
+		// Recovered.
+		array('order_id' => 3, 'sent_at' => $from + 10, 'completed_at' => $from + 100, 'recovered' => 1) + $row,
+		// Still open.
+		array('order_id' => 4, 'sent_at' => $from + 10) + $row,
+	), $from, $from + 86400);
+
+	pg_assert_true($carts[1]['late'], 'completed more than 7 days after its last touch');
+	pg_assert_same(false, $carts[2]['late'], 'completed within the 7 days without a recovery is not late');
+	pg_assert_same(false, $carts[3]['late'], 'a recovered cart is not late');
+	pg_assert_same(false, $carts[4]['late'], 'an open cart is not late');
+}
+
 function test_cart_recovery_weak_runs_every_rule()
 {
 	$figures = array('left' => 12, 'messages' => array());

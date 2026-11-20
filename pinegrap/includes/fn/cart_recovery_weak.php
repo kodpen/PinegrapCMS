@@ -193,7 +193,7 @@ function pg_cart_recovery_weak_messages(array $messages)
  * open ones reached. Pure.
  *
  * @param array $touched facts of the touched carts: returned, recovered,
- *                       open (bool), completed (bool), step
+ *                       open (bool), completed (bool: after the 7 days), step
  * @return array|null array('rule' => 'stalled', 'carts', 'returned', 'open',
  *                    'late', 'steps' => step => count, 'step', 'percent')
  */
@@ -344,12 +344,13 @@ function pg_cart_recovery_weak(array $figures, array $touched, array $untouched)
 
 /**
  * The touched carts of [from, to) from their touch rows: whether each came
- * back or was recovered, when it was completed and its first send. Pure.
+ * back or was recovered, when it was completed, its first send and whether
+ * it was completed more than 7 days after its last touch (late). Pure.
  *
  * @param array $touches pg_cart_recovery_touch_rows() with completed_at
  * @param int   $from
  * @param int   $to
- * @return array order id => array('first_sent', 'returned', 'recovered', 'completed_at')
+ * @return array order id => array('first_sent', 'returned', 'recovered', 'completed_at', 'late')
  */
 function pg_cart_recovery_weak_carts(array $touches, $from, $to)
 {
@@ -363,8 +364,10 @@ function pg_cart_recovery_weak_carts(array $touches, $from, $to)
         $id = (int) $touch['order_id'];
 
         if (!isset($carts[$id])) {
-            $carts[$id] = array('first_sent' => (int) $touch['sent_at'], 'returned' => false, 'recovered' => false, 'completed_at' => 0);
+            $carts[$id] = array('first_sent' => (int) $touch['sent_at'], 'returned' => false, 'recovered' => false, 'completed_at' => 0, 'sent' => array());
         }
+
+        $carts[$id]['sent'][] = (int) $touch['sent_at'];
 
         $carts[$id]['first_sent'] = min($carts[$id]['first_sent'], (int) $touch['sent_at']);
         $carts[$id]['returned'] = $carts[$id]['returned'] || ((int) $touch['clicked_at'] > 0) || ((int) $touch['restored_at'] > 0);
@@ -375,7 +378,25 @@ function pg_cart_recovery_weak_carts(array $touches, $from, $to)
     foreach ($carts as $id => $cart) {
         if (($cart['first_sent'] < (int) $from) || ($cart['first_sent'] >= (int) $to)) {
             unset($carts[$id]);
+
+            continue;
         }
+
+        // Late: completed, not recovered, and its last touch before the
+        // completion more than 7 days earlier. A cart completed within the 7
+        // days without a recovery was not left (the completion rule).
+        $last_sent = 0;
+
+        foreach ($cart['sent'] as $sent_at) {
+            if ($sent_at <= $cart['completed_at']) {
+                $last_sent = max($last_sent, $sent_at);
+            }
+        }
+
+        $carts[$id]['late'] = ($cart['completed_at'] > 0) && !$cart['recovered']
+            && (($last_sent === 0) || (($cart['completed_at'] - $last_sent) > PG_CART_RECOVERY_WINDOW));
+
+        unset($carts[$id]['sent']);
     }
 
     return $carts;
@@ -566,7 +587,7 @@ function pg_cart_recovery_weak_facts($from, $to, $now)
             'returned'  => $cart['returned'],
             'recovered' => $cart['recovered'],
             'open'      => $order['open'],
-            'completed' => ($cart['completed_at'] > 0),
+            'completed' => $cart['late'],
             'step'      => $order['step'],
             // A completed order's start time was rewritten at completion.
             'delay'     => ($order['open'] && ($order['order_date'] > 0)) ? max(0, $cart['first_sent'] - $order['order_date']) : null,

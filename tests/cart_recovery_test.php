@@ -76,6 +76,21 @@ function test_cart_recovery_seven_days()
 	pg_assert_same(0, $out['touch_id'], 'a touch never sent takes nothing');
 }
 
+function test_cart_recovery_not_left_is_not_recovered()
+{
+	$done = 1800000000;
+
+	// A pop-up taken on a cart started an hour before it was completed: the
+	// cart was never left, so the touch brought nothing back.
+	$out = pg_cart_recovery_outcome($done - 3600, $done, array(5 => $done - 1800));
+	pg_assert_same(false, $out['left'], 'started an hour before: not left');
+	pg_assert_same(0, $out['touch_id'], 'a cart that was not left is not recovered');
+	pg_assert_same(false, $out['untouched'], 'nor counted apart');
+
+	$out = pg_cart_recovery_outcome($done - 21600, $done, array(5 => $done - 1800));
+	pg_assert_same(5, $out['touch_id'], 'left exactly 6 hours before: the touch takes it');
+}
+
 function test_cart_recovery_channel_and_source_names()
 {
 	pg_assert_same('email', pg_cart_recovery_channel('EMAIL'), 'channel lower-cased');
