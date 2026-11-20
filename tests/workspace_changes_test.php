@@ -194,3 +194,53 @@ function test_workspace_changes_user_email_checked_against_usernames()
 	pg_assert_contains("user_username = '\" . e(\$values['email']) . \"'", $user, 'and another account\'s username');
 	pg_assert_contains("user_id <> '\" . (int) \$record['id'] . \"'", $user, 'the account itself excluded');
 }
+
+// An applied proposal's decision is read by every member of the channel, also
+// those without the contacts right: a contact is named by its tag (or, once
+// deleted, its number) and none of its values is posted (#10778).
+function test_workspace_changes_decision_names_a_contact_without_its_values()
+{
+	$fields = array(
+		array('name' => 'first_name', 'from' => 'Ada', 'to' => 'Augusta'),
+		array('name' => 'email', 'from' => 'old@example.com', 'to' => 'new@example.com'),
+	);
+	$values = array('first_name' => 'Augusta', 'email' => 'new@example.com');
+	$types = array('contact' => array('label' => 'Contact', 'tag' => 'contact', 'fields' => pg_test_ws_change_types()['contact']['fields']));
+	$record = array('id' => 5, 'first_name' => 'Ada', 'last_name' => 'Lovelace', 'email_address' => 'old@example.com');
+
+	foreach (array('create', 'update') as $action) {
+		$decision = ws_change_decision_text($types, 'contact', $action, $fields, $values, $record, 5, array('ok' => true, 'id' => 5));
+
+		pg_assert_contains('<#contact:5>', $decision['body'], $action . ': the contact is tagged');
+		pg_assert_same(array(), $decision['lines'], $action . ': no value lines');
+
+		foreach (array('old@example.com', 'new@example.com', 'Augusta', 'Ada') as $value) {
+			pg_assert_false(strpos($decision['body'], $value) !== false, $action . ': ' . $value . ' is not posted');
+		}
+	}
+
+	foreach (array(false, true) as $binned) {
+		$decision = ws_change_decision_text($types, 'contact', 'delete', $fields, array(), $record, 5, array('ok' => true, 'binned' => $binned));
+
+		pg_assert_contains('#5', $decision['body'], 'delete: the contact is named by its number');
+		pg_assert_same(array(), $decision['lines'], 'delete: no value lines');
+
+		foreach (array('old@example.com', 'Ada', 'Lovelace', 'It held') as $value) {
+			pg_assert_false(strpos($decision['body'], $value) !== false, 'delete: ' . $value . ' is not posted');
+		}
+	}
+}
+
+// Only a contact leaves its values out; every other kind keeps its value
+// lines, and a quote turned into an invoice still tags the draft.
+function test_workspace_changes_decision_keeps_the_lines_of_other_kinds()
+{
+	foreach (array_keys(pg_test_ws_change_types()) as $kind) {
+		pg_assert_same($kind === 'contact', ws_change_decision_private($kind), $kind);
+	}
+
+	$decision = ws_change_decision_text(pg_test_ws_change_types(), 'erp_quote', 'invoice', array(), array(), array(), 7, array('ok' => true, 'invoice_id' => 9));
+
+	pg_assert_same(array('<#invoice:9>'), $decision['lines'], 'the invoice draft is tagged');
+	pg_assert_contains('<#invoice:9>', $decision['body'], 'and posted');
+}
