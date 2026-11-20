@@ -794,6 +794,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
+- commerce/referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind
+- commerce/referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings
 - commerce/shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API
 - commerce/store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units
 - commerce/subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
@@ -907,8 +909,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
 - designer/prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom
-- designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words
-- designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
+- designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: where the Bundles screen shows them, what they post and the screen does with it, the "changed since" choice, focus on Cancel, their words
+- designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete
 - designer/release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle
 - designer/release-bundle.md: Start file of release bundles (Bundles screen, page_bundles.php): decisions, parts, which file holds what, B1-B18 as built, the gaps
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
