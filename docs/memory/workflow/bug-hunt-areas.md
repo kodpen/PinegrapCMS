@@ -11,6 +11,6 @@ description: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the iss
 - Given after those on 2026-11-15 (channel message 5402): polls and agent questions over the API. It ended the same day with #9807 to #9812 (channel message 5416).
 - Given after those on 2026-11-15: scheduled messages and reminders (the `/zamanla` command, change and send-now of a scheduled message over the API, "remind me later", task reminders; panel and API). It ended the same day with #9832 and #9833.
 - Given after those on 2026-11-16 (channel message 5646), CA12 to CA16 having landed: a channel's settings and members over the API. It ended the same day with #9855 to #9857 (channel message 5659). Read and found clean: person-only routes refuse an application's key; the list of who loses a channel made private equals who really leaves; panel and API share their checks.
-- The hunts given from 2026-11-17 on: `bug-hunt-areas-2.md`. The next area is none of either file.
+- The hunts given from 2026-11-17 on: `bug-hunt-areas-2.md`, from 2026-11-19 on `bug-hunt-areas-3.md`. The next area is none of the three files.
 
 Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-2.md
