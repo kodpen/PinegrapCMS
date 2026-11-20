@@ -1,6 +1,6 @@
 ---
 name: workspace-note-changed-by-app
-description: The application that changed a Workspace note: ws_notes.updated_app_id and ws_note_versions.app_id (11.0.257), the save, "Changed by @handle", the API's changed_by (KD3)
+description: The application that changed a Workspace note: updated_app_id / app_id (11.0.257), the save, "Changed by @handle", the API's changed_by, the card and version lists (KD3)
 ---
 
 ## What is kept?
@@ -18,5 +18,8 @@ description: The application that changed a Workspace note: ws_notes.updated_app
 - `ws_notes_present()` (so the card map `ws_note_cards_map()` too) gives `updated_app` (`ws_app_sender()`, null for a person) and `changed_by`, the words "Changed by @handle" (`ws_note_changed_by_words()` over `ws_note_changer()`): a person by `@username`, an application by its name (it has no handle).
 - `ws_note_versions()` gives `app` and `changed_by` per version.
 - API: `changed_by` (`WorkspaceMessageSender?`, `ws_api_note_changer()`) on a message's `note_card` and on `WorkspaceNote`; user_id null with app_id for an application. `updated_by` stays the person.
-- The card's and the Versions drawer's script draw `changed_by` once KD2 has landed (plan `channel-documents-steps.md`).
+- The channel card's foot (`workspace_channel_notes.js` `changedWords()`) draws `changed_by`, then ` · ` and the time; nothing when it is empty. The script builds no words from `updated_by`; the old `cn_changed` template is gone (KD3b).
+- The card's Versions drawer (`versionWho()`) and the notes screen's version list (`startNotes()` in `workspace.js`) draw each version's `changed_by`; the drawer says "Person" when it is empty, the list draws no line.
+- Why: an agent's key acts for a person, so `updated_by.name` named that person for every agent change.
+- Not changed: the notes screen's own foot and its "Last change" line still name `updated_by` (`notes_last_change`).
 - Tests: `tests/workspace_note_app_test.php`.
