@@ -20,7 +20,7 @@ priority: 6
 - "Call next" takes its row with one conditional UPDATE (`WHERE state = 'waiting'`): two desks never call the same person.
 - The person's page and the lobby screen show the number, never a name. The signed link opens that number only; `queue.php` is in `waf_sensitive_scripts()`.
 - Bookings keep their rows and moves: an arrival is a queue row naming the booking.
-- A notice goes only for the number's own moves, at most three, to the phone given for the number; kind `queue`. Service or commercial message: the owner's answer to poll 207 (open).
+- A notice goes only for the number's own moves, at most three, to the phone given for the number; kind `queue`. A service message: no marketing consent or İYS, no promotion in it; owner's answer, poll 207 (`workflow/decisions-made-product-94.md`).
 - The estimate reads "about" and shows from 20 handled; priority groups are the place's setting, the reason seen at the desk.
 - Times unix UTC, days in the site's zone, hours in the bookings' shape (`pg_booking_hours_clean()`).
 - Personal fields cleared after the keep period (W14); the five privacy registrations (`pg_privacy_erase_tables()`, `pg_privacy_erase_labels()`, `pg_privacy_export_sections()`, `pg_privacy_inventory()`, `pg_privacy_rules_catalogue()`) and `pg_contact_holders()`.

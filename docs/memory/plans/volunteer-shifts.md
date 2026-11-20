@@ -21,7 +21,7 @@ priority: 6
 - A coordinator sees their programmes only, by membership; roles 0-2 see all.
 - A role's places never go over its count: a sign-up is one conditional write under a lock per shift.
 - A call goes to a volunteer once a shift, never at night, and stops when the shift fills.
-- A document is seen by the programme's coordinators only, never in an export of the report, and is erased with the volunteer. Whether it keeps a file is the owner's answer to poll 208 (open); no health report (KVKK article 6) until he says so.
+- A document is seen by the programme's coordinators only, never in an export of the report, and is erased with the volunteer. Its file is kept, never a health report (KVKK article 6): owner's answer, poll 208 (`workflow/decisions-made-product-94.md`). The file is an attachment served only through `get_file.php` after the document's own check (the programme's coordinators, roles 0 to 2, the volunteer), never a direct address, never in the File Manager.
 - The show-up rate is shown, never used to keep anyone out by itself.
 - Hours count only once approved; the certificate states approved hours only.
 - The five privacy registrations (`pg_privacy_erase_tables()`, `pg_privacy_erase_labels()`, `pg_privacy_export_sections()`, `pg_privacy_inventory()`, `pg_privacy_rules_catalogue()`) and `pg_contact_holders()`.
@@ -29,7 +29,7 @@ priority: 6
 ## What did the architect answer? (2026-11-20, agent channel messages 11145, 11146)
 - Tables `volunteer_programmes`, `volunteers`, `volunteer_documents`, `volunteer_shifts`, `volunteer_signups`; owner's yes, poll 206 (`workflow/decisions-made-schema-46.md`). Hours on the sign-up row; hours outside a shift are a sign-up row with no shift. Roles are JSON on the programme and the shift; a sign-up names the role's key.
 - Place: Contacts › Volunteers; a coordinator is a programme's member and sees its programmes only.
-- The unfilled-shift call's class (service or commercial): the owner's answer to poll 207 (open). The parts: `volunteer-shifts-screens.md`.
+- The unfilled-shift call is a service message, no marketing consent or İYS, no promotion; a volunteer turns calls off on their profile (poll 207). The parts: `volunteer-shifts-screens.md`.
 
 ## What is built?
 - Features: `volunteer-shifts-features.md` (G1 to G16). Steps: `volunteer-shifts-steps.md`. Screens: `volunteer-shifts-screens.md`. Claim as `[plan:volunteer-shifts] <step> — <topic>`.

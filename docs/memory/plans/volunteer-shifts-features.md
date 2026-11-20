@@ -9,7 +9,7 @@ description: Plan volunteer-shifts, features G1 to G16: programmes, profiles fro
 ## Who is a volunteer?
 - (G2) A profile made from an application on the form: the contact, skills from a choice field, the weekly days and hours free (the bookings' hours shape), trainings done (a course of the site completed), state Applied, Active, Paused or Left.
 - (G3) A coordinator approves an application with one press; the welcome e-mail goes from the programme's template. A volunteer pauses or leaves themselves.
-- (G4) Documents with a valid-until date (a criminal record certificate, a first-aid card): kind, number, valid until and "seen by" (who, when) stand without a file; the file is a part left out unless poll 208 says yes. 30 and 7 days before the date the volunteer and the coordinator are told; a role needing an expired document takes no sign-up.
+- (G4) Documents with a valid-until date (a criminal record certificate, a first-aid card): kind, number, valid until, "seen by" (who, when) and the file (poll 208); never a health report. 30 and 7 days before the date the volunteer and the coordinator are told; a role needing an expired document takes no sign-up.
 
 ## How are shifts made?
 - (G5) A shift: place, start and end, the roles with how many each needs, a note. A weekly series and "Copy last week".
@@ -21,7 +21,7 @@ description: Plan volunteer-shifts, features G1 to G16: programmes, profiles fro
 - (G9) "Offer my place": another volunteer who fits takes it; the coordinator approves, or it passes by itself when the programme says so.
 
 ## How are short shifts filled?
-- (G10) Days before a short shift (a setting, 3 by default): a call to volunteers who fit, are free that day and are not booked then; one call a volunteer a shift; e-mail, SMS or WhatsApp by the volunteer's choice. A reminder the day before to everyone signed up.
+- (G10) Days before a short shift (a setting, 3 by default): a call to volunteers who fit, are free that day and are not booked then; one call a volunteer a shift; e-mail, SMS or WhatsApp by the volunteer's choice, a service message the volunteer turns off on their page ("Shift calls"). A reminder the day before to everyone signed up.
 
 ## How is the day recorded?
 - (G11) A QR poster per place: the volunteer scans it on their phone to check in and out; the coordinator's list of the day does the same for someone with no phone. Not checked in 30 minutes after the start is "Did not come".

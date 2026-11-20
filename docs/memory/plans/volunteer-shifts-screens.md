@@ -13,7 +13,7 @@ description: Plan volunteer-shifts, how its panel screens are put together (VS2,
 - A programme's head: name, pill. Tabs [Segmented control and status]: "Shifts" (VS3, the first tab once built), "Applications", "Volunteers", "Hours" (VS6), "Report" (VS7), "Set-up".
 - Set-up as folded rows, one open at a time (the settings pane of `plans/design-examples-patterns.md` DX1; before it lands, [Cards]), one line of state each:
   1. "Application form": the form, and which field gives skills, birth date and free days [Fields].
-  2. "Roles": a role a row [Rows and gathered rows]: name, skills, trainings, documents needed; "Add a role", each with its remove.
+  2. "Roles": a role a row [Rows and gathered rows]: name, skills, trainings, documents needed; "Add a role", each with its remove. Under the rows one hint line: "Do not ask for a health report."
   3. "Sign-up rules": cut-off hours, minimum age, swaps need approval.
   4. "Calls and reminders": days before a short shift, channels.
   5. "Messages": Welcome, Call, Reminder, Thank you as tabs, each its subject and text.

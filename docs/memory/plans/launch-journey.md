@@ -26,7 +26,7 @@ priority: 5
 - No config column (the config table takes none since 11.0.145, `data/config-table-no-varchar.md`): the purpose, the go-live time, the hidden steps and the summary link's hash and expiry are one JSON row in `config_text` (`pg_config_text_save()`), no schema step.
 - The agency summary's lines are one table (text, answer, answered at, order); owner's yes, poll 206 (`workflow/decisions-made-schema-46.md`).
 - First-visit hints: `user.tours_seen` carries `hint:<screen>` keys through `pg_tour_seen()` and `pg_tour_mark()`; a hint exists only for a screen in the journey's catalogue, so the column stays bounded.
-- "Go live": whether the button itself turns maintenance mode off and removes the robots catch-all, or only leads there, is the owner's answer to poll 209 (open). It never changes a payment mode.
+- "Go live" turns maintenance mode off and removes the robots catch-all itself, each named in the confirmation and written to the Site Log; it never changes a payment mode. Owner's answer, poll 209 (`workflow/decisions-made-product-94.md`).
 - Purpose from a template: the journey's catalogue maps a template's key to a purpose; an unknown template leaves it to the dialog. No template file is touched (design template plans are paused).
 
 ## What is built?

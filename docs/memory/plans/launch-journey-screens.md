@@ -19,7 +19,7 @@ description: Plan launch-journey, how its first screens are put together (SJ2, S
 
 ## How is the go-live check laid out? (SJ3)
 - A dialog: two gathered groups [Rows and gathered rows], "Must be fixed" and "Worth a look", a row each with its line and "Fix" quiet. Empty groups say "Nothing to fix".
-- Foot: "Go live" the fill, Cancel quiet. With a blocker left, "Go live" asks again, naming each blocker, with a checkbox "I know, go live anyway" [Fields]. What "Go live" itself writes: poll 209.
+- Foot: "Go live" the fill, Cancel quiet. With a blocker left, "Go live" asks again, naming each blocker, with a checkbox "I know, go live anyway" [Fields]. The confirmation names what "Go live" itself changes: "Maintenance mode turns off" and "Search engines may index the site", each only when it applies.
 
 ## Which words?
 - "Set up your site", "Do it", "Not for this site", "Ready to go live?", "Must be fixed", "Worth a look", "Go live", "First week", "Start here", "What we need from you"; never "check id", "fact" or a setting's constant.
