@@ -23,3 +23,8 @@ module: github_links
 - `pull_request` labeled with a label the link follows: `[<label>] #<n> <branch> <sha7> <title>`, so `ready` gives today's `[ready]` line. Label names are folded to `a-z0-9._-`, at most 40.
 - `pull_request` opened, reopened, closed: `[pr] opened|reopened|merged|closed #<n> <branch> <sha7> <url> <title>` (new prefix). Pushes (`synchronize`) and `ping` write nothing.
 - Free text from a payload is one line, control characters folded, the title at most 200 characters.
+
+## How are the lines read back?
+- `pg_github_line_read()` reads a written line into kind, state, number, branch, sha, check, address and title; typed text is null. `pg_github_day_counts()` gives a day's PRs opened (reopened counted as opened), merged, closed, checks green/red and the newest lines (#10803).
+- The Activity tab's repository part, `ws_channel_activity_repo()` (`includes/workspace/channel_activity_repo.php`), counts only the GitHub application's messages since local midnight, within the channel's newest 5,000; it reads `github_channel_app` and never makes the application.
+- A line format change in `pg_github_line()` needs the reader changed too: `tests/github_links_test.php` writes every shape and reads it back.
