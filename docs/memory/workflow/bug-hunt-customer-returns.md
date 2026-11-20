@@ -9,6 +9,7 @@ description: Bug hunt of customer returns, the request and the refund (architect
 ## What did it fix? (PR #10647 lists each with file and line)
 - The daily reminder rang refund due and overdue for a shipped or received return of a cancelled order, and the Returns list, the return screen and My Account showed its refund date (red once late), though such a return is never refunded: `pg_return_refund_due($return, $order_status)` gives '' unless the order is complete or exported; the reminder, `pg_returns_panel_rows()` (`order_status`), `view_return.php` and `pg_return_customer_view()` pass it.
 - The My Account return form printed "Already in a return" on a gift card line: `pg_return_customer_view()` hands `gift_card` on each line, and `pg_return_form_html()` prints "Gift cards cannot be returned".
+- #10651 (K2's reviews hunt, added by coordinator K1): the review request e-mail went out after refunded returns took back every unit of the order. `pg_return_refund()` calls `pg_review_request_cancel()` when `pg_return_order_fully_refunded()` (pure part `pg_return_order_refunded_whole()`) says nothing is left; a partly refunded order keeps its request.
 - Tests: `tests/returns_hunt_test.php`.
 
 ## What was opened as an issue?
