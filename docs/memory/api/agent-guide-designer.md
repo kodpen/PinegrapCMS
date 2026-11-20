@@ -5,7 +5,7 @@ module: agent_guide_designer
 ---
 
 ## What does the designer topic say, and where is each line from?
-- `includes/fn/agent_guide_designer.php` (plan ai-guide, AG2, #PRNUM): sections page, ops, classes, widgets, examples, mistakes. Engine and limits: `agent-guide-engine.md`.
+- `includes/fn/agent_guide_designer.php` (plan ai-guide, AG2, #10737): sections page, ops, classes, widgets, examples, mistakes. Engine and limits: `agent-guide-engine.md`.
 - The page lines come from `pg_design_ai_page_lines()` (html, bound, css), the same lines the built-in assistant's instructions read (`pg_design_ai_system_prompt()`); the topic uses html and bound.
 - The operation lines come from `pg_design_ai_ops_guide()`: one line per name of `pg_design_ai_op_names()`, in that order, then `html` (what html keeps). Before AG2 that function was read by nothing.
 - The `<pg-keep>` kinds come from `pg_design_ai_keep_kinds()`: region, shared_ref, loop_area, recipient_loop_area, component, locked, bound; any other kind is a content part's type.
