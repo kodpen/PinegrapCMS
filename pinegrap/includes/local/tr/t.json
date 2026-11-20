@@ -4636,6 +4636,7 @@
     "The items are added, ordered and linked under Menus; without a menu the widget draws no items.": "Öğeler Menüler altında eklenir, sıralanır ve bağlanır; menü seçilmezse bileşen öğe çizmez.",
     "The items of the list take more than {var:1} KB; they cannot be kept for the loop.": "Listenin öğeleri {var:1} KB'tan fazla yer tutuyor; döngü için saklanamazlar.",
     "The items that you requested have been migrated ({var:1}).": "İstediğiniz öğeler taşındı ({var:1}).",
+    "The items you picked are still in your cart. Finish your order before they sell out.": "Seçtiğiniz ürünler hâlâ sepetinizde. Tükenmeden siparişinizi tamamlayın.",
     "The job": "İş",
     "The job and the bike": "İş ve bisiklet",
     "The job applications, the staff requests and the conversations are kept here. Open one, call the candidate or the employer and press Change Status; what you write under it reaches them by e-mail.": "İş başvuruları, personel talepleri ve yazışmalar burada tutulur. Birini açın, adayı ya da işvereni arayın ve Durumu Değiştir'e basın; altına yazdıklarınız onlara e-postayla ulaşır.",

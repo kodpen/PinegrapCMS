@@ -64,7 +64,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var buildOffer = function () {
         return kit.div('pg-popup-card position-relative p-4 p-md-5 text-center', _sdT('Pop-up: Offer Code'), [
             closeCross(),
-            kit.icon('bi-gift', 'text-primary d-block mb-3', '40'),
+            kit.icon('bi-gift', 'fs-1 text-primary d-block mb-3'),
             kit.h('h2', _sdT('10% off your first order'), 'h3 fw-bold mb-2'),
             kit.p(_sdT('Use this code at checkout. It is valid until the end of the month.'), 'text-body-secondary mb-4'),
             kit.div('d-flex flex-wrap align-items-center justify-content-center gap-2', _sdT('Offer Code Row'), [
@@ -74,7 +74,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                     kit.createNode('content', { contentType: 'icon', iconName: 'bi-copy', cssClass: '', fontSize: '',
                         _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
                     kit.createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Copy'), customName: _sdT('Label'),
-                        _attrs: [mark('copy-label')] }, [])
+                        _attrs: [mark('copy-label'), { name: 'aria-live', value: 'polite' }] }, [])
                 ], [
                     { name: 'type', value: 'button' },
                     mark('copy'),
@@ -90,21 +90,22 @@ StyleDesigner.registerBlockFamily(function (kit) {
         var id = kit.uid('popnl');
         return kit.div('pg-popup-card position-relative p-4 p-md-5 text-center', _sdT('Pop-up: Newsletter'), [
             closeCross(),
-            kit.icon('bi-envelope-heart', 'text-primary d-block mb-3', '40'),
+            kit.icon('bi-envelope-heart', 'fs-1 text-primary d-block mb-3'),
             kit.h('h2', _sdT('Get our news first'), 'h3 fw-bold mb-2'),
             kit.p(_sdT('New arrivals and offers in your inbox, once a week.'), 'text-body-secondary mb-4'),
             kit.tag('form', 'd-flex flex-column flex-sm-row gap-2', _sdT('Newsletter Form'), [
                 kit.tag('label', 'visually-hidden', _sdT('Email Label'), [
                     kit.createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Email address'), customName: _sdT('Label') }, [])
                 ], [{ name: 'for', value: id + '_email' }]),
-                kit.tag('input', 'form-control flex-grow-1', _sdT('Email Input'), [], [
+                // The id is the node's own prop: the site prints no id
+                // from _attrs.
+                kit.createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'), id: id + '_email', _attrs: [
                     { name: 'type', value: 'email' },
-                    { name: 'id', value: id + '_email' },
                     { name: 'name', value: id + '_email' },
                     { name: 'placeholder', value: _sdT('Your email address') },
                     { name: 'autocomplete', value: 'email' },
                     { name: 'required', value: 'required' }
-                ]),
+                ] }, []),
                 kit.tag('button', 'btn btn-primary', _sdT('Subscribe Button'), [
                     kit.createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Subscribe'), customName: _sdT('Label') }, [])
                 ], [{ name: 'type', value: 'submit' }, mark('take')])
@@ -117,7 +118,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     // A bar for the top or bottom place: one line, the cross at its end.
     var buildAnnouncement = function () {
         return kit.div('position-relative d-flex flex-wrap align-items-center justify-content-center gap-2 gap-sm-3 py-2 ps-3 pe-5 text-bg-primary text-center', _sdT('Pop-up: Announcement Bar'), [
-            kit.icon('bi-megaphone', '', '20'),
+            kit.icon('bi-megaphone', 'fs-5'),
             kit.p(_sdT('Free delivery on every order this week.'), 'mb-0 fw-semibold'),
             takeLink(_sdT('Shop now'), 'btn btn-light btn-sm'),
             kit.tag('button', 'btn-close btn-close-white position-absolute top-50 end-0 translate-middle-y me-3', _sdT('Close Button'), [], [
@@ -133,7 +134,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
         return kit.div('pg-popup-card position-relative p-4', _sdT('Pop-up: Cart Waiting'), [
             closeCross(),
             kit.div('d-flex align-items-start gap-3 pe-4', _sdT('Cart Message'), [
-                kit.icon('bi-cart-check', 'text-primary flex-shrink-0', '32'),
+                kit.icon('bi-cart-check', 'fs-2 text-primary flex-shrink-0'),
                 kit.div('', _sdT('Cart Text'), [
                     kit.h('h2', _sdT('Your cart is waiting'), 'h5 fw-bold mb-1'),
                     kit.p(_sdT('The items you picked are still in your cart. Finish your order before they sell out.'), 'small text-body-secondary mb-3'),
