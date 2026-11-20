@@ -534,7 +534,7 @@ function pg_connections_registry()
             'covers' => array('purpose' => array('notes'))),
 
         // Analytics and search.
-        'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
+        'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'google_analytics', 'attention' => true),
             'apis' => array('analyticsadmin.googleapis.com' => 'Google Analytics Admin API', 'analyticsdata.googleapis.com' => 'Google Analytics Data API'),
             'covers' => array('purpose' => array('google_analytics'))),
@@ -542,7 +542,7 @@ function pg_connections_registry()
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'search_console', 'attention' => true),
             'apis' => array('searchconsole.googleapis.com' => 'Google Search Console API', 'siteverification.googleapis.com' => 'Google Site Verification API'),
             'covers' => array('purpose' => array('search_console'))),
-        'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
+        'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
             'state' => array('kind' => 'config', 'names' => array('INDEXNOW_KEY'))),
 
         // Maps and places.
@@ -587,7 +587,7 @@ function pg_connections_registry()
         'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
             'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('azure')),
             'covers' => array('model' => array('azure'))),
-        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
+        'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
             'state' => array('kind' => 'config', 'names' => array('TRANSLATION_GOOGLE_KEY_ENC'))),
 
         // Protection and delivery.

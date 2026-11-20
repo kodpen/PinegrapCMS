@@ -184,6 +184,11 @@ function ws_events_catalog()
             );
         }
 
+        // A referral's reward, about the referrer's contact.
+        if (function_exists('pg_referral_ready') && pg_referral_ready()) {
+            $catalog['referral.rewarded'] = array('label' => lang('A referral is rewarded'), 'when' => lang('When a friend\'s order earns its referrer the referral reward'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => '');
+        }
+
         // The fee of a designed form's record, narrowed to one form like a
         // submission.
         if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
@@ -661,8 +666,8 @@ function ws_events_record_of($event, $payload)
     }
 
     // A bounce: the contact of its address (pg_event_workspace_payload());
-    // store credit: the customer's contact.
-    if (($event === 'mail.bounced') || (strpos($event, 'credit.') === 0)) {
+    // store credit and a referral's reward: the customer's contact.
+    if (($event === 'mail.bounced') || (strpos($event, 'credit.') === 0) || ($event === 'referral.rewarded')) {
         $contact_id = (int) ($payload[($event === 'mail.bounced') ? 'contact_id' : 'customer_id'] ?? 0);
 
         return ($contact_id > 0) ? array('contact', $contact_id) : array('', 0);

@@ -5832,7 +5832,9 @@ var software = {
     // window's edge and corner as a card in the bottom right corner.
     // With content (a node: a designed pop-up) it shows that in place of
     // an address, sized to it where width or height is left out, and a
-    // press on an element marked data-pg-popup-close inside closes it.
+    // press on an element marked data-pg-popup-close inside closes it;
+    // content that brings such a button leaves out the frame's own. A press
+    // on one marked data-pg-popup-copy copies its offer code (popup_copy()).
     open_dialog: function(properties) {
         var class_name = properties.class_name;
         var modal = properties.modal;
@@ -5910,7 +5912,11 @@ var software = {
         var frame = document.createElement(content ? 'div' : 'iframe');
         var label = lang('Close');
 
-        dialog.className = 'pg-dialog' + (content ? ' pg-dialog-content' : '') + (modal ? '' : ' pg-dialog-plain') + ((!modal && ['top', 'bottom', 'corner'].indexOf(place) !== -1) ? ' pg-dialog-' + place : '') + (class_name ? ' ' + class_name : '');
+        // Asked before the content moves into the dialog and leaves the
+        // fragment empty.
+        var own_close = !!(content && content.querySelector && content.querySelector('[data-pg-popup-close]'));
+
+        dialog.className = 'pg-dialog' + (content ? ' pg-dialog-content' : '') + (own_close ? ' pg-dialog-own-close' : '') + (modal ? '' : ' pg-dialog-plain') + ((!modal && ['top', 'bottom', 'corner'].indexOf(place) !== -1) ? ' pg-dialog-' + place : '') + (class_name ? ' ' + class_name : '');
         dialog.style.width = width;
         dialog.style.height = height;
 
@@ -5954,9 +5960,21 @@ var software = {
 
         if (content) {
             frame.addEventListener('click', function(event) {
-                if (event.target && event.target.closest && event.target.closest('[data-pg-popup-close]')) {
+                if (!event.target || !event.target.closest) {
+                    return;
+                }
+
+                if (event.target.closest('[data-pg-popup-close]')) {
                     event.preventDefault();
                     shut();
+                    return;
+                }
+
+                var copy = event.target.closest('[data-pg-popup-copy]');
+
+                if (copy) {
+                    event.preventDefault();
+                    software.popup_copy(copy, frame);
                 }
             });
         }
@@ -5998,6 +6016,65 @@ var software = {
         return dialog;
     },
 
+    // Copies a designed pop-up's offer code: the text of the element marked
+    // data-pg-popup-code inside root. Once it is on the clipboard, the
+    // button's element marked data-pg-popup-copy-label shows the button's
+    // data-pg-popup-copied text for two seconds. Without the Clipboard API
+    // (a page not on https) the code is selected and copied the old way.
+    // Returns false when root holds no code.
+    popup_copy: function(button, root) {
+        var code = root.querySelector('[data-pg-popup-code]');
+
+        if (!code) {
+            return false;
+        }
+
+        var text = String(code.textContent || '').trim();
+
+        function done() {
+            var label = button.querySelector('[data-pg-popup-copy-label]');
+            var copied = button.getAttribute('data-pg-popup-copied');
+
+            if (!label || !copied || label.hasAttribute('data-pg-popup-was')) {
+                return;
+            }
+
+            label.setAttribute('data-pg-popup-was', label.textContent);
+            label.textContent = copied;
+
+            setTimeout(function() {
+                label.textContent = label.getAttribute('data-pg-popup-was');
+                label.removeAttribute('data-pg-popup-was');
+            }, 2000);
+        }
+
+        function old_way() {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            if (!selection) {
+                return;
+            }
+
+            selection.selectAllChildren(code);
+
+            try {
+                if (document.execCommand('copy')) {
+                    done();
+                }
+            } catch (error) {
+                // The code stays selected for the visitor to copy.
+            }
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, old_way);
+        } else {
+            old_way();
+        }
+
+        return true;
+    },
+
     // The dialog frame's rules, added to the page once, the first time a
     // dialog opens. They match the jQuery UI dialog the sites showed before
     // (white box, grey line, dark shadow, 20px close button, grey backdrop)
@@ -6032,6 +6109,7 @@ var software = {
             'dialog.pg-dialog-content{padding:0;font:inherit;color:inherit;text-align:inherit}' +
             'dialog.pg-dialog-content .pg-dialog-bar{position:absolute;top:0;right:0;z-index:1;width:32px;min-height:32px;padding:0}' +
             'dialog.pg-dialog-content .pg-dialog-title{display:none}' +
+            'dialog.pg-dialog-own-close .pg-dialog-bar{display:none}' +
             'dialog.pg-dialog .pg-dialog-body{flex:1 1 auto;box-sizing:border-box;min-height:0;overflow:auto}';
 
         (document.head || document.documentElement).appendChild(style);

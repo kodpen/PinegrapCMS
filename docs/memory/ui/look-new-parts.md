@@ -15,7 +15,7 @@ description: A step's new parts in the panel and Workspace are built from look A
 - A part no recipe draws: the step stops and asks the architect before building it.
 
 ## What is not covered?
-- An old screen's untouched markup: the plan panel-old-screens moves it, and a step does not restyle its neighbours.
+- An old screen's untouched markup: a step does not restyle its neighbours; what the old-screens plan left is `look-open-work.md`.
 - Site output (Bootstrap 5.3.8) and the installer.
 - The visual designer: its language is the drawings and measures of the plan designer-panels.
 
@@ -26,7 +26,7 @@ description: A step's new parts in the panel and Workspace are built from look A
 - CI enforces it too: `tools/check_look.php` counts these classes per file of the panel's PHP screens and script sources, in a baseline that may only fall (`look-check.md`). The added-line count above still goes into the look's closing message.
 
 ## Where was it first applied?
-- AU9 (#10225): the buttons it adds move to `pg-button` before its `ready` label. The application drawer's old tab strip and its other buttons are the API screen's step of panel-old-screens, taken once AU9 has landed.
+- AU9 (#10225): the buttons it adds move to `pg-button` before its `ready` label. The application drawer's tab strip and its other buttons moved with S6b (#10534, `look-settings-pages-outside.md`).
 - CC7b (#10213) was already in a train: #10234 moved the /oluştur line's cards to the recipes after it.
 - A change of look does not change behaviour: in #10234 a text column stays a text box that takes lines (`textarea.pg-input`, one line high at rest, growing to eight), not a one-line input that drops a pasted address's line breaks (Architect, 2026-11-17, agent channel message 8593).
 - A sheet drawn before the rule gives way to the ranks on file: in CN4's drawers one fill at the foot, Save quiet, Disconnect as `pg-button-danger`, where CN2's sheet drew two fills and a ghost (message 8648).

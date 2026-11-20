@@ -256,6 +256,67 @@ function test_designer_canvas_bar_prototype_mode()
 	pg_assert_contains('<span class="sd-bp-zsep sd-bp-zsep-tools" aria-hidden="true"></span>', designer_canvas_bar_fn($js, 'createCanvasIframe'), 'the line before the canvas\'s tools hides with them');
 }
 
+// The Prototype comments button sits in the tools zone of Prototype mode
+// after Links, with the open count and the unread mark as its badge; it
+// left the top bar. The list is the side panel's Comments tab beside Links,
+// in the right column's tab pattern; the View menu's one item opens it from
+// Design mode.
+function test_designer_canvas_bar_prototype_comments()
+{
+	$js = str_replace("\r\n", "\n", designer_canvas_bar_source());
+	$build = designer_canvas_bar_fn($js, '_sdProtoBuild');
+
+	pg_assert_contains("ui.pcBtn = _sdProtoButton('bi-chat-square-text', _sdT('Prototype comments'), function () { _sdProtoSideToggle('comments'); });", $build, 'the button opens the side panel at its Comments tab');
+	$links = strpos($build, 'tools.appendChild(ui.listToggle);');
+	$here = strpos($build, 'tools.appendChild(ui.pcBtn);');
+	$play = strpos($build, 'tools.appendChild(ui.play);');
+	pg_assert_true($links !== false && $here !== false && $play !== false && $links < $here && $here < $play, 'in the tools zone, after Links and before Play');
+	pg_assert_contains("ui.pcBadge = _sdProtoEl('span', 'sd-bp-pc-badge');", $build, 'it carries a badge');
+	pg_assert_contains('ui.pcBtn.hidden = true;', $build, 'hidden until the comments part runs');
+	pg_assert_contains("ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoSideToggle('links'); });", $build, 'Links opens the same panel at its Links tab');
+
+	$draw = designer_canvas_bar_fn($js, '_sdProtoCommentsDraw');
+	pg_assert_contains('ui.pcBtn.hidden = !pc.on;', $draw, 'the button shows once the part runs');
+	pg_assert_contains("ui.pcBadge.textContent = pc.open > 0 ? String(pc.open) : '';", $draw, 'the badge is the open count');
+	pg_assert_contains("ui.pcBadge.classList.toggle('sd-bp-pc-new', pc.unread);", $draw, 'and turns amber while a comment is unread');
+
+	// The tab, in the right column's pattern.
+	pg_assert_contains("var sideHead = _sdProtoEl('div', 'sd-panel-header sd-rcol-head sd-proto-side-head');", $build, 'the panel\'s head is the right column\'s');
+	pg_assert_contains("var t = _sdProtoEl('button', 'sd-rcol-tab');", $build, 'its tabs are the right column\'s');
+	pg_assert_contains("ui.tabLinks = sideTab('links', 'bi-link-45deg', _sdT('Links'));", $build, 'a Links tab');
+	pg_assert_contains("ui.tabComments = sideTab('comments', 'bi-chat-square-text', _sdT('Comments'));", $build, 'a Comments tab');
+	pg_assert_contains("ui.comments = _sdProtoEl('div', 'sd-proto-comments');", $build, 'the Comments pane');
+	$side = designer_canvas_bar_fn($js, '_sdProtoSide');
+	pg_assert_contains("if (tab !== 'comments' || !_sdProto.pc.on) tab = 'links';", $side, 'Comments only while the part runs');
+	pg_assert_contains('one[1].hidden = !on;', $side, 'one pane shown at a time');
+	$show = designer_canvas_bar_fn($js, '_sdProtoListShow');
+	pg_assert_contains("ui.pcBtn.setAttribute('aria-pressed', comments ? 'true' : 'false');", $show, 'the button is pressed while its tab is shown');
+	pg_assert_contains('_sdProtoCommentsTell();', $show, 'the part hears whether its tab is in sight');
+
+	// From Design mode: one item in the View menu, no second button.
+	$canvas = designer_canvas_bar_fn($js, 'createCanvasIframe');
+	pg_assert_contains('id="sd-vb-pcomments" role="menuitem" hidden', $canvas, 'the View menu\'s item, shown once the part runs');
+	pg_assert_contains('_sdProtoCommentsOpen();', $canvas, 'it opens Prototype mode at the Comments tab');
+	pg_assert_contains("_sdProtoSide('comments', true, false);", designer_canvas_bar_fn($js, '_sdProtoCommentsOpen'), 'the view opened with the Comments tab');
+	pg_assert_contains("[role=\"menuitemcheckbox\"], [role=\"menuitem\"]", designer_canvas_bar_fn($js, '_sdCanvasBarWatch'), 'the arrow keys reach the item');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_comments.js');
+	pg_assert_true(strpos($part, 'sd-main-undo') === false, 'the button left the top bar');
+	pg_assert_true(strpos($part, 'document.body.appendChild(S.panel)') === false, 'the floating box is gone');
+	pg_assert_contains('K._sdProtoCommentsMark(openCount(), S.stamp > S.seen);', $part, 'the part hands the core the count and the unread mark');
+	pg_assert_contains('var pane = K._sdProtoCommentsPane();', $part, 'the list is drawn into the Comments tab');
+	pg_assert_contains("show(parseInt(pin.getAttribute('data-pin'), 10) || 0, pin.classList.contains('is-resolved'));", $part, 'a pin opens the tab at its thread');
+	pg_assert_contains('if (askOpen) show(0);', $part, 'the bell line\'s address opens the tab');
+	pg_assert_contains('K._sdProtoCommentsFrame(parseInt(found.page.page_id, 10) || 0);', $part, 'a thread\'s row selects its page\'s frame');
+	pg_assert_contains('K._sdProtoClose();', $part, '"Open in the editor" closes the view first');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	foreach (array('.sd-bp-pc-badge {', '.sd-bp-pc-badge.sd-bp-pc-new {', '.sd-proto-side-head {', '.sd-proto-comments {', '.sd-proto-links[hidden], .sd-proto-comments[hidden] { display: none; }') as $rule) {
+		pg_assert_contains($rule, $css, 'styled: ' . $rule);
+	}
+	pg_assert_true(strpos($css, '.sd-pc-panel') === false && strpos($css, '.sd-pc-btn') === false, 'the floating box and the top bar button are not styled any more');
+}
+
 // While fitted the percentage is the frame's real scale, rounded.
 function test_designer_canvas_bar_zoom_shown()
 {

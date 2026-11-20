@@ -502,6 +502,57 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                         </div>';
 }
 
+// Maps (includes/fn/place_tiles.php): off on every site, a new install too.
+// On, the "Map of places" block draws its places on a map beside its list;
+// off, the list alone. The tile address and its credit line are
+// OpenStreetMap's until another is typed; a provider's key is kept sealed,
+// drawn empty and never shown back.
+if (pg_schema_has('config_text')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+    $place_tiles = pg_place_tiles_settings();
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-place-map" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Maps')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="place_map_card" value="1"/>
+                                    <div class="row gy-12">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_place_tiles_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="place_map_on" name="place_map_on"/></div>
+                                                <label for="place_map_on">' . h(lang('Show places on a map')) . '</label>
+                                                <div class="form-text">' . h(lang('The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.')) . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="place_map_tiles" class="form-label">' . h(lang('Tile Address')) . '</label>
+                                            <input type="url" name="place_map_tiles" id="place_map_tiles" maxlength="' . PG_PLACE_TILES_URL_MAX . '" class="form-control font-monospace" spellcheck="false" value="' . h(($place_tiles['url'] === PG_PLACE_TILES_DEFAULT_URL) ? '' : $place_tiles['url']) . '" placeholder="' . h(PG_PLACE_TILES_DEFAULT_URL) . '"/>
+                                            <div class="form-text">' . h(lang('Picture tiles with {z}, {x} and {y} in the address. Empty uses OpenStreetMap\'s own tiles, which are free but may be limited for a busy site; a map provider gives an address of its own, with {key} where its key goes.')) . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="place_map_credit" class="form-label">' . h(lang('Credit Line')) . '</label>
+                                            <input type="text" name="place_map_credit" id="place_map_credit" maxlength="' . PG_PLACE_TILES_CREDIT_MAX . '" class="form-control" value="' . h(($place_tiles['credit'] === PG_PLACE_TILES_DEFAULT_CREDIT) ? '' : $place_tiles['credit']) . '" placeholder="' . h(PG_PLACE_TILES_DEFAULT_CREDIT) . '"/>
+                                            <div class="form-text">' . h(lang('Always printed in the corner of the map, as the tiles\' provider asks.')) . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="place_map_key" class="form-label">' . h(lang('Provider Key')) . '</label>
+                                            <input type="password" name="place_map_key" id="place_map_key" maxlength="' . PG_PLACE_TILES_KEY_MAX . '" class="form-control" value="" autocomplete="new-password" placeholder="' . ($place_tiles['key_stored'] ? h(lang('Saved')) : '') . '"/>'
+    . ($place_tiles['key_stored'] ? '
+                                            <div class="form-field mb-0 mt-1">
+                                                <input value="1" class="check" type="checkbox" id="place_map_key_clear" name="place_map_key_clear"/>
+                                                <label class="fg-danger" for="place_map_key_clear">' . h(lang('Remove the saved value')) . '</label>
+                                            </div>' : '') . '
+                                            <div class="form-text">' . h(lang('Put into the address in place of {key}. Every visitor\'s browser receives it with the tiles, so use a key the provider limits to this site\'s address.')) . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // Courses (includes/fn/courses.php): off on every site, a new install too.
 // On, the Pages menu offers the Courses screen and the lesson gate runs.
 if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
@@ -518,6 +569,28 @@ if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('co
                                         <label class="pg-text-2" for="courses_on">' . h(lang('Courses with ordered and timed lessons')) . '</label>
                                     </div>
                                     <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="courses_on_help">' . h(lang('A course is a private folder a product already opens: its pages become lessons that open in order or some days after enrolment, and each member\'s progress is kept. On, the Pages menu offers the Courses screen.')) . '</p>
+                                </div>
+                            </div>
+                        </div>';
+}
+
+// Event tickets (includes/fn/event_tickets.php): off on every site, a new
+// install too. On, a completed order's event reservation or "Gives tickets"
+// product line makes one ticket per unit and the buyer gets their link.
+if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-event-tickets" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Tickets')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="event_tickets_card" value="1"/>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_event_tickets_switch_on() ? ' checked="checked"' : '') . ' id="event_tickets_on" name="event_tickets_on" aria-describedby="event_tickets_on_help"/>
+                                        <label class="pg-text-2" for="event_tickets_on">' . h(lang('Tickets with a QR code for events')) . '</label>
+                                    </div>
+                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="event_tickets_on_help">' . h(lang('A completed order gives one ticket per place for each calendar event reservation and each product marked Gives tickets, and the buyer gets a link to them by e-mail. A cancelled order\'s tickets become void.')) . '</p>
                                 </div>
                             </div>
                         </div>';

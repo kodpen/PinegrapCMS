@@ -296,3 +296,26 @@ function test_page_clicks_features_card_uses_the_one_reader_and_saver()
 	pg_assert_contains("array_key_exists('page_clicks_card', \$_POST)", $save, 'only when its card was on the form');
 	pg_assert_true(strpos($card . $save, "pg_config_text('page_clicks')") === false && strpos($card . $save, "pg_config_text_save('page_clicks'") === false, 'no second reader or saver');
 }
+
+// Twenty links with long addresses and labels in a four-byte script make a
+// part over the server's 8 KB, and the server drops the whole beacon, its
+// view and depth too. The script sends what fits instead.
+function test_page_clicks_script_keeps_the_part_under_the_server_limit()
+{
+	$out = page_clicks_script_test_node(page_clicks_script_test_page(true), '
+		var emoji = Array(61).join("😀");
+		for (var i = 0; i < 20; i++) {
+			click(el("A", { href: "/" + i + "-" + Array(130).join("a-") }, nav, emoji + i));
+		}
+		hide();
+		out = { c: beacons[0].f.c };');
+
+	if ($out === null) {
+		return;
+	}
+
+	$c = json_decode($out['c'], true);
+	pg_assert_true(strlen($out['c']) <= 8192, 'the part fits the server\'s 8 KB: ' . strlen($out['c']));
+	pg_assert_true(count($c['e']) >= 10, 'it drops only what does not fit: ' . count($c['e']));
+	pg_assert_true(pg_page_clicks_parse($out['c'], 'www.example.com') !== null, 'the server counts it');
+}

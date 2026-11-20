@@ -265,3 +265,52 @@ function test_consent_statistics_not_refused_is_the_anonymous_counts_check()
 	pg_assert_contains('pg_request_is_automated()', $allowed, 'no crawler or script');
 	pg_assert_true(strpos(page_clicks_test_source('includes/fn/consent.php'), "return !empty(\$choices[\$category]);") !== false, 'pg_consent_allows() still asks for a yes');
 }
+
+// A stored copy of a page keeps the script up to the cache's hour after the
+// switch is turned off, and the signature is good for a day: page_view.php
+// must ask the switch itself, as the API's description promises ("nothing is
+// counted while the switch is off").
+function test_page_clicks_nothing_counted_while_the_switch_is_off()
+{
+	pg_assert_true(pg_page_clicks_may_count(true, false, false, true), 'switch on, a visitor who did not refuse');
+	pg_assert_false(pg_page_clicks_may_count(false, false, false, true), 'switch off: nothing counted');
+	pg_assert_false(pg_page_clicks_may_count(true, true, false, true), 'a crawler or script');
+	pg_assert_false(pg_page_clicks_may_count(true, false, true, true), 'somebody signed in');
+	pg_assert_false(pg_page_clicks_may_count(true, false, false, false), 'statistics refused');
+
+	pg_assert_false(pg_page_clicks_allowed(), 'without a connection the switch reads off, so the beacon is refused');
+
+	$source = page_clicks_test_source('includes/fn/page_clicks.php');
+	$start = strpos($source, 'function pg_page_clicks_allowed()');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_contains('pg_page_clicks_switch_on()', $body, 'the beacon\'s gate reads the one reader of the switch');
+}
+
+// The script sends its folded address and the server folds it again: a kind
+// the script wrote ("telegram:") must come out of the second fold as it went
+// in, or the Telegram, Signal, Messenger and Teams links lose their address.
+function test_page_clicks_fold_keeps_a_folded_kind()
+{
+	$kinds = array_unique(array_merge(array_values(pg_page_clicks_messaging()['schemes']), array_values(pg_page_clicks_messaging()['hosts'])));
+
+	foreach ($kinds as $kind) {
+		pg_assert_same($kind, pg_page_clicks_fold_url($kind, 'www.example.com'), 'a kind folded again: ' . $kind);
+	}
+
+	foreach (array('https://t.me/someone', 'tg://resolve?domain=x', 'https://m.me/page', 'sgnl://signal.me/#p/+90555', 'msteams:/l/chat/0/0?users=a', 'https://wa.me/90555') as $url) {
+		$once = pg_page_clicks_fold_url($url, 'www.example.com');
+		pg_assert_same($once, pg_page_clicks_fold_url($once, 'www.example.com'), 'folded twice as once: ' . $url);
+	}
+
+	// Through a table, not literal fold calls: the browser twins (the
+	// script, the designer's layer) fold an href once and are held only to
+	// the literal examples.
+	$cases = array(array('telegram:', 'telegram:'), array('TEAMS:', 'teams:'), array('signal:+905551234567', 'signal:'), array('chrome:settings', ''));
+
+	foreach ($cases as $case) {
+		pg_assert_same($case[1], pg_page_clicks_fold_url($case[0]), 'folded on the server: ' . $case[0]);
+	}
+
+	$beacon = pg_page_clicks_parse(page_clicks_test_beacon(array('d' => 'mobile', 'e' => array(array('footer', 'link', 'telegram:', '')))), 'www.example.com');
+	pg_assert_same(array(array('footer', 'link', 'telegram:', '')), $beacon['elements'], 'a Telegram icon link without a label is counted, not dropped');
+}

@@ -9,8 +9,8 @@ description: The bug hunt of a Workspace channel at phone width after the writin
 - Run in headless Chromium on a `setup_sandbox.sh` instance, touch emulated, the keyboard as a 385 px high viewport (iPhone 13).
 
 ## What did it fix, and what became an issue?
-- Fixed (`workspace_editor.js`, `tipFieldClass()`): the link and find tips' fields and the insert menu's windows' fields (title, formula, code language, decimals, unit) were 14px, so iOS zoomed the page in on a tap; now 16px on a touch screen (`workspace-channel-composer.md`).
-- Issues, `backend.src.css` and `workspace.js` being held by #10522: #10549 the expanded box pushes Send under the keyboard; #10550 the tools row and Send are 29 × 33 px; #10551 the table size picker's 22 px cells; #10552 the emoji search, poll form and code fields under 16px.
+- Fixed (`workspace_editor.js`, `tipFieldClass()`): the link and find tips' fields and the insert menu's windows' fields (title, formula, code language, decimals, unit) were 14px, so iOS zoomed the page in on a tap; now 16px on a touch screen (`workspace-composer-touch.md`).
+- Issues, `backend.src.css` and `workspace.js` being held by #10522, all fixed in PR #10592: #10549 the expanded box pushed Send under the keyboard; #10550 the tools row and Send were 29 × 33 px; #10551 the table size picker's 22 px cells; #10552 the emoji search, poll form and code fields under 16px; and from the mail hunt #10543, #10545 the mail pane's 22 px channel pill.
 
 ## What read clean?
 - No page wider than 320 px; the channel tabs scroll sideways inside their row.

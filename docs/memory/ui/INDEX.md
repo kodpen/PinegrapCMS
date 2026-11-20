@@ -85,6 +85,9 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
+- connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
+- connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
@@ -287,6 +290,8 @@
 - image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
+- image-editor-groups-look.md: Design Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
+- image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The Design Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
@@ -410,7 +415,7 @@
 - look-commerce-settings-screens.md: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #10426): buttons by rank, group headings, the stock and staff hours tables, what stayed
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
-- look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own
+- look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own [decision: decisions-made-panel-9.md]
 - look-edit-screens-wrapped-cards.md: Add and edit screens in look A: a card takes the look card only straight in its column; how wrapped cards, forms and full-width cards are handled
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 1300 and 376 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 - look-embedded-table.md: Look A's list table inside an edit screen (SH8): .pg-embedded-table and its parts; the products table of Add and Edit Product Group on it, one row helper
@@ -420,6 +425,7 @@
 - look-forms-files-screens.md: Form fields, the form list view, file, calendar event and booking screens in look A (S3, #10314): titles, group labels, field spans per field, what stayed and what waited for other PRs
 - look-group-heading-rank.md: Look A: a group heading inside a card is .pg-group-label and never outranks the card's title (architect, 2026-11-17, looks of S3 #10314 and S4 #10316) [decision: here]
 - look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why [decision: here]
+- look-kept-screens.md: The owner's kept panel screens in look A (Edit Offer, Product Builder, Edit User, Offers…): which shared rules reach them, the file line, KS1 and KS2, what each shared step left out of them [decision: decisions-made-panel-9.md]
 - look-kv-list.md: Look A's label and value list of a status column (.pg-kv, SH2, #9757): the markup, the second group under a hairline, the grey second line, which screens use it
 - look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
@@ -427,7 +433,9 @@
 - look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments [decision: here]
 - look-menus-regions-screens.md: Menus, regions, ads, styles, theme and design files, the visitor and log screens in look A (S4, #10316): field spans per field, section titles, card tables, what stayed
 - look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look [decision: decisions-made-panel-10.md]
+- look-open-work.md: Look A work still open after the plan panel-old-screens closed (2026-11-20): Add Filter on Edit Form List View and old buttons inside cards, the rich text editor's white page in dark, save bars left [decision: here]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
+- look-overview.md: Start file for the look-* files: look A in the panel as a whole, the recipes, which screen families moved to it and with which PRs (plan panel-old-screens), the kept screens, the open work [decision: here]
 - look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-10.md, decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-people-screens.md: Users, contacts, privacy and campaign screens in look A (S2, #9692): titles, group labels, field spans per field, campaign cards unwrapped, what stayed [decision: here]
 - look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
@@ -441,8 +449,9 @@
 - look-settings-pages-outside.md: Settings pages outside the Site Settings dialog in look A (S6b): Application Access, Cloudflare Tools, Connected applications, Pair a device; what moved, what stayed
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why [decision: here]
+- look-sheet-silent.md: Look A where the sheet is silent: address parts, paired names, a lone date, help and input alignment, values left as they are, titles without icons, a class from another open PR
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
-- look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533): section titles, card tables, field spans, measure, what stayed and what was held
+- look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533; Clean Up in the plan's close-out): section titles, card tables, field spans, measure, what stayed
 - look-translations-screen.md: The Translations screen (translations.php) in look A (S6c): card titles, row Save and review buttons, glossary icon buttons, dialog buttons, status pills, the style block's tokens; what stayed
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording

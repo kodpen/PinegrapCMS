@@ -7,7 +7,9 @@
  * comment names inside its node, and the Comments list by page with its open
  * and resolved threads: Answer, Resolve and Reopen, Make a task (with the
  * Workspace on), Delete. A thread whose node is no longer on its page stays
- * in the list and says so.
+ * in the list and says so. The list is the Comments tab of the Prototype
+ * view's side panel; its button sits in the canvas bar's Prototype mode
+ * (the core draws both, _sdProtoCommentsMark()).
  *
  * Designers only (sdDesign.parts.comments). Not needed to open a page: the
  * presence heartbeat runs it once the design has a comment, handing it the
@@ -33,8 +35,9 @@ StyleDesigner.definePart('comments', function (K) {
         seen: 0,            // the newest id the designer has looked at
         pages: [],          // the server's list: page_id, name, open, resolved, threads
         filter: 'open',     // the list's tab: open | resolved
-        panel: null,
-        btn: null,
+        panel: null,        // the Prototype view's Comments tab, once the view is built
+        seen_tab: false,    // whether that tab is in sight
+        view: false,        // whether the Prototype view is open (the pins hide)
         layer: null,        // the pins, over the canvas frame
         doc: null,          // the canvas document the pins are bound to
         observer: null,
@@ -184,48 +187,38 @@ StyleDesigner.definePart('comments', function (K) {
         return S.doc.querySelector('[data-sd-id="' + nodeId + '"]:not([data-sw-sid])');
     }
 
-    // ── The toolbar button ────────────────────────────────────────────────
+    // ── The canvas bar's button and the tab's count ──────────────────────
 
-    function drawButton() {
-        if (!S.btn) {
-            var undo = document.getElementById('sd-main-undo');
-            if (!undo || !undo.parentNode) return;
-            S.btn = document.createElement('button');
-            S.btn.type = 'button';
-            S.btn.id = 'sd-pc-btn';
-            S.btn.className = 'sd-icon-btn sd-pc-btn';
-            S.btn.setAttribute('aria-expanded', 'false');
-            S.btn.addEventListener('click', function () { toggle(); });
-            undo.parentNode.insertBefore(S.btn, undo);
-        }
-        var open = openCount();
-        S.btn.title = _sdT('Prototype comments');
-        S.btn.innerHTML = '<span class="bi bi-chat-square-text" aria-hidden="true"></span>' +
-            '<span class="sd-pc-btn-txt">' + esc(_sdT('Comments')) + '</span>' +
-            (open > 0 ? '<span class="sd-pc-btn-count">' + esc(String(open)) + '</span>' : '') +
-            (S.stamp > S.seen ? '<span class="sd-pc-btn-dot" aria-hidden="true"></span>' : '');
-        S.btn.setAttribute('aria-label', _sdT('Prototype comments') + (open > 0 ? ' (' + open + ')' : ''));
+    // The core draws the Prototype mode's Comments button, its badge and
+    // the tab's count from these two facts.
+    function mark() {
+        K._sdProtoCommentsMark(openCount(), S.stamp > S.seen);
     }
 
     // ── The list ──────────────────────────────────────────────────────────
 
+    // The list lives in the Prototype view's Comments tab: bound once the
+    // view has built it.
     function buildPanel() {
-        if (S.panel) return;
-        S.panel = document.createElement('aside');
-        S.panel.className = 'sd-pc-panel';
+        if (S.panel) return true;
+        var pane = K._sdProtoCommentsPane();
+        if (!pane) return false;
+        S.panel = pane;
         S.panel.setAttribute('data-bs-theme', 'dark');
-        S.panel.id = 'sd-pc-panel';
-        S.panel.hidden = true;
-        S.panel.setAttribute('aria-label', _sdT('Prototype comments'));
-        document.body.appendChild(S.panel);
 
         S.panel.addEventListener('click', function (e) {
             var t = e.target.closest ? e.target.closest('[data-pc]') : null;
-            if (!t) return;
+            if (!t) {
+                // A thread's row selects its page's frame on the map, as a
+                // links panel row does; its controls keep their own clicks.
+                var row = (e.target.closest && !e.target.closest('button, a, form')) ? e.target.closest('[data-thread]') : null;
+                if (row) frameOf(parseInt(row.getAttribute('data-thread'), 10) || 0);
+                return;
+            }
             var what = t.getAttribute('data-pc');
             var id = parseInt(t.getAttribute('data-id'), 10) || 0;
-            if (what === 'close') { toggle(false); return; }
             if (what === 'tab') { S.filter = t.getAttribute('data-tab') === 'resolved' ? 'resolved' : 'open'; drawPanel(); place(); return; }
+            if (what === 'frame') { frameOf(id); return; }
             if (what === 'go') { goTo(id); return; }
             if (what === 'answer') { S.answering = (S.answering === id) ? 0 : id; S.deleting = 0; drawPanel(); focusAnswer(id); return; }
             if (what === 'resolve' || what === 'reopen') { busy(t, act('proto_comment_resolve', id, { resolved: what === 'resolve' ? 1 : 0 })); return; }
@@ -247,10 +240,24 @@ StyleDesigner.definePart('comments', function (K) {
                 drawPanel();
             }));
         });
+        return true;
+    }
 
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && S.panel && !S.panel.hidden && S.panel.contains(document.activeElement)) toggle(false);
-        });
+    function threadOf(id) {
+        var found = null;
+        S.pages.forEach(function (p) { p.threads.forEach(function (t) { if (t.id === id) found = { page: p, thread: t }; }); });
+        return found;
+    }
+
+    // A thread's page selected on the map (the core's _sdProtoCommentsFrame()).
+    function frameOf(id) {
+        var found = threadOf(id);
+        if (!found) return;
+        if (S.focus !== id) {
+            S.focus = id;
+            drawPanel();
+        }
+        K._sdProtoCommentsFrame(parseInt(found.page.page_id, 10) || 0);
     }
 
     // A button stays as it is labelled while its request runs.
@@ -261,18 +268,20 @@ StyleDesigner.definePart('comments', function (K) {
 
     function focusAnswer(id) {
         if (!S.answering) return;
-        var box = S.panel.querySelector('form[data-pc-answer="' + id + '"] textarea');
+        var box = S.panel ? S.panel.querySelector('form[data-pc-answer="' + id + '"] textarea') : null;
         if (box) box.focus();
     }
 
     function threadHtml(t, page) {
         var resolved = t.resolved_at > 0;
         var there = nodeThere(page.page_id, t.node);
+        // The links panel's own "Open in the editor" icon.
+        var openIcon = '<button type="button" class="sd-proto-li-act sd-pc-open" data-pc="go" data-id="' + t.id + '" title="' + esc(_sdT('Open in the editor')) + '" aria-label="' + esc(_sdT('Open in the editor')) + '"><span class="bi bi-box-arrow-in-up-left" aria-hidden="true"></span></button>';
         var head = function (c, tag) {
             return '<div class="sd-pc-meta"><span class="sd-pc-name">' + esc(c.name) + '</span>' +
                 // A staff answer carries the badge the customer sees on it.
                 (c.staff ? '<span class="badge theme-secondary">' + esc(_sdT('Team')) + '</span>' : '') + (tag || '') +
-                '<time class="sd-pc-time">' + esc(when(c.created_at)) + '</time></div>';
+                '<time class="sd-pc-time">' + esc(when(c.created_at)) + '</time>' + (c === t ? openIcon : '') + '</div>';
         };
         var answers = t.answers.map(function (a) {
             return '<li class="sd-pc-answer">' + head(a) + '<p class="sd-pc-text">' + esc(a.text) + '</p></li>';
@@ -307,7 +316,7 @@ StyleDesigner.definePart('comments', function (K) {
                 '<button type="submit" class="btn btn-sm btn-solid theme-primary">' + esc(_sdT('Send')) + '</button></div></form>'
             : '';
         return '<li class="sd-pc-thread' + (S.focus === t.id ? ' is-focus' : '') + (resolved ? ' is-resolved' : '') + '" data-thread="' + t.id + '">' +
-            '<button type="button" class="sd-pc-num" data-pc="go" data-id="' + t.id + '" title="' + esc(_sdT('Show on the canvas')) + '" aria-label="' + esc(_sdT('Comment {var}', String(num(t)))) + '">' + num(t) + '</button>' +
+            '<button type="button" class="sd-pc-num" data-pc="frame" data-id="' + t.id + '" title="' + esc(_sdT('Show its page on the map')) + '" aria-label="' + esc(_sdT('Comment {var}', String(num(t)))) + '">' + num(t) + '</button>' +
             '<div class="sd-pc-body">' +
                 head(t, linkTag(t, page)) +
                 (there === false ? '<div class="sd-pc-gone"><span class="bi bi-exclamation-triangle me-1" aria-hidden="true"></span>' + esc(_sdT('Not on the page any more')) + '</div>' : '') +
@@ -319,7 +328,7 @@ StyleDesigner.definePart('comments', function (K) {
     }
 
     function drawPanel() {
-        if (!S.panel || S.panel.hidden) return;
+        if (!S.panel || !S.seen_tab) return;
         var open = 0, resolved = 0;
         S.pages.forEach(function (p) { open += p.open; resolved += p.resolved; });
         var wantResolved = S.filter === 'resolved';
@@ -336,10 +345,7 @@ StyleDesigner.definePart('comments', function (K) {
         var scroll = S.panel.querySelector('.sd-pc-list');
         var top = scroll ? scroll.scrollTop : 0;
         S.panel.innerHTML =
-            '<header class="sd-pc-head"><span class="bi bi-chat-square-text" aria-hidden="true"></span>' +
-                '<h2 class="sd-pc-title">' + esc(_sdT('Prototype comments')) + '</h2>' +
-                '<button type="button" class="sd-icon-btn" data-pc="close" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button></header>' +
-            '<div class="sd-pc-tabs" role="tablist">' +
+            '<div class="sd-pc-tabs" role="tablist" aria-label="' + esc(_sdT('Prototype comments')) + '">' +
                 '<button type="button" role="tab" class="sd-pc-tab' + (wantResolved ? '' : ' is-active') + '" aria-selected="' + (!wantResolved) + '" data-pc="tab" data-tab="open">' + esc(_sdT('Open')) + ' <span class="sd-pc-tab-count">' + open + '</span></button>' +
                 '<button type="button" role="tab" class="sd-pc-tab' + (wantResolved ? ' is-active' : '') + '" aria-selected="' + wantResolved + '" data-pc="tab" data-tab="resolved">' + esc(_sdT('Resolved')) + ' <span class="sd-pc-tab-count">' + resolved + '</span></button>' +
             '</div>' +
@@ -349,31 +355,42 @@ StyleDesigner.definePart('comments', function (K) {
         focusAnswer(S.answering);
     }
 
-    function toggle(show) {
-        buildPanel();
-        var on = (show === undefined) ? S.panel.hidden : !!show;
-        S.panel.hidden = !on;
-        document.body.classList.toggle('sd-pc-on', on);
-        if (S.btn) S.btn.setAttribute('aria-expanded', on ? 'true' : 'false');
-        if (on) {
+    // The core says whether the Comments tab is in sight (seen) and whether
+    // the Prototype view is open (view): a list in sight counts as read.
+    function side(seen, view) {
+        S.view = !!view;
+        S.seen_tab = !!seen && buildPanel();
+        if (S.seen_tab) {
             S.seen = S.stamp;
             drawPanel();
-            drawButton();
         }
+        mark();
         place();
     }
 
-    // A thread asked for from the list: its page becomes the open tab, the
-    // canvas scrolls to its node and the pin is marked.
+    // The Comments tab opened from outside Prototype mode (a pin, the bell
+    // line's address, the part's open()), at a thread when one is given.
+    function show(id, resolved) {
+        if (id) {
+            S.focus = id;
+            S.filter = resolved ? 'resolved' : 'open';
+        }
+        if (!K._sdProtoCommentsOpen()) return;
+        side(true, true);
+        var row = (id && S.panel) ? S.panel.querySelector('[data-thread="' + id + '"]') : null;
+        if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+    }
+
+    // "Open in the editor": the view closes, the thread's page becomes the
+    // open tab, the canvas scrolls to its node and the pin is marked.
     function goTo(id) {
-        var found = null;
-        S.pages.forEach(function (p) { p.threads.forEach(function (t) { if (t.id === id) found = { page: p, thread: t }; }); });
+        var found = threadOf(id);
         if (!found) return;
         S.focus = id;
+        K._sdProtoClose();
         var tab = pageById(found.page.page_id);
         var act = activePage();
         if (tab && (!act || act.key !== tab.key)) K._pgTabsSwitch(tab.key);
-        drawPanel();
         setTimeout(function () {
             var el = canvasEl(found.thread.node);
             if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -421,20 +438,15 @@ StyleDesigner.definePart('comments', function (K) {
         var page = activePage();
         var data = null;
         if (page) S.pages.forEach(function (p) { if (p.page_id === parseInt(page.page_id, 10)) data = p; });
-        if (!frame || !data) { if (S.layer) S.layer.hidden = true; return; }
+        // The Prototype view covers the canvas: no pin over its map.
+        if (!frame || !data || S.view) { if (S.layer) S.layer.hidden = true; return; }
         if (!S.layer) {
             S.layer = document.createElement('div');
             S.layer.className = 'sd-pc-layer';
             S.layer.addEventListener('click', function (e) {
                 var pin = e.target.closest ? e.target.closest('[data-pin]') : null;
                 if (!pin) return;
-                var id = parseInt(pin.getAttribute('data-pin'), 10) || 0;
-                S.focus = id;
-                S.filter = pin.classList.contains('is-resolved') ? 'resolved' : 'open';
-                toggle(true);
-                var row = S.panel.querySelector('[data-thread="' + id + '"]');
-                if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
-                drawPins();
+                show(parseInt(pin.getAttribute('data-pin'), 10) || 0, pin.classList.contains('is-resolved'));
             });
             document.body.appendChild(S.layer);
         }
@@ -448,11 +460,12 @@ StyleDesigner.definePart('comments', function (K) {
         // CSS pixels; a canvas zoomed with zoom on <html> is drawn scaled.
         var zoom = parseFloat(doc.documentElement.style.zoom) || 1;
         var scale = (frame.clientWidth > 0 && doc.documentElement.clientWidth > 0 && Math.abs(doc.documentElement.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
-        var showResolved = !!(S.panel && !S.panel.hidden && S.filter === 'resolved');
+        // The open threads; a resolved one only when it is the thread last
+        // opened in the editor from the list.
         var html = '';
         data.threads.forEach(function (t) {
             var resolved = t.resolved_at > 0;
-            if (resolved !== showResolved) return;
+            if (resolved && S.focus !== t.id) return;
             var el = canvasEl(t.node);
             if (!el) return;
             var r = el.getBoundingClientRect();
@@ -474,7 +487,7 @@ StyleDesigner.definePart('comments', function (K) {
     }
 
     function drawAll() {
-        drawButton();
+        mark();
         drawPanel();
         place();
     }
@@ -494,8 +507,8 @@ StyleDesigner.definePart('comments', function (K) {
             // The bell line opens the design with the list (…&comments=1).
             var askOpen = /[?&]comments=1(?:&|$)/.test(window.location.search);
             return fetchList().then(function () {
-                drawButton();
-                if (askOpen) toggle(true);
+                mark();
+                if (askOpen) show(0);
             });
         }
         if (stamp === S.stamp) {
@@ -503,8 +516,8 @@ StyleDesigner.definePart('comments', function (K) {
             return Promise.resolve();
         }
         return fetchList().then(function () {
-            if (S.panel && !S.panel.hidden) S.seen = S.stamp;
-            drawButton();
+            if (S.seen_tab) S.seen = S.stamp;
+            mark();
         });
     }
 
@@ -513,7 +526,8 @@ StyleDesigner.definePart('comments', function (K) {
     // deletion need not move the newest id.
     return {
         beat: beat,
-        open: function () { toggle(true); },
+        side: side,
+        open: function () { show(0); },
         reload: function () { return started ? fetchList() : Promise.resolve(); }
     };
 });

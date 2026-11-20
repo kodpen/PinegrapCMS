@@ -160,6 +160,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Referral programme: every box checked before any write.
+    $referral_decision = null;
+
+    if (array_key_exists('referral_reward', $_POST)) {
+        $referral_decision = pg_referral_settings_check($_POST, function ($offer_id) {
+            return (int) db_value("SELECT id FROM offers WHERE id = '" . (int) $offer_id . "'") === (int) $offer_id;
+        });
+        $referral_errors = pg_referral_settings_errors();
+
+        foreach ($referral_decision['errors'] as $referral_field => $referral_error) {
+            $liveform->mark_error($referral_field, $referral_errors[$referral_error]);
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -359,6 +373,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_config_text_save('credit_points_per_unit', pg_credit_points_parse_rate(post_value('credit_points_per_unit')));
         $credit_points_smallest_minor = pg_credit_points_parse_smallest(post_value('credit_points_smallest'));
         pg_config_text_save('credit_points_smallest', ($credit_points_smallest_minor > 0) ? (string) $credit_points_smallest_minor : '');
+    }
+
+    // Referral programme: config_text rows, read by pg_referral_settings().
+    if (($referral_decision !== null) && !$referral_decision['errors']) {
+        foreach ($referral_decision['values'] as $referral_name => $referral_value) {
+            pg_config_text_save($referral_name, $referral_value);
+        }
     }
 
     // The bonus on refunds given as store credit: a config_text row, '' is

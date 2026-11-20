@@ -179,3 +179,51 @@ function test_picture_translation_page_pass_hooked()
 	pg_assert_true($pass !== false, 'called');
 	pg_assert_true($pass > $links, 'after the links are made root-relative');
 }
+
+// A language's picture carries its drawing time (?v=<drawn_at>), so a
+// redraw under the same name is a new address for a browser or a CDN
+// (platform/panel-picture-change-stamp.md); a width or a format keeps its
+// query and the stamp follows it.
+function test_picture_translation_page_change_stamp()
+{
+	$stamps = array('banner.jpg' => 1700000000);
+	$swap = function ($html) use ($stamps) {
+		return pg_picture_tr_page_swap($html, '/', picture_translation_page_hosts(), picture_translation_page_map(), $stamps);
+	};
+
+	pg_assert_same('<img src="/banner-en-12.jpg?v=1700000000">', $swap('<img src="/banner.jpg">'), 'img src');
+	pg_assert_same('<img srcset="/banner-en-12.jpg?w=480&amp;v=1700000000 480w, /banner-en-12.jpg?v=1700000000 1200w">',
+		$swap('<img srcset="/banner.jpg?w=480 480w, /banner.jpg 1200w">'), 'every srcset candidate');
+	pg_assert_same('<source srcset="/banner-en-12.jpg?w=960&amp;f=webp&amp;v=1700000000 960w">',
+		$swap('<source srcset="/banner.jpg?w=960&amp;f=webp 960w">'), 'after a width and a format');
+	pg_assert_same('<meta property="og:image" content="https://example.com/banner-en-12.jpg?v=1700000000">',
+		$swap('<meta property="og:image" content="https://example.com/banner.jpg">'), 'the share picture');
+	pg_assert_same('<div style="background:url(&quot;/banner-en-12.jpg?w=1440&amp;v=1700000000&quot;)">',
+		$swap('<div style="background:url(&quot;/banner.jpg?w=1440&quot;)">'), 'url() in a style attribute');
+	pg_assert_same('<a href="/banner-en-12.jpg?v=1700000000#top">', $swap('<a href="/banner.jpg#top">'), 'before a fragment');
+	pg_assert_same('<img src="/hero%20en.png">', $swap('<img src="/hero.png">'), 'no drawing time, no stamp');
+	pg_assert_same('<img src="/other.jpg">', $swap('<img src="/other.jpg">'), 'a picture of no row keeps its address');
+
+	pg_assert_same(array('banner.jpg' => 1700000000), pg_picture_tr_page_plan(array(
+		array('id' => '1', 'name' => 'banner.jpg', 'state' => '1', 'picture' => 'banner-en.jpg', 'drawn_at' => '1700000000', 'has_uses' => '1'),
+		array('id' => '2', 'name' => 'old.jpg', 'state' => '2', 'picture' => 'old-en.jpg', 'drawn_at' => '1600000000', 'has_uses' => '1'),
+	), false)['stamps'], 'the stamps of the swapped pictures only');
+	pg_assert_contains('ft.drawn_at', pg_picture_tr_page_sql(array('banner.jpg'), 'en'), 'read by the page\'s one query');
+
+	$calls = array();
+	$query = function ($sql) use (&$calls) {
+		$calls[] = $sql;
+
+		return array(array('id' => '1', 'name' => 'banner.jpg', 'state' => '1', 'picture' => 'banner-en.jpg', 'drawn_at' => '42', 'has_uses' => '1'));
+	};
+	pg_assert_same('<img src="/banner-en.jpg?v=42">', pg_picture_tr_page_apply('<img src="/banner.jpg">', 'en', '/', picture_translation_page_hosts(), false, $query), 'the pass stamps it');
+	pg_assert_same(1, count($calls), 'no query more');
+}
+
+// get_file.php reads only w and f: the stamp changes neither the derivative
+// asked for nor whether one is asked.
+function test_picture_translation_page_stamp_ignored_by_get_file()
+{
+	pg_assert_same(pg_image_derivative_request(array('w' => '480')), pg_image_derivative_request(array('w' => '480', 'v' => '1700000000')), 'the same derivative with or without v');
+	pg_assert_same(null, pg_image_derivative_request(array('v' => '1700000000')), 'v alone asks for the original');
+}

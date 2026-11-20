@@ -1471,6 +1471,26 @@
                     return;
                 }
 
+                // An .xls, only looked at: a copy as .xlsx is sent as a new
+                // message's file, in reply to this one, and changed there.
+                if (data.office && data.office.kind === 'xls') {
+                    window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, !data.can_copy ? null : {
+                        saveCopy: function (done) {
+                            api('ws_file_office_copy', { message_id: file.message_id }).then(function (result) {
+                                done(true, t('file_copy_sent'));
+
+                                if (typeof onSaved === 'function') {
+                                    onSaved(result);
+                                }
+                            }).catch(function (error) {
+                                done(false, (error && error.message) ? error.message : t('error_generic'));
+                            });
+                        }
+                    });
+
+                    return;
+                }
+
                 state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
                     editable: true,
                     onChange: function (count) {
@@ -5548,15 +5568,22 @@
     // name as typed first, "/gö" shows /görev, then with the Turkish
     // letters folded, "/go" finds it too); with nothing typed, the name in
     // the screen's language. A discussion's box leaves out what runs only
-    // in the channel itself (where: channel, ws_command_runs_here()). Each
-    // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread, recapHere, flowsHere) {
+    // in the channel itself (where: channel, ws_command_runs_here()). An
+    // agent's command (agent_channels) shows only where its agent is
+    // allowed: the box's channel, or a discussion's channel (channelIds).
+    // Each row carries its group and the group's header for
+    // commandPickerGroups().
+    function commandPickerRows(commands, query, inThread, recapHere, flowsHere, channelIds) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
 
         (commands || []).forEach(function (item) {
             if (inThread && (item.where === 'channel')) {
+                return;
+            }
+
+            if (Array.isArray(item.agent_channels) && Array.isArray(channelIds) && !channelIds.some(function (id) { return item.agent_channels.indexOf(id) !== -1; })) {
                 return;
             }
 
@@ -21164,7 +21191,8 @@
             if (mode === 'command') {
                 var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
                 var flowsHere = !inThread && self.flowsOffered();
-                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere);
+                var hereIds = self.channel ? [self.channel.id, self.channel.thread ? (self.channel.thread.channel_id || 0) : 0] : null;
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere, hereIds);
                 // The channel's flows by name, after the commands.
                 var flowRows = flowsHere ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : [];
                 var shown;

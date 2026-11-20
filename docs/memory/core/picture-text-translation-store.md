@@ -25,7 +25,8 @@ module: picture_translation
 
 ## When do a file's texts and rows go?
 - Deleted for good: `pg_file_versions_delete_file()` calls `pg_picture_tr_forget()` first (uses, rows and each language's picture file). Strings and translations stay.
-- Binned or changed outside the editor (rotate, Optimize, an upload over it): the daily `pg_file_versions_sweep()` ends with `pg_picture_tr_prune()` in what is left of its budget (`pg_picture_tr_prune_reason()`), then `pg_picture_tr_mark_check()`.
+- Binned or changed outside the editor (rotate, Optimize, an upload over it): the daily `pg_file_versions_sweep()` ends with `pg_picture_tr_prune()` (`pg_picture_tr_prune_reason()`, order: `picture-text-translation-doors.md`). A binned source keeps its uses, so a restore is drawn again (#10569).
+- A source in the object store: the prune's `pg_picture_tr_live()` reads a cached copy, else the row's size; a draw reads the copy. Before #10569 it read as changed.
 
 ## Where is it tested?
 - `tests/picture_translation_test.php`: words read and skipped, the shared hash, flat versions, prune reasons, state moves, the hooks' places, the whole-site condition. The database paths were not run.
