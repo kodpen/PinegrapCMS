@@ -926,6 +926,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
+- commerce/event-tickets-returns.md: Event tickets and returns (#10756): a refund voids the returned units' tickets, unchecked first from the highest unit, gives the places back, tells the waiting list; restore keeps them void
 - commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
 - commerce/event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
