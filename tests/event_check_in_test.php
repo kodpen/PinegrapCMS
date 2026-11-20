@@ -337,3 +337,16 @@ function test_check_in_guest_name_is_the_tickets_page_name()
 	pg_assert_contains('REGEXP', $sql['sql'], 'the search reads a field named for the guest too');
 	pg_assert_contains(PG_EVENT_TICKET_GUEST_FIELD_PATTERN, implode(' ', array_map('strval', $sql['params'])) . $sql['sql'], 'with the page\'s rule');
 }
+
+function test_check_in_product_label()
+{
+	// A product ticket shown at another pick names its product: the short
+	// description, else the product's name, as the pick list writes it.
+	pg_assert_same('Museum pass', pg_check_in_product_label(array('short_description' => 'Museum pass', 'name' => 'MUS-1')), 'the short description');
+	pg_assert_same('MUS-1', pg_check_in_product_label(array('short_description' => '', 'name' => 'MUS-1')), 'else the name');
+	pg_assert_same('MUS-1', pg_check_in_product_label(array('short_description' => null, 'name' => 'MUS-1')), 'a NULL description too');
+	pg_assert_same('', pg_check_in_product_label(null), 'a product that is gone');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/event_check_in.php');
+	pg_assert_contains('pg_check_in_product_label(db_item(', $source, 'the wrong-event answer reads the label');
+}

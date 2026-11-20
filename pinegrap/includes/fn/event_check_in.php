@@ -590,7 +590,7 @@ function pg_check_in_picks(array $user, $event_access)
         foreach ($products as $row) {
             $picks[] = array(
                 'value'  => pg_check_in_pick_value(array('kind' => 'product', 'event_id' => 0, 'recurrence_number' => 0, 'product_id' => (int) $row['product_id'])),
-                'label'  => ((string) $row['short_description'] !== '') ? (string) $row['short_description'] : (string) $row['name'],
+                'label'  => pg_check_in_product_label($row),
                 'detail' => lang('Ticket product'),
             );
         }
@@ -682,7 +682,25 @@ function pg_check_in_ticket_for(array $ticket)
         return is_array($event) ? trim((string) $event['name'] . ', ' . pg_check_in_event_date($event), ', ') : '';
     }
 
-    return (string) db_value("SELECT short_description FROM products WHERE id = '" . (int) ($ticket['product_id'] ?? 0) . "'");
+    return pg_check_in_product_label(db_item("SELECT short_description, name FROM products WHERE id = '" . (int) ($ticket['product_id'] ?? 0) . "'"));
+}
+
+/**
+ * A ticket product as the screen names it: its short description, else its
+ * name. Pure.
+ *
+ * @param array|null $product short_description, name; null when it is gone
+ * @return string
+ */
+function pg_check_in_product_label($product)
+{
+    if (!is_array($product)) {
+        return '';
+    }
+
+    $label = trim((string) ($product['short_description'] ?? ''));
+
+    return ($label !== '') ? $label : trim((string) ($product['name'] ?? ''));
 }
 
 /**
