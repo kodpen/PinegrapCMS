@@ -11813,5 +11813,6 @@
     "type": "tür",
     "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}.",
     "type must be one of: {var:1}": "type şunlardan biri olmalıdır: {var:1}",
+    "typed rate": "girilen oran",
     "types goes with name, a new table.": "types, name ile, yani yeni bir tabloyla gönderilir."
 }

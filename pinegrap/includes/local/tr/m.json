@@ -475,6 +475,7 @@
     "Marketplace category": "Pazaryeri kategorisi",
     "Marketplace connections are managed from the manager role up.": "Pazaryeri bağlantıları yönetici rolü ve üstünden yönetilir.",
     "Marketplace connectors": "Pazar yeri bağlayıcıları",
+    "Marketplace deductions": "Pazaryeri kesintileri",
     "Marketplace products read: {var:1} ({var:2} products, {var:3} suggestions).": "Pazaryeri ürünleri okundu: {var:1} ({var:2} ürün, {var:3} öneri).",
     "Marketplace removed. The products themselves are untouched.": "Pazaryeri kaldırıldı. Ürünlerin kendisine dokunulmadı.",
     "Marketplace sync ({var:1}): {var:2} product(s), {var:3}.": "Pazaryeri eşitlemesi ({var:1}): {var:2} ürün, {var:3}.",

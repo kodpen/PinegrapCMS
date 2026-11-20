@@ -2792,6 +2792,7 @@
     "error.message and the other texts written for a person come in the site's language, which GET /meta names in language. Codes, field names and the values a client branches on do not change with it.": "error.message ve bir kişi için yazılan diğer metinler sitenin dilinde gelir; GET /meta bu dili language alanında belirtir. Kodlar, alan adları ve istemcinin dallandığı değerler onunla değişmez.",
     "errors": "hata",
     "essentially off": "neredeyse kapalı",
+    "estimate": "tahmin",
     "estimate from the server statistics": "sunucu istatistiğinden tahmin",
     "estimate, payment, cards, cost": "fiyat tahmini, ödeme, kart, ücret",
     "estimate-request": "fiyat-teklifi-talebi",
