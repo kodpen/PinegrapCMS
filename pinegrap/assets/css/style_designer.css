@@ -1276,6 +1276,39 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sect-hdr.sd-sect-open .sd-sect-sum.sd-sect-sum-keep { display: block; }
 /* A section the search shows rows of has its arrow open. */
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-chev { transform: rotate(90deg); }
+/* A word of context at the right of an open section's head ("parent:
+   flex" on Advanced › Layout, _sdSectCard()); it stands after the count,
+   where a closed section shows its summary. */
+.sd-sect-tag {
+    order: 1; flex: 0 1 auto; min-width: 0; margin-left: auto;
+    padding: 1px 7px; border-radius: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    background: var(--sd-raised-bg-2); color: var(--sd-label);
+    font-size: 10.5px; font-weight: 650; line-height: 1.5;
+}
+.sd-sect-hdr:not(.sd-sect-open) > .sd-sect-tag { display: none; }
+/* Advanced › Layout's note: which rows the context hides and why, and
+   "Make it a container" beside it; the button goes under the words when
+   they would get narrower than 120 px. */
+.sd-lay-note {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 9px;
+    margin-top: 8px; padding: 10px 11px; border-radius: 10px;
+    background: var(--sd-input-bg); border: 1px solid var(--sd-panel-border);
+    color: var(--sd-label); font-size: 12px; line-height: 1.45;
+}
+.sd-sp-section > .sd-lay-note:first-child { margin-top: 0; }
+.sd-lay-note > .bi { flex-shrink: 0; color: var(--sd-text-muted); font-size: 15px; }
+.sd-lay-note-txt { flex: 1 1 120px; min-width: 0; }
+.sd-lay-make {
+    flex-shrink: 0; height: 26px; margin-left: auto; padding: 0 10px; border-radius: 8px;
+    background: var(--sd-raised-bg-2); border: 1px solid var(--sd-border-strong);
+    color: var(--sd-text); font-size: 11.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+    transition: background-color .12s;
+}
+.sd-lay-make:hover { background: color-mix(in srgb, var(--sd-text) 6%, var(--sd-raised-bg-2)); }
+.sd-lay-make:focus-visible { outline: 0; border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring); }
+.sd-lay-make:disabled { opacity: .5; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .sd-lay-make { transition: none; } }
 
 /* The identity row (60): icon box 36, the name and its tag, the path's
    last three steps, the menu. */

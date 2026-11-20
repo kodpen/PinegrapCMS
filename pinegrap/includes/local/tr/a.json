@@ -8469,6 +8469,7 @@
     "alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning": "alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning, uyarı, uyarılar, bildirim, e-posta, izleme, yedek başarısız, cron durdu, görev durdu, bütünlük, alarm",
     "alerts, new listings, newsletter, notify": "bildirim, yeni ilanlar, bülten, haber ver",
     "aligned {var:1}": "eşitlendi: {var:1}",
+    "alignment": "hizalama",
     "all": "tümü",
     "all data will be permanently deleted": "tüm veri kalıcı olarak silinecek",
     "all guides, index, a to z, documentation": "tüm rehberler, dizin, a'dan z'ye, belgeler",

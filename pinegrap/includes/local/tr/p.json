@@ -3232,6 +3232,7 @@
     "page{suffix:1} or file{suffix:2}": "sayfa veya dosya",
     "parasut connection was authorized for company {var:1}": "{var:1} numaralı firma için Paraşüt bağlantısı yetkilendirildi",
     "parasut connection was authorized for company {var:1} in place of the saved company {var:2}": "Paraşüt bağlantısı, kayıtlı {var:2} numaralı firmanın yerine {var:1} numaralı firma için yetkilendirildi",
+    "parent: flex": "üst öğe: flex",
     "parent_id is one product group.": "parent_id tek bir ürün grubudur.",
     "parents, meetings, reports, communication": "veliler, görüşmeler, karneler, iletişim",
     "park-rules": "kamp-alani-kurallari",

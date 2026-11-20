@@ -33576,7 +33576,10 @@ const StyleDesigner = (function () {
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
             return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
         });
-        _sdSectBuild = { cards: {}, lazy: null, ctx: ctx };
+        // Layout's rows follow the same context; a row any element holds a
+        // value in is drawn (rowCss()).
+        _sdSectBuild = { cards: {}, lazy: null, ctx: ctx,
+            lay: { several: true, cls: nodes.map(function (n) { return (n.props || {}).cssClass || ''; }).join(' ') } };
         // colorSelectGroup() reads selectedNode: the copy stands in for it.
         var prev = selectedNode;
         var proxy = selectedNode = _sdMcProxy(nodes, nodes[0]);
@@ -54458,6 +54461,17 @@ const StyleDesigner = (function () {
         return o.html + String(html).slice(was);
     }
 
+    // Gives the card at the start of `html` a word of context in its head
+    // (_sdSectCard()'s `tag`); any other markup is returned as it is.
+    function _sdSectTag(html, tag) {
+        var o = _sdSectAt(html);
+        if (!o) return html;
+        var was = o.html.length;
+        o.tag = tag;
+        o.html = _sdSectCard(o);
+        return o.html + String(html).slice(was);
+    }
+
     // Takes the keyed cards at the top level of `html` out of it, in their
     // order. Returns { keyed: [{ key, html }], rest }.
     function _sdSectTakeKeyed(html) {
@@ -55355,21 +55369,42 @@ const StyleDesigner = (function () {
         var orderValues    = [['first',_sdT('First')],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['last',_sdT('Last')]];
         var gapValues      = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
 
-        var _fxBody = '<div class="sd-sp-section">' +
-            mkRespRow(_sdT('Flex Container'),  'd-',                flexContValues, _sdT('Default')) +
-            mkRespRow(_sdT('Direction'),       'flex-',             dirValues,      _sdT('Default')) +
-            mkRespRow(_sdT('Grow'),            'flex-',             growValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Shrink'),          'flex-',             shrinkValues,   _sdT('Default')) +
-            mkRespRow(_sdT('Fill'),            'flex-',             fillValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Justify Content'), 'justify-content-',  jcValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Align Items'),     'align-items-',      aiValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Align Content'),   'align-content-',    acValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Flex Wrap'),       'flex-',             wrapValues,     _sdT('Default')) +
-            mkRespRow(_sdT('Align Self'),      'align-self-',       asValues,       _sdT('Default')) +
-            mkRespRow(_sdT('Flex Order'),      'order-',            orderValues,    _sdT('Default')) +
-            mkRespRow(_sdT('Gap'),             'gap-',              gapValues,      _sdT('Default')) +
-        '</div>';
+        // Layout reads the context (D19, _sdLayPlan()): a flex box gets its
+        // box rows, the child of one its own rows under the tag "parent:
+        // flex", neither only "Make it a container"; a row holding a value
+        // is drawn whatever the context. The note names the rows left out
+        // (D20). Several elements: the context holds for all of them, a row
+        // is held by any of them (renderMultiProperties()).
+        var _layB = _sdSectBuild || {};
+        var _layCtx = _layB.ctx || _sdOptCtx(n);
+        var _laySeveral = !!(_layB.lay && _layB.lay.several);
+        var _layCls = _laySeveral ? _layB.lay.cls : cls;
+        var _layRows = {
+            container:    [_sdT('Flex Container'),  'd-',               flexContValues],
+            direction:    [_sdT('Direction'),       'flex-',            dirValues],
+            wrap:         [_sdT('Flex Wrap'),       'flex-',            wrapValues],
+            justify:      [_sdT('Justify Content'), 'justify-content-', jcValues],
+            alignItems:   [_sdT('Align Items'),     'align-items-',     aiValues],
+            alignContent: [_sdT('Align Content'),   'align-content-',   acValues],
+            gap:          [_sdT('Gap'),             'gap-',             gapValues],
+            alignSelf:    [_sdT('Align Self'),      'align-self-',      asValues],
+            order:        [_sdT('Flex Order'),      'order-',           orderValues],
+            grow:         [_sdT('Grow'),            'flex-',            growValues],
+            shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
+            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+        };
+        var _layHeld = {};
+        Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
+        var _layPlan = _sdLayPlan(_layCtx, _layHeld);
+        var _fxBody = '<div class="sd-sp-section">';
+        _layPlan.rows.forEach(function (id, i) {
+            // A line between the box rows and the element's own.
+            if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
+            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+        });
+        _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
         var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
+        if (_layPlan.tag) fxHtml = _sdSectTag(fxHtml, _sdT('parent: flex'));
 
         // dsHtml and fxHtml live in separate slots of the final return — Colors + Border should sit
         // between Display&Sizing and Flexbox (those are the most-used properties after Display),
@@ -61704,9 +61739,11 @@ const StyleDesigner = (function () {
     }
 
     // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
-    // (markup), open, lazy, sum, key }. A closed card of the single
+    // (markup), open, lazy, sum, key, tag }. A closed card of the single
     // element's panel (lazy) carries no body: it is built when the card
-    // opens. `key` names the section for its tab (_sdOptTabOf()).
+    // opens. `key` names the section for its tab (_sdOptTabOf()); `tag` is
+    // a word of context shown at the head's right while the card is open
+    // ("parent: flex").
     function _sdSectCard(o) {
         var open = !!o.open;
         var hold = !open && o.lazy;
@@ -61714,6 +61751,7 @@ const StyleDesigner = (function () {
             '<div class="' + o.hdrCls + ' sd-sect-hdr' + (open ? ' sd-sect-open' : '') + '" data-sid="' + o.sid + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
                 '<span class="sd-sect-chev bi bi-chevron-right" aria-hidden="true"></span>' +
                 '<span class="sd-sect-title">' + o.head + '</span>' +
+                (o.tag ? '<span class="sd-sect-tag">' + esc(o.tag) + '</span>' : '') +
                 _sdSectHeadExtras(o.sum || null) +
             '</div>' +
             '<div class="sd-sect-body"' + (hold ? ' data-sd-lazy="' + o.sid + '"' : '') + (open ? '' : ' style="display:none"') + '>' + (hold ? '' : o.body) + '</div>' +
@@ -61799,11 +61837,22 @@ const StyleDesigner = (function () {
         return type === 'content' && (ct === 'heading' || ct === 'paragraph');
     }
 
-    // A flex box: a grid row, or an element whose classes make it one
-    // (Bootstrap's row, d-flex or d-inline-flex at any screen size).
+    // Bootstrap 5.3's classes that draw an element as a flex box.
+    var _SD_FLEX_CLASSES = ['row', 'hstack', 'vstack', 'nav', 'navbar', 'navbar-nav', 'btn-group', 'btn-group-vertical',
+        'btn-toolbar', 'input-group', 'input-group-text', 'list-group', 'card', 'breadcrumb', 'pagination',
+        'carousel-indicators', 'modal-dialog-centered', 'modal-content', 'modal-header', 'modal-footer', 'offcanvas',
+        'offcanvas-header', 'toast-header', 'progress', 'progress-stacked', 'progress-bar', 'accordion-button'];
+
+    // A flex box: d-flex or d-inline-flex at any screen size, or a grid row
+    // or one of Bootstrap's flex components (_SD_FLEX_CLASSES) while no
+    // display class at the base draws it otherwise. A class of the design's
+    // own stylesheet is not read.
     function _sdOptIsFlex(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) return true;
+        if (/ d-(none|inline|inline-block|block|grid|inline-grid|table|table-row|table-cell) /.test(s)) return false;
         if (type === 'row') return true;
-        return /(^|\s)(row|d-((sm|md|lg|xl|xxl)-)?(inline-)?flex)(?=\s|$)/.test(String(cls || ''));
+        return _SD_FLEX_CLASSES.some(function (c) { return s.indexOf(' ' + c + ' ') !== -1; });
     }
 
     // The tabs drawn, in their order: a tab without a section is not.
@@ -61886,6 +61935,139 @@ const StyleDesigner = (function () {
         return (s.match(/<div\b/g) || []).length - (s.match(/<\/div>/g) || []).length;
     }
     // ── end of the Options tabs
+
+    // ── Layout by context: pure helpers ──
+    // No DOM and no editor state: the rows Advanced › Layout draws for an
+    // element from its own display and its parent's (D19), the note naming
+    // the rows left out (D20) and the classes "Make it a container"
+    // writes. Run under Node by tests/designer_options_tabs_test.php.
+
+    // Layout's rows in their order: a flex box's own (`box`), then the ones
+    // the child of a flex box sets on itself (`item`). `name` is the group
+    // the note names a row by; Flex Container has none, the button stands
+    // for it.
+    var _SD_LAY_ROWS = [
+        { id: 'container', of: 'box', name: '' },
+        { id: 'direction', of: 'box', name: 'direction' },
+        { id: 'wrap', of: 'box', name: 'wrap' },
+        { id: 'justify', of: 'box', name: 'alignment' },
+        { id: 'alignItems', of: 'box', name: 'alignment' },
+        { id: 'alignContent', of: 'box', name: 'alignment' },
+        { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'alignSelf', of: 'item', name: 'self' },
+        { id: 'order', of: 'item', name: 'order' },
+        { id: 'grow', of: 'item', name: 'grow' },
+        { id: 'shrink', of: 'item', name: 'shrink' },
+        { id: 'fill', of: 'item', name: 'grow' }
+    ];
+
+    // The group of a row: 'box', 'item', or '' for no row of Layout.
+    function _sdLayOf(id) {
+        for (var i = 0; i < _SD_LAY_ROWS.length; i++) {
+            if (_SD_LAY_ROWS[i].id === id) return _SD_LAY_ROWS[i].of;
+        }
+        return '';
+    }
+
+    // What Layout draws. `ctx`: { flex: the element is a flex box,
+    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // for a row holding a value, drawn whatever the context so nothing set
+    // is out of sight. Returns { rows: the ids drawn, in order; make:
+    // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
+    // { box, item }, the names of the groups with a row left out, in
+    // order, each once }.
+    function _sdLayPlan(ctx, held) {
+        ctx = ctx || {};
+        held = held || {};
+        var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
+        _SD_LAY_ROWS.forEach(function (r) {
+            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+                out.rows.push(r.id);
+                return;
+            }
+            var names = out.hidden[r.of];
+            if (r.name && names.indexOf(r.name) === -1) names.push(r.name);
+        });
+        return out;
+    }
+
+    // Whether a row holds a value: its class (`prefix` and a value) at the
+    // base or at a screen size (`prefix`, the size, a value: flex-md-grow-1).
+    function _sdLayHeld(cls, prefix, values) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return ['', 'sm-', 'md-', 'lg-', 'xl-', 'xxl-'].some(function (bp) {
+            return (values || []).some(function (v) {
+                return have.indexOf(' ' + prefix + bp + (Array.isArray(v) ? v[0] : v) + ' ') !== -1;
+            });
+        });
+    }
+
+    // A group's name in the note.
+    function _sdLayName(key) {
+        switch (key) {
+            case 'direction': return _sdT('direction');
+            case 'wrap': return _sdT('line wrapping');
+            case 'alignment': return _sdT('alignment');
+            case 'gap': return _sdT('gap');
+            case 'self': return _sdT('own alignment');
+            case 'order': return _sdT('flex order');
+            case 'grow': return _sdT('grow');
+            case 'shrink': return _sdT('shrink');
+        }
+        return '';
+    }
+
+    // The groups' names as a sentence lists them: "a, b and c".
+    function _sdLayList(keys) {
+        var names = (keys || []).map(_sdLayName).filter(Boolean);
+        if (names.length < 2) return names.join('');
+        return names.slice(0, -1).join(', ') + ' ' + _sdT('and') + ' ' + names[names.length - 1];
+    }
+
+    // The note under Layout's rows: why each group is left out, naming it,
+    // and "Make it a container" while the element is not a flex box; ''
+    // when nothing is left out. `several`: the panel of several elements.
+    function _sdLayNoteHtml(plan, several) {
+        var hid = (plan && plan.hidden) || { box: [], item: [] };
+        var make = !!(plan && plan.make);
+        var says = [];
+        if (hid.box.length) {
+            says.push(several
+                ? _sdT('Not every selected element is a flex container; the {var} rows are hidden.', _sdLayList(hid.box))
+                : _sdT('This element is not a flex container; the {var} rows are hidden.', _sdLayList(hid.box)));
+        }
+        if (hid.item.length) {
+            says.push(several
+                ? _sdT('Not every selected element has a flex parent; the {var} rows are hidden.', _sdLayList(hid.item))
+                : _sdT('Its parent is not a flex container; the {var} rows are hidden.', _sdLayList(hid.item)));
+        }
+        if (!says.length && !make) return '';
+        return '<div class="sd-lay-note" role="note">' +
+            '<span class="bi bi-info-circle" aria-hidden="true"></span>' +
+            '<span class="sd-lay-note-txt">' + esc(says.join(' ')) + '</span>' +
+            (make ? '<button type="button" class="sd-lay-make" data-sd-lay-make="1">' +
+                esc(several ? _sdT('Make them containers') : _sdT('Make it a container')) + '</button>' : '') +
+        '</div>';
+    }
+
+    // The classes after "Make it a container": a display class other than
+    // d-none becomes d-flex at its own screen size (d-block → d-flex,
+    // d-md-grid → d-md-flex), so a size that hid the element still hides
+    // it; d-flex is added at the base while the base has no display class
+    // or no size draws a flex box yet. The Flex Container row's classes.
+    function _sdLayMakeCls(cls) {
+        var out = [];
+        String(cls || '').split(/\s+/).filter(Boolean).forEach(function (w) {
+            var m = /^d-((?:sm|md|lg|xl|xxl)-)?(?:inline|inline-block|block|grid|inline-grid|table|table-row|table-cell)$/.exec(w);
+            if (!m) { out.push(w); return; }
+            var c = 'd-' + (m[1] || '') + 'flex';
+            if (out.indexOf(c) === -1) out.push(c);
+        });
+        var s = ' ' + out.join(' ') + ' ';
+        if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
+        return out.join(' ');
+    }
+    // ── end of layout by context
 
     // ── The Options panel controls: pure helpers ──
     // No DOM and no editor state here: how a row's control is drawn and
@@ -62635,8 +62817,29 @@ const StyleDesigner = (function () {
         if (grp.isConnected) _sdSegSync(grp);
     }
 
-    // Installed once on #sd-properties: the segments' clicks and the reset
-    // button's, whatever part of the panel was drawn later.
+    // "Make it a container" in Advanced › Layout: the selected element, or
+    // every selected element not yet a flex box, takes the Flex Container
+    // row's classes (_sdLayMakeCls()) as one undo step; the panel is drawn
+    // again with the box rows.
+    function _sdLayMake() {
+        var several = selectedNodes.length > 1;
+        var nodes = (several ? selectedNodes.slice() : [selectedNode]).filter(function (n) {
+            return n && n.props && !_sdOptIsFlex(n.type, n.props.cssClass);
+        });
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!nodes.length || _sdPanelLockReason(nodes)) return;
+        if (several) {
+            _sdMcCommit(nodes, function (n) { n.props.cssClass = _sdLayMakeCls(n.props.cssClass); });
+            return;
+        }
+        saveState();
+        nodes[0].props.cssClass = _sdLayMakeCls(nodes[0].props.cssClass);
+        _sdRenderNode(nodes[0], render);
+    }
+
+    // Installed once on #sd-properties: the segments' clicks, the reset
+    // button's and "Make it a container", whatever part of the panel was
+    // drawn later.
     function _sdControlsInit(panel) {
         if (panel._sdCtl) return;
         panel._sdCtl = true;
@@ -62645,6 +62848,8 @@ const StyleDesigner = (function () {
             if (!t || !t.closest) return;
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
+            var mk = t.closest('[data-sd-lay-make]');
+            if (mk && panel.contains(mk)) { if (!mk.disabled) _sdLayMake(); return; }
             var rb = t.closest('.sd-chg-reset');
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
