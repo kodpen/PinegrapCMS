@@ -79,3 +79,13 @@ function test_workspace_phone_expanded_box_rides_on_the_keyboard()
 	$hint = workspace_phone_touch_test_rule($phone, 'body.ws-keyboard .ws-composer-hint');
 	pg_assert_true($hint !== null && strpos($hint, 'display: none') !== false, 'the Ctrl+Enter hint gives its line back while the keyboard is up');
 }
+
+function test_workspace_phone_composer_tools_are_touch_targets()
+{
+	$phone = workspace_phone_touch_test_blocks('(max-width: 767.98px)');
+	$tools = workspace_phone_touch_test_rule($phone, '.ws-composer-tools .btn');
+
+	pg_assert_true($tools !== null, 'the phone block styles the tools');
+	pg_assert_contains('min-height: 2.75rem', (string) $tools, 'the tools and Send are 44 px high');
+	pg_assert_contains('padding: .3rem .4rem', (string) $tools, 'the narrow pads keep the row on one line at 375 px');
+}

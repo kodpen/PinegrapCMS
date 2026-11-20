@@ -20832,8 +20832,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     min-height: 2.5rem;
   }
   /* Narrow pads keep the inserts, Send and Send later on one line at
-     375 px; the row still wraps where even that has no room. */
+     375 px; the row still wraps where even that has no room. 44 px high,
+     the touch target a finger hits; the height costs no width. */
   .ws-composer-tools .btn {
+    min-height: 2.75rem;
     padding: .3rem .4rem;
   }
   /* The field takes the full width on top and the row of tools with Send
