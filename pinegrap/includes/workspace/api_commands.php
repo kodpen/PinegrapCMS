@@ -107,13 +107,14 @@ function ws_api_commands_list($params)
     api_ok_list($out, count($out));
 }
 
-function ws_api_app_command_present($name, $description, $usage, $app_id)
+function ws_api_app_command_present($name, $description, $usage, $app_id, $args = array())
 {
     return array(
         'name'        => '/' . (string) $name,
         'description' => (string) $description,
         'usage'       => (string) $usage,
         'app_id'      => (int) $app_id,
+        'args'        => array_values(array_map('ws_api_command_argument_present', is_array($args) ? $args : array())),
     );
 }
 
@@ -125,6 +126,7 @@ function ws_api_app_command_schema()
         'description' => 'string',
         'usage'       => 'string',
         'app_id'      => 'integer',
+        'args'        => 'WorkspaceCommandArgument[]',
     );
 }
 
@@ -159,19 +161,36 @@ function ws_api_command_refuse($check)
         'description_too_long' => lang('The description is longer than 200 characters.'),
         'usage_too_long'       => lang('The usage is longer than 200 characters.'),
         'limit_reached'        => lang('An application may register twenty commands.'),
+        'too_many_args'        => lang('A command may define eight arguments.'),
+        'invalid_kind'         => lang('The kind of an argument is not one the channels read.'),
+        'invalid_args'         => lang('An argument needs a name of lower-case letters, digits and _, a kind and a label of up to 40 characters.'),
         'not_ready'            => lang('Run the software upgrade first.'),
     );
     $codes = array(422 => 'validation_failed', 503 => 'service_unavailable');
     $error = (string) $check['error'];
 
-    // A 409 names its reason: name_taken or limit_reached.
-    api_fail((int) $check['status'], $codes[(int) $check['status']] ?? $error, $messages[$error] ?? $error, ($check['field'] !== '') ? $check['field'] : null);
+    $field = ($check['field'] !== '') ? $check['field'] : null;
+
+    // A refused argument is named by its place in the list: args.2.
+    if (($field === 'args') && ((int) ($check['index'] ?? -1) >= 0)) {
+        $field = 'args.' . (int) $check['index'];
+    }
+
+    // A 409 names its reason: name_taken or limit_reached; a refused
+    // definition its own (too_many_args, invalid_kind, invalid_args).
+    if (in_array($error, array('too_many_args', 'invalid_kind', 'invalid_args'), true)) {
+        api_fail(422, $error, $messages[$error], $field);
+    }
+
+    api_fail((int) $check['status'], $codes[(int) $check['status']] ?? $error, $messages[$error] ?? $error, $field);
 }
 
 function ws_api_commands_register($params)
 {
     ws_api_viewer();
     $app_id = ws_api_command_app_id();
+    // args left out is no key here and keeps the stored definition; null or
+    // [] arrives as '' or an empty list and removes it.
     $check = ws_app_command_save_check($app_id, $params);
 
     if (!$check['ok']) {
@@ -184,7 +203,14 @@ function ws_api_commands_register($params)
         ws_api_command_refuse(array('status' => 409, 'error' => 'name_taken', 'field' => 'name'));
     }
 
-    api_ok(ws_api_app_command_present($check['name'], $check['description'], $check['usage'], $app_id), $check['created'] ? 201 : 200);
+    $args = $check['args'];
+
+    if ($args === null) {
+        $row = ws_app_command_find($check['name'], ws_app_commands_rows($app_id));
+        $args = ws_app_command_args_read(is_array($row) ? ($row['args'] ?? null) : null);
+    }
+
+    api_ok(ws_api_app_command_present($check['name'], $check['description'], $check['usage'], $app_id, $args), $check['created'] ? 201 : 200);
 }
 
 function ws_api_commands_delete($params)

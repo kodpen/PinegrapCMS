@@ -69,7 +69,7 @@ PHP;
 function test_excel_reader2_reads_xls_text_without_notices()
 {
 	// tests/fixtures/excel_reader2/products.xls is a BIFF8 workbook written by
-	// the bundled PHPExcel: two sheets with text (Turkish letters included),
+	// PHPExcel's Excel5 writer: two sheets with text (Turkish letters included),
 	// decimals, a negative number, a formula (C2+C3) and a date in Excel's
 	// built-in format 14.
 	$fixture = dirname(__FILE__) . '/fixtures/excel_reader2/products.xls';

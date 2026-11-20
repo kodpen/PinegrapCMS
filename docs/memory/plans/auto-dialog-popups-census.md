@@ -30,4 +30,4 @@ description: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_di
 
 ## How can PHP draw a shared component outside a page?
 - `includes/fn/designer.php` `pg_common_region_component_html($sid, $mode)` (used by the `<cregion>` pass). Opened alone: `edit_system_style.php?component=` (`designer/shared-component-opened-alone.md`).
-- Left out: the component's CSS outside its design; the screens' old look (`panel-old-screens-census-site-content.md`).
+- Left out: the component's CSS outside its design; the screens' old look (moved with S1, `ui/look-content-screens.md`).

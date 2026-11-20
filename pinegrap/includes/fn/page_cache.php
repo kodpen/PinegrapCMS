@@ -1781,7 +1781,7 @@ function pg_page_cache_panel_sub_actions()
                 'explorer_paste', 'explorer_delete_files', 'explorer_upload', 'explorer_folder_access_set',
                 'explorer_recycle_delete', 'explorer_recycle_restore', 'explorer_hard_delete',
                 'explorer_optimize', 'explorer_webp', 'explorer_folder_settings_set',
-                'explorer_pages_bulk_edit', 'explorer_files_bulk_edit', 'explorer_file_save',
+                'explorer_pages_bulk_edit', 'explorer_files_bulk_edit', 'explorer_file_save', 'explorer_office_copy',
                 'explorer_rotate', 'explorer_backup_extract', 'explorer_zip_create', 'explorer_zip_extract',
                 'explorer_short_link_create', 'explorer_short_link_rename', 'explorer_short_link_update',
                 'explorer_short_link_duplicate', 'explorer_short_link_delete', 'explorer_catalog_recycle',

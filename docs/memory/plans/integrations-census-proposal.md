@@ -24,7 +24,7 @@ description: The R&D agent's proposal from the integrations census (2026-11-17):
 - One list of integrations in code: name, group, where its fields are, how its state is read, what uses it. The count it gives is the native figure.
 - One "Connections" place drawn from it: search and groups, what is connected first, an attention block; a drawer for each (account, what uses it, last error, Connect, the way to its fields). Two sides: what the site connects to, and what connects to the site (Application Access).
 - One meaning for "Connections", "Connected accounts" and "Connected applications". GitHub, AI keys and mail each become one entry. A provider's client is typed in one place.
-- Kept: one place per setting, card addresses and anchors (owner 2026-10-30); done with look A's step for Site Settings (`panel-old-screens.md`).
+- Kept: one place per setting, card addresses and anchors (owner 2026-10-30); done with look A's step for Site Settings (S5, `ui/look-settings-categories.md`).
 
 ## 5. One-click Connect: the broker (L, the owner's open decision)
 - Model B of `reverse-oauth-leftovers.md` ends "register an application at Google or GitHub and paste its ID and secret", the root of the GitHub case. It waits for his yes to Google's verification for Kodpen.

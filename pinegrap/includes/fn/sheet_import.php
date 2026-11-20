@@ -15,6 +15,11 @@
  * posts the importer's own fields back with the choice, and the chosen
  * sheet then comes in as the upload.
  *
+ * The importers that read a workbook themselves (Products > Import, the
+ * bank statement import) ask the same question through
+ * pg_sheet_import_workbook_answer() and pg_sheet_import_workbook_ask(), and
+ * read the chosen sheet with their own reader.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -108,8 +113,6 @@ function pg_sheet_ods_names($path, &$error)
         $error = 'large';
         return array();
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -504,6 +507,142 @@ function pg_sheet_import_question($title, $file_name, $names, $token, $back = ''
 }
 
 /**
+ * Forgets the workbooks nobody chose a sheet for within the hour, and
+ * gives the ones still waiting.
+ *
+ * @return array token => array(name, kind, screen, time)
+ */
+function pg_sheet_import_staged()
+{
+    $staged = isset($_SESSION['software']['sheet_import']) && is_array($_SESSION['software']['sheet_import']) ? $_SESSION['software']['sheet_import'] : array();
+
+    foreach ($staged as $key => $entry) {
+        if ((time() - (int) ($entry['time'] ?? 0)) > PG_SHEET_IMPORT_MAX_AGE) {
+            $old = pg_sheet_import_staged_path($key);
+
+            if (($old !== '') && is_file($old)) {
+                @unlink($old);
+            }
+
+            unset($staged[$key]);
+        }
+    }
+
+    $_SESSION['software']['sheet_import'] = $staged;
+
+    return $staged;
+}
+
+/**
+ * The workbook a sheet question posted back, when the post carries
+ * pg_sheet_token: its file, name, kind and the chosen sheet. The token is
+ * spent and the file removed when the request ends.
+ *
+ * @param string $error '' or expired: the token is unknown, old or from
+ *                      another screen
+ * @return array|null ['path', 'name', 'kind', 'sheet'], null when the post
+ *                    is not an answer to the sheet question
+ */
+function pg_sheet_import_answer(&$error)
+{
+    $error = '';
+    $token = isset($_POST['pg_sheet_token']) ? (string) $_POST['pg_sheet_token'] : '';
+    $staged = pg_sheet_import_staged();
+
+    if ($token === '') {
+        return null;
+    }
+
+    $entry = isset($staged[$token]) ? $staged[$token] : null;
+    $path = pg_sheet_import_staged_path($token);
+    $screen = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+
+    if (!is_array($entry) || ($entry['screen'] !== $screen) || ($path === '') || !is_file($path)) {
+        $error = 'expired';
+        return null;
+    }
+
+    unset($_SESSION['software']['sheet_import'][$token]);
+    // The file goes when the request ends, whatever the import makes of it.
+    pg_sheet_import_made($path);
+
+    return array(
+        'path'  => $path,
+        'name'  => (string) $entry['name'],
+        'kind'  => (string) $entry['kind'],
+        'sheet' => isset($_POST['pg_sheet']) ? max(0, (int) $_POST['pg_sheet']) : 0,
+    );
+}
+
+/**
+ * Keeps an uploaded workbook aside and prints the sheet question, then ends
+ * the request. Returns the refusal text only when the file cannot be kept.
+ *
+ * @param string $path    the uploaded file
+ * @param string $name    its name
+ * @param string $kind    pg_sheet_kind()
+ * @param array  $names   its sheet names, more than one
+ * @param string $title   the importer's screen title
+ * @param array  $options 'back': see pg_sheet_import_upload()
+ * @return string
+ */
+function pg_sheet_import_ask($path, $name, $kind, $names, $title, $options = array())
+{
+    $token = bin2hex(random_bytes(16));
+    $target = pg_sheet_import_staged_path($token);
+
+    if (($target === '') || !move_uploaded_file($path, $target)) {
+        return pg_sheet_import_error_text('read');
+    }
+
+    $_SESSION['software']['sheet_import'][$token] = array(
+        'name'   => mb_substr($name, 0, 200),
+        'kind'   => $kind,
+        'screen' => basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')),
+        'time'   => time(),
+    );
+
+    print pg_sheet_import_question($title, $name, $names, $token, (string) ($options['back'] ?? ''));
+    exit();
+}
+
+/**
+ * The upload in a file field when it is a workbook PHP received: its path,
+ * name and kind; null for a CSV, no file or a failed upload.
+ *
+ * @param string $field
+ * @return array|null ['path', 'name', 'kind']
+ */
+function pg_sheet_import_uploaded_workbook($field)
+{
+    $upload = isset($_FILES[$field]) && is_array($_FILES[$field]) ? $_FILES[$field] : null;
+
+    if (($upload === null) || !is_string($upload['name'] ?? null) || !is_string($upload['tmp_name'] ?? null) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
+        return null;
+    }
+
+    $kind = pg_sheet_kind($upload['name']);
+
+    return ($kind === '') ? null : array('path' => $upload['tmp_name'], 'name' => $upload['name'], 'kind' => $kind);
+}
+
+/**
+ * Whether a workbook asks which sheet to import: its sheet names when it
+ * has more than one, else an empty list (one sheet, or a file the names
+ * could not be read from, which the importer's own reader then refuses).
+ *
+ * @param string $path
+ * @param string $kind pg_sheet_kind()
+ * @return array of string
+ */
+function pg_sheet_import_question_sheets($path, $kind)
+{
+    $names = pg_sheet_names($path, $kind, $error);
+
+    return (($error === '') && (count($names) > 1)) ? $names : array();
+}
+
+/**
  * Turns a workbook upload into the CSV file the importer reads; see the
  * file's head. Returns '' when the importer goes on (a CSV, no file or a
  * failed upload untouched, for its own checks), or the refusal text to show.
@@ -520,56 +659,27 @@ function pg_sheet_import_question($title, $file_name, $names, $token, $back = ''
  */
 function pg_sheet_import_upload($field, $title, $options = array())
 {
-    $token = isset($_POST['pg_sheet_token']) ? (string) $_POST['pg_sheet_token'] : '';
-    $screen = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-    $staged = isset($_SESSION['software']['sheet_import']) && is_array($_SESSION['software']['sheet_import']) ? $_SESSION['software']['sheet_import'] : array();
-    $sheet = null;
+    $answer = pg_sheet_import_answer($error);
 
-    // Workbooks nobody chose a sheet for are forgotten.
-    foreach ($staged as $key => $entry) {
-        if ((time() - (int) ($entry['time'] ?? 0)) > PG_SHEET_IMPORT_MAX_AGE) {
-            $old = pg_sheet_import_staged_path($key);
-
-            if (($old !== '') && is_file($old)) {
-                @unlink($old);
-            }
-
-            unset($staged[$key]);
-        }
+    if ($error !== '') {
+        return pg_sheet_import_error_text($error);
     }
 
-    $_SESSION['software']['sheet_import'] = $staged;
-
-    if ($token !== '') {
-        $entry = isset($staged[$token]) ? $staged[$token] : null;
-        $path = pg_sheet_import_staged_path($token);
-
-        if (!is_array($entry) || ($entry['screen'] !== $screen) || ($path === '') || !is_file($path)) {
-            return pg_sheet_import_error_text('expired');
-        }
-
-        unset($_SESSION['software']['sheet_import'][$token]);
-        // The file goes when the request ends, whatever the import makes of it.
-        pg_sheet_import_made($path);
-
-        $name = (string) $entry['name'];
-        $kind = (string) $entry['kind'];
-        $sheet = isset($_POST['pg_sheet']) ? max(0, (int) $_POST['pg_sheet']) : 0;
+    if ($answer !== null) {
+        $path = $answer['path'];
+        $name = $answer['name'];
+        $kind = $answer['kind'];
+        $sheet = $answer['sheet'];
     } else {
-        $upload = isset($_FILES[$field]) && is_array($_FILES[$field]) ? $_FILES[$field] : null;
+        $workbook = pg_sheet_import_uploaded_workbook($field);
 
-        if (($upload === null) || !is_string($upload['name'] ?? null) || !is_string($upload['tmp_name'] ?? null) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
+        if ($workbook === null) {
             return '';
         }
 
-        $name = $upload['name'];
-        $kind = pg_sheet_kind($name);
-
-        if ($kind === '') {
-            return '';
-        }
-
-        $path = $upload['tmp_name'];
+        $path = $workbook['path'];
+        $name = $workbook['name'];
+        $kind = $workbook['kind'];
         $names = pg_sheet_names($path, $kind, $error);
 
         if ($error !== '') {
@@ -577,22 +687,7 @@ function pg_sheet_import_upload($field, $title, $options = array())
         }
 
         if (count($names) > 1) {
-            $token = bin2hex(random_bytes(16));
-            $target = pg_sheet_import_staged_path($token);
-
-            if (($target === '') || !move_uploaded_file($path, $target)) {
-                return pg_sheet_import_error_text('read');
-            }
-
-            $_SESSION['software']['sheet_import'][$token] = array(
-                'name'   => mb_substr($name, 0, 200),
-                'kind'   => $kind,
-                'screen' => $screen,
-                'time'   => time(),
-            );
-
-            print pg_sheet_import_question($title, $name, $names, $token, (string) ($options['back'] ?? ''));
-            exit();
+            return pg_sheet_import_ask($path, $name, $kind, $names, $title, $options);
         }
 
         $sheet = 0;
@@ -619,6 +714,65 @@ function pg_sheet_import_upload($field, $title, $options = array())
     );
 
     return '';
+}
+
+/**
+ * The sheet question for the importers that read a workbook themselves
+ * (Products > Import, the bank statement import), in two calls around the
+ * importer's own upload checks.
+ *
+ * pg_sheet_import_workbook_answer() comes first: when the post answers the
+ * sheet question, the kept workbook is put back in $_FILES[$field] (its
+ * name, tmp_name the kept file, its size) so the importer's checks see the
+ * file as on the first post, and the chosen sheet is returned. Else 0.
+ *
+ * @param string $field
+ * @param string $error '' or the refusal text (the upload has expired)
+ * @return int the sheet to read, 0 for the first
+ */
+function pg_sheet_import_workbook_answer($field, &$error)
+{
+    $answer = pg_sheet_import_answer($code);
+    $error = ($code !== '') ? pg_sheet_import_error_text($code) : '';
+
+    if ($answer === null) {
+        return 0;
+    }
+
+    $_FILES[$field] = array(
+        'name'     => $answer['name'],
+        'type'     => 'application/octet-stream',
+        'tmp_name' => $answer['path'],
+        'error'    => UPLOAD_ERR_OK,
+        'size'     => (int) filesize($answer['path']),
+    );
+
+    return $answer['sheet'];
+}
+
+/**
+ * The second call, after the importer's own upload checks: an uploaded
+ * workbook with more than one sheet is kept aside and the sheet question
+ * printed, ending the request. A CSV, a one-sheet workbook and the file an
+ * answer put back go on. Returns the refusal text only when the file cannot
+ * be kept.
+ *
+ * @param string $field
+ * @param string $title   the importer's screen title
+ * @param array  $options 'back': see pg_sheet_import_upload()
+ * @return string
+ */
+function pg_sheet_import_workbook_ask($field, $title, $options = array())
+{
+    $workbook = pg_sheet_import_uploaded_workbook($field);
+
+    if ($workbook === null) {
+        return '';
+    }
+
+    $names = pg_sheet_import_question_sheets($workbook['path'], $workbook['kind']);
+
+    return $names ? pg_sheet_import_ask($workbook['path'], $workbook['name'], $workbook['kind'], $names, $title, $options) : '';
 }
 
 /**

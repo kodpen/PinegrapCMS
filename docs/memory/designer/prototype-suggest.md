@@ -10,7 +10,7 @@ description: The Prototype view's Suggest targets (PV11b): how a link without a 
 - The link's own page and a page with `bin` are never offered.
 
 ## What does the dialog show?
-- "Suggest targets" with its count, the Prototype bar's own quiet button (first of its tools), while the design has links without a target; it opens a panel dialog (`.sd-proto-suggest`, `data-bs-modal="false"`, no backdrop) at the canvas's right, so the map stays in sight.
+- "Suggest targets" with its count, a quiet button of the canvas bar's Prototype tools (after "Tidy up"; its label folds, its count stays), while the design has links without a target; it opens a panel dialog (`.sd-proto-suggest`, `data-bs-modal="false"`, no backdrop) at the canvas's right, so the map stays in sight.
 - `suggestRows()`: one row per drawable link without a target, grouped by frame, a shared part's once. The head counts "n sure · n to ask · n without a suggestion".
 - A sure row is ticked with its page selected; an unsure row asks "Where should "label" go?" with its candidates and Skip (a candidate selects and ticks); a row without a suggestion sits on "Choose a page", its tick disabled. A label's click picks the link on the canvas (`_sdProtoPick()`).
 - Recipes: Apply `pg-button-fill` ("n hedefi uygula", key `Apply {var} targets`), Cancel and Skip `pg-button-ghost`, a candidate `pg-button-quiet pg-button-sm` (chosen: `aria-pressed` and a check), tick `pg-checkbox`, selector `pg-input pg-input-sm`.

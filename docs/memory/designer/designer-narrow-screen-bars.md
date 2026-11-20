@@ -11,6 +11,7 @@ description: Designer toolbars hide labels, never controls: the page bar below 1
 - `needs` is measured by `_sdCanvasBarMeasure()` (each level set in turn, one layout pass, no paint) and measured again when what the bar holds changes (a MutationObserver: an e-mail design, the badge); a ResizeObserver only picks the level again. Tested in `tests/designer_canvas_bar_test.php`.
 - Why it gives way at all: at a 1440px window with both columns open the canvas column is 930px; before #10039 Preview and Open on Site sat under the Options column there (a click hit its header; issue #10034). Both are rows of the Preview menu beside Publish now (`designer-preview-menu.md`).
 - The bar is no CSS container any more, and its View menu (`#sd-vb-view-menu`) lives on `pgUI.overlayHost()`, not inside the bar: a menu inside a wrapping, folding bar would be cut by the canvas column.
+- In Prototype mode (#10507) the same levels apply to its zones: level 1 hides the map's count instead of the width text (designer/designer-canvas-bar-prototype.md).
 - Phones and small touch tablets hide the sizes, the list and the width text (the canvas fills the screen there; `createCanvasIframe()` resets to full width under the same query).
 
 ## What are the rules?

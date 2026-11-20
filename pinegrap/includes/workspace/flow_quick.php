@@ -73,7 +73,7 @@ function ws_flow_quick_areas()
             'event:erp.quote.accepted', 'event:erp.quote.rejected')),
         'forms'         => $area(lang('Forms'), 'bi-ui-checks', 'site', array('event:form.submitted', 'event:form.paid')),
         'customers'     => $area(lang('Customers'), 'bi-people', 'site', array('event:customer.created', 'event:customer.updated',
-            'event:contact_group.joined', 'event:customer.consent_changed', 'event:user.created', 'event:credit.issued', 'event:credit.expired',
+            'event:contact_group.joined', 'event:customer.consent_changed', 'event:user.created', 'event:credit.issued', 'event:credit.expired', 'event:referral.rewarded',
             'event:course.completed')),
         'bookings'      => $area(lang('Reservations'), 'bi-calendar-event', 'site', array('event:booking.created', 'event:booking.confirmed',
             'event:booking.rescheduled', 'event:booking.cancelled', 'event:calendar_event.reserved')),

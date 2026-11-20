@@ -119,7 +119,7 @@ if (!pg_experiment_sheet_ready()) {
 
     $output = ($rows === '')
         ? '<div class="alert theme-info my-7"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('No experiments yet. Open a design page in the pages list and choose Experiments to set one up.')) . '</div>'
-        : '<div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">
+        : '<div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 pg-card-table">
             <thead><tr><th>' . h(lang('Name')) . '</th><th>' . h(lang('Page')) . '</th><th>' . h(lang('Status')) . '</th><th>' . h(lang('Dates')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th></tr></thead>
             <tbody>' . $rows . '</tbody></table></div></div></div>';
 
@@ -254,7 +254,7 @@ if (!pg_experiment_sheet_ready()) {
 
             $output_chart = '
                 <div class="card my-7">
-                    <div class="card-header">' . h(lang('Conversion rate per day')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Conversion rate per day')) . '</h2>
                     <div class="card-body">' . $chart . '
                         <details class="mt-3"><summary class="small fg-secondary">' . h(lang('Show the figures')) . '</summary>
                             <div class="table-responsive"><table class="table table-sm mb-0 mt-3"><caption class="visually-hidden">' . h(lang('Conversion rate per day')) . '</caption><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table></div>
@@ -275,7 +275,7 @@ if (!pg_experiment_sheet_ready()) {
                 <span class="small fg-secondary text-break min-w-0">' . (is_array($live) ? $page_text($live['page_name'], $live['page_folder']) : $page_text('', 0)) . '</span>
                 <span class="small fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span></p>
             ' . ($sentences !== '' ? '<div class="card my-7"><div class="card-body">' . $sentences . '</div></div>' : '') . '
-            <div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">
+            <div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 pg-card-table">
                 <thead><tr><th>' . h(lang('Variant')) . '</th><th>' . h(lang('Page')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th><th class="text-end">' . h(lang('Rate')) . '</th><th class="text-end">' . h(lang('Change against the live page')) . '</th><th></th></tr></thead>
                 <tbody>' . $rows . '</tbody></table></div></div></div>
             ' . $output_chart;

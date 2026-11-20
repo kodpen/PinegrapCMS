@@ -553,6 +553,21 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(pg_captcha_provider_definition($captcha_provider)['label'], false, lang('Checks that a form is sent by a person; loaded only on pages with a form.'));
     }
 
+    // The map of the "Map of places" block (includes/fn/place_tiles.php):
+    // the tile host receives the visitor's address and the page, so the map
+    // is a marketing service, and pg_map.js loads no tile before it is
+    // allowed. Listed only on a page with the block while "Maps" is on.
+    if (stripos((string) $content, 'data-pg-map') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+
+        $map_name = pg_place_tiles_consent_name(pg_place_list_on_page($content), pg_place_tiles_switch_on(), pg_place_tiles_settings()['url']);
+
+        if ($map_name !== '') {
+            $catalogue['marketing'][] = array($map_name, false, lang('Shows the map; the map service receives your address on the internet and the page you are on.'));
+        }
+    }
+
     foreach (pg_consent_page_services($content) as $category => $names) {
         foreach ($names as $name) {
             $catalogue[$category][] = array(($name !== '') ? $name : lang('Other services'), false, lang('A service added by this site. It starts only if you allow it.'));
@@ -776,6 +791,7 @@ function pg_consent_ui_keys()
         'Google Analytics: tells visits apart to measure how the site is used.',
         'Remembers the partner who referred you, so the partner can be credited.',
         'Checks that a form is sent by a person; loaded only on pages with a form.',
+        'Shows the map; the map service receives your address on the internet and the page you are on.',
         'Other services',
         'A service added by this site. It starts only if you allow it.',
         'Necessary',

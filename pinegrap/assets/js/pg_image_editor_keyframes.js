@@ -47,11 +47,35 @@
 
     // ---- changes ----
 
-    // The key at ms of layer id with patch; key and live as change() takes them.
+    // What the Path tab keys for layers (the selection): the one layer, or
+    // a picked group as M.groupKeyLayer() gives it (id 'group:<gid>', its
+    // box, its own keys); null otherwise.
+    Editor.prototype.keyTarget = function (layers) {
+        var gid = (layers.length > 1) ? M.groupPicked(this.doc.layers, layers.map(function (l) { return l.id; })) : '';
+
+        if (gid) {
+            return M.groupKeyLayer(this.doc.layers, gid);
+        }
+
+        return (layers.length === 1) ? layers[0] : null;
+    };
+
+    // The group an id of keyTarget() names; '' for a layer's id.
+    function groupOfKey(id) {
+        return (String(id).indexOf('group:') === 0) ? String(id).slice(6) : '';
+    }
+
+    // The key at ms of layer id (or a group, 'group:<gid>') with patch;
+    // key and live as change() takes them.
     Editor.prototype.setKey = function (id, ms, patch, key) {
-        var end = this.motionEnd();
+        var end = this.motionEnd(), gid = groupOfKey(id);
 
         this.change(function (doc) {
+            if (gid) {
+                doc.layers = M.groupKeySet(doc.layers, gid, ms, patch, end);
+                return;
+            }
+
             doc.layers.forEach(function (l) {
                 if (l.id === id) {
                     l.anim = Object.assign({}, l.anim || {}, { keys: M.keySet(l, ms, patch, end) });
@@ -60,9 +84,17 @@
         }, key || null, !!key);
     };
 
-    // The keys of layer id through fn(keys); none left removes them.
+    // The keys of layer id (or a group's) through fn(keys); none left
+    // removes them.
     Editor.prototype.editKeys = function (id, fn) {
+        var gid = groupOfKey(id);
+
         this.change(function (doc) {
+            if (gid) {
+                doc.layers = M.groupFxSet(doc.layers, gid, { keys: fn(M.groupFx(doc.layers, gid).keys) });
+                return;
+            }
+
             doc.layers.forEach(function (l) {
                 if ((l.id !== id) || !l.anim) {
                     return;
@@ -85,10 +117,12 @@
 
     // ---- the Path tab ----
 
+    // A picked group's keys are its own (keyTarget()): they move its
+    // members as one, each keeping its own keys inside it.
     Editor.prototype.keysPanel = function (body, layers) {
-        var self = this, l = layers[0], keys, now, i, list;
+        var self = this, l = this.keyTarget(layers), keys, now, i, list;
 
-        if (layers.length !== 1) {
+        if (!l) {
             body.appendChild(el('p', { class: 'pgie-note', text: t('keysOne') }));
             return;
         }
@@ -97,7 +131,7 @@
         now = this.keyNow();
         i = M.keyIndex(keys, now);
 
-        body.appendChild(el('p', { class: 'pgie-note', text: t('keysNote') }));
+        body.appendChild(el('p', { class: 'pgie-note', text: groupOfKey(l.id) ? t('keysGroupNote') : t('keysNote') }));
 
         if (keys.length) {
             list = el('div', { class: 'pgie-chips pgie-keylist', role: 'group', 'aria-label': t('keysList') });
@@ -197,7 +231,7 @@
     // sheet (a phone) is held, which a new panel would take from under the
     // finger.
     Editor.prototype.keyFollow = function () {
-        var l = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, a = document.activeElement;
+        var l = this.keyTarget(this.selected()), a = document.activeElement;
 
         this.drawKeyPath();
 
@@ -232,7 +266,7 @@
 
             // A screen px in the layer's px at rest: the view's zoom and the
             // moment's scale.
-            var st = M.motionAt(l, now, end), q = M.restPoint(l, st, p[0], p[1]), px = 1 / (k * (st.scale || 1));
+            var st = M.groupMotionAt(layers, l, now, end), q = M.restPoint(l, st, p[0], p[1]), px = 1 / (k * (st.scale || 1));
             var margin = !finger ? (inset || 4) * px : ((sel.indexOf(l.id) >= 0) ? -M.touchReach(pointer, 4) * px : 0);
 
             if ((st.opacity > 0) && q && M.insideBox(l, q[0], q[1], margin)) {
@@ -259,6 +293,25 @@
 
         if (!hit) {
             return this.motionDown(e);
+        }
+
+        // A member of a picked group moves the group at that moment: its key.
+        var group = (this.sel.indexOf(hit.id) >= 0) ? this.keyTarget(this.selected()) : null;
+
+        if (group && groupOfKey(group.id)) {
+            this.motionTab = 'keys';
+            k = M.keyAt(group, this.motionNow()) || { x: 0, y: 0 };
+            this.drag = { kind: 'key', at: p, start: group, t: this.motionNow(), x: k.x, y: k.y };
+            this.renderPanel();
+            e.preventDefault();
+
+            try {
+                this.stage.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // The pointer is already gone.
+            }
+
+            return;
         }
 
         // The Path tab shows the key the drag sets.
@@ -289,13 +342,21 @@
         p = this.toDoc(e.clientX, e.clientY);
         end = this.motionEnd();
 
-        this.change(function (doc) {
-            doc.layers.forEach(function (l) {
-                if (l.id === d.start.id) {
-                    l.anim = Object.assign({}, l.anim || {}, { keys: M.keySet(d.start, d.t, { x: d.x + p[0] - d.at[0], y: d.y + p[1] - d.at[1] }, end) });
-                }
-            });
-        }, 'drag', true);
+        // A group's key keeps its keys as they were at the press (start).
+        if (groupOfKey(d.start.id)) {
+            this.change(function (doc) {
+                doc.layers = M.groupFxSet(doc.layers, groupOfKey(d.start.id), { keys: M.keySet(d.start, d.t, { x: d.x + p[0] - d.at[0], y: d.y + p[1] - d.at[1] }, end) });
+            }, 'drag', true);
+        } else {
+            this.change(function (doc) {
+                doc.layers.forEach(function (l) {
+                    if (l.id === d.start.id) {
+                        l.anim = Object.assign({}, l.anim || {}, { keys: M.keySet(d.start, d.t, { x: d.x + p[0] - d.at[0], y: d.y + p[1] - d.at[1] }, end) });
+                    }
+                });
+            }, 'drag', true);
+        }
+
         this.applyMotion();
         this.drawKeyPath();
     };
@@ -398,7 +459,7 @@
     // The selected layer's path in the Animate tool: a line through its
     // keyed places, a dot at each key and a ring where it is now.
     Editor.prototype.drawKeyPath = function () {
-        var svg = this.keyPathEl, l = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, path, v, vr, k, at, now;
+        var svg = this.keyPathEl, l = this.keyTarget(this.selected()), path, v, vr, k, at, now;
 
         this.keySelShift();
 
@@ -464,7 +525,7 @@
         var self = this, boxes = this.selEl ? this.selEl.querySelectorAll('.pgie-selbox') : [], picked = this.selected(), end = this.motionEnd();
 
         Array.prototype.forEach.call(boxes, function (b, i) {
-            var l = picked[i], st = (l && (self.time !== null)) ? M.motionAt(l, self.motionNow(), end) : null;
+            var l = picked[i], st = (l && (self.time !== null)) ? M.groupMotionAt(self.doc.layers, l, self.motionNow(), end) : null;
 
             var moved = !!(st && (st.x || st.y));
 

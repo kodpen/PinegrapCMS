@@ -3885,7 +3885,12 @@
         return ((doc && doc.layers) || []).some(function (l) {
             var a = l.anim;
 
-            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length));
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length)) || groupPath(l).some(function (g) {
+                // A group's own keys (GROUP below).
+                var o = l.gfx && l.gfx[g];
+
+                return !!(o && Array.isArray(o.keys) && o.keys.length);
+            });
         });
     }
 
@@ -4232,8 +4237,9 @@
     // are not counted).
 
     // The most frames a second read, the longer side they are read at, the
-    // shortest span (ms) and the smallest box side on the screen (px).
-    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12;
+    // shortest span (ms), the smallest box side on the screen (px) and the
+    // shorter box side (px) a small thing is read at least at.
+    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12, FOLLOW_SIDE = 24;
 
     // The topmost visible video layer showing at document time t whose box
     // holds document point p, or null.
@@ -4288,12 +4294,49 @@
         return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
     }
 
-    // The size frames are read at: FOLLOW_EDGE on the longer side, never
-    // enlarged; k is that size over the source's.
-    function followSize(width, height) {
-        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k = Math.min(1, FOLLOW_EDGE / Math.max(w, h));
+    // The size frames are read at: FOLLOW_EDGE on the longer side, or larger
+    // where the box's shorter side (side, source px) would be under
+    // FOLLOW_SIDE there, but never above the source's own pixels; k is that
+    // size over the source's. region: frames are read as the region round
+    // the last place only (the tracker's want), not whole; small: the box is
+    // under FOLLOW_SIDE even at the source's pixels.
+    function followSize(width, height, side) {
+        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k0 = Math.min(1, FOLLOW_EDGE / Math.max(w, h)), k = k0;
 
-        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k };
+        side = Number(side) || 0;
+
+        if (side > 0) {
+            k = Math.min(1, Math.max(k0, FOLLOW_SIDE / side));
+        }
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k, region: k > k0, small: (side > 0) && (side * k < FOLLOW_SIDE) };
+    }
+
+    // The region [x0, y0, x1, y1] the first frame is read in: box (frame
+    // pixels at size) in whole pixels with a pixel round it, inside the frame.
+    function followRegion(box, size) {
+        return [
+            Math.max(0, Math.floor(Math.min(box[0], box[2])) - 1), Math.max(0, Math.floor(Math.min(box[1], box[3])) - 1),
+            Math.min(size.w, Math.ceil(Math.max(box[0], box[2])) + 1), Math.min(size.h, Math.ceil(Math.max(box[1], box[3])) + 1)
+        ];
+    }
+
+    // The lost message's label key: why it was lost ('edge': it left the
+    // picture; otherwise it no longer matched, small for a thing a few
+    // pixels across), said in full the first time only; told holds the
+    // keys said before and is added to. Leaving the picture is no fault.
+    function followLostText(why, small, told) {
+        var key = (why === 'edge') ? 'followLostEdge' : (small ? 'followLostSmall' : 'followLostMatch');
+
+        if ((key === 'followLostEdge') || !told || !told[key]) {
+            if (told) {
+                told[key] = true;
+            }
+
+            return key;
+        }
+
+        return 'followLost';
     }
 
     // What Follow covers from document time now: to the first of the clip's
@@ -4351,7 +4394,7 @@
 
     var FOLLOW = {
         followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
-        followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
+        followSize: followSize, followRegion: followRegion, followLostText: followLostText, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
     // -- tracks (pg_image_editor_tracks.js) --
@@ -4774,7 +4817,7 @@
             var frames = [], len = Array.from(String(l.text || '')).length;
 
             for (var i = 0; i <= SVG_MOTION_STEPS; i++) {
-                var t = Math.min(m.duration - 1, m.duration * i / SVG_MOTION_STEPS), st = motionAt(l, t, m.duration);
+                var t = Math.min(m.duration - 1, m.duration * i / SVG_MOTION_STEPS), st = groupMotionAt((doc && doc.layers) || layers, l, t, m.duration);
                 var shown = (st.clip ? clamp(Number(st.clip.f) || 0, 0, 1) : 1) * clamp(st.draw, 0, 1) * ((st.chars !== null) && len ? clamp(st.chars / len, 0, 1) : 1);
 
                 frames.push([Math.round(10000 * i / SVG_MOTION_STEPS) / 100].concat([clamp(st.opacity, 0, 1) * shown, st.x, st.y, st.scale, st.rot].map(function (v) {
@@ -4960,7 +5003,9 @@
                 { keys: ['Mod', 'D'], label: 'keyDuplicate' },
                 { keys: ['Mod', 'C'], label: 'keyCopy' },
                 { keys: ['Mod', 'V'], label: 'keyPaste' },
-                { keys: ['Mod', 'A'], label: 'keySelectAll' }
+                { keys: ['Mod', 'A'], label: 'keySelectAll' },
+                { keys: ['Mod', 'G'], label: 'keyGroup' },
+                { keys: ['Mod', 'Shift', 'G'], label: 'keyUngroup' }
             ] });
         }
 
@@ -5089,6 +5134,16 @@
         }
 
         if (s.layers) {
+            // Group for several layers, Ungroup for a picked group (s.group,
+            // s.ungroup as the context menu reads them).
+            if (s.group) {
+                add('group');
+            }
+
+            if (s.ungroup) {
+                add('ungroup');
+            }
+
             // One clip in the Animate tool: Split at the playhead too.
             if (s.split) {
                 add('split', !s.free);
@@ -5136,9 +5191,10 @@
     // actionList() reads it, and s.kind: the one layer's type; s.animate:
     // the Animate tool). The type's own command (a text: Edit text; a video
     // in Animate: Split), Motion in Animate (never for a redaction, which
-    // does not move), Duplicate, Delete, Lock, More (the context menu's
-    // list). Every layer locked: Unlock and More. The picture and an area
-    // keep their commands in the panel: no bar.
+    // does not move), Group or Ungroup (s.group, s.ungroup), Duplicate,
+    // Delete, Lock, More (the context menu's list). Every layer locked:
+    // Unlock and More. The picture and an area keep their commands in the
+    // panel: no bar.
     function objectActions(s) {
         var out = [];
         var add = function (name) { out.push({ name: name, off: false }); };
@@ -5171,6 +5227,14 @@
             if (s.animate && (s.kind !== 'redact')) {
                 add('motion');
             }
+        }
+
+        if (s.group) {
+            add('group');
+        }
+
+        if (s.ungroup) {
+            add('ungroup');
         }
 
         ['duplicate', 'remove', 'lock', 'more'].forEach(add);
@@ -5275,6 +5339,12 @@
             item('paste', !s.clip);
             acts.forEach(function (a) { item(a.name, a.off); });
             sep();
+
+            if (s.group || s.ungroup) {
+                item('group', !s.group);
+                item('ungroup', !s.ungroup);
+            }
+
             item('order', false, { sub: sub(MENU_ORDER) });
             item('align', !s.free, { sub: sub(MENU_ALIGN, function (n) { return (n === 'distX' || n === 'distY') && (s.free < 3); }) });
             item(s.locked ? 'unlock' : 'lock');
@@ -10773,6 +10843,599 @@
 
     var PHONE = { phoneRows: phoneRows, phoneSoundLine: phoneSoundLine };
 
+    // ---- GROUP (pg_image_editor_layers.js) ----
+
+    // Layer groups live on the layers themselves: l.grp lists the groups a
+    // layer is in, the outermost first (['g1', 'g2']: g2 inside g1). There
+    // is no group entry anywhere else, so a scene's layers carry their
+    // groups and a document without grp opens as before. A group has no
+    // look of its own: the layers draw as they did ungrouped. Its members
+    // lie next to each other in doc.layers (groupTidy()).
+
+    // The groups a layer is in, the outermost first; [] for none.
+    function groupPath(l) {
+        return (l && Array.isArray(l.grp)) ? l.grp.filter(function (g) { return (typeof g === 'string') && (g !== ''); }) : [];
+    }
+
+    // The ids of the layers in group gid, bottom first.
+    function groupMembers(layers, gid) {
+        return (layers || []).filter(function (l) { return groupPath(l).indexOf(gid) >= 0; }).map(function (l) { return l.id; });
+    }
+
+    function layerById(layers, id) {
+        for (var i = 0; i < (layers || []).length; i++) {
+            if (layers[i].id === id) {
+                return layers[i];
+            }
+        }
+
+        return null;
+    }
+
+    // What layer id belongs to at depth d: the members of its group there,
+    // or the layer alone below its last group.
+    function groupItem(layers, id, d) {
+        var path = groupPath(layerById(layers, id));
+
+        return (d < path.length) ? groupMembers(layers, path[d]) : [id];
+    }
+
+    function sameSet(a, b) {
+        return (a.length === b.length) && a.every(function (x) { return b.indexOf(x) >= 0; });
+    }
+
+    function commonPath(paths) {
+        var out = paths.length ? paths[0].slice() : [];
+
+        paths.forEach(function (p) {
+            var i = 0;
+
+            while ((i < out.length) && (i < p.length) && (out[i] === p[i])) {
+                i++;
+            }
+
+            out.length = i;
+        });
+
+        return out;
+    }
+
+    // The group a selection sits in: its layers' shared groups, without the
+    // ones it holds whole (a picked group is an item of its parent). picked
+    // are layer objects, all the layers of the document.
+    function groupScope(layers, picked) {
+        var ids = (picked || []).map(function (l) { return l.id; }), scope = commonPath((picked || []).map(groupPath));
+
+        while (scope.length && groupMembers(layers, scope[scope.length - 1]).every(function (id) { return ids.indexOf(id) >= 0; })) {
+            scope.pop();
+        }
+
+        return scope;
+    }
+
+    function pickedLayers(layers, ids) {
+        return (layers || []).filter(function (l) { return (ids || []).indexOf(l.id) >= 0; });
+    }
+
+    // The depth a press on layer id picks at, by the selection sel: inside
+    // the group the selection sits in, else the outermost group.
+    function groupDepth(layers, sel, id) {
+        var scope = (sel && sel.length) ? groupScope(layers, pickedLayers(layers, sel)) : [];
+
+        return commonPath([scope, groupPath(layerById(layers, id))]).length;
+    }
+
+    // The selection a press on layer id (not selected) makes: its whole
+    // outermost group, or, while the selection sits inside a group, the
+    // item of that group it lies in.
+    function groupPick(layers, sel, id) {
+        return groupItem(layers, id, groupDepth(layers, sel, id));
+    }
+
+    // A click on layer id while it is selected: when the selection is just
+    // the group it shows, one level in (the group inside, or the layer);
+    // null when there is nothing deeper.
+    function groupDeeper(layers, sel, id) {
+        var path = groupPath(layerById(layers, id));
+
+        for (var d = 0; d < path.length; d++) {
+            if (sameSet(sel, groupItem(layers, id, d))) {
+                return groupItem(layers, id, d + 1);
+            }
+        }
+
+        return null;
+    }
+
+    // Shift and a press on layer id: its item added to the selection, or
+    // taken out when every layer of it is already in.
+    function groupToggle(layers, sel, id) {
+        var item = groupItem(layers, id, groupDepth(layers, sel, id));
+
+        if (item.every(function (x) { return sel.indexOf(x) >= 0; })) {
+            return sel.filter(function (x) { return item.indexOf(x) < 0; });
+        }
+
+        return sel.concat(item.filter(function (x) { return sel.indexOf(x) < 0; }));
+    }
+
+    // Layer ids widened to their outermost groups (a selection box).
+    function groupExpand(layers, ids) {
+        var out = [];
+
+        (ids || []).forEach(function (id) {
+            groupItem(layers, id, 0).forEach(function (x) {
+                if (out.indexOf(x) < 0) {
+                    out.push(x);
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // A group id used by no layer of the document, its scenes included.
+    function groupNewId(doc) {
+        var used = {}, n = 1;
+        var mark = function (list) {
+            (list || []).forEach(function (l) { groupPath(l).forEach(function (g) { used[g] = true; }); });
+        };
+
+        mark(doc.layers);
+        (Array.isArray(doc.scenes) ? doc.scenes : []).forEach(function (s) { mark(s && s.layers); });
+
+        while (used['g' + n]) {
+            n++;
+        }
+
+        return 'g' + n;
+    }
+
+    // The layers as a tree, each group's members gathered where its topmost
+    // member lies: { kids } of { group, kids } and { layer }, the top first.
+    function groupTree(layers) {
+        var root = { kids: [] };
+
+        (layers || []).slice().reverse().forEach(function (l) {
+            var at = root;
+
+            groupPath(l).forEach(function (g) {
+                var next = null;
+
+                at.kids.forEach(function (k) {
+                    if (k.group === g) {
+                        next = k;
+                    }
+                });
+
+                if (!next) {
+                    next = { group: g, kids: [] };
+                    at.kids.push(next);
+                }
+
+                at = next;
+            });
+            at.kids.push({ layer: l });
+        });
+
+        return root;
+    }
+
+    // A tree back to layers, the bottom first.
+    function groupFlat(node) {
+        var out = [];
+
+        node.kids.slice().reverse().forEach(function (k) {
+            out = out.concat(k.layer ? [k.layer] : groupFlat(k));
+        });
+
+        return out;
+    }
+
+    // The layers with every group of fewer than two layers taken out and
+    // each group's members next to each other (where the topmost one is).
+    // An ordered, tidy list comes back in the same order.
+    function groupTidy(layers) {
+        var count = {};
+
+        (layers || []).forEach(function (l) {
+            groupPath(l).forEach(function (g) { count[g] = (count[g] || 0) + 1; });
+        });
+
+        return groupFlat(groupTree((layers || []).map(function (l) {
+            var path = groupPath(l).filter(function (g) { return count[g] > 1; });
+            var stale = l.gfx ? Object.keys(l.gfx).filter(function (g) { return path.indexOf(g) < 0; }) : [];
+
+            if ((!l.grp || (path.length && (path.length === l.grp.length))) && !stale.length) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            if (path.length) {
+                c.grp = path;
+            } else {
+                delete c.grp;
+            }
+
+            // A group's look (gfx) goes with the group.
+            stale.forEach(function (g) { fxPut(c, g, null); });
+
+            return c;
+        })));
+    }
+
+    // The selected ids grouped as gid: the items they make in the group
+    // they sit in (a layer, or a whole group inside it) become one group
+    // there, on the place of the topmost. Null for fewer than two items.
+    function groupMake(layers, ids, gid) {
+        var picked = pickedLayers(layers, ids), scope = groupScope(layers, picked), d = scope.length, keys = [];
+        var keyOf = function (l) {
+            var path = groupPath(l);
+
+            return (path.length > d) ? 'g:' + path[d] : 'l:' + l.id;
+        };
+        var inside = function (l) {
+            return commonPath([groupPath(l), scope]).length === d;
+        };
+
+        picked.forEach(function (l) {
+            if (keys.indexOf(keyOf(l)) < 0) {
+                keys.push(keyOf(l));
+            }
+        });
+
+        if (keys.length < 2) {
+            return null;
+        }
+
+        return groupTidy(layers.map(function (l) {
+            if (!inside(l) || (keys.indexOf(keyOf(l)) < 0)) {
+                return l;
+            }
+
+            var c = clone(l), path = groupPath(l);
+
+            c.grp = path.slice(0, d).concat([gid], path.slice(d));
+
+            return c;
+        }));
+    }
+
+    // The group gid taken apart: its layers stay where they are, in the
+    // groups around it.
+    function groupBreak(layers, gid) {
+        return groupTidy((layers || []).map(function (l) {
+            if (groupPath(l).indexOf(gid) < 0) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            c.grp = groupPath(l).filter(function (g) { return g !== gid; });
+
+            return c;
+        }));
+    }
+
+    // The group Ungroup takes apart: the outermost one the selection holds
+    // whole; '' when it holds none.
+    function groupOfSelection(layers, ids) {
+        var picked = pickedLayers(layers, ids), scope = groupScope(layers, picked), path = commonPath(picked.map(groupPath));
+
+        return (picked.length && (path.length > scope.length)) ? path[scope.length] : '';
+    }
+
+    // The selected ids moved in the stack ('top', 'up', 'down', 'bottom')
+    // as items of the group they sit in: a picked group moves whole and a
+    // member stays inside its group.
+    function groupReorder(layers, ids, how) {
+        var picked = pickedLayers(layers, ids), scope = groupScope(layers, picked), root = groupTree(groupTidy(layers)), at = root;
+
+        scope.forEach(function (g) {
+            at = at.kids.filter(function (k) { return k.group === g; })[0] || at;
+        });
+
+        var key = function (k) { return k.layer ? 'l:' + k.layer.id : 'g:' + k.group; };
+        var chosen = picked.map(function (l) {
+            var path = groupPath(l);
+
+            return (path.length > scope.length) ? 'g:' + path[scope.length] : 'l:' + l.id;
+        });
+        var nodes = at.kids.slice().reverse().map(function (k) { return { id: key(k), node: k }; });
+
+        at.kids = reorder(nodes, chosen, how).reverse().map(function (n) { return n.node; });
+
+        return groupFlat(root);
+    }
+
+    // Copies of layers list (clones) with their groups renamed to new ids
+    // from doc, the groups around the copied ones dropped (the copies go
+    // on top of the stack). layers are the document's.
+    function groupCopy(doc, list) {
+        var scope = groupScope(doc.layers, list), names = {}, probe = { layers: (doc.layers || []).slice(), scenes: doc.scenes };
+
+        return list.map(function (o) {
+            var c = clone(o), path = groupPath(o).slice(scope.length).map(function (g) {
+                if (!names[g]) {
+                    names[g] = groupNewId(probe);
+                    probe.layers.push({ grp: [names[g]] });
+                }
+
+                return names[g];
+            });
+
+            if (path.length) {
+                c.grp = path;
+            } else {
+                delete c.grp;
+            }
+
+            // The look of a copied group under its new id; the groups
+            // left behind keep theirs.
+            delete c.gfx;
+            groupPath(o).forEach(function (g) {
+                if (names[g] && o.gfx && o.gfx[g]) {
+                    fxPut(c, names[g], clone(o.gfx[g]));
+                }
+            });
+
+            return c;
+        });
+    }
+
+    // The layers list's rows, the top first: { group, depth, count, open }
+    // for a group and { id, depth } for a layer; a closed group hides its
+    // members. open: group id => true.
+    function groupRows(layers, open) {
+        var rows = [];
+        var walk = function (node, depth) {
+            node.kids.forEach(function (k) {
+                if (k.layer) {
+                    rows.push({ id: k.layer.id, depth: depth });
+                    return;
+                }
+
+                var on = !!(open && open[k.group]);
+
+                rows.push({ group: k.group, depth: depth, count: groupFlat(k).length, open: on });
+
+                if (on) {
+                    walk(k, depth + 1);
+                }
+            });
+        };
+
+        walk(groupTree(layers), 0);
+
+        return rows;
+    }
+
+    // The number in a group id ('g3' -> 3) for its name in the list.
+    function groupNumber(gid) {
+        var m = /^g(\d+)$/.exec(String(gid));
+
+        return m ? parseInt(m[1], 10) : 0;
+    }
+
+    // Whether Group and Ungroup are offered for the selection.
+    function groupCan(layers, ids) {
+        var gid = 'g0';
+
+        return { group: !!groupMake(layers, ids, gid), ungroup: !!groupOfSelection(layers, ids) };
+    }
+
+    // -- a group's own look: opacity and Animate's keys (GC1b) --
+    //
+    // A group's own opacity and keys sit on each of its members as
+    // l.gfx[gid] = { opacity, keys }, the same on every one, so a layer
+    // carries all it needs to be drawn (the server's draw reads it alone)
+    // and a scene's layers carry their groups' looks. Nothing for a group
+    // at opacity 1 without keys. The opacity multiplies each member's own;
+    // the keys move, turn, scale and fade the members round the group's
+    // centre, over each member's own motion.
+
+    // l's gfx with gid set to val, or taken out for null (changes l).
+    function fxPut(l, gid, val) {
+        var m = Object.assign({}, l.gfx || {});
+
+        if (val) {
+            m[gid] = val;
+        } else {
+            delete m[gid];
+        }
+
+        if (Object.keys(m).length) {
+            l.gfx = m;
+        } else {
+            delete l.gfx;
+        }
+    }
+
+    // A group's own opacity from its entry o: 1 without one.
+    function fxOpacity(o) {
+        return (o && (o.opacity !== undefined) && (o.opacity !== null)) ? clamp(keyNumber(o.opacity, 1), 0, 1) : 1;
+    }
+
+    function fxOf(l, gid) {
+        var o = l && l.gfx && l.gfx[gid];
+
+        return (o && (typeof o === 'object')) ? o : null;
+    }
+
+    // Group gid's own look: { opacity, keys } (keys cleaned, keyList()).
+    function groupFx(layers, gid) {
+        var own = null;
+
+        (layers || []).forEach(function (l) {
+            if (!own && (groupPath(l).indexOf(gid) >= 0)) {
+                own = fxOf(l, gid);
+            }
+        });
+
+        return {
+            opacity: fxOpacity(own),
+            keys: keyList({ anim: { keys: (own && Array.isArray(own.keys)) ? own.keys : [] } })
+        };
+    }
+
+    // The layers with group gid's look changed by patch ({ opacity, keys })
+    // on every member; nothing left at opacity 1 without keys.
+    function groupFxSet(layers, gid, patch) {
+        var fx = Object.assign(groupFx(layers, gid), patch || {}), val = {};
+
+        fx.opacity = clamp(keyNumber(fx.opacity, 1), 0, 1);
+        fx.keys = keyList({ anim: { keys: fx.keys || [] } });
+
+        if (fx.opacity < 1) {
+            val.opacity = fx.opacity;
+        }
+
+        if (fx.keys.length) {
+            val.keys = fx.keys;
+        }
+
+        return (layers || []).map(function (l) {
+            if (groupPath(l).indexOf(gid) < 0) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            fxPut(c, gid, Object.keys(val).length ? clone(val) : null);
+
+            return c;
+        });
+    }
+
+    // The opacity l's groups give it: their own opacities multiplied.
+    function groupAlpha(l) {
+        return groupPath(l).reduce(function (a, g) {
+            return a * fxOpacity(fxOf(l, g));
+        }, 1);
+    }
+
+    // l as it is drawn: a copy with its groups' opacity on its own; l
+    // itself when its groups do not fade it.
+    function groupLook(l) {
+        var a = groupAlpha(l);
+
+        return (a >= 1) ? l : Object.assign({}, l, { opacity: ((l.opacity === undefined) ? 1 : keyNumber(l.opacity, 1)) * a });
+    }
+
+    // The group ids pick when they are exactly one whole group's layers
+    // (its own size, turn, opacity and keys then apply); '' otherwise.
+    function groupPicked(layers, ids) {
+        var gid = groupOfSelection(layers, ids);
+
+        return (gid && sameSet(groupMembers(layers, gid), ids || [])) ? gid : '';
+    }
+
+    // The box round group gid's layers, turned ones by their corners.
+    function groupBox(layers, gid) {
+        return bounds((layers || []).filter(function (l) { return groupPath(l).indexOf(gid) >= 0; }));
+    }
+
+    // list (layers) scaled from box to nb as one, proportions kept by
+    // nb's width: each centre keeps its place in the box, each size grows
+    // as the box; turns stay. Copies with the new x, y, w, h.
+    function groupScale(list, box, nb) {
+        var f = (box && (box.w > 0)) ? nb.w / box.w : 1;
+
+        return (list || []).map(function (l) {
+            var c = clone(l), cx = nb.x + (l.x + l.w / 2 - box.x) * f, cy = nb.y + (l.y + l.h / 2 - box.y) * f;
+
+            c.w = l.w * f;
+            c.h = l.h * f;
+            c.x = cx - c.w / 2;
+            c.y = cy - c.h / 2;
+
+            return c;
+        });
+    }
+
+    function turnWrap(a) {
+        a = ((a + 180) % 360 + 360) % 360 - 180;
+
+        return (a === -180) ? 180 : a;
+    }
+
+    // list (layers) turned as one by deg (clockwise) round cx, cy: each
+    // centre turns, each own turn grows by deg (in -180..180). Copies.
+    function groupTurn(list, cx, cy, deg) {
+        var a = deg * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+
+        return (list || []).map(function (l) {
+            var c = clone(l), dx = l.x + l.w / 2 - cx, dy = l.y + l.h / 2 - cy;
+
+            c.x = cx + dx * cos - dy * sin - l.w / 2;
+            c.y = cy + dx * sin + dy * cos - l.h / 2;
+            c.rot = turnWrap((Number(l.rot) || 0) + deg);
+
+            return c;
+        });
+    }
+
+    // Layer l at playhead t as motionAt() gives it, with its groups' keys
+    // composed over it, the innermost first: each moves, turns and scales
+    // round its group's centre at rest and fades. The result is a state
+    // round l's own centre, so the stage, the export and a press's
+    // restPoint() read it as before. layers: the document's (the groups'
+    // boxes).
+    function groupMotionAt(layers, l, t, end) {
+        var st = motionAt(l, t, end), path = groupPath(l), cx = l.x + l.w / 2, cy = l.y + l.h / 2;
+
+        if ((t === null) || (t === undefined)) {
+            return st;
+        }
+
+        for (var i = path.length - 1; i >= 0; i--) {
+            var fx = fxOf(l, path[i]), k = (fx && Array.isArray(fx.keys) && fx.keys.length) ? keyAt({ anim: { keys: fx.keys } }, t) : null, b, gx, gy, a, px, py;
+
+            if (!k) {
+                continue;
+            }
+
+            b = groupBox(layers, path[i]) || { x: cx, y: cy, w: 0, h: 0 };
+            gx = b.x + b.w / 2;
+            gy = b.y + b.h / 2;
+            a = k.rot * Math.PI / 180;
+            px = cx + st.x - gx;
+            py = cy + st.y - gy;
+            st = Object.assign({}, st, {
+                x: gx + k.x + k.scale * (px * Math.cos(a) - py * Math.sin(a)) - cx,
+                y: gy + k.y + k.scale * (px * Math.sin(a) + py * Math.cos(a)) - cy,
+                scale: st.scale * k.scale,
+                rot: st.rot + k.rot,
+                opacity: st.opacity * k.opacity
+            });
+        }
+
+        return st;
+    }
+
+    // The layers with group gid's key at t set by patch (keySet()).
+    function groupKeySet(layers, gid, t, patch, end) {
+        return groupFxSet(layers, gid, { keys: keySet({ anim: { keys: groupFx(layers, gid).keys } }, t, patch, end) });
+    }
+
+    // Group gid as the Path tab reads a layer: id 'group:<gid>', its box at
+    // rest and its keys.
+    function groupKeyLayer(layers, gid) {
+        var b = groupBox(layers, gid) || { x: 0, y: 0, w: 0, h: 0 };
+
+        return { id: 'group:' + gid, type: 'group', x: b.x, y: b.y, w: b.w, h: b.h, rot: 0, anim: { keys: groupFx(layers, gid).keys } };
+    }
+
+    var GROUP = {
+        groupPath: groupPath, groupMembers: groupMembers, groupItem: groupItem, groupScope: groupScope, groupPick: groupPick,
+        groupDeeper: groupDeeper, groupToggle: groupToggle, groupExpand: groupExpand, groupNewId: groupNewId, groupTidy: groupTidy,
+        groupMake: groupMake, groupBreak: groupBreak, groupOfSelection: groupOfSelection, groupReorder: groupReorder,
+        groupCopy: groupCopy, groupRows: groupRows, groupNumber: groupNumber, groupCan: groupCan,
+        groupFx: groupFx, groupFxSet: groupFxSet, groupAlpha: groupAlpha, groupLook: groupLook, groupPicked: groupPicked, groupBox: groupBox,
+        groupScale: groupScale, groupTurn: groupTurn, groupMotionAt: groupMotionAt, groupKeySet: groupKeySet, groupKeyLayer: groupKeyLayer
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -10790,7 +11453,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

@@ -1719,7 +1719,9 @@ function ws_handle_action($action, $request)
         // takes the old one's place (their own message) or goes as an
         // edited copy. A .csv or .tsv is drawn as a sheet and only looked
         // at, read with the separator and character set the choice above
-        // it sends (delimiter, encoding).
+        // it sends (delimiter, encoding). An .xls is only looked at too;
+        // can_copy says whether the viewer may send a copy as .xlsx
+        // (ws_file_office_copy).
         case 'ws_file_office':
             $message = ws_message((int) ($request['message_id'] ?? 0));
             $channel = $message ? ws_channel($message['channel_id']) : null;
@@ -1746,6 +1748,10 @@ function ws_handle_action($action, $request)
             unset($office['ok'], $office['error']);
 
             $answer = array('name' => (string) $message['file_name'], 'office' => $office);
+
+            if ($office['kind'] === 'xls') {
+                $answer['can_copy'] = ws_can_post_channel($viewer, $channel);
+            }
 
             if ($editing) {
                 $answer['can_replace'] = ws_file_can_replace($viewer, $message, $channel);
@@ -1794,6 +1800,46 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_message_file_send($viewer, $message, $channel, (string) $message['file_name'], $edited['data']);
+
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+
+        // An .xls written again as .xlsx by the shared writer
+        // (pg_office_xls_copy()) and sent as a new message's file, in reply
+        // to the original, for whoever may read and post in the channel; the
+        // copy is then changed as any workbook is.
+        case 'ws_file_office_copy':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+            $channel = $message ? ws_channel($message['channel_id']) : null;
+
+            if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            if (!ws_can_post_channel($viewer, $channel)) {
+                return ws_action_error(lang('You cannot post in that channel.'));
+            }
+
+            $stored = ((int) $message['file_id'] > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'") : '';
+
+            if (($stored === '') || (pg_office_preview_kind($message['file_name']) !== 'xls')) {
+                return ws_action_error(lang('Only an .xls file is saved as a copy here.'));
+            }
+
+            @set_time_limit(120);
+
+            $target = tempnam(sys_get_temp_dir(), 'pg_xls_copy_');
+            // The writer makes the archive itself: an empty file left in its
+            // place is no zip.
+            @unlink($target);
+            $copied = pg_office_xls_copy(pg_file_reader_path($stored), $target);
+            $bytes = $copied['ok'] ? @file_get_contents($target) : false;
+            @unlink($target);
+
+            if (!$copied['ok']) {
+                return ws_action_error($copied['error']);
+            }
+
+            $result = ws_message_send_file_bytes($viewer, $channel, '', pg_office_xls_copy_name($message['file_name']), $bytes, array('parent_id' => (int) $message['id']));
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
@@ -2182,6 +2228,14 @@ function ws_handle_action($action, $request)
                 // for them (asked only while their switch is on).
                 if (!empty($request['sound'])) {
                     $out['sound'] = ws_sound_lines($viewer['id'], (int) ($request['sound_after'] ?? -1));
+                }
+
+                // A call that rings the person in any channel of theirs; no
+                // query while no call is live on the site (calls.php).
+                $rings = ws_call_rings_for($viewer);
+
+                if ($rings) {
+                    $out['rings'] = $rings;
                 }
             }
 
@@ -5341,6 +5395,8 @@ function ws_handle_action($action, $request)
         case 'ws_call_leave':
         case 'ws_call_end':
         case 'ws_call_signal':
+        case 'ws_call_decline':
+        case 'ws_call_sync':
             $call = ws_calls_ready() ? ws_call((int) ($request['call_id'] ?? 0)) : null;
             $channel = $call ? ws_channel((int) $call['channel_id']) : null;
 
@@ -5349,6 +5405,19 @@ function ws_handle_action($action, $request)
             }
 
             $party = ws_call_party_person($viewer, $channel);
+
+            // The look of a browser in the call, every second: the call and
+            // the signals sent to it, whichever channel is open on the
+            // screen; nothing of the channel's own look.
+            if ($action === 'ws_call_sync') {
+                return ws_action_ok(array('call' => ws_call_live_part($party, (int) $channel['id'], (int) ($request['call_after'] ?? 0))));
+            }
+
+            if ($action === 'ws_call_decline') {
+                $result = ws_call_decline($party, $call);
+
+                return $result['ok'] ? ws_action_ok(array()) : ws_action_error($result['error']);
+            }
 
             if ($action === 'ws_call_leave') {
                 $result = ws_call_leave($party, (int) $call['id']);

@@ -52,6 +52,9 @@ define('WS_CALL_SIGNAL_READ', 100);
 /** Seconds between two clean-ups while a call is live. */
 define('WS_CALL_SWEEP_EVERY', 10);
 
+/** Seconds a new call rings the other person of a conversation of two. */
+define('WS_CALL_RING', 45);
+
 /**
  * Does the database carry calls (2026.11.0, 11.0.243)?
  *
@@ -832,5 +835,194 @@ function ws_call_live_part($party, $channel_id, $signal_after)
         'call'      => ws_call_present($call, $members, ws_call_member_names($members)),
         'member_id' => $mine ? (int) $mine['id'] : 0,
         'signals'   => $mine ? ws_call_signals_for((int) $mine['id'], (int) $signal_after) : array(),
+    );
+}
+
+// ── Ringing (the channel screen) ──
+
+/**
+ * The address the browsers ask for their public route (STUN) until the
+ * Calls card of the settings names others. A third party the browsers reach,
+ * never the site; nothing of a call's media passes it.
+ *
+ * @return array[] RTCIceServer entries
+ */
+function ws_call_ice_servers()
+{
+    return array(array('urls' => array('stun:stun.l.google.com:19302')));
+}
+
+/**
+ * Does a live call ring this person? Only in a conversation of two people,
+ * while the one who started it waits alone in it, for WS_CALL_RING seconds.
+ * Pure.
+ *
+ * @param array $call         the ws_calls row
+ * @param int   $viewer_id
+ * @param int[] $live_users   user ids of the call's live members
+ * @param int   $member_count people with a membership row in the channel
+ * @param int   $now
+ * @return bool
+ */
+function ws_call_rings($call, $viewer_id, $live_users, $member_count, $now)
+{
+    if (!is_array($call) || ((string) $call['state'] !== 'live') || ((int) $member_count !== 2)) {
+        return false;
+    }
+
+    if (((int) $call['started_by'] === (int) $viewer_id) || ((int) $call['started_at'] <= ((int) $now - WS_CALL_RING))) {
+        return false;
+    }
+
+    $live_users = array_map('intval', (array) $live_users);
+
+    return ($live_users === array((int) $call['started_by']));
+}
+
+/**
+ * May this person decline a call? While its starter waits alone in a
+ * conversation of two, whatever the time: declining then ends it, as nobody
+ * else was asked. Pure.
+ *
+ * @param array $party
+ * @param array $call
+ * @param int[] $live_users
+ * @param int   $member_count
+ * @return bool
+ */
+function ws_call_may_decline($party, $call, $live_users, $member_count)
+{
+    if (((string) ($party['kind'] ?? '') !== 'user') || empty($party['member'])) {
+        return false;
+    }
+
+    // Read at the moment it started, so the ring's time does not count.
+    return ws_call_rings($call, (int) $party['id'], $live_users, $member_count, (int) ($call['started_at'] ?? 0));
+}
+
+/**
+ * The user ids of a call's live members (guests left out).
+ *
+ * @param array[] $members ws_call_members rows
+ * @return int[]
+ */
+function ws_call_live_users($members)
+{
+    $ids = array();
+
+    foreach ((array) $members as $member) {
+        if ((int) $member['guest_id'] === 0) {
+            $ids[] = (int) $member['user_id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * People with a membership row in a channel.
+ *
+ * @param int $channel_id
+ * @return int
+ */
+function ws_call_channel_people($channel_id)
+{
+    return (int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel_id . "'");
+}
+
+/**
+ * The calls ringing a person now, in any channel of theirs: the part of the
+ * channel screen's look (ws_sync) that rings them where a mention would.
+ * null while no call is live on the site, so an idle look asks nothing.
+ *
+ * @param array $viewer
+ * @return array[]|null call_id, channel_id, kind, caller_id, caller
+ */
+function ws_call_rings_for($viewer)
+{
+    if (!ws_calls_live_somewhere() || !ws_calls_ready()) {
+        return null;
+    }
+
+    $now = time();
+    $rings = array();
+
+    foreach ((array) db_items("SELECT c.* FROM ws_calls c
+        INNER JOIN ws_channel_members me ON me.channel_id = c.channel_id AND me.user_id = '" . (int) $viewer['id'] . "'
+        WHERE c.state = 'live' AND c.started_by <> '" . (int) $viewer['id'] . "' AND c.started_at > '" . ($now - WS_CALL_RING) . "'
+        ORDER BY c.id LIMIT 5") as $call) {
+        $live_users = ws_call_live_users(ws_call_members_live($call['id']));
+
+        if (ws_call_rings($call, (int) $viewer['id'], $live_users, ws_call_channel_people($call['channel_id']), $now)) {
+            $rings[] = array(
+                'call_id'    => (int) $call['id'],
+                'channel_id' => (int) $call['channel_id'],
+                'kind'       => (string) $call['kind'],
+                'caller_id'  => (int) $call['started_by'],
+                'caller'     => (string) ws_person_name($call['started_by']),
+            );
+        }
+    }
+
+    return $rings;
+}
+
+/**
+ * Declines a call that rings the person: it ends, and the caller's screen
+ * reads that nobody answered.
+ *
+ * @param array $party
+ * @param array $call
+ * @return array ok, error
+ */
+function ws_call_decline($party, $call)
+{
+    if (!is_array($call) || ((string) $call['state'] !== 'live')) {
+        return array('ok' => true, 'error' => '');
+    }
+
+    $live_users = ws_call_live_users(ws_call_members_live($call['id']));
+
+    if (!ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))) {
+        return array('ok' => false, 'error' => lang('This call is not open to you.'));
+    }
+
+    ws_call_end_row($call);
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The texts of the call button, the ringing card and the call window
+ * (assets/js/workspace_calls.js).
+ *
+ * @return array key => text
+ */
+function ws_call_js_strings()
+{
+    return array(
+        'call_voice'      => lang('Voice call'),
+        'call_video'      => lang('Video call'),
+        'call_ringing'    => ws_js_template('{var:1} is calling you', 1),
+        'call_ringing_video' => ws_js_template('{var:1} is calling you with video', 1),
+        'call_accept'     => lang('Accept'),
+        'call_decline'    => lang('Decline'),
+        'call_calling'    => lang('Calling…'),
+        'call_connecting' => lang('Connecting…'),
+        'call_mute'       => lang('Mute'),
+        'call_unmute'     => lang('Unmute'),
+        'call_camera_off' => lang('Turn camera off'),
+        'call_camera_on'  => lang('Turn camera on'),
+        'call_devices'    => lang('Microphone and camera'),
+        'call_microphone' => lang('Microphone'),
+        'call_camera'     => lang('Camera'),
+        'call_hang_up'    => lang('Hang up'),
+        'call_open'       => lang('Open the conversation'),
+        'call_ended'      => lang('The call ended.'),
+        'call_unanswered' => lang('The call was not answered.'),
+        'call_lost'       => lang('The connection was lost.'),
+        'call_busy'       => lang('You are already in a call.'),
+        'call_denied'     => lang('Microphone or camera permission was denied.'),
+        'call_unsupported' => lang('Calls are not supported in this browser.'),
     );
 }
