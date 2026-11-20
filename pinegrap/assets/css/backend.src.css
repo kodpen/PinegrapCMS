@@ -9514,6 +9514,10 @@ html:has(.mpp-bulk:not(.d-none)) {
   grid-auto-rows: auto;
 }
 .pg-stepper-cards > .stepper-item { grid-template-columns: var(--bs-stepper-size) minmax(0, 1fr); }
+/* A step that holds more than one child (a title, its text, a picture, a
+   button) keeps them all in the content column; the grid would otherwise
+   fill the number column with every second child. */
+.pg-stepper-cards > .stepper-item > * { grid-column: 2; }
 .pg-stepper-cards > .stepper-item::before { margin-top: .6rem; }
 .pg-stepper-cards > .stepper-item::after {
   inset-block-start: calc(.6rem + var(--bs-stepper-size) * .5);

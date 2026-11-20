@@ -188,19 +188,21 @@ function pg_look_examples($prefix = 'light')
     // A drawer as Application Access' #api_new and Contacts › Privacy centre
     // draw it: a dialog.drawer opened through pgUI, 480 px off the right edge
     // (a sheet from the bottom under 576 px), one form inside. Drawn here in
-    // place, without the dialog, so both panes show it.
+    // place, without the dialog, so both panes show it. The frame is no
+    // .drawer, which sets the padding variables: p-5 gives the head and the
+    // body the 16 px a real drawer has (measured on #api_new).
     $sections[] = array(
         'id'      => 'drawer',
         'title'   => lang('Drawer'),
         'classes' => array('drawer-header', 'drawer-title', 'btn-close', 'role="tablist"', 'role="tab"', 'aria-selected', 'drawer-body', 'drawer-footer', '.pg-seg', '.pg-seg-item', '.pg-pill', '.pg-button-danger', '.pg-button-quiet', '.pg-button-fill'),
         'html'    => '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:480px">'
-            . '<div class="drawer-header"><div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
+            . '<div class="drawer-header p-5"><div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
             . '<p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . h(lang('Erasure')) . ' <span class="pg-pill pg-tone-amber">' . h(lang(array('string' => '{var:1} days left', 'vars' => array(5)))) . '</span></p></div>'
             . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="px-5 pt-3 pb-3 border-bottom"><span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">'
             . '<button type="button" class="pg-seg-item" role="tab" aria-selected="true" aria-controls="' . $p . '_look_drawer_pane">' . h(lang('Request')) . '</button>'
             . '<button type="button" class="pg-seg-item" role="tab" aria-selected="false" tabindex="-1">' . h(lang('History')) . '</button></span></div>'
-            . '<div class="drawer-body" role="tabpanel" id="' . $p . '_look_drawer_pane"><label class="pg-field-label" for="' . $p . '_look_drawer_field">' . h(lang('Handled by')) . '</label><input type="text" class="pg-input" id="' . $p . '_look_drawer_field" value="Mehmet Kaya"></div>'
+            . '<div class="drawer-body p-5" role="tabpanel" id="' . $p . '_look_drawer_pane"><label class="pg-field-label" for="' . $p . '_look_drawer_field">' . h(lang('Handled by')) . '</label><input type="text" class="pg-input" id="' . $p . '_look_drawer_field" value="Mehmet Kaya"></div>'
             . '<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><button type="button" class="pg-button pg-button-danger">' . h(lang('Refuse')) . '</button><span class="flex-grow-1"></span>'
             . '<button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button><button type="button" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button></div>'
             . '</div><p class="pg-text-meta">' . h(lang('One form in a dialog.drawer opened through pgUI; tabs as the segmented control with role tab; the danger button at the left of the foot, Save last. A closed record shows plain text and Close only.')) . '</p>',

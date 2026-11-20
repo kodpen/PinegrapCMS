@@ -120,6 +120,8 @@ function test_look_examples_starting_point_sheet()
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_contains('Look A: starting-point cards.', $css, 'the recipe in its own block');
+	pg_assert_same(3, substr_count($html, 'class="drawer-header p-5 pb-1 d-block"'), 'the head\'s padding as #api_new measures: 16 16 4 16');
+	pg_assert_same(3, substr_count($html, 'class="drawer-body p-5"'), 'the body\'s 16 px');
 }
 
 function test_look_examples_numbered_steps_drawer()
@@ -134,6 +136,10 @@ function test_look_examples_numbered_steps_drawer()
 	pg_assert_true(preg_match('/<li[^>]*>\s*<div class="pg-field-label">\d/', $html) === 0, 'the number is never written in the markup');
 	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button: the window\'s Save is the one');
 	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')), $html, 'one quiet button opens it');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains('.pg-stepper-cards > .stepper-item > * { grid-column: 2; }', $css, 'a step with several children keeps them in the content column');
+	pg_assert_contains('class="drawer-header border-bottom p-5"', $html, 'the standing frame has the real drawer\'s 16 px');
 }
 
 function test_look_examples_screen_gate_and_link()
