@@ -284,7 +284,7 @@
 - image-editor-encode.md: The Design Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Design Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
-- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker in a worker; the method's numbers, its limits and how it was checked [decision: decisions-made-product-63.md, decisions-made-product-69.md]
+- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
@@ -438,6 +438,7 @@
 - look-settings-mailboxes.md: Site Settings › Mailboxes in look A (S5d, #10431): purpose line and link to E-mail sending, box rows as list rows, button ranks, the box form's fields and switches
 - look-settings-maintenance-security.md: Site Settings Maintenance, Firewall, Security and Features in look A (S5b of panel-old-screens): quiet small buttons, group labels, the auto-bans table, what stayed
 - look-settings-other-categories.md: Site Settings Privacy to General and the settings page toolbar in look A (S5c of panel-old-screens): buttons, pills, tables, the date format segments, what stayed
+- look-settings-pages-outside.md: Settings pages outside the Site Settings dialog in look A (S6b): Application Access, Cloudflare Tools, Connected applications, Pair a device; what moved, what stayed
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why [decision: here]
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
