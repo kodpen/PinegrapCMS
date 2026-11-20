@@ -562,3 +562,19 @@ function test_page_bundle_take_back_query_failure_is_a_failed_page()
 	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $locked, 'output_error() throws while pages come back');
 	pg_assert_contains('pg_page_bundle_publish_ops(', $locked, 'a throw from a page is that page failing');
 }
+
+// A page added while the bundle is being published was written as waiting
+// into a bundle that then went published: never published, never held, shown
+// as waiting for good. Adding takes the bundle's lock and reads its status
+// under it, as removing does.
+function test_page_bundle_add_runs_under_the_lock()
+{
+	foreach (array('pg_page_bundle_add_copy', 'pg_page_bundle_add_draft') as $function) {
+		$source = pg_test_function_source($function);
+		pg_assert_contains('pg_page_bundle_with_lock(', $source, $function . ' under the lock');
+		pg_assert_contains($function . '_locked(', $source, $function . ' with the bundle read under it');
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/design_bundles.php');
+	pg_assert_contains('api_design_bundle_run(', pg_test_function_source('api_design_bundles_pages_add'), 'the API answers a busy bundle with bundle_busy');
+}
