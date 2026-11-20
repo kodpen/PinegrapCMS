@@ -53,6 +53,21 @@ function test_connections_google_translate_page_card_keeps_the_languages_gate()
 	pg_assert_contains("return pg_settings_may_open('languages', \$user);", $screen, 'the gate is the Languages and Translation category');
 	pg_assert_contains("in_array(\$action, array('translate_save', 'translate_remove'), true) && connections_languages_may_manage(\$user)", $screen, 'the write checks the gate');
 	pg_assert_contains('name="translation_google_key" value=""', $screen, 'the stored key is never drawn back');
+	pg_assert_contains("'languages'    => (\$page_id === 'google_translate') && connections_languages_may_manage(\$user)", $screen, 'the details card takes the same right as the write');
+}
+
+function test_connections_google_translate_page_works_without_the_workspace()
+{
+	pg_assert_false(isset(pg_ai_connection_services()['google_translate']), 'not an AI provider connection, so the Workspace gate of the assistants does not hide it');
+	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('google_translate', array('languages' => true, 'ai' => false, 'manager' => false)), 'the key is typed without the assistants\' right or the Workspace');
+
+	$screen = connections_google_translate_test_source('connections.php');
+	$start = strpos($screen, 'function connections_translate_page(');
+	$end = strpos($screen, "\n}\n", $start);
+	$page = substr($screen, $start, $end - $start);
+
+	pg_assert_true(($start !== false) && ($end !== false), 'the page function is found');
+	pg_assert_false((strpos($page, 'ws_') !== false) || (strpos($page, 'WORKSPACE') !== false), 'the page reads nothing of the Workspace');
 }
 
 function test_connections_google_translate_registry_and_anchor_follow_the_move()

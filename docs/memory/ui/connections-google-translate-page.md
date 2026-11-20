@@ -24,7 +24,8 @@ module: connections_screen
 - The attribution switch stays: it decides what the site's pages show, though Google's terms ask for it.
 - Pinegrap AI and Claude hold no key here; their connections are the Workspace's (CX9, `api/ai-connections.md`).
 
-## Was the move cleared?
-- Poll 147 (`workflow/decisions-made-product-76.md`) kept this key on Languages and Translation when the AI keys merged; whether CX11 moves it is asked of the architect in the PR's Decision question.
+## Why does it move, after poll 147?
+- Architect (2026-11-20, agent channel message 10151): it moves. Poll 147's unchosen option moved it to Assistants and agents, not Connections; message 9372 and poll 149 put every key of an outside service on its page.
+- Poll 147's two reasons stay pinned in the test: the page works with the Workspace off (no `ws_` read, not an AI provider connection), and the write keeps the Languages and Translation right.
 
 Tests: `tests/connections_google_translate_test.php`.
