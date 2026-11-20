@@ -17,10 +17,9 @@ description: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the 
   - Pictures: one ticket, four tickets, a void one, a phone, the printed page. To the owner; not marked ready before his look.
   - Features: T5, T6.
 
-- TK3 (M) after TK1: the check-in screen. Built in #10587 (draft until the owner's look at the phone pictures).
+- TK3 (M) after TK1: the check-in screen. Done in #10587.
   - New: the root screen `event_check_in.php` and its script (the browser's barcode reader, the typed code).
   - Tests: the one UPDATE under two scans at once; each answer of T8; an event's ticket refused without the calendar's right and a product's without the commerce right.
-  - Pictures on a phone: the pick, a valid scan, a second scan, a wrong event, the name search. To the owner.
   - Features: T7, T8, T9.
 
 - TK4 (M) after TK1: places given back and the waiting list.
