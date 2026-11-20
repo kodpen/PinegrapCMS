@@ -7932,7 +7932,7 @@ function upgrade_2026_11_0_erp_stock_days() {
 
 			if (!in_array('erp_stock_plan_job', $list, true)) {
 				$list[] = 'erp_stock_plan_job';
-				db("UPDATE config SET job_dispatch = '" . e(implode(',', $list)) . "'");
+				db_q("UPDATE config SET job_dispatch = ?", array(implode(',', $list)));
 			}
 
 		}
