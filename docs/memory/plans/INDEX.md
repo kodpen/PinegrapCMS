@@ -100,6 +100,9 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- order-profit-features.md: Plan order-profit, features N1 to N14: an order's cost rows, product cost, payment fee, marketplace deductions, shipping, revenue, profit, the pass, the screens, break-even, bell, API
+- order-profit-steps.md: Plan order-profit, steps NP1 to NP7: the cost record and the pass, payment fees, label prices, Trendyol deductions, the screens, break-even with bell and API, close-out
+- order-profit.md: Plan (owner 2026-11-20, agent channel poll 164): every order's costs and net profit (product, payment fee, marketplace, shipping), by product and channel, break-even price, bell, API; NP1 to NP7
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
