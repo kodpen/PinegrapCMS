@@ -20,7 +20,7 @@ module: editor, picker
 ## What went with the image window?
 - `editor_select_image.php`, its test, `add_file.php`'s `uploadreturn` redirect back to it, `filebrowserImageBrowseUrl` and the browse window size of `_pg_wysiwyg_file_properties()`; Cleanup lists the file for sites that still carry it. The tests that read its source lost those cases.
 
-## Where are the Design Canvas and the Workspace paperclip?
+## Where are the Artifact Canvas and the Workspace paperclip?
 - PK9b: `picker-site-lists.md`.
 
 Tests: `tests/editor_bridge_js_test.php` (`test_editor_bridge_picture_items`, `test_editor_bridge_image_window_deleted`), `tests/theme_designer_entries_test.php`, `tests/editor_file_properties_test.php`. Related: picker-editor-bridge.md, picker-dialog.md

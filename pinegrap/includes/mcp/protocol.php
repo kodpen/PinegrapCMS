@@ -366,7 +366,19 @@ function pg_mcp_instructions() {
 		. 'Lists are paged: pass page.next_cursor back as cursor while page.has_more is true. '
 		. 'Writes that accept dry_run can be checked first with dry_run: true, which writes nothing. '
 		. 'A failed call returns the API\'s error object with a stable code and a message.'
+		. "\n\n" . implode("\n", pg_mcp_instructions_guide())
 		. "\n\nRules:\n" . implode("\n", pg_mcp_instructions_rules());
+
+}
+
+// The two lines of pg_mcp_instructions() that point at the guide
+// (includes/fn/agent_guide.php): what it holds, and when to read a topic.
+function pg_mcp_instructions_guide() {
+
+	return array(
+		'Guide: the resource pinegrap://guide or the tool guide_read says what the site is made of (pages, designs, regions, system widgets, forms, products, orders, channels) and which tool does which job; read its topic start first.',
+		'Before the first work in an area (the Visual Page Editor, forms, the store, the Workspace), read that area\'s topic of the guide.'
+	);
 
 }
 

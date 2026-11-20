@@ -300,12 +300,19 @@ function test_carrier_label_basitkargo_label_and_track()
 {
 	carrier_label_basitkargo_test_stub(array(
 		'GET /label/svg/888-6AR-OUP' => array('label.svg'),
-		'GET /v2/order/888-6AR-OUP'  => array('order_shipped.json', 'order_lost.json'),
+		'GET /v2/order/888-6AR-OUP'  => array(
+			'order_shipped.json',
+			'order_lost.json',
+			array(200, '{"id": "888-6AR-OUP", "barcode": "BK4815162342", "status": "", "traces": []}'),
+			array(200, '{"id": "888-6AR-OUP", "barcode": "BK4815162342", "status": "TELEPORTED", "traces": []}'),
+		),
 	));
 
 	$label = pg_label_call('basitkargo', 'label', array('888-6AR-OUP', 'svg', carrier_label_basitkargo_test_account()));
 	$track = pg_label_call('basitkargo', 'track', array('888-6AR-OUP', carrier_label_basitkargo_test_account()));
 	$lost = pg_label_call('basitkargo', 'track', array('888-6AR-OUP', carrier_label_basitkargo_test_account()));
+	$fresh = pg_label_call('basitkargo', 'track', array('888-6AR-OUP', carrier_label_basitkargo_test_account()));
+	$new = pg_label_call('basitkargo', 'track', array('888-6AR-OUP', carrier_label_basitkargo_test_account()));
 	$pdf = pg_label_call('basitkargo', 'label', array('888-6AR-OUP', 'pdf', carrier_label_basitkargo_test_account()));
 	$bad = pg_label_call('basitkargo', 'label', array('../firm/balance', 'svg', carrier_label_basitkargo_test_account()));
 	$sent = carrier_label_basitkargo_test_sent();
@@ -323,9 +330,18 @@ function test_carrier_label_basitkargo_label_and_track()
 	pg_assert_true($lost['success']);
 	pg_assert_same('exception', $lost['status']);
 
+	// An order the carrier has not scanned yet is created, not a failure.
+	pg_assert_true($fresh['success'], $fresh['error']);
+	pg_assert_same('created', $fresh['status']);
+	pg_assert_same(0, $fresh['status_at']);
+	pg_assert_same('888-6AR-OUP', $fresh['reference']);
+	pg_assert_false($new['success'], 'a status Basit Kargo added later is not read as created');
+	pg_assert_false($new['unclear']);
+	pg_assert_false(pg_label_basitkargo_track_answer(array('status' => ''), '888-6AR-OUP')['success'], 'a webhook message without a status moves nothing');
+
 	pg_assert_false($pdf['success'], 'SVG only');
 	pg_assert_false($bad['success']);
-	pg_assert_same(3, count($sent), 'nothing sent for a PDF or a reference of another shape');
+	pg_assert_same(5, count($sent), 'nothing sent for a PDF or a reference of another shape');
 
 	foreach (array('NEW' => 'created', 'READY_TO_SHIP' => 'created', 'SHIPPED' => 'in_transit', 'DELAYED' => 'in_transit',
 		'DELIVERED' => 'delivered', 'RETURNING' => 'returned', 'RETURNED' => 'returned', 'NEEDS_SUPPORT' => 'exception', 'ODD' => '') as $code => $status) {

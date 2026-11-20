@@ -8,8 +8,9 @@
  *   - Money in: each collection of at least the amount the store chose, as
  *     soon as it is recorded - at the counter, on the receipt screen, through
  *     the API or from an online payment.
- *   - Low stock: the products that have dropped to or below their minimum
- *     since the last notice, from the ERP's scheduled job.
+ *   - Low stock: the planned products whose order-by day has come, and the
+ *     other products that have dropped to or below their minimum, since the
+ *     last notice, from the ERP's scheduled job.
  *   - Quotes about to run out: the open quotes whose date comes within the
  *     days the store chose, from the same job (8.58).
  *   - An order that was due its automatic invoice and did not get one, with
@@ -189,20 +190,43 @@ function erp_alert_event($event, $payload)
 }
 
 /**
- * The products newly at or below their minimum, in one notice.
+ * The low stock notices: the planned products whose order-by day has come,
+ * and the other products newly at or below their minimum.
  *
- * A product is announced once when it drops; a product back above its
- * minimum is announced again the next time it drops. Run from the ERP's
- * scheduled job, so a sale anywhere - the shop, the counter, a marketplace,
- * the API - is caught within one run.
+ * A planned product (a stock plan row with enough history,
+ * includes/erp/stock_plan.php) is announced once when its plan turns to
+ * "order now" or "runs out before goods can come", with the days left and
+ * the order-by day; it is announced again after its plan has left those
+ * states (erp_stock_plan.notice_at). Its minimum no longer raises a notice.
+ * A product without a plan, or without enough history, keeps the minimum
+ * notice: announced once when it drops; a product back above its minimum is
+ * announced again the next time it drops. Run from the ERP's scheduled job,
+ * so a sale anywhere - the shop, the counter, a marketplace, the API - is
+ * caught within one run; the plan itself is rebuilt every night.
  *
- * @return array ['ran' => bool, 'count' => int, 'notification_id' => int]
+ * @return array ['ran' => bool, 'count' => int (both notices),
+ *               'notification_id' => int (the minimum notice),
+ *               'planned' => int, 'plan_notification_id' => int]
  */
 function erp_alert_low_stock()
 {
-    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0);
+    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0, 'planned' => 0, 'plan_notification_id' => 0);
 
-    if (!erp_alert_settings()['low_stock'] || !function_exists('erp_stock_minimums_ready') || !erp_stock_minimums_ready()
+    if (!erp_alert_settings()['low_stock']) {
+        return $result;
+    }
+
+    $plan = erp_alert_stock_plan_ready();
+
+    if ($plan) {
+        $result['ran'] = true;
+        $announced = erp_alert_low_stock_plan();
+        $result['planned'] = $announced['count'];
+        $result['plan_notification_id'] = $announced['notification_id'];
+        $result['count'] += $announced['count'];
+    }
+
+    if (!function_exists('erp_stock_minimums_ready') || !erp_stock_minimums_ready()
         || !waf_table_has_column('erp_stock_minimums', 'notified_at')) {
         return $result;
     }
@@ -219,7 +243,7 @@ function erp_alert_low_stock()
     $rows = (array) db_items("SELECT p.id AS product_id, p.name AS product_sku, p.short_description AS product_name, p.inventory_quantity, m.min_quantity
         FROM erp_stock_minimums m
         INNER JOIN products p ON p.id = m.product_id
-        WHERE m.min_quantity > 0 AND m.notified_at = 0 AND p.inventory = '1' AND p.enabled = '1' AND p.inventory_quantity <= m.min_quantity
+        WHERE " . implode(' AND ', erp_alert_low_stock_minimum_where($plan)) . "
         ORDER BY (m.min_quantity - p.inventory_quantity) DESC, p.id ASC
         LIMIT 500");
 
@@ -234,7 +258,7 @@ function erp_alert_low_stock()
 
     // title is the number of products; product_id the first of them, the one
     // named when it is the only one.
-    $result['count'] = count($rows);
+    $result['count'] += count($rows);
     $result['notification_id'] = erp_alert_create(array(
         'action' => 'erp_low_stock',
         'type' => 'warning',
@@ -244,6 +268,122 @@ function erp_alert_low_stock()
     ), false);
 
     db("UPDATE erp_stock_minimums SET notified_at = UNIX_TIMESTAMP() WHERE product_id IN (" . implode(', ', $ids) . ")");
+
+    return $result;
+}
+
+/**
+ * Whether the stock plan is there to announce from (2026.11.0, 11.0.251).
+ *
+ * @return bool
+ */
+function erp_alert_stock_plan_ready()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+
+    return erp_stock_plan_cache_ready();
+}
+
+/**
+ * The conditions of the minimum notice. With the stock plan in place a
+ * product whose plan has enough history is left to the plan's notice. Pure.
+ *
+ * @param bool $plan The stock plan table is in place.
+ * @return array
+ */
+function erp_alert_low_stock_minimum_where($plan)
+{
+    $where = array(
+        "m.min_quantity > 0",
+        "m.notified_at = 0",
+        "p.inventory = '1'",
+        "p.enabled = '1'",
+        "p.inventory_quantity <= m.min_quantity",
+    );
+
+    if ($plan) {
+        $where[] = "NOT EXISTS (SELECT 1 FROM erp_stock_plan sp WHERE sp.product_id = p.id AND sp.state <> 'no_history')";
+    }
+
+    return $where;
+}
+
+/**
+ * The plan states the bell announces. Pure.
+ *
+ * @return array
+ */
+function erp_alert_plan_states()
+{
+    return array('runs_out', 'order_now');
+}
+
+/**
+ * The bell row of the planned products to order, most urgent first. The
+ * notice carries the first one's days left and order-by day in order_total
+ * as "days|Y-m-d" (the day empty when the lead time is unknown), which tells
+ * it from the minimum notice (includes/notifications.php). Pure.
+ *
+ * @param array $rows product_id, days_left, order_by_day
+ * @return array create_notification()'s properties, empty for no rows
+ */
+function erp_alert_plan_notice(array $rows)
+{
+    if (empty($rows)) {
+        return array();
+    }
+
+    $first = $rows[0];
+    $day = (string) ($first['order_by_day'] ?? '');
+
+    return array(
+        'action' => 'erp_low_stock',
+        'type' => 'warning',
+        'title' => (string) count($rows),
+        'product_id' => (int) $first['product_id'],
+        'order_total' => max(0, (int) $first['days_left']) . '|' . (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) ? $day : ''),
+        'user' => 'system',
+    );
+}
+
+/**
+ * Announce the planned products whose plan turned to order now or runs out
+ * since their last notice, in one notice.
+ *
+ * @return array ['count' => int, 'notification_id' => int]
+ */
+function erp_alert_low_stock_plan()
+{
+    $result = array('count' => 0, 'notification_id' => 0);
+    $states = "'" . implode("', '", erp_alert_plan_states()) . "'";
+
+    // Out of those states (or no longer tracked, or off sale): ready to be
+    // announced the next time its plan turns.
+    db("UPDATE erp_stock_plan sp
+        INNER JOIN products p ON p.id = sp.product_id
+        SET sp.notice_at = 0
+        WHERE sp.notice_at > 0 AND (sp.state NOT IN (" . $states . ") OR p.inventory <> '1' OR p.enabled <> '1')");
+
+    $rows = (array) db_items("SELECT sp.product_id, sp.days_left, sp.order_by_day
+        FROM erp_stock_plan sp
+        INNER JOIN products p ON p.id = sp.product_id
+        WHERE sp.notice_at = 0 AND sp.state IN (" . $states . ") AND p.inventory = '1' AND p.enabled = '1'
+        ORDER BY sp.days_left ASC, sp.product_id ASC
+        LIMIT 500");
+
+    if (empty($rows)) {
+        return $result;
+    }
+
+    $ids = array();
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['product_id'];
+    }
+
+    $result['count'] = count($rows);
+    $result['notification_id'] = erp_alert_create(erp_alert_plan_notice($rows), false);
+
+    db("UPDATE erp_stock_plan SET notice_at = UNIX_TIMESTAMP() WHERE product_id IN (" . implode(', ', $ids) . ")");
 
     return $result;
 }

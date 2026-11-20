@@ -226,6 +226,9 @@ function pg_panel_designer($request, $action)
                             'page_load', 'seo_check', 'import_fragment',
                             'form_fields', 'preview_widgets', 'widget_ghosts',
                             'revisions_list', 'revision_get', 'prototype_map');
+        // The "Clicks" layer's figures: the sub action asks the Visitors
+        // right itself.
+        $content_ok[] = 'page_clicks';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -1237,6 +1240,37 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
             respond(pg_proto_links_panel($sub, $request, $user));
+            break;
+
+        // The figures of the "Clicks" layer (assets/js/style_designer_clicks.js):
+        // one page over the last 30 days, all devices or one, in the shape
+        // GET /reports/page-clicks gives a page. Read-only, for whoever may
+        // open Visitors, the right sdDesign.clicks is handed by
+        // (pg_page_clicks_designer_config()). Labels and addresses were sent
+        // by visitors' browsers: the part draws them as text.
+        case 'page_clicks':
+            if (!pg_page_clicks_may_view($user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if (!pg_page_clicks_ready()) {
+                respond(array('status' => 'error', 'message' => lang('The database has not been upgraded yet. Run the software update first.')));
+            }
+            $pc_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            $pc_name = ($pc_page > 0) ? db_value("SELECT page_name FROM page WHERE page_id = '" . $pc_page . "'") : null;
+            if (($pc_name === null) || ($pc_name === false)) {
+                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+            }
+            $pc_device = (isset($request['device']) && is_string($request['device'])) ? $request['device'] : '';
+            $pc_window = pg_page_clicks_designer_window(time());
+            if (!defined('PG_API_PANEL')) {
+                define('PG_API_PANEL', true);
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/page_clicks.php');
+            respond(array(
+                'status' => 'success',
+                'page'   => api_page_clicks_page_present($pc_page, (string)$pc_name,
+                    pg_page_clicks_page($pc_page, $pc_window[0], $pc_window[1], $pc_device)),
+            ));
             break;
 
         default:

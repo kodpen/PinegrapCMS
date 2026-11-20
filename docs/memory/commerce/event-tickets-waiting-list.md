@@ -32,4 +32,4 @@ module: stock_notify
 
 Test: `tests/event_waiting_list_test.php` (step run twice on stubs).
 
-Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/back-in-stock-notices.md, docs/memory/plans/event-tickets.md
+Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/back-in-stock-notices.md, docs/memory/commerce/event-tickets.md

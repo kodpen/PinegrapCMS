@@ -107,6 +107,11 @@ function webhook_payloads_test_builders()
 		'pg_order_reservation_event' => function () {
 			return pg_order_reservation_event(array('calendar_event_id' => 3, 'recurrence_number' => 0, 'quantity' => 2, 'order_item_id' => 9), 4, array('order_id' => 1, 'order_number' => 1001), '2026-11-20 10:00:00');
 		},
+		'pg_check_in_ticket_event' => function () {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_check_in.php');
+
+			return pg_check_in_ticket_event(array('id' => 3, 'order_id' => 1, 'order_number' => 1001, 'order_item_id' => 9, 'unit' => 2, 'product_id' => 5, 'calendar_event_id' => 4, 'recurrence_number' => 0, 'used_at' => 1000, 'used_by' => 7));
+		},
 		'pg_campaign_sent_event' => function () {
 			return pg_campaign_sent_event('email', 4, 'manual');
 		},

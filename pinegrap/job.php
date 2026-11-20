@@ -138,6 +138,10 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Stock holds that ran out a day ago (includes/fn/stock_holds.php): they
+// already count for nothing, the sweep keeps the table small.
+pg_stock_hold_sweep_daily();
+
 // Pre-orders whose date has come or whose stock is in end (includes/fn/
 // preorder.php): the flag is cleared, the back order stays. Once an hour.
 $preorders_ended = pg_preorder_end_hourly();
@@ -206,6 +210,13 @@ if ($card_data_cleared > 0) {
 
     log_activity(lang(array('string' => 'Card data was removed from {var:1} order(s).', 'vars' => array(pg_format_number($card_data_cleared, 0)))), 'UNKNOWN');
 
+}
+
+// Referral rewards whose try at completion found the referrer's rewards busy
+// (includes/fn/referral.php): tried again, ten a tick; one small read while
+// none waits.
+if (ECOMMERCE) {
+    pg_referral_pending_run(10);
 }
 
 // If commerce is enabled and there is at least one enabled campaign profile

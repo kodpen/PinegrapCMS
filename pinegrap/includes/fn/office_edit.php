@@ -1778,6 +1778,10 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang(array('string' => 'Sheet {var:1} is too large to change here.', 'vars' => array($sheet)));
     }
 
+    if (strpos((string) $code, 'sheets_') === 0) {
+        return pg_office_sheets_message($code, $sheet);
+    }
+
     return pg_office_shift_message($code, $cell, $sheet);
 }
 
@@ -1886,10 +1890,17 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
         return $fail('many');
     }
 
-    // A row or column inserted or deleted is a save of its own
-    // (includes/fn/office_shift.php).
+    // A row or column inserted or deleted (includes/fn/office_shift.php),
+    // or a sheet added, renamed, deleted or moved
+    // (includes/fn/office_sheets.php), is a save of its own.
     foreach ($changes as $change) {
         if (is_array($change) && isset($change['op'])) {
+            $sheets = (count($changes) === 1) ? pg_office_sheets_request($change) : null;
+
+            if ($sheets !== null) {
+                return pg_office_xlsx_sheets_save($path, $sheets, (string) $version, $directory, $fail);
+            }
+
             $shift = (count($changes) === 1) ? pg_office_shift_request($change) : null;
 
             if ($shift === null) {
@@ -1985,7 +1996,7 @@ function pg_office_xlsx_save_locked($path, $wanted, $version, $directory, $fail)
  * @param string   $version   what the person opened (pg_office_version())
  * @param string   $directory where the copy and the part files are written
  * @param callable $fail      the refusal builder of the caller
- * @param callable $prepare   function (ZipArchive $zip, callable $spool): ok, parts (part name => file), changed; or a refusal. $spool(string $xml) writes a part and gives its file, or null.
+ * @param callable $prepare   function (ZipArchive $zip, callable $spool): ok, parts (part name => file), removed (optional, part names taken out), changed; or a refusal. $spool(string $xml) writes a part and gives its file, or null.
  * @return array ok, code, error, size, version, changed
  */
 function pg_office_save_package($path, $version, $directory, $fail, $prepare)
@@ -2030,6 +2041,15 @@ function pg_office_save_package($path, $version, $directory, $fail, $prepare)
         if ($package->open($new) !== true) {
             @unlink($new);
             return $fail('save');
+        }
+
+        // A part a change takes out (a deleted sheet's) goes first.
+        foreach ((isset($result['removed']) ? $result['removed'] : array()) as $name) {
+            if (($package->locateName($name) !== false) && !$package->deleteName($name)) {
+                $package->close();
+                @unlink($new);
+                return $fail('save');
+            }
         }
 
         foreach ($result['parts'] as $name => $file) {

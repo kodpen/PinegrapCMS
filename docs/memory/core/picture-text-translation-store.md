@@ -1,13 +1,13 @@
 ---
 name: picture-text-translation-store
-description: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+description: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
 module: picture_translation
 ---
 
 ## What enters the store?
 - `includes/fn/picture_translation.php`. A picture whose live document (the newest `file_versions` row, `ui/image-editor-versions.md`) has words gives them as owner type `file`: `owner_id` the file's id, `node_id` the layer's id, `field` `text` (a text layer) or `label` (a sticker), `position` their order (`pg_picture_tr_doc_words()`).
 - Only `doc.layers`, visible layers, through `pg_tr_normalize()` and `pg_tr_translatable()` (`translation-translatable-text.md`): `%50`, `₺199`, `KT-1` stay out, `199 TL only` enters. Same hash as a page's plain text, so one string, one translation.
-- Owner (2026-11-16): first version only pictures made in the Design Canvas, shown by a page in another language; product decision in `workflow/decisions-made-product-64.md`.
+- Owner (2026-11-16): first version only pictures made in the Artifact Canvas, shown by a page in another language; product decision in `workflow/decisions-made-product-64.md`.
 
 ## Which saves write the uses?
 - `pg_picture_tr_saved()` from `pg_file_versions_after_save()` (a photo's replace), `pg_image_editor_canvas_keep()` with `$words` true (only `pg_image_editor_save_canvas()`, a canvas in Files) and the Versions drawer's Restore (`pg_image_editor_action_restore()`).

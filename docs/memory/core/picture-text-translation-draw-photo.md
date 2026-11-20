@@ -1,11 +1,11 @@
 ---
 name: picture-text-translation-draw-photo
-description: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
+description: A photo with text layers drawn per language from the Artifact Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
 module: picture_translation
 ---
 
 ## Which photos are drawn?
-- A photo whose newest version holds its document over a base row (a save in the Design Canvas, `ui/image-editor-versions.md`) and whose file still holds that save's pixels: `pg_picture_tr_live_doc()` kind `photo` (`pg_picture_tr_doc_kind()`). A base the retention removed leaves nothing to draw on: no Languages button.
+- A photo whose newest version holds its document over a base row (a save in the Artifact Canvas, `ui/image-editor-versions.md`) and whose file still holds that save's pixels: `pg_picture_tr_live_doc()` kind `photo` (`pg_picture_tr_doc_kind()`). A base the retention removed leaves nothing to draw on: no Languages button.
 - The list answer adds `kind`, `base` (the base row's version id) and the file's `name`.
 
 ## What does the browser send?

@@ -205,9 +205,16 @@ function test_shipment_tracking_failures_change_nothing()
 	pg_assert_contains('E1055', $decision['error']);
 	pg_assert_false(strpos($decision['error'], 'gl-test-token-123456'), 'the token is masked');
 
-	// No status Geliver gives.
-	$decision = pg_shipment_tracking_decide($row, shipment_tracking_test_track(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":null}}'), 1800000000);
+	// A status code Geliver added later.
+	$decision = pg_shipment_tracking_decide($row, shipment_tracking_test_track(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":{"trackingStatusCode":"SOMETHING_NEW"}}}'), 1800000000);
 	pg_assert_false($decision['ok']);
+
+	// A label the carrier has not scanned yet: no failure, and nothing to
+	// write on a parcel that holds created.
+	$decision = pg_shipment_tracking_decide($row, shipment_tracking_test_track(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":null}}'), 1800000000);
+	pg_assert_true($decision['ok'], $decision['error']);
+	pg_assert_false($decision['write']);
+	pg_assert_false($decision['delivered']);
 
 	// A driver that answered nothing usable.
 	pg_assert_false(pg_shipment_tracking_decide($row, null, 1800000000)['ok']);

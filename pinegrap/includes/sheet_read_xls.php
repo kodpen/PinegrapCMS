@@ -819,8 +819,12 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
                 return array('t' => 'd', 'v' => pg_sheet_float_text($this->nineteenFour ? $number + 1462 : $number));
             }
 
-            // As the importers always took it: the float as PHP writes it.
-            return array('t' => 'n', 'v' => (string) $number);
+            // As the importers always took it: the float as PHP writes it;
+            // a whole number under a format of zeros as the sheet shows it.
+            $cell = array('t' => 'n', 'v' => (string) $number);
+            $digits = ($xf >= 0) ? $this->pg_xf_zero_digits($xf) : 0;
+
+            return ($digits > 0) ? pg_sheet_zero_pad($cell, $digits) : $cell;
         }
 
         if (($value === null) || ($value === '')) {
@@ -852,6 +856,25 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
         }
 
         return isset($this->pg_formats[$format]) && (pg_office_xlsx_format_kind($this->pg_formats[$format]) !== '');
+    }
+
+    /**
+     * The digits a cell style's number format always shows when it is a run
+     * of zeros (pg_sheet_zero_digits()), 0 for any other format. No
+     * built-in format is one.
+     *
+     * @param int $xf
+     * @return int
+     */
+    public function pg_xf_zero_digits($xf)
+    {
+        if (!isset($this->xfRecords[$xf]['formatIndex'])) {
+            return 0;
+        }
+
+        $format = (int) $this->xfRecords[$xf]['formatIndex'];
+
+        return isset($this->pg_formats[$format]) ? pg_sheet_zero_digits($this->pg_formats[$format]) : 0;
     }
 
     /**

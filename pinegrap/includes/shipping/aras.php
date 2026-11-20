@@ -1114,8 +1114,9 @@ function pg_label_aras_track($reference, $account)
     $row = pg_label_aras_latest_row(pg_label_aras_rows($read['result']));
     $status = pg_label_aras_status($row);
 
+    // No row, or a row without a waybill: Aras has not taken the parcel in.
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Aras Kargo gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return pg_label_track_not_scanned($code);
     }
 
     // The row dates the delivery and the waybill (the parcel taken in); for

@@ -981,7 +981,14 @@ function pg_label_kargonomi_track($reference, $account)
         return pg_label_kargonomi_failure($read, false);
     }
 
-    return pg_label_kargonomi_track_answer(pg_label_kargonomi_shipment_of($read['data']), $read['raw']);
+    $shipment = pg_label_kargonomi_shipment_of($read['data']);
+
+    // A shipment without a status has not been scanned by its carrier yet.
+    if (pg_label_kargonomi_text($shipment, 'status') === '') {
+        return pg_label_track_not_scanned($id);
+    }
+
+    return pg_label_kargonomi_track_answer($shipment, $read['raw']);
 }
 
 /**

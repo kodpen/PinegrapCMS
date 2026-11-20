@@ -1,6 +1,6 @@
 ---
 name: image-editor-outline
-description: The Design Canvas's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
+description: The Artifact Canvas's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 module: image_editor
 ---
 

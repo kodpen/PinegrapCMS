@@ -33,6 +33,7 @@ function api_console_group_labels() {
 
 	return array(
 		'meta'           => lang('Site info'),
+		'guide'          => lang('Guide for AI agents'),
 		'products'       => lang('Products'),
 		'product_groups' => lang('Product Groups'),
 		'product_attributes' => lang('Product Attributes'),

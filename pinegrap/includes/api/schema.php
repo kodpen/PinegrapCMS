@@ -71,6 +71,25 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		// No scope: the guide holds no record of the site, only how the
+		// software is used, so any valid credentials read it; 'mcp' => true
+		// offers it as a tool all the same (pg_mcp_route_is_offered()).
+		array(
+			'id'      => 'guide.read',
+			'method'  => 'GET',
+			'path'    => '/guide',
+			'scope'   => '',
+			'mcp'     => true,
+			'handler' => 'api_guide_read',
+			'returns' => array('version' => 'string', 'digest' => 'string', 'topic' => 'string?', 'section' => 'string?', 'topics' => 'string[]', 'text' => 'string'),
+			'summary' => 'Read the guide for AI agents',
+			'description' => 'How to work on this site, in Markdown: without topic the list of topics, with topic one topic, with section one of its sections. Read start first, then an area\'s topic before the first work in it. topics lists the ids open to this caller; digest changes whenever text does.',
+			'params'  => array(
+				array('name' => 'topic',   'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A topic id from topics, such as start.'),
+				array('name' => 'section', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A section id of that topic, the part after # in its headings.')
+			)
+		),
+
 		/* ----- Products ---------------------------------------------------- */
 
 		array(
@@ -138,6 +157,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Leave it out to follow the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool',   'description' => 'On by default.'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -187,6 +207,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Send an empty value to clear it, which puts the product back on the rate of the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -3157,6 +3178,25 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_tickets',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/tickets',
+			'scope'   => 'orders:read',
+			'handler' => 'api_calendar_event_tickets',
+			'returns' => array('list' => 'EventTicket', 'counts' => 'EventTicketCounts'),
+			'summary' => 'The tickets of an event',
+			'description' => 'One ticket per place of a placed order that reserved the event, oldest first, cursor paged, made when the order is completed while Tickets is on in Site Settings. state is valid, used (checked in at the door: checked_in_at and checked_in_by, the user who scanned it) or void (its order was cancelled). guest_name is the name the product form asked for that place, else the buyer\'s. counts gives sold (valid and used), checked_in and void for the event, or for the repeat asked, whatever the state filter. A ticket\'s code is never answered. An event on none of the calendars the owner may open is answered 404; 503 service_unavailable before the database update that adds tickets. The ticket.checked_in webhook announces each check-in.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the tickets of this repeat.'),
+				array('name' => 'state',             'in' => 'query', 'type' => 'enum', 'values' => array('valid', 'used', 'void'), 'description' => 'Only the tickets in this state.'),
 				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
 				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')

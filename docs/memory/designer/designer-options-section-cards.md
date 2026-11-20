@@ -6,7 +6,7 @@ description: The Options panel's identity row and section cards (D3, D6–D9, D1
 ## What stands at the top of the Options panel?
 - Since #10321 the identity row stands above the scroll with the tabs (`designer-options-tabs.md`).
 - The identity row (`_sdIdentityRow()`): the element's Overview icon in a 36 px box (a heading shows its level's glyph: H2 → `bi-type-h2`), its name (cut with an ellipsis), the tag it draws on the canvas (`_sdIdTag()`, never cut), the last three steps of its path (a click selects that parent; under 300 px only the last after "… ›"), and a three-dot menu: Duplicate, Delete, Show in Overview (`showCtxMenu()`, guarded as the canvas menu is). The root has no menu.
-- The brush (copy style) of the drawing is D27, a later step: it is not drawn before it works.
+- The brush beside the three dots: "Copy style" and "Paste style" (`designer-options-copy-style.md`).
 
 ## How are sections drawn?
 - `sect()` and `as()` both draw a card through `_sdSectMake()` / `_sdSectCard()`: arrow, name (no icon, so every name starts on one line), a count badge (absent at 0), and a summary shown while closed.
