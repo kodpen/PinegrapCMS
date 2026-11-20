@@ -91,3 +91,52 @@ function test_page_bundles_screen_says_what_add_a_draft_cleared()
 	pg_assert_contains('Its own publish time was cleared', $source, 'and says so');
 	pg_assert_contains('Changed since', $source, 'a replacement changed since its copy is marked');
 }
+
+function test_page_bundle_screen_actions_by_status()
+{
+	pg_assert_same(array('publish' => 'Publish', 'take_back' => false), pg_page_bundle_screen_actions('open'), 'an open bundle is published');
+	pg_assert_same(array('publish' => 'Publish', 'take_back' => false), pg_page_bundle_screen_actions('scheduled'), 'a scheduled one too, before its time');
+	pg_assert_same(array('publish' => 'Publish the rest', 'take_back' => true), pg_page_bundle_screen_actions('partial'), 'a partly published one publishes the rest or is taken back');
+	pg_assert_same(array('publish' => '', 'take_back' => true), pg_page_bundle_screen_actions('published'), 'a published one is taken back');
+	pg_assert_same(array('publish' => '', 'take_back' => false), pg_page_bundle_screen_actions('reverted'), 'a taken back one is closed');
+}
+
+function test_page_bundle_screen_posted_choices()
+{
+	pg_assert_same(array(4 => 'replace', 7 => 'leave'),
+		pg_page_bundle_screen_choices(array('4' => 'replace', '7' => 'leave', '9' => 'drop', 'x' => 'leave', '0' => 'replace', '5' => array('leave'))),
+		'only replace or leave for an item id');
+	pg_assert_same(array(), pg_page_bundle_screen_choices('replace'), 'not a list');
+	pg_assert_same(array(3, 8), pg_page_bundle_screen_kept(array('3', '8', 'x', '0', array(2), '3')), 'the kept item ids, once each');
+	pg_assert_same(array(), pg_page_bundle_screen_kept(null), 'none posted');
+}
+
+function test_page_bundle_screen_outcome()
+{
+	pg_assert_same(array('ok' => true, 'text' => 'The bundle was published: its pages are on the site.'),
+		pg_page_bundle_screen_outcome('publish', array('ok' => true, 'error' => '')), 'published');
+	pg_assert_same(array('ok' => true, 'text' => 'The bundle was taken back.'),
+		pg_page_bundle_screen_outcome('take_back', array('ok' => true, 'error' => '')), 'taken back');
+	pg_assert_same(array('ok' => false, 'text' => 'Busy.'),
+		pg_page_bundle_screen_outcome('publish', array('ok' => false, 'error' => 'Busy.', 'busy' => true)), 'the runner\'s own error');
+	pg_assert_same(array('ok' => false, 'text' => 'Moved.'),
+		pg_page_bundle_screen_outcome('publish', array('ok' => true, 'error' => 'Moved.')), 'written but the status could not move');
+	pg_assert_same(array('ok' => false, 'text' => 'The bundle cannot make that change now.'),
+		pg_page_bundle_screen_outcome('take_back', array('ok' => false, 'error' => '')), 'a failure without words');
+}
+
+function test_page_bundles_screen_publishes_and_takes_back()
+{
+	$source = _page_bundles_screen_source();
+
+	pg_assert_contains("\$action === 'publish'", $source, 'the screen handles a publish');
+	pg_assert_contains("\$action === 'take_back'", $source, 'and a take-back');
+	pg_assert_contains('pg_page_bundle_publish($bundle, $user, ', $source, 'through the locked publish');
+	pg_assert_contains('pg_page_bundle_take_back($bundle, $user, ', $source, 'and the locked take-back');
+	pg_assert_true(strpos($source, 'validate_token_field()') < strpos($source, 'pg_page_bundle_publish($bundle'), 'the token before the publish');
+	pg_assert_true(strpos($source, 'validate_token_field()') < strpos($source, 'pg_page_bundle_take_back($bundle'), 'and before the take-back');
+	pg_assert_contains('pg_page_bundle_publish_dialog($bundle, $publish_check', $source, 'the publish dialog is printed');
+	pg_assert_contains('pg_page_bundle_take_back_dialog($bundle, pg_page_bundle_take_back_check(', $source, 'the take-back dialog is printed');
+	pg_assert_contains('pg_page_bundle_screen_actions($bundle[\'status\'])', $source, 'the buttons follow the status');
+	pg_assert_contains('pgUI.dialog.show(', $source, 'the dialogs open through pgUI');
+}
