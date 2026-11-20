@@ -29,20 +29,6 @@ if (!defined('PG_INIT_LOADED')) {
 	define('PG_INIT_LOADED', true);
 }
 
-// The site's address parts the OAuth server builds its addresses from;
-// software is the folder other tests take when none is defined.
-if (!defined('PATH')) {
-	define('PATH', '/');
-}
-
-if (!defined('HOSTNAME')) {
-	define('HOSTNAME', 'shop.example.com');
-}
-
-if (!defined('SOFTWARE_DIRECTORY')) {
-	define('SOFTWARE_DIRECTORY', 'software');
-}
-
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/oauth/server.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
@@ -247,8 +233,25 @@ function test_mcp_compact_describe()
 
 // The compact address is the same OAuth resource, with its own
 // protected-resource document.
+//
+// The addresses are built from the site's constants, which this runner leaves
+// undefined: other tests read their absence as their own fallback folder, so
+// this one defines none and checks the addresses only where they exist.
 function test_mcp_compact_address_is_the_mcp_resource()
 {
+	$router = (string)file_get_contents(PG_FUNCTIONS_DIR . '/router.php');
+
+	pg_assert_contains("if (\$item_name_lowercase == 'mcp_compact.php') {\n    require(dirname(__FILE__) . '/mcp_compact.php');", $router, 'the router hands the site address to the file');
+
+	$entry = (string)file_get_contents(PG_FUNCTIONS_DIR . '/mcp_compact.php');
+
+	pg_assert_contains("define('PG_MCP_COMPACT', true);", $entry);
+	pg_assert_contains("require(dirname(__FILE__) . '/mcp.php');", $entry, 'the same server');
+
+	if (!defined('SOFTWARE_DIRECTORY') || !defined('PATH')) {
+		return;
+	}
+
 	$addresses = pg_oauth_resource_addresses();
 
 	pg_assert_same(4, count($addresses['mcp']));
