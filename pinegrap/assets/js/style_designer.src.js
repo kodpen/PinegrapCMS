@@ -91170,7 +91170,7 @@ const StyleDesigner = (function () {
         if (!name) return;
 
         if (typeof window.openImageEditor !== 'function') {
-            sdToast(_sdT('The Design Canvas is not loaded on this screen.'), 'error', 4000);
+            sdToast(_sdT('The Artifact Canvas is not loaded on this screen.'), 'error', 4000);
             return;
         }
 

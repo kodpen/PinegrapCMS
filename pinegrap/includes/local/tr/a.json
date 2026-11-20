@@ -8346,7 +8346,7 @@
     "access denied to turn off two-step verification for a higher-role user ({var:1})": "daha yüksek rollü bir kullanıcının iki adımlı doğrulamasını kapatma erişimi reddedildi ({var:1})",
     "access denied to unlock the installer because the administrator password was incorrect": "yönetici parolası hatalı olduğu için kurulum kilidini açma reddedildi",
     "access denied to unlock the installer because there were too many attempts": "çok fazla deneme yapıldığı için kurulum kilidini açma reddedildi",
-    "access denied to update content with image from the Design Canvas because user does not have access to edit it": "kullanıcının düzenleme erişimi olmadığından içerik, Tasarım Tuvali'nden gelen resimle güncellenemedi (erişim reddedildi)",
+    "access denied to update content with image from the Artifact Canvas because user does not have access to edit it": "kullanıcının düzenleme erişimi olmadığından içerik, Yapıt Tuvali'nden gelen resimle güncellenemedi (erişim reddedildi)",
     "access denied to update search index": "arama dizinini güncellemek için erişim reddedildi",
     "access denied to upload file because user does not have access to folder": "Kullanıcının klasöre erişimi olmadığı için dosya yükleme erişimi reddedildi",
     "access denied to upload file in editor because user did not have edit access to any folders": "kullanıcının herhangi bir klasöre düzenleme erişimi olmadığından düzenleyiciden dosya yüklemek erişimi reddedildi",
