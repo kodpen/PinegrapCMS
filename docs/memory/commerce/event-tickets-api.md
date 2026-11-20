@@ -26,6 +26,6 @@ module: event_tickets
 - Section `event_tickets` ("Event tickets", after `gift_cards`): the tickets of the person's orders, each with order id and number, unit, event name and date (`get_calendar_event()` of its repeat), product name, state and check-in time (`pg_event_tickets_export_row()`).
 - Architect (2026-11-20): the export lists a person's tickets with their order, never the code or its hash (`workflow/decisions-made-schema-29.md`). Not erased: `event-tickets-key.md`.
 
-Test: `tests/event_tickets_api_test.php`, `tests/privacy_export_test.php` (the pinned sections). Not run against a database.
+PR #10643. Test: `tests/event_tickets_api_test.php`, `tests/privacy_export_test.php` (the pinned sections). Not run against a database.
 
 Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/event-tickets-check-in.md, docs/memory/api/api-calendar-locations-reservations.md, docs/memory/core/personal-data-export.md

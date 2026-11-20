@@ -29,7 +29,7 @@ description: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the 
   - Tests: one request per address and date; a product's stock notice not mailing an event's requests, nor the reverse; places back on a cancel only with tickets on; two frees at once mailing a request once.
   - Features: T11 to T13, T15.
 
-- TK5 (S) after TK3: the API, the event and the product's mark on the product screen. `php tools/check_api_schema.php`. Features: T14, the screen side of T1.
+- TK5 (S) after TK3: the API, the event and the product's mark on the product screen. Done in #10643. `php tools/check_api_schema.php`. Features: T14, the screen side of T1.
   - The personal data export lists a person's tickets with their order: event, date, state and check-in time, never the code or its hash (architect, 2026-11-20, `workflow/decisions-made-schema-29.md`).
 
 - TK6 (S) close-out: every T number checked against the code with its PR; `commerce/event-tickets.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
