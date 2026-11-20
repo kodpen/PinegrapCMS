@@ -9,7 +9,7 @@ description: Decisions list, panel part 11 (2026-11-20 on): the Site Settings di
 ## Is the Site Settings dialog bigger? (owner, 2026-11-20, in the architect's window)
 - "ayarlar modalı daha büyük ve uzun olsun (tam genişlik değil)". Called urgent.
 - Why: the pane shows too little of a category at once.
-- Binds: wider and taller on a desktop, the screen still in sight at both sides. The values are the architect's (`plans/settings-dialog-size.md`, then `ui/settings-modal-layout.md`).
+- Binds: wider and taller on a desktop, the screen still in sight at both sides. The values are the architect's (`ui/settings-modal-layout.md`).
 
 ## Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
 - "Asistanlar ve ajanlar ayar sekmesi korkun durumda birsürü seçenek var kopya içerik gibi sürekli. mesela claude ai bağlama alanı uzunca scrolla sebep oluyor uzun çok. ardından bağdaştırıcılarda olan MCP sunucuları alanı geliyor. ayarları bir toparlayalım."

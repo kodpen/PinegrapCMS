@@ -9,7 +9,7 @@ module: office_sheets
 - `pg_office_xlsx_save()` hands it to `pg_office_xlsx_sheets_save()`, under the same lock, version check and package rebuild as cell and row saves. Mixed with other changes it is refused (`none`). No new endpoint, permission or schema.
 - `pg_office_save_package()` takes a `removed` list from its `$prepare` too: the parts a delete takes out of the package.
 - The preview of a workbook read for editing carries `sheets_edit` {ok, why: signed|password|protected}: whether the tabs may offer sheet changes.
-- The sheet tabs' menu that sends it is OE2b (`pg_office_view.js`), not built yet.
+- The sheet tabs' menu that sends it: `office-sheet-tabs.md`.
 
 ## What does each change write?
 - Add: an empty worksheet after the last sheet, as `xl/worksheets/sheetN.xml` (the first free N), with the next sheet id and relationship id, the content type and relationship type and namespaces the workbook's worksheets already have.

@@ -149,6 +149,8 @@ function test_workspace_personal_plan_tables_are_read_through_the_module_alone()
 		// sets it to 0; neither reads the plan.
 		'includes/fn/contacts.php',
 		'includes/fn/privacy.php',
+		// The personal data inventory counts its rows; it reads no plan.
+		'includes/fn/privacy_inventory.php',
 		'includes/migrations/2026.11.0.php',
 		'install/index.php',
 	);

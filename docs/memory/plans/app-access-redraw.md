@@ -21,7 +21,7 @@ priority: 8
 - A key also works as one token (`Authorization: Bearer`), the same secret in another shape, wherever the key is taken.
 - The agent's row and its channel rows are written by the functions the Agents card and "Agents in this channel" use (`ws_agents_settings_check()`, `ws_agents_settings_write()`, `ws_channel_agent_save()`): no second rule, the same rights (an agent is added by role 0).
 - "All write" ticks what moves money too, since the person asked for all: the picker marks those rows and counts them beside the button.
-- Claude Console is named in its guide at the owner's word; what its form asks is read on Anthropic's pages first (AA7), never guessed.
+- Claude Console is named in its guide at the owner's word, from what Anthropic's pages say (`app-access-redraw-console.md`), never guessed.
 
 ## What binds it?
 - No table and no column. No platform name on the automation starting point (owner, poll 121, `workflow/decisions-made-product-70.md`).
@@ -29,7 +29,7 @@ priority: 8
 - New parts by look A's recipes (`ui/look-new-parts.md`); every text through `lang()` and `php tools/tr_add.php`.
 
 ## What is built?
-- Features: `app-access-redraw-features.md`, `-features-2.md` (U1 to U14). Steps: `app-access-redraw-steps.md`. Claim as `[plan:app-access-redraw] <step> — <topic>`.
+- Features: `app-access-redraw-features.md`, `-features-2.md` (U1 to U14), `-console.md` (U15 to U18). Steps: `app-access-redraw-steps.md`. Claim as `[plan:app-access-redraw] <step> — <topic>`.
 
 ## What is left out?
 - The screen inside Connections, permissions by single route, a key that expires by date, more than one OAuth app. Each is a later yes.

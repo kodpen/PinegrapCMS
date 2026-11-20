@@ -11,7 +11,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `data/temp/ops_alerts_state.json`: send times, last pass, certificate reading; a cache.
 
 ## When is an alert sent again?
-- Once per code per 24 h (`pg_ops_alert_due()`): the later of the newest bell row and the state file. The send is claimed in the state file under `flock()` first, so two processes send once.
+- Once per code per 24 h (`pg_ops_alert_due()`): the later of the newest bell row and the state file; claimed in the state file under `flock()` first. With a subject (`pg_ops_alert($code, $detail, $subject)`, sales channels) once per code and subject, state file only (`pg_ops_alert_key()`, #10735).
 
 ## Which channels and settings?
 - Bell always (it is the record). E-mail (`ops_alert_email`) to `ops_alert_recipients` or the site address, queued; a `direct` code (`mail_failures`) is sent at once. Device banner (`ops_alert_push`) needs the Device notifications job.
@@ -24,13 +24,14 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `error_spike`: last MB of `php_errors.log` (and `.1` when written within the hour), lines dated in the site zone; names the most frequent message.
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
 - `payment_notice`: a payment callback's log line (`commerce/payment-callback.md`), PR #2143.
-- `cert_expiring`: only over https for a public host name; read once a day (`pg_ops_certificate_end()`, same reading as the Workspace web check), judged every pass; a failed reading says nothing.
+- `orders_stopped`, `payment_broken` (source `sales`): `commerce/sales-watch-flow.md`.
+- `cert_expiring`: https and a public host only; read once a day (`pg_ops_certificate_end()`), judged every pass; a failed reading says nothing.
 
 ## How does an alert name a failing webhook?
-- Scheme and host only (`https://hooks.example.com/…`, `pg_ops_alert_mask_url()`); path, query and user:password are cut: Slack, Discord and Zapier carry the secret in the path. Bell, mail, banner, System Status rows; the full URL stays on the webhook's edit screen. Older bell rows keep the full URL (#5057).
+- Scheme and host only (`pg_ops_alert_mask_url()`); path, query and user:password are cut: Slack, Discord and Zapier carry the secret in the path; the full URL stays on the webhook's edit screen (#5057).
 
 ## Which scheduled jobs count as stopped?
-- The catalogue's `stale_after`, as on the tile; the general job's is 2 h (was 6 h): it records its run before dispatching. When it is stopped it is the only one named, and since it cannot report its own death System Status and `health.php` call `pg_ops_alerts_check_cron()` too (mail then goes out directly).
+- The catalogue's `stale_after`, as on the tile; the general job's is 2 h (was 6 h). Stopped, it is the only one named; as it cannot report its own death System Status and `health.php` call `pg_ops_alerts_check_cron()` too (mail then goes out directly).
 - Inline job only while switched on (the mail pass always); dispatched job when selected or while dispatching is off; silent a week past its limit = retired, no longer alerted; never run is not a failure.
 
 ## How was it tested?

@@ -9,7 +9,7 @@ module: google_cloud
 - Their Account providers rows open the page; Dropbox keeps its drawer. The old addresses `connections.php#connections-google` / `#connections-microsoft` are sent to the page by the list's script (`$moved_drawers`).
 
 ## What does the page show?
-- "Status" ("Durum"): the state, the application's pill, the site's own accounts (`connections_account_items()`, shared with the drawer: Check, Connect again, Disconnect) and "Connect a Google account" (quiet).
+- "Status" ("Durum"): the state, the application's pill, the site's own accounts (`connections_account_items()`: Check, Connect again, Disconnect), "Connect a Google account" (quiet), then Mailboxes' part (`connections-mailboxes-accounts.md`).
 - "Connection details" ("Bağlantı bilgileri", manager, the screen's gate): `connections_app_form()` with the client, secret, options (Microsoft's tenant) and Google's "Use the Sign in with Google application"; writes return to the page.
 - In it, both redirect addresses (`pg_google_cloud_redirect_addresses()`: Sign in's and `connect.php`'s) each with Copy and the "both must be added" note, on both pages. The drawers still show the one connect address.
 - "Where it is used": `pg_connections_screen_provider_uses()`, each registry service the provider serves by its accounts or as sign-in (`covers.connect`), linking to its page.

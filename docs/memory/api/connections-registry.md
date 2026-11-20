@@ -30,5 +30,5 @@ module: connections_registry
 - Added, 1: OneNote (purpose `notes`, a person's pages into Workspace notes), which the census missed.
 
 ## How is a service added?
-- A row in `pg_connections_registry()` with its `covers`. The test fails while a key of a covered list has no row (payment and label drivers, `mp_providers()`, SMS, connect providers and purposes, model providers, the MCP catalogue, mail transports, address and captcha providers, cloud pickers, e-document drivers, chat notification kinds), unless `pg_connections_not_services()` names it with its reason.
+- A row in `pg_connections_registry()` with its `covers`, and its country and data (`core/privacy-inventory.md`). The test fails while a key of a covered list has no row (payment and label drivers, `mp_providers()`, SMS, connect and model providers, purposes, the MCP catalogue, mail, address and captcha, cloud pickers, e-document drivers, chat notifications), unless `pg_connections_not_services()` names it with its reason.
 - The test also fails for a place that is no card of its category nor a tool screen, and for a `reader` function that is declared nowhere.
