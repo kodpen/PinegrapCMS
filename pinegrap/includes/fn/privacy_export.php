@@ -53,6 +53,7 @@ function pg_privacy_export_sections()
         'returns'            => lang('Returns'),
         'refunds'            => lang('Refunds'),
         'gift_cards'         => lang('Gift cards'),
+        'event_tickets'      => lang('Event tickets'),
         'cart_quotes'        => lang('Cart quotes'),
         'form_submissions'   => lang('Form submissions'),
         'signatures'         => lang('Signatures'),
@@ -900,6 +901,35 @@ function pg_privacy_export_collect(array $found)
 
     foreach ($sections['gift_cards']['rows'] as $index => $row) {
         $sections['gift_cards']['rows'][$index]['code'] = pg_privacy_export_code_hint($row['code'] ?? '');
+    }
+
+    // Event tickets of the person's orders: what each is for, its state and
+    // check-in time. The code opens the door, so neither it nor its salt or
+    // hash is read (pg_event_tickets_export_row()).
+    if ($order_ids && function_exists('pg_event_tickets_ready') && pg_event_tickets_ready()) {
+        $sections['event_tickets'] = _pg_privacy_export_select(
+            "SELECT t.id, t.order_id, t.unit, t.calendar_event_id, t.recurrence_number, t.state, t.used_at,
+                o.order_number, p.short_description AS product_name
+            FROM event_tickets AS t
+            LEFT JOIN orders AS o ON o.id = t.order_id
+            LEFT JOIN products AS p ON p.id = t.product_id
+            WHERE " . _pg_privacy_export_in('t.order_id', $order_ids) . "
+            ORDER BY t.order_id, t.id",
+            $order_ids
+        );
+
+        $events = array();
+
+        foreach ($sections['event_tickets']['rows'] as $index => $row) {
+            $key = (int) $row['calendar_event_id'] . ':' . (int) $row['recurrence_number'];
+
+            if (((int) $row['calendar_event_id'] > 0) && !isset($events[$key])) {
+                $event = function_exists('get_calendar_event') ? get_calendar_event((int) $row['calendar_event_id'], (int) $row['recurrence_number']) : false;
+                $events[$key] = is_array($event) ? $event : array();
+            }
+
+            $sections['event_tickets']['rows'][$index] = pg_event_tickets_export_row($row, $events[$key] ?? array());
+        }
     }
 
     // Cart quotes made for the person, with their products; the link's token

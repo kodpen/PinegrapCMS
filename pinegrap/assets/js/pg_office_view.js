@@ -34,7 +34,9 @@
  * The view returned (for a workbook, and for a document read for editing)
  * tells the caller what was changed: view.kind ('xlsx' or 'docx'),
  * view.count(), view.edits() for the save request ([{sheet, name, cell,
- * value}] for a workbook, [{p, text}] for a document), view.version, and
+ * value}] for a workbook, or the one row or column to insert or delete,
+ * [{sheet, name, op, row}] / [{sheet, name, op, column}], chosen from a
+ * row's or column's head menu; [{p, text}] for a document), view.version, and
  * view.reset() to drop every change. What is being typed counts already, so
  * a Save pressed before Enter sends it too. Nothing is saved from here; the
  * window that drew the view sends the edits.
@@ -61,6 +63,11 @@
 
         return node;
     }
+
+    // A sheet's last row and column count (Excel's grid, as the server's
+    // PG_OFFICE_SHIFT_ROWS and PG_OFFICE_SHIFT_COLUMNS).
+    var SHEET_ROWS = 1048576;
+    var SHEET_COLUMNS = 16384;
 
     // 0 is A, 25 is Z, 26 is AA.
     function columnName(index) {
@@ -231,6 +238,47 @@
         return edit.protected ? (strings.sheet_protected || '') : '';
     }
 
+    // The class a cell or head takes from the row or column waiting to be
+    // inserted (a line drawn before or after the one chosen) or deleted
+    // (struck through).
+    function shiftMark(state, row, column) {
+        var pending = state ? state.pending : null;
+
+        if (!pending || ((pending.axis === 'row') ? row : column) !== pending.at) {
+            return '';
+        }
+
+        if (pending.place === 'delete') {
+            return 'office-shift-delete';
+        }
+
+        return 'office-shift-insert-' + pending.axis + ((pending.place === 'after') ? '-after' : '');
+    }
+
+    // A row's or a column's head: with `state.heads` a button that opens the
+    // menu to insert or delete it.
+    function headCell(axis, at, label, strings, state) {
+        var th = el('th', '', (state && state.heads) ? '' : label);
+        var marked = state ? shiftMark(state, (axis === 'row') ? at : -1, (axis === 'column') ? at : -1) : '';
+
+        if (marked) {
+            th.classList.add(marked);
+        }
+
+        if (state && state.heads) {
+            var button = el('button', 'office-head', label);
+            button.type = 'button';
+            button.tabIndex = -1;
+            button.setAttribute('data-axis', axis);
+            button.setAttribute('data-at', at);
+            button.setAttribute('aria-haspopup', 'menu');
+            button.setAttribute('aria-label', fill(strings['head_' + axis], label));
+            th.appendChild(button);
+        }
+
+        return th;
+    }
+
     // One sheet as a table. With `state` (a sheet offered for editing) the
     // cells carry what the keyboard and the mouse need: the row number on
     // each row, and the column by the cell's place in it.
@@ -259,7 +307,7 @@
         headRow.appendChild(el('th', 'office-corner', ''));
 
         for (var column = 0; column < width; column++) {
-            headRow.appendChild(el('th', '', columnName(column)));
+            headRow.appendChild(headCell('column', column, columnName(column), strings, state));
         }
 
         head.appendChild(headRow);
@@ -269,7 +317,7 @@
 
         sheet.rows.forEach(function (row) {
             var tr = el('tr');
-            tr.appendChild(el('th', '', row.n));
+            tr.appendChild(headCell('row', row.n, String(row.n), strings, state));
 
             if (state) {
                 tr.setAttribute('data-row', row.n);
@@ -286,6 +334,12 @@
                     if (own(state.changes, address)) {
                         value = state.changes[address];
                         td.classList.add('office-edited');
+                    }
+
+                    var marked = shiftMark(state, row.n, column);
+
+                    if (marked) {
+                        td.classList.add(marked);
                     }
 
                     if (lock) {
@@ -348,6 +402,13 @@
         // The sheet on show, and in it the selected cell and the open editor.
         var shown = { index: -1, table: null, cell: null, editor: null, note: '' };
 
+        // The one row or column waiting to be inserted or deleted: a save of
+        // its own, so cells are not changed beside it ({sheet, axis, at,
+        // place}; `at` is the row number or 0-based column chosen, `place`
+        // is before, after or delete).
+        var pending = null;
+        var menu = null;
+
         // The changes as they stand, with the value of the cell being typed
         // in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -378,10 +439,14 @@
             return list;
         }
 
-        function count() {
+        function cellCount() {
             return changesNow().reduce(function (total, sheetChanges) {
                 return total + Object.keys(sheetChanges).length;
             }, 0);
+        }
+
+        function count() {
+            return cellCount() + (pending ? 1 : 0);
         }
 
         function notify() {
@@ -395,7 +460,15 @@
         function sheetEditable(index) {
             var edit = office.sheets[index].edit;
 
-            return editable && !!edit && !!edit.ok;
+            return editable && !!edit && !!edit.ok && !pending;
+        }
+
+        // Rows and columns move on a sheet whose cells may change, unless it
+        // is protected (the server says why for whatever else it refuses).
+        function sheetShiftable(index) {
+            var edit = office.sheets[index].edit;
+
+            return editable && !!edit && !!edit.ok && !edit.protected;
         }
 
         // The value the file holds for a cell, as the server showed it.
@@ -428,10 +501,20 @@
                 parts.push(note);
             } else if (sheetEditable(shown.index)) {
                 parts.push(strings.edit_hint || '');
+
+                if (sheetShiftable(shown.index)) {
+                    parts.push(strings.shift_hint || '');
+                }
             }
 
-            if (count() > 0) {
-                parts.push(fill(strings.changed, count()) + (strings.recalc ? ' ' + strings.recalc : ''));
+            if (pending) {
+                var line = (pending.axis === 'row') ? pending.at : columnName(pending.at);
+
+                parts.push(fill(strings['shift_' + pending.axis + '_' + pending.place], line)
+                    + ' ' + (strings.shift_sheet ? fill(strings.shift_sheet, office.sheets[pending.sheet].name) : '')
+                    + (strings.recalc ? ' ' + strings.recalc : ''));
+            } else if (cellCount() > 0) {
+                parts.push(fill(strings.changed, cellCount()) + (strings.recalc ? ' ' + strings.recalc : ''));
             }
 
             if (shown.note) {
@@ -444,7 +527,7 @@
             var list = changesNow();
 
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                var edited = Object.keys(list[index]).length > 0;
+                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index);
                 var mark = tab.querySelector('.office-tab-changed');
 
                 tab.classList.toggle('office-tab-edited', edited);
@@ -652,6 +735,152 @@
             });
         }
 
+        function closeMenu(focus) {
+            if (!menu) {
+                return;
+            }
+
+            var opener = menu.opener;
+
+            menu.node.remove();
+            document.removeEventListener('mousedown', menu.outside, true);
+            menu = null;
+
+            if (focus && opener && opener.isConnected) {
+                opener.focus({ preventScroll: true });
+            }
+        }
+
+        function choose(axis, at, place) {
+            closeEditor(true);
+            pending = { sheet: shown.index, axis: axis, at: at, place: place };
+            show(shown.index);
+            notify();
+        }
+
+        function cancelPending() {
+            if (!pending) {
+                return;
+            }
+
+            var index = pending.sheet;
+
+            pending = null;
+
+            if (index === shown.index) {
+                show(index);
+            }
+
+            notify();
+        }
+
+        // What the menu offers for a row, a column or both (from a cell):
+        // nothing beside cell changes, and only an undo while a row or
+        // column waits.
+        function menuItems(lines) {
+            if (pending) {
+                return [{ label: strings.shift_undo, run: cancelPending }];
+            }
+
+            if (cellCount() > 0) {
+                return [{ label: strings.shift_first }];
+            }
+
+            var items = [];
+
+            lines.forEach(function (line) {
+                var name = (line.axis === 'row') ? line.at : columnName(line.at);
+                var last = (line.axis === 'row') ? (line.at >= SHEET_ROWS) : (line.at >= SHEET_COLUMNS - 1);
+
+                items.push({ label: strings[line.axis + '_before'], icon: 'bi-plus-lg', run: function () { choose(line.axis, line.at, 'before'); } });
+
+                // Nothing fits past the sheet's last row or column.
+                if (!last) {
+                    items.push({ label: strings[line.axis + '_after'], icon: 'bi-plus-lg', run: function () { choose(line.axis, line.at, 'after'); } });
+                }
+
+                items.push({ label: fill(strings[line.axis + '_delete'], name), icon: 'bi-trash', run: function () { choose(line.axis, line.at, 'delete'); } });
+            });
+
+            return items;
+        }
+
+        function openMenu(anchor, lines) {
+            closeMenu(false);
+
+            var node = el('div', 'menu show office-head-menu');
+            var buttons = [];
+
+            node.setAttribute('role', 'menu');
+            node.setAttribute('aria-label', strings.shift_menu || '');
+
+            menuItems(lines).forEach(function (item) {
+                var button = el('button', 'menu-item pg-link-body-emphasis');
+                button.type = 'button';
+                button.setAttribute('role', 'menuitem');
+                button.tabIndex = -1;
+
+                if (item.icon) {
+                    var icon = el('span', 'bi ' + item.icon);
+                    icon.setAttribute('aria-hidden', 'true');
+                    button.appendChild(icon);
+                }
+
+                button.appendChild(el('span', '', item.label || ''));
+
+                if (!item.run) {
+                    button.disabled = true;
+                    button.setAttribute('aria-disabled', 'true');
+                } else {
+                    button.addEventListener('click', function () {
+                        closeMenu(false);
+                        item.run();
+
+                        if (shown.cell && shown.cell.isConnected) {
+                            shown.cell.focus({ preventScroll: true });
+                        }
+                    });
+                    buttons.push(button);
+                }
+
+                node.appendChild(button);
+            });
+
+            node.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                var at = buttons.indexOf(document.activeElement);
+
+                if (event.key === 'Escape' || event.key === 'Tab') {
+                    event.preventDefault();
+                    closeMenu(true);
+                } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && buttons.length) {
+                    event.preventDefault();
+                    buttons[(at + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+                }
+            });
+
+            var place = anchor.getBoundingClientRect();
+            var box = book.getBoundingClientRect();
+
+            node.style.left = Math.max(0, place.left - box.left) + 'px';
+            node.style.top = (place.bottom - box.top) + 'px';
+            book.appendChild(node);
+
+            menu = {
+                node: node,
+                opener: anchor,
+                outside: function (event) {
+                    if (menu && !menu.node.contains(event.target)) {
+                        closeMenu(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', menu.outside, true);
+            (buttons[0] || node).focus({ preventScroll: true });
+        }
+
         function wireGrid(table) {
             // A cell reached with Tab is selected as a click would select it,
             // so the arrows, Enter and typing work on it at once.
@@ -660,6 +889,35 @@
 
                 if (td.tagName === 'TD' && td !== shown.cell && !shown.editor && !td.classList.contains('office-editing')) {
                     select(td);
+                }
+            });
+
+            function headMenu(event) {
+                var head = event.target.closest('.office-head');
+
+                if (!head || !sheetShiftable(shown.index)) {
+                    return false;
+                }
+
+                event.preventDefault();
+                openMenu(head, [{ axis: head.getAttribute('data-axis'), at: parseInt(head.getAttribute('data-at'), 10) }]);
+
+                return true;
+            }
+
+            table.addEventListener('click', headMenu);
+
+            table.addEventListener('contextmenu', function (event) {
+                if (headMenu(event)) {
+                    return;
+                }
+
+                var td = event.target.closest('td');
+
+                if (td && sheetShiftable(shown.index) && !td.classList.contains('office-editing')) {
+                    event.preventDefault();
+                    select(td);
+                    openMenu(td, [{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]);
                 }
             });
 
@@ -705,6 +963,20 @@
                     return;
                 }
 
+                // The menu key or Shift+F10 offers the cell's row and column.
+                if ((key === 'ContextMenu' || (key === 'F10' && event.shiftKey)) && sheetShiftable(shown.index)) {
+                    event.preventDefault();
+                    openMenu(td, [{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]);
+                    return;
+                }
+
+                if (key === 'Escape' && pending) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    cancelPending();
+                    return;
+                }
+
                 if (key === 'Tab') {
                     var beside = neighbour(td, 0, event.shiftKey ? -1 : 1);
 
@@ -740,6 +1012,7 @@
 
         function show(index) {
             closeEditor(true);
+            closeMenu(false);
 
             var sheet = office.sheets[index];
             var offered = editable && !!sheet.edit;
@@ -753,7 +1026,11 @@
                 pane.appendChild(el('div', 'office-note', strings.empty || ''));
                 shown.table = null;
             } else {
-                shown.table = sheetTable(sheet, strings, offered ? { changes: changes[index] } : null);
+                shown.table = sheetTable(sheet, strings, offered ? {
+                    changes: changes[index],
+                    heads: sheetShiftable(index),
+                    pending: (pending && pending.sheet === index) ? pending : null
+                } : null);
                 pane.appendChild(shown.table);
 
                 if (offered) {
@@ -882,6 +1159,17 @@
             edits: function () {
                 var list = [];
 
+                if (pending) {
+                    // The server inserts before the line it is sent, so a
+                    // line after the one chosen goes before the next one.
+                    var at = pending.at + ((pending.place === 'after') ? 1 : 0);
+                    var change = { sheet: pending.sheet, name: office.sheets[pending.sheet].name, op: (pending.place === 'delete') ? 'delete' : 'insert' };
+
+                    change[pending.axis] = (pending.axis === 'row') ? at : columnName(at);
+
+                    return [change];
+                }
+
                 changesNow().forEach(function (sheetChanges, index) {
                     Object.keys(sheetChanges).forEach(function (address) {
                         list.push({ sheet: index, name: office.sheets[index].name, cell: address, value: sheetChanges[address] });
@@ -892,6 +1180,7 @@
             },
             reset: function () {
                 shown.editor = null;
+                pending = null;
                 changes = office.sheets.map(function () { return {}; });
 
                 if (shown.index >= 0) {

@@ -14081,7 +14081,7 @@ const StyleDesigner = (function () {
             { __option_label: _sdT('Cream'), __option_value: 'cream', __option_id: 'thread-cream', __option_checked: '' }
         ],
         'order.return_delivery_lines': [
-            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
+            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1', __return_item_gift_card: '',
               __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
         ],
         // The rest of a week after the card's Monday: a month grid draws its
@@ -16963,7 +16963,7 @@ const StyleDesigner = (function () {
             __return_line_name: _sdT('Linen Shirt'), __return_line_qty: '1',
             __return_delivery_id: '1', __return_delivery_label: _sdT('Delivery 1'), __return_delivery_several: '',
             __return_delivery_deadline: day, __return_item_id: '1', __return_item_name: _sdT('Linen Shirt'),
-            __return_item_ordered: '2', __return_item_left: '2',
+            __return_item_ordered: '2', __return_item_left: '2', __return_item_gift_card: '',
             __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Linen Shirt'))
         };
         _sdOrderSampleMap = out;
@@ -25389,6 +25389,20 @@ const StyleDesigner = (function () {
         optPane.appendChild(searchWrap);
         optPane.appendChild(searchResults);
         if (props) optPane.appendChild(props);
+        // Under the panel, always at its bottom: the switch "Only what I
+        // changed" (_sdReviewFoot()).
+        var reviewFoot = document.createElement('div');
+        reviewFoot.id = 'sd-props-review';
+        reviewFoot.className = 'sd-review-foot';
+        reviewFoot.hidden = true;
+        reviewFoot.addEventListener('click', function (e) {
+            var sw = e.target.closest ? e.target.closest('.sd-review-switch') : null;
+            if (!sw) return;
+            _sdReviewSet(!_sdReviewOn);
+            var again = document.querySelector('#sd-props-review .sd-review-switch');
+            if (again) again.focus();
+        });
+        optPane.appendChild(reviewFoot);
         outer.insertBefore(designPane, outer.firstChild);
         outer.insertBefore(optPane, designPane);
         outer.insertBefore(header, optPane);
@@ -25496,6 +25510,8 @@ const StyleDesigner = (function () {
     // and says when there is none. Answers when the results are drawn.
     function _sdOptSearchRun(typed) {
         typed = String(typed || '').trim();
+        // The search looks through the tabs: the review view gives way.
+        if (typed && _sdReviewOn) { _sdReviewOn = false; renderProperties(); }
         filterPropertiesPanel(typed);
         if (!typed) { _sdOptSearchClose(); return Promise.resolve(); }
         // Once loaded the part ran inside the filter (_sdOptSearchRefine()).
@@ -25560,6 +25576,165 @@ const StyleDesigner = (function () {
     function _sdOptTabName(t) {
         return t === 'style' ? _sdT('Style') : t === 'advanced' ? _sdT('Advanced') : _sdT('Content');
     }
+
+    // ── "Only what I changed": the core's hooks ──
+    // The switch under the Options panel counts the rows of the element
+    // changed in its tabs. Switched on, the panel is drawn with every tab
+    // and every section's body, hidden, and the part 'review'
+    // (pg_options_review.js, style_designer_review.js) puts one list of
+    // the changed rows in the tabs' place: path, value, reset arrow, and
+    // "Reset all" as one undo step. It stays on from one element to the
+    // next while the editor is open; a search or a jump to a row leaves it.
+    var _sdReviewOn = false;
+    // Set while "Reset all" runs: the panel drawings it causes skip the list.
+    var _sdReviewBusy = false;
+
+    // The switch: its count is the tabs' counts added (`counts` by tab), no
+    // badge at 0; hidden for a panel without tabs (`counts` null). The
+    // narrow column reads the shorter words (CSS).
+    function _sdReviewFoot(counts) {
+        var foot = document.getElementById('sd-props-review');
+        if (!foot) return;
+        foot.hidden = !counts;
+        if (!counts) { foot.innerHTML = ''; return; }
+        var n = Object.keys(counts).reduce(function (sum, t) { return sum + (Number(counts[t]) || 0); }, 0);
+        var on = _sdReviewOn;
+        foot.classList.toggle('is-on', on);
+        foot.innerHTML = '<button type="button" class="sd-review-switch" role="switch" aria-checked="' + (on ? 'true' : 'false') + '">' +
+            '<span class="bi ' + (on ? 'bi-funnel-fill' : 'bi-funnel') + '" aria-hidden="true"></span>' +
+            '<span class="sd-review-txt">' + esc(_sdT('Only what I changed')) + '</span>' +
+            '<span class="sd-review-txt-n">' + esc(_sdT('What I changed')) + '</span>' +
+            (n ? '<span class="sd-review-count">' + n + '</span>' : '') +
+            '<span class="sd-review-knob" aria-hidden="true"></span>' +
+        '</button>';
+    }
+
+    // After a panel drawing: the switch, and while it is on the tabs and
+    // the panes hidden and the list drawn by the part under them.
+    function _sdReviewAfter(counts) {
+        _sdReviewFoot(counts);
+        var panel = document.getElementById('sd-properties');
+        var head = document.getElementById('sd-props-head');
+        var on = _sdReviewOn && !!counts && !!panel;
+        if (head) head.classList.toggle('sd-review-on', on);
+        if (panel) panel.classList.toggle('sd-review-on', on);
+        if (!on || _sdReviewBusy) return;
+        var box = document.createElement('div');
+        box.id = 'sd-review-list';
+        box.className = 'sd-review';
+        panel.appendChild(box);
+        _sdPartCall('review', 'draw', [_sdReviewHost()]).catch(_sdPartFailed);
+    }
+
+    // Switches the review view on or off and draws the panel at its top.
+    function _sdReviewSet(on) {
+        on = !!on;
+        if (on === _sdReviewOn) return;
+        _sdReviewOn = on;
+        var box = document.getElementById('sd-props-search');
+        if (on && box && box.value.trim()) {
+            box.value = '';
+            if (box.parentElement) box.parentElement.classList.remove('sd-has-q');
+            _sdPropsSearchEmpty('');
+            _sdOptSearchClose();
+        }
+        var panel = document.getElementById('sd-properties');
+        if (panel) panel.scrollTop = 0;
+        renderProperties();
+    }
+
+    // The changed rows of the drawn tabs, in the panel's order, as
+    // PGOptionsReview.list() reads them, each with its label element
+    // (`lbl`) and its place (`at`) among the rows of its outermost card,
+    // which a redraw keeps. `top` is that card's key (its id without one),
+    // '' outside a card: the tabs' badges count the same rows
+    // (_sdSectHeadsFill(), Translation's card left out).
+    function _sdReviewRows(panel) {
+        var out = [];
+        if (!panel) return out;
+        panel.querySelectorAll('[data-sd-otab] .sd-prop-label.sd-prop-modified, [data-sd-otab] .sd-sp-label.sd-prop-modified').forEach(function (lbl) {
+            var pane = lbl.closest('[data-sd-otab]');
+            var top = null;
+            for (var c = lbl.closest('[data-sd-card]'); c && pane.contains(c); c = c.parentElement ? c.parentElement.closest('[data-sd-card]') : null) top = c;
+            var title = top ? top.querySelector(':scope > .sd-sect-hdr .sd-sect-title') : null;
+            var row = lbl.closest('.sd-prop-row, .sd-sp-row');
+            var v = _sdChgRowOf(lbl);
+            out.push({
+                lbl: lbl,
+                tab: pane.getAttribute('data-sd-otab'),
+                top: top ? (top.getAttribute('data-sd-key') || top.getAttribute('data-sd-card') || '') : '',
+                card: top ? top.getAttribute('data-sd-card') : '',
+                at: (top && row) ? Array.prototype.indexOf.call(top.querySelectorAll('.sd-prop-row, .sd-sp-row'), row) : -1,
+                section: title ? title.textContent : '',
+                label: lbl.textContent,
+                text: v.text,
+                swatch: v.swatch,
+                mixed: !!v.mixed,
+                n: Number(lbl.dataset.mcN) || 0,
+                of: Number(lbl.dataset.mcOf) || 0
+            });
+        });
+        return out;
+    }
+
+    // One row back to its default, as its dot's reset arrow does it (one
+    // element or several, _sdControlsInit()).
+    function _sdReviewResetRow(lbl) {
+        var b = lbl ? lbl.previousElementSibling : null;
+        if (b && b.classList.contains('sd-chg-reset') && !b.disabled) b.click();
+    }
+
+    // "Reset all": every changed row back to its default as one undo step
+    // (PGOptionsReview.resetAll() inside _sdUndoAsOne()); a row is found
+    // again after each redraw by its tab, card and place. Answers how many
+    // rows were reset.
+    function _sdReviewResetAll() {
+        var R = window.PGOptionsReview;
+        if (!R) return 0;
+        var n = 0;
+        _sdReviewBusy = true;
+        try {
+            n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
+                var rows = _sdReviewRows(document.getElementById('sd-properties'));
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    if (!r.top || r.top === 'tr') continue;
+                    var key = r.tab + '|' + r.card + '|' + r.at;
+                    if (!done[key]) return { key: key, lbl: r.lbl };
+                }
+                return null;
+            }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+        } finally {
+            _sdReviewBusy = false;
+        }
+        renderProperties();
+        return n;
+    }
+
+    // What the part reads and calls.
+    function _sdReviewHost() {
+        var panel = document.getElementById('sd-properties');
+        var nodes = (selectedNodes.length > 1 ? selectedNodes.slice() : [selectedNode]).filter(Boolean);
+        return {
+            panel: panel,
+            box: document.getElementById('sd-review-list'),
+            rows: function () { return _sdReviewRows(panel); },
+            tabName: _sdOptTabName,
+            locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(nodes) || !!(panel && panel.querySelector('.sd-panel-readonly')); },
+            reset: _sdReviewResetRow,
+            resetAll: _sdReviewResetAll,
+            // The question before "Reset all": a promise of the answer.
+            ask: function (n) {
+                var msg = _sdT('The {var} changed options go back to their defaults. Undo brings them back.', n);
+                if (typeof window.pgConfirm === 'function') {
+                    return Promise.resolve(window.pgConfirm({ title: _sdT('Reset all changed options?'), message: msg,
+                        confirmText: _sdT('Reset all'), cancelText: _sdT('Cancel'), variant: 'danger' }));
+                }
+                return Promise.resolve(window.confirm(msg));
+            }
+        };
+    }
+    // ── end of "Only what I changed"
 
     // Enter on a result (PGOptionsSearch.target()): the search ends, the
     // panel shows the row's tab with its card open (_sdOptReveal()), the
@@ -34171,7 +34346,7 @@ const StyleDesigner = (function () {
         var kinds = nodes.map(_sdPanelKind);
         var alike = kinds.every(function (k) { return k === kinds[0]; });
         var srch = document.getElementById('sd-props-search');
-        var all = _sdSectAllOnce || !!(srch && srch.value.trim());
+        var all = _sdSectAllOnce || _sdReviewOn || !!(srch && srch.value.trim());
         _sdSectAllOnce = false;
         // A Style or Advanced section opens by its rule when it holds for
         // every element (_sdOptOpenByDefault()).
@@ -34229,6 +34404,7 @@ const StyleDesigner = (function () {
         _sdMcHead(nodes, alike, shown, counts);
         // Content level: the panel edits only when every element may be edited.
         _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
+        _sdReviewAfter(counts);
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
     }
 
@@ -34377,7 +34553,7 @@ const StyleDesigner = (function () {
             var dot = _sdMcDot(flags);
             lbl.classList.toggle('sd-prop-modified', !!dot.kind);
             lbl.classList.toggle('sd-chg-some', dot.kind === 'ring');
-            if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); }
+            if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); lbl.dataset.mcN = dot.n; lbl.dataset.mcOf = dot.of; }
             if (mixed) row.setAttribute('data-sd-mixed', '1');
         });
         if (live) {
@@ -35851,6 +36027,7 @@ const StyleDesigner = (function () {
     // element `find()` returns, opens the cards around it and draws its tab
     // with it; returns the element as drawn then, or null.
     function _sdOptReveal(find) {
+        _sdReviewOn = false;
         _sdSectAllOnce = true;
         renderProperties();
         var el = find();
@@ -35969,6 +36146,7 @@ const StyleDesigner = (function () {
         _sdOptHeld = {};
         _sdSectBuild = null;
         _sdPropsHead(null);
+        _sdReviewAfter(null);
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -36081,7 +36259,7 @@ const StyleDesigner = (function () {
         // While the search has text every body is built and every tab
         // drawn: it looks through all of them.
         var _srchBox = document.getElementById('sd-props-search');
-        var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
+        var _allBodies = _sdSectAllOnce || _sdReviewOn || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
         _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
@@ -36190,6 +36368,7 @@ const StyleDesigner = (function () {
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
         _sdTrLoad(selectedNode);
         _sdPropsHead(selectedNode, _shown, _counts);
+        _sdReviewAfter(_counts);
         panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
@@ -48218,10 +48397,15 @@ const StyleDesigner = (function () {
     function _sdPartOrderReturnQtyCell() {
         var box = _sdPartWhen('__return_item_left', 'gt', '0');
         box._bindings.value = 'return_qty';
+        var gift = _sdPartWhen('__return_item_gift_card', 'not_empty');
+        gift.text = _sdT('Gift cards cannot be returned');
         var done = _sdPartWhen('__return_item_left', 'eq', '0');
         done.text = _sdT('Already in a return');
+        done._bindings.show_if_2 = '__return_item_gift_card';
+        done._bindParams.show_if_2 = { op: 'empty' };
         return _sdPartEl('td', 'text-end', _sdT('To return'), {}, [
             _sdPartEl('input', 'form-control form-control-sm text-end', _sdT('Quantity'), box),
+            _sdPartEl('span', 'small text-muted', _sdT('Gift card'), gift),
             _sdPartEl('span', 'small text-muted', _sdT('Already in a return'), done)
         ]);
     }
@@ -65719,6 +65903,7 @@ const StyleDesigner = (function () {
                 ['__return_item_name',      _sdT('Product name')],
                 ['__return_item_ordered',   _sdT('Ordered')],
                 ['__return_item_left',      _sdT('How many may go back')],
+                ['__return_item_gift_card', _sdT('Gift card (1 or empty)')],
                 ['__return_item_qty_label', _sdT('Label of the quantity box')]
             ]
         },
@@ -77544,17 +77729,31 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdProtoPlayUrl() {
+    // The tab Play opens the viewer at: the selected page when it has an
+    // address, else the first tab that has one; null when none has.
+    function _sdProtoPlayStart() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
         var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;
-        var url = page ? _pgPrototypeUrl(page) : '';
-        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
-        return url;
+        if (page && _pgPrototypeUrl(page)) return page;
+        for (var i = 0; i < _pages.length; i++) if (_pgPrototypeUrl(_pages[i])) return _pages[i];
+        return null;
     }
 
+    function _sdProtoPlayUrl() {
+        return _pgPrototypeUrl(_sdProtoPlayStart());
+    }
+
+    // Play names the page it starts from, so a selected page that has no
+    // address yet (unsaved, or not a draft) does not hide that it starts
+    // elsewhere.
     function _sdProtoPlayState() {
-        if (_sdProto.ui) _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        if (!_sdProto.ui) return;
+        var start = _sdProtoPlayStart();
+        _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        var label = start ? _sdT('Play the prototype from {var}', start.page_name || _sdT('New Page')) : _sdT('Play the prototype from the selected page');
+        _sdProto.ui.play.title = label;
+        _sdProto.ui.play.setAttribute('aria-label', label);
     }
 
     function _sdProtoDraw(marked) {

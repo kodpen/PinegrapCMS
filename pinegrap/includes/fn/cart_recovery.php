@@ -130,8 +130,9 @@ function pg_cart_recovery_is_left($status, $last_modified, $now)
 
 /**
  * The rule, pure. A cart is left when it was started at least 6 hours before
- * the completion. The order's last touch sent before the completion takes it
- * when it was sent at most 7 days before; an older last touch takes nothing.
+ * the completion. The last touch of a left cart sent before the completion
+ * takes it when it was sent at most 7 days before; a cart that was not left
+ * is recovered by no touch; an older last touch takes nothing.
  * A left cart with no touch sent before the completion is counted apart
  * (untouched), never as recovered.
  *
@@ -165,7 +166,9 @@ function pg_cart_recovery_outcome($order_date, $completed_at, array $touches)
         }
     }
 
-    $touch_id = (($last_id > 0) && (($completed_at - $last_sent) <= PG_CART_RECOVERY_WINDOW)) ? $last_id : 0;
+    // Only a left cart can be recovered: a pop-up may touch a cart minutes
+    // after it was started, and that cart was never left.
+    $touch_id = ($left && ($last_id > 0) && (($completed_at - $last_sent) <= PG_CART_RECOVERY_WINDOW)) ? $last_id : 0;
 
     return array(
         'left'      => $left,

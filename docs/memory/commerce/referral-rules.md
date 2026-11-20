@@ -17,6 +17,7 @@ module: referral
 - The checks are one pure function, `pg_referral_check()`, first failure wins: off, code, affiliate, referrer, self, friend, smallest, month; what each reads: `referral-checks.md`.
 - The order's value: `pg_referral_order_value()`: total + gift card discount − surcharge − everything refunded (`pg_referral_refunded_total()`: the larger of the `order_refunds` sum and `refunded_amount`). An order of 0 never counts.
 - The month's room: every check and write runs under `GET_LOCK('pg_referral_<contact id>')`, so two orders at once cannot pass the cap or reward one order twice. Every referral row of the code since the month's first moment counts, a taken-back one too, so a restore never goes over the cap.
+- A lock still busy after `PG_REFERRAL_LOCK_WAIT` answers `busy`; the general job tries that order again (`referral-busy-retry.md`).
 - Then `pg_credit_issue()` kind `referral` (named "Referral"), reason "Referral: order #N", notes' first line `Referral reward of order <id>` (`pg_referral_card_marker()`, how the take-back finds the card), and the row `paid`.
 
 ## When is it taken back?

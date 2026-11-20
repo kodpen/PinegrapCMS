@@ -37,6 +37,7 @@ function _pof_deliveries()
 		array('ship_to_id' => 31, 'label' => 'Ada <A>', 'deadline' => '9 November 2026', 'lines' => array(
 			array('id' => 301, 'name' => 'Mug <XL>', 'quantity' => 2, 'returnable' => 2),
 			array('id' => 302, 'name' => 'Cup', 'quantity' => 1, 'returnable' => 0),
+			array('id' => 304, 'name' => 'Gift card', 'quantity' => 1, 'returnable' => 0, 'gift_card' => true),
 		)),
 		array('ship_to_id' => 32, 'label' => 'Bob', 'deadline' => '', 'lines' => array(
 			array('id' => 303, 'name' => 'Pen', 'quantity' => 1, 'returnable' => 0),
@@ -106,7 +107,8 @@ function test_widget_parts_order_forms_return_rows()
 	$d = $rows['order.return_deliveries'][0][0];
 	pg_assert_same('1', $d['__return_delivery_several']);
 	pg_assert_same('Ada <A>', $d['__return_delivery_label'], 'raw: the pass escapes it');
-	pg_assert_same(array('2', '0'), array_column($rows['order.return_delivery_lines'][31], '__return_item_left'));
+	pg_assert_same(array('2', '0', '0'), array_column($rows['order.return_delivery_lines'][31], '__return_item_left'));
+	pg_assert_same(array('', '', '1'), array_column($rows['order.return_delivery_lines'][31], '__return_item_gift_card'), 'a gift card line is marked');
 	$sources = pg_sw_list_sources();
 	pg_assert_same(array_column($sources['order.return_deliveries']['tokens'], 0), array_keys($d));
 	pg_assert_same(array_column($sources['order.return_delivery_lines']['tokens'], 0), array_keys($rows['order.return_delivery_lines'][31][0]));
@@ -143,6 +145,8 @@ function test_widget_parts_order_forms_return_matches_the_old_form()
 	pg_assert_true(preg_match('/aria-describedby="(pg-ov-return-note-help-31[^"]*)".*id="\\1"/s', $new) === 1, 'the note names its help line');
 	pg_assert_true(strpos($new, '^^') === false && strpos($new, '<!--pg-') === false && strpos($new, '{{') === false, 'nothing left');
 	pg_assert_same(1, substr_count($new, '<form '), 'one form: Bob has nothing left');
+	pg_assert_contains('Gift card 1 Gift cards cannot be returned', _pof_visible($new), 'a gift card line is not in a return');
+	pg_assert_same(1, substr_count($new, 'Already in a return'), 'only the cup is in a return');
 }
 
 // The design's look and words are the designer's; what the forms send is not.

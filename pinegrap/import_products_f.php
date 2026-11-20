@@ -419,6 +419,7 @@ function pg_products_import_xlsx_to_csv($source_path, &$error, $sheet = 0)
     }
 
     $date_styles = pg_products_import_xlsx_date_styles($zip);
+    $zero_styles = pg_sheet_xlsx_zero_styles($zip, pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml'));
 
     $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
 
@@ -521,6 +522,10 @@ function pg_products_import_xlsx_to_csv($source_path, &$error, $sheet = 0)
 
                         if (isset($date_styles[$style])) {
                             $value = pg_products_import_xlsx_date($value);
+                        } elseif (isset($zero_styles[$style])) {
+                            // A code or barcode shown with leading zeros.
+                            $padded = pg_sheet_zero_pad(array('t' => 'n', 'v' => (string) $value), $zero_styles[$style]);
+                            $value = $padded['v'];
                         }
                     }
 

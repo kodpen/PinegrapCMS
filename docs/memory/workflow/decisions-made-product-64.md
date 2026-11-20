@@ -7,11 +7,11 @@ description: Decisions list, product part 64 (2026-11-16 on): the second study's
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. His looks of polls 89 and 90: `decisions-made-product-63.md`.
 
 ## Which features of the second study are planned, and what did he answer on them? (owner, 2026-11-16, agent channel polls 82 and 85 to 88)
-- Poll 82 (message 6434), eight of nine: the post digest, the personal meeting link, the place map, customer value reports, the referral programme, wholesale, event tickets, courses. Left out: the first-steps list. Start file: `plans/more-features.md`.
+- Poll 82 (message 6434), eight of nine: the post digest, the personal meeting link, the place map, customer value reports, the referral programme, wholesale, event tickets, courses. Left out: the first-steps list.
 - Poll 85 (message 6514), a member's private plans as busy times of the meeting link: no. "diğer ekip üyesinin kişisel planları ekibin planlarından önce gelemez"; who wants a plan counted turns it into a team plan everybody sees (`commerce/booking-meeting-link.md`).
-- Poll 86 (message 6515), the referral programme: "Siparişi olan müşteri getirsin; ödül mağaza kredisi" (`plans/referral-programme.md`).
+- Poll 86 (message 6515), the referral programme: "Siparişi olan müşteri getirsin; ödül mağaza kredisi" (`commerce/referral-programme.md`).
 - Poll 87 (message 6516), an administrator's yes for a wholesale buyer's order: "bunu mimara sor ve yapılmışken sağlam temelli yapılsın veya plandan çıksın". The architect took a company's buyers out of the plan (`commerce/wholesale.md`).
-- Poll 88 (message 6517), a cancelled order's places: "Evet, yerler geri dönsün" (`plans/event-tickets.md`).
+- Poll 88 (message 6517), cancelled places: "Evet, yerler geri dönsün" (`commerce/event-tickets.md`).
 
 ## How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)
 - His request: "görsellerdeki metinlerde çeviri olayını da 6/10 olarak öne alalım". Asked after the census with four points, he chose "Evet, böyle olsun".

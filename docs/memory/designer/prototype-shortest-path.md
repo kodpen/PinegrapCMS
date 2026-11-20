@@ -4,7 +4,7 @@ description: The Prototype view's shortest click path (PX5, #10644): Shift+click
 ---
 
 ## What does it do?
-- Architect (2026-11-19, plans/prototype-next.md): "the shortest click path between two selected pages."
+- Architect (2026-11-19, plan prototype-next): "the shortest click path between two selected pages."
 - (PX5 #10644) From the selected page (the core's `focus`) to another page: its frames ringed in green (`.sd-proto-path-on`), its arrows drawn green in place of the selection's, the pages named at the canvas's foot (`div.sd-proto-pathbar`): "2 clicks: Home → Shop → Item". A step through a shared part placed on the page reads "Pay via Header" and its frame is ringed too.
 - None: "No path from {page} to {page}: no link leads there.", the bar's edge and the page's ring amber (`-pathbar-none`, `.sd-proto-path-none`); the selection's own arrows stay.
 

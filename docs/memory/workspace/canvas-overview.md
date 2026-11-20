@@ -5,7 +5,7 @@ description: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a d
 
 ## What is it?
 - Owner (2026-11-12, #8850): "tuval claude uygulamasındaki yapıt özellikleri (uzaktan api ilede kullanma ile), workspace tablolar da data bölümüne dönüşüyor. arayüzleri sadeleşiyor, mobil kullanırlık için iyileşiyorlar." A canvas does what an artifact of the Claude app does, over the API too; workflow tables are its Data.
-- One thing in a channel: a message whose id is the canvas's id, with up to three parts: a drawing (the Design Canvas's document), a live page (an agent's HTML in the guarded frame) and data (tables bound to it). One card, one name, one list of versions; a part that is not there is not shown. Nothing made before was converted.
+- One thing in a channel: a message whose id is the canvas's id, with up to three parts: a drawing (the Artifact Canvas's document), a live page (an agent's HTML in the guarded frame) and data (tables bound to it). One card, one name, one list of versions; a part that is not there is not shown. Nothing made before was converted.
 - Not the Page Design Studio, which designs the site's pages.
 
 ## Which decisions bind it?

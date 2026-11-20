@@ -2477,6 +2477,73 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-props-search-wrap.sd-has-q .sd-props-search-clear { display: inline-flex; align-items: center; justify-content: center; }
 .sd-props-search-wrap:focus-within { box-shadow: inset 0 -1px 0 var(--sd-accent); }
 /* The results: a list under the box, the panel's rows under it. */
+/* "Only what I changed" (_sdReviewFoot()): a 38 high bar always at the
+   panel's bottom, the switch 32 by 18 with a 12 knob. On, the tabs and
+   their panes give their place to one list (.sd-review, the part
+   'review'); the panes stay drawn, hidden, so the list's arrows reset the
+   rows themselves. Under 300 px the shorter words. */
+.sd-review-foot { flex-shrink: 0; padding: 0 12px; border-top: 1px solid var(--sd-panel-border); background: var(--sd-panel-bg); }
+.sd-review-foot[hidden] { display: none; }
+.sd-review-switch {
+    display: flex; align-items: center; gap: 8px; width: 100%; height: 38px; padding: 0;
+    border: 0; background: transparent; color: var(--sd-text-muted); cursor: pointer;
+    font-size: 12px; font-weight: 600; text-align: left;
+}
+.sd-review-switch:hover, .sd-review-foot.is-on .sd-review-switch { color: var(--sd-text); }
+.sd-review-switch:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); border-radius: 6px; }
+.sd-review-foot.is-on .sd-review-switch > .bi { color: var(--sd-accent); }
+.sd-review-txt, .sd-review-txt-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sd-review-txt-n { display: none; }
+.sd-rcol-narrow .sd-review-txt { display: none; }
+.sd-rcol-narrow .sd-review-txt-n { display: inline; }
+.sd-review-count {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-width: 18px; height: 17px; padding: 0 5px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text); font-size: 10.5px; font-weight: 750; line-height: 1;
+}
+.sd-review-foot.is-on .sd-review-count { background: var(--sd-accent); color: var(--sd-panel-bg); }
+.sd-review-knob {
+    position: relative; flex-shrink: 0; width: 32px; height: 18px; margin-left: auto;
+    border-radius: 9px; background: var(--sd-raised-bg-2); transition: background-color 120ms;
+}
+.sd-review-knob::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--sd-text-muted); transition: transform 120ms, background-color 120ms;
+}
+.sd-review-foot.is-on .sd-review-knob { background: var(--sd-accent); }
+.sd-review-foot.is-on .sd-review-knob::after { transform: translateX(14px); background: var(--sd-panel-bg); }
+@media (prefers-reduced-motion: reduce) { .sd-review-knob, .sd-review-knob::after { transition: none; } }
+.sd-props-head.sd-review-on .sd-otabs { display: none; }
+#sd-properties.sd-review-on > .sd-tab-content { display: none; }
+.sd-review { padding: 4px 8px 12px; }
+.sd-review-list { list-style: none; margin: 0; padding: 0; }
+.sd-review-row {
+    display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 4px 4px 8px;
+    border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-review-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sd-review-tx b { font-weight: 600; font-size: 12.5px; color: var(--sd-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-review-tx span { font-size: 11px; color: var(--sd-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-review-val {
+    flex: 0 1 auto; max-width: 45%; min-width: 0; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--sd-label);
+}
+.sd-review-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sd-review-word { color: var(--sd-text-muted); flex-shrink: 0; }
+.sd-review-share {
+    flex-shrink: 0; padding: 1px 5px; border-radius: 5px; background: var(--sd-input-bg);
+    color: var(--sd-text-muted); font-size: 10.5px;
+}
+.sd-review-reset {
+    flex: 0 0 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; color: var(--sd-text-muted); font-size: 12px; cursor: pointer;
+}
+.sd-review-reset:hover { color: var(--sd-accent); background: color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-review-reset:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); color: var(--sd-accent); }
+.sd-review-reset:disabled { opacity: .4; cursor: default; }
+.sd-review-ft { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
+.sd-review-empty { margin: 0; padding: 1.5rem .75rem; font-size: 12px; color: var(--sd-text-muted); text-align: center; }
 .sd-props-results[hidden] { display: none; }
 .sd-props-results {
     flex-shrink: 0; max-height: 264px; overflow-y: auto; padding: 4px;

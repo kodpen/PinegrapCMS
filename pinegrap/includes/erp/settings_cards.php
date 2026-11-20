@@ -260,13 +260,51 @@ function erp_settings_efatura_threshold_fields()
 }
 
 /**
+ * The Stock Planning card's fields: safety, cover and dead-stock days
+ * (includes/erp/stock_plan.php). Empty before the upgrade added the plan.
+ *
+ * @return string
+ */
+function erp_settings_stock_plan_fields()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+
+    if (!erp_stock_plan_cache_ready()) {
+        return '';
+    }
+
+    $settings = erp_stock_plan_settings();
+    $ranges = erp_stock_plan_settings_ranges();
+    $labels = array(
+        'safety' => array(lang('Safety days'), lang('Extra days of sales kept in stock for a late delivery or a busy week.')),
+        'cover' => array(lang('Cover days'), lang('Days of sales one order brings in, after the lead time and the safety days.')),
+        'dead' => array(lang('Dead stock after (days)'), lang('A product in stock with no sale for this long is dead stock, valued at its average cost.')),
+    );
+    $fields = '';
+
+    foreach (erp_stock_plan_settings_fields() as $key => $field) {
+        $fields .= '
+                            <div class="col-12 sm:col-4">
+                                <label class="form-label" for="' . $field . '">' . h($labels[$key][0]) . '</label>
+                                <input type="text" class="form-control text-end" id="' . $field . '" name="' . $field . '" value="' . (int) $settings[$key] . '" inputmode="numeric" pattern="[0-9]*" placeholder="' . (int) $ranges[$key][2] . '" autocomplete="off" />
+                                <div class="form-text">' . h($labels[$key][1]) . '</div>
+                            </div>';
+    }
+
+    return '
+                        <p class="fg-secondary">' . h(lang('Stock Planning works out every night, per product, when it runs out and how many to order. These days shape it from the next night on.')) . '</p>
+                        <div class="row g-5">' . $fields . '
+                        </div>';
+}
+
+/**
  * What a save of the cards would refuse, checked before anything is written,
  * so the Accounting pane can refuse its one Save as a whole. The checks are
  * those of erp_rules_save(), erp_late_fee_settings_save() and
  * erp_efatura_threshold_save(), which still make them on writing.
  *
  * @param array $post   the posted fields
- * @param array $cards  'rules', 'late_fee', 'efatura_threshold': the cards posted
+ * @param array $cards  'rules', 'late_fee', 'efatura_threshold', 'stock_plan': the cards posted
  * @return array field => sentence
  */
 function erp_settings_cards_refusals($post, $cards)
@@ -306,6 +344,11 @@ function erp_settings_cards_refusals($post, $cards)
         }
     }
 
+    if (in_array('stock_plan', $cards, true)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+        $refusals += erp_stock_plan_settings_refusals($post);
+    }
+
     return $refusals;
 }
 
@@ -315,7 +358,7 @@ function erp_settings_cards_refusals($post, $cards)
  * is refused.
  *
  * @param array $post   the posted fields
- * @param array $cards  'rules', 'late_fee', 'efatura_threshold': the cards posted
+ * @param array $cards  'rules', 'late_fee', 'efatura_threshold', 'stock_plan': the cards posted
  * @return array ['success' => bool, 'field' => string, 'error' => string] of the first refusal
  */
 function erp_settings_cards_save($post, $cards)
@@ -371,6 +414,21 @@ function erp_settings_cards_save($post, $cards)
 
         if (db_item("SELECT erp_efatura_web_threshold, erp_efatura_general_threshold FROM config LIMIT 1") != $before) {
             log_activity(lang('erp e-fatura thresholds were changed'), $user);
+        }
+    }
+
+    if (in_array('stock_plan', $cards, true)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+
+        if (!erp_stock_plan_cache_ready()) {
+            return array('success' => false, 'field' => 'stock_plan_safety_days', 'error' => lang('The settings could not be saved.'));
+        }
+
+        // The settings log their own change.
+        $saved = erp_stock_plan_settings_save($post);
+
+        if (!$saved['success']) {
+            return $saved;
         }
     }
 

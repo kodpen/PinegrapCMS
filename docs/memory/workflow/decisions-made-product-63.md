@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-63
-description: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
+description: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Artifact Canvas requests
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,7 +17,7 @@ description: Decisions list, product part 63 (2026-11-16 on): the owner's looks 
 - The sheet showed PA4 of the publish approval plan: the designer's list of waiting content changes with Compare and Dismiss, the row with the count above the Pages list, the bell's lines (the page's name, the reason, what to do), a phone and dark.
 - PA3's look (the notice in the Studio for a content editor, the tab's count) is asked apart when its pictures come.
 
-## What did the owner ask of the Design Canvas? (owner, 2026-11-16, to the architect)
+## What did the owner ask of the Artifact Canvas? (owner, 2026-11-16, to the architect)
 - On the Animate tool with a video: a quick way to split; selecting another object without going to the Select tool and losing the panel at work, with the selection's tools over the object as a toolbar; motion animations faster to reach; a text or vector that moves with an area chosen on the video when told to follow. His words are in the two plans.
 - A video stuttering while it plays is a fault, not a wish: issue #9950, with the measured cause.
 - The same day: "görsellerdeki metinlerde çeviri olayını da 6/10 olarak öne alalım": the texts in pictures translated, at priority 6.

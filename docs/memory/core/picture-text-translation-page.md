@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-page
-description: Picture text translation's page pass: a page in another language shows a Design Canvas picture's drawn language version in src, srcset, og:image, links and style url(); waiting rows, one query
+description: Picture text translation's page pass: a page in another language shows a Artifact Canvas picture's drawn language version in src, srcset, og:image, links and style url(); waiting rows, one query
 module: picture_translation
 ---
 
