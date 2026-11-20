@@ -14,4 +14,4 @@ module: bundles
 - Tests: `tests/bundles_test.php` (`test_bundle_cart_allowance_below_minimum`).
 
 ## What is still open?
-- The plain path of `check_inventory()` (`includes/fn/ecommerce.php`, a cart with no bundle) still cuts below the minimum (its own comment calls it a bug). The fix is the same rule in its per-line loop; it was left out because other open PRs held `ecommerce.php`.
+- The plain path of `check_inventory()` (`includes/fn/ecommerce.php`, a cart with no bundle) still cuts below the minimum (its own comment calls it a bug). The fix is the same rule in its per-line loop; it was left out because other open PRs held `ecommerce.php`; issue #10683.
