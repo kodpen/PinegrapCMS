@@ -19,6 +19,7 @@ module: look_examples
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 - Drawer (#10851, architect channel message 11006): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). DX3 adds to this section; the numbered steps come with KV4b.
 - Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
+- Patterns (`pg_look_examples_patterns()`, under the parts): the settings pane, the connect row, a list's empty state (DX1 #10859); the starting-point sheet in its three steps and the numbered steps drawer (DX2 #10885), each in the Drawer section's standing frame. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`).
 
 ## What keeps it honest?
 - `tests/look_examples_test.php`: every class a section names is a rule of `backend.src.css` and is drawn in that section's markup; no id twice on the page; the gate and the System tools link.

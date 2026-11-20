@@ -97,6 +97,45 @@ function test_look_examples_connect_row_and_empty_list()
 	pg_assert_contains('class="ws-empty', $patterns['pattern-empty'], 'the settings list\'s empty state');
 }
 
+function test_look_examples_starting_point_sheet()
+{
+	$patterns = array_column(pg_look_examples_patterns('dark'), 'html', 'id');
+
+	pg_assert_true(isset($patterns['pattern-start']), 'the starting-point sheet');
+	$html = $patterns['pattern-start'];
+
+	pg_assert_same(3, substr_count($html, 'class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px"'), 'three steps, each in the standing frame at the sheet\'s width');
+	pg_assert_same(3, substr_count($html, 'stepper stepper-horizontal'), 'each with the step line');
+	pg_assert_same(3, substr_count($html, 'aria-current="step"'), 'one current step a frame');
+	pg_assert_same(3, substr_count($html, 'stepper-item active theme-success'), 'step 2 has one finished step, step 3 two');
+	pg_assert_same(count(api_app_templates(array(), array(), array())), substr_count($html, 'form-field form-field-card'), 'a card a starting point of Application Access');
+	pg_assert_same(1, substr_count($html, '<div class="pg-start">'), 'the cards in the recipe\'s grid');
+	pg_assert_contains('<span class="pg-pill pg-tone-teal">' . h(lang('Set up already')) . '</span>', $html, 'a card that opens what is there says so');
+	pg_assert_contains('<details class="pg-start-advanced">', $html, 'what few people change is folded');
+	pg_assert_true(strpos($html, '<details class="pg-start-advanced" open') === false, 'and closed');
+	pg_assert_same(3, substr_count($html, 'class="pg-start-copy"'), 'the done step: address, key, secret');
+	pg_assert_same(3, substr_count($html, 'pg-button pg-button-fill'), 'one filled button a step');
+	pg_assert_contains('id="dark_look_start_signin"', $html, 'the pane\'s theme keeps the ids apart');
+	pg_assert_contains('name="dark_look_start"', $html, 'and the radio group');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains('Look A: starting-point cards.', $css, 'the recipe in its own block');
+}
+
+function test_look_examples_numbered_steps_drawer()
+{
+	$patterns = array_column(pg_look_examples_patterns('light'), 'html', 'id');
+
+	pg_assert_true(isset($patterns['pattern-steps']), 'the numbered steps drawer');
+	$html = $patterns['pattern-steps'];
+
+	pg_assert_same(1, substr_count($html, '<ol class="stepper pg-stepper-cards ws-claude-setup-steps">'), 'the steps as the stepper, numbered by it');
+	pg_assert_true(substr_count($html, 'stepper-item active ws-claude-step') >= 3, 'Claude\'s own set-up steps');
+	pg_assert_true(preg_match('/<li[^>]*>\s*<div class="pg-field-label">\d/', $html) === 0, 'the number is never written in the markup');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button: the window\'s Save is the one');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')), $html, 'one quiet button opens it');
+}
+
 function test_look_examples_screen_gate_and_link()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/design_examples.php');

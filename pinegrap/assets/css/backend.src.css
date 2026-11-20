@@ -31915,6 +31915,35 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: starting-point cards.
+   A new thing starts from ready starting points: choice cards
+   (.form-field-card with a radio), two a row from md up, each with its icon
+   tile beside the title, a pill pushed to the right, and a foot line under a
+   hairline saying who it acts as. What few people change sits folded in
+   .pg-start-advanced; the done step shows a value once in .pg-start-copy.
+   Value for value Application Access' New application
+   sheet (#api_new).
+   ========================================================================== */
+@layer custom {
+
+.pg-start { display: grid; gap: 8px; }
+@media (min-width: 768px) { .pg-start { grid-template-columns: 1fr 1fr; } }
+.pg-start .form-field-card { margin-bottom: 0; }
+.pg-start-head { display: flex; align-items: center; gap: 8px; }
+.pg-start-head .pg-pill { margin-left: auto; }
+.pg-start-acts { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--pg-border-color);
+  font-size: var(--pg-text-count); }
+.pg-start-acts .bi { margin-right: 4px; }
+.pg-start-advanced { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 12px; }
+.pg-start-advanced summary { cursor: pointer; }
+/* The value the done step shows once, beside its Copy button. */
+.pg-start-copy { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
+  border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
+.pg-start-copy code { flex: 1; font-size: var(--pg-text-meta); word-break: break-all; }
+
+}
+
+/* ==========================================================================
    Look A: label and value list.
    What a status column reads, one row a fact: <dl class="pg-kv"> with a
    <dt> and a <dd> per row. The label column is as wide as the longest

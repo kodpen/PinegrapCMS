@@ -28,6 +28,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/assistants_fold.php');
 
+// The starting-point sheet takes its cards from Application Access' own
+// registry (with the automation card's choices, app_access.php) and the
+// numbered steps drawer its steps from Claude's set-up guide; these files
+// hold only functions, the registry's behind this gate.
+if (!defined('PG_API_PANEL')) {
+    define('PG_API_PANEL', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/api/app_access.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/app_templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude_setup.php');
+
 /**
  * The recipes in the order the sheet shows them: each with its title, the
  * classes it is built from and its live markup. $prefix keeps the ids of the
@@ -310,6 +322,129 @@ function pg_look_examples_patterns($prefix = 'light')
         'classes' => array('.pg-card-inner', '.ws-empty'),
         'html'    => '<div class="pg-card-inner"><div class="ws-empty py-5"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div></div>'
             . '<p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › MCP servers.')) . '</p>',
+    );
+
+    // Application Access' New application sheet (includes/api/app_new_view.php),
+    // each of its three steps in the Drawer section's standing frame at the
+    // sheet's width. The step line is api_app_new_steps_html()'s. The frame
+    // is no .drawer, which sets the padding variables, so p-5 gives the head
+    // and the body the drawer's own 1rem.
+    $sheet_steps = function ($current) {
+        $labels = array(1 => lang('What connects'), 2 => lang('Details and permissions'), 3 => lang('Connect'));
+        $html = '<ol class="stepper stepper-horizontal mb-0">';
+
+        foreach ($labels as $number => $label) {
+            $class = ($number < $current) ? ' active theme-success' : (($number === $current) ? ' active' : '');
+            $html .= '<li class="stepper-item' . $class . '"' . (($number === $current) ? ' aria-current="step"' : '') . '>' . h($label) . '</li>';
+        }
+
+        return $html . '</ol>';
+    };
+    $sheet = function ($current, $tile, $title, $line, $body, $foot) use ($sheet_steps) {
+        return '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
+            . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">' . $tile
+            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">' . h($title) . '</h5>' . $line . '</div>'
+            . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div></div>'
+            . '<div class="px-5 pt-3 pb-5 border-bottom">' . $sheet_steps($current) . '</div>'
+            . '<div class="drawer-body p-5">' . $body . '</div>'
+            . '<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">' . $foot . '</div>'
+            . '</div>';
+    };
+
+    // The cards of api_app_templates(), as api_app_new_card_html() draws them;
+    // the site's OAuth application is there, so the first card says so.
+    $cards = '';
+    $first = true;
+
+    foreach (api_app_templates(array(), array(), array(), array('id' => 1, 'name' => 'Claude')) as $card) {
+        $id = $p . '_look_start_' . $card['id'];
+        $secret = $card['secret']
+            ? '<i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Key and secret'))
+            : '<i class="bi bi-shield-check" aria-hidden="true"></i>' . h(lang('No secret'));
+        $cards .= '<div class="form-field form-field-card">'
+            . '<input class="radio" type="radio" name="' . $p . '_look_start" value="' . h($card['id']) . '" id="' . $id . '" aria-describedby="' . $id . '_help ' . $id . '_acts"' . ($first ? ' checked' : '') . '>'
+            . '<label class="pg-start-head" for="' . $id . '"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><i class="bi ' . h($card['icon']) . '"></i></span>'
+            . '<span class="fw-bold">' . h($card['title']) . '</span>'
+            . (($card['badge'] !== '') ? ' <span class="pg-pill pg-tone-teal">' . h($card['badge']) . '</span>' : '') . '</label>'
+            . '<div class="form-text mt-1" id="' . $id . '_help">' . h($card['text']) . '</div>'
+            . '<div class="pg-start-acts" id="' . $id . '_acts"><div>' . h(lang('Acts as:')) . ' <b>' . h($card['acts_as']) . '</b></div><div class="fg-2">' . $secret . '</div></div>'
+            . '</div>';
+        $first = false;
+    }
+
+    $head_tile = '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-plug"></i></span>';
+    $cancel = '<button type="button" class="pg-button pg-button-ghost">' . h(lang('Cancel')) . '</button>';
+
+    $start = $sheet(1, $head_tile, lang('New Application'),
+        '<p class="small fg-2 mb-0 mt-1">' . h(lang('What connects to this site? Pick one and the rest is prepared for it.')) . '</p>',
+        '<fieldset><legend class="visually-hidden">' . h(lang('What connects to this site?')) . '</legend><div class="pg-start">' . $cards . '</div>'
+            . '<div class="alert theme-primary py-3 px-5 small mt-5 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i><b>' . h(lang('Why does "Acts as" matter?')) . '</b> '
+            . h(lang('A connection made by signing in writes as the person who signed in. A key writes as the application itself.')) . '</div></fieldset>',
+        '<span class="small fg-2"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . h(lang('The choice is only a start; the permissions can be changed in the next step.')) . '</span>'
+            . '<span class="flex-grow-1"></span>' . $cancel
+            . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Continue')) . '<i class="bi bi-arrow-right" aria-hidden="true"></i></button>');
+
+    $details = $sheet(2, '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-code-slash"></i></span>', lang('New Application'),
+        '<p class="small fg-2 mb-0 mt-1">' . h(lang('Own integration')) . ' &middot; <button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Change')) . '</button></p>',
+        '<div class="row g-5 mb-5">'
+            . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_start_name">' . h(lang('Application name')) . '</label>'
+            . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_start_name" placeholder="' . h(lang('For example: marketplace sync')) . '"></div>'
+            . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_start_description">' . h(lang('Description')) . ' <span class="fg-2 fw-normal">' . h(lang('optional')) . '</span></label>'
+            . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_start_description" placeholder="' . h(lang('What is it used for?')) . '"></div>'
+            . '</div>'
+            . '<div class="mb-5"><div class="form-label pg-field-label"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . h(lang('Permissions')) . '</div>'
+            . '<p class="pg-text-2">' . h(lang('The permission picker opens here, as Application Access draws it.')) . '</p></div>'
+            . '<details class="pg-start-advanced"><summary class="small"><i class="bi bi-sliders me-1" aria-hidden="true"></i><b>' . h(lang('Advanced')) . '</b> <span class="small fg-2">' . h(lang('IP list and rate limit')) . '</span></summary>'
+            . '<div class="form-field mt-3"><label class="form-label pg-field-label" for="' . $p . '_look_start_rate">' . h(lang('Requests per minute')) . '</label>'
+            . '<input type="number" class="form-control form-control-sm" id="' . $p . '_look_start_rate" min="1" max="6000"></div></details>',
+        '<button type="button" class="pg-button pg-button-ghost"><i class="bi bi-arrow-left" aria-hidden="true"></i>' . h(lang('Back')) . '</button>'
+            . '<span class="flex-grow-1"></span><span class="small fg-2">' . h(lang('Nothing is saved before Create.')) . '</span>' . $cancel
+            . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Create')) . '</button>');
+
+    // Step 3 is the one-time sheet Application Access shows once the
+    // application is made: what to copy, numbered, and Close after the tick.
+    $copy = function ($name, $label, $value) use ($p) {
+        $id = $p . '_look_start_' . $name;
+
+        return '<div class="form-field mb-5"><span class="form-label pg-field-label" id="' . $id . '_label">' . $label . '</span>'
+            . '<div class="pg-start-copy"><code id="' . $id . '">' . h($value) . '</code>'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-labelledby="' . $id . '_copy ' . $id . '_label" id="' . $id . '_copy"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button></div></div>';
+    };
+
+    $done = $sheet(3, '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-amber" aria-hidden="true"><i class="bi bi-key"></i></span>', lang('The application was created'),
+        '<p class="small fg-2 mb-0 mt-1">' . h(lang('Own integration')) . '</p>',
+        '<p class="mb-5"><b>' . h(lang('Once this window is closed the secret is never shown again.')) . '</b><br><span class="small opacity-75">' . h(lang('Only a verification hash is stored. If it is lost, issue a new one.')) . '</span></p>'
+            . $copy('site', '1 &middot; ' . h(lang('Site address')), 'https://example.com')
+            . $copy('key', '2 &middot; ' . h(lang('Key')), 'pg_live_4f1c9a20')
+            . $copy('secret', '3 &middot; ' . h(lang('Secret')), '9b2e…c41d')
+            . '<div class="alert theme-warning py-3 px-5 small mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.')) . '</div>',
+        '<div class="form-field me-auto"><input class="check" type="checkbox" id="' . $p . '_look_start_ack"><label class="small" for="' . $p . '_look_start_ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label></div>'
+            . '<button type="button" class="pg-button pg-button-fill disabled">' . h(lang('Close')) . '</button>');
+
+    $patterns[] = array(
+        'id'      => 'pattern-start',
+        'title'   => lang('Starting-point sheet'),
+        'classes' => array('drawer-header', 'stepper-horizontal', 'aria-current="step"', 'form-field-card', '.pg-start', '.pg-start-head', '.pg-start-acts', '.pg-start-advanced', '.pg-start-copy', '.pg-icon-tile', '.pg-pill', '.pg-button-ghost', '.pg-button-fill', 'drawer-footer'),
+        'html'    => '<div class="pg-look-stack">' . $start . $details . $done . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From Application Access › New Application: starting points as cards with an icon and one line, then the details, then what is shown once. Nothing is saved before Create.')) . '</p>',
+    );
+
+    // Claude's "Set up on claude.ai" drawer (ws_claude_setup_drawer_html()):
+    // the steps a person follows on another site, numbered by the stepper, in
+    // a drawer of their own that one quiet button opens.
+    $guide = ws_claude_setup_guide('https://example.com/pinegrap/', 'example.com', '', function () {
+        return '';
+    });
+
+    $patterns[] = array(
+        'id'      => 'pattern-steps',
+        'title'   => lang('Numbered steps drawer'),
+        'classes' => array('.pg-stepper-cards', 'stepper-item', '.ws-claude-setup-steps', '.ws-claude-shot', '.pg-field-label', '.pg-button-quiet'),
+        'html'    => '<div class="pg-look-line"><button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')) . '</button></div>'
+            . '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:42rem">'
+            . '<div class="drawer-header border-bottom p-5"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div>'
+            . '<div class="drawer-body p-5"><ol class="stepper pg-stepper-cards ws-claude-setup-steps">' . $guide . '</ol></div>'
+            . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › Claude: steps done on another site are numbered steps in their own drawer, opened by one button, never paragraphs in the form.')) . '</p>',
     );
 
     return $patterns;
