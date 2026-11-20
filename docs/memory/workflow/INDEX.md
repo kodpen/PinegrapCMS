@@ -20,6 +20,8 @@
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
+- bug-hunt-areas-ai-connections.md: The bug hunt in the AI provider connections (agent channel message 10241, area b, #10616): the faults fixed, the issues opened and what was read clean
+- bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
