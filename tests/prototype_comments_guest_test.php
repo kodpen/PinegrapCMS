@@ -134,3 +134,16 @@ function test_prototype_comments_guest_refusals_say_why()
 	pg_assert_true(pg_proto_comment_error_message('parent') !== $generic);
 	pg_assert_same(400, pg_proto_comment_error_status('parent'));
 }
+
+// A link for anyone does not draw a draft that goes live behind a sign-in
+// (the frame shows a note), yet the viewer gave that page the Comment button
+// and its comments: a click did nothing and a post was refused.
+function test_prototype_comments_guest_no_comment_mode_on_a_page_the_link_does_not_show()
+{
+	$viewer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	$at = strpos($viewer, 'pg_proto_viewer_comments($pg_proto_link');
+
+	pg_assert_true($at !== false, 'the viewer passes its comments');
+	pg_assert_contains("'comments' => !\$pg_proto_start_shown ? null : pg_proto_viewer_comments(", substr($viewer, max(0, $at - 60), 200));
+	pg_assert_contains('$pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link[\'audience\'], pg_proto_link_page_access($pg_proto_start[\'id\']));', $viewer);
+}
