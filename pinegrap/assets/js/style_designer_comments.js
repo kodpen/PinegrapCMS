@@ -508,5 +508,12 @@ StyleDesigner.definePart('comments', function (K) {
         });
     }
 
-    return { beat: beat, open: function () { toggle(true); } };
+    // reload(): the list read again whatever the stamp says, after comments
+    // went elsewhere (the Share prototype dialog's "Delete comments"); a
+    // deletion need not move the newest id.
+    return {
+        beat: beat,
+        open: function () { toggle(true); },
+        reload: function () { return started ? fetchList() : Promise.resolve(); }
+    };
 });

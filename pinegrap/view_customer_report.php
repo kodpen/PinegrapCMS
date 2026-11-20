@@ -77,6 +77,7 @@ if (($_GET['csv'] ?? '') === 'top') {
         array_column((array) $summary['top']['year'], 0)
     ));
 
+    pg_list_excel_capture(array('rank' => 'number', 'last_order_number' => 'number', 'orders' => 'number', 'value' => 'money'), lang('Top customers'));
     pg_csv_download_start('top_customers.csv');
     print implode("\n", pg_customer_value_top_csv($summary, $names)) . "\n";
     exit();
@@ -321,7 +322,7 @@ print
     ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
-        'secondary' => (($summary !== null) && $may_see_names) ? array('label' => lang('Export top customers'), 'url' => 'view_customer_report.php?csv=top', 'icon' => 'bi-download') : '',
+        'secondary' => (($summary !== null) && $may_see_names) ? array(array('label' => lang('Export top customers'), 'url' => 'view_customer_report.php?csv=top', 'icon' => 'bi-download'), pg_list_excel_action('view_customer_report.php?csv=top')) : '',
         'search' => (($summary !== null) ? '<div class="pg-seg pg-customer-periods" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
             . (($output_as_of !== '') ? '<span class="pg-report-range"><i class="bi bi-clock-history" aria-hidden="true"></i>' . $output_as_of . '</span>' : ''),
     ), array('class' => 'pg-report-tools')) . '

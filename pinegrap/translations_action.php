@@ -455,6 +455,7 @@ if ($translations_is_export) {
 
     $csv = pg_tr_csv_export($language, $scope, $pending);
     $file_name = 'translations-' . preg_replace('/[^a-z0-9-]/i', '', $language) . '-' . date('Ymd-His') . '.csv';
+    pg_list_excel_capture(array(), lang('Translations'));
 
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $file_name . '"');

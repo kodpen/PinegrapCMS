@@ -4280,7 +4280,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page',
-			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way, and so is the variant draft of an experiment that is not ended yet (409 experiment_variant_held). A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
+			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way, and so is the variant draft of an experiment that is not ended yet (409 experiment_variant_held) and a draft waiting in an open release bundle (409 release_bundle_held: publish the bundle, delete it or remove the page from it first). A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -4296,7 +4296,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page, addressed as a POST',
-			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request. The same refusals apply, 409 experiment_variant_held among them.',
+			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request. The same refusals apply, 409 experiment_variant_held and release_bundle_held among them.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -5343,6 +5343,122 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'no', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /design/pages/{id}/revisions).')
+			)
+		),
+
+		// Release bundles (includes/api/resources/design_bundles.php): drafts
+		// published and taken back together. Making, timing and deleting a
+		// bundle stay on the Bundles screen.
+		array(
+			'id'      => 'design.bundles.list',
+			'method'  => 'GET',
+			'path'    => '/design/bundles',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_bundles_list',
+			'returns' => array('list' => 'DesignBundle'),
+			'summary' => 'Release bundles',
+			'description' => 'The release bundles of the Bundles screen, newest first, cursor paged: named lists of drafts of a visual design that go live together and can be taken back together. status: open, scheduled (publish_at is set and the site\'s general job publishes it then, in the name of scheduled_by), published, partial (partly published: a publish failed and what it wrote could not all be taken back) or reverted (taken back). failed_page_id and failed_reason name the page a publish stopped at, null otherwise. pages is null here; GET /design/bundles/{id} gives them. 503 service_unavailable before the database update that adds release bundles.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'scheduled', 'published', 'partial', 'reverted')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.get',
+			'method'  => 'GET',
+			'path'    => '/design/bundles/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_bundles_get',
+			'returns' => 'DesignBundle',
+			'summary' => 'One release bundle with its pages',
+			'description' => 'As in the list, with pages: each page\'s id (the item id the publish and take-back lists take), kind new (a draft that becomes a page of its own) or replacement (a copy of the live page live_page_id, whose design, title and description are written onto that page), and status waiting, written (on the site by this bundle), left_out (left out of the publish) or kept (not taken back). changed_since is true for a waiting replacement whose live page was published by hand since it was copied, null for the others.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.add',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/pages',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_add',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'DesignBundle',
+			'summary' => 'Add a page to a release bundle',
+			'description' => 'As the Bundles screen\'s Add a copy of a page and Add a draft. Send live_page_id to copy a live page of a visual design into Drafts as its replacement, or draft_page_id to add a draft as a new page; one of the two. A draft\'s own publish time is cleared: the bundle publishes it. While the bundle is open the draft cannot be published alone or deleted. 409 bundle_page_refused when the bundle is published, the page is a classic page or not on the site, the page has an open experiment, the draft is an open experiment\'s variant, or the draft or the live page is in an open bundle already. Answers the bundle with its pages.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'live_page_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A live page of a visual design: its copy is added as its replacement.'),
+				array('name' => 'draft_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft of a visual design, added as a new page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/bundles/{id}/pages/{page_id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_remove',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Remove a page from a release bundle',
+			'description' => 'The page leaves the bundle and its draft stays in Drafts, as the screen\'s Remove. page_id is the bundle page\'s id from GET /design/bundles/{id}, not a page id. 404 for a page that is not waiting in this bundle; 409 bundle_state once the bundle is published; 409 bundle_busy while the bundle is being published. A default IIS install answers DELETE itself before PHP is reached: POST /design/bundles/{id}/pages/{page_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'page_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The bundle page\'s id.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/pages/{page_id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_remove',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Remove a page from a release bundle (POST)',
+			'description' => 'The same as DELETE /design/bundles/{id}/pages/{page_id}, for clients and servers that cannot send DELETE. The same refusals apply.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'page_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The bundle page\'s id.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.publish',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/publish',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_publish',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Publish a release bundle',
+			'description' => 'Every waiting page goes live at one moment, as the Bundles screen\'s Publish: a new page leaves Drafts, a replacement\'s design, title and description are saved onto its live page as one revision with the source bundle, and the used replacement goes to the recycle bin. Every page is checked before anything is written; a failure while writing takes back at once what was written and leaves the bundle as it was (409 bundle_publish_failed, failed_reason on the bundle); only when that take-back fails too is the bundle partial, and the same call publishes the rest. A refusal lists the pages in error.errors (field the bundle page\'s id, code locked, refused or changed): 409 page_open_in_editor while somebody has one of the pages open in the editor, 409 bundle_page_refused when the page save refuses a page, 409 bundle_changed_since while a replacement\'s live page was published by hand since the copy and is in neither replace nor leave, 409 bundle_empty with no page to publish, 409 bundle_state unless the bundle is open, scheduled or partial, 409 bundle_busy while it is being published. The dry run answers the checks\' list: detail.pages with each page\'s state (ready, left_out), detail.write and detail.leave.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'replace', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Bundle page ids changed since, to replace anyway.'),
+				array('name' => 'leave',   'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Bundle page ids changed since, to leave out: they stay drafts.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.take_back',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/take-back',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_take_back',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Take a release bundle back',
+			'description' => 'As the Bundles screen\'s Take back: a replaced page returns to the revision it had before, as a new publish with the source restore, and a new page goes back to Drafts. A page comes back only while it is as the bundle wrote it: one published since, gone, made the home page, or whose revision was trimmed stays, and its id has to be sent in kept, so that nothing is kept silently (409 bundle_pages_kept lists them in error.errors with the reason as code: gone, home, unfinished, changed, swept). 409 page_open_in_editor while somebody has one of the pages to take back open in the editor; 409 bundle_state unless the bundle is published or partial; 409 bundle_busy while it is being published; 409 bundle_take_back_failed when a page could not be written back: the bundle stays published, to be tried again. The dry run answers detail.can (the bundle page ids that come back) and detail.kept.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'kept', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'The bundle page ids that cannot be taken back, acknowledged.')
 			)
 		),
 

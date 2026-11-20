@@ -160,6 +160,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_bounces.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_webhook.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_bounce_report.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_excel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_parse.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_html.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_pass.php');

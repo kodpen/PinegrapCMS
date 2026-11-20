@@ -1165,6 +1165,8 @@ function api_openapi_objects()
         'DesignRevision' => 'api_design_revision_schema',
         'DesignRestore'  => 'api_design_restore_schema',
         'DesignPrototypeLink' => 'api_design_prototype_link_schema',
+        'DesignBundle'   => 'api_design_bundle_schema',
+        'DesignBundlePage' => 'api_design_bundle_page_schema',
         'DesignPrototypeLinkCreated' => 'api_design_prototype_link_created_schema',
         'AuthSession'    => 'api_auth_session_schema',
         'Me'             => 'api_auth_me_schema',
