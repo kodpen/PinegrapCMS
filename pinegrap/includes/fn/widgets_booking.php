@@ -152,7 +152,7 @@ function pg_booking_day_times($service, $staff, $day, $busy, $now, $policy)
     try {
         $zone = new DateTimeZone(!empty($policy['zone']) ? (string) $policy['zone'] : date_default_timezone_get());
         $from = (new DateTime($day . ' 00:00:00', $zone))->getTimestamp();
-        $until = (new DateTime($day . ' 00:00:00', $zone))->modify('+1 day')->getTimestamp();
+        $until = pg_booking_wall_time($day, '24:00', $zone);
     } catch (Exception $exception) {
         return array();
     }

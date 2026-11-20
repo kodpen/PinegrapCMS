@@ -164,6 +164,22 @@ function test_booking_slots_dst_change_days()
 		booking_slots_test_times(pg_booking_slots($service, $staff_late, '2026-03-29', array(), booking_slots_test_at('2026-03-01 00:00', $zone), $policy), $zone));
 }
 
+// Where the spring change skips midnight (Chile, 6 September 2026), "24:00"
+// of that day is still the next day's midnight, not an hour after it: the
+// day must not offer a slot that starts once the hours have ended.
+function test_booking_slots_day_end_on_a_skipped_midnight()
+{
+	$zone = 'America/Santiago';
+
+	pg_assert_same(booking_slots_test_at('2026-09-07 00:00', $zone), pg_booking_wall_time('2026-09-06', '24:00', new DateTimeZone($zone)), 'the end of the day the clock skipped midnight');
+	pg_assert_same(booking_slots_test_at('2026-09-06 01:00', $zone), pg_booking_wall_time('2026-09-05', '24:00', new DateTimeZone($zone)), 'the end of the day before');
+
+	$staff = array('hours' => array('7' => array(array('22:00', '24:00'))));
+	$slots = pg_booking_slots(booking_slots_test_service(60), $staff, '2026-09-06', array(), booking_slots_test_at('2026-09-01 00:00', $zone), array('zone' => $zone));
+
+	pg_assert_same(array('22:00', '23:00'), booking_slots_test_times($slots, $zone), 'no slot past the day\'s end');
+}
+
 function test_booking_slots_buffers()
 {
 	$zone = 'UTC';
