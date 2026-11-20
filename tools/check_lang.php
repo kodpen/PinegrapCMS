@@ -36,7 +36,6 @@ $skip_directories = array(
 	'includes/phpmailer',
 	'includes/stripe',
 	'includes/iyzipay-php',
-	'includes/phpexcel',
 	'includes/boxpacker',
 	'assets/lib',
 	'data/backups',

@@ -92,3 +92,36 @@ function test_design_canvas_icon_one_colour_takes_its_neighbours_colour()
 	$folders = file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
 	pg_assert_contains('#explorer_menu .menu-item .bi, #explorer_menu .menu-item .pg-dc-mono {', $folders, 'the File Manager menu gives it its icons\' box');
 }
+
+function test_design_canvas_icon_on_the_buttons_that_open_the_canvas()
+{
+	$mono = 'pg_design_canvas_icon_one_colour(';
+
+	// The panel's "Edit this image in the Artifact Canvas" buttons.
+	foreach (array('edit_design_file.php', 'edit_file.php', 'includes/fn/design_file_list_edit.php', 'includes/dashboard/widgets/widget_18.php') as $file) {
+		$code = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$at = strpos($code, 'data-pg-image-edit=');
+
+		pg_assert_true($at !== false, $file . ' has its edit button');
+		pg_assert_contains($mono, substr($code, $at, 300), $file . ' draws the canvas icon on it');
+		pg_assert_false(strpos($code, 'bi-flower2') !== false, $file . ' has no flower glyph left');
+		pg_assert_false(strpos($code, 'bi-brush') !== false, $file . ' has no brush glyph left');
+	}
+
+	// Workspace: the joined canvas card's head.
+	$card = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_page_card.js');
+	pg_assert_contains("head.appendChild(h.icon('pg-design-canvas'));", $card, 'the canvas card head uses it');
+	pg_assert_false(strpos($card, 'bi-easel2') !== false, 'no easel glyph left on the canvas card');
+
+	// A guest's waiting canvas, from the guest page's own config.
+	$guest_page = file_get_contents(PG_FUNCTIONS_DIR . '/workspace_guest.php');
+	pg_assert_contains("'canvas_icon' => pg_design_canvas_icon_one_colour(),", $guest_page, 'the guest config carries the one-colour form');
+
+	$guest = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_guest.js');
+	pg_assert_contains("waiting.appendChild(icon('pg-design-canvas'));", $guest, 'the waiting canvas uses it');
+	pg_assert_contains('holder.innerHTML = CONF.canvas_icon;', $guest, 'drawn from the config');
+	pg_assert_false(strpos($guest, "icon('bi-easel')") !== false, 'no easel glyph left on the waiting canvas');
+
+	$guest_css = file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/workspace_guest.css');
+	pg_assert_contains(".pg-guest-canvas-wait .pg-dc-mono .pg-mi-2,\n.pg-guest-canvas-wait .pg-dc-mono .pg-mi-at {\n  fill: none;", $guest_css, 'the guest page drops the tint itself');
+}

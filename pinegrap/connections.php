@@ -117,6 +117,20 @@ function connections_ai_may_manage($user) {
 
 }
 
+// May the user change the Sign in with Google application? It came from
+// the Accounts and sign-in card, so it keeps that category's gate.
+function connections_signin_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('security', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -225,6 +239,34 @@ if ($_POST) {
 			}
 
 		}
+
+	}
+
+	// The Sign in with Google application, saved on Google's page under the
+	// gate of the sign-in settings it came from. The switch that shows the
+	// button stays there.
+	if ($action === 'signin_google_save') {
+
+		if (connections_signin_may_manage($user)) {
+
+			$signin_client_id = (isset($_POST['oauth_google_client_id']) && is_string($_POST['oauth_google_client_id'])) ? trim($_POST['oauth_google_client_id']) : '';
+			$signin_client_secret = (isset($_POST['oauth_google_client_secret']) && is_string($_POST['oauth_google_client_secret'])) ? trim($_POST['oauth_google_client_secret']) : '';
+
+			if (mb_strlen($signin_client_id) > 255) {
+				$liveform->add_error(lang('The client ID is too long.'));
+			} elseif (mb_strlen($signin_client_secret) > 160) {
+				$liveform->add_error(lang('The client secret is too long.'));
+			} elseif (pg_signin_google_app_save($signin_client_id, $signin_client_secret)) {
+				$liveform->add_notice(lang('The Sign in with Google application was saved.'));
+				log_activity(lang('changed the Sign in with Google application'), $_SESSION['sessionusername']);
+			} else {
+				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the secret.'));
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		exit();
 
 	}
 
@@ -918,7 +960,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 				<label class="pg-text-2" for="' . $field_id('enabled') . '">' . h(lang('Connections through this application are allowed')) . '</label>
 			</div>
 			' . ((is_array($app) && ($app['source'] === 'signin'))
-				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
+				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('Google features use the Sign in with Google application now, as no application of their own is saved. Add both redirect addresses to it in Google Cloud, or save an application of their own here.')) . '</div>'
 				: '') . '
 			' . ($ready
 				? '<details><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="pg-text-2 ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
@@ -945,7 +987,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
 				' . ($can_fall_back
 					? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action" data-action="remove_app" data-id="0"
-						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application of the Security settings again. Connected accounts stay.')) . '">
+						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application above again. Connected accounts stay.')) . '">
 						<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Use the Sign in with Google application')) . '</button>'
 					: '') . '
 			</div>
@@ -1311,6 +1353,56 @@ function connections_provider_page($provider_key, $provider, $row, $app, $accoun
 
 }
 
+/* The Sign in with Google application on Google's page: its client ID and
+   secret (config.oauth_google_*, the columns it always had), saved by
+   signin_google_save. The secret is shown back in the field as it was on
+   the sign-in settings, and an empty field clears it; the return address
+   is google_auth.php, listed among the redirect addresses below. */
+
+function connections_signin_google_part() {
+
+	$app = pg_signin_google_app();
+	$client_id = is_array($app) ? $app['client_id'] : '';
+	$client_secret = is_array($app) ? $app['client_secret'] : '';
+	$ready = is_array($app) && ($client_secret !== '');
+
+	if ($ready) {
+		$pill = '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>';
+	} else {
+		$pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>';
+	}
+
+	return '
+			<div id="connections-signin">
+				<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+					<h3 class="pg-group-label mb-0">' . h(lang('Sign in with Google application')) . '</h3>
+					' . $pill . '
+				</div>
+				<p class="pg-field-help mt-0">' . h(lang('Visitors and staff sign in with this application. Whether the button is shown is switched in Site Settings › Accounts and sign-in. Google features use it too until an application of their own is saved below.')) . '</p>
+				<form method="post" action="connections.php" class="connections-app-form">
+					' . get_token_field() . '
+					<input type="hidden" name="connections_action" value="signin_google_save">
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_id">' . h(lang('Client ID')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_id" name="oauth_google_client_id"
+							value="' . h($client_id) . '" maxlength="255" autocomplete="off">
+					</div>
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_secret">' . h(lang('Client secret')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_secret" name="oauth_google_client_secret"
+							value="' . h($client_secret) . '" maxlength="160" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
+						<div class="pg-field-help">' . h(lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.')) . '</div>
+					</div>
+					<div class="d-flex flex-wrap align-items-center gap-3">
+						<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+						<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+							' . h(lang('Accounts and sign-in')) . ' ›</a>
+					</div>
+				</form>
+			</div>';
+
+}
+
 /* Google's parts of "Connection details": the APIs each Google feature
    calls, read from the registry, with the page that turns each on, and
    Google's verification warning. */
@@ -1603,19 +1695,39 @@ if ($provider_page !== '') {
 	));
 
 	$details = '';
+	$page_cards = pg_connections_screen_page_cards($page_id, array(
+		'manager' => $is_manager,
+		'signin'  => ($provider_page === 'google') && connections_signin_may_manage($user),
+	));
 
-	if (in_array('details', pg_connections_screen_page_cards($page_id, array('manager' => $is_manager)), true)) {
+	// Google's two applications are shown together: the connected accounts'
+	// one falls back to the Sign in with Google application.
+	$signin_part = in_array('signin', $page_cards, true) ? connections_signin_google_part() : '';
+
+	if (in_array('details', $page_cards, true)) {
 
 		$hint = connections_app_hint($provider_apps[$provider_page]);
 
 		$details = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			<p class="pg-card-sub mb-4">' . h(($signin_part !== '')
+				? lang('The Google applications the site signs people in and connects its accounts through.')
+				: lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			' . $signin_part . '
+			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(lang('Connected accounts application')) . '</h3>' : '') . '
 			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
 			' . connections_app_form($provider_page, $provider, $provider_apps[$provider_page],
 				(is_array($draft) && ($draft['provider'] === $provider_page)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
 			' . (($provider_page === 'google') ? connections_google_cloud_parts($registry, $rows) : '') . '
+		</section>';
+
+	} elseif ($signin_part !== '') {
+
+		$details = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-4" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			' . $signin_part . '
 		</section>';
 
 	}

@@ -928,6 +928,22 @@ div.pg-guest-poll-option {
   background: var(--pg-bg-body);
 }
 
+/* The canvas's own drawing in one colour (pg_design_canvas_icon_one_colour()):
+   this page has no backend.css, so it sizes it and drops the tint here; its
+   lines take the text colour. */
+.pg-guest-canvas-wait .pg-dc-icon {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin-top: .15em;
+  overflow: visible;
+}
+
+.pg-guest-canvas-wait .pg-dc-mono .pg-mi-2,
+.pg-guest-canvas-wait .pg-dc-mono .pg-mi-at {
+  fill: none;
+}
+
 .pg-guest-canvas-wait-text b,
 .pg-guest-canvas-wait-text span {
   display: block;

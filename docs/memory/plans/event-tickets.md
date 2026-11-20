@@ -33,7 +33,7 @@ priority: 6
 - Two phones scanning one ticket need one conditional UPDATE on one row; a field's value, which staff can edit, does not give that. Used from what exists: the order line, the product form per unit for a guest's name, the QR maker.
 - The waiting list has no table: two columns and an index on `stock_notify`. Holding a place left the first version: a freed place mails those waiting and the first to order has it.
 - Architect (message 6554): no new right. An event's tickets are checked in by whoever may manage that calendar (`validate_calendar_event_access()`), a product's by whoever manages commerce (`validate_ecommerce_access()`, `core/access-control-and-roles.md`).
-- Still the architect's: the columns, in the draft PRs of TK1 and TK4.
+- Columns: TK1 `workflow/decisions-made-schema-29.md`, TK4 in its draft PR.
 
 ## What is left out?
 - Seats and seat maps; a place held for the first in the waiting list; a ticket per named guest that can be handed on; check-in without a connection; passes for a phone's wallet; the Events template marking its products (templates are paused). Each is a later yes.

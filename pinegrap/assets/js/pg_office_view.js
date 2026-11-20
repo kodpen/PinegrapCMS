@@ -4,7 +4,8 @@
  * Draws a Word or Excel file the server read for a preview
  * (includes/fn/office.php): a workbook as sheet tabs over a table, a
  * document as the safe HTML the server made, a .csv or .tsv as a sheet under
- * the choice of its separator and character set. Loaded on first use by the
+ * the choice of its separator and character set, an .ods as a workbook only
+ * looked at (kind 'ods', options not taken). Loaded on first use by the
  * file manager and the Workspace; nothing here reads a file itself.
  *
  *   var view = window.pgOfficeView.render(container, office, strings, options)
@@ -1567,6 +1568,13 @@
 
             if (office && office.kind === 'csv') {
                 return renderCsv(container, office, strings, options || null);
+            }
+
+            // An .ods: its sheets drawn as a workbook's, only looked at; the
+            // editing options of a window that edits workbooks are not taken.
+            if (office && office.kind === 'ods') {
+                renderBook(container, office, strings, null);
+                return null;
             }
 
             if (office && office.kind === 'docx') {

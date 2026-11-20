@@ -131,7 +131,7 @@ function test_contact_import_screen()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_contacts.php');
 
-	pg_assert_contains('accept=".csv,.txt,text/csv"', $source, 'the file box suggests CSV');
+	pg_assert_contains('accept=".csv,.txt,text/csv,\' . PG_SHEET_IMPORT_ACCEPT . \'"', $source, 'the file box suggests CSV and the workbooks');
 	pg_assert_contains('A file exported from the contacts list can be imported as it is.', $source, 'the screen names the export');
 	pg_assert_contains('pg_import_unique_columns($column_names)', $source, 'repeated headings are left out');
 	pg_assert_same(2, substr_count($source, '$contact_values($row, $line)'), 'both import modes read the cells with their problems');

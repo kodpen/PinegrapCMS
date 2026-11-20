@@ -44,6 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $liveform->add_fields_to_session();
 
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Short Links'));
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+        go($screen_url);
+    }
+
     $upload = (isset($_FILES['file']) && is_array($_FILES['file'])) ? $_FILES['file'] : null;
 
     $upload_limits = pg_upload_limits();
@@ -54,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($screen_url);
     }
 
-    if (($upload === null) || !is_string($upload['tmp_name'] ?? null) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
+    if (($upload === null) || !is_string($upload['tmp_name'] ?? null) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !pg_sheet_import_file($upload)) {
         $liveform->mark_error('file', h(lang('Choose a CSV file to import.')));
         go($screen_url);
     }
@@ -160,8 +168,8 @@ pg_page_shell(
                                 <div class="row">
                                     <div class="col-12 pg-field-span-6 my-3">
                                         <label for="file" class="form-label">' . h(lang('File')) . '</label>
-                                        <input type="file" id="file" name="file" class="form-control" accept=".csv,.txt,text/csv,text/plain" required>
-                                        ' . pg_upload_limit_hint($import_max_bytes) . '
+                                        <input type="file" id="file" name="file" class="form-control" accept=".csv,.txt,text/csv,text/plain,' . PG_SHEET_IMPORT_ACCEPT . '" required>
+                                        ' . pg_sheet_import_hint() . pg_upload_limit_hint($import_max_bytes) . '
                                     </div>
                                     <div class="col-12 my-3">
                                         <div class="form-field">

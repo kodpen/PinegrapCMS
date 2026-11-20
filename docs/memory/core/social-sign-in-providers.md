@@ -16,7 +16,7 @@ description: Adding a sign-in provider: the 'signin' block of its provider file 
   - `user_field`: the posted field carrying the name on a first sign-in (Apple's `user`).
 
 ## What else does a new provider need?
-- Its switch: `config.signin_providers` lists the providers whose buttons are on (Settings › Security, `includes/settings/security.save.php`); the application is its `connect_apps` row. Google keeps its own: `config.oauth_google_enabled` and the application in `config.oauth_google_*`, so a site that had Google sign-in before needs no change in Google Cloud Console.
+- Its switch: `config.signin_providers` lists the providers whose buttons are on (Settings › Security, `includes/settings/security.save.php`); the application is its `connect_apps` row. Google keeps its own: `config.oauth_google_enabled` and the application in `config.oauth_google_*` (typed on Google's page of Connections since #10529), so a site that had Google sign-in before needs no change in Google Cloud Console.
 - Nothing else: flow, matching, failure screen and buttons are shared (`social-sign-in.md`); buttons only through `pg_signin_buttons()`.
 
 ## What is stored?

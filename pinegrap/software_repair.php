@@ -194,11 +194,13 @@ if (count($rerun_choices) == 0) {
                         ' . get_token_field() . '
                         <input type="hidden" name="action" value="rerun_upgrades">
                         <label for="version" class="form-label">' . h(lang('Run the steps again from')) . '</label>
-                        <div class="d-flex flex-wrap gap-3 align-items-start">
-                            <div class="flex-grow-1" style="min-width: 0; max-width: 28rem;">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
-                            <button type="submit" class="btn btn-outline theme-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
-                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run the steps again')) . '
-                            </button>
+                        <div class="row g-3 align-items-start">
+                            <div class="col-12 md:col-6">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
+                            <div class="col-12 md:col-auto">
+                                <button type="submit" class="btn btn-outline theme-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
+                                    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run the steps again')) . '
+                                </button>
+                            </div>
                         </div>
                     </form>';
 }
@@ -242,7 +244,7 @@ if (!$rollback_backups) {
 
 echo pg_page_shell(array(
     'title' => lang('Repair Software'),
-    'extra classes' => 'setting',
+    'extra classes' => 'setting pg-measure-edit pg-measure-single',
     'icon' => 'setting',
     'heading' => lang('Repair Software'),
 ));
@@ -260,9 +262,7 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12 xl:col-6">
                     <div class="card h-100">
-                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Repair Software')) . '</span>
-                        </div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Repair Software')) . '</h2>
                         <div class="card-body">' . $repair_warning . '
                             <ul class="list-group mb-5">' . $repair_rows . '
                             </ul>
@@ -278,9 +278,7 @@ echo '
                 </div>
                 <div class="col-12 xl:col-6">
                     <div class="card h-100" id="rerun" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
-                        </div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Run the database upgrade steps again')) . '</h2>
                         <div class="card-body">
                             <p>' . h(lang('Writes the chosen version into the database as the installed one and opens the upgrade screen, which applies every version after it again. Each step asks before it changes anything, so a step that already ran is skipped in a moment; a step that was missed — an upgrade cut short, a table restored from an older backup — is done now.')) . '</p>
                             <p>' . h(lang('Versions before 2026 cannot be repeated; their steps were written without those checks.')) . '</p>
@@ -293,9 +291,7 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12">
                     <div class="card" id="rollback" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
-                        </div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Roll back an update')) . '</h2>
                         <div class="card-body">
                             <p>' . h(lang('Before an update or a repair replaces the software files, it backs up the files it replaces and the database. Rolling back writes those files back, deletes the files the update added and records the older version as the installed one. The database is not changed: what the newer upgrade steps added stays and the older version does not use it; the next update runs those steps again.')) . '</p>
                             <p>' . h(lang('To put the database back as well, restore the same archive on the installation screen afterwards. Everything written to the site since the update - orders, form entries, changes - is lost then.')) . ' <a href="' . h(PATH . SOFTWARE_DIRECTORY . '/install/') . '">' . h(lang('Installation screen')) . '</a></p>' . $rollback_body . '
