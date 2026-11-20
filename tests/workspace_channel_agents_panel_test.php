@@ -139,7 +139,7 @@ function test_workspace_channel_agents_addable()
 
 function test_workspace_channel_agents_actions_and_texts()
 {
-	pg_assert_same(array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card'), ws_channel_agents_actions());
+	pg_assert_same(array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card', 'ws_channel_activity'), ws_channel_agents_actions());
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_channel_agents.js');
 	$strings = ws_channel_agents_js_strings();
