@@ -225,7 +225,7 @@
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
 - sms-order-messages.md: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
-- sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
+- sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the account check on save, test message
 - sms-twilio-driver.md: Twilio SMS driver (includes/sms/twilio.php, PR #3647): Basic auth, Messages.json form POST, IncomingPhoneNumbers check, Messaging Service SID, sender rule, error codes, retry and uncertain rules
 - speculation-prefetch-left-out.md: What the Speculation Rules block leaves out: link paths, page types, and designer pages whose system widget signs in or out, runs cart or checkout or shows an account
 - speculation-prefetch.md: Speculation Rules prefetch of menu links (2026.11.0, 11.0.127, #3184): what the block lists, what is left out, who gets none, the Features switch, counting and the page cache [decision: decisions-made-product-4.md]
