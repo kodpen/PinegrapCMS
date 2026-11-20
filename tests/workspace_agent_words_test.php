@@ -26,14 +26,17 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
-// The agent's own routes are not MCP tools: the brief says so.
-function test_workspace_agent_words_brief_http_only()
+// The agent's own routes are MCP tools for its own key, named after the
+// route; the feedback read stays HTTP only. The brief says so.
+function test_workspace_agent_words_brief_own_tools()
 {
 	$tools = implode("\n", ws_agent_brief_tool_lines('https://site.example/mcp.php', array('workspace:write'), 12));
 
 	pg_assert_contains('https://site.example/mcp.php', $tools);
 	pg_assert_true(strpos($tools, 'every API route is a tool there') === false, 'no longer claims every route is a tool');
-	pg_assert_contains('HTTP only', $tools);
+	pg_assert_true(strpos($tools, 'they are not MCP tools') === false, 'no longer says the own routes are no tools');
+	pg_assert_contains('workspace_agent_requests_answer', $tools, 'the answer tool by name');
+	pg_assert_contains('/workspace/agent-feedback is HTTP only', $tools);
 	pg_assert_contains('/workspace/agent-requests/12/fail', $tools);
 }
 

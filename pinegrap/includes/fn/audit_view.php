@@ -591,6 +591,7 @@ function pg_audit_view_labels($kind)
             'oauth_client' => lang('OAuth client'),
             'person'       => lang('Person'),
             'privacy_rule' => lang('Retention rule'),
+            'privacy_request' => lang('Privacy request'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
@@ -608,6 +609,8 @@ function pg_audit_view_labels($kind)
             'merge'   => lang('Records merged'),
             'approve' => lang('Approved'),
             'run'     => lang('Rule run'),
+            'answer'  => lang('Answered'),
+            'refuse'  => lang('Refused'),
         ),
         'source' => array(
             'panel' => lang('Panel'),

@@ -1809,6 +1809,7 @@ function pg_signin_create_member($identity)
 
     if ($user_id) {
         pg_signin_identity_add($user_id, $identity['provider'], $identity['subject'], $email);
+        pg_ad_conversion_registration($user_id, $email);
     }
 
     return $user_id;

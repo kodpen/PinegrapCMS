@@ -71,7 +71,8 @@ function get_order_receipt($properties) {
             orders.payment_method,
             orders.card_type,
             orders.card_number,
-            orders.cardholder
+            orders.cardholder,
+            orders.reference_code
         FROM orders
         LEFT JOIN countries ON orders.billing_country = countries.code
         WHERE
@@ -91,6 +92,10 @@ function get_order_receipt($properties) {
 
     $order_number = $row['order_number'];
     $order_date = $row['order_date'];
+
+    // The purchase's event id for a browser pixel pasted on the site, the id
+    // the server sends to the ad services (includes/fn/ad_conversions.php).
+    $output_ad_event_id = pg_ad_conversion_receipt_marker((string) $row['reference_code']);
     $billing_salutation = $row['billing_salutation'];
     $billing_first_name = $row['billing_first_name'];
     $billing_last_name = $row['billing_last_name'];
@@ -1527,7 +1532,7 @@ function get_order_receipt($properties) {
 
         return
             '<div class="software_order_receipt">
-                '  . $output . '
+                '  . $output . $output_ad_event_id . '
             </div>';
 
     // Otherwise this is a custom layout.
@@ -2525,7 +2530,7 @@ function get_order_receipt($properties) {
 
         return
             '<div class="software_order_receipt">
-                '  . $content . '
+                '  . $content . $output_ad_event_id . '
             </div>';
 
     }

@@ -150,6 +150,19 @@ function ws_agent_instructions_line($value)
 }
 
 /**
+ * The site's MCP server beside the Site API: the same folder's mcp.php. Pure.
+ *
+ * @param string $base the Site API (…/integration.php)
+ * @return string
+ */
+function ws_agent_instructions_mcp($base)
+{
+    $base = rtrim((string) $base, '/');
+
+    return (string) preg_replace('#/integration\.php$#', '', $base) . '/mcp.php';
+}
+
+/**
  * What wakes the agent in one channel, as a sentence part. Pure.
  *
  * @param array  $channel id, name, wake_rule, wake_prefix
@@ -206,6 +219,8 @@ function ws_agent_instructions_who_lines($agent, $channels, $base)
     $lines = array_merge($lines, array(
         'Site API: ' . $base,
         'Every path below is relative to it. Authenticate every call with HTTP Basic, your application\'s key and secret, from the environment variables PINEGRAP_KEY and PINEGRAP_SECRET: curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET". Send bodies as JSON with the header Content-Type: application/json.',
+        'Where your environment puts a secret into a request only when it is sent word for word, so -u cannot carry it, send the key and the secret as two headers instead: curl -sS -H "X-Pinegrap-Key: $PINEGRAP_KEY" -H "X-Pinegrap-Secret: $PINEGRAP_SECRET"; or send the application\'s single token (pgkt_ followed by the key, a dot and the secret) from PINEGRAP_TOKEN: curl -sS -H "Authorization: Bearer $PINEGRAP_TOKEN". Use the form that works in every curl line below.',
+        'MCP: the site\'s MCP server at ' . ws_agent_instructions_mcp($base) . ' offers your own routes below as tools to your own key, sent in one of these forms: a tool is named after its route, such as workspace_agent_requests_claim for POST /workspace/agent-requests/{id}/claim, and takes the {id} of the path as its argument id.',
         '',
     ));
 

@@ -4470,18 +4470,25 @@ function output_menu($properties = false)
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
-            // ECOMMERCE > Barcode
-            $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_increase_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-up-circle bi-me-2\'>' . lang('Product Inventory Quantity Increase') . '</a>';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_decrease_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-down-circle bi-me-2\'>' . lang('Product Inventory Quantity Decrease') . '</a>';
-            // ECOMMERCE > Product 
-            $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_attributes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-tags bi-me-2\'>' . lang('All Product Attributes') . '</a>';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product_attribute.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product Attribute'))) . '</a>';
-
-            // ECOMMERCE > Products > Featured and New
-            $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-star bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
+            // ECOMMERCE > Products > barcode stock, attributes, featured and
+            // new, supplier feeds: one loop over screen, icon and label, a
+            // null starting a group under a divider.
+            foreach (array(
+                null,
+                array('barcode_increase_inventory.php', 'bi-arrow-up-circle', lang('Product Inventory Quantity Increase')),
+                array('barcode_decrease_inventory.php', 'bi-arrow-down-circle', lang('Product Inventory Quantity Decrease')),
+                null,
+                array('view_product_attributes.php', 'bi-tags', lang('All Product Attributes')),
+                array('add_product_attribute.php', 'bi-plus-lg', lang(array('string' => 'Create {var:1}', 'vars' => lang('Product Attribute')))),
+                null,
+                array('edit_featured_and_new_items.php', 'bi-star', lang('Edit Featured & New Items')),
+                null,
+                array('view_supplier_feeds.php', 'bi-cloud-download', lang('Supplier feeds')),
+            ) as $products_link) {
+                $menu_items[11]['data-bs-content'] .= ($products_link === null)
+                    ? '<hr class=\'divider my-3\' />'
+                    : '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $products_link[0] . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $products_link[1] . ' bi-me-2\'>' . $products_link[2] . '</a>';
+            }
 
             // ECOMMERCE > Product Groups
             $menu_items[12]['id'] = 12;
@@ -5175,6 +5182,8 @@ function output_menu($properties = false)
         case 'barcode_increase_inventory.php':
         case 'barcode_decrease_inventory.php':
         case 'edit_featured_and_new_items.php':
+        case 'view_supplier_feeds.php':
+        case 'edit_supplier_feed.php':
             $active_menu = 11;
             break;
         case 'view_product_groups.php':
@@ -8071,6 +8080,7 @@ function pg_js_bundles()
             'assets/js/workspace_note_tabs.js',
             'assets/js/workspace_note_group_shares.js',
             'assets/js/workspace_note_lock.js',
+            'assets/js/workspace_channel_notes.js',
             'assets/js/workspace_memory.js',
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_channel_activity.js',
