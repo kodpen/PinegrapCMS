@@ -26,7 +26,7 @@ priority: 7
 - AW1 (S) after AG4 of `plans/ai-guide-steps.md` has landed: W1 to W5.
   - AW1 #10774: W1–W3, W5. AW1b: W4 (`WS_WRITING_RULES_POINTER`), after #10751 and #10742 have landed.
 - AW2 (S) after AW1: W6. The prompt rules' test still passes; this plan deleted in the same PR.
-  - AW2: done, the PR number added at landing. The plan is deleted with AW1b.
+  - AW2 #10888: W6. The plan is deleted with AW1b.
 
 ## What binds it?
 - `includes/workspace/agent_instructions.php` is also entered by AA7 of `plans/app-access-redraw-steps.md`: AW1 goes first.
