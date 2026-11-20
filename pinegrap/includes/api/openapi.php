@@ -1155,6 +1155,7 @@ function api_openapi_objects()
         'ContentReviewItem' => 'api_content_review_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
+        'SalesWatchReport' => 'api_sales_watch_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',
         'CustomerValueReport' => 'api_customer_value_report_schema',
         'VitalsReport'   => 'api_vitals_report_schema',

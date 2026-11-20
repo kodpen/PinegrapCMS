@@ -676,3 +676,314 @@ function api_customer_value_report_schema() {
 	);
 
 }
+
+// The sales watch (includes/fn/sales_watch.php): per channel the orders it
+// expects in the next 12 hours and what the last 12 brought, when its pass
+// last ran, the sales alerts of the last 7 days and the products it took off
+// sale. A read only: nothing is judged or told at the call, and the norm
+// comes from the same cache the pass keeps.
+function api_reports_sales_watch($params) {
+
+	$now = time();
+
+	$commerce = defined('ECOMMERCE') && (ECOMMERCE === true);
+
+	$settings = pg_sales_watch_settings();
+
+	$state = pg_ops_alert_state();
+
+	$channels = array();
+
+	if ($commerce) {
+
+		$list = pg_sales_watch_channels($now);
+
+		$data = pg_sales_watch_norm_data($now);
+
+		$since = $now;
+
+		foreach ($list as $channel) {
+
+			$since = min($since, (int)$channel['end']);
+
+		}
+
+		$since -= 12 * 3600;
+
+		$times = array();
+
+		foreach ((array)db_items(
+			"SELECT order_date
+			FROM orders
+			WHERE
+				(order_date > '" . $since . "')
+				AND (type = 'online')
+				AND (status <> 'incomplete')") as $row) {
+
+			$times['site'][] = (int)$row['order_date'];
+
+		}
+
+		if (count($list) > 1) {
+
+			foreach ((array)db_items(
+				"SELECT DISTINCT marketplace_order_map.account_id, orders.id, orders.order_date
+				FROM orders
+				INNER JOIN marketplace_order_map ON marketplace_order_map.order_id = orders.id
+				WHERE (orders.order_date > '" . $since . "')") as $row) {
+
+				$times['mp_' . (int)$row['account_id']][] = (int)$row['order_date'];
+
+			}
+
+		}
+
+		foreach ($list as $key => $channel) {
+
+			$paused = 0;
+
+			foreach (array($key, 'store') as $pause_key) {
+
+				if (isset($settings['paused'][$pause_key])) {
+
+					$paused = max($paused, (int)$settings['paused'][$pause_key]);
+
+				}
+
+			}
+
+			$channels[] = api_sales_watch_channel_present(
+				$key,
+				$channel,
+				isset($data['channels'][$key]) ? $data['channels'][$key] : array(),
+				(int)$data['cut'],
+				isset($times[$key]) ? $times[$key] : array(),
+				$paused,
+				$now
+			);
+
+		}
+
+	}
+
+	$codes = pg_ops_alert_codes();
+
+	$sales_codes = array();
+
+	foreach ($codes as $code => $alert) {
+
+		if (isset($alert['group']) && ($alert['group'] === 'sales')) {
+
+			$sales_codes[] = "'" . escape($code) . "'";
+
+		}
+
+	}
+
+	$alerts = array();
+
+	if ($sales_codes) {
+
+		foreach ((array)db_items(
+			"SELECT order_total AS code, title, timestamp, product_id
+			FROM notifications
+			WHERE
+				(action = 'ops')
+				AND (order_total IN (" . implode(', ', $sales_codes) . "))
+				AND (timestamp >= '" . ($now - (7 * 86400)) . "')
+			ORDER BY timestamp DESC, id DESC
+			LIMIT 200") as $row) {
+
+			$alerts[] = api_sales_watch_alert_present($row, $codes);
+
+		}
+
+	}
+
+	$record = pg_sales_watch_closed_normalize((string)pg_config_text('sales_watch_closed'));
+
+	$products = array();
+
+	if ($record['closed']) {
+
+		foreach ((array)db_items(
+			"SELECT id, name, enabled FROM products
+			WHERE id IN ('" . implode("', '", array_map('intval', array_keys($record['closed']))) . "')" . pg_catalog_bin_live_sql('products')) as $row) {
+
+			$products[(int)$row['id']] = array('name' => (string)$row['name'], 'enabled' => ((int)$row['enabled'] === 1));
+
+		}
+
+	}
+
+	$alerts_on = array();
+
+	foreach (pg_sales_watch_alert_names() as $code) {
+
+		if (!empty($settings[$code])) {
+
+			$alerts_on[] = $code;
+
+		}
+
+	}
+
+	api_ok(array(
+		'watching'       => $commerce && pg_ops_alerts_enabled() && (bool)$alerts_on,
+		'alerts_on'      => $alerts_on,
+		'level'          => (string)$settings['level'],
+		'close_products' => (bool)$settings['close_products'],
+		'last_pass'      => api_time(is_array($state) ? $state['pass'] : 0),
+		'channels'       => $channels,
+		'alerts'         => $alerts,
+		'closed'         => api_sales_watch_closed_present($record['closed'], $products)
+	));
+
+}
+
+// One channel of GET /reports/sales-watch. Pure: $channel is a row of
+// pg_sales_watch_channels() (label, end: where its orders are known up to),
+// $counts its hourly counts before the hour index $cut, $times its order
+// times, $paused the end of its pause (or the store's), 0 for none.
+function api_sales_watch_channel_present($key, $channel, $counts, $cut, $times, $paused, $now) {
+
+	$end = (int)$channel['end'];
+
+	$norm = pg_sales_watch_norm($counts, $cut);
+
+	$orders = 0;
+
+	foreach ($times as $time) {
+
+		if (((int)$time > ($end - (12 * 3600))) && ((int)$time <= $end)) {
+
+			$orders++;
+
+		}
+
+	}
+
+	$hours = array();
+
+	if ($norm !== null) {
+
+		$first = intdiv((int)$now, 3600);
+
+		for ($hour = $first; $hour < ($first + 12); $hour++) {
+
+			$hours[] = array(
+				'from'     => api_time($hour * 3600),
+				'expected' => round(pg_sales_watch_expected_hour($norm, $hour), 2)
+			);
+
+		}
+
+	}
+
+	return array(
+		'key'                    => (string)$key,
+		'label'                  => (string)$channel['label'],
+		'learnt'                 => ($norm !== null),
+		'data_until'             => api_time($end),
+		'paused_until'           => ((int)$paused > (int)$now) ? api_time($paused) : null,
+		'last_12_hours_orders'   => $orders,
+		'last_12_hours_expected' => ($norm !== null) ? round(pg_sales_watch_expected($norm, $end - (12 * 3600), $end), 2) : null,
+		'next_12_hours_expected' => ($norm !== null) ? round(pg_sales_watch_expected($norm, (int)$now, (int)$now + (12 * 3600)), 2) : null,
+		'next_hours'             => $hours
+	);
+
+}
+
+// One sales alert, a notifications row (action 'ops', order_total the code).
+// Pure.
+function api_sales_watch_alert_present($row, $codes) {
+
+	$code = (string)$row['code'];
+
+	$title = (string)$row['title'];
+
+	return array(
+		'code'       => $code,
+		'label'      => isset($codes[$code]['label']) ? (string)$codes[$code]['label'] : $code,
+		// A row with nothing to add carries its own code as its text.
+		'detail'     => ($title !== $code) ? $title : '',
+		'at'         => api_time($row['timestamp']),
+		'product_id' => ((int)$row['product_id'] > 0) ? (int)$row['product_id'] : null
+	);
+
+}
+
+// The products the watch took off sale that still are, newest first. Pure:
+// $closed is the record's closed list, $products id => name and enabled for
+// those that still exist. One put back on sale since the last pass is left
+// out here; the next pass takes it off the record.
+function api_sales_watch_closed_present($closed, $products) {
+
+	uasort($closed, function ($a, $b) {
+
+		return (int)$b['at'] - (int)$a['at'];
+
+	});
+
+	$out = array();
+
+	foreach ($closed as $id => $entry) {
+
+		if (!isset($products[$id]) || $products[$id]['enabled']) {
+
+			continue;
+
+		}
+
+		$out[] = array(
+			'product_id' => (int)$id,
+			'name'       => (string)$products[$id]['name'],
+			'closed_at'  => api_time($entry['at']),
+			'price'      => api_money($entry['price']),
+			'reason'     => (string)$entry['reason']
+		);
+
+	}
+
+	return $out;
+
+}
+
+// What api_reports_sales_watch() answers with, declared for the OpenAPI
+// document.
+function api_sales_watch_report_schema() {
+
+	return array(
+		'watching'       => 'boolean',
+		'alerts_on'      => 'string[]',
+		'level'          => 'string',
+		'close_products' => 'boolean',
+		'last_pass'      => 'datetime?',
+		'channels'       => array(array(
+			'key'                    => 'string',
+			'label'                  => 'string',
+			'learnt'                 => 'boolean',
+			'data_until'             => 'datetime?',
+			'paused_until'           => 'datetime?',
+			'last_12_hours_orders'   => 'integer',
+			'last_12_hours_expected' => 'number?',
+			'next_12_hours_expected' => 'number?',
+			'next_hours'             => array(array('from' => 'datetime', 'expected' => 'number'))
+		)),
+		'alerts'         => array(array(
+			'code'       => 'string',
+			'label'      => 'string',
+			'detail'     => 'string',
+			'at'         => 'datetime?',
+			'product_id' => 'integer?'
+		)),
+		'closed'         => array(array(
+			'product_id' => 'integer',
+			'name'       => 'string',
+			'closed_at'  => 'datetime?',
+			'price'      => 'integer',
+			'reason'     => 'string'
+		))
+	);
+
+}
