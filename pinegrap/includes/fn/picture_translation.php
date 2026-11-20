@@ -266,11 +266,14 @@ function pg_picture_tr_uses_write($file_id, $words)
 
 /**
  * A file deleted for good, binned or flattened: its uses, its rows and the
- * languages' pictures go. Strings and translations stay, as for a page.
+ * languages' pictures go. Strings and translations stay, as for a page. A
+ * binned file keeps its uses: restored, its next visit in a language writes
+ * a waiting row again, which the page pass asks only of a file with texts.
  *
- * @param int $file_id
+ * @param int  $file_id
+ * @param bool $keep_texts true to keep the file's uses (a binned file)
  */
-function pg_picture_tr_forget($file_id)
+function pg_picture_tr_forget($file_id, $keep_texts = false)
 {
     $file_id = (int) $file_id;
 
@@ -278,7 +281,7 @@ function pg_picture_tr_forget($file_id)
         return;
     }
 
-    if (pg_picture_tr_store_ready()) {
+    if (!$keep_texts && pg_picture_tr_store_ready()) {
         db("DELETE FROM translation_uses WHERE owner_type = 'file' AND owner_id = '$file_id'");
     }
 
@@ -443,11 +446,14 @@ function pg_picture_tr_prune($deadline)
         }
     }
 
+    $rowed = array();
+
     if (pg_picture_tr_ready()) {
         $rows = db_items("SELECT DISTINCT file_id FROM file_translation");
 
         foreach (is_array($rows) ? $rows : array() as $row) {
             $ids[(int) $row['file_id']] = true;
+            $rowed[(int) $row['file_id']] = true;
         }
     }
 
@@ -468,8 +474,16 @@ function pg_picture_tr_prune($deadline)
         $binned = $exists && pg_folder_binned((int) $file['folder']);
         $live = $exists && !$binned && pg_picture_tr_live($file_id, $file['name']);
 
-        if (pg_picture_tr_prune_reason($exists, $binned, $live) !== '') {
-            pg_picture_tr_forget($file_id);
+        $reason = pg_picture_tr_prune_reason($exists, $binned, $live);
+
+        // A binned file whose rows went on an earlier run keeps its texts:
+        // nothing is left to drop.
+        if (($reason === 'binned') && !isset($rowed[$file_id])) {
+            $reason = '';
+        }
+
+        if ($reason !== '') {
+            pg_picture_tr_forget($file_id, $reason === 'binned');
             $dropped++;
         }
 
