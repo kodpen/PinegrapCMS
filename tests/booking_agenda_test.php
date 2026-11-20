@@ -267,6 +267,39 @@ function test_booking_agenda_ws_ranges_leave_out_skipped_days()
 	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the agenda reads ws_events.skipped where it exists');
 }
 
+// Bookings > New booking: a Workspace holiday marked "Every year" takes its
+// day in later years too, as on the visitor's side (#10804).
+function test_booking_agenda_ws_yearly_holiday_in_a_later_year()
+{
+	$zone = 'Europe/Istanbul';
+	$tz = new DateTimeZone($zone);
+	$holiday = array(
+		'starts_at' => booking_agenda_test_at('2026-01-01 00:00:00', $zone),
+		'ends_at' => booking_agenda_test_at('2026-01-01 23:59:59', $zone),
+		'all_day' => 1, 'yearly' => 1, 'skipped' => 0,
+	);
+	$from = booking_agenda_test_at('2026-12-31 00:00:00', $zone);
+	$until = booking_agenda_test_at('2027-01-03 00:00:00', $zone);
+
+	pg_assert_same(
+		array(array(booking_agenda_test_at('2027-01-01 00:00:00', $zone), booking_agenda_test_at('2027-01-02 00:00:00', $zone))),
+		pg_booking_agenda_ws_year_ranges(array(), array($holiday), $from, $until, $tz),
+		'1 January 2027 is busy');
+
+	$plain = $holiday;
+	$plain['yearly'] = 0;
+	pg_assert_same(array(), pg_booking_agenda_ws_year_ranges(array(), array($plain), $from, $until, $tz), 'a one-off holiday stays in its year');
+
+	$skipped = $holiday;
+	$skipped['skipped'] = 1;
+	pg_assert_same(array(), pg_booking_agenda_ws_year_ranges(array(), array($skipped), $from, $until, $tz), 'a day left out takes no time');
+
+	$reflection = new ReflectionFunction('pg_booking_agenda_ws_busy');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains('ws_events.yearly = 1', $source, 'the agenda reads the yearly rows');
+	pg_assert_contains('pg_booking_agenda_ws_year_ranges(', $source);
+}
+
 function test_booking_agenda_list_columns_and_row()
 {
 	$columns = pg_booking_agenda_list_columns();

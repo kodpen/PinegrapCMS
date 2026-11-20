@@ -18,11 +18,14 @@ module: bookings
 - The day's exception wins over the weekly hours; a holiday closes the day unless an exception sets hours for it.
 - Ranges are walked in real time: a DST spring day offers an hour less, an autumn day an hour more (two 02:00 slots, an hour apart).
 - The service length must fit in the hours; buffers only keep the slot apart from busy ranges (half-open), they do not shorten the hours.
-- Busy from bookings: `pg_booking_busy_from_rows()` skips cancelled rows and holds past `hold_until`. The caller adds Workspace calendar busy times. A Workspace event marked yearly counts in every later year too (`pg_booking_ws_yearly()`, as `ws_events_between()`; #10799).
+- Busy from bookings: `pg_booking_busy_from_rows()` skips cancelled rows and holds past `hold_until`. The caller adds Workspace calendar busy times. A Workspace event marked yearly counts in every later year too (`pg_booking_ws_yearly()`, as `ws_events_between()`; #10799; Bookings › New booking too, #10804).
 - `"24:00"` is the next date's midnight, read from that date: where the spring change skips midnight (Chile, Egypt) the day starts at 01:00, and a day added to it ended an hour late and offered a slot past the hours (#10799).
 
+## How do the buffers of two bookings meet?
+- The larger one counts, never the sum: [[booking-buffers]].
+
 ## How are hold and confirm written?
-- `pg_booking_insert()` runs under `GET_LOCK` per staff member (name carries the database): deletes an expired hold on the same start, refuses a live booking overlapping the slot with the new service's buffers, then one INSERT writing `slot_at` = `start_at`; error 1062 on the unique key is `'taken'` ("just taken"), never `ON DUPLICATE KEY` or a second row.
+- `pg_booking_insert()` runs under `GET_LOCK` per staff member (name carries the database): deletes an expired hold on the same start, refuses a live booking overlapping the slot with the larger buffer of the two sides, then one INSERT writing `slot_at` = `start_at`; error 1062 on the unique key is `'taken'` ("just taken"), never `ON DUPLICATE KEY` or a second row.
 - `pg_booking_hold()` writes a `held` row until now + hold minutes. `pg_booking_confirm()` with an id turns a live hold into requested/confirmed (`'expired'` when it ran out); without an id it books at once (staff-made). It stores the token hash and returns the raw token.
 - Status moves: `pg_booking_can_move()`; cancelled, no_show, done are final; nothing goes back to `held`.
 
