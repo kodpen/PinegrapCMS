@@ -71,6 +71,10 @@ define('PG_STOCK_NOTIFY_KEEP_WAITING', 31536000);
 define('PG_STOCK_NOTIFY_TRIM_ROWS', 1000);
 define('PG_STOCK_NOTIFY_TRIM_BATCHES', 20);
 
+// The id of the hidden form a notice's "Stop waiting" button posts
+// (pg_stock_notify_withdraw_form_html()).
+define('PG_STOCK_NOTIFY_STOP_FORM', 'pg-stock-notify-stop');
+
 /**
  * Whether the stock_notify table of 2026.11.0 (11.0.14) is there.
  *
@@ -1455,9 +1459,13 @@ function pg_stock_notify_event_line(array $event, $recurrence, $page_id, $send_t
         return '';
     }
 
+    // The hidden form of the notice's "Stop waiting" button.
+    $stop = pg_stock_notify_withdraw_form_once('event', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/stock_notify.php', $send_to, (int) $event['id']);
+
     return pg_stock_notify_event_form_html(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php',
         get_token_field(), $send_to, $page_id, (int) $event['id'], $recurrence,
-        defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '');
+        defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '')
+        . $stop;
 }
 
 /**
@@ -1508,4 +1516,247 @@ function pg_stock_notify_export_event_dates(array $rows, $start)
     }
 
     return $rows;
+}
+
+/**
+ * Which waiting rows a withdraw removes. Signed in, the account's rows,
+ * whatever address it typed; a guest, the rows of the address typed, since
+ * a request is kept without proof of the address and taking one back asks
+ * for no more. Only waiting rows (sent_at 0) of that product, or of that
+ * event's date, are taken: a sent row is never touched. Whether a row was
+ * there changes nothing in the answer. Pure.
+ *
+ * @param bool   $ready   the table (and, for an event, its columns) is there
+ * @param string $kind    product or event
+ * @param int    $id      the product's or the event's id
+ * @param int    $date    the event's date (pg_stock_notify_event_date())
+ * @param string $email   pg_stock_notify_email() of the address typed
+ * @param int    $user_id the signed-in account, 0 for a guest
+ * @param array  $rows    candidate stock_notify rows (id, product_id,
+ *                        calendar_event_id, recurrence_number,
+ *                        email_address, user_id, sent_at)
+ * @return array status (withdrawn, email, unavailable), ids (to delete)
+ */
+function pg_stock_notify_withdraw_status($ready, $kind, $id, $date, $email, $user_id, array $rows)
+{
+    $user_id = max(0, (int) $user_id);
+    $email = (string) $email;
+
+    if (!$ready) {
+        return array('status' => 'unavailable', 'ids' => array());
+    }
+
+    if (($user_id === 0) && ($email === '')) {
+        return array('status' => 'email', 'ids' => array());
+    }
+
+    $id = (int) $id;
+    $ids = array();
+
+    foreach ($rows as $row) {
+        if (!is_array($row) || ((int) ($row['sent_at'] ?? 1) !== 0) || ($id <= 0)) {
+            continue;
+        }
+
+        if ($kind === 'product') {
+            $same = ((int) ($row['product_id'] ?? 0) === $id);
+        } elseif ($kind === 'event') {
+            $same = ((int) ($row['product_id'] ?? 0) === 0)
+                && ((int) ($row['calendar_event_id'] ?? 0) === $id)
+                && ((int) ($row['recurrence_number'] ?? 0) === max(0, (int) $date));
+        } else {
+            $same = false;
+        }
+
+        $owner = ($user_id > 0)
+            ? ((int) ($row['user_id'] ?? 0) === $user_id)
+            : (strcasecmp((string) ($row['email_address'] ?? ''), $email) === 0);
+
+        if ($same && $owner && ((int) ($row['id'] ?? 0) > 0)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return array('status' => 'withdrawn', 'ids' => $ids);
+}
+
+/**
+ * The sentence of a withdraw, the same whether a row was there or not.
+ *
+ * @param string $kind product or event
+ * @return string
+ */
+function pg_stock_notify_withdraw_message($kind)
+{
+    return ($kind === 'event')
+        ? lang('You will get no message about this date.')
+        : lang('You will get no message about this product.');
+}
+
+/**
+ * Takes back a waiting request for a product or an event's date
+ * (stock_notify.php, withdraw=1).
+ *
+ * @param string $kind       product or event
+ * @param int    $id         the product's or the event's id
+ * @param int    $recurrence the event's occurrence asked for
+ * @param string $email      the address typed; ignored when signed in
+ * @param int    $user_id    the signed-in account, 0 for a guest
+ * @return string withdrawn, email, unavailable
+ */
+function pg_stock_notify_withdraw($kind, $id, $recurrence, $email, $user_id)
+{
+    $id = (int) $id;
+    $user_id = max(0, (int) $user_id);
+    $email = pg_stock_notify_email($email);
+    $ready = ($kind === 'event') ? pg_stock_notify_event_ready() : pg_stock_notify_ready();
+    $date = 0;
+    $rows = array();
+
+    if ($ready && ($id > 0) && (($user_id > 0) || ($email !== ''))) {
+        if ($kind === 'event') {
+            $event = get_calendar_event($id, max(0, (int) $recurrence));
+            $date = is_array($event) ? pg_stock_notify_event_date($event, $recurrence) : 0;
+        }
+
+        $where = pg_stock_notify_waiting_where($kind, $id, $date);
+
+        if ($where !== '') {
+            $rows = db_items(
+                "SELECT id, product_id, " . (($kind === 'event') ? 'calendar_event_id, recurrence_number' : "0 AS calendar_event_id, 0 AS recurrence_number") . ", email_address, user_id, sent_at
+                FROM stock_notify
+                WHERE " . $where . "
+                AND " . (($user_id > 0) ? "(user_id = '" . $user_id . "')" : "(email_address = '" . e($email) . "')"));
+        }
+    }
+
+    $result = pg_stock_notify_withdraw_status($ready, $kind, $id, $date, $email, $user_id, is_array($rows) ? $rows : array());
+
+    if ($result['ids']) {
+        $list = implode(', ', array_map('intval', $result['ids']));
+
+        // The row's device waits go first; a row the sender claimed meanwhile
+        // (sent_at no longer 0) is left as it is.
+        if (function_exists('pg_site_push_watch_ready') && pg_site_push_watch_ready()) {
+            db("DELETE w FROM site_push_watch AS w INNER JOIN stock_notify AS n ON (w.kind = '" . PG_SITE_PUSH_KIND_STOCK . "') AND (n.id = w.record_id)
+                WHERE n.id IN (" . $list . ") AND (n.sent_at = 0)");
+        }
+
+        db("DELETE FROM stock_notify WHERE id IN (" . $list . ") AND (sent_at = 0)");
+    }
+
+    return $result['status'];
+}
+
+/**
+ * Remembers in the session what a notice's "Stop waiting" button takes
+ * back: the request the visitor has just made, or found waiting. The page
+ * that shows the notice prints the hidden form from it
+ * (pg_stock_notify_withdraw_form_html()).
+ *
+ * @param string $kind       product or event
+ * @param int    $id
+ * @param int    $recurrence the event's occurrence, 0 for a product
+ * @param string $email      the address typed
+ * @return void
+ */
+function pg_stock_notify_withdraw_offer($kind, $id, $recurrence, $email)
+{
+    $_SESSION['software']['stock_notify_stop'] = array(
+        'kind'       => ($kind === 'event') ? 'event' : 'product',
+        'id'         => (int) $id,
+        'recurrence' => max(0, (int) $recurrence),
+        'email'      => pg_stock_notify_email($email),
+    );
+}
+
+/**
+ * The request the session offers to take back, null for none.
+ *
+ * @return array|null kind, id, recurrence, email
+ */
+function pg_stock_notify_withdraw_offered()
+{
+    $offer = $_SESSION['software']['stock_notify_stop'] ?? null;
+
+    return is_array($offer) ? $offer : null;
+}
+
+/**
+ * Forgets the offer once the request is taken back.
+ *
+ * @return void
+ */
+function pg_stock_notify_withdraw_forget()
+{
+    unset($_SESSION['software']['stock_notify_stop']);
+}
+
+/**
+ * The hidden form a notice's "Stop waiting" button posts. It sits outside
+ * the page's own forms (a notice may be drawn inside the add-to-cart form);
+ * the button names it with form="". Pure.
+ *
+ * @param string     $action  stock_notify.php's address
+ * @param string     $token   the CSRF field (get_token_field())
+ * @param string     $send_to the page to come back to
+ * @param array|null $offer   pg_stock_notify_withdraw_offered()
+ * @return string '' without an offer
+ */
+function pg_stock_notify_withdraw_form_html($action, $token, $send_to, $offer)
+{
+    if (!is_array($offer) || ((int) ($offer['id'] ?? 0) <= 0)) {
+        return '';
+    }
+
+    $event = (($offer['kind'] ?? '') === 'event');
+
+    return '<form id="' . PG_STOCK_NOTIFY_STOP_FORM . '" action="' . h($action) . '" method="post" class="d-none">'
+        . $token
+        . '<input type="hidden" name="withdraw" value="1">'
+        . '<input type="hidden" name="product_id" value="' . ($event ? 0 : (int) $offer['id']) . '">'
+        . ($event
+            ? '<input type="hidden" name="calendar_event_id" value="' . (int) $offer['id'] . '">'
+                . '<input type="hidden" name="recurrence_number" value="' . max(0, (int) ($offer['recurrence'] ?? 0)) . '">'
+            : '')
+        . '<input type="hidden" name="email_address" value="' . h((string) ($offer['email'] ?? '')) . '">'
+        . '<input type="hidden" name="send_to" value="' . h($send_to) . '">'
+        . '</form>';
+}
+
+/**
+ * The "Stop waiting" button a notice carries beside its sentence. Pure.
+ *
+ * @return string
+ */
+function pg_stock_notify_withdraw_button_html()
+{
+    return '<button type="submit" form="' . PG_STOCK_NOTIFY_STOP_FORM . '" class="btn btn-link btn-sm p-0 ms-1 align-baseline">'
+        . h(lang('Stop waiting')) . '</button>';
+}
+
+/**
+ * The hidden stop form for a page drawing the request's own controls, once
+ * per page and only while the session offers a request of that kind.
+ *
+ * @param string $kind    product or event
+ * @param string $action  stock_notify.php's address
+ * @param string $send_to the page to come back to
+ * @param int    $id      only for this product or event, 0 for any
+ * @return string
+ */
+function pg_stock_notify_withdraw_form_once($kind, $action, $send_to, $id = 0)
+{
+    static $printed = false;
+    $offer = pg_stock_notify_withdraw_offered();
+
+    if ($printed || !$offer || (($offer['kind'] ?? '') !== $kind)
+        || (((int) $id > 0) && ((int) ($offer['id'] ?? 0) !== (int) $id))) {
+        return '';
+    }
+
+    $html = pg_stock_notify_withdraw_form_html($action, get_token_field(), $send_to, $offer);
+    $printed = ($html !== '');
+
+    return $html;
 }

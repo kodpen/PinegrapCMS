@@ -27,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function ws_channel_agents_actions()
 {
-    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card');
+    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card', 'ws_channel_activity');
 }
 
 /**
@@ -292,6 +292,12 @@ function ws_channel_agents_action($action, $request)
         $card = ws_agents_ready() ? ws_agent_card($viewer, $channel, (int) ($request['agent_id'] ?? 0), time()) : null;
 
         return is_array($card) ? ws_action_ok(array('card' => $card)) : ws_action_error(lang('That agent could not be found.'));
+    }
+
+    // The Activity tab of Channel info: every reader of the channel
+    // (channel_activity.php).
+    if ($action === 'ws_channel_activity') {
+        return ws_action_ok(array('activity' => ws_channel_activity($viewer, $channel, time())));
     }
 
     if (!ws_agents_ready()) {

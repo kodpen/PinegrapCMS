@@ -4,7 +4,7 @@ description: Plan channel-activity, steps KA1 to KA5: the activity read with its
 ---
 
 ## Which steps are there?
-- KA1 (M) first: the read.
+- KA1 (M) first: the read. Done (#10751). Readers KA3 and KA4 add, called by the read once they exist: `ws_agent_report_context()`, `ws_agent_report_project()`, `ws_agent_report_branch()` (each takes the agent row) and `ws_channel_activity_repo($viewer, $channel, $now)`.
   - New `includes/workspace/channel_activity.php`: `ws_channel_activity($viewer, $channel, $now)` with pure parts (summary, row order, a request's age, plan windows joined by agents). The panel action `ws_channel_activity` beside `ws_agent_card` in `channel_agents_panel.php`; the route in `api_channel_reads.php` with its schema object; `php tools/check_api_schema.php`.
   - The answer has its whole shape from the start: `context`, `project`, `branch` and `repository` are null until KA3 and KA4 land (their readers are called when the function is there).
   - Tests, red first, in a new `tests/workspace_channel_activity_test.php`. Features: E2 to E7, E9, the read of E13.

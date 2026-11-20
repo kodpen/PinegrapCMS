@@ -158,6 +158,8 @@ function pg_privacy_inventory()
             'purpose' => 'Returns and their notes', 'ground' => 'contract', 'retention' => 'orders'),
         'shipment_labels' => array('categories' => array('identity', 'address'), 'subjects' => array('customer'),
             'purpose' => 'Shipping labels', 'ground' => 'contract', 'retention' => 'orders'),
+        'ad_conversion_events' => array('categories' => array('contact', 'ip_cookie'), 'subjects' => array('customer'),
+            'purpose' => 'Order conversions sent to the ad services', 'ground' => 'consent', 'retention' => 'orders'),
         'gift_cards' => array('categories' => array('identity', 'contact', 'order_payment', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'Gift cards and store credit', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('recipient_email_address', 'text')),
         'cart_quotes' => array('categories' => array('identity'), 'subjects' => array('customer'),
