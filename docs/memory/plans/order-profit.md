@@ -22,10 +22,11 @@ priority: 6
 - `includes/fn/order_completion.php` and `cart_action.php` are not entered: the profit pass reads orders after the fact.
 - Prices never change; the break-even price is shown only.
 
-## What does the architect decide?
-- Reading a marketplace's deductions per order next to the phase limit "no iyzico or marketplace settlement (payout) import" (`erp/erp-not-built-on-purpose.md`): the plan reads deductions to cost an order and matches nothing to a payout or bank line.
-- Who sees profit: the plan shows it only to people with ERP access (`validate_erp_access()`), not to all order staff.
-- The target margin starts empty (break-even only) until the merchant sets one.
+## What did the architect decide? (2026-11-20, agent channel message 10189)
+- No question for the owner. Marketplace deductions sit inside the phase limit: a figure read becomes the order's cost row only; no `erp_receipts`, till, bank or account move, no invoice settled, no payout record, date or amount, nothing matched to a bank line. With Accounting off the job reads and writes nothing.
+- Profit only with ERP access (`validate_erp_access()`), as product cost is seen only in the ERP; no new right or column. The same gate on every surface: order card, list column and filter (not drawn without it), Profitability, workbook, bell, API and MCP.
+- The target margin starts empty: break-even only. Margin = net profit / revenue without tax (`erp_profit_report()`'s rule), a percent in a setting.
+- The three `erp_*` tables are approved in advance; NP1's worker writes their columns into its PR body and asks the architect before marking it ready.
 
 ## What is built?
 - Features: `order-profit-features.md` (N1 to N14). Steps: `order-profit-steps.md`. Claim as `[plan:order-profit] <step> — <topic>`.
