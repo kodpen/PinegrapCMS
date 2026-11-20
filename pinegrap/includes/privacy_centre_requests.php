@@ -36,9 +36,9 @@ if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
         $requests_added = pg_privacy_request_add($_POST, $requests_operator);
 
         if ($requests_added['errors']) {
-            $liveform->add_error(isset($requests_added['errors']['email']) ? lang('Enter the address of the person who asks.') : lang('The request could not be added.'));
+            $liveform->add_error(isset($requests_added['errors']['email']) ? lang('Enter the address of the person who asks.') : (isset($requests_added['errors']['received_on']) ? lang('Enter the day the request came: today or earlier.') : lang('The request could not be added.')));
         } else {
-            $liveform->add_notice(lang('The request was added. Its 30 days start today.'));
+            $liveform->add_notice(lang('The request was added.'));
             $requests_back .= '&request=' . $requests_added['id'];
         }
     } elseif ($requests_request !== null) {
@@ -125,7 +125,7 @@ pg_page_shell(array(
     ' . ($requests_ready ? $requests_ending . pg_list_table_html($requests_list['source'], $requests_list['page'], lang('Requests')) : '<p class="pg-text-2">' . h(lang('The request box comes with the software update that adds its table.')) . '</p>') . '
     ' . $requests_drawers . '
 </main>
-' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' . get_date_picker_format() . pg_fields_script() . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 <script>
 (function () {
     var phone = window.matchMedia("(max-width: 575.98px)");

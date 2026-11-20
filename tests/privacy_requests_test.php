@@ -89,11 +89,27 @@ function test_privacy_request_sweep_query()
 // The list's views; an unproven row is in none of them.
 function test_privacy_request_view_where()
 {
-	pg_assert_same("(status = 'open')", pg_privacy_request_view_where('open'), 'open');
-	pg_assert_same("(status IN ('answered', 'refused'))", pg_privacy_request_view_where('answered'), 'answered');
-	pg_assert_same("(status <> 'unproven')", pg_privacy_request_view_where('all'), 'all');
-	pg_assert_same("(status = 'open')", pg_privacy_request_view_where('other'), 'unknown: open');
-	pg_assert_same("(status = 'open') AND (due_at < '" . (1700000000 + (7 * 86400)) . "')", pg_privacy_request_view_where('ending', 1700000000), 'ending within 7 days');
+	pg_assert_same("(received_at > 0) AND (status = 'open')", pg_privacy_request_view_where('open'), 'open');
+	pg_assert_same("(received_at > 0) AND (status IN ('answered', 'refused'))", pg_privacy_request_view_where('answered'), 'answered');
+	pg_assert_same("(received_at > 0) AND (status <> 'unproven')", pg_privacy_request_view_where('all'), 'all');
+	pg_assert_same("(received_at > 0) AND (status = 'open')", pg_privacy_request_view_where('other'), 'unknown: open');
+	pg_assert_same("(received_at > 0) AND (status = 'open') AND (due_at < '" . (1700000000 + (7 * 86400)) . "')", pg_privacy_request_view_where('ending', 1700000000), 'ending within 7 days');
+}
+
+// An unproven row keeps its sweep moment in due_at: every read of the box
+// (the list, the Requests count, the reminders) asks for received_at > 0,
+// never due_at alone, so such a row can never show as due.
+function test_privacy_request_unproven_rows_are_never_due()
+{
+	$now = 1700000000;
+
+	foreach (array('open', 'ending', 'answered', 'all') as $view) {
+		pg_assert_contains('(received_at > 0)', pg_privacy_request_view_where($view, $now), $view);
+	}
+
+	pg_assert_contains('(received_at > 0)', pg_privacy_request_counts_where(), 'the Requests count');
+	pg_assert_contains('(r.received_at > 0)', pg_privacy_request_remind_where($now), 'the reminders');
+	pg_assert_same(0, pg_privacy_request_reminder_stage(array('status' => 'open', 'received_at' => 0, 'due_at' => $now + 86400, 'reminded' => 0), $now), 'an unproven row is reminded of nothing');
 }
 
 // A request typed in by staff: a kind, an address, open from now.
@@ -111,6 +127,22 @@ function test_privacy_request_from_input()
 	pg_assert_same($now, $out['row']['received_at'], 'received now');
 	pg_assert_same($now + (30 * 86400), $out['row']['due_at'], 'due in 30 days');
 	pg_assert_same(4, $out['row']['created_by'], 'who typed it');
+
+	$letter = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => '2026-11-12'), $now, 4);
+	$day = mktime(0, 0, 0, 11, 12, 2026);
+
+	pg_assert_same(array(), $letter['errors'], 'a letter of some days ago');
+	pg_assert_same($day, $letter['row']['received_at'], 'its 30 days start on the day it came');
+	pg_assert_same($day + (30 * 86400), $letter['row']['due_at'], 'and end 30 days after');
+
+	$future = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => '2026-11-21'), $now, 4);
+	pg_assert_true(isset($future['errors']['received_on']), 'never in the future');
+
+	$wrong = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => '2026-02-31'), $now, 4);
+	pg_assert_true(isset($wrong['errors']['received_on']), 'not a day');
+
+	$today = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => '2026-11-20'), $now, 4);
+	pg_assert_same($now, $today['row']['received_at'], 'today: now');
 
 	$bad = pg_privacy_request_from_input(array('kind' => 'gossip', 'email' => 'nobody'), $now, 4);
 

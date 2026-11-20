@@ -143,7 +143,7 @@ function pg_privacy_request_due_tone($days_left)
  */
 function pg_privacy_request_reminder_stage(array $row, $now)
 {
-    if ((($row['status'] ?? '') !== 'open') || ((int) ($row['due_at'] ?? 0) <= 0)) {
+    if ((($row['status'] ?? '') !== 'open') || ((int) ($row['due_at'] ?? 0) <= 0) || (array_key_exists('received_at', $row) && ((int) $row['received_at'] <= 0))) {
         return 0;
     }
 
@@ -182,21 +182,25 @@ function pg_privacy_request_sweep_query($now, $batch)
  */
 function pg_privacy_request_view_where($view, $now = 0)
 {
+    // An unproven row keeps its sweep moment in due_at: only a proven row
+    // (received_at above 0) is ever read as a request.
+    $proven = "(received_at > 0) AND ";
+
     if ($view === 'ending') {
-        return "(status = 'open') AND (due_at < '" . ((int) $now + (pg_privacy_request_limits()['amber'] * 86400)) . "')";
+        return $proven . "(status = 'open') AND (due_at < '" . ((int) $now + (pg_privacy_request_limits()['amber'] * 86400)) . "')";
     }
 
     if ($view === 'answered') {
-        return "(status IN ('answered', 'refused'))";
+        return $proven . "(status IN ('answered', 'refused'))";
     }
 
-    return ($view === 'all') ? "(status <> 'unproven')" : "(status = 'open')";
+    return $proven . (($view === 'all') ? "(status <> 'unproven')" : "(status = 'open')");
 }
 
 /**
  * A request typed in by staff: open at once, its 30 days from now. Pure.
  *
- * @param array $input       kind, email, name, message
+ * @param array $input       kind, email, name, message, received_on (Y-m-d)
  * @param int   $now
  * @param int   $operator_id
  * @return array  errors (field => true), row
@@ -221,6 +225,20 @@ function pg_privacy_request_from_input(array $input, $now, $operator_id)
         $errors['email'] = true;
     }
 
+    // The day the request came (a letter, a call): today by default, never
+    // in the future; its 30 days start on that day.
+    $received = (int) $now;
+    $day = $text('received_on', 10);
+
+    if (($day !== '') && ($day !== date('Y-m-d', (int) $now))) {
+        $parts = (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $day, $match) === 1) && checkdate((int) $match[2], (int) $match[3], (int) $match[1]);
+        $received = $parts ? mktime(0, 0, 0, (int) $match[2], (int) $match[3], (int) $match[1]) : 0;
+
+        if (!$parts || ($received > (int) $now)) {
+            $errors['received_on'] = true;
+        }
+    }
+
     return array('errors' => $errors, 'row' => array(
         'kind'        => $kind,
         'status'      => 'open',
@@ -229,8 +247,8 @@ function pg_privacy_request_from_input(array $input, $now, $operator_id)
         'name'        => $text('name', 100),
         'message'     => $text('message', 10000),
         'created_by'  => (int) $operator_id,
-        'received_at' => (int) $now,
-        'due_at'      => pg_privacy_request_due_at($now),
+        'received_at' => $received,
+        'due_at'      => pg_privacy_request_due_at($received),
     ));
 }
 
@@ -276,7 +294,7 @@ function pg_privacy_request_get($id)
         return null;
     }
 
-    $row = db_item("SELECT * FROM privacy_requests WHERE (id = '" . (int) $id . "') AND (status <> 'unproven')");
+    $row = db_item("SELECT * FROM privacy_requests WHERE (id = '" . (int) $id . "') AND (received_at > 0) AND (status <> 'unproven')");
 
     return is_array($row) ? $row : null;
 }
@@ -296,9 +314,33 @@ function pg_privacy_requests_list($view)
     return db_items("SELECT r.*, u.user_username AS assigned_name
         FROM privacy_requests r
         LEFT JOIN user u ON (r.assigned_user_id > 0) AND (u.user_id = r.assigned_user_id)
-        WHERE " . preg_replace('/\((status|due_at) /', '(r.$1 ', pg_privacy_request_view_where($view, time())) . "
+        WHERE " . preg_replace('/\((status|due_at|received_at) /', '(r.$1 ', pg_privacy_request_view_where($view, time())) . "
         ORDER BY (r.status = 'open') DESC, r.due_at ASC, r.id DESC
         LIMIT " . (int) pg_privacy_request_limits()['list']);
+}
+
+/**
+ * The rows the Requests count reads: open and proven. Pure.
+ *
+ * @return string
+ */
+function pg_privacy_request_counts_where()
+{
+    return "(received_at > 0) AND (status = 'open')";
+}
+
+/**
+ * The rows the reminders look at: open, proven, within the amber days and
+ * not yet told of the last stage. Pure.
+ *
+ * @param int $now
+ * @return string
+ */
+function pg_privacy_request_remind_where($now)
+{
+    $limits = pg_privacy_request_limits();
+
+    return "(r.received_at > 0) AND (r.status = 'open') AND (r.due_at < '" . ((int) $now + ($limits['amber'] * 86400)) . "') AND ((r.reminded = 0) OR (r.reminded > '" . (int) $limits['red'] . "'))";
 }
 
 /**
@@ -315,7 +357,7 @@ function pg_privacy_requests_counts($now = null)
 
     $now = ($now === null) ? time() : (int) $now;
     $row = db_item("SELECT COUNT(*) AS open_count, SUM(due_at < '" . ($now + (pg_privacy_request_limits()['amber'] * 86400)) . "') AS ending_count
-        FROM privacy_requests WHERE status = 'open'");
+        FROM privacy_requests WHERE " . pg_privacy_request_counts_where());
 
     return array('open' => (int) ($row['open_count'] ?? 0), 'ending' => (int) ($row['ending_count'] ?? 0));
 }
@@ -536,10 +578,10 @@ function pg_privacy_requests_remind($now = null)
 
     $now = ($now === null) ? time() : (int) $now;
     $limits = pg_privacy_request_limits();
-    $rows = db_items("SELECT r.id, r.kind, r.status, r.due_at, r.reminded, u.user_email
+    $rows = db_items("SELECT r.id, r.kind, r.status, r.received_at, r.due_at, r.reminded, u.user_email
         FROM privacy_requests r
         LEFT JOIN user u ON (r.assigned_user_id > 0) AND (u.user_id = r.assigned_user_id)
-        WHERE (r.status = 'open') AND (r.due_at < '" . ($now + ($limits['amber'] * 86400)) . "') AND ((r.reminded = 0) OR (r.reminded > '" . (int) $limits['red'] . "'))
+        WHERE " . pg_privacy_request_remind_where($now) . "
         LIMIT 100");
     $sent = 0;
 
@@ -725,6 +767,7 @@ function pg_privacy_request_add_drawer($open)
     $body = '<input type="hidden" name="action" value="add">'
         . _pg_privacy_request_field('privacy_request_add_kind', lang('Kind'), '<select class="pg-input" id="privacy_request_add_kind" name="kind">' . $kinds . '</select>')
         . _pg_privacy_request_field('privacy_request_add_email', lang('E-mail address'), '<input type="email" class="pg-input" id="privacy_request_add_email" name="email" maxlength="100" required>', lang('The answer goes to this address.'))
+        . _pg_privacy_request_field('privacy_request_add_received', lang('Received on'), '<input type="date" data-pg-date class="pg-input" id="privacy_request_add_received" name="received_on" value="' . h(date('Y-m-d')) . '" max="' . h(date('Y-m-d')) . '" required>', lang('The day the request came; its 30 days start then.'))
         . _pg_privacy_request_field('privacy_request_add_name', lang('Name'), '<input type="text" class="pg-input" id="privacy_request_add_name" name="name" maxlength="100">')
         . _pg_privacy_request_field('privacy_request_add_message', lang('What the person asks'), '<textarea class="pg-input" id="privacy_request_add_message" name="message" rows="5"></textarea>');
 
@@ -732,7 +775,7 @@ function pg_privacy_request_add_drawer($open)
         . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
         . '<button type="submit" class="pg-button pg-button-fill">' . h(lang('Add')) . '</button>';
 
-    return _pg_privacy_request_drawer_frame('privacy_request_add', lang('Add a request'), h(lang('A request that came by e-mail, phone or post. Its 30 days start today.')), '', $body, $foot, $open);
+    return _pg_privacy_request_drawer_frame('privacy_request_add', lang('Add a request'), h(lang('A request that came by e-mail, phone or post.')), '', $body, $foot, $open);
 }
 
 /**

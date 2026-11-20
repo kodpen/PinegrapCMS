@@ -472,6 +472,7 @@
     "Received by (name, date, signature)": "Teslim alan (ad, tarih, imza)",
     "Received in full": "Tamamı teslim alındı",
     "Received is what the issued purchase invoices made from this order carry; a cancelled invoice counts for nothing. Drafts count once they are issued.": "Alınan, bu siparişten kesilmiş alış faturalarındaki miktardır; iptal edilen fatura sayılmaz. Taslaklar kesilince sayılır.",
+    "Received on": "Geliş tarihi",
     "Recent": "Son Gezilenler",
     "Recent Activity": "Son Hareketler",
     "Recent Comments": "Son Yorumlar",
