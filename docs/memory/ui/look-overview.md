@@ -21,7 +21,7 @@ description: Start file for the look-* files: look A in the panel as a whole, th
 
 ## What binds a change of look?
 - Owner (2026-11-15): old screens move to the modern look ("eski sayfaları yeni modern tasarıma geçirme olur").
-- A screen's look is approved by the architect from real-panel pictures (light and dark, 1440 and 390), delegated by the owner (message 2645); a new design goes to the owner.
+- No step sends pictures for approval since 2026-11-19: the owner looks on dev after it lands (`workflow/look-pictures-none.md`); a new design goes to the owner.
 - A move copies the recipes value for value and changes no behaviour, field or text. Where the sheet is silent: `look-sheet-silent.md`. Kept screens: `look-kept-screens.md`.
 - Left out: the Workspace, the classic page screens (`look-field-widths.md`), the visual designer.
 
