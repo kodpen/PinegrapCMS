@@ -74176,6 +74176,10 @@ const StyleDesigner = (function () {
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
+        // The search (_sdProtoSearchOpen()): searchOf()'s answer, the match
+        // gone to (-1 for none), the view from before the first one, null
+        // when closed.
+        search: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74305,6 +74309,14 @@ const StyleDesigner = (function () {
         });
         bar.appendChild(ui.check);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // Search (Ctrl+F in the view): page names and link texts.
+        var mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+        ui.searchBtn = _sdProtoButton('bi-search', _sdT('Search pages and links') + ' (' + (mac ? '⌘F' : 'Ctrl+F') + ')', function () {
+            if (_sdProto.search) _sdProtoSearchClose(true);
+            else _sdProtoSearchOpen();
+        });
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        tools.appendChild(ui.searchBtn);
         // "Suggest targets · n" (F30) while links have no target: the bar's
         // own quiet button with its count.
         ui.suggest = _sdProtoButton('bi-magic', _sdT('Suggest targets'), function () {
@@ -74357,6 +74369,7 @@ const StyleDesigner = (function () {
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
         ui.root.appendChild(bar);
+        ui.root.appendChild(_sdProtoSearchBuild(ui));
 
         ui.live = _sdProtoEl('div', 'sd-proto-sr');
         ui.live.setAttribute('aria-live', 'polite');
@@ -74570,6 +74583,7 @@ const StyleDesigner = (function () {
         ui.root.addEventListener('wheel', function (event) {
             if (_sdProto.problems && _sdProto.problemsFrame && !_sdProto.problems.contains(event.target)) _sdProtoProblemsClose(false);
         }, { capture: true, passive: true });
+        document.addEventListener('keydown', _sdProtoSearchKey);
         return ui;
     }
 
@@ -74629,6 +74643,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoSearchClose(false);
         _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
@@ -75322,6 +75337,7 @@ const StyleDesigner = (function () {
         _sdProtoLegsSoon();
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         _sdProtoPlayState();
         if (_sdProto.suggest) _sdProtoSuggestArrows();
     }
@@ -75342,6 +75358,7 @@ const StyleDesigner = (function () {
         if (focused !== frameId && !(edge && focused === edge.to)) canvas.focus(frameId);
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         var other = edge ? _sdProto.byId[(canvas.focused() === edge.to) ? frameId : edge.to] : null;
         if (other) canvas.view.reveal(other);
         if (fromCanvas) {
@@ -75621,6 +75638,207 @@ const StyleDesigner = (function () {
 
     // Where Play opens the viewer: the selected page, else the first page
     // the viewer can show; '' for none (_pgPrototypeUrl()).
+    // ── Search (Ctrl+F) ──
+    // A row under the bar: the box, the count, the match before and after,
+    // Close. It finds frames by the name they show and links by their text
+    // (PGProtoHotspots.searchOf(), folded as Suggest targets folds); the
+    // frames with a match are outlined, the links panel's matching rows
+    // marked. Enter or ArrowDown goes to the next match, Shift+Enter or
+    // ArrowUp to the one before: the view zooms to its frame (as a
+    // double-click does) and a link is picked. Esc closes it and puts back
+    // the view from before the first match.
+    function _sdProtoSearchBuild(ui) {
+        var row = _sdProtoEl('div', 'sd-proto-search');
+        row.hidden = true;
+        row.setAttribute('role', 'search');
+        ui.searchInput = _sdProtoEl('input', 'form-control form-control-sm sd-proto-search-input');
+        ui.searchInput.type = 'search';
+        ui.searchInput.id = 'sd-proto-search-input';
+        ui.searchInput.placeholder = _sdT('Search pages and links…');
+        ui.searchInput.setAttribute('aria-label', _sdT('Search pages and links'));
+        ui.searchInput.setAttribute('aria-describedby', 'sd-proto-search-count');
+        ui.searchInput.autocomplete = 'off';
+        ui.searchInput.spellcheck = false;
+        var soon = 0;
+        ui.searchInput.addEventListener('input', function () {
+            clearTimeout(soon);
+            soon = setTimeout(function () { _sdProtoSearchRun(false); }, 120);
+        });
+        ui.searchInput.addEventListener('keydown', function (event) {
+            var dir = window.PGProtoHotspots.searchKey(event);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoSearchClose(true);
+                return;
+            }
+            if (!dir) return;
+            event.preventDefault();
+            clearTimeout(soon);
+            if (!_sdProto.search || _sdProto.search.typed !== ui.searchInput.value) _sdProtoSearchRun(false);
+            _sdProtoSearchGo(dir);
+        });
+        row.appendChild(ui.searchInput);
+        ui.searchCount = _sdProtoEl('span', 'sd-proto-search-count');
+        ui.searchCount.id = 'sd-proto-search-count';
+        ui.searchCount.setAttribute('aria-live', 'polite');
+        row.appendChild(ui.searchCount);
+        // The buttons keep the focus in the box, so a phone's keyboard stays.
+        [['bi-chevron-up', _sdT('Previous match'), -1], ['bi-chevron-down', _sdT('Next match'), 1]].forEach(function (one) {
+            var b = _sdProtoButton(one[0], one[1], function () {
+                _sdProtoSearchGo(one[2]);
+                ui.searchInput.focus({ preventScroll: true });
+            });
+            b.addEventListener('pointerdown', function (event) { event.preventDefault(); });
+            row.appendChild(b);
+        });
+        row.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the search (Esc)'), function () { _sdProtoSearchClose(true); }));
+        ui.searchRow = row;
+        return row;
+    }
+
+    // Ctrl+F (Cmd+F) while the view is open and the pointer or the focus
+    // is in it goes to its search; never from the Overview's tree search
+    // (its own listener runs first) or from another text field, and
+    // anywhere else the browser's own find.
+    function _sdProtoSearchKey(event) {
+        var ui = _sdProto.ui;
+        if (!_sdProto.open || !ui || event.defaultPrevented) return;
+        if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || String(event.key).toLowerCase() !== 'f') return;
+        var act = document.activeElement;
+        var inside = !!(act && ui.root.contains(act));
+        var typing = !!(act && act !== document.body && act !== ui.searchInput && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName)));
+        if (typing || (!inside && !ui.root.matches(':hover'))) return;
+        event.preventDefault();
+        _sdProtoSearchOpen();
+    }
+
+    function _sdProtoSearchOpen() {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.open) return;
+        if (!_sdProto.search) {
+            _sdProto.search = { typed: null, found: null, at: -1, from: null };
+            ui.searchRow.hidden = false;
+            ui.searchBtn.setAttribute('aria-expanded', 'true');
+            ui.searchBtn.classList.add('active');
+            _sdProtoSearchRun(false);
+        }
+        ui.searchInput.focus({ preventScroll: true });
+        ui.searchInput.select();
+    }
+
+    // Esc or Close: the marks go, the view from before the first match
+    // comes back (refocus: the focus back on the map; not when the view
+    // closes). The words stay in the box for the next opening.
+    function _sdProtoSearchClose(refocus) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        _sdProto.search = null;
+        ui.searchRow.hidden = true;
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        ui.searchBtn.classList.remove('active');
+        _sdProtoSearchMark();
+        if (s.from && _sdProto.open && _sdProto.canvas) {
+            _sdProto.zoom = s.from.zoom;
+            _sdProto.view = s.from.view;
+            _sdProto.canvas.view.apply();
+            _sdProtoZoomShow();
+        }
+        if (refocus) ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The box's words searched in the map drawn; `keep` (a redraw) stays
+    // on the match gone to while it is still found.
+    function _sdProtoSearchRun(keep) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        var was = (keep && s.found && s.at >= 0) ? s.found.hits[s.at] : null;
+        s.typed = ui.searchInput.value;
+        s.found = window.PGProtoHotspots.searchOf(_sdProto.layout, s.typed, function (item) {
+            return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item);
+        });
+        s.at = -1;
+        if (was) {
+            s.found.hits.forEach(function (h, i) {
+                if (s.at < 0 && h.kind === was.kind && h.frame === was.frame && h.port === was.port) s.at = i;
+            });
+        }
+        _sdProtoSearchMark();
+    }
+
+    // Go to the match after (dir 1) or before (dir -1) the one gone to.
+    function _sdProtoSearchGo(dir) {
+        var s = _sdProto.search;
+        var canvas = _sdProto.canvas;
+        if (!s || !s.found || !canvas) return;
+        s.at = window.PGProtoHotspots.searchStep(s.found.hits.length, s.at, dir);
+        var hit = s.at >= 0 ? s.found.hits[s.at] : null;
+        var item = hit ? _sdProto.byId[hit.frame] : null;
+        if (!item) { _sdProtoSearchMark(); return; }
+        if (!s.from) {
+            var v = _sdProto.view;
+            var z = _sdProto.zoom;
+            s.from = { view: { x: v.x, y: v.y, k: v.k }, zoom: z ? { id: z.id, back: { x: z.back.x, y: z.back.y, k: z.back.k } } : null };
+        }
+        if (hit.kind === 'chip') {
+            canvas.view.reveal(item);
+        } else {
+            _sdProtoZoomTo(item.id);
+            if (canvas.focused() !== item.id) canvas.focus(item.id);
+            if (hit.kind === 'link') {
+                // Picked in place: _sdProtoPick() would move the view to the
+                // link's other end.
+                _sdProto.link = { frame: item.id, port: hit.port };
+                _sdProtoPicked();
+                _sdProtoListDraw();
+                var li = _sdProto.ui.list.querySelector('.sd-proto-li[data-link="' + (item.id + '|' + hit.port).replace(/"/g, '') + '"]');
+                if (li) li.scrollIntoView({ block: 'nearest' });
+            }
+        }
+        _sdProtoSearchMark();
+        canvas.announce(_sdProtoSearchCount() + ': ' + hit.text);
+    }
+
+    // "2 of 5", "5 matches", "No match", or nothing for an empty box.
+    function _sdProtoSearchCount() {
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        if (!found || found.query === '') return '';
+        var n = found.hits.length;
+        if (!n) return _sdT('No match');
+        if (s.at >= 0) return _sdT('{var:1} of {var:2}', [s.at + 1, n]);
+        return n === 1 ? _sdT('1 match') : _sdT('{var:1} matches', n);
+    }
+
+    // The frames with a match outlined, the one gone to more strongly; the
+    // links panel's matching rows marked; the count.
+    function _sdProtoSearchMark() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        var hit = (found && s.at >= 0) ? found.hits[s.at] : null;
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-found, .sd-proto-found-on')).forEach(function (n) {
+            n.classList.remove('sd-proto-found', 'sd-proto-found-on');
+        });
+        ui.searchCount.textContent = _sdProtoSearchCount();
+        ui.searchRow.classList.toggle('sd-proto-search-none', !!(found && found.query !== '' && !found.hits.length));
+        if (!found) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('[data-node]')).forEach(function (n) {
+            var id = n.getAttribute('data-node');
+            if (found.frames[id]) n.classList.add('sd-proto-found');
+            if (hit && hit.frame === id) n.classList.add('sd-proto-found-on');
+        });
+        found.hits.forEach(function (h) {
+            if (h.kind !== 'link') return;
+            Array.prototype.slice.call(ui.list.querySelectorAll('.sd-proto-li[data-link="' + (h.frame + '|' + h.port).replace(/"/g, '') + '"]')).forEach(function (li) {
+                li.classList.add(hit === h ? 'sd-proto-found-on' : 'sd-proto-found');
+            });
+        });
+    }
+
     function _sdProtoPlayUrl() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
@@ -75737,6 +75955,7 @@ const StyleDesigner = (function () {
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
+        if (_sdProto.search) _sdProtoSearchRun(true);
     }
 
     // ── The page picture (F1, F3) ──

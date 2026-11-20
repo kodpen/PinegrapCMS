@@ -1377,6 +1377,7 @@
     "{var:1} match(es) removed. Nothing was changed on the marketplace.": "{var:1} eşleşme kaldırıldı. Pazaryerinde hiçbir şey değişmedi.",
     "{var:1} matched.": "{var:1} eşleşti.",
     "{var:1} matched; {var:2} could not be matched and stay in the list.": "{var:1} eşleşti; {var:2} eşleşemedi ve listede kalıyor.",
+    "{var:1} matches": "{var:1} eşleşme",
     "{var:1} matches found in {var:2} records": "{var:2} kayıtta {var:1} eşleşme bulundu",
     "{var:1} match{suffix:1} found and replaced in {var:2} item{suffix:2}.": "{var:1} eşleşme bulundu ve {var:2} öğede değiştirildi.",
     "{var:1} match{suffix:1} {var:2} found and replaced in {var:3} item{suffix:2}.": "{var:2} için {var:1} eşleşme bulundu ve {var:3} öğede değiştirildi.",

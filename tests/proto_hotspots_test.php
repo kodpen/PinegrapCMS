@@ -2330,3 +2330,95 @@ function test_proto_hotspots_view_badge_lists_links_without_a_target()
 	pg_assert_contains("button.sd-proto-badge-empty::after { content: ''; position: absolute; inset: -6px; }", $css, 'a finger\'s reach');
 	pg_assert_contains('button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible', $css, 'the focus is seen');
 }
+
+// The view's search (PX4): page names and link texts, folded as Suggest
+// targets folds them (case, accents, Turkish i and ı alike); frames in
+// reading order, each frame's own name before its links; a chip by the
+// text it shows; the frames to mark; an empty query finds nothing.
+function test_proto_hotspots_search_of_a_design()
+{
+	$laid = array(
+		'frames' => array(
+			array('id' => 'p:b', 'kind' => 'page', 'name' => 'İletişim', 'x' => 400, 'y' => 0, 'rows' => array(array('port' => 'h0', 'label' => 'Ana sayfa', 'mark' => 'tab'))),
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'Home', 'x' => 0, 'y' => 0, 'rows' => array(
+				array('port' => 'h0', 'label' => 'Bize ulaşın', 'mark' => 'tab'),
+				array('port' => 'h1', 'label' => 'Kampanya', 'from' => 'Menü', 'mark' => 'tab'),
+				array('port' => 'h2', 'label' => 'ILETISIM formu', 'mark' => 'empty'),
+			)),
+			array('id' => 's:5', 'kind' => 'shared', 'name' => '', 'sharedId' => 5, 'x' => 0, 'y' => 600, 'rows' => array(array('port' => 'h0', 'label' => 'Sepet', 'mark' => 'tab'))),
+		),
+		'chips' => array(array('id' => 'c:0', 'kind' => 'chip', 'mark' => 'external', 'href' => 'https://iletisim.example', 'x' => 900, 'y' => 0)),
+	);
+	$out = proto_hotspots_test_node('var l = ' . proto_hotspots_test_js($laid) . ';'
+		. ' var ids = function (r) { return r.hits.map(function (h) { return h.kind + " " + h.frame + (h.port ? "|" + h.port : ""); }); };'
+		. ' var named = function (item) { return item.kind === "shared" ? (item.name || "Shared component " + item.sharedId) : (item.kind === "chip" ? item.href : item.name); };'
+		. ' var a = H.searchOf(l, "  iletişim ");'
+		. ' out = { a: ids(a), frames: a.frames, query: a.query, ulas: ids(H.searchOf(l, "ULAS")), menu: ids(H.searchOf(l, "menü › kamp")),'
+		. ' shared: ids(H.searchOf(l, "shared comp", named)), noLabel: ids(H.searchOf(l, "shared comp")), empty: H.searchOf(l, "   ").hits, none: H.searchOf(null, "a").hits, text: a.hits[0].text };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('link p:a|h2', 'frame p:b', 'chip c:0'), $out['a'], 'frames in reading order, then chips; capitals, accents and the Turkish i folded both ways');
+	pg_assert_same(array('p:a' => true, 'p:b' => true, 'c:0' => true), $out['frames'], 'every frame or chip with a match is marked');
+	pg_assert_same('iletisim', $out['query'], 'the query trimmed and folded');
+	pg_assert_same('ILETISIM formu', $out['text'], 'a hit carries the text as shown');
+	pg_assert_same(array('link p:a|h0'), $out['ulas'], 'ş and ı fold to s and i');
+	pg_assert_same(array('link p:a|h1'), $out['menu'], 'a menu item\'s link reads as its row does');
+	pg_assert_same(array('frame s:5'), $out['shared'], 'the name the view shows, when it hands one');
+	pg_assert_same(array(), $out['noLabel'], 'else the stored name');
+	pg_assert_same(array(), $out['empty'], 'an empty query finds nothing');
+	pg_assert_same(array(), $out['none'], 'no layout');
+}
+
+// Enter and ArrowDown go to the next match, Shift+Enter and ArrowUp to the
+// one before, round at either end; none with no matches.
+function test_proto_hotspots_search_step()
+{
+	$out = proto_hotspots_test_node('out = [H.searchStep(3, 0, 1), H.searchStep(3, 2, 1), H.searchStep(3, 0, -1), H.searchStep(3, 5, 1), H.searchStep(0, 0, 1), H.searchStep(1, 0, -1)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 0, 2, 0, -1, 0), $out, 'next, round, back, out of range, none, one');
+}
+
+// The search box's keys: Enter and ArrowDown the next match, Shift+Enter and
+// ArrowUp the one before; with Ctrl, Alt or Cmd, or any other key, none.
+function test_proto_hotspots_search_key()
+{
+	$out = proto_hotspots_test_node('var k = function (key, mods) { var e = { key: key }; (mods || "").split(" ").forEach(function (m) { if (m) e[m] = true; }); return H.searchKey(e); };'
+		. ' out = [k("Enter"), k("Enter", "shiftKey"), k("ArrowDown"), k("ArrowUp"), k("Enter", "ctrlKey"), k("ArrowDown", "altKey"), k("Enter", "metaKey"), k("a"), k("Escape"), H.searchKey(null)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, -1, 1, -1, 0, 0, 0, 0, 0, 0), $out, 'next, back, next, back, then none');
+}
+
+// Ctrl+F in the view (PX4): taken only while the view is open and the
+// pointer or the focus is in it, never from the tree search or another
+// text field; a search button in the bar for a phone; Enter and the arrows
+// go through the matches with the zoom to a frame; Esc closes and puts the
+// view back; the matching uses searchOf(); the marks are styled.
+function test_proto_hotspots_view_search()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("document.addEventListener('keydown', _sdProtoSearchKey);", $source, 'one listener for Ctrl+F');
+	pg_assert_contains("if (!_sdProto.open || !ui || event.defaultPrevented) return;", $source, 'only while the view is open, after the tree search');
+	pg_assert_contains("var typing = !!(act && act !== document.body && act !== ui.searchInput && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName)));", $source, 'never from another text field');
+	pg_assert_contains("if (typing || (!inside && !ui.root.matches(':hover'))) return;", $source, 'the pointer or the focus in the view');
+	pg_assert_contains("ui.searchBtn = _sdProtoButton('bi-search', _sdT('Search pages and links')", $source, 'a button in the bar');
+	pg_assert_contains('s.found = window.PGProtoHotspots.searchOf(_sdProto.layout, s.typed, function (item) {', $source, 'the pure matcher with the names the view shows');
+	pg_assert_contains('var dir = window.PGProtoHotspots.searchKey(event);', $source, 'the box\'s keys');
+	pg_assert_contains('_sdProtoZoomTo(item.id);', $source, 'a match is zoomed to');
+	pg_assert_contains("_sdProtoSearchClose(false);\n        _sdProtoRowDragEnd(false);", $source, 'closing the view closes the search');
+	pg_assert_contains('if (_sdProto.search) _sdProtoSearchRun(true);', $source, 'a redraw searches again');
+	pg_assert_contains('.sd-proto .pgc-node.sd-proto-found-on {', $css, 'the match gone to is seen');
+	pg_assert_contains('.sd-proto-search[hidden] { display: none; }', $css, 'the row hides');
+}
