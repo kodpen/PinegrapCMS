@@ -91,6 +91,7 @@ echo
         'extra classes' => 'form pg-measure-list',
         'icon' => 'form',
         'heading' => lang('Application programmes'),
+        'help' => 'forms#submitted-forms',
         'heading_description' => lang('Forms run as an application: a period, criteria, reviewers and decisions.'),
         'breadcrumb' => array(
             array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),

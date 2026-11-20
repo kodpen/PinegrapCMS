@@ -156,7 +156,7 @@ function pg_application_weights_sum(array $criteria)
 }
 
 /**
- * A date and time from the screen's datetime-local field as a Unix time in
+ * A date and time from the screen's date and time field as a Unix time in
  * the site's time zone; 0 when empty or unreadable.
  *
  * @param mixed $value
@@ -165,6 +165,13 @@ function pg_application_weights_sum(array $criteria)
 function pg_application_time_from_input($value)
 {
     $value = is_string($value) ? trim($value) : '';
+
+    // The panel's date and time field posts the site's own format; read it
+    // to ISO the way every date field of the panel is read.
+    if (($value !== '') && !preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $value) && function_exists('prepare_form_data_for_input')) {
+        $value = (string) prepare_form_data_for_input($value, 'date and time');
+    }
+
     $time = ($value === '') ? false : strtotime(str_replace('T', ' ', $value));
 
     return ($time === false) ? 0 : (int) $time;

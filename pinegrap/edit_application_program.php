@@ -138,6 +138,7 @@ if ($ap_program === null) {
         'extra classes' => 'form pg-measure-edit',
         'icon' => 'form',
         'heading' => lang('Add programme'),
+        'help' => 'forms#submitted-forms',
         'heading_description' => lang('Name the programme and choose the form people apply with. It starts as a draft.'),
         'breadcrumb' => array(
             array('label' => lang('Application programmes'), 'url' => $ap_list),
@@ -148,9 +149,9 @@ if ($ap_program === null) {
     ' . $liveform->get_messages() . '
     <form action="edit_application_program.php" method="post" class="pg-card p-5 d-flex flex-column gap-5">
         ' . get_token_field() . '
-        <div><label class="pg-field-label" for="ap_new_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="ap_new_name" name="name" maxlength="150" required></div>
-        <div><label class="pg-field-label" for="ap_new_form">' . h(lang('Form')) . '</label><select class="pg-input" id="ap_new_form" name="page_id" required aria-describedby="ap_new_form_help">' . $ap_form_options . '</select>
-        <div class="pg-field-help" id="ap_new_form_help">' . h(lang('Entries are the form\'s submissions.')) . '</div></div>
+        <div><label class="pg-field-label" for="aprog_new_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_new_name" name="name" maxlength="150" required></div>
+        <div><label class="pg-field-label" for="aprog_new_form">' . h(lang('Form')) . '</label><select class="pg-input" id="aprog_new_form" name="page_id" required aria-describedby="aprog_new_form_help">' . $ap_form_options . '</select>
+        <div class="pg-field-help" id="aprog_new_form_help">' . h(lang('Entries are the form\'s submissions.')) . '</div></div>
         <div class="d-flex flex-wrap gap-2"><button type="submit" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></div>
     </form>
 </main>
@@ -179,7 +180,7 @@ $ap_texts = $ap_values['texts'] + array('outside' => '');
 $ap_rounds = $ap_values['rounds'] ? $ap_values['rounds'] : array(array('criteria' => array(), 'reviewers' => 2, 'ends_at' => 0));
 $ap_entries = (int) db_value("SELECT COUNT(*) FROM application_entries WHERE program_id = '" . $ap_id . "'");
 $ap_date = function ($time) {
-    return ($time > 0) ? date('Y-m-d\TH:i', $time) : '';
+    return ($time > 0) ? (string) prepare_form_data_for_output(date('Y-m-d H:i:s', $time), 'date and time') : '';
 };
 $ap_when = function ($time) {
     return h(get_absolute_time(array('timestamp' => $time, 'format' => 'plain_text')));
@@ -203,8 +204,8 @@ $ap_field_options = function ($chosen, $types = null) use ($ap_fields, $ap_label
 // A card of the Set-up tab: its name, a "Not set" pill when its values are
 // missing, one line saying what is set, then its fields.
 $ap_card = function ($key, $title, $line, $missing, $body) {
-    return '<section class="pg-card p-5 mb-5" aria-labelledby="ap_' . $key . '_title">'
-        . '<div class="d-flex flex-wrap align-items-center gap-2"><h2 class="pg-title-section mb-0" id="ap_' . $key . '_title">' . h($title) . '</h2>' . $missing . '</div>'
+    return '<section class="pg-card p-5 mb-5" aria-labelledby="aprog_' . $key . '_title">'
+        . '<div class="d-flex flex-wrap align-items-center gap-2"><h2 class="pg-title-section mb-0" id="aprog_' . $key . '_title">' . h($title) . '</h2>' . $missing . '</div>'
         . '<p class="pg-card-sub mb-5">' . h($line) . '</p>' . $body . '</section>';
 };
 
@@ -213,18 +214,18 @@ $ap_period_line = (($ap_values['opens_at'] > 0) || ($ap_values['closes_at'] > 0)
     ? lang(array('string' => 'Opens {var:1}, closes {var:2}.', 'vars' => array(($ap_values['opens_at'] > 0) ? get_absolute_time(array('timestamp' => $ap_values['opens_at'], 'format' => 'plain_text')) : lang('when opened'), ($ap_values['closes_at'] > 0) ? get_absolute_time(array('timestamp' => $ap_values['closes_at'], 'format' => 'plain_text')) : lang('not set'))))
     : lang('No period yet: set when entries open and close.');
 $ap_period = $ap_card('period', lang('Period'), $ap_period_line, ($ap_values['closes_at'] > 0) ? '' : $ap_not_set, '<div class="row gy-5">'
-    . '<div class="col-12 md:col-6"><label class="pg-field-label" for="ap_opens">' . h(lang('Opens')) . '</label><input type="datetime-local" class="pg-input" id="ap_opens" name="opens" value="' . $ap_date($ap_values['opens_at']) . '"></div>'
-    . '<div class="col-12 md:col-6"><label class="pg-field-label" for="ap_closes">' . h(lang('Closes')) . '</label><input type="datetime-local" class="pg-input" id="ap_closes" name="closes" value="' . $ap_date($ap_values['closes_at']) . '"></div>'
-    . '<div class="col-12"><label class="pg-field-label" for="ap_outside">' . h(lang('Text outside the period')) . '</label><textarea class="pg-input" id="ap_outside" name="outside_text" rows="2" aria-describedby="ap_outside_help">' . h($ap_texts['outside']) . '</textarea>'
-    . '<div class="pg-field-help" id="ap_outside_help">' . h(lang('Shown instead of saving when someone sends the form before it opens or after it closes.')) . '</div></div>'
+    . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_opens">' . h(lang('Opens')) . '</label><input type="text" maxlength="22" data-pg-datetime class="pg-input" id="aprog_opens" name="opens" value="' . $ap_date($ap_values['opens_at']) . '"></div>'
+    . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_closes">' . h(lang('Closes')) . '</label><input type="text" maxlength="22" data-pg-datetime class="pg-input" id="aprog_closes" name="closes" value="' . $ap_date($ap_values['closes_at']) . '"></div>'
+    . '<div class="col-12"><label class="pg-field-label" for="aprog_outside">' . h(lang('Text outside the period')) . '</label><textarea class="pg-input" id="aprog_outside" name="outside_text" rows="2" aria-describedby="aprog_outside_help">' . h($ap_texts['outside']) . '</textarea>'
+    . '<div class="pg-field-help" id="aprog_outside_help">' . h(lang('Shown instead of saving when someone sends the form before it opens or after it closes.')) . '</div></div>'
     . '</div>');
 
 // 2. Categories.
 $ap_choice_types = array('pick list', 'radio button', 'check box');
 $ap_categories = $ap_card('categories', lang('Categories'), ($ap_values['category_field'] !== '')
     ? lang(array('string' => 'Entries are grouped by the answer to "{var:1}".', 'vars' => array($ap_label($ap_values['category_field']))))
-    : lang('No categories: every entry is in one pool.'), '', '<label class="pg-field-label" for="ap_category">' . h(lang('Choice field')) . '</label>'
-    . '<select class="pg-input" id="ap_category" name="category_field"><option value="">' . h(lang('No categories')) . '</option>' . $ap_field_options($ap_values['category_field'], $ap_choice_types) . '</select>');
+    : lang('No categories: every entry is in one pool.'), '', '<label class="pg-field-label" for="aprog_category">' . h(lang('Choice field')) . '</label>'
+    . '<select class="pg-input" id="aprog_category" name="category_field"><option value="">' . h(lang('No categories')) . '</option>' . $ap_field_options($ap_values['category_field'], $ap_choice_types) . '</select>');
 
 // 3. Eligibility: a rule a row.
 $ap_rule_row = function (array $rule) use ($ap_field_options) {
@@ -286,8 +287,8 @@ $ap_round_card = function ($r, array $round) use ($ap_criterion_row, $ap_date) {
         . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-ap-copy>' . h(lang('Copy from a template')) . '</button>'
         . (is_int($r) ? '<button type="submit" class="pg-button pg-button-quiet pg-button-sm" name="submit_template" value="' . $r . '">' . h(lang('Save as a template')) . '</button>' : '')
         . '</div><div class="row gy-5">'
-        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="ap_reviewers_' . $r . '">' . h(lang('Reviewers per entry')) . '</label><input type="number" class="pg-input" min="1" max="10" id="ap_reviewers_' . $r . '" name="rounds[' . $r . '][reviewers]" value="' . (int) $round['reviewers'] . '"></div>'
-        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="ap_ends_' . $r . '">' . h(lang('Round ends')) . '</label><input type="datetime-local" class="pg-input" id="ap_ends_' . $r . '" name="rounds[' . $r . '][ends]" value="' . $ap_date((int) $round['ends_at']) . '"></div>'
+        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_reviewers_' . $r . '">' . h(lang('Reviewers per entry')) . '</label><input type="number" class="pg-input" min="1" max="10" id="aprog_reviewers_' . $r . '" name="rounds[' . $r . '][reviewers]" value="' . (int) $round['reviewers'] . '"></div>'
+        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_ends_' . $r . '">' . h(lang('Round ends')) . '</label><input type="text" maxlength="22" data-pg-datetime class="pg-input" id="aprog_ends_' . $r . '" name="rounds[' . $r . '][ends]" value="' . $ap_date((int) $round['ends_at']) . '"></div>'
         . '</div></div>';
 };
 $ap_round_cards = '';
@@ -310,11 +311,11 @@ $ap_rounds_html = $ap_card('rounds', lang('Rounds and criteria'), $ap_criteria_o
 $ap_blind_boxes = '';
 
 foreach ($ap_fields as $name => $field) {
-    $ap_blind_boxes .= '<span class="d-inline-flex align-items-center gap-2 me-4"><input type="checkbox" class="pg-checkbox" id="ap_blind_' . $field['id'] . '" name="blind_fields[]" value="' . h($name) . '"' . (in_array($name, $ap_values['blind_fields'], true) ? ' checked' : '') . '><label class="pg-text-2" for="ap_blind_' . $field['id'] . '">' . h($ap_label($name)) . '</label></span>';
+    $ap_blind_boxes .= '<span class="d-inline-flex align-items-center gap-2 me-4"><input type="checkbox" class="pg-checkbox" id="aprog_blind_' . $field['id'] . '" name="blind_fields[]" value="' . h($name) . '"' . (in_array($name, $ap_values['blind_fields'], true) ? ' checked' : '') . '><label class="pg-text-2" for="aprog_blind_' . $field['id'] . '">' . h($ap_label($name)) . '</label></span>';
 }
 
 $ap_blind = $ap_card('blind', lang('Blind review'), $ap_values['blind'] ? lang('On: reviewers do not see who applied.') : lang('Off: reviewers see the whole entry.'), '',
-    '<div class="d-flex align-items-center gap-3 mb-4"><input type="checkbox" class="pg-switch" id="ap_blind" name="blind" value="1"' . ($ap_values['blind'] ? ' checked' : '') . '><label class="pg-text-2" for="ap_blind">' . h(lang('Hide who applied from reviewers')) . '</label></div>'
+    '<div class="d-flex align-items-center gap-3 mb-4"><input type="checkbox" class="pg-switch" id="aprog_blind" name="blind" value="1"' . ($ap_values['blind'] ? ' checked' : '') . '><label class="pg-text-2" for="aprog_blind">' . h(lang('Hide who applied from reviewers')) . '</label></div>'
     . '<div class="pg-field-label">' . h(lang('Also hide these fields')) . '</div><div class="mb-3">' . $ap_blind_boxes . '</div>'
     . '<div class="pg-field-help">' . h(lang('The name, e-mail, reference code and contact fields are always hidden. Uploaded files show as uploaded: blind review covers fields only.')) . '</div>');
 
@@ -329,8 +330,8 @@ foreach ($ap_decisions as $key => $label) {
     $ap_written += (($text['subject'] !== '') && ($text['body'] !== '')) ? 1 : 0;
     $ap_decision_tabs .= '<button type="button" class="pg-seg-item" aria-pressed="' . (($key === 'accepted') ? 'true' : 'false') . '" data-pg-ap-tab="' . $key . '">' . h($label) . '</button>';
     $ap_decision_panes .= '<div class="d-flex flex-column gap-4" data-pg-ap-pane="' . $key . '"' . (($key === 'accepted') ? '' : ' hidden') . '>'
-        . '<div><label class="pg-field-label" for="ap_' . $key . '_subject">' . h(lang('Subject')) . '</label><input type="text" class="pg-input" id="ap_' . $key . '_subject" name="texts[' . $key . '][subject]" maxlength="200" value="' . h($text['subject']) . '"></div>'
-        . '<div><label class="pg-field-label" for="ap_' . $key . '_body">' . h(lang('Text')) . '</label><textarea class="pg-input" id="ap_' . $key . '_body" name="texts[' . $key . '][body]" rows="6">' . h($text['body']) . '</textarea></div>'
+        . '<div><label class="pg-field-label" for="aprog_' . $key . '_subject">' . h(lang('Subject')) . '</label><input type="text" class="pg-input" id="aprog_' . $key . '_subject" name="texts[' . $key . '][subject]" maxlength="200" value="' . h($text['subject']) . '"></div>'
+        . '<div><label class="pg-field-label" for="aprog_' . $key . '_body">' . h(lang('Text')) . '</label><textarea class="pg-input" id="aprog_' . $key . '_body" name="texts[' . $key . '][body]" rows="6">' . h($text['body']) . '</textarea></div>'
         . '</div>';
 }
 
@@ -348,9 +349,9 @@ $ap_status_pill = array(
 $ap_state_button = '';
 
 if ($ap_program['status'] === 0) {
-    $ap_state_button = '<button type="submit" form="ap_state_form" name="submit_open" value="1" class="pg-button pg-button-quiet">' . h(lang('Open for entries')) . '</button>';
+    $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_open" value="1" class="pg-button pg-button-quiet">' . h(lang('Open for entries')) . '</button>';
 } elseif ($ap_program['status'] === 1) {
-    $ap_state_button = '<button type="submit" form="ap_state_form" name="submit_close" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('The form stops taking entries. Drafts saved for later can no longer be finished.')) . '">' . h(lang('Close')) . '</button>';
+    $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_close" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('The form stops taking entries. Drafts saved for later can no longer be finished.')) . '">' . h(lang('Close')) . '</button>';
 }
 
 $ap_deletable = ($ap_program['status'] === 0) && ($ap_entries === 0);
@@ -359,6 +360,7 @@ echo pg_page_shell(array(
     'title' => $ap_program['name'],
     'extra classes' => 'form pg-measure-edit',
     'icon' => 'form',
+    'help' => 'forms#submitted-forms',
     // output_header() prints the heading as markup; the name is staff text.
     'heading' => h($ap_program['name']) . ' ' . $ap_status_pill[$ap_program['status']],
     'heading_description' => lang(array('string' => 'Form: {var:1}. Entries: {var:2}.', 'vars' => array($ap_forms[$ap_program['page_id']]['name'], $ap_entries))),
@@ -373,12 +375,12 @@ echo pg_page_shell(array(
         'primary' => $ap_state_button,
         'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '"><button type="button" class="pg-seg-item" aria-pressed="true">' . h(lang('Set-up')) . '</button></span>',
     )) . '
-    <form id="ap_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"></form>
-    <form id="ap_form" action="edit_application_program.php" method="post">
+    <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"></form>
+    <form id="aprog_form" action="edit_application_program.php" method="post">
         ' . get_token_field() . '
         <input type="hidden" name="id" value="' . $ap_id . '">
-        <section class="pg-card p-5 mb-5" aria-labelledby="ap_name_title"><h2 class="pg-title-section mb-0" id="ap_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
-        <label class="pg-field-label" for="ap_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="ap_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
+        <section class="pg-card p-5 mb-5" aria-labelledby="aprog_name_title"><h2 class="pg-title-section mb-0" id="aprog_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
+        <label class="pg-field-label" for="aprog_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
         ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
         <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
             <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
@@ -386,6 +388,7 @@ echo pg_page_shell(array(
         </div>
     </form>
 </main>
+' . get_date_time_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/application_program.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/application_program.js') . '"></script>
 ' . output_footer();
 

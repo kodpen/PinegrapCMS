@@ -18,7 +18,7 @@
 (function () {
     'use strict';
 
-    var form = document.getElementById('ap_form');
+    var form = document.getElementById('aprog_form');
     if (!form) {
         return;
     }
@@ -104,6 +104,9 @@
             holder.innerHTML = markup;
             var round = holder.firstElementChild;
             rounds.appendChild(round);
+            if (window.pgFields) {
+                window.pgFields.init(round);
+            }
             fillTemplateChoice(round);
             addCriterion(round).querySelector('input[type="text"]').focus();
             numberRounds();
