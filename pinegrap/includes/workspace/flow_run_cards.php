@@ -96,23 +96,91 @@ function ws_flows_runnable_in($viewer, $channel_id)
 }
 
 /**
- * Has the channel a flow the person may start in it, as Add › Start a flow
- * lists them? Asked as the channel opens, so the composer offers the entry
- * only where it has something to start: for whoever the Workspace shows
- * Flows to, in a public or private channel.
+ * The flows the person may start in the channel, read once as it opens and
+ * never on each "/": Add › Start a flow is offered only where there is one,
+ * and the "/" list and /flow offer the same. The drawer's own list
+ * (ws_flows_runnable_in()), for whoever the Workspace shows Flows to, in a
+ * public or private channel.
  *
  * @param array      $viewer
  * @param array|null $channel ws_channel()
- * @return bool
+ * @return array[] id, name, version
  */
-function ws_flows_startable_in($viewer, $channel)
+function ws_flows_here($viewer, $channel)
 {
     if (!is_array($channel) || !in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true)
         || !function_exists('ws_flows_nav_visible') || !ws_flows_nav_visible($viewer)) {
-        return false;
+        return array();
     }
 
-    return !empty(ws_flows_runnable_in($viewer, (int) $channel['id']));
+    $rows = ws_flows_runnable_in($viewer, (int) $channel['id']);
+
+    return empty($rows) ? array() : ws_flows_here_present($rows, ws_flow_version_numbers($rows));
+}
+
+/**
+ * The composer's entry of each flow: its id, its name and the number of its
+ * live version, which the start's question names.
+ *
+ * @param array[] $rows    ws_flows rows
+ * @param array   $numbers version id => number (ws_flow_version_numbers())
+ * @return array[]
+ */
+function ws_flows_here_present($rows, $numbers)
+{
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = array(
+            'id'      => (int) $row['id'],
+            'name'    => (string) $row['name'],
+            'version' => (int) ($numbers[(int) $row['version_id']] ?? 0),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The contact a channel about a customer stands for: the contact itself, or
+ * the contact kept for a company or an account (ws_channel_customer_present()
+ * keeps it); 0 for a channel about nobody.
+ *
+ * @param array|null $channel ws_channels row
+ * @return int
+ */
+function ws_flow_channel_contact_id($channel)
+{
+    if (!is_array($channel)) {
+        return 0;
+    }
+
+    if (((string) ($channel['customer_type'] ?? '') === 'contact') && ((int) ($channel['customer_id'] ?? 0) > 0)) {
+        return (int) $channel['customer_id'];
+    }
+
+    return max(0, (int) ($channel['contact_id'] ?? 0));
+}
+
+/**
+ * The customer a run started in a channel is about: the channel's contact
+ * when the starter reads it (ws_flow_run_contact_check()), so the start has
+ * the contact step a run the canvas starts for a picked customer has (one
+ * open run per flow and customer); 0 otherwise, and the run is about nobody.
+ *
+ * @param array      $viewer  the starter
+ * @param array|null $channel ws_channels row
+ * @return int
+ */
+function ws_flow_run_channel_contact($viewer, $channel)
+{
+    $contact_id = ws_flow_channel_contact_id($channel);
+
+    if ($contact_id <= 0) {
+        return 0;
+    }
+
+    return ws_flow_run_contact_check($viewer, $contact_id)['ok'] ? $contact_id : 0;
 }
 
 /**

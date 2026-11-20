@@ -1234,7 +1234,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     header("Content-disposition: attachment; filename=orders.zip");
     print $zipfile->file();
 
-} else if (($_GET['submit_data'] ?? '') == 'Export Orders (single file)') {
+} else if ((($_GET['submit_data'] ?? '') == 'Export Orders (single file)') || pg_list_excel_asked()) {
     // Same status change as the multiple-file export, same token requirement.
     validate_token_field();
 
@@ -1495,6 +1495,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             }
         }
     }
+
+    // Export to Excel: the same file, its figures and dates typed.
+    $money = 'money';
+    pg_list_excel_capture(array(
+        'order_number' => 'number', 'subtotal' => $money, 'discount' => $money, 'tax' => $money, 'shipping' => $money,
+        'gift_card_discount' => $money, 'surcharge' => $money, 'total' => $money, 'commission' => $money,
+        'installment_charges' => $money, 'shipping_cost' => $money, 'price' => $money, 'quantity' => 'number',
+        'shipped_quantity' => 'number', 'order_date' => 'date', 'arrival_date' => 'date', 'ship_date' => 'date',
+        'delivery_date' => 'date', 'recurring_start_date' => 'date',
+    ), lang('Orders'));
 
     // initialize download dialog
     pg_csv_download_start('orders.csv');
@@ -3267,6 +3277,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <ul class="menu shadow">
                                 <li><button type="submit" name="submit_data" value="Export Orders (single file)" class="menu-item"><i class="bi bi-file-earmark-arrow-down me-3" aria-hidden="true"></i>' . lang('Single file') . '</button></li>
                                 <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('Multiple files') . '</button></li>
+                                <li>' . pg_list_excel_button('menu-item') . '</li>
                             </ul>
                         </div>
                         ' . $output_gateway_buttons . '

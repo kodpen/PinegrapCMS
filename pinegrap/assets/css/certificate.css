@@ -1,0 +1,194 @@
+/* Page rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities. */
+@layer custom {
+
+/*
+ * Pinegrap - the course certificate and its public check (certificate.php).
+ */
+
+/* Token layer: the --pg-* names this page's rules read, mapped to
+   Bootstrap's variables, as the cart quote page maps them. */
+:root,
+[data-bs-theme] {
+  --pg-bg-1: var(--bs-bg-1);
+  --pg-bg-body: var(--bs-bg-body);
+  --pg-border-color: var(--bs-border-color);
+  --pg-fg-2: var(--bs-fg-2);
+}
+
+body.pg-certificate-page {
+  min-height: 100vh;
+  margin: 0;
+  padding: 2rem 1rem;
+  background: var(--pg-bg-1);
+}
+
+.pg-certificate-box {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-body);
+}
+
+.pg-certificate-heading {
+  margin: 0 0 1rem;
+  font-size: 1.375rem;
+}
+
+.pg-certificate-form {
+  margin-bottom: 1rem;
+}
+
+.pg-certificate-found {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: .375rem 1rem;
+  margin: 0;
+}
+
+.pg-certificate-found dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The page's own button: the site has no panel look to borrow. */
+.pg-certificate-button {
+  display: inline-flex;
+  gap: .375rem;
+  align-items: center;
+  padding: .5rem 1rem;
+  border: 1px solid var(--bs-primary);
+  border-radius: .375rem;
+  background: var(--bs-primary);
+  color: var(--bs-white, #fff);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pg-certificate-button:hover,
+.pg-certificate-button:focus-visible {
+  filter: brightness(.92);
+}
+
+.pg-certificate-tools {
+  max-width: 52rem;
+  margin: 0 auto 1rem;
+  text-align: end;
+}
+
+/* The certificate: a landscape sheet with a double frame. */
+.pg-certificate {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 3rem 2.5rem 2rem;
+  border: 3px double var(--pg-border-color);
+  outline: 1px solid var(--pg-border-color);
+  outline-offset: -.75rem;
+  background: var(--pg-bg-body);
+  text-align: center;
+}
+
+.pg-certificate-logo {
+  max-width: 10rem;
+  max-height: 4rem;
+  margin-bottom: .5rem;
+}
+
+.pg-certificate-site {
+  color: var(--pg-fg-2);
+  font-size: .875rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pg-certificate-title {
+  margin: 1.5rem 0;
+  font-size: 2.25rem;
+  font-weight: 600;
+}
+
+.pg-certificate-lead {
+  margin: 0;
+  color: var(--pg-fg-2);
+}
+
+.pg-certificate-name,
+.pg-certificate-course {
+  margin: .5rem 0 1.25rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pg-certificate-name {
+  display: inline-block;
+  min-width: 60%;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+
+.pg-certificate-day {
+  margin: 0 0 2rem;
+}
+
+.pg-certificate-foot {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--pg-fg-2);
+  font-size: .8125rem;
+  text-align: start;
+}
+
+.pg-certificate-qr {
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.pg-certificate-code strong {
+  font-family: var(--bs-font-monospace);
+  letter-spacing: .04em;
+}
+
+.pg-certificate-check {
+  overflow-wrap: anywhere;
+}
+
+/* Printed: one landscape page, black on white, without the button. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  body.pg-certificate-page {
+    min-height: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .pg-certificate-tools {
+    display: none;
+  }
+
+  .pg-certificate {
+    max-width: none;
+    border-color: #000;
+    outline-color: #000;
+    background: #fff;
+    break-inside: avoid;
+  }
+
+  .pg-certificate-site,
+  .pg-certificate-lead,
+  .pg-certificate-foot {
+    color: #333;
+  }
+}
+
+}

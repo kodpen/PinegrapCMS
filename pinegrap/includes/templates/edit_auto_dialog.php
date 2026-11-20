@@ -21,18 +21,6 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="row">
         <div class="col-12">
 			<?=$liveform->get_messages()?>
-            <div class="mb-3 text-center md:text-start">
-                    <nav class="navigation" aria-label="breadcrumb">
-                        <ol class="breadcrumb justify-content-center md:justify-content-start "> 
-                            <li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_auto_dialogs.php"><?=lang('All Auto Dialogs')?></a></li>
-                            <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Auto Dialog')?><?php else: ?><?=lang('Edit Auto Dialog')?><?php endif ?></li>
-                        </ol> 
-                    </nav>
-                    <h2 class="d-inline-block text-break header-content-for-add-page">
-						[<?php if ($screen == 'create'): ?><?=lang('Auto Dialog Name')?><?php else: ?><?=h($auto_dialog['name'])?><?php endif ?>]
-					</h2>
-					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?></p>
-            </div>
             <?php if ($screen == 'edit'): ?>
                 <?=pg_screen_toolbar(array(
                     'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . h($preview_url) . '" target="_blank"><i class="bi bi-link me-1" aria-hidden="true"></i>' . lang('Preview') . '</a>',
@@ -48,18 +36,18 @@ if (!defined('PG_INIT_LOADED')) {
                             </h2>
                             <div class="card-body pt-0">
                                 <div class="row">
-                                    <div class="col-12 md:col-5 my-3">
+                                    <div class="col-12 my-3">
                                         <label for="name" class="form-label"><?=lang('Name')?></label>
                                         <?=$liveform->output_field(array(
                                             'type' => 'text',
                                             'id' => 'name',
                                             'name' => 'name',
                                             'placeholder'=>lang('Auto Dialog Name'),
-                                            'class' => 'form-control add-header-content-updater',
+                                            'class' => 'form-control',
                                             'maxlength' => '100',
                                             'required' => 'required'))?>
                                     </div>
-                                    <div class="col-12 md:col-7 my-3">
+                                    <div class="col-12 my-3">
                                         <label for="url" class="form-label"><?=lang('URL')?></label>
                                         <?=$liveform->output_field(array(
                                             'type' => 'text',
@@ -69,7 +57,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             'maxlength' => '255',
                                             'required' => 'required'))?>
                                     </div>
-                                    <div class="col-12 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label for="page" class="form-label"><?=lang('Only on Page')?></label>
                                         <?=$liveform->output_field(array(
                                             'type' => 'text',
@@ -96,7 +84,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 // maxlength leaves room for the separators (9.999, 2.147.483).
                                 ?>
                                 <div class="row">
-                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="width" class="form-label"><?=lang('Width')?></label>
                                             <div class="input-group">
                                                 <?=$liveform->output_field(array(
@@ -110,7 +98,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for auto')?></div>
                                         </div>
-                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="height" class="form-label"><?=lang('Height')?></label>
                                             <div class="input-group">
                                                 <?=$liveform->output_field(array(
@@ -124,7 +112,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for auto')?></div>
                                         </div>
-                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="delay" class="form-label"><?=lang('Delay')?></label>
                                             <div class="input-group">
                                                 <?=$liveform->output_field(array(
@@ -138,7 +126,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for instant')?></div>
                                         </div>
-                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="frequency" class="form-label"><?=lang('Frequency')?></label>
                                             <div class="input-group">
                                                 <?=$liveform->output_field(array(
@@ -163,7 +151,8 @@ if (!defined('PG_INIT_LOADED')) {
                                 <?php $open_fields = pg_auto_dialog_form_open_fields(); ?>
                                 <div class="row">
                                     <?php foreach ($open_fields as $open_field => $open_rule): ?>
-                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                        <?php // A select takes 6 columns, the scroll share a count's 3 beside Opens. ?>
+                                        <div class="col-12 <?=($open_field === 'open_scroll') ? 'md:col-3' : 'md:col-6'?> my-3">
                                             <label for="<?=$open_field?>" class="form-label"><?=h($open_rule[0])?></label>
                                             <?php if ($open_rule[1] === null): ?>
                                                 <div class="input-group">
@@ -214,6 +203,22 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                     </div>
                                 </div>
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
+                                        <?=lang('Last 30 Days')?>
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <?php // The pop-up's counts (includes/fn/auto_dialog_counts.php) as look A's stand-alone figures, three in a row. ?>
+                                        <div class="pg-figures mb-0" style="--pg-figures: 3;">
+                                            <?php foreach (array('shown' => lang('Times shown'), 'closed' => lang('Times closed'), 'taken' => lang('Times taken')) as $count_field => $count_label): ?>
+                                                <div data-pg-auto-dialog-count="<?=$count_field?>">
+                                                    <span class="pg-figure-label"><?=h($count_label)?></span>
+                                                    <span class="pg-figure-value"><?=h(pg_format_number($auto_dialog_counts[$count_field], 0))?></span>
+                                                </div>
+                                            <?php endforeach ?>
+                                        </div>
+                                    </div>
+                                </div>
                             <?php endif ?>
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
@@ -229,18 +234,21 @@ if (!defined('PG_INIT_LOADED')) {
                                             array('frequency', lang('Frequency'), lang('Once'), lang('hour(s)')),
                                         ) as $summary_row): ?>
                                             <?php $summary_value = trim((string) $liveform->get_field_value($summary_row[0])); ?>
-                                            <div class="d-flex justify-content-between gap-3 py-2<?php if ($summary_row[0] != 'frequency' || $screen == 'edit'): ?> border-bottom<?php endif ?>">
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
                                                 <dt class="fw-normal"><?=h($summary_row[1])?></dt>
                                                 <dd class="mb-0 fw-bold text-end text-break" id="auto_dialog_summary_<?=$summary_row[0]?>" data-blank="<?=h($summary_row[2])?>" data-unit="<?=h($summary_row[3])?>"><?=h(($summary_value === '') ? $summary_row[2] : trim($summary_value . ' ' . $summary_row[3]))?></dd>
                                             </div>
                                         <?php endforeach ?>
+                                        <?php // When, to whom and where it opens: the chosen option of each select. ?>
+                                        <?php foreach (pg_auto_dialog_form_open_fields() as $open_field => $open_rule): ?>
+                                            <?php if ($open_rule[1] === null) { continue; } ?>
+                                            <?php $open_chosen = array_search(pg_auto_dialog_open_settings(array($open_field => $liveform->get_field_value($open_field)))[$open_field], $open_rule[1], true); ?>
+                                            <div class="d-flex justify-content-between gap-3 py-2<?php if (($open_field !== 'place') || ($screen == 'edit')): ?> border-bottom<?php endif ?>">
+                                                <dt class="fw-normal"><?=h($open_rule[0])?></dt>
+                                                <dd class="mb-0 fw-bold text-end text-break" id="auto_dialog_summary_<?=$open_field?>"><?=h((string) $open_chosen)?></dd>
+                                            </div>
+                                        <?php endforeach ?>
                                         <?php if ($screen == 'edit'): ?>
-                                            <?php foreach (array('shown' => lang('Shown (30 days)'), 'closed' => lang('Closed (30 days)'), 'taken' => lang('Taken (30 days)')) as $count_field => $count_label): ?>
-                                                <div class="d-flex justify-content-between gap-3 py-2 border-bottom" data-pg-auto-dialog-count="<?=$count_field?>">
-                                                    <dt class="fw-normal"><?=h($count_label)?></dt>
-                                                    <dd class="mb-0 fw-bold text-end"><?=h(pg_format_number($auto_dialog_counts[$count_field], 0))?></dd>
-                                                </div>
-                                            <?php endforeach ?>
                                             <div class="d-flex justify-content-between gap-3 py-2">
                                                 <dt class="fw-normal"><?=lang('Last Modified')?></dt>
                                                 <dd class="mb-0 fw-bold text-end text-break"><?php if ((int) $auto_dialog['last_modified_timestamp'] > 0): ?><?=get_relative_time(array('timestamp' => (int) $auto_dialog['last_modified_timestamp']))?><?php if ((string) $auto_dialog['user_username'] !== ''): ?> <?=h($auto_dialog['user_username'])?><?php endif ?><?php else: ?>-<?php endif ?></dd>
@@ -264,14 +272,22 @@ if (!defined('PG_INIT_LOADED')) {
                             box.addEventListener("input", show);
                             box.addEventListener("change", show);
                         });
+                        // A select's row shows the option chosen.
+                        ["open_on", "audience", "place"].forEach(function (name) {
+                            var box = document.getElementById(name);
+                            var cell = document.getElementById("auto_dialog_summary_" + name);
+                            box.addEventListener("change", function () {
+                                cell.textContent = box.options[box.selectedIndex] ? box.options[box.selectedIndex].text : "";
+                            });
+                        });
                     </script>
                     <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
                         <nav class="buttons navigation text-center mb-7" aria-label="<?= h(lang('data edit buttons')) ?>">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="save_button" data-pg-save-shortcut name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
+                                    <button type="submit" id="save_button" data-pg-save-shortcut name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><i class="bi <?php if ($screen == 'create'): ?>bi-plus-circle<?php else: ?>bi-floppy<?php endif ?> me-3" aria-hidden="true"></i><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                                     <?php if ($screen == 'edit'): ?>
-                                        <button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('auto dialog'))))?>"><span class="material-icons me-3">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
+                                        <button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('auto dialog'))))?>"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
                                     <?php endif ?>
                                 </div>
                             </div>

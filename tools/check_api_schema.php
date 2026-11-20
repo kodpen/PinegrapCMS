@@ -10,7 +10,7 @@
  * suite that asserts fields the endpoint never had - which is how a working
  * endpoint comes back as a page of red assertions.
  *
- * Five contracts are enforced:
+ * Six contracts are enforced:
  *   1. Every route in api_schema() declares 'returns', except the few that
  *      answer with a document rather than a record (the OpenAPI file itself,
  *      the console page and its fragment), with a file ('binary' => true) or
@@ -26,6 +26,9 @@
  *      201 of a create as an answer it was never told about.
  *   5. Every route row carries a 'params' list, empty when it takes none:
  *      the router, the document and the console read it unguarded.
+ *   6. Every type word a field declaration uses is one the document can say
+ *      (the keys of api_openapi_field_words(): datetime for a moment, date
+ *      for a day). OpenAPI has no type datetime.
  *
  * Static on purpose - it reads the files rather than running the API, so it
  * needs no database, no credentials and no site.
@@ -52,9 +55,9 @@ if (!is_dir($root . '/includes/api')) {
 }
 
 // Routes that answer with something other than a record: the OpenAPI document
-// itself, the console page, the fragment it loads, and the delete that answers
-// 204 with an empty body.
-$without_body = array('openapi', 'docs', 'docs.endpoints', 'webhooks.delete');
+// itself, the console page, the fragment it loads, and the webhook delete and
+// its POST twin, which answer 204 with an empty body.
+$without_body = array('openapi', 'docs', 'docs.endpoints', 'webhooks.delete', 'webhooks.delete_post');
 
 // Which presenter builds the shape each declaration describes. Only the pairs
 // that exist - meta and the stock endpoints build their answers inline.
@@ -111,6 +114,8 @@ $presenters = array(
 	'api_design_outline_item_schema' => 'api_design_outline_item_present',
 	'api_design_proposal_schema' => 'api_design_proposal_out',
 	'api_design_revision_schema' => 'api_design_revision_present',
+	'api_design_bundle_schema' => 'api_design_bundle_present',
+	'api_design_bundle_page_schema' => 'api_design_bundle_page_present',
 	'api_design_restore_schema'  => 'api_design_restore_present',
 	'ws_api_claude_change_type_schema' => 'ws_api_claude_change_type_present',
 	'ws_api_claude_record_schema'      => 'ws_api_claude_record_present',
@@ -655,6 +660,56 @@ foreach ($documented as $code) {
 	if (!isset($used[$code]) && !in_array($code, array('idempotency_key_reused'), true)) {
 
 		$warnings[] = 'api_error_catalogue() explains ' . $code . ', which nothing answers with any more.';
+
+	}
+
+}
+
+// ── Field type words ─────────────────────────────────────────────────────
+// A declaration's field is a type word, an object name, or a list of either.
+// The words the document can say are the keys of api_openapi_field_words();
+// any other lower-case word would reach the document as a type OpenAPI does
+// not have (three User times once said type: datetime).
+$openapi_source = (string)file_get_contents($root . '/includes/api/openapi.php');
+$words_body = pg_api_function_body($openapi_source, 'api_openapi_field_words');
+$field_words = array();
+
+if ($words_body !== null && preg_match_all("/'([a-z]+)'\s*=>\s*array\(/", $words_body, $word_matches)) {
+	$field_words = $word_matches[1];
+}
+
+if (empty($field_words)) {
+
+	$problems[] = 'api_openapi_field_words() was not found in includes/api/openapi.php: the field type words cannot be checked.';
+
+} else {
+
+	$declaration_sources = $handler_sources
+		. "\n" . file_get_contents($root . '/includes/api/seo.php')
+		. "\n" . file_get_contents($root . '/includes/api/devices.php');
+
+	preg_match_all('/function\s+([a-z0-9_]+_schema)\s*\(/', $declaration_sources, $declarations);
+
+	foreach (array_unique($declarations[1]) as $declaration) {
+
+		$body = pg_api_function_body($declaration_sources, $declaration);
+
+		if ($body === null) {
+			continue;
+		}
+
+		// Values after => and the one member of a list: array('string').
+		preg_match_all("/(?:=>\s*|array\(\s*)'([a-z][a-z]*)((?:\[\])*)(\??)'(?!\s*=>)/", $body, $values);
+
+		foreach ($values[1] as $word) {
+
+			if (!in_array($word, $field_words, true)) {
+
+				$problems[] = $declaration . '(): the type word \'' . $word . '\' is not one the document can say - use one of ' . implode(', ', $field_words) . '.';
+
+			}
+
+		}
 
 	}
 

@@ -115,13 +115,59 @@ function test_settings_integrations_log_retention_refused_not_clamped()
 	pg_assert_same(false, strpos($save, "max(1, min((int) post_value('api_log_retention_days')"), 'no silent clamp to 1');
 }
 
+// The tool groups as pg_settings_tool_groups() draws them for a manager
+// with the store on, Cloudflare configured for an administrator.
+function settings_integrations_test_tools($store, $cloudflare)
+{
+	$connections = array(
+		array('label' => 'Application Access', 'icon' => 'bi-key', 'url' => 'api_settings.php'),
+		array('label' => 'Connected accounts', 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
+	);
+
+	if ($store) {
+		$connections[] = array('label' => 'Marketplaces', 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php');
+	}
+
+	$infrastructure = array(array('label' => 'Backup Manager', 'icon' => 'bi-archive', 'url' => 'backups.php'));
+
+	if ($cloudflare) {
+		$infrastructure[] = array('label' => 'Cloudflare Tools', 'icon' => 'bi-cloud', 'url' => 'cloudflare.php');
+	}
+
+	return array(
+		array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(array('label' => 'Site Log', 'icon' => 'bi-card-list', 'url' => 'view_log.php'))),
+		array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => $connections),
+		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=x', 'confirm' => 'Sure?'))),
+		array('label' => 'Infrastructure', 'icon' => 'bi-hdd-stack', 'items' => $infrastructure),
+	);
+}
+
+// The links are Application Access and the tool screens the registry of
+// outside services names as places, each under the gate it has on System
+// tools.
 function test_settings_integrations_links_follow_each_screen_gate()
 {
-	$manager = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('ecommerce' => true, 'workspace_settings' => false)));
+	$manager = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('tools' => settings_integrations_test_tools(true, false), 'workspace_settings' => false)));
 	pg_assert_same(array('api_settings.php', 'connections.php', 'marketplace_settings.php'), $manager, 'a manager, store on, no workspace right');
 
-	$no_store = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('ecommerce' => false, 'workspace_settings' => true)));
+	$no_store = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('tools' => settings_integrations_test_tools(false, false), 'workspace_settings' => true)));
 	pg_assert_same(array('api_settings.php', 'connections.php', 'settings_workspace_team.php'), $no_store, 'store off, workspace settings right');
 
-	pg_assert_same(array(), pg_settings_integration_links(array('id' => 1, 'role' => 3), array('ecommerce' => true, 'workspace_settings' => true)), 'nothing for a role the settings do not admit');
+	$administrator = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 0), array('tools' => settings_integrations_test_tools(true, true), 'workspace_settings' => false)));
+	pg_assert_same(array('api_settings.php', 'connections.php', 'marketplace_settings.php', 'cloudflare.php'), $administrator, 'Cloudflare Tools where System tools shows it');
+
+	pg_assert_same(array(), pg_settings_integration_links(array('id' => 1, 'role' => 3), array('tools' => settings_integrations_test_tools(true, true), 'workspace_settings' => true)), 'nothing for a role the settings do not admit');
+}
+
+// Every System tools screen the registry names as a place is linked when the
+// user may open it.
+function test_settings_integrations_links_cover_the_registry_screens()
+{
+	$urls = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 0), array('tools' => settings_integrations_test_tools(true, true), 'workspace_settings' => false)));
+
+	foreach (pg_connections_registry() as $id => $row) {
+		if ((substr($row['place'], 0, 1) !== '#') && !in_array($row['place'], pg_connections_other_screens(), true)) {
+			pg_assert_true(in_array($row['place'], $urls, true), $id . ': ' . $row['place'] . ' is linked');
+		}
+	}
 }

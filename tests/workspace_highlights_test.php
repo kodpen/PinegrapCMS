@@ -564,3 +564,82 @@ function test_workspace_highlights_mine_reads_his_own_page()
 	pg_assert_contains('ORDER BY h.id DESC', $source);
 	pg_assert_contains('ws_can_read_channel($viewer, $channel)', $source);
 }
+
+// (#10018) The selection bar's sentence: "Highlight for {1}" is split
+// around the pair, so each language puts the two words where its grammar
+// wants them ("Highlight for [everyone] [me]", "[Herkes] [Kendim] için
+// vurgula"); a translation that lost the placeholder keeps its words before
+// the pair.
+function test_workspace_highlights_bar_sentence_around_the_pair()
+{
+	$answer = workspace_highlights_test_mine("["
+		. "H.sentenceAround('Highlight for \\u0001', '\\u0001'),"
+		. "H.sentenceAround('\\u0001 için vurgula', '\\u0001'),"
+		. "H.sentenceAround('  Mark \\u0001  please ', '\\u0001'),"
+		. "H.sentenceAround('Highlight for', '\\u0001')]");
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('Highlight for', ''), $answer[0], 'English: words before the pair');
+	pg_assert_same(array('', 'için vurgula'), $answer[1], 'Turkish: words after the pair');
+	pg_assert_same(array('Mark', 'please'), $answer[2], 'trimmed on both sides');
+	pg_assert_same(array('Highlight for', ''), $answer[3], 'no placeholder: the words lead');
+}
+
+// (#10018) The bar's top edge: over the selection, or under it when asked;
+// inside the visible message list when its rectangle is given (never over
+// the composer, never above the list); never above the page's top.
+function test_workspace_highlights_bar_stays_inside_the_list()
+{
+	$answer = workspace_highlights_test_mine("["
+		. "H.barTop({ top: 300, bottom: 320 }, 40, false, null, 0),"
+		. "H.barTop({ top: 300, bottom: 320 }, 40, true, null, 0),"
+		. "H.barTop({ top: 300, bottom: 320 }, 40, false, null, 1000),"
+		. "H.barTop({ top: 200, bottom: 900 }, 40, true, { top: 100, bottom: 500 }, 0),"
+		. "H.barTop({ top: 50, bottom: 70 }, 40, false, { top: 100, bottom: 500 }, 0),"
+		. "H.barTop({ top: 4, bottom: 20 }, 40, false, null, 0)]");
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(252, $answer[0], 'over the selection, 8 px apart');
+	pg_assert_same(328, $answer[1], 'under the selection');
+	pg_assert_same(1252, $answer[2], 'in page coordinates');
+	pg_assert_same(452, $answer[3], 'a selection running past the list: at its bottom edge, not over the composer');
+	pg_assert_same(108, $answer[4], 'a selection scrolled above the list: at its top edge');
+	pg_assert_same(8, $answer[5], 'never above the page');
+}
+
+// (#10018) The bar is drawn from the look's recipes: a floating bar, the
+// pair one segmented control, the lone "for me" a ghost button, no old
+// Bootstrap buttons; each part is named by the whole sentence and says who
+// sees the highlight.
+function test_workspace_highlights_bar_look_and_names()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
+	$start = strpos($script, 'function showBar()');
+	$end = strpos($script, 'function later()');
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($end > $start), 'showBar() found');
+
+	$bar = substr($script, (int) $start, (int) $end - (int) $start);
+
+	pg_assert_false(strpos($bar, 'btn btn-') !== false, 'no btn btn- in the bar');
+	pg_assert_contains("'ws-hl-bar pg-floatbar'", $bar);
+	pg_assert_contains("'pg-seg ws-hl-bar-pair'", $bar);
+	pg_assert_contains("'pg-seg-item'", $bar);
+	pg_assert_contains("'pg-button pg-button-ghost pg-button-sm ws-hl-bar-one'", $bar);
+	pg_assert_contains("button.setAttribute('aria-label', name);", $bar);
+	pg_assert_contains('button.title = hint;', $bar);
+	pg_assert_contains('button.disabled = tooLong;', $bar);
+
+	pg_assert_contains("'hl_bar_sentence'        => ws_js_template('Highlight for {var:1}', 1),", $screen);
+	pg_assert_contains("lang('Highlight for everyone')", $screen);
+	pg_assert_contains("lang('Highlight for me')", $screen);
+	pg_assert_contains("lang('Everyone who can read this message sees the highlight. Nobody is notified.')", $screen);
+	pg_assert_contains("lang('Only you see this highlight.')", $screen);
+}

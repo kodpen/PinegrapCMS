@@ -195,17 +195,19 @@ function pg_site_icon_declared($html)
 
 /**
  * The web manifest of the site: its name, its home address and the icons.
- * No display mode beyond the browser's own: the site is not promised to
- * work as an installed application.
+ * The browser's own display unless app mode asks for standalone
+ * (pg_site_push_app_display()): an iPhone delivers web push only to a site
+ * added to its home screen that way.
  *
  * @param string $kind       pg_site_icon_kind()
  * @param string $name       The site's title
  * @param string $root       PATH
  * @param string $file_href  The source's own address (for an SVG)
  * @param string $version
+ * @param string $display    'browser' or 'standalone'; anything else browser
  * @return array
  */
-function pg_site_icon_manifest($kind, $name, $root, $file_href, $version)
+function pg_site_icon_manifest($kind, $name, $root, $file_href, $version, $display = 'browser')
 {
     $query = ($version !== '') ? '?v=' . rawurlencode(substr((string) $version, 0, 8)) : '';
     $icons = array();
@@ -219,7 +221,8 @@ function pg_site_icon_manifest($kind, $name, $root, $file_href, $version)
     }
 
     $name = trim((string) $name);
-    $manifest = array('name' => $name, 'short_name' => $name, 'start_url' => $root, 'display' => 'browser', 'icons' => $icons);
+    $manifest = array('name' => $name, 'short_name' => $name, 'start_url' => $root,
+        'display' => ($display === 'standalone') ? 'standalone' : 'browser', 'icons' => $icons);
 
     if ($name === '') {
         unset($manifest['name'], $manifest['short_name']);

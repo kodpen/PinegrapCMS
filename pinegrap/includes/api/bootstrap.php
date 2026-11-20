@@ -26,6 +26,9 @@ $pg_api_directory = dirname(__FILE__);
 
 require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
+require_once($pg_api_directory . '/fault.php');
+require_once($pg_api_directory . '/manners.php');
+require_once($pg_api_directory . '/preconditions.php');
 require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
@@ -91,6 +94,7 @@ require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
 require_once($pg_api_directory . '/resources/design_ads.php');
 require_once($pg_api_directory . '/resources/design_dialogs_regions.php');
+require_once($pg_api_directory . '/resources/design_bundles.php');
 require_once($pg_api_directory . '/resources/account.php');
 
 // API settings, read straight from the config row.
@@ -341,6 +345,10 @@ function api_run() {
 		}
 
 	}
+
+	// An update sent with If-Match is refused with 412 when the record has
+	// changed since the client read it (includes/api/preconditions.php).
+	api_if_match_check($route);
 
 	call_user_func($route['handler'], $params);
 

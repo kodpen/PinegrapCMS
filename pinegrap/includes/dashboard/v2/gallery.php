@@ -50,6 +50,7 @@ function pg_dashboard_v2_gallery_cards()
         'flows'      => $g(lang('Running flows, steps waiting for approval, failed runs'), 1, 'flow'),
         'pins'       => $g(lang('The pages and screens you open often, box by box'), 1, 'boxes'),
         'notes'      => $g(lang('A note added to My Notes, your latest notes one click away'), 1, 'note'),
+        'mail'       => $g(lang('The newest incoming e-mail, unread ones in bold, one click from the inbox'), 1, 'rows'),
         'content'    => $g(lang('Pages edited lately, drafts, scheduled ones'), 1, 'boxes'),
         'comments'   => $g(lang('Comments waiting for approval, like a chat'), 0, 'chat'),
         'files'      => $g(lang('Storage ring and the files uploaded lately'), 0, 'rings'),

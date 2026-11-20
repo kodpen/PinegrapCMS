@@ -330,9 +330,9 @@ if (!isset($_POST['name'])) {
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('File Content') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3">
@@ -357,9 +357,9 @@ if (!isset($_POST['name'])) {
         $svg_h = (is_numeric($image_height) && $image_height > 0) ? (int)$image_height : 0;
         $output_convert_rows = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Convert') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="col-12 my-3">
                         <div class="form-field">
@@ -453,13 +453,13 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang('Edit this image in the Design Canvas') . '</button>' . pg_image_editor_includes();
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang('Edit this image in the Artifact Canvas') . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Convert') . '
-                        </div>
+                        </h2>
                         <div class="card-body">
                             <div class="col-12 my-3">
                                 <div class="form-field">
@@ -587,7 +587,7 @@ if (!isset($_POST['name'])) {
                     var html = "<div class=\"fw-bold mb-1\">" + esc(texts.count.replace("{var:1}", response.total)) + "</div>";
 
                     (response.groups || []).forEach(function (group) {
-                        html += "<div class=\"text-uppercase fg-secondary mt-3\">" + esc(group.label) + "</div>";
+                        html += "<div class=\"pg-group-label mt-3\">" + esc(group.label) + "</div>";
 
                         (group.items || []).forEach(function (entry) {
                             var label = esc(entry.name) + (entry.note ? (" <span class=\"fg-secondary\">· " + esc(entry.note) + "</span>") : "");
@@ -656,7 +656,7 @@ if (!isset($_POST['name'])) {
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
                                             <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control"/>
                                         </div>
@@ -1215,6 +1215,9 @@ $liveform->remove_form('edit_file');
         // A new name or the design flag may have made a stored file one that
         // has to be on the disk.
         pg_file_storage_bring_home(array((int) $file_id));
+
+        // A new folder takes its languages' pictures along.
+        pg_picture_tr_follow(array((int) $file_id));
 
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');

@@ -27,4 +27,4 @@ description: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4'
 
 ## Does a task get a column for the application that created it? (owner, 2026-11-16, agent channel poll 80)
 - Yes, one column on `ws_tasks`: his vote "Evet, ikisi de; planını yaz" on an option that said "görev tablosuna tek sütun eklenir (görevi açan uygulama)" (`decisions-made-workspace-36.md`).
-- Its name and type are the architect's to confirm from AW3's draft PR before the migration step is written (`plans/agent-work-apart.md`). No backfill: earlier tasks do not know their application.
+- Built as `ws_tasks.app_id` (#9994, `workspace/task-app-mark.md`). No backfill: earlier tasks do not know their application.

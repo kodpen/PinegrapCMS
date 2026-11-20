@@ -29,6 +29,14 @@
 
     X.icons.follow = 'M11 2h2v5h-2zM11 17h2v5h-2zM2 11h5v2H2zM17 11h5v2h-5zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z';
 
+    // A phone held upright, as Record's: the sheet folds while Follow runs.
+    var PHONE = '(max-width: 599.98px)';
+
+    // A touch screen with no fine pointer: no key to name in a hint.
+    function touchScreen() {
+        return !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    }
+
     // The playhead as m:ss.d, as the play bar shows it.
     function clockText(ms) {
         var tenths = Math.max(0, Math.round(ms / 100)), m = Math.floor(tenths / 600), s = (tenths % 600) / 10;
@@ -115,6 +123,16 @@
         return (l && (l.type !== 'video')) ? l : null;
     };
 
+    // Whether Follow is offered over the object: the Animate tool, a layer
+    // it may move and a video showing at the playhead.
+    Editor.prototype.followOffered = function () {
+        var at = (this.time === null) ? 0 : this.motionNow();
+
+        return (this.tool === 'motion') && !!this.followLayer() && this.doc.layers.some(function (l) {
+            return (l.type === 'video') && !l.hidden && (M.clipAt(l, at) !== null);
+        });
+    };
+
     // ---- arming and the box ----
 
     Editor.prototype.followToggle = function () {
@@ -155,6 +173,14 @@
 
         this.follow = { phase: 'armed' };
         this.motionTab = 'keys';
+
+        // A phone's sheet folds so the whole stage is free for the box, as
+        // Record's does; it comes back when Follow ends.
+        if (window.matchMedia && window.matchMedia(PHONE).matches) {
+            this.followSheet = this.sheetOpen;
+            this.sheetOpen = false;
+        }
+
         this.render();
     };
 
@@ -212,6 +238,11 @@
         }
 
         this.root.classList.remove('pgie-following');
+
+        if (this.followSheet !== null) {
+            this.sheetOpen = this.followSheet;
+            this.followSheet = null;
+        }
 
         if (this.drag && (this.drag.kind === 'follow')) {
             this.drag = null;
@@ -613,7 +644,7 @@
         this.root.classList.toggle('pgie-followarmed', on);
 
         if (on) {
-            this.hint.textContent = t((f.phase === 'running') ? 'followHintRun' : 'followHint');
+            this.hint.textContent = t(M.followHint(f.phase === 'running', touchScreen()));
         }
 
         if (!on) {
@@ -653,7 +684,7 @@
         }
 
         p.classList.toggle('pgie-followsetup', !running);
-        p.querySelector('.pgie-followtext').textContent = t(running ? 'followBusy' : 'followHint');
+        p.querySelector('.pgie-followtext').textContent = t(running ? 'followBusy' : M.followHint(false, touchScreen()));
         share = (running && f.times && f.times.length) ? Math.min(100, Math.round(100 * f.next / f.times.length)) : 0;
         p.querySelector('.pgie-followshare').textContent = running ? pct(share) : '';
     };
@@ -671,6 +702,7 @@
         this.follow = null;
         this.followPill = null;
         this.followStats = null;
+        this.followSheet = null;
     });
 
     Editor.views.push(Editor.prototype.followView);

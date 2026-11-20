@@ -474,6 +474,9 @@ function pg_explorer_handle_move($type, $request, $user)
                         WHERE id = '" . e($item_id) . "'");
                     pg_audit_record('update', 'files', $item_id, $audit_before);
 
+                    // Its languages' pictures go along.
+                    pg_picture_tr_follow(array($item_id));
+
                     $moved++;
                     $moved_items[] = array('file', $item_id);
                 }

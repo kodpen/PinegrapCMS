@@ -9,6 +9,7 @@ description: Plan designer-panels, features D54 to D62: the canvas bar in three 
 - (D56) Zone 3: a "View" menu whose badge counts the switches that are on. Its rows are switches named by what they do: Outline (O), Snap to grid (8 px), Dark canvas, Play animations. Then Find and History as icon buttons.
 - (D57) A state is never written as a name: "Light" beside a tip "Dark canvas" becomes the switch "Dark canvas".
 - (D58) Beside Publish a "Preview" menu: Preview in a new window, Open on the site (the saved state), Play as a prototype, Share the prototype…. "Open on the site" and "View page" leave the bar (they were the same thing twice; issue #10034).
+- Architect (2026-11-17, agent channel message 8730) on D58 as built (DP23): the word is "Önizleme" (key `Preview`), not the drawing's "Önizle"; the button keeps `bi-window`, the play glyph is the Play row's alone; on a draft it stands before Save and Publish; below 768 px it is the glyph alone, after Publish.
 
 ## What does the bar show in Prototype mode?
 - (D59) The same bar: the count ("37 pages · links read"), − 60% + and Fit for the map, "All arrows", "Tidy up", "Read again". No screen size, no View menu, no Close button: the switch leads back. Each mode keeps its own zoom.

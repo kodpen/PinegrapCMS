@@ -23,9 +23,9 @@ description: Plan automation-platforms, features A1 to A13: the contract the app
 - (A13) The guides of Application Access get "Automation platforms": the two ways (an app, a pasted address); an app is named there once it is public.
 
 ## What do the documentation pages show?
-- Under each event its fields and its sample (A6), on the panel's page and the public one. Only the events section: the pages' opening and headings are plan `api-clean-modern`'s.
+- Under each event its fields and its sample (A6), on the panel's page and the public one. Only the events section: the opening and headings: `api/api-docs-conventions.md`.
 
 ## What is a trigger, seen from an app?
-- It subscribes with `POST /webhooks`, keeps the id and the secret, and removes the subscription with `POST /webhooks/{id}`, which every server takes.
+- It subscribes with `POST /webhooks`, keeps the id and the secret, and removes the subscription with `POST /webhooks/{id}/delete`, which every server takes (the older `POST /webhooks/{id}` deletes too).
 - On a delivery it checks `X-Pinegrap-Signature` where the platform runs code, reads the record by the id in `data` and gives the record. Its samples are the list's newest records. So a live run and a sample have the record's shape, which the API document describes.
 - One more trigger, "Any event", lists the catalogue (A7) and gives `data` as it comes, with the catalogue's sample.

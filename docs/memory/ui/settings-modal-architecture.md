@@ -1,10 +1,10 @@
 ---
 name: settings-modal-architecture
-description: Site Settings dialog: file map, the 18 categories under 5 headings, where moved cards went, moving a card, adding a category.
+description: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category.
 ---
 
 ## Why is Site Settings a dialog and not a screen?
-- A setting is mostly needed mid-task; a page means leaving it. The old one-form screen became categories in a dialog, regrouped in 2026-10 so each setting has one place (`workflow/decisions-made-product-14.md`).
+- A setting is mostly needed mid-task. The old one-form screen became categories in a dialog, regrouped in 2026-10 so each setting has one place (`workflow/decisions-made-product-14.md`).
 
 ## Which files make it up?
 ```
@@ -22,7 +22,8 @@ assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgIni
 ```
 
 ## Which categories exist, and in what order?
-- Site: `general`, `appearance`, `features`, `seo` (SEO), `privacy` (Visitors and privacy), `languages`, `contact` (Communication). Security: `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS). Selling: `commerce` (Ecommerce), `accounting`, `bookings` (`booking-settings.md`). Running the site: `api` (Integrations), `fediverse` (`fediverse-settings.md`), `maintenance` (Updates and maintenance), then the System tools row. Headings: `settings-list-headings.md`.
+- Site: `general`, `appearance`, `features`, `seo` (SEO), `privacy` (Visitors and privacy), `languages`, `contact` (Communication), `mail_sending` (`settings-mail-sending.md`), `mailboxes`.
+- Security: `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS). Selling: `commerce` (Ecommerce), `accounting`, `bookings` (`booking-settings.md`). Running the site: `api` (Integrations), `fediverse` (`fediverse-settings.md`), `maintenance` (Updates and maintenance), then the System tools row. Headings: `settings-list-headings.md`.
 - Workspace: `workspace_team`, `workspace_assistants`, `workspace_channels`, own gate (`workspace/workspace-settings-overview.md`).
 - Keys stay when a label changes, so `#settings/<key>/…` and `settings_<key>.php` links keep working; `tests/settings_deep_links_test.php` fails on a link to a card its category does not list.
 
@@ -43,4 +44,4 @@ assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgIni
 - A `registry.php` entry with a `group`, `includes/settings/<key>.php`, `<key>.save.php`, a `settings_<key>.php` wrapper and a `settings_<key>` help row; a Workspace one also `'gate' => 'workspace'` and a `case` lighting row 23 in `output_menu()`.
 
 ## What does the page path do with a refused save?
-- It redirects back and draws the cards from storage, so what was typed is lost there; the dialog keeps it. The cards are plain HTML, which `liveform::prepare()` cannot refill.
+- It redirects back and draws the cards from storage, so what was typed is lost there; the dialog keeps it (the cards are plain HTML).

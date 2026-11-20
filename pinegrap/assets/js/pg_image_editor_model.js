@@ -853,9 +853,13 @@
     // its box.
     // A warped or pinned layer is tested on its drawn extent (see
     // drawnExtent()), so a press on a part bent out of the box still hits.
-    function hitLayer(doc, x, y, slack, test) {
+    // picked { ids, reach }: a selected layer (its id in ids) is taken as far
+    // as reach instead of slack, so a finger keeps the layer it picked
+    // (touchReach()) over a layer under it; a layer above still takes the
+    // press where it lies.
+    function hitLayer(doc, x, y, slack, test, picked) {
         for (var i = doc.layers.length - 1; i >= 0; i--) {
-            var l = doc.layers[i], p, e;
+            var l = doc.layers[i], p, e, s;
 
             if (l.hidden || l.locked) {
                 continue;
@@ -863,9 +867,10 @@
 
             p = local(l, x, y);
             e = drawnExtent(l);
+            s = (picked && picked.ids && (picked.ids.indexOf(l.id) >= 0)) ? Math.max(slack, Number(picked.reach) || 0) : slack;
 
-            if ((p[0] >= e[0] - slack) && (p[1] >= e[1] - slack) && (p[0] <= e[2] + slack) && (p[1] <= e[3] + slack)
-                    && (!test || test(l, p, slack))) {
+            if ((p[0] >= e[0] - s) && (p[1] >= e[1] - s) && (p[0] <= e[2] + s) && (p[1] <= e[3] + s)
+                    && (!test || test(l, p, s))) {
                 return l;
             }
         }
@@ -2601,7 +2606,121 @@
         return d;
     }
 
+    // A canvas in another language: the smallest share of the source's text
+    // size a translation is drawn at.
+    var LANGUAGE_FLOOR = 0.7;
+
+    // How much a translated text (w1 x h1 at the source's size) shrinks to
+    // fit the source's box (w0 x h0): never grown, never under the floor;
+    // mark when it still does not fit there.
+    function languageFit(w0, h0, w1, h1) {
+        var scale = 1;
+
+        if ((w0 > 0) && (w1 > w0)) {
+            scale = Math.min(scale, w0 / w1);
+        }
+
+        if ((h0 > 0) && (h1 > h0)) {
+            scale = Math.min(scale, h0 / h1);
+        }
+
+        if (scale < LANGUAGE_FLOOR - 1e-9) {
+            return { scale: LANGUAGE_FLOOR, mark: true };
+        }
+
+        return { scale: Math.round(scale * 10000) / 10000, mark: false };
+    }
+
+    // A canvas document with a language's words in its layers (texts:
+    // [{ id, field, text }], text null where none is translated, which
+    // keeps the source's words). Answers the new document and, by layer id,
+    // a copy of each text layer as it was, to fit the new words to; null
+    // without a document.
+    function languageDoc(doc, texts) {
+        if (!doc || !Array.isArray(doc.layers)) {
+            return null;
+        }
+
+        var next = clone(doc), byId = {}, source = {};
+
+        (texts || []).forEach(function (t) {
+            if (t && (typeof t.text === 'string') && (t.text !== '')) {
+                byId[t.id + '\n' + t.field] = t.text;
+            }
+        });
+
+        next.layers.forEach(function (l) {
+            var field = (l.type === 'text') ? 'text' : ((l.type === 'sticker') ? 'label' : ''), key = l.id + '\n' + field;
+
+            if (!field || !byId.hasOwnProperty(key) || (byId[key] === l[field])) {
+                return;
+            }
+
+            if (field === 'text') {
+                source[l.id] = clone(l);
+            }
+
+            l[field] = byId[key];
+        });
+
+        return { doc: next, source: source };
+    }
+
+    // Whether a language may be drawn: every text translated into it, not
+    // right to left (a visitor sees the source picture there).
+    function languageDrawable(lang) {
+        return !!lang && !lang.rtl && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
+    }
+
+    // The languages Draw all draws: translated or out of date, and drawable.
+    function languagesToDraw(list) {
+        return (list || []).filter(function (lang) {
+            return ((lang.state === 'translated') || (lang.state === 'out_of_date')) && languageDrawable(lang);
+        }).map(function (lang) {
+            return lang.code;
+        });
+    }
+
+    // A waiting row of the queue (a picture and a language), from its
+    // language as read when it is drawn: failed when the language is not
+    // listed any more, drawn or look when it was drawn meanwhile (nothing to
+    // draw again), skipped when a text is no longer translated, else draw.
+    function languageRowPlan(lang) {
+        if (!lang) {
+            return 'failed';
+        }
+
+        if ((lang.state === 'drawn') || (lang.state === 'look')) {
+            return lang.state;
+        }
+
+        return languageDrawable(lang) ? 'draw' : 'skipped';
+    }
+
+    // A row's end from its draw's answer: drawn, look (a text did not fit
+    // at the smallest size) or failed.
+    function languageRowStatus(r) {
+        if (r && (r.status === 'success')) {
+            return (r.state === 'look') ? 'look' : 'drawn';
+        }
+
+        return 'failed';
+    }
+
+    // The languages drawn after a Save: those with a row that waits (queued:
+    // waiting or out of date) and may be drawn. A language without a row is
+    // shown by no page, so it is not drawn.
+    function languagesWaiting(list) {
+        return (list || []).filter(function (lang) {
+            return !!lang.queued && languageDrawable(lang);
+        }).map(function (lang) {
+            return lang.code;
+        });
+    }
+
     var ARTBOARD = {
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
@@ -3741,6 +3860,26 @@
         return { scale: 1, x: 0, y: 0 };
     }
 
+    // The point of layer l at rest that the stage shows at x, y while the
+    // layer stands at st (motionAt()): its group moves by st.x, st.y, turns
+    // by st.rot and scales by st.scale round the layer's centre
+    // (motionGroup() in pg_image_editor_motion.js), so a press is taken
+    // back through that. Null while the layer is scaled to nothing.
+    function restPoint(l, st, x, y) {
+        var cx = (Number(l.x) || 0) + (Number(l.w) || 0) / 2, cy = (Number(l.y) || 0) + (Number(l.h) || 0) / 2;
+        var k = (st && (st.scale !== undefined)) ? Number(st.scale) : 1, a = -((st && Number(st.rot)) || 0) * Math.PI / 180;
+        var dx, dy;
+
+        if (!(k > 0)) {
+            return null;
+        }
+
+        dx = (x - cx - ((st && Number(st.x)) || 0)) / k;
+        dy = (y - cy - ((st && Number(st.y)) || 0)) / k;
+
+        return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)];
+    }
+
     // Whether any layer moves.
     function hasMotion(doc) {
         return ((doc && doc.layers) || []).some(function (l) {
@@ -3753,7 +3892,7 @@
     var MOTION = {
         MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
         MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt, layerUntil: layerUntil,
-        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
+        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion, restPoint: restPoint
     };
 
     // -- keyframes (pg_image_editor_keyframes.js) --
@@ -4204,8 +4343,14 @@
         return recordApply(l, samples, end, px);
     }
 
+    // The hint's label key: while the box is set up or while it runs; on a
+    // touch screen without naming Escape (the pill's Cancel is the way out).
+    function followHint(running, touch) {
+        return (running ? 'followHintRun' : 'followHint') + (touch ? 'Touch' : '');
+    }
+
     var FOLLOW = {
-        FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
+        followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
         followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
@@ -4951,6 +5096,12 @@
 
             add('duplicate');
             add('remove', !s.free);
+
+            // s.move: how many of them move (neither locked nor fixed). A
+            // phone has no arrow keys: four arrows nudge them (nudgeStep()).
+            if (s.move) {
+                ['nudgeLeft', 'nudgeUp', 'nudgeDown', 'nudgeRight'].forEach(function (name) { add(name); });
+            }
         } else if (s.picture) {
             add('lockPicture');
 
@@ -5011,6 +5162,12 @@
                 add('split');
             }
 
+            // Follow an area of the video showing at the playhead: never a
+            // video itself, never a redaction (it does not move).
+            if (s.animate && s.follow && (s.kind !== 'video') && (s.kind !== 'redact')) {
+                add('follow');
+            }
+
             if (s.animate && (s.kind !== 'redact')) {
                 add('motion');
             }
@@ -5047,7 +5204,18 @@
         return { x: Math.round(x), y: Math.round(y), below: below };
     }
 
-    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace };
+    // A nudge of the selected layers in document px: dir left, right, up
+    // or down; 1 px, big (Shift with an arrow key, a held arrow on the bar)
+    // 10 px. [dx, dy], or null for another dir.
+    var NUDGE_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+
+    function nudgeStep(dir, big) {
+        var d = Object.prototype.hasOwnProperty.call(NUDGE_DIRS, dir) ? NUDGE_DIRS[dir] : null, n = big ? 10 : 1;
+
+        return d ? [d[0] * n, d[1] * n] : null;
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace, nudgeStep: nudgeStep };
 
     // -- The context menu (pg_image_editor_menu.js) --
 

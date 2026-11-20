@@ -83,7 +83,7 @@ $filter_forms = '<div class="pg-messages-filters">' . implode('', $filter_forms)
 $secondary = array();
 
 if ($user['role'] < 3) {
-    $secondary[] = array('label' => lang('Campaign settings'), 'url' => pg_settings_link('contact', 'pgset-campaigns'), 'icon' => 'bi-sliders');
+    $secondary[] = array('label' => lang('Campaign settings'), 'url' => pg_settings_link('mail_sending', 'pgset-mail-campaign'), 'icon' => 'bi-sliders');
 }
 
 $warning = '';
@@ -105,10 +105,10 @@ pg_page_shell(
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
+            ' . pg_messages_tab_strip_for('campaigns', $user) . '
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            ' . pg_messages_tab_strip_for('campaigns', $user) . '
             ' . $warning . '
             ' . pg_screen_toolbar(array(
                 'primary'   => pg_messages_new_campaign_button($sms),

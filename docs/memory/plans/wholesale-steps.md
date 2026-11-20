@@ -19,7 +19,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
 
 - WS4 Done (#9987): the minimum order (`commerce/minimum-order.md`): one settings text group → amount, the highest of a customer's groups, the cart's warning (designer widget and classic cart) and the refusal at submit from one function, the field on the contact group edit screen. Look: architect, agent channel message 6895. Features: J8, J9.
 
-- WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.
+- WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.  Done: #10165.
 
 - WS6 (S) after WS3: the API. The API schema's row for the account's pointer and its resource file; `php tools/check_api_schema.php`. Features: J11.
 

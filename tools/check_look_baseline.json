@@ -1,6 +1,6 @@
 {
     "assets/css/backend.src.css": {
-        "size": 436,
+        "size": 434,
         "weight": 228,
         "colour": 384
     },
@@ -33,5 +33,1193 @@
         "size": 1,
         "weight": 3,
         "colour": 0
+    },
+    "add_design_file.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "add_file.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "add_order.php": {
+        "button": 11,
+        "tabs": 0
+    },
+    "add_return.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "api_docs.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "api_settings.php": {
+        "button": 22,
+        "tabs": 1
+    },
+    "assets/js/add_order.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/backend.src.js": {
+        "button": 27,
+        "tabs": 0
+    },
+    "assets/js/chat_backend.src.js": {
+        "button": 7,
+        "tabs": 1
+    },
+    "assets/js/codemirror_modal.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/erp_account_quick.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/explorer_side.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/offer_editor.js": {
+        "button": 3,
+        "tabs": 0
+    },
+    "assets/js/pg_ai_write.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/pg_audience_editor.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/pg_ckeditor_picker.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/pg_dash.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_cards_assistant.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_cards_content.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_cards_personal.js": {
+        "button": 9,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_cards_team.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_cards_work.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_edit.js": {
+        "button": 9,
+        "tabs": 0
+    },
+    "assets/js/pg_dash_panel.js": {
+        "button": 5,
+        "tabs": 0
+    },
+    "assets/js/pg_datetime.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/pg_list_table.js": {
+        "button": 6,
+        "tabs": 0
+    },
+    "assets/js/pg_picker.js": {
+        "button": 12,
+        "tabs": 0
+    },
+    "assets/js/pg_proto_comments.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/pg_unsplash.js": {
+        "button": 3,
+        "tabs": 0
+    },
+    "assets/js/pg_voice_text.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/product_builder.js": {
+        "button": 6,
+        "tabs": 0
+    },
+    "assets/js/workspace.js": {
+        "button": 258,
+        "tabs": 0
+    },
+    "assets/js/workspace_acks.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/workspace_approvals.js": {
+        "button": 9,
+        "tabs": 0
+    },
+    "assets/js/workspace_board_channel.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/workspace_customer.js": {
+        "button": 12,
+        "tabs": 0
+    },
+    "assets/js/workspace_editor.js": {
+        "button": 28,
+        "tabs": 0
+    },
+    "assets/js/workspace_flow.js": {
+        "button": 58,
+        "tabs": 0
+    },
+    "assets/js/workspace_flow_flag.js": {
+        "button": 3,
+        "tabs": 0
+    },
+    "assets/js/workspace_guest.js": {
+        "button": 3,
+        "tabs": 0
+    },
+    "assets/js/workspace_highlights.js": {
+        "button": 7,
+        "tabs": 0
+    },
+    "assets/js/workspace_mail.js": {
+        "button": 25,
+        "tabs": 0
+    },
+    "assets/js/workspace_note_group_shares.js": {
+        "button": 2,
+        "tabs": 0
+    },
+    "assets/js/workspace_note_groups.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/workspace_note_lock.js": {
+        "button": 5,
+        "tabs": 0
+    },
+    "assets/js/workspace_page_card.js": {
+        "button": 16,
+        "tabs": 0
+    },
+    "assets/js/workspace_palette.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/workspace_recurrence.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/workspace_replies.js": {
+        "button": 6,
+        "tabs": 0
+    },
+    "assets/js/workspace_side.js": {
+        "button": 5,
+        "tabs": 0
+    },
+    "assets/js/workspace_status.js": {
+        "button": 6,
+        "tabs": 0
+    },
+    "assets/js/workspace_task_approval.js": {
+        "button": 4,
+        "tabs": 0
+    },
+    "assets/js/workspace_task_delegate.js": {
+        "button": 7,
+        "tabs": 0
+    },
+    "assets/js/workspace_task_links.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/workspace_task_time.js": {
+        "button": 10,
+        "tabs": 0
+    },
+    "assets/js/workspace_templates.js": {
+        "button": 13,
+        "tabs": 0
+    },
+    "assets/js/workspace_translate.js": {
+        "button": 1,
+        "tabs": 0
+    },
+    "assets/js/workspace_voice.js": {
+        "button": 6,
+        "tabs": 0
+    },
+    "backups.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "booking_manage.php": {
+        "button": 7,
+        "tabs": 0
+    },
+    "cart_quote.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "cloudflare.php": {
+        "button": 9,
+        "tabs": 1
+    },
+    "confirm_subscription.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "connected_apps.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "database_engine.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "device_limit.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "device_pairing.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "duplicate_products.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_booking.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_calendar_event.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_comment.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_common_region.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "edit_contact.php": {
+        "button": 10,
+        "tabs": 0
+    },
+    "edit_custom_style.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_design_file.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "edit_designer_region.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_email_campaign.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_email_campaign_profile.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_erp_account.php": {
+        "button": 10,
+        "tabs": 0
+    },
+    "edit_erp_expense.php": {
+        "button": 9,
+        "tabs": 0
+    },
+    "edit_erp_invoice.php": {
+        "button": 24,
+        "tabs": 0
+    },
+    "edit_erp_invoice_draft.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_erp_purchase_order.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_erp_quote.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "edit_erp_waybill.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_field.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_file.php": {
+        "button": 9,
+        "tabs": 0
+    },
+    "edit_form_list_view.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_menu.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_offer.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_page.php": {
+        "button": 9,
+        "tabs": 0
+    },
+    "edit_product_group.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "edit_short_link.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "edit_submitted_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "edit_theme_file.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "edit_user.php": {
+        "button": 17,
+        "tabs": 0
+    },
+    "erp_account_prices.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "erp_account_sync.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "erp_account_sync_item.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_accountant.php": {
+        "button": 10,
+        "tabs": 0
+    },
+    "erp_accounts.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "erp_audit.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_bank_statement.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_bank_statements.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "erp_cash.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_cheque.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "erp_cheques.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "erp_expenses.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_inbox_document.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_invoices.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "erp_profit.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "erp_quote.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "erp_receipt.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "erp_reconciliation.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "erp_settings.php": {
+        "button": 7,
+        "tabs": 1
+    },
+    "erp_stock.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "erp_stock_count.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "erp_stock_minimums.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "erp_waybills.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "experiments.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "find_and_replace.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "get_erp_edoc_test.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "get_seo_analysis.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "import.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "import_design.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/api/console.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "includes/api/console_view.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/dashboard/v2/page_status.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/dashboard/widgets/widget_1.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/dashboard/widgets/widget_18.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/dashboard/widgets/widget_21.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/dashboard/widgets/widget_4.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/erp/account_form.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "includes/erp/account_quick.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "includes/erp/drawer.php": {
+        "button": 7,
+        "tabs": 0
+    },
+    "includes/erp/invoice_form.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/erp/late_fee.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/erp/order_flow.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "includes/erp/order_refund.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/erp/quote_templates.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/erp/signatures.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/erp/waybill_form.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/address_autocomplete.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/ai_write.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/carrier_api.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/carrier_labels.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/comment_list_edit.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/commission_list.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/contact_list.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/core.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/design_file_list_edit.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/email_campaign_list.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/files.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/geo.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/google_reviews.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/legacy_bootstrap_move.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/legacy_bootstrap_report.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/legacy_bootstrap_theme.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/legacy_bootstrap_trial.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/mail_bounce_report.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/mail_queue_list.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "includes/fn/merchant_center_push.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/messages_area.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/messages_automatic.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/offer_list_edit.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/output.php": {
+        "button": 169,
+        "tabs": 0
+    },
+    "includes/fn/page_bulk.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/page_bundles.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/page_list.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/picker.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/place_map.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/product_list.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/prototype.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "includes/fn/prototype_links.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/record_revisions.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/returns.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/search_audits.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/shipment_labels.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/short_link_list_edit.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/site_log_list.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/site_push_panel.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/site_search_stats.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/sms.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/stock_moves.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/store_credit_staff.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/style_list_edit.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/submitted_form_list.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/system_status.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/fn/update.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/user_list.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/fn/variant_set_list.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/fn/whatsapp.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/approve_affiliate_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/arrival_date_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/contact_group_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/form_item_view_form.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "includes/forms/invoice_order_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/product_attribute_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/product_group_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/submitted_form_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/forms/user_form.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/local_sale.php": {
+        "button": 10,
+        "tabs": 0
+    },
+    "includes/oauth/authorize.php": {
+        "button": 2,
+        "tabs": 1
+    },
+    "includes/panel/explorer.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/templates/edit_auto_dialog.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/templates/edit_offer.php": {
+        "button": 13,
+        "tabs": 0
+    },
+    "includes/templates/edit_products.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/templates/view_key_codes.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/templates/view_offers.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/translate/engines.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/user_permissions.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/visitors/clicks.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/visitors/google.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/visitors/pages.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/visitors/shell.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/workspace/agent_activity.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "includes/workspace/agents_settings.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/bulk.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/calendar_sync.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/workspace/mail_blocks.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/mail_list.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "includes/workspace/mail_pane.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "includes/workspace/notes.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/personal_ical.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "includes/workspace/personal_plan_mail.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/screen.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/tasks.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/workspace/team_settings.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/templates.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "includes/workspace/voice.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/workdays.php": {
+        "button": 7,
+        "tabs": 0
+    },
+    "includes/workspace/wtable_channel.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "includes/workspace/wtable_query.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "includes/workspace/wtable_screen.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "install/index.php": {
+        "button": 40,
+        "tabs": 0
+    },
+    "legacy_to_designer.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "logout.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "marketplace_settings.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "mass_edit.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "mfa.php": {
+        "button": 12,
+        "tabs": 0
+    },
+    "page_bundles.php": {
+        "button": 12,
+        "tabs": 0
+    },
+    "page_experiments.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "parasut_connect.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "privacy_erase.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "privacy_export.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "product_builder.php": {
+        "button": 37,
+        "tabs": 0
+    },
+    "router.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "search_console.php": {
+        "button": 8,
+        "tabs": 0
+    },
+    "settings_pane.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "software_repair.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "software_update.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "subscription_card.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "translations.php": {
+        "button": 17,
+        "tabs": 0
+    },
+    "update_search_index.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_accessibility.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "view_ads.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_auto_dialogs.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_bookings.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "view_calendars.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_cart_quotes.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "view_commissions.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "view_contact_groups.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_contacts.php": {
+        "button": 16,
+        "tabs": 0
+    },
+    "view_design_files.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "view_email_campaign_profiles.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_fields.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "view_folders.php": {
+        "button": 77,
+        "tabs": 0
+    },
+    "view_gift_cards.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_log.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "view_menu_items.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "view_not_found_log.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "view_order.php": {
+        "button": 17,
+        "tabs": 0
+    },
+    "view_orders.php": {
+        "button": 19,
+        "tabs": 0
+    },
+    "view_pages.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "view_parasut_inbox.php": {
+        "button": 6,
+        "tabs": 1
+    },
+    "view_performance_log.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "view_products.php": {
+        "button": 5,
+        "tabs": 0
+    },
+    "view_return.php": {
+        "button": 9,
+        "tabs": 0
+    },
+    "view_returns.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_sessions.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "view_short_links.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "view_stock_moves.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "view_styles.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_submitted_forms.php": {
+        "button": 8,
+        "tabs": 0
+    },
+    "view_subscriptions.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "view_users.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "view_visitor_report.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_visitor_reports.php": {
+        "button": 1,
+        "tabs": 0
+    },
+    "view_waf_log.php": {
+        "button": 3,
+        "tabs": 0
+    },
+    "welcome.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "workspace_approval.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "workspace_calendar_feed.php": {
+        "button": 7,
+        "tabs": 0
+    },
+    "workspace_guest.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "workspace_mcp.php": {
+        "button": 4,
+        "tabs": 0
+    },
+    "workspace_meeting_link.php": {
+        "button": 6,
+        "tabs": 0
+    },
+    "workspace_template.php": {
+        "button": 2,
+        "tabs": 0
+    },
+    "workspace_wtables.php": {
+        "button": 26,
+        "tabs": 0
     }
 }

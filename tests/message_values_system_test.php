@@ -20,15 +20,15 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_message_values_system_are_escaped()
 {
 	$lines = array(
-		array('api_settings.php', ': lang(array(\'string\' => \'Deliveries to {var:1} were stopped.\', \'vars\' => h($hook[\'url\']))));', 1),
-		array('api_settings.php', '? lang(array(\'string\' => \'Deliveries to {var:1} were switched back on.\', \'vars\' => h($hook[\'url\'])))', 1),
+		array('api_settings.php', ': lang(array(\'string\' => \'Deliveries to {var:1} were stopped.\', \'vars\' => h(pg_ops_alert_mask_url($hook[\'url\'])))));', 1),
+		array('api_settings.php', '? lang(array(\'string\' => \'Deliveries to {var:1} were switched back on.\', \'vars\' => h(pg_ops_alert_mask_url($hook[\'url\']))))', 1),
 		array('backups.php', '\'vars\'=>array(h($backup_folder), filter_var(ini_get(\'html_errors\'), FILTER_VALIDATE_BOOLEAN) ? $e->getMessage() : h($e->getMessage()))', 1),
 		array('backups.php', '$liveform->add_warning(h($delete_message));', 1),
 		array('backups.php', 'h(lang(array(\'string\' => \'The backup {var:1} could not be deleted.\', \'vars\' => array($backup_folder))))', 1),
 		array('cloudflare.php', '$msg .= \': \' . h($resp[\'json\'][\'errors\'][0][\'message\']);', 3),
 		array('cloudflare.php', '$permission_errors[] = lang(array(\'string\' => \'DNS records request failed: {var:1}\', \'vars\' => h($err)));', 1),
 		array('connections.php', '$liveform->add_error(h($flash[\'text\']));', 1),
-		array('connections.php', '$liveform->add_error(lang(array(\'string\' => \'{var:1} does not work: {var:2}\', \'vars\' => array(h($account[\'label\']), h($check[\'error\'])))));', 1),
+		array('connections.php', '$liveform->add_error(lang(array(\'string\' => \'{var:1} does not work: {var:2}\', \'vars\' => array(h($account[\'label\']), connections_error_html($check[\'error\'])))));', 1),
 		array('connections.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
 		array('connections.php', '$liveform->add_notice(lang(array(\'string\' => \'{var:1} was disconnected.\', \'vars\' => h($account[\'label\']))));', 1),
 		array('connections.php', '$liveform->add_notice(lang(array(\'string\' => \'{var:1} works.\', \'vars\' => h($account[\'label\']))));', 1),
@@ -47,9 +47,10 @@ function test_message_values_system_are_escaped()
 		array('install/index.php', '\'vars\' => h($database_version)', 2),
 		array('search_console.php', '$liveform->add_error(h($flash[\'text\']));', 1),
 		array('search_console.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_error(h($connect_flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_notice(h($connect_flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform->add_notice(lang([\'string\'=>\'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\'=>[h(EMAIL_ADDRESS)]]));', 1),
+		array('includes/settings/mail_sending.php', '$liveform->add_error(h($mail_flash[\'text\']));', 1),
+		array('includes/settings/mail_sending.php', '$liveform->add_notice(h($mail_flash[\'text\']));', 1),
+		array('includes/fn/mail_settings.php', '$liveform->add_notice(lang(array(\'string\' => \'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\' => array(h(EMAIL_ADDRESS)))));', 1),
+		array('includes/fn/mail_settings.php', '\'vars\' => array(h($transports[$transport][\'label\']), h(EMAIL_ADDRESS))', 1),
 		array('view_waf_log.php', '$release_form->add_notice(lang(array(\'string\' => \'The ban on {var:1} has been released.\', \'vars\' => h($release_ip))));', 1),
 	);
 

@@ -2861,7 +2861,7 @@ function create_or_update_page_type_record($page_type, $properties)
     // If this is a form list or item view, then deal with the collection.
     if ($page_type == 'form list view' or $page_type == 'form item view') {
         // If the collection is not set, then set to default collection A.
-        if (!$properties['collection']) {
+        if (empty($properties['collection'])) {
             $properties['collection'] = 'a';
         }
         $sql_collection = "AND (collection = ?)";
@@ -3671,7 +3671,9 @@ function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $d
                     }
                     // else a date format was not passed, so output date with standard format
                 } else {
-                    $date_parts = explode('-', $data);
+                    // A value that is not a stored Y-m-d date (typed or
+                    // imported as text) has fewer parts: they read empty.
+                    $date_parts = array_pad(explode('-', $data), 3, '');
                     $month = $date_parts[1];
                     // If the first character of the month is 0, then remove the 0.
                     if (mb_substr($month, 0, 1) == '0') {

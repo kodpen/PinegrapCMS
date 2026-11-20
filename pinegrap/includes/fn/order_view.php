@@ -421,6 +421,22 @@ function pg_order_view_owner_matches($order_user_id, $user_id)
 }
 
 /**
+ * The Restore Order button of the order screen's save bar: only for a
+ * cancelled order, whether or not the order has a shipping address.
+ *
+ * @param string $status orders.status
+ * @return string
+ */
+function pg_order_view_restore_button($status)
+{
+    if ((string) $status !== 'cancelled') {
+        return '';
+    }
+
+    return '<button type="submit" name="submit_restore_order" value="restore" class="btn my-1 btn-solid theme-warning" data-confirm-content="' . h(lang('Are you sure you want to restore this order to complete?')) . '"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Restore Order') . '</span></button>';
+}
+
+/**
  * The heading cell of the shipped quantity column on the customer's view
  * order screen, the word in the visitor's language.
  *

@@ -673,7 +673,9 @@ if (function_exists('pg_page_schedule_run')) {
 // Release bundles (includes/fn/page_bundles.php): a scheduled bundle whose
 // time has come is published once, in the name of the person who set the
 // time; one that cannot go out whole goes back to open and its people get a
-// bell line. With none due it is one indexed read.
+// bell line. A publish that died part-way (a fatal error, a timeout) is
+// finished first, as the failure it was, when the bundle's lock is free.
+// With nothing due or stuck it is two small reads.
 if (function_exists('pg_page_bundle_job_run')) {
 
     $page_bundles_due = pg_page_bundle_job_run();

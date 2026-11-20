@@ -254,9 +254,9 @@ function test_product_stock_explorer_bulk_edit_announces_the_change()
 function test_product_stock_site_writers_call_the_helper()
 {
 	$writers = array(
-		// The checkout's stock write is pg_order_complete_line_stock().
+		// The checkout's stock write is pg_order_complete_line_stock(); the
+		// counter sale runs it too (see the local sale test below).
 		'includes/fn/order_completion.php' => 'checkout',
-		'includes/fn/local_order.php'    => 'local_sale',
 		'product_builder.php'            => 'panel',
 		'barcode_decrease_inventory.php' => 'barcode',
 		'barcode_increase_inventory.php' => 'barcode',
@@ -378,7 +378,7 @@ function test_product_stock_events_crossing_depends_on_the_fresh_before()
 function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
 	// The checkout's line stock stage (pg_order_complete_line_stock()).
-	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout',\n        (\$sale === null)");
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "\$source,\n        (\$sale === null)");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
 	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 
@@ -388,20 +388,25 @@ function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 	pg_assert_contains('isset($stock_left[$product_id])', $block, 'later rows carry what the row above left');
 }
 
-// The local sale reads the stock again the same way and sets the flag from
-// the stock left, not by comparing one line with the stock read before the
-// loop: a product on two lines (2 + 3 of 5) reached 0 with no flag.
+// The local sale takes its stock through the checkout's own line stage, so
+// it reads the stock again and flags from the stock left the same way, and
+// names itself local_sale on the moves and the announcement.
 function test_product_stock_local_sale_reads_the_stock_and_flags_from_what_is_left()
 {
-	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/local_order.php'), '// 5. Stock goes down', '// 6. Tell whoever');
-	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
-	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
+	$local = product_stock_events_test_source('includes/fn/local_order.php');
+	$completion = product_stock_events_test_source('includes/fn/order_completion.php');
+	$block = product_stock_events_test_block($local, '// 5. What each line does', '// 6. Tell whoever');
 
-	pg_assert_true($block !== '', 'the local sale stock block is found');
-	pg_assert_true(($select !== false) && ($decrement !== false) && ($select < $decrement), 'read before the decrement');
-	pg_assert_contains("AND inventory_quantity <= 0 AND out_of_stock != '1'", $block, 'conditional flag from the stock left');
-	pg_assert_contains("'action' => 'out_stock'", $block, 'the out-of-stock bell');
-	pg_assert_false(strpos($block, "(int) \$line['quantity'] >= (int) \$line['inventory_quantity']") !== false, 'no per-line comparison');
+	pg_assert_true($block !== '', 'the local sale line block is found');
+	pg_assert_contains('pg_order_complete_lines($order_id, $site_lines,', $block, 'the site\'s line stages');
+	pg_assert_contains("'stock_source' => 'local_sale',", $block, 'named local_sale');
+	pg_assert_false(strpos($local, 'UPDATE products SET inventory_quantity') !== false, 'no stock write of its own');
+	pg_assert_contains("pg_order_complete_line_stock(\$product, \$stock_left, \$actor, \$stock_location_id, \$stock_ref, (string) (\$order['stock_source'] ?? 'checkout'));", $completion, 'the source reaches the stage');
+
+	$stage = product_stock_events_test_block($completion, 'function pg_order_complete_line_stock(', "\n}\n");
+	pg_assert_contains('pg_stock_sale_take($product_id, $line[\'quantity\'], $location_id, $source, $ref);', $stage, 'the stock move');
+	pg_assert_contains("\$source,\n        (\$sale === null)", $stage, 'the announcement');
+	pg_assert_same(1, substr_count($stage, "'checkout'"), 'checkout only as the default source');
 }
 
 // A scan that leaves the stock where it was (a decrease at 0) announces no

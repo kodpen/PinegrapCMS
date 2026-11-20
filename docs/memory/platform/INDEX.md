@@ -16,7 +16,8 @@
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
 - auto-backup-run-claim.md: auto_backup.php takes the auto_backup lock in cron_runs before it starts and reads the last backup time under it, so overlapping starts write one backup
 - auto-backup-week-name.md: The weekly automatic backup is named by its ISO week's Thursday, so a week across a month or year keeps one name and the retention counts real weeks.
-- auto-dialog-browser-dialog.md: Auto dialogs on the site: the browser's <dialog> in place of jQuery UI, software.open_dialog() as its wrapper, the pick in the browser (cookie, sessionStorage), a page cached for all [decision: decisions-made-schema-23.md]
+- auto-dialog-browser-dialog.md: Auto dialogs on the site: the browser's <dialog> in place of jQuery UI, software.open_dialog() as its wrapper, the pick in the browser (cookie, sessionStorage), a page cached for all [decision: decisions-made-schema-23.md, decisions-made-schema-28.md]
+- auto-dialog-content.md: What an auto dialog shows: content url (its address in an iframe) or component (a shared component drawn into a template and copied into the dialog); columns, readers, the page, the script, the API [decision: decisions-made-schema-28.md]
 - auto-dialog-open-settings.md: When, to whom and where an auto dialog opens: open_on (delay, scroll, leave), open_scroll, audience (all, cart), place (centre, top, bottom, corner); defaults, readers, triggers, the cart rule [decision: decisions-made-schema-23.md]
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
@@ -43,6 +44,7 @@
 - content-review-announce.md: Content review's event and task (CH3, #10008): content.review_due once per item and date from the general job, the claim, where the event is named, Make a task through ws_followup_task_open() [decision: here]
 - content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep [decision: here]
 - content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md [decision: here]
+- content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out [decision: decisions-made-product-10.md, decisions-made-product-65.md]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]
@@ -53,12 +55,12 @@
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
 - docker-decisions.md: Owner's Docker decisions (2026-10-19/20): docker/ in the release tree, an addition only, no env in the product, nginx only, Software Update in the container left as it is
-- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
+- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml per published release (no pre-release), pinegrap-app/-web on amd64 and arm64, tags v<version> and latest, re-run by tag, PG_IMAGE_TAG, visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
+- download-assistant-session.md: Who starts the session in the root download_assistant.php: pinegrap/init.php on an installed site, the assistant itself (da_session_start()) only before an install (#10439)
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Design Canvas's save that used to write over it
-- error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
@@ -123,7 +125,8 @@
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch (PR #4381, PG_VENDOR_API_V1 on), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
-- mail-domain-health.md: The "Sending domain" card of SMTP Settings (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
+- list-excel-export.md: Export to Excel beside a panel list's CSV export (OS1, #10483): the capture helper, column types, the toolbar action, which lists have it, what passes through
+- mail-domain-health.md: The "Sending domain" card of E-mail sending (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
@@ -147,9 +150,10 @@
 - ods-cell-ceiling.md: PHPExcel's .ods reader makes cells of repeated rows/columns and merged ranges only up to a ceiling, steps over empty runs at once; both importers also cap the first sheet's used range
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
 - office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
+- office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
-- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no legacy binary forms, no library; where the xlsx reader may go next
+- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no legacy binary forms, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: here]
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
@@ -165,6 +169,8 @@
 - panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
+- place-list.md: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
+- product-import-sheets.md: How the product import turns a .xlsx, .ods or .xls upload into its CSV (pg_products_import_to_csv(), import_products_f.php): its own .xlsx walk, the sheet reader for .ods and .xls, the refusal texts
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
@@ -185,6 +191,8 @@
 - share-card-address.md: The share card (og:image drawn from the title, logo and site name): its address and signature, the order file, the draw under a lock, the 404 cases, the sweep
 - share-card-page.md: The share card's switch and colours in Site Settings, SEO, Social Sharing, which pages print a card as og:image, the sample and the record warning
 - share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out [decision: here]
+- sheet-reader-differences.md: The importers' sheet reader (sheet-reader.md): what its .xls subclasses fix in excel_reader2.php, where it reads otherwise than PHPExcel on purpose, its cell-by-cell test
+- sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.
 - short-link-gone-destination.md: A short link whose page or file was deleted answers its address as no link had it (404 or a pattern), not with the home page; pg_short_link_destination_gone() in router.php
 - short-link-names.md: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.
@@ -192,6 +200,7 @@
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
 - sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: here]
 - sms-campaign-limit-and-labels.md: SMS campaign text limit and no maxlength, status labels, xref rows on group delete, save after the job claim, cancel confirm, read-only times, cut list name
+- sms-campaigns-module-load.md: functions.php does not load fn/sms_campaigns.php: a reader of SMS campaigns loads it itself, or a function_exists() check drops them silently (Sends lost them)
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens [decision: decisions-made-customers.md, decisions-made-product-8.md, decisions-made-schema-7.md]
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
 - sms-erp-overdue.md: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind reminder, off by default), one text per account per notice, which number, the reference, digest count, invoice screen line
@@ -224,13 +233,17 @@
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 - upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md]
+- vendor-api-release-keys.md: The two release keys a signed update is verified with (PR #10348, plan step P5c): ids kp-2026a and kp-2026b, where they live, their fingerprints, how one is retired, the test
 - vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
-- visitor-push-order.md: Visitor notifications for an order (kind 3, VP6): the door's order action, who may follow an order, shipped and delivered sent once per address beside the SMS, the text, language and link
+- visitor-push-app-mode.md: Visitor notifications' App mode (VP7, N17): its own switch, the manifest's standalone display, the worker's offline page for a lost page load [decision: here]
+- visitor-push-block.md: Visitor notifications on the site (VP3, #10288): the Features switch, the "Notify me" block, its script pg_site_push.js, the worker site_push_sw.php, where the secret is kept for other forms
+- visitor-push-order.md: Visitor notifications for an order (kind 3, VP6, VP6b): the button "Notify me on this device", the door's order action, who may follow, shipped and delivered sent once, text and link
 - visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: decisions-made-schema-24.md]
-- visitor-push-sender.md: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
+- visitor-push-sender.md: Visitor notifications' sender (#9957): message writer, queue batches, the pass under one lock, held services, retries, refused subscriptions removed, a day's limit, tidy-up, counts [decision: here]
 - visitor-push-stock.md: Back-in-stock notice to a subscribed browser (VP5, #9975): push_secret on the request, a site_push_watch row (kind 2), the push beside the mail, once, the forget hooks
 - visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share [decision: here]
+- visitor-push.md: Visitor notifications start file: the "Notify me" block, the Features switch, Send a notification; its decisions, which file holds each part, the known gap [decision: here]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 - whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
@@ -240,6 +253,7 @@
 - whatsapp-outbox-queue.md: WhatsApp queue (whatsapp_outbox, step 11.0.196, WA2): pg_whatsapp_enqueue() and its refusals, the general job's pass on the SMS queue's rules, consent asked again at the send, erasure [decision: decisions-made-product-48.md]
 - whatsapp-overview.md: Start file for the whatsapp-* files: WhatsApp beside e-mail for orders, forms and flows, the decisions that bind it, the rules every part keeps, its screens, which file holds what, adding a sender [decision: decisions-made-product-47.md, decisions-made-product-48.md, decisions-made-workspace-20.md]
 - whatsapp-template-approval.md: WhatsApp template designer, second half (WA9, #9395): header from Files, buttons, Send for approval with the sample upload, a rejected template edited, test send with media
+- whatsapp-template-authentication.md: Why the WhatsApp template designer does not offer the Authentication type (#10356): Meta's fixed code shape, no sender of codes; saved ones still list and read
 - whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test [decision: here]
 - whatsapp-templates.md: WhatsApp templates (whatsapp_templates, step 11.0.197, WA3): read from Meta page by page, the refresh plan, the job every six hours and after a card save, the readers
 - whatsapp-webhook-events.md: whatsapp_webhook.php events (WA4, #9351): delivery states, template changes, a customer's message into whatsapp_inbox (11.0.198), its bell notice and customer-history line

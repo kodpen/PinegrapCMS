@@ -747,7 +747,7 @@ function ws_link_preview_settings_allowed($viewer)
 }
 
 /**
- * The Link previews card of Site Settings (Channels, mail and voice): one
+ * The Link previews card of Site Settings (Channels): one
  * switch, posted with the pane's Save as ws_link_preview_on beside the
  * marker ws_link_preview_card (an unticked box posts nothing).
  *

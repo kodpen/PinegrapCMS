@@ -206,16 +206,16 @@ function api_comment_schema() {
 		'rating'          => 'integer?',
 		'verified'        => 'boolean',
 		'store_reply'     => 'string?',
-		'store_reply_at'  => 'string?',
+		'store_reply_at'  => 'datetime?',
 		'status'          => 'string',
-		'publish_at'      => 'string?',
+		'publish_at'      => 'datetime?',
 		'cancel_if_newer' => 'boolean',
 		'featured'        => 'boolean',
 		'file_url'        => 'string?',
 		'user_id'         => 'integer?',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 

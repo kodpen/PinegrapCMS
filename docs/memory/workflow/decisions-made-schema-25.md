@@ -20,11 +20,11 @@ description: Decisions list, schema part 25 (2026-11-16 on): the second study's 
 - VP6 adds the table and its helpers in `includes/fn/site_push.php`; VP5 uses it after VP6 landed and adds no column.
 
 ## Which table keeps a language's picture? (owner, 2026-11-16, agent channel poll 98, message 6808; columns the architect's)
-- Owner's yes to a small table of its own: `decisions-made-product-64.md`. Added by PT1 of `plans/picture-text-translation.md`.
+- Owner's yes to a small table of its own: `decisions-made-product-64.md`. Added by #10028 (`core/picture-text-translation-store.md`).
 - Architect (2026-11-16): `file_translation`. `file_id` INT UNSIGNED (the source picture), `language` VARCHAR(10) ascii, `picture_file_id` INT UNSIGNED (the language's picture, a `files` row; 0 until drawn), `state` TINYINT UNSIGNED (0 waiting, 1 drawn, 2 out of date), `fit` TINYINT UNSIGNED (1: a text drawn at the smallest size still did not fit), `doc_hash` CHAR(40) ascii (the source document it was drawn from), `created_at`, `drawn_at`, `drawn_by` INT UNSIGNED.
 - All NOT NULL with a default. Primary key (`file_id`, `language`), keys `idx_picture (picture_file_id)` and `idx_state (state, language)`.
 - Only `state` 1 is shown to a visitor. A save of the source and a changed translation of one of its texts set the row to 2. No column on `files`, none on the translation tables.
 
 ## May ws_app_commands get a column for a command's arguments? (owner, 2026-11-16, agent channel poll 97, message 6795)
 - Owner: "Evet, eklenebilir; sütunu Mimar onaylasın". Existing rows and running sites are untouched: a command without a definition works as today.
-- The column's name and type come in the draft PR of CC10 (`plans/channel-commands-steps-2.md`) and are written here once confirmed.
+- The column, confirmed on CC10's draft PR (`plans/channel-commands-steps-2.md`): `decisions-made-schema-26.md`.

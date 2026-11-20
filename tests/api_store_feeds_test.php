@@ -75,6 +75,15 @@ function test_api_store_feeds_present_off_and_failing()
 	pg_assert_same('failing', $failing['state']);
 }
 
+// The XML feed is listed with its own content type.
+function test_api_store_feeds_present_google_xml()
+{
+	$feed = api_store_feed_present('google_xml', pg_product_feed_format_defaults(), 'off');
+
+	pg_assert_same('google_xml', $feed['format']);
+	pg_assert_same('application/xml; charset=utf-8', $feed['content_type']);
+}
+
 // The route reads with products:read and answers with the declared object.
 function test_api_store_feeds_route()
 {
@@ -92,4 +101,26 @@ function test_api_store_feeds_route()
 	pg_assert_same('products:read', $route['scope']);
 	pg_assert_same(array('list' => 'StoreFeed'), $route['returns']);
 	pg_assert_true(function_exists($route['handler']), 'handler exists');
+}
+
+// The route's description names every format the feeds are built in, in the
+// order the list answers with.
+function test_api_store_feeds_description_names_every_format()
+{
+	$description = '';
+
+	foreach (api_schema() as $candidate) {
+		if ($candidate['id'] === 'store.feeds') {
+			$description = $candidate['description'];
+		}
+	}
+
+	$last = -1;
+
+	foreach (array_keys(pg_product_feed_formats()) as $format) {
+		$at = strpos($description, $format);
+		pg_assert_true($at !== false, $format . ' named');
+		pg_assert_true($at > $last, $format . ' in list order');
+		$last = $at;
+	}
 }

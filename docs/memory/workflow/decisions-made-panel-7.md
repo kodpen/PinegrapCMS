@@ -27,7 +27,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 ## Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
 - Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Drawn into the code in #8902 (`ui/design-canvas-icon.md`).
 - Owner (2026-11-12), shown the sheet of the three candidates: "B". Not chosen: A (an easel), C (a canvas and a brush); the architect had recommended A.
-- The architect's note, not the owner's words: at menu size the crop marks and the anchors stay readable and the icon does not read as the crop tool's; thin the marks before touching the curve.
+- Withdrawn by the owner on 2026-11-20 for a new drawing under the name Artifact Canvas (`decisions-made-panel-10.md`).
 
 ## Does the dashboard move to look A? (owner, 2026-11-12, #8938)
 - Not for now: the dashboard keeps its own drawn look (`ui/dashboard-v2-drawn-look.md`, `ui/dashboard-v2-looks.md`). No step of the design language re-dresses it; DL5a is not given.

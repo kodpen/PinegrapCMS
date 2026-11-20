@@ -128,7 +128,7 @@ function test_workspace_agent_progress_route()
 	pg_assert_same(WS_AGENT_PROGRESS_MAX, $text['max_length']);
 
 	$schema = ws_api_claude_request_schema();
-	pg_assert_same(array('text' => 'string', 'at' => 'string?'), $schema['progress'], 'the request\'s read carries it');
+	pg_assert_same(array('text' => 'string', 'at' => 'datetime?'), $schema['progress'], 'the request\'s read carries it');
 
 	pg_assert_contains('/workspace/agent-requests/{id}/progress', implode("\n", ws_agent_instructions_request_lines()), 'the instructions name the route');
 }

@@ -34,6 +34,31 @@
     // and reads Waiting to be sent or Not sent until it has left. A draft
     // fills the answer; nothing leaves before the member presses Send. all:
     // Reply to all is on from the start.
+    // Reply by e-mail, on the card and in the E-mails pane alike. A box that
+    // cannot send (switched off, deleted, no sending server) keeps the
+    // button, disabled, with the server's reason printed beside it
+    // (ws_mail_reply_off()); the answer's own check stays on the server.
+    // Returns what to insert: the button, or the button and its reason.
+    function replyButton(h, classes, off, click) {
+        var button = h.button(classes, h.t('mail_reply'), 'bi-reply');
+
+        if (!off) {
+            button.addEventListener('click', click);
+            return button;
+        }
+
+        var place = document.createDocumentFragment();
+        var note = h.el('span', 'small fg-secondary ms-2', off);
+
+        note.id = 'ws-mail-reply-off-' + Math.random().toString(36).slice(2, 8);
+        button.disabled = true;
+        button.setAttribute('aria-describedby', note.id);
+        place.appendChild(button);
+        place.appendChild(note);
+
+        return place;
+    }
+
     function replyForm(message, view, h, draft, all) {
         h.api('ws_mail_reply_form', { conversation_id: message.mail_reply }).then(function (data) {
             answerForm(message.mail_reply, data, view, h, draft, all);
@@ -1098,14 +1123,10 @@
         }
 
         if (message.mail_reply) {
-            var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
-
-            open.addEventListener('click', function (event) {
+            row.appendChild(replyButton(h, 'btn btn-sm btn-outline theme-primary py-0', message.mail_reply_off, function (event) {
                 event.stopPropagation();
                 replyForm(message, view, h);
-            });
-
-            row.appendChild(open);
+            }));
         }
 
         // Forward as e-mail: the New e-mail form filled with this mail.
@@ -1160,6 +1181,12 @@
             control.disabled = true;
 
             h.api('ws_mail_conversation', data).then(function () {
+                // The E-mails screen says the change was kept and asks its
+                // list again; a channel's card is only drawn again.
+                if (view.changed) {
+                    view.changed(data.status ? 'state_saved' : 'holder_saved');
+                }
+
                 view.sync();
             }).catch(function (error) {
                 control.disabled = false;
@@ -1338,6 +1365,85 @@
             });
         }
 
+        // Incoming e-mail pinned to the person's main menu (mail_menu.php),
+        // or taken off it: the row under the Workspace is added or taken
+        // away without a reload, drawn as the next page's server draws it
+        // (output_menu(), slot 27). This page is the tab, so a pinned row
+        // lights in Communication's place.
+        function menuRow(pinned, data) {
+            each('#menu_item_27', function (row) {
+                row.parentNode.removeChild(row);
+            });
+
+            each('#menu_item_9', function (communication) {
+                communication.classList.toggle('active', !pinned);
+            });
+
+            if (!pinned) {
+                return;
+            }
+
+            each('.pg-menu-main', function (list) {
+                var communication = list.querySelector('#menu_item_9');
+                var row = h.el('a', 'list-group-item list-group-item-action border-0 no-popover active');
+                var anchor = null;
+
+                // After the last row of the untitled group that is there.
+                ['menu_item_24', 'menu_item_23', 'menu_item_26', 'menu_item_0'].some(function (id) {
+                    anchor = list.querySelector('#' + id);
+
+                    return !!anchor;
+                });
+
+                row.id = 'menu_item_27';
+                row.href = window.location.pathname;
+                row.title = w('menu_label');
+                row.setAttribute('aria-current', 'page');
+
+                if (communication && communication.getAttribute('target')) {
+                    row.setAttribute('target', communication.getAttribute('target'));
+                }
+
+                row.innerHTML = data.icon || '';
+
+                if (!row.firstChild) {
+                    row.appendChild(h.icon('bi-envelope', 'me-3 campaigns-color'));
+                }
+
+                row.appendChild(h.el('span', 'list-group-text', w('menu_label')));
+                row.insertAdjacentHTML('beforeend', data.badge || '');
+
+                if (anchor) {
+                    anchor.parentNode.insertBefore(row, anchor.nextSibling);
+                } else {
+                    list.insertBefore(row, list.firstChild);
+                }
+            });
+        }
+
+        // Pin to main menu on the toolbar; its label says what the next
+        // click does.
+        function menuPin(target) {
+            var wanted = target.getAttribute('data-ws-mail-menu-pin') !== '1';
+
+            target.disabled = true;
+
+            h.api('ws_mail_menu_pin', { pinned: wanted ? 1 : 0 }).then(function (data) {
+                var pinned = !!data.pinned;
+
+                target.setAttribute('data-ws-mail-menu-pin', pinned ? '1' : '0');
+                target.innerHTML = '';
+                target.appendChild(h.icon(pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
+                target.appendChild(document.createTextNode(w(pinned ? 'menu_unpin' : 'menu_pin')));
+                menuRow(pinned, data);
+                h.toast(w(pinned ? 'menu_pinned' : 'menu_unpinned'), 'success');
+            }).catch(function (error) {
+                h.fail(error);
+            }).then(function () {
+                target.disabled = false;
+            });
+        }
+
         function read(row) {
             var hidden = row.querySelector('.ws-mail-who + .visually-hidden');
 
@@ -1363,6 +1469,11 @@
             }
 
             window.history.replaceState(window.history.state, '', url.toString());
+        }
+
+        // The phone layout of the stylesheet: the pane in the list's place.
+        function phone() {
+            return !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
         }
 
         function mark(row) {
@@ -1518,6 +1629,7 @@
 
                     if (choice === 'cancel') {
                         h.toast(t('mail_remind_off'), 'success');
+                        refresh();
                         open(id);
 
                         return;
@@ -1633,24 +1745,28 @@
                 channel: { id: data.channel_id, members: data.members || [] },
                 sync: function () {
                     open(data.reply);
+                },
+                changed: function (key) {
+                    h.toast(w(key), 'success');
+                    refresh();
                 }
             };
-            var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
-
-            answer.addEventListener('click', function () {
+            var answer = replyButton(h, 'btn btn-sm btn-outline theme-primary', data.reply_off, function () {
                 replyForm(message, view, h);
             });
-            place.insertBefore(answer, place.firstChild);
+            var after = place.firstChild;
+
+            place.insertBefore(answer, after);
 
             // Reply to all, when the last mail named anybody besides the
-            // customer and the mailbox.
-            if (data.others) {
+            // customer and the mailbox, and the box can send.
+            if (data.others && !data.reply_off) {
                 var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
 
                 everyone.addEventListener('click', function () {
                     replyForm(message, view, h, '', true);
                 });
-                place.insertBefore(everyone, answer.nextSibling);
+                place.insertBefore(everyone, after);
             }
 
             if (data.state) {
@@ -1762,6 +1878,12 @@
                 if (!again) {
                     pane.scrollTop = 0;
                     pane.querySelector('h2').focus();
+
+                    // On a phone the page itself scrolls: the mail starts at
+                    // the top of the screen, not where the list was.
+                    if (phone()) {
+                        root.scrollIntoView({ block: 'start' });
+                    }
                 } else if (keep) {
                     pane.querySelector('h2').focus({ preventScroll: true });
                 }
@@ -1793,6 +1915,30 @@
             }).catch(function (error) {
                 link.classList.remove('disabled');
                 link.removeAttribute('aria-disabled');
+                h.fail(error);
+            });
+        }
+
+        // After a change made in the pane (status, holder, a cancelled
+        // reminder) the list is asked again as the address filters it, its
+        // first page: a conversation that no longer matches leaves it, one
+        // that matches again comes back, the open one stays marked.
+        function refresh() {
+            var data = { whole: '1', conversation: String(current || 0) };
+
+            new URLSearchParams(window.location.search).forEach(function (value, key) {
+                if (key !== 'before' && key !== 'conversation') {
+                    data[key] = value;
+                }
+            });
+
+            h.api('ws_mail_rows', data).then(function (result) {
+                var list = root.querySelector('.ws-mail-list');
+
+                if (list && typeof result.list === 'string') {
+                    list.innerHTML = result.list;
+                }
+            }).catch(function (error) {
                 h.fail(error);
             });
         }
@@ -1969,7 +2115,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-menu-pin], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1986,6 +2132,8 @@
                 unblock(target);
             } else if (target.hasAttribute('data-ws-mail-my-settings')) {
                 mySettings(h);
+            } else if (target.hasAttribute('data-ws-mail-menu-pin')) {
+                menuPin(target);
             } else if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });
@@ -2844,6 +2992,29 @@
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
 
+        // The field a refusal names (ws_mail_send_error_field()) is marked
+        // beside the notice and focused, till it is changed.
+        function markField(name) {
+            var fields = { to: to.field, cc: cc.field, bcc: bcc.field, subject: subject.field, text: body.input };
+            var field = fields[name];
+
+            if (!field) {
+                return;
+            }
+
+            if ((name === 'cc') || (name === 'bcc')) {
+                setCopies(true);
+            }
+
+            field.classList.add('is-invalid');
+            field.setAttribute('aria-invalid', 'true');
+            field.addEventListener('input', function () {
+                field.classList.remove('is-invalid');
+                field.removeAttribute('aria-invalid');
+            }, { once: true });
+            field.focus();
+        }
+
         function sendNew(anyway) {
             var fields = current();
             var empty = [[to.field, fields.to], [subject.field, fields.subject], [body.input, fields.text]].filter(function (pair) {
@@ -2925,6 +3096,7 @@
                 }
 
                 h.fail(error);
+                markField(error.field);
             });
         }
 

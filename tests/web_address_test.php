@@ -69,10 +69,10 @@ function test_address_opens_as_web_browser_twin_in_both_scripts()
 	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
 
 	pg_assert_contains('is_web_address: function(url) {', $src, 'frontend.src.js has the guard');
-	pg_assert_contains("if (!software.is_web_address(url)) {\n            return false;\n        }", $src, 'open_dialog asks it before the iframe');
+	pg_assert_contains("if (!content && !software.is_web_address(url)) {\n            return false;\n        }", $src, 'open_dialog asks it before the iframe, for every dialog but designed content');
 	$open = substr($src, strpos($src, 'open_dialog: function('));
-	pg_assert_true(strpos($open, 'software.is_web_address(url)') < strpos($open, "document.createElement('iframe')"), 'the guard runs before the iframe is built');
+	pg_assert_true(strpos($open, 'software.is_web_address(url)') < strpos($open, "document.createElement(content ? 'div' : 'iframe')"), 'the guard runs before the iframe is built');
 
 	pg_assert_contains('is_web_address:function(e){', $min, 'frontend.min.js has the guard');
-	pg_assert_contains('d=e.height;if(!software.is_web_address(a))return!1;', $min, 'the served open_dialog asks it first');
+	pg_assert_contains('d=e.height;if(!k&&!software.is_web_address(a))return!1;', $min, 'the served open_dialog asks it first');
 }

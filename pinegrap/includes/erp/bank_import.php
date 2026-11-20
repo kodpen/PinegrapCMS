@@ -302,11 +302,13 @@ function erp_bank_read_file($path, $file_name)
 /**
  * Read the first sheet of a workbook into rows of cells.
  *
- * A .xlsx is walked row by row from its zip with the product importer's
- * helpers (import_products_f.php): no library holds the workbook. A number
- * that is a date by its cell format comes out as Y-m-d, any other number in
- * the machine form erp_bank_amount() reads without guessing (two decimals,
- * a point). The older .xls and an .ods are read with PHPExcel.
+ * Every format (.xlsx, .xls, .ods) is read a row at a time by the sheet
+ * reader (pg_sheet_rows(), includes/fn/sheet_read.php): no library holds the
+ * workbook. A number that is a date by its cell format comes out as Y-m-d,
+ * any other number in the machine form erp_bank_amount() reads without
+ * guessing (two decimals, a point). An .xls or .ods row is squared to the
+ * widest row, as those files were read before; an .xlsx row ends at its last
+ * cell.
  *
  * @param string $path
  * @param string $extension  xlsx | xlsm | xls | ods
@@ -314,192 +316,77 @@ function erp_bank_read_file($path, $file_name)
  */
 function erp_bank_read_spreadsheet($path, $extension)
 {
-    require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
-
-    $unreadable = array('rows' => array(), 'error' => lang('The file could not be read.'));
+    $kind = pg_sheet_kind('statement.' . $extension);
     $rows = array();
+    $width = 0;
+    $error = '';
 
-    if (($extension === 'xlsx') || ($extension === 'xlsm')) {
-        if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
-            return $unreadable;
+    foreach (pg_sheet_rows($path, $kind, $error) as $row) {
+        $cells = array();
+
+        foreach ($row as $cell) {
+            $cells[] = trim(erp_bank_xls_cell($cell));
         }
 
-        $zip = new ZipArchive();
-
-        if ($zip->open($path) !== true) {
-            return $unreadable;
+        if (implode('', $cells) === '') {
+            continue;
         }
 
-        $part = pg_products_import_xlsx_sheet_part($zip);
-        $date_styles = pg_products_import_xlsx_date_styles($zip);
-        $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-        $found = ($part !== '') && ($zip->locateName($part) !== false);
-        $zip->close();
+        $rows[] = $cells;
+        $width = max($width, count($cells));
 
-        if (!$found) {
-            return $unreadable;
+        if (count($rows) >= ERP_BANK_IMPORT_MAX_ROWS) {
+            break;
         }
+    }
 
-        $strings = pg_products_import_xlsx_strings($path, $strings_part);
-
-        if ($strings === false) {
-            return $unreadable;
-        }
-
-        $reader = new XMLReader();
-
-        // No further than the sheet's declared size (pg_zip_entry_uri()).
-        if (!$reader->open(pg_zip_entry_uri($path, $part, max(0, pg_zip_entry_size($path, $part))))) {
-            return $unreadable;
-        }
-
-        // A sheet cut at its declared size ends in a parser error; it is
-        // answered below, not printed as a warning.
-        $previous = libxml_use_internal_errors(true);
-
-        while ($reader->read() && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS)) {
-            if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->name !== 'row')) {
-                continue;
-            }
-
-            $row_xml = @simplexml_load_string($reader->readOuterXml());
-
-            if ($row_xml === false) {
-                continue;
-            }
-
-            $cells = array();
-
-            foreach ($row_xml->c as $cell) {
-                $type = (string) $cell['t'];
-
-                if ($type === 's') {
-                    $value = (string) ($strings[(int) $cell->v] ?? '');
-                } elseif ($type === 'inlineStr') {
-                    // Styled text comes as runs: <r><t> rather than <t>.
-                    $value = isset($cell->is->t) ? (string) $cell->is->t : '';
-                    if (isset($cell->is->r)) {
-                        foreach ($cell->is->r as $run) {
-                            $value .= (string) $run->t;
-                        }
-                    }
-                } else {
-                    $value = erp_bank_sheet_value((string) $cell->v, ($type === 'b') ? 'b' : (isset($date_styles[(int) $cell['s']]) ? 'date' : 'n'));
-                }
-
-                $column = isset($cell['r']) ? pg_products_import_xlsx_column((string) $cell['r']) : count($cells);
-
-                while (count($cells) < $column) {
-                    $cells[] = '';
-                }
-
-                $cells[$column] = trim($value);
-            }
-
-            ksort($cells);
-
-            if (implode('', $cells) !== '') {
-                $rows[] = array_values($cells);
-            }
-        }
-
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
-        $reader->close();
-
-        // A sheet that unpacks past its declared size is a damaged or
-        // doctored file: none of it is taken.
-        if (pg_zip_entry_overran()) {
-            return $unreadable;
-        }
-    } else {
-        // The older .xls is a binary record stream and an .ods a different
-        // zip; PHPExcel reads both, with the reader the product importer
-        // names for the extension. Read with formats, unlike the product
-        // importer, because a date cell is known by its format alone; a
-        // statement is small enough for it.
-        $book = null;
-
-        if ($extension === 'ods') {
-            // The OpenDocument reader takes any file for a zip, fails on the
-            // first missing part with warnings, reads its parts whole and
-            // makes a cell of every repeat of a repeated row or column; a
-            // file that is not one, whose parts are too large or unpack past
-            // their size, or that makes too many cells, is turned away here,
-            // as a broken .xlsx is above.
-            $refused = '';
-            $book = pg_products_import_ods_load($path, false, $refused);
-
-            if ($book === null) {
-                return array('rows' => array(), 'error' => $refused);
-            }
-        }
-
-        require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
-
-        try {
-            if ($book === null) {
-                $book = PHPExcel_IOFactory::createReader(pg_products_import_reader('statement.' . $extension))->load($path);
-            }
-
-            $sheet = $book->getSheet(0);
-            $last_row = $sheet->getHighestDataRow();
-            $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
-
-            for ($row_number = 1; ($row_number <= $last_row) && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS); $row_number++) {
-                $cells = array();
-
-                for ($column_number = 0; $column_number <= $last_column; $column_number++) {
-                    $cells[] = trim(erp_bank_xls_cell($sheet->getCellByColumnAndRow($column_number, $row_number, false)));
-                }
-
-                if (implode('', $cells) !== '') {
-                    $rows[] = $cells;
-                }
-            }
-
-            $book->disconnectWorksheets();
-        } catch (Throwable $e) {
-            return $unreadable;
-        }
+    // What was read before the reader gave up is not taken.
+    if ($error !== '') {
+        return array('rows' => array(), 'error' => ($error === 'large') ? lang('The file is too large.') : lang('The file could not be read.'));
     }
 
     if (empty($rows)) {
         return array('rows' => array(), 'error' => lang('The file has no lines.'));
     }
 
+    if ($kind !== 'xlsx') {
+        foreach ($rows as $index => $cells) {
+            $rows[$index] = array_pad($cells, $width, '');
+        }
+    }
+
     return array('rows' => $rows, 'error' => '');
 }
 
 /**
- * One cell of an .xls or .ods as erp_bank_sheet_value() gives an .xlsx
- * cell: a formula's answer (what is written when it cannot be worked out), a
- * date by its format, a number in the machine form, text as it is.
+ * One cell of the sheet reader as the text a CSV would have carried: a date
+ * by its format, a number in the machine form (erp_bank_sheet_value()), a
+ * boolean as 1 or 0, text and an error such as #DIV/0! as they are.
  *
- * @param PHPExcel_Cell|null $cell
+ * @param array|null $cell  a cell of pg_sheet_rows()
  * @return string
  */
 function erp_bank_xls_cell($cell)
 {
-    if ($cell === null) {
+    if (!is_array($cell) || !isset($cell['v'])) {
         return '';
     }
 
-    try {
-        $value = $cell->getCalculatedValue();
-    } catch (Throwable $e) {
-        $value = $cell->getValue();
-    }
+    $value = (string) $cell['v'];
 
-    if (is_bool($value)) {
-        return $value ? '1' : '0';
-    }
+    switch (isset($cell['t']) ? (string) $cell['t'] : 's') {
+        case 'd':
+            return erp_bank_sheet_value($value, 'date');
 
-    if (is_int($value) || is_float($value)) {
-        return erp_bank_sheet_value((string) $value, PHPExcel_Shared_Date::isDateTime($cell) ? 'date' : 'n');
-    }
+        case 'n':
+            return erp_bank_sheet_value($value, 'n');
 
-    return (string) $value;
+        case 'b':
+            return erp_bank_sheet_value($value, 'b');
+
+        default:
+            return $value;
+    }
 }
 
 /**

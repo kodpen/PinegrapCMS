@@ -53,7 +53,8 @@ $audit_view_columns = 'id, created_at, request_id, source, user_id, username, ip
 // The CSV file: the lines the filters select, newest first, read in slices
 // by id so a long trail is never held in memory at once.
 if (isset($_GET['export']) && ($_GET['export'] === 'csv')) {
-    pg_audit('export', 'audit', 0, array(), array('format' => 'csv') + pg_audit_view_query($audit_view_filters), lang('Audit trail'));
+    pg_audit('export', 'audit', 0, array(), array('format' => pg_list_excel_asked() ? 'xlsx' : 'csv') + pg_audit_view_query($audit_view_filters), lang('Audit trail'));
+    pg_list_excel_capture(array('ID' => 'number', lang('Date') => 'date', lang('User ID') => 'number', lang('Record ID') => 'number'), lang('Audit trail'));
 
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="audit-trail-' . date('Y-m-d') . '.csv"');
@@ -190,7 +191,7 @@ $audit_view_toolbar = pg_screen_toolbar(array(
                         <input type="search" class="form-ghost" form="audit_view_filter" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
                     </label>',
     'view'      => pg_list_sort_menu('view_audit_log.php', $audit_view_sort['sort_columns'], $audit_view_sort['sort_levels'], $audit_view_sort['sort_default'], $audit_view_kept),
-    'overflow'  => '<a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="pg-button pg-button-ghost"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>',
+    'overflow'  => '<a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="pg-button pg-button-ghost"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>' . pg_list_excel_link(pg_audit_list_link($audit_view_query, array('export' => 'csv'))),
 )) . '
             <form action="view_audit_log.php" method="get" id="audit_view_filter" class="disable_shortcut card mb-7">
                 <div class="card-body">

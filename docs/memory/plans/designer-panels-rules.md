@@ -14,7 +14,7 @@ description: Plan designer-panels: what today's editor does that no step may los
 - (K8) A bar hides labels, never controls (`designer/designer-narrow-screen-bars.md`); the canvas chrome's places (`designer-canvas-chrome-placement.md`).
 - (K9) Every shortcut of today (Ctrl+Shift+P the command palette, Ctrl+Alt+P the preview, O the outline). A new one is taken only where today has none in that focus; a clash stops the step.
 - (K10) A section's open or closed state per browser (`sd_cs_<sid>`); the per-screen-size toggles.
-- (K11) The Prototype view's K1 to K9 (`plans/prototype-canvas-rules.md`).
+- (K11) The Prototype view's K1 to K9 (`designer/prototype-view-rules.md`).
 - (K12) Opening the editor loads no part (`designer/designer-parts-on-demand.md`, `tests/designer_parts_test.php`).
 
 ## Which rules does every step keep?
@@ -22,12 +22,13 @@ description: Plan designer-panels: what today's editor does that no step may los
 - A colour comes from a token (`designer-panels-measures.md`); a size is the measure files' number.
 - Texts: `_sdT('English')`, the Turkish with `tools/tr_add.php`. The drawings' Turkish words are samples; `designer/designer-turkish-terms.md` and `editor-turkish-terms.md` bind.
 - A pure function gets its test first.
+- Additions of other plans to the four areas: `designer-panels-additions.md`.
 - No schema change, no new endpoint; a need for either comes back as a question to the architect.
 - A step that finds its feature cannot be built as written stops and asks; it does not leave the feature out.
 
 ## Which screens does no drawing show yet?
-- A multiple selection in the new panel (before DP5), the page strip on a narrow screen (before DP18), the Pages and Move windows on a phone (before DP20 and DP16).
-- Each is asked from the drawings' author through the architect and is the owner's to approve. Until its drawing is in `plans/designer-panels/`, that state draws what it draws today inside the new shell, and the PR says so.
+- None today; the sheets are listed in `designer-panels-drawings.md`.
+- A screen a step meets without a drawing is asked from the drawings' author through the architect and is the owner's to approve. Until its drawing is in `plans/designer-panels/`, that state draws what it draws today inside the new shell, and the PR says so.
 
 ## What does a step's PR body carry?
 - A table of the D and K numbers its step names, each with the test or the picture that shows it. A number with nothing beside it is not done: the PR stays a draft.

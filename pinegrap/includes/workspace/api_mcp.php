@@ -224,7 +224,7 @@ function ws_api_mcp_server_schema()
         'checklist'     => array(array('key' => 'string', 'done' => 'boolean', 'text' => 'string')),
         'server_info'   => 'string',
         'last_error'    => 'string?',
-        'tools_read_at' => 'string?',
+        'tools_read_at' => 'datetime?',
         'tools_on'      => 'integer',
         'tools'         => 'WorkspaceMcpTool[]',
         'read'          => 'object?',

@@ -25,4 +25,7 @@ description: The flow box Read the records of a list (list_records, #9978): the 
 - `ws_step_list_records_try()`: the window a run now would read (last counted run to now), the records and up to 20 left-out titles; nothing moves.
 
 ## What is not verified?
-- No run on a database; the pure parts and the wiring are under tests. The canvas form, the icon and the palette are DG3.
+- No run on a database; the pure parts and the wiring are under tests.
+
+## Canvas? (#10176)
+- Palette Records group, offered while `FL.steps.list_pages` (`ws_flow_records_pages()`: pages with a public form list in a public folder) is not empty; `recordsFields()` (page, "Only records new since the last run" with the left-out note), `recordsMeta()`; icon `list_records` in workspace.js `FLOW_ICONS`. Try's records and left-out titles come as texts (`ws_flow_records_try_texts()`), drawn by `drawTry()` unchanged.

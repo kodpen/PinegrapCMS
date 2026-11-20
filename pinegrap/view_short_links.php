@@ -100,6 +100,7 @@ if (($_GET['export'] ?? '') === 'csv') {
         WHERE short_links.name <> '' AND short_links.destination_type <> 'workspace_guest'" . $sql_live . "
         ORDER BY short_links.name");
 
+    pg_list_excel_capture(array('code' => 'number'), lang('Short Links'));
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="short-links-' . date('Y-m-d') . '.csv"');
     header('X-Content-Type-Options: nosniff');
@@ -149,6 +150,7 @@ pg_page_shell(
                 'secondary' => array(
                     (pg_short_link_redirects_ready() ? array('label' => lang('Import'), 'url' => 'import_short_links.php', 'icon' => 'bi-upload') : ''),
                     array('label' => lang('Export'), 'url' => 'view_short_links.php?export=csv', 'icon' => 'bi-download'),
+                    pg_list_excel_action('view_short_links.php?export=csv'),
                 ),
                 'search'    => array(pg_list_table_search_box('view_short_links'), pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default)),
                 'view'      => (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">

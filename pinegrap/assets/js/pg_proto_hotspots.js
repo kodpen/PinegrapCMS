@@ -252,10 +252,40 @@
         return out;
     }
 
-    function nodeLabel(props) {
+    // What a link says: its own text, its aria-label, its alt; else what
+    // its children show (their text and their pictures' alternative text,
+    // in document order, up to 80 characters), as a logo link of an icon
+    // and a name does.
+    function nodeLabel(props, node) {
         var text = plainText(str(props.text));
+        var own = text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
 
-        return text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
+        if (own !== '' || !node || !Array.isArray(node.children)) {
+            return own;
+        }
+
+        var parts = [];
+
+        (function walk(list) {
+            list.forEach(function (child) {
+                if (!isObject(child)) {
+                    return;
+                }
+
+                var p = propsOf(child);
+                var said = plainText(str(p.text)) || str(p.alt);
+
+                if (said !== '') {
+                    parts.push(said);
+                }
+
+                if (Array.isArray(child.children)) {
+                    walk(child.children);
+                }
+            });
+        })(node.children);
+
+        return parts.join(' ').replace(/\s+/g, ' ').trim().substring(0, 80);
     }
 
     // The page a link kept by page id opens (_bindParams.href.page_id of a
@@ -329,19 +359,19 @@
                 // The renderer prints '#' for an empty address.
                 var fromAttrs = (str(props.href) === '') && (str(attrOf(props, 'href')) !== '');
 
-                add(fromAttrs ? 'attrs' : 'href', (fromAttrs ? attrOf(props, 'href') : str(props.href)) || '#', nodeLabel(props), 0, toggle, target);
+                add(fromAttrs ? 'attrs' : 'href', (fromAttrs ? attrOf(props, 'href') : str(props.href)) || '#', nodeLabel(props, node), 0, toggle, target);
             } else if (type === 'component' && props.componentType === 'btn') {
                 if ((str(props.btnElement) || 'a') === 'a') {
-                    add('btn', str(props.href) || '#', nodeLabel(props), 0, toggle, target);
+                    add('btn', str(props.href) || '#', nodeLabel(props, node), 0, toggle, target);
                 }
             } else if (type === 'semantic' && str(props.tag).toLowerCase() === 'a') {
                 var own = str(props.href);
                 var written = attrOf(props, 'href');
 
                 if (own !== '') {
-                    add('href', own, nodeLabel(props), 0, toggle, target);
+                    add('href', own, nodeLabel(props, node), 0, toggle, target);
                 } else if (written !== null) {
-                    add('attrs', written, nodeLabel(props), 0, toggle, target);
+                    add('attrs', written, nodeLabel(props, node), 0, toggle, target);
                 }
             }
         }
@@ -373,7 +403,7 @@
     // The links of a tree in document order; shared components, classic
     // menus and common or designer regions it places, each once.
     function collect(tree) {
-        var out = { hotspots: [], shared: [], menus: [], regions: [] };
+        var out = { hotspots: [], shared: [], menus: [], regions: [], urls: [] };
 
         (function walk(node) {
             if (!isObject(node)) {
@@ -406,6 +436,14 @@
             }
 
             out.hotspots = out.hotspots.concat(nodeLinks(node));
+
+            // A link the server fills per request (an href bound to a field
+            // such as __profile_url) is no hotspot; its field is listed.
+            var field = isObject(props._bindings) ? str(props._bindings.href) : '';
+
+            if (field.indexOf('__') === 0 && field !== '__page_link') {
+                addOnce(out.urls, field);
+            }
 
             (Array.isArray(node.children) ? node.children : []).forEach(walk);
         })(tree);
@@ -544,6 +582,61 @@
     // gets no hotspots and loaded: false), and the request for the map
     // read. `pages` are the designer's tabs: key, page_id, page_name and
     // their tree (the open tab's live tree handed in by the caller).
+    // The settings of a system widget that lead a visitor to a page (the
+    // login widget's "Giriş Yap", a list's detail page, where a form goes
+    // after it is sent). Not links: a form's data page, an e-mail's page.
+    var WIDGET_LINKS = ['login_page_id', 'register_page_id', 'account_page_id', 'my_account_page_id', 'staff_page_id', 'forgot_password_page_id', 'detail_page_id', 'redirect_page_id'];
+
+    // The fields the server fills with the address of the page that places a
+    // system widget of a kind (pg_sw_page_type_widget_url()): a link bound to
+    // one leads to that page.
+    var BOUND_WIDGET_URLS = {
+        __login_url: 'login_form', __register_url: 'registration', __forgot_password_url: 'forgot_password',
+        __set_password_url: 'set_password', __new_account_set_password_url: 'set_password', __my_account_url: 'my_account',
+        __profile_url: 'account_profile', __change_password_url: 'change_password', __email_preferences_url: 'email_preferences',
+        __address_book_url: 'address_book', __logout_url: 'logout'
+    };
+
+    function settingsOf(config) {
+        var c = config;
+
+        if (typeof c === 'string') {
+            try { c = JSON.parse(c); } catch (e) { c = null; }
+        }
+
+        return isObject(c) ? c : null;
+    }
+
+    // A system widget's kind (its regionType), '' for none.
+    function widgetKind(config) {
+        var c = settingsOf(config);
+
+        return c ? str(c.regionType) : '';
+    }
+
+    // The page ids a system widget's settings (JSON text or an object) lead
+    // to, each once, in WIDGET_LINKS order; a register link that is not
+    // shown leads nowhere. [] for none or settings that do not parse.
+    function widgetPages(config) {
+        var c = settingsOf(config);
+
+        if (!c) {
+            return [];
+        }
+
+        var out = [];
+
+        WIDGET_LINKS.forEach(function (key) {
+            var id = parseInt(c[key], 10) || 0;
+
+            if (id > 0 && !(key === 'register_page_id' && c.show_register_link === false) && out.indexOf(id) < 0) {
+                out.push(id);
+            }
+        });
+
+        return out;
+    }
+
     function design(pages, shared) {
         shared = isObject(shared) ? shared : {};
 
@@ -572,9 +665,10 @@
             if (!has(byId, sid)) {
                 var entry = shared[sid] || shared[String(sid)] || null;
                 var tree = (entry && entry.tree) ? entry.tree : null;
-                var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [] };
+                var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [], urls: [] };
 
-                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null };
+                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null, reaches: widgetPages(entry && entry.system_region_config),
+                    urls: found.urls, widget: widgetKind(entry && entry.system_region_config) };
                 reach[sid] = [];
                 out.shared.push(byId[sid]);
                 take(found);
@@ -598,7 +692,7 @@
             var found = collect(page.tree);
             var key = String(page.key !== undefined ? page.key : '');
 
-            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree) });
+            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree), urls: found.urls });
             take(found);
             found.shared.forEach(function (sid) { frame(sid, key, []); });
         });
@@ -763,6 +857,15 @@
     // The design of design() with every hotspot marked; a menu or region
     // hotspot gets its links (`links`, each marked; null when the read
     // knows no menu or region by that name). Answers a copy.
+    // Whether a link's own address leads nowhere: empty or '#' alone. '#name'
+    // is an anchor; a toggle is no link (collect()); a link kept by page id
+    // reads its page (markBound()).
+    function emptyHref(href) {
+        var h = str(href).trim();
+
+        return h === '' || h === '#';
+    }
+
     function mark(designed, read, tabs, resolver) {
         var menus = (read && isObject(read.menus)) ? read.menus : {};
         var regions = (read && isObject(read.regions)) ? read.regions : {};
@@ -793,6 +896,14 @@
                 var bound = markBound(spot, read, tabs, resolver);
 
                 ['href', 'mark', 'draft', 'type', 'class', 'pageId', 'tab'].forEach(function (key) { copy[key] = bound[key]; });
+            } else if (emptyHref(spot.href)) {
+                // An empty link (F26): it leads nowhere and gets no chip.
+                copy.mark = 'empty';
+                copy.draft = false;
+                copy.type = 'unknown';
+                copy['class'] = 'unknown';
+                copy.pageId = 0;
+                copy.tab = '';
             } else {
                 var marked = markHref(spot.href, read, tabs, resolver);
 
@@ -820,9 +931,10 @@
     // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
     // `inner` units inside a box with the thumbnail's padding and border;
     // the picture starts `x`, `y` into its box, and the foot's middle sits
-    // `foot` above the box's lower edge. `row`: the line a frame with no
-    // picture keeps under its head.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
+    // `foot` above the box's lower edge; the selected page opened whole
+    // shows at most `full` page pixels (picOpenCut()). `row`: the line a
+    // frame with no picture keeps under its head.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, full: 6400, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
 
     // How layout() arranges the frames: eight a row, the gap between frames
     // and between rows, a section heading's height, and the gap between a
@@ -875,7 +987,8 @@
     // Where everything of a marked design goes on the canvas and which
     // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each its
     // head and its picture (a shared part's as tall as opts.partH gives its
-    // page pixels, picPartBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
+    // page pixels, picPartBox(); the page opened whole as opts.openH gives,
+    // picOpenBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
     // outside the design's tabs; an arrow (id '<frame id>|<port>') from
     // each row to the tab frame it opens or to its chip. The places come
     // from the graph canvas core's arrange() (window.PGGraphCanvas, read
@@ -922,7 +1035,10 @@
                 // as tall as it is, between the sketch strip and the cut.
                 var pic = Array.isArray(frame.sketch);
                 var partH = isObject(opts.partH) ? opts.partH[frame.id] : null;
-                var thumb = !pic ? 0 : (group[0] === 'page' ? picSize().box : picPartBox(partH));
+                // The one page opened whole (opts.openH, its id => the
+                // page's height) is as tall as its page, up to the limit.
+                var openH = (group[0] === 'page' && isObject(opts.openH) && has(opts.openH, 'p:' + frame.key)) ? opts.openH['p:' + frame.key] : null;
+                var thumb = !pic ? 0 : (group[0] === 'page' ? (openH !== null ? picOpenBox(openH) : picSize().box) : picPartBox(partH));
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -937,6 +1053,12 @@
                     // added below).
                     parts: (group[0] === 'page' && Array.isArray(frame.shared)) ? frame.shared.slice() : [],
                     sketch: bands,
+                    // A system widget's pages, reached as by a link (problemsOf()).
+                    reaches: (group[0] === 'shared' && Array.isArray(frame.reaches)) ? frame.reaches.slice() : [],
+                    // The fields its links are bound to, and a system
+                    // widget's kind (problemsOf()).
+                    urls: Array.isArray(frame.urls) ? frame.urls.slice() : [],
+                    widget: (group[0] === 'shared') ? str(frame.widget) : '',
                     pic: pic,
                     thumb: thumb,
                     x: 0,
@@ -1146,6 +1268,53 @@
         return Math.min(size.h, Math.max(FRAME.thumb - FRAME.pic.edge, h)) + FRAME.pic.edge;
     }
 
+    // How many page pixels the page opened whole shows: its height, at
+    // least the cut and at most `full`.
+    function picOpenCut(height) {
+        var p = FRAME.pic;
+
+        return Math.min(p.full, Math.max(p.cut, Math.round(Number(height) || 0)));
+    }
+
+    // The box of the page opened whole, in canvas units (a frame's `thumb`).
+    function picOpenBox(height) {
+        return Math.round(picOpenCut(height) * picSize().scale) + FRAME.pic.edge;
+    }
+
+    // What a picture's foot is (`o`: below, the links it cannot show;
+    // long, the page runs past what is shown; open, the page is shown
+    // whole; selected, its frame is the selected one; page, a page frame,
+    // not a shared part). The selected long page's foot is the button
+    // opening it whole ('open'), the open page's the one closing it
+    // ('close'); else it is the count, hidden at none. Answers { hidden,
+    // action, below }.
+    function picFootState(o) {
+        o = isObject(o) ? o : {};
+
+        var below = Math.max(0, parseInt(o.below, 10) || 0);
+        var action = '';
+
+        if (o.page && o.open) {
+            action = 'close';
+        } else if (o.page && o.selected && o.long) {
+            action = 'open';
+        }
+
+        return { hidden: action === '' && below === 0, action: action, below: below };
+    }
+
+    // A CSS value with its viewport-height units (vh, svh, lvh, dvh, and
+    // vmax, the height in a 1280-wide picture) written as the pixels they
+    // are in a viewport `viewH` high. The page opened whole is drawn in a
+    // taller frame; pinned first, a min-vh-100 section keeps its height.
+    function picVh(value, viewH) {
+        var h = Number(viewH) || 0;
+
+        return String(value === null || value === undefined ? '' : value).replace(/(^|[^\w.-])(-?(?:\d+\.?\d*|\.\d+))(?:[sld]?vh|vmax)(?![\w-])/gi, function (all, lead, n) {
+            return lead + round2(Number(n) * h / 100) + 'px';
+        });
+    }
+
     function round2(value) {
         return Math.round(value * 100) / 100;
     }
@@ -1167,10 +1336,13 @@
     // link is not seen when its elements have no size, start at or under
     // the cut or lie outside the page's width, or when it has none (a menu
     // or region, a link not written). A page frame reads no shared
-    // component's marker; a shared frame (sharedId) only its own.
-    function picRects(rows, marks, sharedId) {
+    // component's marker; a shared frame (sharedId) only its own. `cut`:
+    // the page pixels shown, FRAME.pic.cut when not given (the page opened
+    // whole: picOpenCut()).
+    function picRects(rows, marks, sharedId, cut) {
         var p = FRAME.pic;
         var scale = p.inner / p.page;
+        var end = Number(cut) > 0 ? Number(cut) : p.cut;
         var first = {};
         var out = {};
 
@@ -1185,11 +1357,11 @@
             var h = Number(m.h) || 0;
             var key = str(m.pic);
 
-            if (w <= 0 || h <= 0 || top >= p.cut || left + w <= 0 || left >= p.page || has(first, key)) {
+            if (w <= 0 || h <= 0 || top >= end || left + w <= 0 || left >= p.page || has(first, key)) {
                 return;
             }
 
-            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, p.cut) - top) * scale) };
+            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, end) - top) * scale) };
         });
 
         (Array.isArray(rows) ? rows : []).forEach(function (row) {
@@ -1206,12 +1378,12 @@
     // The foot of a frame's picture: how many of its links it cannot show
     // (picRects() finds no place for them: under the cut, hidden, in a
     // closed menu, in a menu or region, not written). Two rows of one
-    // element count once. Answers { links, below }.
-    function picFoot(rows, marks, sharedId) {
+    // element count once; `cut` as picRects(). Answers { links, below }.
+    function picFoot(rows, marks, sharedId, cut) {
         var list = (Array.isArray(rows) ? rows : []).filter(isObject).map(function (row, i) {
             return { port: 'f' + i, nodeId: row.nodeId, source: row.source, index: row.index };
         });
-        var seen = picRects(list, marks, sharedId);
+        var seen = picRects(list, marks, sharedId, cut);
         var counted = {};
         var links = 0;
         var below = 0;
@@ -1285,6 +1457,114 @@
         return { x: round2(x), y: side === 'bottom' ? h : 0, side: side };
     }
 
+    // The leg of an arrow inside its frame: from the middle of its link's
+    // mark (`rect`, picRects()) to its port on the frame's edge (`port`,
+    // markPort()), in frame units from the frame's top left. The core
+    // routes from the edge only, so the view draws this part itself. null
+    // when the link has no mark on the picture (the foot, no picture yet).
+    function markLeg(rect, port) {
+        if (!isObject(rect) || !isObject(port)) {
+            return null;
+        }
+
+        return {
+            x1: round2(FRAME.pic.x + (Number(rect.x) || 0) + (Number(rect.w) || 0) / 2),
+            y1: round2(FRAME.head + FRAME.pic.y + (Number(rect.y) || 0) + (Number(rect.h) || 0) / 2),
+            x2: round2(Number(port.x) || 0),
+            y2: round2(Number(port.y) || 0)
+        };
+    }
+
+    // A mark as the view draws it and reaches it: at least `min` frame
+    // units each way; the "+" handle `grip` screen pixels across and `gap`
+    // from its mark; a mark under `small` screen pixels wide or high takes
+    // presses `reach` screen pixels around it.
+    var MARK = { min: 6, grip: 20, gap: 4, small: 12, reach: 4 };
+
+    // How far around a mark (`rect`, picRects()) a press still takes it at
+    // zoom `k`, in frame units: MARK.reach screen pixels when the mark as
+    // drawn is under MARK.small screen pixels wide or high, else 0.
+    function markReach(rect, k) {
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+
+        if (!isObject(rect)) {
+            return 0;
+        }
+
+        var w = Math.max(MARK.min, Number(rect.w) || 0) * zoom;
+        var h = Math.max(MARK.min, Number(rect.h) || 0) * zoom;
+
+        return (w < MARK.small || h < MARK.small) ? round2(MARK.reach / zoom) : 0;
+    }
+
+    // Where the "+" handle of a drawable mark goes, a drag from it drawing
+    // the mark's arrow. `rect` is the mark (picRects(), drawn at least
+    // MARK.min), `room` ({ w, h }) the marks' layer over the picture, `k`
+    // the zoom, `others` the other marks shown on that picture. The handle
+    // is MARK.grip screen pixels at any zoom, MARK.gap from the mark, and
+    // its box spans the gap so the pointer crosses onto it: right of the
+    // mark, level with its middle; else left of it, under it or over it,
+    // the first that stays inside the picture's box (the layer and the
+    // box's padding, FRAME.pic.x and .y) and covers no other mark; else
+    // the first inside the box; else over the mark's right end. Answers
+    // { side, x, y } (its box's top left in the layer's units), { w, h }
+    // (its box in screen pixels) and `scale` (1 / k, to draw it at), or
+    // null without a mark.
+    function markGrip(rect, room, k, others) {
+        if (!isObject(rect)) {
+            return null;
+        }
+
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+        var area = isObject(room) ? room : {};
+        var p = FRAME.pic;
+        var x = Number(rect.x) || 0;
+        var y = Number(rect.y) || 0;
+        var w = Math.max(MARK.min, Number(rect.w) || 0);
+        var h = Math.max(MARK.min, Number(rect.h) || 0);
+        // The handle and, with its gap, its box's length, in frame units.
+        var size = MARK.grip / zoom;
+        var span = (MARK.grip + MARK.gap) / zoom;
+        var minX = -p.x;
+        var maxX = (Number(area.w) || 0) + p.x;
+        var minY = -p.y;
+        var maxY = (Number(area.h) || 0) + p.y;
+        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(v, hi)); };
+        var level = clamp(y + h / 2 - size / 2, minY, maxY - size);
+        var under = clamp(x + w / 2 - size / 2, minX, maxX - size);
+        var sides = [
+            { side: 'right', x: x + w, y: level, w: span, h: size, room: x + w + span <= maxX },
+            { side: 'left', x: x - span, y: level, w: span, h: size, room: x - span >= minX },
+            { side: 'below', x: under, y: y + h, w: size, h: span, room: y + h + span <= maxY },
+            { side: 'above', x: under, y: y - span, w: size, h: span, room: y - span >= minY }
+        ];
+        var covers = function (one) {
+            return (Array.isArray(others) ? others : []).some(function (o) {
+                if (!isObject(o)) {
+                    return false;
+                }
+
+                var ox = Number(o.x) || 0;
+                var oy = Number(o.y) || 0;
+
+                return one.x < ox + Math.max(MARK.min, Number(o.w) || 0) && ox < one.x + one.w
+                    && one.y < oy + Math.max(MARK.min, Number(o.h) || 0) && oy < one.y + one.h;
+            });
+        };
+        var fit = sides.filter(function (one) { return one.room; });
+        var pick = fit.filter(function (one) { return !covers(one); })[0] || fit[0] || sides[0];
+        var across = pick.side === 'right' || pick.side === 'left';
+
+        return {
+            side: pick.side,
+            x: round2(clamp(pick.x, minX, maxX - pick.w)),
+            y: round2(clamp(pick.y, minY, maxY - pick.h)),
+            w: across ? MARK.grip + MARK.gap : MARK.grip,
+            h: across ? MARK.grip : MARK.grip + MARK.gap,
+            scale: Math.round(10000 / zoom) / 10000
+        };
+    }
+
     // The attributes of a picture's frame: only `allow-same-origin`, so the
     // view reads its document and no script of it runs; it takes no focus
     // and no pointer and says nothing to a screen reader (the rows list the
@@ -1323,9 +1603,10 @@
 
     // Whether a picture runs past its cut and gets the fade: only when the
     // page is taller than the cut. A page that ends at it (a short page
-    // with min-vh-100 fills the 1600-high frame exactly) gets none.
-    function picLong(height) {
-        return Number(height) > FRAME.pic.cut;
+    // with min-vh-100 fills the 1600-high frame exactly) gets none. `cut`:
+    // the page pixels shown, the cut when not given.
+    function picLong(height, cut) {
+        return Number(height) > (Number(cut) > 0 ? Number(cut) : FRAME.pic.cut);
     }
 
     // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
@@ -1361,6 +1642,73 @@
     }
 
     // ── Drawing an arrow ──
+
+    // Whether a press at `at` ({ x, y }, canvas units) takes the head of an
+    // arrow ending at `end`: within 14 screen pixels of it at zoom `k`.
+    function nearHead(end, at, k) {
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+
+        if (!isObject(end) || !isObject(at)) {
+            return false;
+        }
+
+        var dx = (Number(at.x) - Number(end.x)) * zoom;
+        var dy = (Number(at.y) - Number(end.y)) * zoom;
+
+        return dx * dx + dy * dy <= 14 * 14;
+    }
+
+    // Where the target menu opens ({ left, top }): under its anchor, else
+    // above it, else beside it (right, then left), always inside `area`
+    // (the canvas under the view's bar, never over the bar). anchor and
+    // area are { left, top, right, bottom }, menu { w, h }, all in one
+    // frame of reference; 4 apart from the area's edges, 2 from the anchor.
+    function menuPlace(anchor, menu, area) {
+        var a = isObject(anchor) ? anchor : {};
+        var m = isObject(menu) ? menu : {};
+        var r = isObject(area) ? area : {};
+        var w = Number(m.w) || 0;
+        var h = Number(m.h) || 0;
+        var minX = (Number(r.left) || 0) + 4;
+        var maxX = (Number(r.right) || 0) - 4;
+        var minY = (Number(r.top) || 0) + 4;
+        var maxY = (Number(r.bottom) || 0) - 4;
+        var clampY = function (y) { return Math.max(minY, Math.min(y, maxY - h)); };
+        var clampX = function (x) { return Math.max(minX, Math.min(x, maxX - w)); };
+        var below = (Number(a.bottom) || 0) + 2;
+        var above = (Number(a.top) || 0) - 2 - h;
+
+        if (below + h <= maxY) {
+            return { left: clampX(Number(a.left) || 0), top: below };
+        }
+
+        if (above >= minY) {
+            return { left: clampX(Number(a.left) || 0), top: above };
+        }
+
+        var right = (Number(a.right) || 0) + 2;
+        var left = (Number(a.left) || 0) - 2 - w;
+
+        return { left: (right + w <= maxX || left < minX) ? clampX(right) : left, top: clampY(Number(a.top) || 0) };
+    }
+
+    // What a key does on a link's mark ({ key, shiftKey, ctrlKey, metaKey,
+    // altKey }): 'pick' for Enter or Space, 'menu' for L, the menu key or
+    // Shift+F10 (the target menu, the keyboard's way to draw), '' else.
+    function markKey(event) {
+        var e = isObject(event) ? event : {};
+        var name = str(e.key).toLowerCase();
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            return 'pick';
+        }
+
+        if ((name === 'l' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+            return 'menu';
+        }
+
+        return '';
+    }
 
     // The marks of the chips a link may be pointed at: what the href of
     // such a chip means does not depend on the page it is written on.
@@ -1689,6 +2037,18 @@
         };
     }
 
+    // How a links panel row (one of listOf()'s outgoing) shows where its
+    // link goes: { control, state }. `control` is true for a row an arrow
+    // may be drawn from, whose target is a button opening the target menu;
+    // a read-only row keeps it as text. `state` is 'empty' for a link
+    // without a target, 'broken' for a broken one, else 'set'.
+    function rowTarget(row) {
+        var r = isObject(row) ? row : {};
+        var state = (r.mark === 'empty') ? 'empty' : ((str(r.why) !== '') ? 'broken' : 'set');
+
+        return { control: !!r.drawable, state: state };
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -1708,6 +2068,147 @@
         return out;
     }
 
+    // What to check in a design (F27, F28, F29): `broken` as brokenOf();
+    // `empty`, the links with no target in the frames' order and each
+    // frame's count; `unreached`, the page frames no link of another page
+    // or of a shared part leads to (the graph canvas core's check(), from
+    // the Start page, which never counts; shared parts and chips are no
+    // boxes of it, a shared part's links, a system widget's pages
+    // (`reaches`, widgetPages()) and its links bound to a field the server
+    // fills (`urls`, BOUND_WIDGET_URLS) stand in as one source); `check`,
+    // the empty links plus the unreached pages.
+    function problemsOf(laid) {
+        var out = { broken: brokenOf(laid), empty: { list: [], count: {} }, unreached: [], check: 0 };
+        var frames = (laid && Array.isArray(laid.frames)) ? laid.frames : [];
+        var pages = [];
+        var kind = {};
+
+        frames.forEach(function (frame) {
+            kind[frame.id] = frame.kind;
+
+            if (frame.kind === 'page') {
+                pages.push(frame.id);
+            }
+
+            (frame.rows || []).forEach(function (row) {
+                if (row.mark !== 'empty') {
+                    return;
+                }
+
+                out.empty.list.push({ frame: frame.id, port: row.port, label: rowLabel(row), href: str(row.href) });
+                out.empty.count[frame.id] = (out.empty.count[frame.id] || 0) + 1;
+            });
+        });
+
+        if (pages.length) {
+            var SHARED = '#shared';
+            var edges = ((laid && laid.edges) || []).filter(function (edge) {
+                return kind[edge.to] === 'page' && (kind[edge.from] === 'page' || kind[edge.from] === 'shared');
+            }).map(function (edge) {
+                return { from: kind[edge.from] === 'shared' ? SHARED : edge.from, to: edge.to };
+            });
+            // A system widget's settings lead to pages as a shared part's
+            // links do.
+            var byPage = {};
+
+            frames.forEach(function (frame) {
+                if (frame.kind === 'page' && frame.pageId) {
+                    byPage[frame.pageId] = frame.id;
+                }
+            });
+            frames.forEach(function (frame) {
+                (frame.kind === 'shared' && Array.isArray(frame.reaches) ? frame.reaches : []).forEach(function (id) {
+                    if (byPage[id]) {
+                        edges.push({ from: SHARED, to: byPage[id] });
+                    }
+                });
+            });
+            // A link bound to a field the server fills (BOUND_WIDGET_URLS)
+            // leads to the pages placing a widget of that kind.
+            var kindOf = {};
+            var placing = {};
+
+            frames.forEach(function (frame) {
+                if (frame.kind === 'shared' && frame.widget) {
+                    kindOf[frame.id] = frame.widget;
+                }
+            });
+            frames.forEach(function (frame) {
+                if (frame.kind !== 'page') {
+                    return;
+                }
+
+                (frame.parts || []).forEach(function (part) {
+                    if (kindOf[part]) {
+                        (placing[kindOf[part]] = placing[kindOf[part]] || []).push(frame.id);
+                    }
+                });
+            });
+            frames.forEach(function (frame) {
+                (Array.isArray(frame.urls) ? frame.urls : []).forEach(function (field) {
+                    var widget = has(BOUND_WIDGET_URLS, field) ? BOUND_WIDGET_URLS[field] : '';
+
+                    (placing[widget] || []).forEach(function (to) {
+                        edges.push({ from: frame.kind === 'shared' ? SHARED : frame.id, to: to });
+                    });
+                });
+            });
+
+            out.unreached = window.PGGraphCanvas.check(pages.concat([SHARED]), edges, str(laid.start)).unreached.filter(function (id) {
+                return id !== SHARED;
+            });
+        }
+
+        out.check = out.empty.list.length + out.unreached.length;
+
+        return out;
+    }
+
+    // The links the designer's canvas marks, from a design marked by mark():
+    // each drawable link (drawable(): a link of a tree, never a classic
+    // menu's or a region's) that is broken or has no target ('' or '#'),
+    // the page frames' first, then the shared components', in document
+    // order. Each: { nodeId, sharedId (0 on a page), source, index (the
+    // nth link of a text), mark ('broken' or 'empty'), label, href, why
+    // (brokenWhy(), '' for an empty link) }. `known` false: the map read
+    // has not answered, so no link is called broken and only the empty
+    // ones are listed.
+    function canvasMarks(marked, known) {
+        var out = [];
+
+        function frame(item, sharedId) {
+            rowsOf(item).forEach(function (row) {
+                var broken = (row.mark === 'broken' && known !== false);
+
+                if (!drawable(row) || !(broken || row.mark === 'empty')) {
+                    return;
+                }
+
+                out.push({ nodeId: row.nodeId, sharedId: sharedId, source: row.source, index: row.index, mark: row.mark, label: row.label, href: row.href, why: broken ? brokenWhy(row) : '' });
+            });
+        }
+
+        ((marked && Array.isArray(marked.pages)) ? marked.pages : []).forEach(function (page) { frame(page, 0); });
+        ((marked && Array.isArray(marked.shared)) ? marked.shared : []).forEach(function (one) { frame(one, parseInt(one.id, 10) || 0); });
+
+        return out;
+    }
+
+    // What the map read is asked for the canvas marks: the design's
+    // addresses but the empty ones (mark() calls those empty without the
+    // read) and the pages its links are kept by; no menu or region, whose
+    // links get no mark (canvasMarks()).
+    function canvasRequest(designed) {
+        var request = (designed && isObject(designed.request)) ? designed.request : {};
+
+        return {
+            hrefs: (Array.isArray(request.hrefs) ? request.hrefs : []).filter(function (href) { return !emptyHref(href); }),
+            page_ids: Array.isArray(request.page_ids) ? request.page_ids.slice() : [],
+            menus: [],
+            regions: []
+        };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -1721,6 +2222,77 @@
         var heading = (laid.headings || []).filter(function (h) { return h.kind === 'group' && h.x === frame.x && h.y + GRID.head === frame.y; })[0];
 
         return { x: frame.x, y: heading ? heading.y : frame.y };
+    }
+
+    // A second tap on the same frame within this many milliseconds is a
+    // double-click, as the Flows canvas reads a box's double tap: the
+    // canvas captures the pointer, so the frame gets no dblclick.
+    var ZOOM_TAP = 450;
+
+    // The frame a tap zooms to: `last` and `tap` ({ id, time }) are where
+    // the last tap and this one ended (a frame's or chip's id, '' for
+    // anything else) and when. Both on one frame of the layout, this one
+    // less than ZOOM_TAP ms later: its id; else null.
+    function zoomTap(last, tap, laid) {
+        if (!isObject(last) || !isObject(tap) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var id = String(tap.id || '');
+        var gap = Number(tap.time) - Number(last.time);
+
+        if (!id || String(last.id || '') !== id || !(gap >= 0 && gap < ZOOM_TAP)) {
+            return null;
+        }
+
+        return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
+    }
+
+    // ── A links panel row dropped on the canvas ──
+
+    // The item of `items` (frames and chips, { id, x, y, w, h } in canvas
+    // units) whose box holds the point `at` ({ x, y }), edges included; of
+    // two that overlap the later one, drawn on top; null over none.
+    function itemAt(items, at) {
+        if (!Array.isArray(items) || !isObject(at)) {
+            return null;
+        }
+
+        var x = Number(at.x);
+        var y = Number(at.y);
+
+        if (!isFinite(x) || !isFinite(y)) {
+            return null;
+        }
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+            var left = isObject(item) ? Number(item.x) : NaN;
+            var top = isObject(item) ? Number(item.y) : NaN;
+
+            if (x >= left && y >= top && x <= left + (Number(item.w) || 0) && y <= top + (Number(item.h) || 0)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    // Where a links panel row dropped at `at` (canvas units) points its
+    // link: { item, href }, the frame or chip under the point (itemAt())
+    // and the href an arrow ending there writes (hrefTo()). null for a row
+    // no arrow is drawn from (drawable()), over nothing, or over what takes
+    // no arrow (a shared part's frame, an anchor's, a hidden or a broken
+    // chip).
+    function rowDrop(row, items, at, env) {
+        if (!drawable(row)) {
+            return null;
+        }
+
+        var item = itemAt(items, at);
+        var href = item ? hrefTo(item, env) : null;
+
+        return (href === null) ? null : { item: item, href: href };
     }
 
     // What the selected frame (its id, null for none) shows of a layout:
@@ -1792,6 +2364,215 @@
         return out;
     }
 
+    // ── Suggested targets (F30 to F32) ──
+
+    // Words a link's label says without naming a page, dropped before a
+    // label, a page name or a page title is matched.
+    var SUGGEST_FILLER = ['go', 'to', 'the', 'page', 'view', 'see', 'git', 'sayfa', 'gör', 'incele'];
+
+    // At most this many pages offered for an unsure link.
+    var SUGGEST_MAX = 3;
+
+    // The words of a text as the match compares them: lower case, Turkish
+    // letters to plain ones (dotted capital I and dotless i to i, the marks
+    // of ç, ğ, ö, ş, ü, â, î, û dropped), punctuation and spaces between
+    // words, the filler words left out.
+    function foldWord(text) {
+        return String(text).replace(/İ/g, 'i').toLowerCase().replace(/ı/g, 'i')
+            .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function foldWords(text) {
+        var filler = SUGGEST_FILLER.map(foldWord);
+
+        return foldWord(str(text)).split(/[\s!-\/:-@\[-`{-~ -¿‐-‧‰-⁞]+/).filter(function (word) {
+            return word !== '' && filler.indexOf(word) < 0;
+        });
+    }
+
+    // How well a page matches the words of a label: 3 when its folded name
+    // or title is the label, 2 when every word of it begins a word of the
+    // label (a word of three letters or more as a beginning, a shorter one
+    // whole), between 1 and 1.5 when only some do, else 0.
+    function suggestScore(words, page) {
+        var said = words.join(' ');
+        var best = 0;
+
+        [page.name, page.title].forEach(function (text) {
+            var own = foldWords(text);
+
+            if (!own.length || !words.length) {
+                return;
+            }
+
+            if (own.join(' ') === said) {
+                best = Math.max(best, 3);
+                return;
+            }
+
+            var hit = own.filter(function (w) {
+                return words.some(function (l) { return l === w || (w.length >= 3 && l.indexOf(w) === 0); });
+            }).length;
+
+            if (hit === own.length) {
+                best = Math.max(best, 2);
+            } else if (hit > 0) {
+                best = Math.max(best, 1 + hit / own.length / 2);
+            }
+        });
+
+        return best;
+    }
+
+    function suggestMatches(words, pages) {
+        return pages.map(function (page, at) {
+            return { page: page, at: at, score: suggestScore(words, page) };
+        }).filter(function (m) { return m.score > 0; }).sort(function (a, b) {
+            return (b.score - a.score) || (a.at - b.at);
+        });
+    }
+
+    // The page a link without a target (link: { label, page, the id of the
+    // page it is on, heading, the nearest heading above it in its block })
+    // should lead to, among `pages` ([{ id, name, title, bin }]): { sure,
+    // the page when its label names it and no other page matches at all,
+    // else null; candidates, at most three pages best first }. A label
+    // that matches nothing is tried once more with its heading, and what
+    // that finds is unsure. The link's own page and a page in the bin are
+    // never offered.
+    function suggest(link, pages) {
+        link = isObject(link) ? link : {};
+
+        var own = str(link.page);
+        var open = (Array.isArray(pages) ? pages : []).filter(function (page) {
+            return isObject(page) && !page.bin && (own === '' || String(page.id) !== own);
+        });
+        var found = suggestMatches(foldWords(link.label), open);
+
+        if (found.length === 1 && found[0].score >= 2) {
+            return { sure: found[0].page, candidates: [found[0].page] };
+        }
+
+        if (!found.length) {
+            found = suggestMatches(foldWords(link.heading), open);
+        }
+
+        return { sure: null, candidates: found.slice(0, SUGGEST_MAX).map(function (m) { return m.page; }) };
+    }
+
+    // The text of the nearest heading above node `id` in its block (the
+    // top-level part of the tree holding it), '' for none: a heading
+    // content's or an h1 to h6's text, read before the node in document
+    // order.
+    function headingOf(tree, id) {
+        var top = (isObject(tree) && Array.isArray(tree.children)) ? tree.children : [];
+        var want = String(id);
+
+        for (var i = 0; i < top.length; i++) {
+            var last = '';
+            var found = (function walk(node) {
+                if (!isObject(node)) {
+                    return false;
+                }
+
+                if (String(node._id) === want) {
+                    return true;
+                }
+
+                var props = propsOf(node);
+                var tag = str(props.tag).toLowerCase();
+
+                if ((node.type === 'content' && props.contentType === 'heading' && (tag === '' || /^h[1-6]$/.test(tag))) || (node.type === 'semantic' && /^h[1-6]$/.test(tag))) {
+                    var text = plainText(str(props.text));
+
+                    if (text !== '') {
+                        last = text;
+                    }
+                }
+
+                return (Array.isArray(node.children) ? node.children : []).some(walk);
+            })(top[i]);
+
+            if (found) {
+                return last;
+            }
+        }
+
+        return '';
+    }
+
+    // The rows of the Suggest targets dialog: one per drawable link without
+    // a target in the frames' order (a shared part's once, as it has one
+    // frame), each { frame, port, nodeId, source, label, kind ('sure', 'ask'
+    // or 'none'), page (the sure page's id, else null), candidates (ids) };
+    // `headings` gives a link's heading by '<frame>|<port>'. count: the
+    // head's numbers { sure, ask, none }.
+    function suggestRows(laid, pages, headings) {
+        var out = { rows: [], count: { sure: 0, ask: 0, none: 0 } };
+
+        headings = isObject(headings) ? headings : {};
+
+        ((laid && laid.frames) || []).forEach(function (frame) {
+            (frame.rows || []).forEach(function (row) {
+                if (row.mark !== 'empty' || !drawable(row)) {
+                    return;
+                }
+
+                var key = frame.id + '|' + row.port;
+                var s = suggest({ label: row.label, page: frame.kind === 'page' ? frame.id : '', heading: has(headings, key) ? headings[key] : '' }, pages);
+                var kind = s.sure ? 'sure' : (s.candidates.length ? 'ask' : 'none');
+
+                out.count[kind]++;
+                out.rows.push({
+                    frame: frame.id,
+                    port: row.port,
+                    nodeId: str(row.nodeId),
+                    source: str(row.source),
+                    label: rowLabel(row),
+                    kind: kind,
+                    page: s.sure ? String(s.sure.id) : null,
+                    candidates: s.candidates.map(function (page) { return String(page.id); })
+                });
+            });
+        });
+
+        return out;
+    }
+
+    // What Apply writes of the dialog's ticked rows (each { frame, port,
+    // page, the target frame's id, tab, the key of the tab it is written
+    // on, locked, whether that tab is closed to the operator }): tabs, one
+    // per tab in the order of its first row, each { key, picks }, so a tab
+    // gets one undo entry; refused, the rows left unwritten with why
+    // ('target' with no page chosen, 'tab' for a link on no tab, 'locked').
+    function suggestBatch(picks) {
+        var out = { tabs: [], refused: [] };
+        var byKey = {};
+
+        (Array.isArray(picks) ? picks : []).forEach(function (pick) {
+            if (!isObject(pick)) {
+                return;
+            }
+
+            var key = str(pick.tab);
+            var why = (str(pick.page) === '') ? 'target' : (key === '' ? 'tab' : (pick.locked ? 'locked' : ''));
+
+            if (why !== '') {
+                out.refused.push({ pick: pick, why: why });
+                return;
+            }
+
+            if (!has(byKey, key)) {
+                byKey[key] = { key: key, picks: [] };
+                out.tabs.push(byKey[key]);
+            }
+
+            byKey[key].picks.push(pick);
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -1803,7 +2584,15 @@
         picFoot: picFoot,
         picRects: picRects,
         picPartBox: picPartBox,
+        picOpenCut: picOpenCut,
+        picOpenBox: picOpenBox,
+        picFootState: picFootState,
+        picVh: picVh,
         markPort: markPort,
+        markLeg: markLeg,
+        MARK: MARK,
+        markReach: markReach,
+        markGrip: markGrip,
         markState: markState,
         picOrder: picOrder,
         picRefill: picRefill,
@@ -1822,6 +2611,10 @@
         markHref: markHref,
         mark: mark,
         drawable: drawable,
+        nearHead: nearHead,
+        markKey: markKey,
+        menuPlace: menuPlace,
+        nodeLabel: nodeLabel,
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,
         hrefPatch: hrefPatch,
@@ -1829,10 +2622,26 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
+        itemAt: itemAt,
+        rowDrop: rowDrop,
         focusOf: focusOf,
         fitStart: fitStart,
+        ZOOM_TAP: ZOOM_TAP,
+        zoomTap: zoomTap,
         listOf: listOf,
+        rowTarget: rowTarget,
         brokenOf: brokenOf,
-        brokenWhy: brokenWhy
+        problemsOf: problemsOf,
+        canvasMarks: canvasMarks,
+        canvasRequest: canvasRequest,
+        widgetPages: widgetPages,
+        widgetKind: widgetKind,
+        brokenWhy: brokenWhy,
+        SUGGEST_FILLER: SUGGEST_FILLER,
+        foldWords: foldWords,
+        suggest: suggest,
+        headingOf: headingOf,
+        suggestRows: suggestRows,
+        suggestBatch: suggestBatch
     };
 })();

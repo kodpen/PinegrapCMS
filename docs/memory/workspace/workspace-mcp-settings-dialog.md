@@ -8,7 +8,7 @@ description: The MCP servers card in Site Settings (Assistants and agents) and o
 - `pg_settings_legacy_anchors()` maps `ws-mcp` to the card. "My MCP connections" still links `workspace_mcp.php`.
 
 ## What opens in a drawer?
-- Each server's line keeps its badge, details, own-account line, Connect or Disconnect and the icon buttons (ask again, turn off or on, remove); "Tools and settings" opens `pgset-ws-mcp-<id>`: its last error, the tools with the agent choice, then address and sign-in under a closed "Connection settings".
+- Each server is a row like an agent's (#10432): tile, `@alias` and name, one summary line, the state as a pill, Connect or Disconnect and the icon buttons (ask again, turn off or on, remove), "Tools and settings" at the row's end. It opens `pgset-ws-mcp-<id>`: its last error, the tools (kinds as toned pills) with the agent choice, the tools' Save in the drawer's foot, then address and sign-in under a closed "Connection settings" with its own quiet Save.
 - "Add a server" opens `pgset-ws-mcp-add`: the ready-made connectors, Check the address and its short form, the whole form under More settings. Both from `ws_settings_mcp_drawer()`.
 
 ## Which names does the dialog post?

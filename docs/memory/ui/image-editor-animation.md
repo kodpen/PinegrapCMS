@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What is it?
-- Layers move (in, loop and out presets, keyframes set one by one or recorded by dragging), on a timeline played, scrubbed and timed on tracks; a canvas may hold scenes with transitions. Saved as GIF, APNG, animated WebP, MP4 or WebM, a PDF of the scenes, or animated SVG; a still save draws every layer at rest.
+- Layers move (in, loop and out presets, keyframes set one by one, recorded by dragging or following a video's area), on a timeline played, scrubbed and timed on tracks; a canvas may hold scenes with transitions. Saved as GIF, APNG, animated WebP, MP4 or WebM, a PDF of the scenes, or animated SVG; a still save draws every layer at rest.
 - The document stays in the file's versions, so a later open edits layers and motion, never frames.
 
 ## Which decisions bind it?
@@ -13,13 +13,14 @@ module: image_editor
 - Own code, no outside engine or library, encoders and muxers included; labels through `lang()`; the server draws the still base, the browser the frames and the encoding.
 - No schema change: motion and scenes live in the document a version row keeps (at most 1 MB, no `data:` picture).
 - Presentation is editor only (#4714, `decisions-made-product-18.md`): Present, PDF, video and GIF; no share link and no widget on the live site. No video widget in the designer: a saved video is a file in Files.
-- A move recorded by dragging (owner 2026-11-05, `decisions-made-product-31.md`).
+- A move recorded by dragging (owner 2026-11-05, `decisions-made-product-31.md`); Follow (owner 2026-11-16, `decisions-made-product-69.md`).
 - Redaction layers never move: one moving away in an export would show what it hides.
 
 ## Which step id is in which topic file?
-- Other plans and PRs name the steps by id: AN1 motion and the play bar `image-editor-motion.md`, AN2 tracks `image-editor-tracks.md`, AN3 frames and GIF `image-editor-render.md`, AN4 save into Files `image-editor-animation-save.md`, AN5 APNG and WebP `image-editor-encode.md`, AN6 video `image-editor-video-export.md`, AN7a scenes `image-editor-scenes.md`, AN7b scenes played `image-editor-scenes-play.md`, AN8 Present and PDF `image-editor-present.md`, AN9 keyframes `image-editor-keyframes.md`, AN10 SVG motion `image-editor-svg-motion.md`, AN12 recording `image-editor-record.md`, AN11 this file.
+- Other plans and PRs name the steps by id: AN1 motion and the play bar `image-editor-motion.md`, AN2 tracks `image-editor-tracks.md`, AN3 frames and GIF `image-editor-render.md`, AN4 save into Files `image-editor-animation-save.md`, AN5 APNG and WebP `image-editor-encode.md`, AN6 video `image-editor-video-export.md`, AN7a scenes `image-editor-scenes.md`.
+- AN7b scenes played `image-editor-scenes-play.md`, AN8 Present and PDF `image-editor-present.md`, AN9 keyframes `image-editor-keyframes.md`, AN10 SVG motion `image-editor-svg-motion.md`, AN12 recording `image-editor-record.md`, FW1-FW3 Follow `image-editor-follow.md`, AN11 this file.
 ## Which keys does the timeline answer?
-- In the Animate tool (`motionKey()`): K plays and pauses; J and L play the preview backward and forward (the video players' transport — `play()` reads `playDir` each frame, so a J or L press turns a running preview around; `shuttle(dir)` starts it; #9234); Left and Right step the playhead one frame of 30 fps, Shift one whole second, landing on that grid; Home goes to the start, End to the end; each pauses as a scrub does (`M.timelineKey()`, tested in `tests/image_editor_access_test.php`).
+- In the Animate tool (`motionKey()`): K plays and pauses; J and L play the preview backward and forward (`play()` reads `playDir` each frame, so J or L turns a running preview; #9234); Left and Right step the playhead one frame of 30 fps, Shift one whole second, landing on that grid; Home goes to the start, End to the end; each pauses as a scrub does (`M.timelineKey()`, tested in `tests/image_editor_access_test.php`).
 - I and O trim the selected clip's ends, S splits a clip at the playhead (`image-editor-clip-timeline.md`). J, K, L, I, O and S override the Line, Image, Ellipse and Sticker tool letters while Animate is on (`image-editor-access.md`). Up and Down still nudge the selection; Space and drag pan the view as in every tool; a running recording takes none of them.
 - A focused scrub slider keeps its own arrows (10 ms steps, `ownsKey()`). The `?` sheet shows a Timeline group when the call has the Animate tool (`M.keyMap()`); Play carries `aria-keyshortcuts="K J L"`.
 

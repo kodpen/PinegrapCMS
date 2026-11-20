@@ -10,8 +10,6 @@
  *
  */
 
-session_start();
-
 // -----------------------------
 // Variables
 // -----------------------------
@@ -193,6 +191,21 @@ function da_download($url, $destination)
     return ($written !== false && $written === strlen($bytes));
 }
 
+/**
+ * Starts the assistant's session unless one is already running.
+ *
+ * On an installed site pinegrap/init.php starts it first, with the panel's
+ * cookie settings (HttpOnly, SameSite, strict mode). A session started
+ * before init.php left it unable to apply them: PHP refuses session ini
+ * settings while a session is active and logged a warning for each.
+ */
+function da_session_start()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+}
+
 // -----------------------------
 // Check if Pinegrap exists
 // -----------------------------
@@ -202,10 +215,11 @@ if (is_dir('pinegrap')) {
     if (is_file('pinegrap/data/config.php')) {
         include('pinegrap/data/config.php');
     }
-    
+
     if (is_file('pinegrap/init.php') && defined('DB_DATABASE')) {
-        
+
         include('pinegrap/init.php');
+        da_session_start();
         $user = validate_user();
         validate_area_access($user, 'administrator');
         $version = 'Version: ' . VERSION;
@@ -215,11 +229,13 @@ if (is_dir('pinegrap')) {
         $output_install_button = '<button class="col-12 w-100 btn btn-primary my-2 disabled rounded-pill">Install</button>';
 
     } else {
+        da_session_start();
         $output_install_button = '<a href="pinegrap/install/index.php" class="col-12 w-100 btn btn-primary my-2 rounded-pill">Complete Install</a>';
         $output_update_disable_class = ' disabled';
     }
 
 } else {
+    da_session_start();
     $output_install_button = '<button type="submit" name="action" value="install" class="col-12 w-100 btn btn-primary my-2 rounded-pill" onclick="return confirm(\'Are you sure to download and install the Pinegrap Software?\')">Install</button>';
     $output_update_disable_class = ' disabled';
 

@@ -13,3 +13,4 @@ description: What the Word and Excel support does not do and why: edits stop at 
 
 ## Where may the xlsx reader go next?
 - Its twin in `import_products_f.php` walks a sheet the same way (XMLReader, a row at a time) and reads cells and shared strings through its node-by-node helpers (`pg_office_xlsx_cell_parts()`, `pg_office_reader_text()`), but keeps its own walk and value rules: booleans as 1/0, its own date text, no row, column or string limits (`office-dom-ceiling.md`). Replacing the walk itself with `pg_office_xlsx_rows()` would cut an import at the preview's limits.
+- The importers' own sheet reader (`sheet-reader.md`) walks a sheet with the same helpers and no limits.

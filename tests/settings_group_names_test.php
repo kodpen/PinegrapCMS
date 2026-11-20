@@ -47,7 +47,7 @@ function test_settings_group_names_headings_name_their_groups()
 
 		foreach ($headings as $id => $heading) {
 			pg_assert_true((bool) preg_match('/<div class="col-12(?: pb-0)?" role="group" aria-labelledby="' . $id . '">/', $src), $file . ': the "' . $heading . '" cell is a group');
-			pg_assert_true((bool) preg_match('/<(?:div class="form-label"|h6 class="fg-secondary mb-0") id="' . $id . '">\'\s*\.\s*lang\(\'' . preg_quote($heading, '/') . '\'\)/', $src), $file . ': "' . $heading . '" is the heading that names it');
+			pg_assert_true((bool) preg_match('/<(?:div class="form-label"|h6 class="fg-secondary mb-0"|h[3-6] class="pg-group-label[^"]*") id="' . $id . '">\'\s*\.\s*lang\(\'' . preg_quote($heading, '/') . '\'\)/', $src), $file . ': "' . $heading . '" is the heading that names it');
 		}
 	}
 

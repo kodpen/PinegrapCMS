@@ -35,7 +35,7 @@ function test_page_bundle_recycle_functions_loaded()
 // first, so no caller has to know.
 function test_page_bundle_recycle_callers_load_it()
 {
-	foreach (array('pg_page_bundle_publish', 'pg_page_bundle_add_copy') as $function) {
+	foreach (array('pg_page_bundle_publish_locked', 'pg_page_bundle_add_copy') as $function) {
 		$code = pg_test_function_source($function);
 		$load = strpos($code, 'pg_page_bundle_load_recycle()');
 		$call = max((int) strpos($code, 'pg_recycle_page('), (int) strpos($code, 'pg_delete_page_record('));

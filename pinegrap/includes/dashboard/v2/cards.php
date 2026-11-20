@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The new dashboard's card list: the thirty cards a layout may hold, each
+ * The new dashboard's card list: the cards a layout may hold, each
  * with its title, icon, category, default width and period, the gate that
  * decides who may see it, and whether its card function is built yet. The
  * page, the gallery and the layout save all read this one list.
@@ -53,7 +53,7 @@ function pg_dashboard_v2_periods()
 }
 
 /**
- * The thirty cards, in the gallery's order.
+ * The cards, in the gallery's order.
  *
  * width:  S narrow (one track), M medium (two), L full (every track).
  * period: index into pg_dashboard_v2_periods(), null for a card without one.
@@ -71,6 +71,7 @@ function pg_dashboard_v2_cards()
     $built[] = 'ai';
     $built = array_merge($built, array('pins', 'perf'));
     $built[] = 'visitmap';
+    $built[] = 'mail';
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -95,6 +96,7 @@ function pg_dashboard_v2_cards()
         'flows'      => $card(lang('Automation flows'), 'bi-diagram-3', 'general', 'S', null, 'flows'),
         'pins'       => $card(lang('Pinned'), 'bi-pin-angle', 'general', 'S', null, 'all'),
         'notes'      => $card(lang('My notes'), 'bi-journal-text', 'general', 'S', null, 'notes'),
+        'mail'       => $card(lang('Incoming e-mail'), 'bi-envelope', 'general', 'S', null, 'mail'),
         // Content
         'content'    => $card(lang('Content and design'), 'bi-layout-text-window', 'content', 'M', null, 'files'),
         'comments'   => $card(lang('Comment Moderation'), 'bi-chat-square-quote', 'content', 'S', null, 'files'),
@@ -143,7 +145,7 @@ function pg_dashboard_v2_cards()
 function pg_dashboard_v2_card_timing()
 {
     return array(
-        'refresh' => array('engagement', 'firewall', 'visitors'),
+        'refresh' => array('engagement', 'firewall', 'visitors', 'mail'),
         'solo'    => array('gsearch', 'ga', 'flows'),
     );
 }
@@ -155,7 +157,23 @@ function pg_dashboard_v2_card_timing()
  */
 function pg_dashboard_v2_gates()
 {
-    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows');
+    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows', 'mail');
+}
+
+/**
+ * May the person see the Incoming e-mail card: whoever may open the tab of
+ * Communication (pg_messages_mail_visible(): mail is on and a mailbox
+ * writes where they read), while the unread marks' table is there, without
+ * which the screen refuses. The card lists what the tab lists, so it stands
+ * behind the tab's own gate. Pure.
+ *
+ * @param bool $visible pg_messages_mail_visible()
+ * @param bool $ready   ws_mail_reads_ready()
+ * @return bool
+ */
+function pg_dashboard_v2_mail_gate($visible, $ready)
+{
+    return (bool) $visible && (bool) $ready;
 }
 
 /**
@@ -230,6 +248,10 @@ function pg_dashboard_v2_gate($gate, $user)
         case 'flows':
             // What the Flows screen asks, with the Workspace on or off.
             return pg_flows_user_may($user);
+        case 'mail':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+            $visible = pg_messages_mail_visible($user);
+            return pg_dashboard_v2_mail_gate($visible, $visible && function_exists('ws_mail_reads_ready') && ws_mail_reads_ready());
     }
 
     return false;

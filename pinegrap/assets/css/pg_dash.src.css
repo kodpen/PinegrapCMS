@@ -5365,6 +5365,91 @@
     .pg-dash .pg-dash-ai-send { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
   }
 
+  /* ── Incoming e-mail card ─────────────────────────────────────────────── */
+
+  /* The head: the unread count, lit with the "New" badge's dot while there
+     is one, and the link to the tab at the other end. */
+  .pg-dash-mail-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .25rem .75rem;
+  }
+
+  .pg-dash-mail-count {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-mail-count[data-unread="1"] {
+    font-weight: 650;
+    color: var(--pgd-new);
+  }
+
+  .pg-dash-mail-count[data-unread="1"]::before {
+    content: "";
+    width: .375rem;
+    height: .375rem;
+    border-radius: 50%;
+    background: var(--pgd-new-dot);
+    box-shadow: 0 0 8px var(--pgd-new-dot);
+  }
+
+  /* A row: the sender and the time on one line, the subject under it; a
+     long one ends in an ellipsis instead of widening the card. */
+  .pg-dash-mail-top {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    min-width: 0;
+  }
+
+  .pg-dash-mail-who {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pg-dash-mail-row[data-unread] .pg-dash-mail-who {
+    font-weight: 650;
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-mail-time {
+    flex: none;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-mail-subject {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pg-dash-mail-row .pg-dash-item-link:hover .pg-dash-mail-who {
+    text-decoration: underline;
+  }
+
+  .pg-dash-mail-row .pg-dash-item-link:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-mail-count[data-unread="1"]::before { background: CanvasText; box-shadow: none; }
+  }
+
   /* ── Figures on hover and keyboard focus (pgDash.chartTips) ──────────── */
 
   /* The figure box sits in <body>, outside .pg-dash and its palette, so it

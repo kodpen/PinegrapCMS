@@ -1636,6 +1636,8 @@ function ws_claude_draft_accept($viewer, $draft_id)
         'due_date'    => $due,
         'channel_id'  => (int) $channel['id'],
         'assignees'   => $people,
+        // The assistant whose answer proposed it.
+        'app_id'      => ws_message_app_id((int) $draft['message_id']),
     );
 
     // The same clash check a task drawer makes: leave is a hard stop unless
@@ -2765,19 +2767,19 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
         }
 
         $summary_block = '
-                            <fieldset class="mb-5">
-                                <legend class="form-label">' . h(lang('Daily summary')) . '</legend>
+                            <fieldset class="ws-agset-section">
+                                <legend class="pg-group-label">' . h(lang('Daily summary')) . '</legend>
                                 <div class="row g-3">
                                     <div class="sm:col-4">
-                                        <label class="form-label small" for="ws_claude_summary_hour">' . h(lang('Hour')) . '</label>
-                                        <select class="form-control form-control-sm" name="' . $field_name('summary_hour') . '" id="ws_claude_summary_hour"' . $disabled . '>' . $hours . '</select>
+                                        <label class="pg-field-label" for="ws_claude_summary_hour">' . h(lang('Hour')) . '</label>
+                                        <select class="pg-input pg-input-sm" name="' . $field_name('summary_hour') . '" id="ws_claude_summary_hour"' . $disabled . '>' . $hours . '</select>
                                     </div>
                                     <div class="sm:col-8">
-                                        <label class="form-label small" for="ws_claude_summary_channel">' . h(lang('Channel')) . '</label>
-                                        <select class="form-control form-control-sm" name="' . $field_name('summary_channel') . '" id="ws_claude_summary_channel"' . $disabled . '>' . $channels . '</select>
+                                        <label class="pg-field-label" for="ws_claude_summary_channel">' . h(lang('Channel')) . '</label>
+                                        <select class="pg-input pg-input-sm" name="' . $field_name('summary_channel') . '" id="ws_claude_summary_channel"' . $disabled . '>' . $channels . '</select>
                                     </div>
                                 </div>
-                                <div class="form-text">' . h(lang('Every day at this hour Claude writes three lines on what is waiting into the channel, and the dashboard\'s Assistant card shows them. Each summary is one of the routine\'s daily runs.')) . '</div>
+                                <div class="pg-field-help">' . h(lang('Every day at this hour Claude writes three lines on what is waiting into the channel, and the dashboard\'s Assistant card shows them. Each summary is one of the routine\'s daily runs.')) . '</div>
                             </fieldset>';
     }
 
@@ -2806,13 +2808,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
     }
 
     // How it stands.
-    if (empty($missing)) {
-        $state = '<span class="badge theme-success">' . h(lang('Ready')) . '</span>';
-    } elseif (!$config['enabled']) {
-        $state = '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
-    } else {
-        $state = '<span class="badge theme-warning">' . h(lang('Not ready')) . '</span>';
-    }
+    $state = ws_assistant_state_pill($missing, $config['enabled']);
 
     $status_list = '';
 
@@ -2841,20 +2837,20 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
         }
 
         $recent .= '
-            <li class="ws-claude-recent-row">
+            <li class="pg-card-inner-row ws-claude-recent-row">
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>'
-                    . ($versions ? ' <span class="fg-secondary small" title="' . h(lang('The version of the rules its prompt ran with')) . '">· ' . h(lang('Rules')) . ' ' . h(pg_ai_prompt_version_label($row['prompt_version'] ?? '')) . '</span>' : '') . '
-                    <div class="small">' . h($line['label']) . '</div>
+                    <span class="pg-text-meta">· ' . h(ws_time_label($row['created_at'])) . '</span>'
+                    . ($versions ? ' <span class="pg-text-meta" title="' . h(lang('The version of the rules its prompt ran with')) . '">· ' . h(lang('Rules')) . ' ' . h(pg_ai_prompt_version_label($row['prompt_version'] ?? '')) . '</span>' : '') . '
+                    <div class="pg-text-2">' . h($line['label']) . '</div>
                 </div>'
-                . (($line['session_url'] !== '') ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '
+                . (($line['session_url'] !== '') ? '<a class="pg-icon-button pg-icon-button-sm" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '" aria-label="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '
             </li>';
     }
 
     if ($recent === '') {
-        $recent = '<li class="fg-secondary small">' . h(lang('Nobody has asked Claude yet.')) . '</li>';
+        $recent = '<li class="pg-card-inner-row pg-text-meta">' . h(lang('Nobody has asked Claude yet.')) . '</li>';
     }
 
     // The short prompt pasted on claude.ai: the rest is read from the site.
@@ -2901,19 +2897,19 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        ' . $button('claude_key_create', 'btn btn-sm btn-solid theme-primary rounded-pill px-5', '<i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Claude\'s key')), '', '
-                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It cannot propose page layouts or take translation jobs: add those permissions in Application Access if Claude should.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key mb-7');
+                        ' . $button('claude_key_create', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Create Claude\'s key')), '', '
+                            <div class="pg-field-help">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It cannot propose page layouts or take translation jobs: add those permissions in Application Access if Claude should.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key ws-agset-section mt-0');
     } elseif ($admin) {
         $key_block = '
-                        <div class="ws-claude-key mb-7">
-                            <div class="small fw-semibold mb-3">' . h(lang('The application Claude works through')) . ': ' . h($app['name']) . '</div>
-                            <label class="form-label small" for="ws-claude-key">' . h(lang('Key')) . '</label>
+                        <section class="ws-claude-key ws-agset-section mt-0">
+                            <h4 class="pg-group-label">' . h(lang('The application Claude works through')) . ': ' . h($app['name']) . '</h4>
+                            <label class="pg-field-label" for="ws-claude-key">' . h(lang('Key')) . '</label>
                             ' . $copy('ws-claude-key', (string) $app['api_key']) . '
-                            <div class="small mt-1 mb-5"><span class="font-monospace">' . h(lang('Secret')) . ': ••••' . h((string) $app['api_secret_hint']) . '</span> <span class="fg-secondary">' . h(lang('Only its last four characters are kept.')) . '</span></div>
-                            <label class="form-label small" for="ws-claude-key-prompt">' . h(lang('The prompt for the routine')) . '</label>
+                            <div class="pg-text-2 mt-1 mb-4"><span class="font-monospace">' . h(lang('Secret')) . ': ••••' . h((string) $app['api_secret_hint']) . '</span> <span class="pg-text-meta">' . h(lang('Only its last four characters are kept.')) . '</span></div>
+                            <label class="pg-field-label" for="ws-claude-key-prompt">' . h(lang('The prompt for the routine')) . '</label>
                             ' . $copy('ws-claude-key-prompt', $prompt, 4) . '
-                            ' . (((string) $app['kind'] === 'server') ? $button('claude_key_reset', 'btn btn-sm btn-outline theme-warning', '<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Reset secret')), lang('The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.'), '', 'mt-3') : '') . '
-                        </div>';
+                            ' . (((string) $app['kind'] === 'server') ? $button('claude_key_reset', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Reset secret')), lang('The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.'), '', 'mt-3') : '') . '
+                        </section>';
     }
 
     // The window with the key and the plain secret, drawn on the one request
@@ -2934,11 +2930,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                         ' . ws_claude_credentials_html($credentials, 'ws-claude-sheet') . '
                     </div>
                     <div class="dialog-footer">
-                        <div class="form-field me-auto">
-                            <input class="check" type="checkbox" id="ws-claude-sheet-ack">
-                            <label class="small" for="ws-claude-sheet-ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-solid theme-success" id="ws-claude-sheet-close" disabled>' . h(lang('Close')) . '</button>
+                        <label class="ws-agset-check pg-text-2 me-auto mt-0" for="ws-claude-sheet-ack"><input class="pg-checkbox" type="checkbox" id="ws-claude-sheet-ack"><span>' . h(lang('I have copied it and stored it somewhere safe')) . '</span></label>
+                        <button type="button" class="pg-button pg-button-fill pg-button-sm" id="ws-claude-sheet-close" disabled>' . h(lang('Close')) . '</button>
                     </div>
             </dialog>
         </div>';
@@ -2966,7 +2959,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
 
     if ($dialog && $admin && is_array($credentials) && (($credentials['agent'] ?? '') === 'claude')) {
         $key_block .= '
-                        <button type="button" class="btn btn-sm btn-outline theme-warning mb-7" data-ws-claude-secret-open data-bs-toggle="drawer" data-bs-target="#pgset-ws-claude-secret" aria-controls="pgset-ws-claude-secret"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Show the new secret')) . '</button>';
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm mb-5" data-ws-claude-secret-open data-bs-toggle="drawer" data-bs-target="#pgset-ws-claude-secret" aria-controls="pgset-ws-claude-secret"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Show the new secret')) . '</button>';
         $open_secret = '
         <script>
         (function () {
@@ -2996,55 +2989,52 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                         ' . ($dialog ? '<div class="ws-claude-connection">' : '<form method="post" action="' . h($self_url) . '#ws-claude">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="claude">') . '
-                            <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_claude_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
-                                <label class="" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
-                                <div class="form-text">' . h(lang('A run on the routine owner\'s claude.ai subscription answers the requests; each run counts against that account\'s daily allowance. Public channels are open to Claude, private ones only when their manager allows it.')) . ' ' . h(lang('A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.')) . '</div>
+                            <div class="d-flex align-items-start gap-3">
+                                <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_claude_enabled" aria-describedby="ws_claude_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
+                                <div><label class="pg-text-2" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
+                                <div class="pg-field-help" id="ws_claude_enabled-help">' . h(lang('A run on the routine owner\'s claude.ai subscription answers the requests; each run counts against that account\'s daily allowance. Public channels are open to Claude, private ones only when their manager allows it.')) . ' ' . h(lang('A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.')) . '</div></div>
                             </div>
-                            <details class="mb-5">
-                                <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
+                            <details class="ws-agset-section ws-agset-advanced">
+                                <summary class="pg-group-label">' . h(lang('Use another application')) . '</summary>
                                 <div class="mt-3">
-                                    <label class="form-label" for="ws_claude_app_id">' . h(lang('The application Claude works through')) . '</label>
-                                    <select class="form-control form-control-sm" name="' . $field_name('app_id') . '" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
-                                    <div class="form-text">' . h(empty($readable)
+                                    <label class="pg-field-label" for="ws_claude_app_id">' . h(lang('The application Claude works through')) . '</label>
+                                    <select class="pg-input pg-input-sm" name="' . $field_name('app_id') . '" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled pg-text-2 mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <div class="pg-field-help">' . h(empty($readable)
                                         ? lang('It reads no records: Claude sees the channels and the tasks only.')
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable)))) . '</div>
                                 </div>
                             </details>
-                            <div class="mb-5">
-                                <label class="form-label" for="ws_claude_routine_url">' . h(lang('The routine\'s address')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="url" name="' . $field_name('routine_url') . '" id="ws_claude_routine_url" value="' . h($config['routine_url']) . '" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off"' . $disabled . '>
+                            <div class="ws-agset-section">
+                                <label class="pg-field-label" for="ws_claude_routine_url">' . h(lang('The routine\'s address')) . '</label>
+                                <input class="pg-input pg-input-sm font-monospace" type="url" name="' . $field_name('routine_url') . '" id="ws_claude_routine_url" value="' . h($config['routine_url']) . '" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off"' . $disabled . '>
                             </div>
-                            <div class="mb-5">
-                                <label class="form-label" for="ws_claude_token">' . h(lang('The routine\'s token')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="password" name="' . $field_name('token') . '" id="ws_claude_token" value="" autocomplete="new-password" placeholder="' . h($config['token_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-ant-oat01-…') . '"' . $disabled . '>
+                            <div class="mt-4">
+                                <label class="pg-field-label" for="ws_claude_token">' . h(lang('The routine\'s token')) . '</label>
+                                <input class="pg-input pg-input-sm font-monospace" type="password" name="' . $field_name('token') . '" id="ws_claude_token" value="" autocomplete="new-password" aria-describedby="ws_claude_token-help" placeholder="' . h($config['token_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-ant-oat01-…') . '"' . $disabled . '>
                                 ' . ($config['token_set'] && $admin ? '
-                                <div class="form-field mt-1">
-                                    <input class="check" type="checkbox" name="' . $field_name('token_clear') . '" value="1" id="ws_claude_token_clear">
-                                    <label class="small" for="ws_claude_token_clear">' . h(lang('Remove the stored token')) . '</label>
-                                </div>' : '') . '
-                                <div class="form-text">' . h(lang('It is stored encrypted and never shown again. If it leaks, press Regenerate on claude.ai and enter the new one.')) . '</div>
+                                <label class="ws-agset-check pg-text-2" for="ws_claude_token_clear"><input class="pg-checkbox" type="checkbox" name="' . $field_name('token_clear') . '" value="1" id="ws_claude_token_clear"><span>' . h(lang('Remove the stored token')) . '</span></label>' : '') . '
+                                <div class="pg-field-help" id="ws_claude_token-help">' . h(lang('It is stored encrypted and never shown again. If it leaks, press Regenerate on claude.ai and enter the new one.')) . '</div>
                             </div>
                             ' . $summary_block . '
-                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>') : '<div class="form-text">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
+                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                         ' . ($dialog ? '</div>' : '</form>') . '
-                        <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
-                            <summary class="small fw-semibold">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
+                        <details class="ws-agset-section ws-agset-advanced ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
+                            <summary class="pg-group-label">' . h(lang('How to connect it')) . '</summary>
+                            <ol class="ws-claude-steps mt-4">' . $guide . '</ol>
                         </details>
                     </div>
                     <div class="lg:col-5">
                         <div class="ws-claude-status">
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            ' . (!empty($missing) ? '<h4 class="pg-group-label">' . h(lang('Still missing')) . '</h4><ul class="pg-text-2 mb-5">' . $status_list . '</ul>' : '') . '
                             ' . $error_note . '
                             ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ($admin && empty($missing) ? $button('claude_test', 'btn btn-sm btn-outline theme-secondary', '<i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')), '', '
-                                <div class="form-text">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>', 'mb-5') : '') . '
-                            <div class="small mb-5"><span class="fg-secondary">' . h(lang('Version of the instructions the site gives the routine')) . ':</span> <span class="font-monospace">' . h(ws_claude_instructions_version()) . '</span>
-                                <div class="form-text">' . h(lang('It changes with every update that changes them. A run takes a request only with the version it read at its start.')) . '</div></div>
-                            <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
-                            <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
+                            ' . ($admin && empty($missing) ? $button('claude_test', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection')), '', '
+                                <div class="pg-field-help">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>', 'mb-5') : '') . '
+                            <div class="pg-text-2 mb-5"><span class="pg-text-meta">' . h(lang('Version of the instructions the site gives the routine')) . ':</span> <span class="font-monospace">' . h(ws_claude_instructions_version()) . '</span>
+                                <div class="pg-field-help">' . h(lang('It changes with every update that changes them. A run takes a request only with the version it read at its start.')) . '</div></div>
+                            <h4 class="pg-group-label">' . h(lang('The latest requests')) . '</h4>
+                            <ul class="list-unstyled pg-card-inner ws-claude-recent">' . $recent . '</ul>
                         </div>
                     </div>
                 </div>
@@ -3074,6 +3064,26 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
             });
         })();
         </script>' . ws_claude_copy_script();
+}
+
+/**
+ * The state pill in the head of the Claude and Pinegrap AI cards: Ready when
+ * nothing is missing, else Off while switched off, else Not ready. Pure but
+ * for lang().
+ *
+ * @param string[] $missing what is still missing, as sentences
+ * @param bool     $enabled
+ * @return string HTML
+ */
+function ws_assistant_state_pill($missing, $enabled)
+{
+    if (empty($missing)) {
+        return '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>';
+    }
+
+    return $enabled
+        ? '<span class="pg-pill pg-tone-amber">' . h(lang('Not ready')) . '</span>'
+        : '<span class="pg-pill pg-tone-gray">' . h(lang('Off')) . '</span>';
 }
 
 /**
@@ -3154,11 +3164,11 @@ function ws_claude_copy_field($id, $value, $rows = 1, $label = '')
 {
     $name = ($label !== '') ? ' aria-label="' . h($label) . '"' : '';
     $field = ($rows > 1)
-        ? '<textarea class="form-control form-control-sm font-monospace" id="' . h($id) . '" rows="' . (int) $rows . '"' . $name . ' readonly>' . h($value) . '</textarea>'
-        : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '"' . $name . ' readonly>';
+        ? '<textarea class="pg-input font-monospace" id="' . h($id) . '" rows="' . (int) $rows . '"' . $name . ' readonly>' . h($value) . '</textarea>'
+        : '<input class="pg-input pg-input-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '"' . $name . ' readonly>';
 
     return '<div class="ws-claude-copy">' . $field
-        . '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
+        . '<button type="button" class="pg-icon-button pg-icon-button-sm no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
         . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span></div>';
 }
 
@@ -3176,24 +3186,25 @@ function ws_claude_credentials_html($credentials, $prefix)
 {
     return '
                         <p class="mb-5"><b>' . h(lang('Once this window is closed the secret is never shown again.')) . '</b></p>
-                        <label class="form-label small" for="' . h($prefix) . '-key">' . h(lang('Key')) . '</label>
+                        <label class="pg-field-label" for="' . h($prefix) . '-key">' . h(lang('Key')) . '</label>
                         ' . ws_claude_copy_field($prefix . '-key', (string) ($credentials['key'] ?? '')) . '
-                        <label class="form-label small mt-3" for="' . h($prefix) . '-secret">' . h(lang('Secret')) . '</label>
+                        <label class="pg-field-label mt-3" for="' . h($prefix) . '-secret">' . h(lang('Secret')) . '</label>
                         ' . ws_claude_copy_field($prefix . '-secret', (string) ($credentials['secret'] ?? '')) . '
-                        <label class="form-label small mt-3" for="' . h($prefix) . '-host">' . h(lang('Domain')) . '</label>
+                        <label class="pg-field-label mt-3" for="' . h($prefix) . '-host">' . h(lang('Domain')) . '</label>
                         ' . ws_claude_copy_field($prefix . '-host', (string) HOSTNAME_SETTING) . '
-                        <label class="form-label small mt-3" for="' . h($prefix) . '-prompt">' . h(lang('The prompt for the routine')) . '</label>
+                        <label class="pg-field-label mt-3" for="' . h($prefix) . '-prompt">' . h(lang('The prompt for the routine')) . '</label>
                         ' . ws_claude_copy_field($prefix . '-prompt', ws_claude_bootstrap_prompt(), 4) . '
-                        <div class="small fg-secondary mt-5">' . ws_claude_setup_credentials_text() . '</div>
+                        <div class="pg-text-2 mt-5">' . ws_claude_setup_credentials_text() . '</div>
                         <div class="alert theme-warning py-3 px-5 small mt-5 mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.')) . '</div>';
 }
 
 /**
  * The body of the Site Settings drawer with a new key and secret
- * (pgset-ws-claude-secret). Its own Close waits for the tick that says the
- * secret is kept; it closes the drawer and takes the secret out of the page.
- * The drawer's X, Escape and the scrim only hide it: the card's "Show the
- * new secret" opens it again until the pane is drawn anew.
+ * (pgset-ws-claude-secret). Its own Close, in the drawer's foot
+ * (ws_claude_credentials_drawer_foot_html()), waits for the tick that says
+ * the secret is kept; it closes the drawer and takes the secret out of the
+ * page. The drawer's X, Escape and the scrim only hide it: the card's "Show
+ * the new secret" opens it again until the pane is drawn anew.
  *
  * @param array $credentials key, secret
  * @return string HTML
@@ -3201,13 +3212,6 @@ function ws_claude_credentials_html($credentials, $prefix)
 function ws_claude_credentials_drawer_html($credentials)
 {
     return ws_claude_credentials_html($credentials, 'pgset-ws-claude-secret') . '
-                        <div class="d-flex flex-wrap align-items-center gap-3 mt-5">
-                            <div class="form-field me-auto">
-                                <input class="check" type="checkbox" id="pgset-ws-claude-secret-ack">
-                                <label class="small" for="pgset-ws-claude-secret-ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-solid theme-success" id="pgset-ws-claude-secret-done" disabled>' . h(lang('Close')) . '</button>
-                        </div>
                         <script>
                         (function () {
                             var drawer = document.getElementById(\'pgset-ws-claude-secret\');
@@ -3244,4 +3248,16 @@ function ws_claude_credentials_drawer_html($credentials)
                             });
                         })();
                         </script>';
+}
+
+/**
+ * The foot of the drawer with a new key and secret: the tick that says the
+ * secret is kept, and Close, which waits for it.
+ *
+ * @return string HTML
+ */
+function ws_claude_credentials_drawer_foot_html()
+{
+    return '<label class="ws-agset-check pg-text-2 me-auto mt-0" for="pgset-ws-claude-secret-ack"><input class="pg-checkbox" type="checkbox" id="pgset-ws-claude-secret-ack"><span>' . h(lang('I have copied it and stored it somewhere safe')) . '</span></label>'
+        . '<button type="button" class="pg-button pg-button-fill pg-button-sm" id="pgset-ws-claude-secret-done" disabled>' . h(lang('Close')) . '</button>';
 }

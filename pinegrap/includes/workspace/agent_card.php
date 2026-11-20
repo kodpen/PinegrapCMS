@@ -322,7 +322,9 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
 {
     $row = null;
 
-    foreach (ws_channel_agents($channel['id']) as $candidate) {
+    // In a discussion, the channel's agents asked there by name too
+    // (ws_channel_member_agent_list()).
+    foreach (ws_channel_member_agent_list($channel) as $candidate) {
         if ((int) $candidate['agent']['id'] === (int) $agent_id) {
             $row = $candidate;
             break;

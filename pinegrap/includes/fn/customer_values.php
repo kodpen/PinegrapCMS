@@ -157,14 +157,14 @@ function pg_customer_value_month_label($month)
 function pg_customer_value_state_new($started)
 {
     return array(
-        'v' => 1,
+        'v' => 2,
         'started' => (int) $started,
         'date' => 0,
         'id' => 0,
         'done' => 0,
         'total' => 0,
         'unplaced' => 0,
-        // key => "first,last,orders,value,recent,number,m.m.m"
+        // key => "first,last,orders,value,recent value,number,m.m.m,recent orders"
         'customers' => array(),
         // month => array(first orders, first value, returning orders, returning value, gap seconds, gaps)
         'months' => array(),
@@ -218,7 +218,8 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $time = (int) $order['order_date'];
         $month = pg_customer_value_month($time);
-        $recent = ($time >= $recent_from) ? $amount : 0;
+        $is_recent = ($time >= $recent_from);
+        $recent = $is_recent ? $amount : 0;
         $number = (int) $order['order_number'];
 
         if (!isset($state['months'][$month])) {
@@ -226,7 +227,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
         }
 
         if (!isset($state['customers'][$key])) {
-            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month;
+            $state['customers'][$key] = $time . ',' . $time . ',1,' . $amount . ',' . $recent . ',' . $number . ',' . $month . ',' . ($is_recent ? 1 : 0);
             $state['months'][$month][0]++;
             $state['months'][$month][1] += $amount;
             continue;
@@ -234,7 +235,7 @@ function pg_customer_value_add_rows(&$state, $rows, $base)
 
         $c = explode(',', $state['customers'][$key]);
         $gap = max(0, $time - (int) $c[1]);
-        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month;
+        $state['customers'][$key] = $c[0] . ',' . $time . ',' . ((int) $c[2] + 1) . ',' . ((int) $c[3] + $amount) . ',' . ((int) $c[4] + $recent) . ',' . $number . ',' . $c[6] . '.' . $month . ',' . ((int) $c[7] + ($is_recent ? 1 : 0));
         $state['months'][$month][2]++;
         $state['months'][$month][3] += $amount;
         $state['months'][$month][4] += $gap;
@@ -254,7 +255,9 @@ function pg_customer_value_state_encode($state)
 }
 
 /**
- * The state read back, or null when the text is not one.
+ * The state read back, or null when the text is not one. A state of an
+ * earlier shape (v 1 kept no recent orders) is not one either, so its pass
+ * starts again.
  *
  * @param string $text
  * @return array|null
@@ -263,7 +266,7 @@ function pg_customer_value_state_decode($text)
 {
     $state = @unserialize((string) $text, array('allowed_classes' => false));
 
-    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 1)) {
+    if (!is_array($state) || !isset($state['v'], $state['started'], $state['customers']) || ((int) $state['v'] !== 2)) {
         return null;
     }
 
@@ -453,7 +456,7 @@ function pg_customer_value_finish($state, $base)
         $cells[$age][$band][1] += $value;
 
         $top_all = _pg_customer_value_top_add($top_all, array((int) $c[5], $value, $orders));
-        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], $orders));
+        $top_year = _pg_customer_value_top_add($top_year, array((int) $c[5], (int) $c[4], (int) $c[7]));
     }
 
     $month_table = array();
@@ -1056,4 +1059,214 @@ function pg_customer_value_order_names($numbers)
 function pg_customer_value_too_little($summary)
 {
     return (int) ($summary['customers'] ?? 0) < 20;
+}
+
+/**
+ * The age rows of the groups table as the screen names them, youngest
+ * first (pg_customer_value_cell_age()).
+ *
+ * @return string[]
+ */
+function pg_customer_value_age_labels()
+{
+    return array(lang('Within 30 days'), lang('31 to 90 days'), lang('91 to 180 days'), lang('181 to 365 days'), lang('More than 365 days'));
+}
+
+/**
+ * The orders columns of the groups table as the screen names them
+ * (pg_customer_value_cell_band()).
+ *
+ * @return string[]
+ */
+function pg_customer_value_band_labels()
+{
+    return array(lang('1 order'), lang('2 to 3 orders'), lang('4 or more orders'));
+}
+
+/**
+ * The rules of a contact group filled by rules that stands for a cell of the
+ * groups table: the last order within the row's upper bound and not within
+ * its lower one, and the number of orders of the column. Only conditions the
+ * rule editor already knows (core/audiences-rules.md); null for a cell that
+ * does not exist. Pure.
+ *
+ * @param int $age  0 to 4
+ * @param int $band 0 to 2
+ * @return array|null array('match' => 'all', 'conditions' => [...])
+ */
+function pg_customer_value_cell_rules($age, $band)
+{
+    $ages = pg_customer_value_ages();
+    $age = (int) $age;
+    $band = (int) $band;
+
+    if (($age < 0) || ($age > count($ages)) || ($band < 0) || ($band > 2)) {
+        return null;
+    }
+
+    $conditions = array();
+
+    if ($age < count($ages)) {
+        $conditions[] = array('key' => 'last_order', 'op' => 'within', 'value' => $ages[$age]);
+    }
+
+    if ($age > 0) {
+        $conditions[] = array('key' => 'last_order', 'op' => 'not_within', 'value' => $ages[$age - 1]);
+    }
+
+    if ($band === 0) {
+        $conditions[] = array('key' => 'order_count', 'op' => 'eq', 'value' => 1);
+    } else {
+        $conditions[] = array('key' => 'order_count', 'op' => 'gte', 'value' => ($band === 1) ? 2 : 4);
+
+        if ($band === 1) {
+            $conditions[] = array('key' => 'order_count', 'op' => 'lte', 'value' => 3);
+        }
+    }
+
+    return array('match' => 'all', 'conditions' => $conditions);
+}
+
+/**
+ * The cell a "Make a contact group" button posts ('age-band'), or null for
+ * anything else. Pure.
+ *
+ * @param mixed $value
+ * @return array|null array(age, band)
+ */
+function pg_customer_value_cell_from($value)
+{
+    if (!is_string($value) || !preg_match('/^([0-4])-([0-2])$/', $value, $match)) {
+        return null;
+    }
+
+    return array((int) $match[1], (int) $match[2]);
+}
+
+/**
+ * The name a group made from a cell starts with: the cell's group, its
+ * orders column and its age row. Pure.
+ *
+ * @param int $age
+ * @param int $band
+ * @return string
+ */
+function pg_customer_value_cell_group_name($age, $band)
+{
+    $names = pg_customer_value_group_names();
+    $ages = pg_customer_value_age_labels();
+    $bands = pg_customer_value_band_labels();
+
+    return $names[pg_customer_value_cell_group($age, $band)] . ' · ' . $bands[$band] . ' · ' . $ages[$age];
+}
+
+/**
+ * The first of $name, "$name (2)", "$name (3)"… that is not in $taken, cut
+ * to the group name's 100 characters. Pure.
+ *
+ * @param string   $name
+ * @param string[] $taken
+ * @return string
+ */
+function pg_customer_value_free_name($name, $taken)
+{
+    $taken = array_flip(array_map('mb_strtolower', (array) $taken));
+
+    for ($i = 1; ; $i++) {
+        $suffix = ($i === 1) ? '' : ' (' . $i . ')';
+        $candidate = mb_substr($name, 0, 100 - mb_strlen($suffix)) . $suffix;
+
+        if (!isset($taken[mb_strtolower($candidate)])) {
+            return $candidate;
+        }
+    }
+}
+
+/**
+ * Whether $user may make a contact group from a cell: whoever may open the
+ * contact group screens and edit rules (the manager role up), once the
+ * upgrade has added the rule columns.
+ *
+ * @param array $user
+ * @return bool
+ */
+function pg_customer_value_may_make_groups($user)
+{
+    return pg_audience_ready() && ((int) $user['role'] < 3) && (bool) validate_contacts_access($user, true);
+}
+
+/**
+ * Makes a contact group filled by rules for a cell of the groups table, as
+ * the group editor would save it, and answers its id (0 on a failed
+ * query). The general job fills it; it counts as its rules do.
+ *
+ * @param array $user
+ * @param int   $age
+ * @param int   $band
+ * @return int
+ */
+function pg_customer_value_group_create($user, $age, $band)
+{
+    $rules = pg_customer_value_cell_rules($age, $band);
+
+    if ($rules === null) {
+        return 0;
+    }
+
+    $base = pg_customer_value_cell_group_name($age, $band);
+    $taken = array();
+    $result = db_q('SELECT name FROM contact_groups WHERE name LIKE ?', array(pg_list_like_pattern(mb_substr($base, 0, 90))));
+
+    if ($result !== false) {
+        while ($row = mysqli_fetch_row($result)) {
+            $taken[] = (string) $row[0];
+        }
+
+        mysqli_free_result($result);
+    }
+
+    $name = pg_customer_value_free_name($base, $taken);
+    $stored = json_encode(pg_audience_rules_clean($rules), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    $done = db_q(
+        "INSERT INTO contact_groups (name, description, email_subscription, email_subscription_type, kind, rules, computed_at,
+            created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
+        VALUES (?, ?, 0, 'open', 'dynamic', ?, 0, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())",
+        array($name, lang('Made from the Customers Report.'), $stored, (int) $user['id'], (int) $user['id']));
+
+    if ($done === false) {
+        return 0;
+    }
+
+    $id = (int) mysqli_insert_id(db::$con);
+
+    log_activity(lang(array('string' => 'contact group (name: {var:1}) was created', 'vars' => $name)), $_SESSION['sessionusername'] ?? '');
+
+    return $id;
+}
+
+/**
+ * The CSV of the top customers: a header, then each list's rows with the
+ * name read from the last order, its number, orders and value in the base
+ * currency. Only for a reader who may read contacts. Pure.
+ *
+ * @param array $summary
+ * @param array $names   pg_customer_value_order_names()
+ * @return string[] lines without their line ends
+ */
+function pg_customer_value_top_csv($summary, $names)
+{
+    $lines = array('list,rank,customer,last_order_number,orders,value,currency');
+    $unit = (string) ($summary['unit'] ?? '');
+
+    foreach (array('all', 'year') as $list) {
+        foreach (array_values((array) ($summary['top'][$list] ?? array())) as $i => $row) {
+            $number = (int) $row[0];
+            $name = isset($names[$number]) ? (string) $names[$number]['name'] : '';
+
+            $lines[] = $list . ',' . ($i + 1) . ',"' . csv_cell($name) . '",' . $number . ',' . (int) $row[2] . ',' . number_format((int) $row[1] / 100, 2, '.', '') . ',' . $unit;
+        }
+    }
+
+    return $lines;
 }

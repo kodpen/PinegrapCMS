@@ -1267,8 +1267,12 @@ $file['download_name'] = $file['name'];
 // WebP / AVIF, asked for as ?w=960&f=webp (includes/image_engine.php). It is
 // made on the first request and kept under data/cache/img. Whether this
 // visitor may have the file was decided above for the original and holds for
-// its derivatives. ERP documents, workspace files and form or comment
-// attachments are personal data and get no copies in the cache.
+// its derivatives. ERP documents and form or comment attachments are personal
+// data and get no copies in the cache. A workspace file gets one: its 320 px
+// copy in its own format, whatever else ?w= or ?f= ask, for a tile of the
+// channel's Files tab (ws_file_thumb_url()). It is the copy the API's
+// preview of the same picture already keeps (ws_file_preview()), sent only
+// after the Workspace checks above and never kept by a shared cache.
 //
 // Here, after the session and the connection were let go: making one can
 // take seconds, and nothing else waits on this request meanwhile.
@@ -1278,7 +1282,7 @@ if (
     (isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !== ''))
     && !$image_original_asked
     && ($erp_document === false)
-    && ($workspace_file === false)
+    && (($workspace_file === false) || isset($_GET['w']))
     && ($file['attachment'] != 1)
 ) {
     if (!defined('PG_GET_FILE')) {
@@ -1288,6 +1292,10 @@ if (
     require_once(dirname(__FILE__) . '/includes/image_engine.php');
 
     $derivative_request = pg_image_derivative_request($_GET);
+
+    if ($workspace_file && ($derivative_request !== null)) {
+        $derivative_request = array('width' => 320, 'format' => '');
+    }
 
     // The negotiated format at the asked width (0 = the picture's own).
     if ($image_negotiation['format'] !== '') {

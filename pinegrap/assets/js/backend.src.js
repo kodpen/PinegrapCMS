@@ -35,14 +35,14 @@ window.pgFoldTR = function (s) {
 // Whether a Site Settings card drawer opens again on the pane read back after
 // a save made from it. Not after a button that takes the record away (named
 // ..._delete, ..._remove, ..._archive): its drawer has nothing left to show.
-// Not from a drawer that adds a record (id ending in -0, -add, -new, or the
-// "Link a repository" drawer): once stored, the record has a drawer of its
-// own and the add form comes back empty. `button` is the named submit button
+// Not from a drawer that adds a record (id ending in -0, -add, -new): once
+// stored, the record has a drawer of its own and the add form comes back
+// empty. `button` is the named submit button
 // that started the save ({name, value}), null for the dialog's Save.
 window.pgSettingsKeepDrawer = function (drawer, button) {
     drawer = String(drawer || '');
 
-    if (!drawer || /-(0|add|new)$/.test(drawer) || (drawer === 'pgset-ws-github-link')) {
+    if (!drawer || /-(0|add|new)$/.test(drawer)) {
         return false;
     }
 
@@ -4026,7 +4026,7 @@ function pg_bell_tile(row, module) {
         software_update: 'bi-arrow-repeat', erp_overdue: 'bi-exclamation-triangle', erp_money: 'bi-cash-coin',
         erp_low_stock: 'bi-box-seam', erp_quote_expiry: 'bi-hourglass-split', erp_auto_invoice: 'bi-receipt',
         mail_failed: 'bi-envelope-exclamation', ops: 'bi-activity', workspace: 'bi-chat-dots',
-        whatsapp_message: 'bi-whatsapp'
+        whatsapp_message: 'bi-whatsapp', prototype_comment: 'bi-chat-square-text'
     };
     var action = String(row.action || '');
     var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : (glyphs[action] || 'bi-bell');
@@ -12045,7 +12045,8 @@ var pgSettingsModal = (function () {
      * How well one row answers the query, best first: 0 its name, 1 a
      * keyword that starts with the query, 2 a field label, 3 a keyword the
      * query starts with ("zaman" for "zaman damgasi sunucu"), 4 every word
-     * somewhere; -1 not at all. A keyword that holds only the query's first
+     * somewhere, 5 the name of an outside service the place holds; -1 not
+     * at all. A keyword that holds only the query's first
      * word ranks under a field label that holds all of it, so typing a
      * setting's full name brings its own card first.
      *
@@ -12108,14 +12109,29 @@ var pgSettingsModal = (function () {
         if (words.length > 1) {
 
             var all = fold([row.title, row.place].concat(keys, fields).join(' '));
+            var every = true;
 
             for (i = 0; i < words.length; i++) {
                 if (words[i] && (all.indexOf(words[i]) === -1)) {
-                    return { rank: -1, field: '', fit: 0 };
+                    every = false;
+                    break;
                 }
             }
 
-            return { rank: 4, field: '', fit: 0 };
+            if (every) {
+                return { rank: 4, field: '', fit: 0 };
+            }
+        }
+
+        // Last, the names of the outside services the place holds: they
+        // only add hits after every other one, so none they bring pushes
+        // an earlier hit out of the list.
+        var services = row.services || [];
+
+        for (i = 0; i < services.length; i++) {
+            if (wordStarts(services[i], q)) {
+                return { rank: 5, field: '', fit: (fold(services[i]) === q) ? 1 : 0 };
+            }
         }
 
         return { rank: -1, field: '', fit: 0 };
@@ -13395,9 +13411,21 @@ window.pgCodeEditorReady = function (markup, done) {
             // Otherwise the pane comes back where it was, with the drawer the
             // save came from, and "saved" is one toast in the dialog: a notice
             // at the top of the form would be out of sight.
+            // The read itself can have something to say: E-mail sending's
+            // "Save and send a test" sends from the pane read after the save,
+            // whose constants hold the saved settings. A warning or an error
+            // there stays at the top of the pane; a notice joins the toast.
             load(pane, place).done(function (answer) {
                 if (answer && (answer.status === 'success')) {
-                    confirmSave(response.notices);
+
+                    var later = ((answer.errors || []).join(' ') + ' ' + words(answer.warnings)).trim();
+
+                    if (later) {
+                        notice(said, false, later);
+                        return;
+                    }
+
+                    confirmSave((answer.notices || []).concat(response.notices || []));
                 }
             });
 
@@ -13636,6 +13664,17 @@ window.pgCodeEditorReady = function (markup, done) {
             if ((!here) || (href.indexOf(here + '/') !== 0)) {
                 return null;
             }
+        }
+
+        // SMTP Settings is the E-mail sending category now; its card anchors
+        // are in the map.
+        hit = href.match(/(?:^|\/)smtp_settings\.php(?:\?[^#]*)?(?:#([a-z0-9_-]+))?$/i);
+
+        if (hit) {
+
+            var mailCard = (hit[1] && anchors[hit[1].toLowerCase()]) ? String(anchors[hit[1].toLowerCase()]).split('|') : ['mail_sending', ''];
+
+            return known(mailCard[0]) ? { pane: mailCard[0], section: mailCard[1] || '' } : null;
         }
 
         // A settings screen, the hub, or the single screen they replace. Every

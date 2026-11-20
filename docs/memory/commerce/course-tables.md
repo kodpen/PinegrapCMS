@@ -31,3 +31,4 @@ module: courses
 
 ## Where does progress go with personal data?
 - The export's `courses` section and the erasure's `course_progress` row (delete by user, under "Course progress"); the course and lessons stay.
+- A deleted account takes its progress rows with it: `pg_user_delete()` calls `pg_course_forget_user()` before the account row goes, so a new account given the same id inherits no lessons done or completion, and the Courses list stops counting the member.

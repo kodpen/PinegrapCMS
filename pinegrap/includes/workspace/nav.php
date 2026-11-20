@@ -53,6 +53,12 @@ function ws_nav_groups($viewer, $flags = null)
             // Each person's own accounts on the MCP servers and their tool
             // forms, while a server is on (mcp_form.php).
             'mcp'           => function_exists('ws_mcp_active_servers') && (bool) ws_mcp_active_servers(),
+            // A booking staff member's own meeting link (booking_link_screen.php).
+            'meeting_link'  => function_exists('pg_booking_link_screen_member') && isset($viewer['id'])
+                && (pg_booking_link_screen_member((int) $viewer['id']) !== null),
+            // The general memory the agent channels share, for whoever may
+            // post in one of them (channel_memory.php).
+            'memory'        => function_exists('ws_memory_general_can') && ws_memory_general_can($viewer),
         );
     }
 
@@ -110,6 +116,16 @@ function ws_nav_groups($viewer, $flags = null)
         $groups['more'][] = array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php');
     }
 
+    if (!empty($flags['meeting_link'])) {
+        $groups['more'][] = array('key' => 'meeting_link', 'label' => lang('My meeting link'), 'icon' => 'bi-person-video3', 'url' => $base . 'workspace_meeting_link.php');
+    }
+
+    // Read outside a channel too, so a new agent channel finds what the
+    // old ones kept; it opens as a drawer on the channel screen.
+    if (!empty($flags['memory'])) {
+        $groups['more'][] = array('key' => 'memory', 'label' => lang('General memory'), 'icon' => 'bi-journal-bookmark', 'url' => $base . 'workspace.php?view=home&panel=memory');
+    }
+
     $groups['more'][] = array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived');
 
     // The private channels' audit is staff's (ws_viewer(): role below 3).
@@ -156,6 +172,7 @@ function ws_side_screen($script)
         'workspace_calendar.php'      => 'calendar',
         'workspace_my_calendar.php'   => 'my_calendar',
         'workspace_calendar_feed.php' => 'calendar_feed',
+        'workspace_meeting_link.php'  => 'meeting_link',
         'workspace_timeline.php'      => 'timeline',
         'workspace_flows.php'         => 'flows',
         'workspace_mcp.php'           => 'mcp',

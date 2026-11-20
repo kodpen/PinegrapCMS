@@ -1672,7 +1672,7 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
 
     $script = strtolower(basename(str_replace('\\', '/', (string) $script)));
 
-    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php', 'address_suggest.php', 'sms_code.php', 'consent_answer.php', 'track_shipment.php'), true)
+    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php', 'address_suggest.php', 'sms_code.php', 'consent_answer.php', 'track_shipment.php', 'course_action.php'), true)
         || (strpos($script, 'workspace') === 0)) {
         return false;
     }
@@ -1748,6 +1748,7 @@ function pg_page_cache_panel_sub_actions()
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
                 'theme_look_css', 'theme_palette_css',
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
+                'proto_comments', 'proto_comment_answer', 'proto_comment_resolve', 'proto_comment_delete', 'proto_comment_task',
                 'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
         ),
         'designer_file' => array(

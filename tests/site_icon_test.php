@@ -86,8 +86,23 @@ function test_site_icon_manifest()
 	), $png['icons']);
 
 	$svg = pg_site_icon_manifest('svg', '', '/site/', '/site/mark.svg', '');
+	pg_assert_same('browser', $svg['display']);
 	pg_assert_false(isset($svg['name']), 'no empty name');
+
+	// App mode (N17) asks for standalone; any other word stays browser.
+	pg_assert_same('standalone', pg_site_icon_manifest('png', 'Kodpen', '/', '/logo.png', '', 'standalone')['display']);
+	pg_assert_same('browser', pg_site_icon_manifest('png', 'Kodpen', '/', '/logo.png', '', 'fullscreen')['display']);
 	pg_assert_same(array(array('src' => '/site/mark.svg', 'sizes' => 'any', 'type' => 'image/svg+xml')), $svg['icons']);
+}
+
+// get_site_icon.php takes the display from app mode and keeps it in the
+// validator, so a switch changes a cached manifest's answer.
+function test_site_icon_manifest_app_mode_wiring()
+{
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_site_icon.php');
+	pg_assert_contains('pg_site_push_app_display(pg_site_push_app_mode())', $php);
+	pg_assert_contains('$site_icon_stamp, $site_icon_display)', $php);
+	pg_assert_contains("(\$site_icon_display === 'standalone') ? '-app' : ''", $php);
 }
 
 // The engine draws every size from a large PNG and keeps a small one as it

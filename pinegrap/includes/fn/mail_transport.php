@@ -570,8 +570,8 @@ function pg_mail_transport_settings_fields()
             }
 
             $pane .= '
-                <div class="col-12 md:col-6 my-3">
-                    <label for="' . h($id) . '" class="form-label">' . h($field['label']) . '</label>
+                <div class="col-12">
+                    <label for="' . h($id) . '" class="form-label pg-field-label">' . h($field['label']) . '</label>
                     ' . $input . $help . '
                 </div>';
         }
@@ -580,19 +580,23 @@ function pg_mail_transport_settings_fields()
 
         $panes .= '
             <div class="row" data-mail-transport="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>' . $pane . '
-                <div class="col-12 form-text"><a href="' . h($transport['portal']) . '" target="_blank" rel="noopener noreferrer">' . h(lang(array('string' => 'Your {var:1} account', 'vars' => $transport['label']))) . '</a></div>
+                <div class="col-12 pg-text-meta"><a href="' . h($transport['portal']) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> ' . h(lang(array('string' => 'Your {var:1} account', 'vars' => $transport['label']))) . '</a></div>
             </div>';
     }
 
     $options = str_replace('<option value="' . h($shown) . '">', '<option value="' . h($shown) . '" selected>', $options);
 
+    // One settings row for the choice; the chosen service's rows follow in
+    // their own .row, which the script shows and hides.
     return '
-        <div class="my-3">
-            <label for="mail_transport" class="form-label">' . h(lang('Send through')) . '</label>
-            <select name="mail_transport" id="mail_transport" class="form-control">' . $options . '</select>
-            <div class="form-text">' . h(lang('A sending service takes the e-mail of the site over its API instead of the SMTP server. A connected account chosen below still sends its kind of mail. The domain of the From address must be verified with the service.')) . '</div>
+        <div class="row">
+            <div class="col-12">
+                <label for="mail_transport" class="form-label pg-field-label">' . h(lang('Send through')) . '</label>
+                <select name="mail_transport" id="mail_transport" class="form-control">' . $options . '</select>
+                <div class="form-text">' . h(lang('A sending service takes the e-mail of the site over its API instead of the SMTP server. A connected account chosen below still sends its kind of mail. The domain of the From address must be verified with the service.')) . '</div>
+            </div>
         </div>'
-        . (($warning !== '') ? '<div class="alert theme-warning">' . h($warning) . '</div>' : '')
+        . (($warning !== '') ? '<div class="alert theme-warning small my-3">' . h($warning) . '</div>' : '')
         . $panes;
 }
 

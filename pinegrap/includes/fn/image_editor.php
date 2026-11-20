@@ -1055,58 +1055,16 @@ function pg_image_editor_save($request, $user)
     $edit = $check['edit'];
     $edit['first_frame'] = ($mode === 'copy');
     $name = (string) $file['row']['name'];
-    $overlay = '';
 
-    // The canvas grown or trimmed around the picture; the overlay is drawn
-    // at its size.
-    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+    // The canvas grown or trimmed, the overlay and the masks the browser drew.
+    $parts = pg_image_editor_photo_parts($edit, $request, $name);
 
-    if ($extend === false) {
+    if ($parts === false) {
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    if ($extend) {
-        $edit['extend'] = $extend;
-    }
-
-    if (!empty($request['overlay'])) {
-        $overlay = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.overlay.tmp';
-
-        if (!pg_image_editor_take_png($request['overlay'], $overlay, $extend ? $extend['w'] : $edit['out_w'], $extend ? $extend['h'] : $edit['out_h'])) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        $edit['overlay'] = $overlay;
-    }
-
-    // Step 4, the redaction: masks the browser drew of each area, burned in
-    // by the engine after the colour step and before the overlay.
-    $redactions = pg_image_editor_take_redactions(isset($request['redact']) ? $request['redact'] : null, $edit, FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()));
-
-    if ($redactions === false) {
-        @unlink($overlay);
-        return pg_image_editor_refusal(lang('Invalid request.'));
-    }
-
-    if ($redactions) {
-        $edit['redact'] = $redactions;
-    }
-
-    // The selection's areas (Erase, Adjust inside), before the redaction.
-    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.m');
-
-    if ($masks === false) {
-        @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
-        return pg_image_editor_refusal(lang('Invalid request.'));
-    }
-
-    if ($masks) {
-        $edit['masks'] = $masks;
-    }
-
+    list($edit, $parts) = $parts;
     $source = $file['path'];
-    $layer = '';
     $base = null;
     $base_id = isset($request['base']) ? (int) $request['base'] : 0;
 
@@ -1118,16 +1076,14 @@ function pg_image_editor_save($request, $user)
             $base = pg_file_versions_before_save((int) $file['row']['id'], $file['path'], $base_id, $user['id']);
 
             if (!$base) {
-                @unlink($overlay);
-                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
+                pg_image_editor_photo_parts_drop($parts);
                 return pg_image_editor_refusal(($base_id > 0) ? lang('Invalid request.') : lang('Sorry, the file could not be saved.'));
             }
         } elseif ($base_id > 0) {
             $base = pg_file_versions_row((int) $file['row']['id'], $base_id);
 
             if (!$base || ((string) $base['doc_json'] !== '')) {
-                @unlink($overlay);
-                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
+                pg_image_editor_photo_parts_drop($parts);
                 return pg_image_editor_refusal(lang('Invalid request.'));
             }
         }
@@ -1136,65 +1092,18 @@ function pg_image_editor_save($request, $user)
             $source = pg_file_versions_path($base);
         }
     } elseif ($base_id > 0) {
-        @unlink($overlay);
-        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
+        pg_image_editor_photo_parts_drop($parts);
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    // The picture as it was opened, for its camera details and the quality
-    // a JPEG was saved at.
-    $picture = $source;
-    $export = pg_image_editor_export_start($export, $request, $picture);
+    $pixels = pg_image_editor_photo_pixels($edit, $parts, $request, $file, $source, $export);
 
-    // A server without Imagick has no colour matrix: the browser sends the
-    // picture it loaded with the colour step done (the colour layer), of its
-    // shape and no larger, and the rest is drawn from that in the file's type.
-    if (!empty($request['colour']) && !empty($edit['color'])) {
-        $layer = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.colour.tmp';
-        $size = pg_image_editor_take_picture($request['colour'], $layer);
-        $width = ($edit['rot'] % 180) ? $edit['space_h'] : $edit['space_w'];
-        $height = ($edit['rot'] % 180) ? $edit['space_w'] : $edit['space_h'];
-
-        if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
-            @unlink($layer);
-            @unlink($overlay);
-            pg_image_editor_drop_redactions(array_merge($redactions, $masks));
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        $source = $layer;
-        $edit['color'] = null;
-        $edit['type'] = $file['type'];
-
-    } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
-        @unlink($overlay);
-        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
-        return pg_image_editor_refusal(lang('Invalid request.'));
+    if ($pixels['refusal']) {
+        return $pixels['refusal'];
     }
 
-    // Encoded in the file's own format and size at the quality the panel
-    // opens on: 92, or a JPEG's own quality when lower, so a turn, a flip or
-    // a crop is not heavier than its original
-    // (pg_image_editor_export_start()). The export panel's settings change
-    // these.
-    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
-    $report = pg_image_edit_apply($source, $edit, $engine);
-
-    if ($overlay !== '') {
-        @unlink($overlay);
-    }
-
-    if ($layer !== '') {
-        @unlink($layer);
-    }
-
-    pg_image_editor_drop_redactions(array_merge($redactions, $masks));
-
-    if (($report['status'] !== 'success') || !is_string($report['data'])) {
-        return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
-    }
-
-    $report['data'] = pg_image_editor_export_camera($report['data'], $export, $picture);
+    $report = array('data' => $pixels['data']);
+    $export = $pixels['export'];
 
     if ($mode === 'copy') {
         $name = get_unique_name(array('name' => prepare_file_name(($export['format'] !== '') ? pg_image_editor_export_name($name, $export['format']) : $name), 'type' => 'file'));
@@ -1217,10 +1126,155 @@ function pg_image_editor_save($request, $user)
     }
 
     if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
-        pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($redactions));
+        pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($edit['redact']));
     }
 
     return $record;
+}
+
+/**
+ * The parts of a photo's save the browser drew beside its document, taken
+ * into temporary files and named in the recipe: the canvas grown or trimmed
+ * around the picture (extend), the overlay of the layers drawn at that size,
+ * the redaction's masks and the selection's areas.
+ *
+ * @param array  $edit    the recipe of pg_image_edit_validate()
+ * @param array  $request the save's request (extend, overlay, redact, masks)
+ * @param string $name    the file's stored name, the temporary files' stem
+ * @return array|false array(recipe, parts for pg_image_editor_photo_pixels())
+ *                     or false when one is refused (nothing is left behind)
+ */
+function pg_image_editor_photo_parts($edit, $request, $name)
+{
+    $stem = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid());
+    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+    $overlay = '';
+
+    if ($extend === false) {
+        return false;
+    }
+
+    if ($extend) {
+        $edit['extend'] = $extend;
+    }
+
+    if (!empty($request['overlay'])) {
+        $overlay = $stem . '.overlay.tmp';
+
+        if (!pg_image_editor_take_png($request['overlay'], $overlay, $extend ? $extend['w'] : $edit['out_w'], $extend ? $extend['h'] : $edit['out_h'])) {
+            return false;
+        }
+
+        $edit['overlay'] = $overlay;
+    }
+
+    // Step 4, the redaction: masks the browser drew of each area, burned in
+    // by the engine after the colour step and before the overlay.
+    $redactions = pg_image_editor_take_redactions(isset($request['redact']) ? $request['redact'] : null, $edit, $stem);
+
+    if ($redactions === false) {
+        @unlink($overlay);
+        return false;
+    }
+
+    if ($redactions) {
+        $edit['redact'] = $redactions;
+    }
+
+    // The selection's areas (Erase, Adjust inside), before the redaction.
+    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, $stem . '.m');
+
+    if ($masks === false) {
+        @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
+        return false;
+    }
+
+    if ($masks) {
+        $edit['masks'] = $masks;
+    }
+
+    return array($edit, array('overlay' => $overlay, 'masks' => array_merge($redactions, $masks)));
+}
+
+// The temporary files of pg_image_editor_photo_parts(), removed.
+function pg_image_editor_photo_parts_drop($parts)
+{
+    if ($parts['overlay'] !== '') {
+        @unlink($parts['overlay']);
+    }
+
+    pg_image_editor_drop_redactions($parts['masks']);
+}
+
+/**
+ * A photo's pixels from its source as a save makes them: the colour step
+ * (from the browser's colour layer on a server without Imagick), the
+ * recipe and the parts through the image engine, encoded in the file's
+ * format or the export's, with the camera details the export keeps. The
+ * parts' files are removed either way.
+ *
+ * @param array  $edit    the recipe with its parts
+ * @param array  $parts   pg_image_editor_photo_parts()
+ * @param array  $request the save's request (colour, export)
+ * @param array  $file    pg_image_editor_file()
+ * @param string $source  the pixels the document is drawn on
+ * @param array  $export  pg_image_editor_export_options()
+ * @return array refusal (or null), data (the bytes), export
+ */
+function pg_image_editor_photo_pixels($edit, $parts, $request, $file, $source, $export)
+{
+    $name = (string) $file['row']['name'];
+    $layer = '';
+
+    // The picture as it was opened, for its camera details and the quality
+    // a JPEG was saved at.
+    $picture = $source;
+    $export = pg_image_editor_export_start($export, $request, $picture);
+
+    // A server without Imagick has no colour matrix: the browser sends the
+    // picture it loaded with the colour step done (the colour layer), of its
+    // shape and no larger, and the rest is drawn from that in the file's type.
+    if (!empty($request['colour']) && !empty($edit['color'])) {
+        $layer = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.colour.tmp';
+        $size = pg_image_editor_take_picture($request['colour'], $layer);
+        $width = ($edit['rot'] % 180) ? $edit['space_h'] : $edit['space_w'];
+        $height = ($edit['rot'] % 180) ? $edit['space_w'] : $edit['space_h'];
+
+        if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
+            @unlink($layer);
+            pg_image_editor_photo_parts_drop($parts);
+            return array('refusal' => pg_image_editor_refusal(lang('Invalid request.')), 'data' => null, 'export' => $export);
+        }
+
+        $source = $layer;
+        $edit['color'] = null;
+        $edit['type'] = $file['type'];
+
+    } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
+        pg_image_editor_photo_parts_drop($parts);
+        return array('refusal' => pg_image_editor_refusal(lang('Invalid request.')), 'data' => null, 'export' => $export);
+    }
+
+    // Encoded in the file's own format and size at the quality the panel
+    // opens on: 92, or a JPEG's own quality when lower, so a turn, a flip or
+    // a crop is not heavier than its original
+    // (pg_image_editor_export_start()). The export panel's settings change
+    // these.
+    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
+    $report = pg_image_edit_apply($source, $edit, $engine);
+
+    if ($layer !== '') {
+        @unlink($layer);
+    }
+
+    pg_image_editor_photo_parts_drop($parts);
+
+    if (($report['status'] !== 'success') || !is_string($report['data'])) {
+        return array('refusal' => pg_image_editor_refusal(pg_image_editor_report_message($report, $name)), 'data' => null, 'export' => $export);
+    }
+
+    return array('refusal' => null, 'data' => pg_image_editor_export_camera($report['data'], $export, $picture), 'export' => $export);
 }
 
 // A value of json_decode() without assoc as json_decode($body, true) gives
@@ -1750,7 +1804,7 @@ function pg_image_editor_action_sticker_files($request, $user)
     $rows = ($where === null) ? array() : db_items(
         "SELECT id, name, type, folder, image_width, image_height
         FROM files
-        WHERE $where
+        WHERE $where" . pg_picture_tr_hidden_sql('id') . "
         ORDER BY timestamp DESC
         LIMIT 60");
 
@@ -2514,7 +2568,7 @@ function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id, $re
 
     // The texts of the picture are the kept document's now (none when it
     // could not be kept), and its languages' pictures are out of date.
-    pg_picture_tr_saved($file_id, ($json !== '') ? json_decode($json, true) : null);
+    pg_picture_tr_saved($file_id, ($json !== '') ? json_decode($json, true) : null, $user_id);
 }
 
 // A version as the drawer lists it: kind original, restored, redacted or
@@ -2650,7 +2704,7 @@ function pg_image_editor_action_restore($request, $user)
     if ((int) $row['version_id'] !== (int) ($newest ? $newest['version_id'] : 0)) {
         pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id'], (int) $row['redacted'] === 1);
         pg_file_versions_prune($file_id);
-        pg_picture_tr_saved($file_id, pg_picture_tr_row_doc($row));
+        pg_picture_tr_saved($file_id, pg_picture_tr_row_doc($row), $user['id']);
     }
 
     $state = pg_file_versions_open_state($file_id, $file['path']);
@@ -2747,7 +2801,52 @@ function pg_image_editor_strings_artboard()
         'importComputer'    => lang('From this computer'),
         'importSite'        => lang('From the site'),
         'importError'       => lang('This file cannot be imported.'),
+        'languages'         => lang('Languages'),
+        'langNote'          => lang('Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
+        'langUnsaved'       => lang('Changes not saved yet are not in these pictures.'),
+        'langLoading'       => lang('Loading…'),
+        'langError'         => lang('The languages could not be loaded.'),
+        'langNone'          => lang('This picture has no words to translate.'),
+        'langCount'         => lang('{n} of {m} texts translated'),
+        'langNotTranslated' => lang('Not translated'),
+        'langTranslated'    => lang('Translated'),
+        'langDrawn'         => lang('Picture drawn'),
+        'langOutOfDate'     => lang('Out of date'),
+        'langLook'          => lang('Look by hand'),
+        'langLookNote'      => lang('A text did not fit even at the smallest size: check this picture.'),
+        'langRtl'           => lang('Right to left: the source picture is shown.'),
+        'langOutOfDateNote' => lang('Visitors see the source picture until this one is drawn again.'),
+        'langOpen'          => lang('Open the picture: {name}'),
+        'langMissing'       => lang('{n} texts are not translated yet: visitors see the source picture.'),
+        'langMissingOne'    => lang('1 text is not translated yet: visitors see the source picture.'),
+        'langSame'          => lang('A text that stays the same in every language, such as a brand name, is translated by typing the same word.'),
+        'langDraw'          => lang('Draw'),
+        'langDrawAll'       => lang('Draw all'),
+        'langDrawing'       => lang('Drawing…'),
+        'langDrawError'     => lang('The picture could not be drawn.'),
     );
+}
+
+/**
+ * Action picture_languages: the Languages list of a canvas file
+ * (pg_picture_tr_languages_answer()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_picture_languages($request, $user)
+{
+    return pg_picture_tr_languages_answer($request, $user);
+}
+
+/**
+ * Action picture_language_draw: a language's picture drawn in the browser
+ * (pg_picture_tr_draw_answer()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_picture_language_draw($request, $user)
+{
+    return pg_picture_tr_draw_answer($request, $user);
 }
 
 /**
@@ -3089,7 +3188,7 @@ function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new', 
     // The texts of the canvas are the kept document's (none when it was not
     // kept: the file holds flat pixels now).
     if ($words) {
-        pg_picture_tr_saved($file_id, $kept ? json_decode($json, true) : null);
+        pg_picture_tr_saved($file_id, $kept ? json_decode($json, true) : null, $user_id);
     }
 
     return $kept;
@@ -5579,6 +5678,10 @@ function pg_image_editor_strings_actions()
         'actMotion'      => lang('Motion'),
         'actMore'        => lang('More'),
         'actMoreOptions' => lang('More options'),
+        'actNudgeLeft'   => lang('Move left'),
+        'actNudgeUp'     => lang('Move up'),
+        'actNudgeDown'   => lang('Move down'),
+        'actNudgeRight'  => lang('Move right'),
     );
 }
 
@@ -5711,6 +5814,9 @@ function pg_image_editor_strings_follow()
         'followNote'      => lang('Follow moves the layer with an area of a video from the playhead on. A clip trimmed, moved, split or sped up later is not followed again by itself: press Follow again.'),
         'followHint'      => lang('Drag a box over what to follow · Esc cancels'),
         'followHintRun'   => lang('Following the area through the video · Esc cancels'),
+        // On a touch screen the hints name no key.
+        'followHintTouch'    => lang('Drag a box over what to follow'),
+        'followHintRunTouch' => lang('Following the area through the video'),
         'followNoVideo'   => lang('Move the playhead onto a video first.'),
         'followShort'     => lang('Less than 0.2 s of the video is left from the playhead. Move the playhead back.'),
         'followBusy'      => lang('Following…'),

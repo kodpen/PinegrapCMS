@@ -1194,7 +1194,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name,
     if (((int) $contact['file_id'] != 0) && ((string) $file_name !== '')) {
         $picture = $lazy . h(pg_file_stamped_address(PATH, $file_name, $contact['file_timestamp'] ?? 0)) . '" />';
     } elseif (((int) $contact['file_id'] == 0) && $contact['image']) {
-        $picture = $lazy . h($contact['image']) . '" />';
+        $picture = $lazy . h(pg_contact_image_address($contact['image'])) . '" />';
     } else {
         // No picture: the letters of the name (includes/fn/contacts.php).
         $picture = pg_avatar_markup_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '', 'pg-avatar-50');

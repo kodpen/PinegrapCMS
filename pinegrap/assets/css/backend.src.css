@@ -1911,6 +1911,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-contacts { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-users { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-communication { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-mail { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-erp { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-orders { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-products { --pg-mi-a: var(--pg-mi-amber); }
@@ -2128,6 +2129,11 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-users .pg-mi-front {
     animation: pg-mi-bob 0.55s 0.1s ease-out;
+  }
+
+  /* Incoming e-mail (pinned): the letter comes up out of the envelope. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-mail .pg-mi-sheet {
+    transform: translateY(-3px);
   }
 
   /* Communication: the outgoing arrow slides out, the incoming one slides in
@@ -11436,6 +11442,21 @@ body.pg-side-panel-open .pg-chat-launcher {
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
+/* A drawer's own buttons (Save, Try, Delete): a foot under the scrolling
+   body, always in view. */
+.pg-sm-drawer-foot {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: .75rem 1.25rem;
+  border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-body);
+}
+.pg-set-drawer-foot {
+  justify-content: flex-start;
+}
 /* Tapping beside the drawer closes it; the pane shows dimmed through. */
 .pg-sm-dscrim {
   position: absolute;
@@ -11477,6 +11498,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-drawer { width: 100%; }
   .pg-sm-drawer-head { padding-inline: .875rem; }
   .pg-sm-drawer-body { padding: 1rem .875rem; }
+  .pg-sm-drawer-foot { padding-inline: .875rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pg-sm-drawer,
@@ -12631,6 +12653,54 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-guests .ws-info-person-role {
   white-space: normal;
 }
+/* An agent's row in a narrow column: the name and its role stay on the
+   first line with the last seen at its right, the role is the part cut;
+   the badges move to the next line whole; the line under it wraps. */
+.ws-info-agents .ws-info-person {
+  align-items: flex-start;
+}
+.ws-info-agents .ws-info-person-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .15rem .4rem;
+  overflow: visible;
+  white-space: normal;
+}
+.ws-info-agent-title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .4rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ws-info-agent-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-role {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-info-agent-badges .ws-info-badge {
+  margin-left: 0;
+}
+.ws-info-agents .ws-info-person-role {
+  white-space: normal;
+}
+.ws-info-agents .ws-info-seen {
+  margin-top: .1rem;
+}
 /* Channel info's agents and last seen: an agent's face is a rounded square
    with its mark, a person's stays round; the last seen sits at the right. */
 .avatar.ws-agent-face {
@@ -12788,9 +12858,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-cha-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+/* The chosen agent is read whole: the list is as wide as its longest
+   agent, and when it and the button do not fit side by side it takes a row
+   of its own and the button goes under. */
+.ws-cha-add > select {
+  flex: 1 0 auto;
+  width: auto;
+  max-width: 100%;
+}
+.ws-cha-add > button {
+  flex: none;
 }
 @media (max-width: 575.98px) {
   .ws-cha-head {
@@ -12813,6 +12895,130 @@ body.workspace .ws-shell-main > #button_bar {
     order: 3;
     max-width: calc(100% - 52px);
     margin-inline-start: 52px;
+  }
+}
+/* Site Settings' agents card (agents_settings.php): each agent a row by the
+   recipe of "Agents in this channel" in one inner card, Edit always at the
+   row's end; its drawer in sections over the agent card's boxes. The
+   classes only place things. */
+.ws-agset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.ws-agset-row + .ws-agset-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.ws-agset-face {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+.ws-agset-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-agset-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-agset-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.ws-agset-name > .pg-list-row-title {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agset-state {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-agset-edit {
+  flex: none;
+}
+.ws-agset-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ws-agset-section {
+  margin-top: 24px;
+}
+.ws-agent-form:first-child > .ws-agset-section:first-child {
+  margin-top: 0;
+}
+.ws-agset-section > .pg-group-label {
+  margin: 0 0 8px;
+}
+.ws-agset-section > .ws-agent-card-box:first-of-type {
+  margin-top: 0;
+}
+.ws-agset-section > [data-ws-agent-door-state],
+.ws-agset-section > .alert {
+  margin-top: 12px;
+}
+.ws-agset-advanced > summary {
+  cursor: pointer;
+}
+.ws-agset-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ws-agset-delete {
+  margin-inline-start: auto;
+}
+@media (max-width: 575.98px) {
+  /* On a phone the name and Edit share the first line; the summary, the
+     warnings and the state's pill take the row's full width under them. */
+  .ws-agset-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 6px;
+    padding: 12px;
+  }
+  .ws-agset-main {
+    display: contents;
+  }
+  .ws-agset-main > * {
+    grid-column: 1 / -1;
+  }
+  .ws-agset-face {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+  .ws-agset-main > .ws-agset-name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .ws-agset-edit {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+  }
+  .ws-agset-state {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 100%;
   }
 }
 /* The agent card (workspace.js agentCardShow()): a floating .pg-card on
@@ -14577,12 +14783,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-msg-avatar .avatar {
   --bs-avatar-size: var(--ws-avatar);
 }
+/* The head line wraps by its own column's width: the name keeps a line
+   of its own when it and the marks after it do not fit, and wraps between
+   words only when it alone is wider than the column. */
 .ws-msg-meta {
   font-size: .8rem;
   color: var(--pg-fg-2);
   display: flex;
-  gap: .5rem;
+  flex-wrap: wrap;
+  gap: .1rem .5rem;
   align-items: baseline;
+  min-width: 0;
+}
+/* A mark longer than the column (the client a message came through, an
+   MCP agent's mark) is cut with an ellipsis; its whole text is its title. */
+.ws-msg-meta > .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ws-msg-meta b {
   color: var(--pg-fg-body);
@@ -14653,22 +14871,27 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-/* On the Decisions tab each one is a card of its own. The cards flow in
-   columns that fill the pane, top to bottom and then the next column, so a
-   short card leaves no gap under it; a column is --ws-flow-col wide or up
-   to about twice that, one on a phone. The tag names the kind: no coloured
+/* On the Decisions tab each one is a card of its own, one under the other
+   down the pane: a card is as wide as the pane up to --ws-decision-max, so
+   nothing runs past the side and the pane only scrolls down (columns on a
+   pane of set height grew sideways). The tag names the kind: no coloured
    edge (a status update's either). In the conversation they keep the
    rhythm of the messages around them. */
 .ws-pane-decisions {
-  columns: var(--ws-flow-col);
-  column-gap: 1rem;
+  --ws-decision-max: 72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-x: hidden;
 }
-.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
-  column-span: all;
+.ws-pane-decisions > * {
+  width: 100%;
+  max-width: var(--ws-decision-max);
+  margin-inline: auto;
 }
 .ws-pane-decisions > .ws-msg {
-  break-inside: avoid;
-  margin: 0 0 1rem;
+  flex-shrink: 0;
+  margin-block: 0;
   padding: .9rem 1.1rem 1rem;
   border: 1px solid var(--pg-border-color);
   border-radius: 1rem;
@@ -14705,6 +14928,25 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-pane-decisions > .ws-msg .ws-msg-body {
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+/* An agent channel's choice between its own decisions and every agent
+   channel's sits above the cards; a card from another agent channel names
+   it in its head line. */
+.ws-pane-decisions > .ws-decisions-scope {
+  display: flex;
+}
+/* A decision longer than about eight lines is folded (foldLong() in
+   workspace.js): its text fades out under the eighth line and Show more
+   under it opens the rest. */
+.ws-pane-decisions > .ws-msg .ws-msg-main > .ws-msg-body.ws-folded {
+  max-height: calc(1.55em * 8);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+  mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+}
+.ws-pane-decisions > .ws-msg .ws-fold-toggle {
+  margin-top: .35rem;
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -15157,7 +15399,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 
 /* A poll in the conversation. */
+/* The box is the container its narrow layout is read from (below), so it
+   follows the column it stands in, never the window. */
 .ws-poll {
+  container: ws-poll / inline-size;
   max-width: 34rem;
   margin-top: .4rem;
   padding: .55rem .65rem .45rem;
@@ -15273,6 +15518,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex-direction: column;
   gap: .1rem;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 .ws-poll-line {
   display: flex;
@@ -15302,8 +15548,13 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-poll-send {
   display: flex;
+  flex-wrap: wrap;
   gap: .4rem;
   margin-top: .4rem;
+}
+.ws-poll-send > :not(.btn) {
+  flex: 1 1 10rem;
+  min-width: 0;
 }
 .ws-poll-send > .btn {
   flex: 0 0 auto;
@@ -15351,6 +15602,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
     display: none;
+  }
+}
+/* The same in a narrow box on a wide window (a discussion panel): read
+   from the box's own width. A picture beside the options goes above
+   them, and "Write your own answer" takes a line of its own over Send
+   when the two do not fit. */
+@container ws-poll (max-width: 30rem) {
+  .ws-poll-option {
+    flex-wrap: wrap;
+  }
+  .ws-poll-text {
+    flex: 1 1 0;
+  }
+  .ws-poll-meta {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
+  .ws-poll-foot > .btn {
+    padding-inline: .35rem;
+  }
+  .ws-poll-foot-tight .ws-poll-foot-label {
+    display: none;
+  }
+  .ws-poll .ws-poll-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A row's own picture stays on the tick's line and the words take the
+     whole width under it, so they read in lines of several words. */
+  .ws-poll-thumb + .ws-poll-text {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
   }
 }
 .ws-poll-desc,
@@ -15414,12 +15696,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-2);
   cursor: zoom-in;
+  position: relative;
 }
 .ws-poll-figure img {
   display: block;
   width: 100%;
   max-height: 18rem;
   object-fit: contain;
+}
+/* How many distinct pictures the viewer holds, at the frame's bottom right.
+   Its surface is nearly opaque, so it reads as one piece where it lies half
+   on the picture and half on the frame; the hairline keeps it standing on a
+   dark picture. The figures are tabular: the number may change while the
+   rows are pointed at. */
+.ws-poll-picture-count {
+  position: absolute;
+  right: .7rem;
+  bottom: .7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .15rem .5rem;
+  border: 1px solid color-mix(in srgb, var(--pg-media-mark-fg) 30%, transparent);
+  border-radius: 999px;
+  background: var(--pg-media-mark-bg);
+  color: var(--pg-media-mark-fg);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
 }
 @media (max-width: 575.98px) {
   .ws-poll-split {
@@ -16078,16 +16385,53 @@ html[data-bs-theme="dark"] .ws-hl {
   z-index: 1080;
 }
 .ws-hl-bar {
-  align-items: center;
-  padding: .125rem;
-  background: var(--pg-bg-body);
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--bs-btn-border-radius);
-  box-shadow: var(--pg-shadow-float);
+  /* One rounded surface, the look's floating bar (.pg-floatbar draws its
+     radius, surface and shadow), holding one sentence: the highlighter,
+     "Highlight for", the joined pair. Inner corners follow the bar's
+     (inner radius = outer minus padding): 16 - 5 = the pair's 11 px. */
+  --ws-hl-bar-pad: 5px;
+  --ws-hl-bar-inner: max(0px, calc(var(--pg-radius-card) - var(--ws-hl-bar-pad)));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: calc(100vw - 1rem);
+  padding: var(--ws-hl-bar-pad);
 }
+.ws-hl-bar-line {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  white-space: nowrap;
+}
+.ws-hl-bar-icon {
+  padding-inline-start: .375rem;
+  color: var(--pg-fg-3);
+}
+.ws-hl-bar-text:last-child {
+  padding-inline-end: .375rem;
+}
+/* The pair is one segmented control (.pg-seg): two flat segments in one
+   outline. They are actions, not a kept choice: none is chosen, the one
+   under the pointer rises as a chosen one does. */
+.ws-hl-bar .ws-hl-bar-pair {
+  flex-shrink: 0;
+  border-radius: var(--ws-hl-bar-inner);
+}
+.ws-hl-bar-pair > .pg-seg-item:hover {
+  background: var(--pg-thumb);
+  color: var(--pg-fg-body);
+  box-shadow: var(--pg-thumb-shadow);
+}
+.ws-hl-bar-pair > .pg-seg-item:disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+.ws-hl-bar .ws-hl-bar-one {
+  border-radius: var(--ws-hl-bar-inner);
+}
+/* The "too long" note takes a line of its own under the sentence. */
 .ws-hl-bar-note {
-  padding: 0 .5rem;
-  color: var(--bs-secondary-fg);
+  padding: .25rem .5rem;
 }
 .ws-hl-card {
   width: min(20rem, calc(100vw - 1rem));
@@ -16653,8 +16997,8 @@ a.ws-chip-message:hover,
   max-height: 12rem;
   padding: .15rem .25rem;
 }
-/* The row wraps where it has no room (a phone with the tools open, the
-   narrow discussion panel), so Send and Send later stay inside the box. */
+/* The row wraps where it has no room (a phone, the narrow discussion
+   panel), so Send and Send later stay inside the box. */
 .ws-composer-tools {
   display: flex;
   flex-wrap: wrap;
@@ -16674,10 +17018,6 @@ a.ws-chip-message:hover,
   margin-left: .1rem;
   padding-left: .25rem;
   border-left: 1px solid var(--pg-border-color-translucent);
-}
-/* The phone's switch for the row of tools: a wider screen shows the row. */
-.ws-composer-more {
-  display: none;
 }
 /* Empty in the one-line box; the expanded box names its keys there. */
 .ws-composer-hint {
@@ -17441,6 +17781,24 @@ a.ws-chip-message:hover,
   padding-bottom: .5rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
+/* The conversation's channel in the head (ws_mail_pane_channel_pill()): a
+   status pill that is a link, so the link's underline shows only on hover
+   and focus; a long name is cut inside the pane's width, never widening it,
+   the whole words in its title. */
+.ws-mail-pane-channel {
+  max-width: 100%;
+  min-width: 0;
+  text-decoration: none;
+}
+.ws-mail-pane-channel-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-pane-channel:is(:hover, :focus-visible) .ws-mail-pane-channel-text {
+  text-decoration: underline;
+}
 .ws-mail-pane-tools {
   display: flex;
   flex-wrap: wrap;
@@ -17552,9 +17910,23 @@ a.ws-chip-message:hover,
   .ws-mail-reading .ws-mail-list {
     display: none;
   }
+  /* While a mail is read the toolbar and its filters fold away (the id
+     outranks #button_bar's own display rule): they stood
+     about 490 px above the pane, so the mail began below the first screen.
+     The pane's Close brings the list and the toolbar back. */
+  .ws-mail-reading > #button_bar.pg-toolbar,
+  .ws-mail-reading > .ws-mail-check-line {
+    display: none;
+  }
   .ws-mail-pane {
     position: static;
     max-height: none;
+    padding: .5rem;
+  }
+  /* The pane's and each mail's paddings left a mail about 260 px of a
+     375 px screen. */
+  .ws-mail-pane .ws-mail-item {
+    padding: .5rem;
   }
 }
 /* The "/" list of a note's inserts, under the caret. */
@@ -17644,6 +18016,22 @@ a.ws-chip-message:hover,
   white-space: nowrap;
   max-width: 45%;
 }
+/* A flow of the "/" list or of /flow's list: the name is what the row is
+   for, so "Start this flow" gives way first (it shrinks long before the
+   name is cut) and goes on a phone. */
+.ws-picker-flow-row .ws-picker-label {
+  flex-shrink: .001;
+}
+.ws-picker-flow-row .ws-picker-meta {
+  flex: 0 1000 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+@media (max-width: 575.98px) {
+  .ws-picker-flow-row .ws-picker-meta {
+    display: none;
+  }
+}
 /* A label with a second line under it (a slash command and its example). */
 .ws-picker-item .ws-picker-text {
   display: flex;
@@ -17657,6 +18045,19 @@ a.ws-chip-message:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A group's header in the "/" list (commandPickerGroups()): a muted line
+   as /help's group header, never picked, so no hover and no pointer. */
+.ws-picker-group {
+  padding: .5rem .5rem .2rem;
+  font-size: .75rem;
+  font-weight: 550;
+  color: var(--pg-fg-2);
+  cursor: default;
+  user-select: none;
+}
+.ws-picker-group:first-child {
+  padding-top: .25rem;
 }
 /* A registry agent in the @ menu: its icon with the state mark in the
    corner, its name cut before its role, and the usage mark of a window at
@@ -17798,6 +18199,17 @@ a.ws-chip-message:hover,
 }
 .ws-preview dd {
   margin: 0;
+}
+/* The /create row card: a text column's box is one line high at rest and
+   grows with its lines up to eight where the browser can, scrolling past
+   them. The recipe's box (textarea.pg-input) is placed here, not changed. */
+.ws-row-card textarea.pg-input.ws-row-text {
+  min-height: 0;
+  max-height: calc(8lh + 20px);
+  /* One line as high as the card's other fields (36 px). */
+  padding-block: calc((36px - 1lh - 2px) / 2);
+  field-sizing: content;
+  overflow-y: auto;
 }
 .ws-warning {
   display: flex;
@@ -18040,43 +18452,111 @@ a.ws-chip-message:hover,
 .ws-summary-layout .card {
   border-radius: .875rem;
 }
-/* The Memory tab (workspace_memory.js): the hint with New record is one
-   card, the records cards in a grid that fills the pane. */
+/* The Memory tab (workspace_memory.js): in an agent channel the general
+   memory and the channel's own as two parts, each a card of project
+   headings that fold, one row per record under each. */
 .ws-memory {
   display: flex;
   flex-direction: column;
   gap: .75rem;
+  container-type: inline-size;
 }
-.ws-memory-intro {
+.ws-memory-part {
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+  overflow: hidden;
+}
+.ws-memory-part-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: .75rem;
   padding: .75rem .9rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
-  background: var(--pg-card-bg);
 }
-.ws-memory-intro > p {
+.ws-memory-part-head > div {
   flex: 1 1 20rem;
-  min-width: 0;
 }
-.ws-memory-list {
+.ws-memory-part-title {
+  margin: 0;
+}
+.ws-memory-part > .ws-empty {
+  margin: 0 .9rem .9rem;
+}
+.ws-memory-project {
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-memory-project-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .9rem;
+  font-weight: var(--pg-weight-strong);
+  cursor: pointer;
+  list-style: none;
+}
+.ws-memory-project-head::-webkit-details-marker {
+  display: none;
+}
+.ws-memory-chevron {
+  transition: transform .15s ease;
+}
+.ws-memory-project[open] .ws-memory-chevron {
+  transform: rotate(90deg);
+}
+.ws-memory-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  align-items: start;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto auto auto;
+  align-items: center;
   gap: .75rem;
+  padding: .5rem .9rem .5rem 1.75rem;
+  border-top: 1px solid var(--pg-border-color);
 }
-.ws-memory-list > .ws-empty {
-  grid-column: 1 / -1;
+.ws-memory-row:hover {
+  background: var(--pg-hover);
 }
-.ws-memory-entry {
-  min-width: 0;
-  padding: .75rem .9rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
-  background: var(--pg-card-bg);
+.ws-memory-expired {
+  opacity: .75;
+}
+.ws-memory-name {
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.ws-memory-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-memory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .25rem;
+  max-width: 16rem;
+}
+.ws-memory-date {
+  white-space: nowrap;
+}
+.ws-memory-actions {
+  display: flex;
+  gap: .25rem;
+}
+@container (max-width: 40rem) {
+  .ws-memory-row {
+    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+    padding-left: .9rem;
+  }
+  .ws-memory-tags,
+  .ws-memory-date {
+    grid-column: 2;
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .ws-memory-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 /* An empty channel pane (Tasks, Decisions, Files, Summary, Board, Memory)
    shows its empty state in a dashed card. Other screens' .ws-empty (Today,
@@ -18357,6 +18837,15 @@ a.ws-chip-message:hover,
 .ws-board-item.ws-item-due {
   font-weight: 700;
 }
+/* "Made by <application>" on a board card, under its title. */
+.ws-board-item .ws-board-made-by {
+  display: block;
+  font-size: var(--pg-text-meta);
+  font-weight: 400;
+  color: var(--pg-fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ws-board-item.ws-item-urgent {
   box-shadow: inset 3px 0 0 var(--pg-danger);
 }
@@ -18538,6 +19027,7 @@ a.ws-chip-message:hover,
    while the microphone is on. */
 .ws-voice {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ws-space-2);
   width: 22rem;
@@ -18561,9 +19051,18 @@ a.ws-chip-message:hover,
   border-radius: 50%;
   font-size: 1.1rem;
 }
+/* The name and the time keep at least 7rem: in a narrower player the
+   buttons after them take the next line as one group, at its right. */
 .ws-voice-main {
-  flex: 1 1 auto;
+  flex: 1 1 7rem;
   min-width: 0;
+}
+.ws-voice-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-left: auto;
 }
 .ws-voice-name {
   overflow: hidden;
@@ -18670,8 +19169,12 @@ a.ws-chip-message:hover,
     opacity: .3;
   }
 }
+/* A narrow column (a discussion panel, a phone) keeps the file's name at
+   least 8rem wide: the buttons then take the next line as one group, at
+   its right. */
 .ws-file-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .6rem;
   max-width: min(28rem, 100%);
@@ -18679,6 +19182,17 @@ a.ws-chip-message:hover,
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
+}
+.ws-file-card > .ws-grow {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.ws-file-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: .6rem;
+  margin-left: auto;
 }
 .ws-file-card .ws-file-name {
   display: block;
@@ -18821,6 +19335,20 @@ a.ws-chip-message:hover,
 .ws-file-group > .ws-gallery {
   margin-bottom: 0;
 }
+/* The gallery is drawn a page at a time (FILE_PAGE in workspace.js); each
+   tile keeps its 4 / 3 box before its picture arrives, so a page loading
+   in moves nothing, and Show more under the grid draws the next page. */
+.ws-gallery-tile img {
+  display: block;
+}
+.ws-file-group > .ws-gallery-more {
+  margin-top: .6rem;
+}
+/* The Files tab's next page from the server, under the last group. */
+.ws-files-older {
+  align-self: flex-start;
+  margin-top: .6rem;
+}
 .ws-file-group .ws-file-list {
   border: 0;
   border-radius: 0;
@@ -18901,6 +19429,28 @@ a.ws-chip-message:hover,
 .office-tab-hidden {
   font-style: italic;
   opacity: .7;
+}
+/* The separator and character set a .csv is read with, above its sheet. */
+.office-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem 1rem;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-1);
+}
+.office-choice-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+.office-choice-problem {
+  margin-top: 0;
+}
+.office-choice-problem:empty {
+  display: none;
 }
 .office-pane {
   flex: 1 1 auto;
@@ -20159,46 +20709,19 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     font-size: 16px;
     min-height: 2.5rem;
   }
+  /* Narrow pads keep the inserts, Send and Send later on one line at
+     375 px; the row still wraps where even that has no room. */
   .ws-composer-tools .btn {
-    padding: .3rem .5rem;
+    padding: .3rem .4rem;
   }
-  /* One row: the switch, the field, then Send or the microphone; the
-     switch opens the row of tools under the field. */
+  /* The field takes the full width on top and the row of tools with Send
+     sits under it, as on a wide screen; the frame is a little tighter. */
   .ws-composer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: .15rem;
     padding: .3rem .35rem;
   }
-  .ws-composer > .ws-composer-more {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-self: flex-end;
-    margin-bottom: .2rem;
-  }
-  .ws-composer > :is(.ws-rich, textarea) {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .ws-composer > .ws-composer-tools {
-    flex: 0 0 auto;
-    align-self: flex-end;
-    margin-bottom: .2rem;
-  }
-  .ws-composer:not(.is-tools-open) > .ws-composer-tools > :not(.ws-send-group, .ws-voice-mic, .btn-solid, .ws-composer-meter) {
-    display: none;
-  }
-  .ws-composer.is-tools-open > .ws-composer-tools {
-    flex-basis: 100%;
-    order: 3;
-  }
-  /* Send keeps its icon and a narrow pad, so the open row fits a phone. */
+  /* Send keeps its icon and a narrow pad, so the row fits a phone. */
   .ws-composer-tools .btn.px-5 {
     padding-inline: .6rem;
-  }
-  .ws-composer.is-tools-open > .ws-composer-more .bi {
-    transform: rotate(45deg);
   }
   /* A recording row as tall as the box it stands in for, with buttons a
      finger hits; the player's small buttons the same. */
@@ -20494,14 +21017,62 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
 }
 /* Asking Claude: where a request stands, the tasks an answer proposes, and
-   the settings card. */
+   the settings card. An agent line is the icon and a wrapping body: a row
+   of the label, "since HH:MM" and Stop, then the progress note. The note
+   stays on that row only when the whole of it fits; otherwise it takes a
+   line of its own under the label. The same rule holds in every column
+   (the channel, a discussion panel, a phone). */
 .ws-claude-state {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: .35rem;
   margin-top: .3rem;
   font-size: .76rem;
   color: var(--pg-fg-2);
+}
+.ws-claude-state > .bi {
+  flex: none;
+}
+.ws-claude-state .ws-claude-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  column-gap: .35rem;
+  row-gap: .1rem;
+}
+/* The row shrinks to the column when it alone is wider. */
+.ws-claude-state .ws-claude-head {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+/* A label sharing its row with since and Stop (sent, running) stays on one
+   line and is cut with an ellipsis, the whole label in its title; when the
+   row is short, the word of "since" goes first (claudeStateFit() in
+   workspace.js). A label that is a sentence (waiting, failed, cancelled:
+   it says when it is tried again) wraps between words. */
+.ws-claude-state .ws-claude-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-claude-state.ws-claude-sent .ws-claude-label,
+.ws-claude-state.ws-claude-running .ws-claude-label {
+  white-space: nowrap;
+}
+.ws-claude-state .ws-claude-since,
+.ws-claude-state .ws-claude-stop {
+  flex: none;
+  white-space: nowrap;
+}
+.ws-claude-state.ws-claude-tight .ws-claude-since-word {
+  display: none;
 }
 .ws-claude-state.ws-claude-running > .bi,
 .ws-claude-state.ws-claude-sent > .bi {
@@ -20510,16 +21081,15 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-answered > .bi {
   color: var(--pg-success);
 }
-/* An agent's progress note and since when it holds the request: a long
-   note wraps inside the column instead of widening it. */
+/* An agent's progress note (up to 200 characters, never cut): its whole
+   width decides whether it fits on the row; on its own line it wraps
+   between words, and only a word longer than the line is split. */
 .ws-claude-state .ws-claude-note {
+  flex: 0 0 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow-wrap: break-word;
   font-style: italic;
-}
-.ws-claude-state .ws-claude-since {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {
@@ -20860,8 +21430,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   align-items: flex-start;
   gap: .35rem;
 }
-.ws-claude-copy .form-control {
-  font-size: .76rem;
+.ws-claude-copy .pg-input {
+  font-size: var(--pg-text-meta);
 }
 .ws-claude-steps {
   display: grid;
@@ -20923,12 +21493,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   top: calc(var(--pg-navbar-h) + 1rem);
 }
 .ws-claude-recent-row {
-  display: flex;
   align-items: flex-start;
-  gap: .5rem;
-  padding: .4rem 0;
-  border-bottom: 1px solid var(--pg-border-color);
-  font-size: .84rem;
+  font-size: var(--pg-text-2);
 }
 .ws-claude-recent-row > .bi {
   margin-top: .15rem;
@@ -24412,6 +24978,12 @@ html.ws-flow-layer-on body {
 }
 .pgc-edge.pgc-edge-faint {
   opacity: var(--pgc-faint, 0.3);
+}
+/* A proposed arrow (dashed()): dashed in a neutral colour, whatever the
+   focus makes of it. */
+.pgc-edge.pgc-edge-dashed .pgc-edge-line {
+  stroke: var(--pgc-proposed, var(--pg-secondary));
+  stroke-dasharray: 6 4;
 }
 .pgc-boxes .pgc-dim {
   opacity: var(--pgc-dim, 0.45);
@@ -27942,6 +28514,11 @@ select.pg-list-table-field option.private {
      the scrim a dialog lays over the page. */
   --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
   --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  /* The surface and the text of a mark laid over a picture (a poll
+     picture's count). A picture does not change with the theme, so neither
+     does the mark: one value for both. */
+  --pg-media-mark-bg: rgba(17, 19, 24, 0.94);
+  --pg-media-mark-fg: #ffffff;
   --pg-radius-card: 16px;
   --pg-radius-sheet: 20px;
 
@@ -28102,6 +28679,10 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   box-shadow: var(--pg-shadow-float);
+}
+/* The settings page's bar sticks half a line above the window's edge. */
+#pg_settings_page_form > nav.buttons.navigation {
+  bottom: .5rem;
 }
 /* pg_save_bar()'s sticky column holds the bar's bottom margin: outside a
    flex row (straight in a form, after a card) the margin would collapse out
@@ -28414,7 +28995,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 }
 .pg-button:focus-visible,
 .pg-icon-button:focus-visible,
-.pg-seg-item:focus-visible {
+.pg-seg-item:focus-visible,
+.pg-seg-item:has(> input:focus-visible) {
   outline: 2px solid var(--pg-accent);
   outline-offset: 2px;
 }
@@ -28449,7 +29031,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 .pg-seg-item.is-active,
 .pg-seg-item[aria-pressed="true"],
 .pg-seg-item[aria-selected="true"],
-.pg-seg-item[aria-current="true"] {
+.pg-seg-item[aria-current="true"],
+.pg-seg-item:has(> input:checked) {
   background: var(--pg-thumb);
   color: var(--pg-fg-body);
   box-shadow: var(--pg-thumb-shadow);
@@ -28622,6 +29205,19 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   display: flex;
   align-items: baseline;
   gap: 10px;
+}
+/* A head whose pill goes to a line of its own where the name and the pill
+   do not fit side by side: the name stands whole and breaks inside a word
+   only when it is longer than the column. */
+.pg-list-row-head-wrap {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+}
+.pg-list-row-head-wrap > .pg-list-row-title {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .pg-list-row-title {
   flex: 1;
@@ -30293,12 +30889,11 @@ textarea.pg-campaign-text {
   }
 }
 
-/* The area's tab strip: the segmented control, one line at any width. Under
-   576 px only the open tab shows its label, the others their icon. */
+/* Communication's tab strip (an area strip, .pg-area-tabs): the segmented
+   control, one line at any width. Under 576 px only the open tab shows its
+   label, the others their icon. */
 .pg-messages-tabs {
   margin-bottom: 20px;
-  max-width: 100%;
-  overflow-x: auto;
 }
 /* A notice under the strip. */
 .pg-messages-note {
@@ -30576,6 +31171,7 @@ textarea.pg-campaign-text {
 @media (max-width: 575.98px) {
   .pg-messages-tabs .pg-seg {
     display: flex;
+    flex: 1 1 auto;
   }
   .pg-messages-tabs .pg-seg-item {
     flex: 1 1 auto;
@@ -31398,6 +31994,23 @@ button.pg-var-chip:focus-visible {
   flex: none;
 }
 
+/* An area's tab strip: the segmented control of links shared by a group of
+   screens (or a screen's views), printed first in #content above the
+   toolbar. It sits centred in the window's content area on every tab: each
+   tab screen's #content is centred there (the full width, or a list's
+   fit-content box with auto margins), so centring the strip in #content puts
+   it in the same place whatever width the screen takes. The auto margins
+   keep a strip wider than the window scrollable from its first tab, where
+   justify-content: center would cut off its start. */
+.pg-area-tabs {
+  display: flex;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.pg-area-tabs > .pg-seg {
+  margin-inline: auto;
+}
+
 /* Site Log: the range segments, the type segments and the range on screen
    in one row over the list, as the sheet's tools row. */
 .pg-log-tools {
@@ -31444,6 +32057,218 @@ button.pg-var-chip:focus-visible {
     .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
       align-self: start;
     }
+  }
+}
+
+}
+
+/* Connections (connections.php): where the parts of a service's row and the
+   attention block sit. Every part is a look A recipe (card, inner rows,
+   tile, pill, group label, count, segmented filter); these rules only place
+   them. On a phone the state moves under the text. */
+@layer custom {
+
+.connections-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.connections-find > form {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.connections-search {
+  width: 100%;
+}
+.connections-find > .pg-list-seg {
+  min-width: 0;
+  max-width: 100%;
+}
+.connections-attention {
+  border-color: color-mix(in srgb, var(--pg-tone-amber) 45%, transparent);
+}
+.connections-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+.connections-row:hover,
+.connections-row:focus-visible {
+  background: var(--pg-hover);
+}
+.connections-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.connections-row-name {
+  display: block;
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.connections-row-side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.connections-row-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.connections-toggle[aria-expanded="true"] .connections-row-chevron {
+  transform: rotate(180deg);
+}
+.connections-list > * + * {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+
+/* The drawers: 480 px floating off the right edge with the sheet's corners
+   and shadow (the report settings drawer's shape), sections split by a
+   line; on a phone a sheet from the bottom. */
+.connections-drawer {
+  --pg-drawer-width: 480px;
+  --pg-drawer-height: 88vh;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border-color: var(--pg-border-color-translucent);
+  box-shadow: var(--pg-shadow-sheet);
+}
+@media (min-width: 576px) {
+  .connections-drawer {
+    --pg-drawer-inset: 12px;
+    --pg-drawer-border-radius: var(--pg-radius-sheet);
+  }
+}
+.connections-drawer.drawer-bottom {
+  border-start-start-radius: var(--pg-radius-sheet);
+  border-start-end-radius: var(--pg-radius-sheet);
+}
+.connections-drawer > .drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer-head {
+  flex: 1;
+  min-width: 0;
+}
+.connections-drawer > .drawer-body {
+  gap: 0;
+  padding: 0;
+}
+.connections-drawer > .drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer .list-group-item {
+  background: none;
+}
+.connections-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 575.98px) {
+  .connections-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .connections-row-main {
+    flex-basis: calc(100% - 90px);
+  }
+  .connections-row-side {
+    order: 3;
+    flex-basis: 100%;
+    padding-left: 47px;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Courses: a course's lessons table (edit_course.php).
+   From 768 px a fixed layout: the two number columns are as wide as their
+   heading on one line, the page and quiz selects share the rest. Below it
+   each lesson stacks: its number at the left, the page across, the quiz
+   across, days and score side by side, the row's buttons last, each value
+   under its own label (the cell's data-label), so nothing a lesson needs
+   is cut or scrolled sideways at 390 px.
+   ========================================================================== */
+@layer custom {
+
+.pg-course-lessons th {
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .pg-course-lessons {
+    table-layout: fixed;
+    min-width: 40rem;
+  }
+  .pg-course-lessons .pg-course-col-number { width: 2.25rem; }
+  .pg-course-lessons .pg-course-col-days { width: 9rem; }
+  .pg-course-lessons .pg-course-col-quiz { width: 20%; }
+  .pg-course-lessons .pg-course-col-score { width: 8.5rem; }
+  .pg-course-lessons .pg-course-col-actions { width: 7rem; }
+}
+
+@media (max-width: 767.98px) {
+  .pg-course-lessons,
+  .pg-course-lessons tbody {
+    display: block;
+  }
+  .pg-course-lessons colgroup,
+  .pg-course-lessons thead {
+    display: none;
+  }
+  .pg-course-lessons tr {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: .75rem;
+    row-gap: .5rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .pg-course-lessons td {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pg-course-lessons td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
+  }
+  .pg-course-lessons [data-pg-course-number] {
+    grid-row: 1 / span 4;
+    padding-top: 1.6rem;
+  }
+  .pg-course-lessons .pg-course-cell-page,
+  .pg-course-lessons .pg-course-cell-quiz,
+  .pg-course-lessons .pg-course-cell-actions {
+    grid-column: 2 / 4;
+  }
+  .pg-course-lessons .pg-course-cell-page { grid-row: 1; }
+  .pg-course-lessons .pg-course-cell-quiz { grid-row: 2; }
+  .pg-course-lessons .pg-course-cell-days { grid-column: 2; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-score { grid-column: 3; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-actions { grid-row: 4; }
+  .pg-course-lessons .pg-input {
+    width: 100%;
   }
 }
 

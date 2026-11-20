@@ -10,15 +10,16 @@ priority: 4
 - The study: what Turkish platforms list and the product lacks (`integrations-census-others.md`), and the services where one integration brings many (`integrations-census-aggregators.md`).
 
 ## What is there today?
-- Product feeds in three formats, `openai_jsonl`, `openai_csv` and `google_tsv`, built daily and served at private addresses (`commerce/product-feeds.md`, `commerce/product-feed-serving.md`). No feed of the whole catalogue is XML, and third parties' pages tell that Akakçe and Cimri take a shop's products as an XML feed.
-- Payment drivers for iyzico, Stripe, PayPal and PayTR (`pg_payment_builtin_drivers()`); marketplaces n11 and Trendyol, Hepsiburada planned (`marketplace-trendyol-hepsiburada.md`).
+- Product feeds in three formats, `openai_jsonl`, `openai_csv` and `google_tsv`, built daily and served at private addresses (`commerce/product-feeds.md`, `commerce/product-feed-serving.md`). None is XML; third parties tell that Akakçe and Cimri take a shop's products as an XML feed.
+- Payment drivers iyzico, Stripe, PayPal, PayTR (`pg_payment_builtin_drivers()`); marketplaces n11, Trendyol; Hepsiburada planned (`marketplace-trendyol-hepsiburada.md`).
 
 ## Which steps are there?
-- TS1 (M) A fourth feed format, `google_xml`: Google's product data as RSS 2.0, by Google's public specification, from the same items and rules as `google_tsv`.
-  - Existing files: `includes/fn/product_feeds.php` (a writer that streams like the others, `commerce/product-feed-streaming.md`), the Product Feeds card, `feed.php`, `GET /store/feeds` (a fourth row), `tests/product_feeds_test.php`.
+- TS1 (M, done #10133) A fourth feed format, `google_xml`: Google's product data as RSS 2.0, by Google's public specification, from the same items and rules as `google_tsv`.
+  - Files: `includes/fn/product_feeds.php` (a writer streaming like the others), the Product Feeds card, `feed.php`, `GET /store/feeds` (a fourth row), `tests/product_feeds_test.php`.
   - The writer escapes through one XML helper; its test feeds it what breaks XML in a product's name and description: `&`, `<`, control bytes, `]]>`.
   - State in `config.product_feeds` as the other formats: no schema change. The card's new switch is the architect's look.
   - It needs no account. A third party states that Cimri reads this format from an address; whether Cimri and Akakçe take it as it is, is TS2's.
+- TS1b (S, done #10527) the store feeds description names google_xml.
 
 ## What waits for the release of 2026.11.0?
 - TS2 (S, with the owner's or a customer's store account) Akakçe and Cimri. No document of either's own format was found in public; both take a shop only after an application with company papers. With an account at each, the format it asks is read from its own document and a feed is handed in: `google_xml` as it is where that is taken, else a format of its own in the builder. Needs of him: a store application at each, or a customer who has one.

@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Communication screen writes: e-mail campaigns,
- * live chat, MailChimp, SMS, WhatsApp and İYS.
+ * Site Settings - what the Communication screen writes: live chat, SMS,
+ * WhatsApp and İYS.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -112,16 +112,14 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
     // ── SMS ──
     //
     // Checked before anything is written: a changed account is asked about at
-    // the provider, and a refusal stops the whole category like a refused
-    // MailChimp key. Ahead of MailChimp's checks, which may create a store
-    // there that a refusal here could not take back.
+    // the provider, and a refusal stops the whole category.
     $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
     $sms_messages_post = pg_sms_message_settings_check($_POST, $liveform);
 
     // ── WhatsApp ──
     //
-    // Same order and reason as the SMS account: a changed account is asked
-    // about at Meta before MailChimp can create anything.
+    // Same reason as the SMS account: a changed account is asked about at
+    // Meta before anything is written.
     $whatsapp_settings_post = pg_whatsapp_settings_check($_POST, $liveform);
     $whatsapp_messages_post = pg_whatsapp_message_settings_check($_POST, $liveform);
     $whatsapp_channel_post = pg_whatsapp_channel_check($_POST, USER_ID, $liveform);
@@ -129,137 +127,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
 
     // ── İYS ──
     //
-    // Same order and reason as the SMS account: a changed account is asked
-    // about at İYS before MailChimp can create anything.
+    // Same reason as the SMS account: a changed account is asked about at
+    // İYS before anything is written.
     $iys_settings_post = pg_iys_settings_check($_POST, $liveform);
-
-    // ── MailChimp ──
-    //
-    // Everything here runs BEFORE the write and can stop it. A key, a list or
-    // a store that Mailchimp refuses is the operator's mistake and not the
-    // software's, so it is marked on the field rather than thrown: the dialog
-    // then says which one and leaves on screen everything that was typed.
-    //
-    // Nothing in this category is written when that happens. Writing the rest
-    // would leave the site's own settings saved and the integration's refused,
-    // with one Save button reporting both.
-    $mailchimp_post            = post_value('mailchimp') ? 1 : 0;
-    // The key is never printed back into the form: an empty box keeps the
-    // stored key, the tick removes it.
-    $mailchimp_key_post        = pg_mailchimp_key_for_save(post_value('mailchimp_key'), (string) db_value("SELECT mailchimp_key FROM config"), (bool) post_value('mailchimp_key_clear'));
-    $mailchimp_list_post       = trim((string) post_value('mailchimp_list_id'));
-    $mailchimp_store_post      = trim((string) post_value('mailchimp_store_id'));
-    $mailchimp_days_post       = pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535);
-    $mailchimp_limit_post      = pg_parse_whole_number(post_value('mailchimp_sync_limit'), 4294967295);
-    $mailchimp_automation_post = post_value('mailchimp_automation') ? 1 : 0;
-
-    if ($mailchimp_post) {
-
-        if ($mailchimp_key_post === '') {
-            $liveform->mark_error('mailchimp_key', lang(array('string' => '{var:1} is required.', 'vars' => lang('API Key'))));
-        }
-
-        // The data center at the end of the key is the host the key is sent
-        // to; a key without a plain one is refused before any request.
-        if (($mailchimp_key_post !== '') && (pg_mailchimp_dc($mailchimp_key_post) === '')) {
-            $liveform->mark_error('mailchimp_key', lang('The API key must end with its data center, like -us6.'));
-        }
-
-        if ($mailchimp_list_post === '') {
-            $liveform->mark_error('mailchimp_list_id', lang(array('string' => '{var:1} is required.', 'vars' => lang('List ID'))));
-        }
-
-        if ($mailchimp_store_post === '') {
-            $liveform->mark_error('mailchimp_store_id', lang(array('string' => '{var:1} is required.', 'vars' => lang('Store ID'))));
-        }
-    }
-
-    if ($mailchimp_post && !$liveform->check_form_errors()) {
-
-        require_once(PG_FUNCTIONS_DIR . '/mailchimp.php');
-
-        // Is the key a key at all.
-        $mailchimp_answer = mailchimp_request(array(
-            'path' => '/ping',
-            'key'  => $mailchimp_key_post));
-
-        if ($mailchimp_answer['status'] == 'error') {
-            $liveform->mark_error('mailchimp_key', lang('Sorry, the API key is not valid') . '. ' . h($mailchimp_answer['message']));
-        }
-    }
-
-    if ($mailchimp_post && !$liveform->check_form_errors()) {
-
-        $mailchimp_answer = mailchimp_request(array(
-            'path' => '/lists/' . $mailchimp_list_post . '?fields=id',
-            'key'  => $mailchimp_key_post));
-
-        if ($mailchimp_answer['status'] == 'error') {
-            $liveform->mark_error('mailchimp_list_id', lang('Sorry, the List ID is not valid') . '. ' . h($mailchimp_answer['message']));
-        }
-    }
-
-    if ($mailchimp_post && !$liveform->check_form_errors()) {
-
-        // A store that is not there yet is not an error -- it is what the
-        // screen creates. Any other refusal is.
-        $mailchimp_answer = mailchimp_request(array(
-            'path'  => '/ecommerce/stores/' . $mailchimp_store_post . '?fields=id,is_syncing',
-            'key'   => $mailchimp_key_post,
-            'quiet' => true));
-
-        $mailchimp_missing = (($mailchimp_answer['status'] == 'error')
-            && ($mailchimp_answer['mailchimp_response']['status'] == 404));
-
-        if (($mailchimp_answer['status'] == 'error') && !$mailchimp_missing) {
-            $liveform->mark_error('mailchimp_store_id', lang('Sorry, the Store ID is not valid') . '. ' . h($mailchimp_answer['message']));
-
-        } elseif ($mailchimp_missing) {
-
-            $mailchimp_store = array(
-                'id'            => $mailchimp_store_post,
-                'list_id'       => $mailchimp_list_post,
-                'name'          => HOSTNAME_SETTING,
-                'platform'      => 'Pinegrap',
-                'domain'        => HOSTNAME_SETTING,
-                'is_syncing'    => ($mailchimp_automation_post ? false : true),
-                'email_address' => EMAIL_ADDRESS,
-                'currency_code' => BASE_CURRENCY_CODE,
-            );
-
-            $mailchimp_answer = mailchimp_request(array(
-                'method' => 'post',
-                'path'   => '/ecommerce/stores',
-                'data'   => $mailchimp_store,
-                'key'    => $mailchimp_key_post));
-
-            if ($mailchimp_answer['status'] == 'error') {
-                $liveform->mark_error('mailchimp_store_id', lang('Sorry, the store could not be created') . '. ' . h($mailchimp_answer['message']));
-            }
-
-        } else {
-            $mailchimp_store = $mailchimp_answer['mailchimp_response'];
-        }
-
-        // is_syncing is the opposite of automation: while the store is syncing
-        // its history, Mailchimp holds the automations back.
-        if (!$liveform->check_form_errors()
-            && isset($mailchimp_store['is_syncing'])
-            && ($mailchimp_store['is_syncing'] == (bool) $mailchimp_automation_post)
-        ) {
-            $mailchimp_store['is_syncing'] = !$mailchimp_automation_post;
-
-            $mailchimp_answer = mailchimp_request(array(
-                'method' => 'patch',
-                'path'   => '/ecommerce/stores/' . $mailchimp_store_post,
-                'data'   => $mailchimp_store,
-                'key'    => $mailchimp_key_post));
-
-            if ($mailchimp_answer['status'] == 'error') {
-                $liveform->mark_error('mailchimp_automation', lang('Sorry, automation could not be updated') . '. ' . h($mailchimp_answer['message']));
-            }
-        }
-    }
 
     if ($liveform->check_form_errors()) {
         return;
@@ -268,15 +138,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
-            opt_in_label = '" . escape(post_value('opt_in_label')) . "',
-            plain_text_email_campaign_footer = '" . escape(trim(post_value('plain_text_email_campaign_footer'))) . "',
-            mailchimp = '" . escape($mailchimp_post) . "',
-            mailchimp_key = '" . escape($mailchimp_key_post) . "',
-            mailchimp_list_id = '" . escape($mailchimp_list_post) . "',
-            mailchimp_store_id = '" . escape($mailchimp_store_post) . "',
-            mailchimp_sync_days = '" . $mailchimp_days_post . "',
-            mailchimp_sync_limit = '" . $mailchimp_limit_post . "',
-            mailchimp_automation = '" . escape($mailchimp_automation_post) . "',
             " . $sql_chat_settings . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");

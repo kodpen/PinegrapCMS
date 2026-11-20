@@ -110,12 +110,12 @@ if ($dashboard_card_shown) {
                                             <label for="dashboard_refresh" class="form-label">' . lang('Refresh Time') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
-                                                <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-ghost" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric" style="text-align: right;"/>
+                                                <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-ghost text-end" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric"/>
                                             </label>
                                             <div class="form-text">' . lang('How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.') . '</div>
                                         </div>
                                         <div class="col-12 ">
-                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
+                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
                                             <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
                                         </div>
                                     </div>

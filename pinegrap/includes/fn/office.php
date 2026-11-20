@@ -11,7 +11,8 @@
  * a document - that the file manager and the Workspace draw. The files are
  * never written to here; changing a workbook's cells is the business of
  * includes/fn/office_edit.php, which the preview asks which cells it may
- * offer.
+ * offer. A .csv or .tsv is read as one sheet of the same rows, its separator
+ * and character set guessed, and is only looked at.
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
@@ -73,6 +74,14 @@ define('PG_OFFICE_MAX_IMAGE', 2 * 1024 * 1024);
 define('PG_OFFICE_MAX_IMAGES', 8 * 1024 * 1024);
 
 /**
+ * How much of a .csv or .tsv the preview reads, from its beginning, in
+ * bytes. The rows past it are not read: the sheet shows the whole records
+ * within it and says it was cut, as it does past the row and cell limits,
+ * which an ordinary file reaches long before.
+ */
+define('PG_OFFICE_MAX_CSV', 8 * 1024 * 1024);
+
+/**
  * The kind of office file a name is, by its extension: 'docx', 'xlsx' or ''.
  * Macro-enabled and template variants are read the same way, as are the
  * strict OOXML ones; .doc and .xls (the binary formats) are not read.
@@ -93,6 +102,29 @@ function pg_office_kind($name)
     }
 
     return '';
+}
+
+/**
+ * The kind of preview a name gets: a Word or Excel kind (pg_office_kind()),
+ * or 'csv' for a .csv or .tsv, drawn as a sheet and only looked at. The
+ * edits ask pg_office_kind(), which leaves the two out, so neither is ever
+ * offered for editing here; a channel and the file window still open them
+ * as text.
+ *
+ * @param string $name
+ * @return string docx | xlsx | csv | ''
+ */
+function pg_office_preview_kind($name)
+{
+    $kind = pg_office_kind($name);
+
+    if ($kind !== '') {
+        return $kind;
+    }
+
+    $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
+
+    return in_array($extension, array('csv', 'tsv'), true) ? 'csv' : '';
 }
 
 /**
@@ -414,21 +446,20 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
  * The built-in zip:// stream, which XMLReader walks a sheet through. PHPExcel
  * (the .xls and .ods importers) replaces that wrapper with its own for the
  * rest of the request and switches libxml's loader off, and XMLReader cannot
- * open a part through either; both are put back once, when first needed.
- * Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
+ * open a part through either; both are put back on every call, as PHPExcel
+ * may be loaded after an earlier read in the same request. Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
  * LIBXML_NONET), so the loader being on changes nothing else.
  */
 function pg_office_zip_stream()
 {
-    static $restored = false;
+    if (!class_exists('PHPExcel_Settings', false)) {
+        return;
+    }
 
-    if (!$restored) {
-        $restored = true;
-        @stream_wrapper_restore('zip');
+    @stream_wrapper_restore('zip');
 
-        if (function_exists('libxml_disable_entity_loader')) {
-            @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
-        }
+    if (function_exists('libxml_disable_entity_loader')) {
+        @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
     }
 }
 
@@ -482,13 +513,16 @@ function pg_office_reader_text($reader, $limit, &$over = null)
  * declares a kilobyte to whatever it holds. A table that unpacks past its
  * declared size is damaged; one past PG_OFFICE_MAX_STRINGS strings or
  * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show. Each string is read
- * node by node (pg_office_reader_text()).
+ * node by node (pg_office_reader_text()). Unlimited, as the sheet reader of
+ * the importers asks (includes/fn/sheet_read.php), the table has no count or
+ * byte limit, only the declared size.
  *
- * @param string $path the package on disk
- * @param string $part '' when the workbook has none
+ * @param string $path    the package on disk
+ * @param string $part    '' when the workbook has none
+ * @param bool   $limited held to the preview's limits
  * @return string[]|false|null false when damaged, null when too large
  */
-function pg_office_xlsx_strings($path, $part)
+function pg_office_xlsx_strings($path, $part, $limited = true)
 {
     $strings = array();
 
@@ -518,6 +552,11 @@ function pg_office_xlsx_strings($path, $part)
         // By the local name: a workbook written with a namespace prefix
         // (Open XML SDK writes x:si, x:row, x:c) is the same workbook.
         if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->localName === 'si')) {
+            if (!$limited) {
+                $strings[] = pg_office_reader_text($reader, PHP_INT_MAX);
+                continue;
+            }
+
             $string = pg_office_reader_text($reader, PG_OFFICE_MAX_STRING_BYTES - $bytes + 1, $over);
             $bytes += strlen($string);
 
@@ -1796,6 +1835,353 @@ function pg_office_docx_read($path, $edit = false)
     return $out;
 }
 
+/* ---------------------------------------------------------------------------
+   Comma and tab separated text
+   --------------------------------------------------------------------------- */
+
+/**
+ * The separators a .csv or .tsv is read with, by the name the choice above
+ * the sheet sends.
+ *
+ * @return string[]
+ */
+function pg_office_csv_delimiters()
+{
+    return array('comma' => ',', 'semicolon' => ';', 'tab' => "\t");
+}
+
+/**
+ * The separator and character set a preview request asks for, as given;
+ * pg_office_csv_read() keeps only the ones it offers and guesses the rest.
+ *
+ * @param array $request
+ * @return array delimiter, encoding ('' when not asked for)
+ */
+function pg_office_csv_choice($request)
+{
+    $choice = array();
+
+    foreach (array('delimiter', 'encoding') as $key) {
+        $value = isset($request[$key]) ? $request[$key] : '';
+        $choice[$key] = is_scalar($value) ? (string) $value : '';
+    }
+
+    return $choice;
+}
+
+/**
+ * The character set of a .csv's bytes: UTF-8 with a byte order mark or
+ * without one when every byte fits, else Windows-1254, the Turkish code
+ * page Excel and older programs on a Turkish Windows save in.
+ *
+ * @param string $bytes whole lines of the file's beginning
+ * @return string utf-8 | windows-1254
+ */
+function pg_office_csv_encoding($bytes)
+{
+    if (strncmp($bytes, "\xEF\xBB\xBF", 3) === 0) {
+        return 'utf-8';
+    }
+
+    return pg_mail_is_utf8($bytes) ? 'utf-8' : 'windows-1254';
+}
+
+/**
+ * A .csv's bytes as UTF-8 text in the character set given: the byte order
+ * mark left out, a byte that is not UTF-8 read as UTF-8 shown as a
+ * replacement mark, Windows-1254 converted byte by byte from the code
+ * page's own table (pg_mail_single_byte_to_utf8()).
+ *
+ * @param string $bytes
+ * @param string $encoding utf-8 | windows-1254
+ * @return string
+ */
+function pg_office_csv_text($bytes, $encoding)
+{
+    static $code_page = null;
+
+    if (strncmp($bytes, "\xEF\xBB\xBF", 3) === 0) {
+        $bytes = (string) substr($bytes, 3);
+    }
+
+    if ($encoding !== 'windows-1254') {
+        return pg_mail_is_utf8($bytes) ? $bytes : pg_mail_utf8_scrub($bytes);
+    }
+
+    // One table of the 128 upper bytes, so a large file is converted by
+    // strtr() rather than a byte at a time.
+    if ($code_page === null) {
+        $code_page = array();
+
+        for ($byte = 0x80; $byte <= 0xFF; $byte++) {
+            $code_page[chr($byte)] = pg_mail_single_byte_to_utf8(chr($byte), 'windows-1254');
+        }
+    }
+
+    return strtr($bytes, $code_page);
+}
+
+/**
+ * The records of a .csv's text as a spreadsheet program reads them: cells
+ * split at the separator, a cell that starts with a quote running to its
+ * closing quote over separators and line breaks, a doubled quote inside it
+ * one quote, and whatever follows the closing quote up to the separator
+ * kept; CRLF, LF or a lone CR ends a record, a blank line is an empty row.
+ * Each row carries its record's number in the file. A quote never closed
+ * runs to the end of the text.
+ *
+ * The workbook preview's limits hold: PG_OFFICE_MAX_ROWS rows,
+ * PG_OFFICE_MAX_COLUMNS columns and PG_OFFICE_MAX_CELLS cells; past any of
+ * them the rest is left and $truncated set. When the text is not the whole
+ * file ($whole false), the record it ends inside is left out too.
+ *
+ * Every character looked for is ASCII, which no byte of a UTF-8 or
+ * Windows-1254 character above it can be, so the file's own bytes are read
+ * as they are and only the cells kept are converted (pg_office_csv_read()).
+ *
+ * @param string $text      the file's bytes, or UTF-8
+ * @param string $delimiter one character
+ * @param bool   $whole     the text runs to the file's end
+ * @param bool   $truncated set when something was left out
+ * @param int    $max_rows  fewer rows, for a guess
+ * @return array[] n, cells
+ */
+function pg_office_csv_records($text, $delimiter, $whole, &$truncated, $max_rows = PG_OFFICE_MAX_ROWS)
+{
+    $rows = array();
+    $truncated = !$whole;
+    $length = strlen($text);
+    $stops = $delimiter . "\r\n";
+    $cells_left = PG_OFFICE_MAX_CELLS;
+    $at = 0;
+
+    while ($at < $length) {
+        if ((count($rows) >= $max_rows) || ($cells_left <= 0)) {
+            $truncated = true;
+            break;
+        }
+
+        $cells = array();
+        $at_end = false;
+
+        while (true) {
+            $value = '';
+
+            if (($at < $length) && ($text[$at] === '"')) {
+                $at++;
+
+                while (true) {
+                    $quote = strpos($text, '"', $at);
+
+                    if ($quote === false) {
+                        $value .= (string) substr($text, $at);
+                        $at = $length;
+                        break;
+                    }
+
+                    $value .= (string) substr($text, $at, $quote - $at);
+                    $at = $quote + 1;
+
+                    if (($at < $length) && ($text[$at] === '"')) {
+                        $value .= '"';
+                        $at++;
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+
+            $span = ($at < $length) ? strcspn($text, $stops, $at) : 0;
+            $value .= (string) substr($text, $at, $span);
+            $at += $span;
+
+            if (count($cells) < PG_OFFICE_MAX_COLUMNS) {
+                $cells[] = $value;
+            } else {
+                $truncated = true;
+            }
+
+            if ($at >= $length) {
+                $at_end = true;
+                break;
+            }
+
+            if ($text[$at] === $delimiter) {
+                $at++;
+                continue;
+            }
+
+            $at += (($text[$at] === "\r") && ($at + 1 < $length) && ($text[$at + 1] === "\n")) ? 2 : 1;
+            break;
+        }
+
+        // The read stopped inside this record: the rest of it is not here.
+        if ($at_end && !$whole) {
+            break;
+        }
+
+        if ((count($cells) === 1) && ($cells[0] === '')) {
+            $cells = array();
+        }
+
+        $rows[] = array('n' => count($rows) + 1, 'cells' => $cells);
+        $cells_left -= max(1, count($cells));
+    }
+
+    return $rows;
+}
+
+/**
+ * The separator a .csv's text is most likely written with: of the comma,
+ * the semicolon and the tab, the one that splits the first records into the
+ * same number of cells, two or more, most often; then the one giving more
+ * cells; then the name's own (the tab for a .tsv, the comma otherwise),
+ * which is also the answer for a file of one column. A separator inside
+ * quotes is not counted, so "Kaya; Ali",30 is a comma file, and a comma in
+ * every number of a semicolon file (Excel in Turkish) does not win.
+ *
+ * @param string $text the file's bytes, or UTF-8 (see pg_office_csv_records())
+ * @param string $name the file's name, for its own separator
+ * @return string comma | semicolon | tab
+ */
+function pg_office_csv_delimiter($text, $name)
+{
+    $sample = (string) substr($text, 0, 65536);
+    $whole = (strlen($text) <= 65536);
+    $own = (strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION)) === 'tsv') ? 'tab' : 'comma';
+    $order = array_unique(array($own, 'comma', 'semicolon', 'tab'));
+    $delimiters = pg_office_csv_delimiters();
+    $best = $own;
+    $best_agree = 0;
+    $best_total = 1;
+    $best_cells = 0;
+
+    foreach ($order as $key) {
+        $counts = array();
+
+        foreach (pg_office_csv_records($sample, $delimiters[$key], $whole, $cut, 20) as $row) {
+            if (!empty($row['cells'])) {
+                $counts[] = count($row['cells']);
+            }
+        }
+
+        if (empty($counts)) {
+            continue;
+        }
+
+        // The number of cells most records have; on a tie, the larger.
+        $tally = array_count_values($counts);
+        $cells = 0;
+        $agree = 0;
+
+        foreach ($tally as $count => $records) {
+            if (($records > $agree) || (($records === $agree) && ($count > $cells))) {
+                $cells = (int) $count;
+                $agree = $records;
+            }
+        }
+
+        if ($cells < 2) {
+            continue;
+        }
+
+        $total = count($counts);
+        $share = $agree * $best_total - $best_agree * $total;
+
+        if (($share > 0) || (($share === 0) && ($cells > $best_cells))) {
+            $best = $key;
+            $best_agree = $agree;
+            $best_total = $total;
+            $best_cells = $cells;
+        }
+    }
+
+    return $best;
+}
+
+/**
+ * A .csv or .tsv as the preview draws it: one sheet named after the file,
+ * read from the file's first PG_OFFICE_MAX_CSV bytes in whole records, the
+ * character set and the separator guessed unless the choice above the sheet
+ * gave one it offers. Only looked at: nothing here is offered for editing.
+ *
+ * @param string $path
+ * @param string $name   the file's name
+ * @param array  $choice delimiter (comma, semicolon, tab), encoding (utf-8, windows-1254); others guessed
+ * @return array ok, error, sheets, truncated, csv (delimiter, encoding: what the sheet was read with)
+ */
+function pg_office_csv_read($path, $name, $choice = array())
+{
+    $handle = is_file($path) ? @fopen($path, 'rb') : false;
+
+    if (!$handle) {
+        return array('ok' => false, 'error' => lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
+    }
+
+    $bytes = '';
+
+    while (!feof($handle) && (strlen($bytes) <= PG_OFFICE_MAX_CSV)) {
+        $chunk = fread($handle, PG_OFFICE_MAX_CSV + 1 - strlen($bytes));
+
+        if (($chunk === false) || ($chunk === '')) {
+            break;
+        }
+
+        $bytes .= $chunk;
+    }
+
+    fclose($handle);
+
+    // Past the limit only the whole lines are kept: a line break is never
+    // inside a character, so the set is guessed on whole characters, and
+    // the record cut short is left out by the reading. The search ends
+    // before the one byte read past the limit.
+    $whole = (strlen($bytes) <= PG_OFFICE_MAX_CSV);
+
+    if (!$whole) {
+        $line_end = max((int) strrpos($bytes, "\n", -2), (int) strrpos($bytes, "\r", -2));
+        $bytes = ($line_end > 0) ? (string) substr($bytes, 0, $line_end + 1) : '';
+    }
+
+    $choice = is_array($choice) ? $choice : array();
+    $delimiters = pg_office_csv_delimiters();
+    $encoding = isset($choice['encoding']) ? (string) $choice['encoding'] : '';
+
+    if (!in_array($encoding, array('utf-8', 'windows-1254'), true)) {
+        $encoding = pg_office_csv_encoding($bytes);
+    }
+
+    if (strncmp($bytes, "\xEF\xBB\xBF", 3) === 0) {
+        $bytes = (string) substr($bytes, 3);
+    }
+
+    $delimiter = isset($choice['delimiter']) ? (string) $choice['delimiter'] : '';
+
+    if (!isset($delimiters[$delimiter])) {
+        $delimiter = pg_office_csv_delimiter($bytes, $name);
+    }
+
+    // Read on the bytes and converted a cell at a time, so the file is never
+    // held a second time in its larger UTF-8 form.
+    $rows = pg_office_csv_records($bytes, $delimiters[$delimiter], $whole, $cut);
+    unset($bytes);
+
+    foreach ($rows as $index => $row) {
+        foreach ($row['cells'] as $column => $cell) {
+            $rows[$index]['cells'][$column] = pg_office_csv_text($cell, $encoding);
+        }
+    }
+
+    return array(
+        'ok'        => true,
+        'error'     => '',
+        'sheets'    => array(array('name' => pg_file_name_stem($name), 'hidden' => false, 'rows' => $rows, 'truncated' => $cut)),
+        'truncated' => $cut,
+        'csv'       => array('delimiter' => $delimiter, 'encoding' => $encoding),
+    );
+}
+
 /**
  * The script tag of the preview's drawing code (assets/js/pg_office_view.js),
  * for the screens that load it on first use, stamped with the file's time.
@@ -1812,8 +2198,9 @@ function pg_office_view_includes()
 /**
  * The words the preview's drawing code needs, translated: the preview's own,
  * those of a workbook offered for editing (why a cell or a sheet is not
- * offered, the hint, the count of changes) and those of a document (why a
- * paragraph or the whole document is not offered, the hint, the count).
+ * offered, the hint, the count of changes), those of a document (why a
+ * paragraph or the whole document is not offered, the hint, the count) and
+ * the choice above a .csv's sheet.
  *
  * @return array
  */
@@ -1864,6 +2251,13 @@ function pg_office_view_strings()
         'para_object'       => lang('This paragraph has a picture, a shape, an equation or a symbol. Change it in a word processor.'),
         'para_break'        => lang('This paragraph has a page or column break. Change it in a word processor.'),
         'para_other'        => lang('This paragraph holds more than text. Change it in a word processor.'),
+        'csv_delimiter'     => lang('Separator'),
+        'csv_comma'         => lang('Comma (,)'),
+        'csv_semicolon'     => lang('Semicolon (;)'),
+        'csv_tab'           => lang('Tab'),
+        'csv_encoding'      => lang('Character set'),
+        'csv_utf8'          => lang('UTF-8'),
+        'csv_1254'          => lang('Windows-1254 (Turkish)'),
     );
 }
 
@@ -1871,13 +2265,14 @@ function pg_office_view_strings()
  * Whichever kind the file is, read for the preview.
  *
  * @param string $path
- * @param string $name the file's name (for the kind)
- * @param bool   $edit a workbook or a document also says what may be changed in it
+ * @param string $name   the file's name (for the kind)
+ * @param bool   $edit   a workbook or a document also says what may be changed in it
+ * @param array  $choice a .csv's separator and character set (pg_office_csv_choice())
  * @return array ok, error, kind, and the kind's own fields
  */
-function pg_office_read($path, $name, $edit = false)
+function pg_office_read($path, $name, $edit = false, $choice = array())
 {
-    $kind = pg_office_kind($name);
+    $kind = pg_office_preview_kind($name);
 
     if ($kind === 'xlsx') {
         return array('kind' => 'xlsx') + pg_office_xlsx_read($path, $edit);
@@ -1885,6 +2280,11 @@ function pg_office_read($path, $name, $edit = false)
 
     if ($kind === 'docx') {
         return array('kind' => 'docx') + pg_office_docx_read($path, $edit);
+    }
+
+    // Only looked at, whether or not editing was asked for.
+    if ($kind === 'csv') {
+        return array('kind' => 'csv') + pg_office_csv_read($path, $name, $choice);
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');

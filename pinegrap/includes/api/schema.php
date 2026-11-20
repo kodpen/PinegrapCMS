@@ -91,6 +91,7 @@ function api_schema() {
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool',   'description' => 'Limit to products that are or are not out of stock.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -196,7 +197,7 @@ function api_schema() {
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
-				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones. A product in no group is not shown in the shop\'s catalogue tree.'),
+				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones; a group it is in already keeps its sort order, featured mark and new date. A product in no group is not shown in the shop\'s catalogue tree.'),
 				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
 				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it, replacing the current ones. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
 				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.'),
@@ -1025,6 +1026,7 @@ function api_schema() {
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest customer first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -2111,7 +2113,7 @@ function api_schema() {
 			'handler' => 'api_store_feeds_list',
 			'returns' => array('list' => 'StoreFeed'),
 			'summary' => 'Product feeds',
-			'description' => 'The product feeds the store publishes for shopping platforms: openai_jsonl and openai_csv (the OpenAI product feed) and google_tsv (Google Merchant Center), always in that order. url is the private address a platform reads the feed from (null until the feed has one); give it to the platform, never publish it. The feeds are switched on and set up under Settings, SEO, Product Feeds and rebuilt once a day. state is off, ok, stale (never built, or not for two days) or failing (the last build failed with error; the file built before is still served). products counts the products in the last good build; skipped says how many were left out and why (no_address, donation, recurring, no_price, not_in_catalog, excluded_group, no_title, no_brand, no_image). One page.',
+			'description' => 'The product feeds the store publishes for shopping platforms: openai_jsonl and openai_csv (the OpenAI product feed), google_tsv and google_xml (Google Merchant Center, as a tab-separated file and as RSS 2.0 XML), always in that order. url is the private address a platform reads the feed from (null until the feed has one); give it to the platform, never publish it. The feeds are switched on and set up under Settings, Ecommerce, Product Feeds and rebuilt once a day. state is off, ok, stale (never built, or not for two days) or failing (the last build failed with error; the file built before is still served). products counts the products in the last good build; skipped says how many were left out and why (no_address, donation, recurring, no_price, not_in_catalog, excluded_group, no_title, no_brand, no_image). One page.',
 			'params'  => array()
 		),
 
@@ -3176,6 +3178,18 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'webhooks.events',
+			'method'  => 'GET',
+			'path'    => '/webhooks/events',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_events',
+			'returns' => array('data' => 'WebhookEvent[]'),
+			'summary' => 'The events and what each carries',
+			'description' => 'Every event that can be subscribed to, with its description, its module (empty for the core, erp or workspace), the fields of its data (name, type, nullable, description) and one sample of its data, for an application\'s own event chooser. An event whose fields are not written yet has an empty list and a null sample. GET /webhooks keeps its list of names.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'webhooks.create',
 			'method'  => 'POST',
 			'path'    => '/webhooks',
@@ -3203,7 +3217,22 @@ function api_schema() {
 			'dry_run' => true,
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
-			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'description' => 'A client that cannot send DELETE, or talks to an IIS server, uses POST /webhooks/{id}/delete, the way every other record is deleted. A plain POST to /webhooks/{id} removes the subscription as well, as it has since the first release, and keeps doing so.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.delete_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/delete',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_delete',
+			'dry_run' => true,
+			'status'  => 204,
+			'summary' => 'Remove a subscription, addressed as a POST',
+			'description' => 'The same removal as DELETE /webhooks/{id}, for clients and servers that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3285,9 +3314,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
 			'summary' => 'Send a test event',
-			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. With event, that event\'s sample (GET /webhooks/events) is queued instead, under its own name, with the header X-Pinegrap-Test: 1 and test: true in the body; it is never announced, so no other subscriber hears it. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
 			'params'  => array(
-				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'event', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One of the subscription\'s own events whose sample is written; refused with 422 otherwise. Left out: webhook.test.')
 			)
 		),
 
@@ -3565,7 +3595,8 @@ function api_schema() {
 				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -3740,6 +3771,18 @@ function api_schema() {
 				array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',   'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.')
 			)
+		),
+
+		array(
+			'id'      => 'reports.customer_value',
+			'method'  => 'GET',
+			'path'    => '/reports/customer-value',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_customer_value',
+			'returns' => 'CustomerValueReport',
+			'summary' => 'Repeat purchase, value per customer, cohorts and customer groups',
+			'description' => 'The figures of the Customers report, read from the summary the scheduled jobs work out again once a day, never summed at the call: as_of says when. Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address, else the contact of its order; not_placed counts the orders with neither. Amounts are minor units of currency, the base currency; marketplace orders kept in another currency are left out and counted in apart. periods holds the last 1, 3, 6, 12 and 24 whole months and all: customers who ordered in them, those with two orders or more, orders, value and the average days between orders. months is the last 36 months, the last one not whole yet. cohorts is the last 24 months of first orders with, for each of the 12 months after, the customers who ordered again. groups is every customer of all time by the age of their last order and their number of orders, each cell with its group (new, returning, loyal, at_risk, lost). top lists 20 customers by value of all time and of the last 12 months, kept by the number of their last order; name is read from that order and given only when the key also holds customers:read (names_shown), else null. Before the first rebuild has finished, ready is false, the lists are empty and progress says how many orders of how many the rebuild under way has read.',
+			'params'  => array()
 		),
 
 		array(
@@ -4002,7 +4045,8 @@ function api_schema() {
 				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
 				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
 				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
-				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest submission first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -4236,7 +4280,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page',
-			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way, and so is the variant draft of an experiment that is not ended yet (409 experiment_variant_held). A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
+			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way, and so is the variant draft of an experiment that is not ended yet (409 experiment_variant_held) and a draft waiting in an open release bundle (409 release_bundle_held: publish the bundle, delete it or remove the page from it first). A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -4252,7 +4296,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page, addressed as a POST',
-			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request. The same refusals apply, 409 experiment_variant_held among them.',
+			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request. The same refusals apply, 409 experiment_variant_held and release_bundle_held among them.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -5302,6 +5346,122 @@ function api_schema() {
 			)
 		),
 
+		// Release bundles (includes/api/resources/design_bundles.php): drafts
+		// published and taken back together. Making, timing and deleting a
+		// bundle stay on the Bundles screen.
+		array(
+			'id'      => 'design.bundles.list',
+			'method'  => 'GET',
+			'path'    => '/design/bundles',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_bundles_list',
+			'returns' => array('list' => 'DesignBundle'),
+			'summary' => 'Release bundles',
+			'description' => 'The release bundles of the Bundles screen, newest first, cursor paged: named lists of drafts of a visual design that go live together and can be taken back together. status: open, scheduled (publish_at is set and the site\'s general job publishes it then, in the name of scheduled_by), published, partial (partly published: a publish failed and what it wrote could not all be taken back) or reverted (taken back). failed_page_id and failed_reason name the page a publish stopped at, null otherwise. pages is null here; GET /design/bundles/{id} gives them. 503 service_unavailable before the database update that adds release bundles.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'scheduled', 'published', 'partial', 'reverted')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.get',
+			'method'  => 'GET',
+			'path'    => '/design/bundles/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_bundles_get',
+			'returns' => 'DesignBundle',
+			'summary' => 'One release bundle with its pages',
+			'description' => 'As in the list, with pages: each page\'s id (the item id the publish and take-back lists take), kind new (a draft that becomes a page of its own) or replacement (a copy of the live page live_page_id, whose design, title and description are written onto that page), and status waiting, written (on the site by this bundle), left_out (left out of the publish) or kept (not taken back). changed_since is true for a waiting replacement whose live page was published by hand since it was copied, null for the others.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.add',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/pages',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_add',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'DesignBundle',
+			'summary' => 'Add a page to a release bundle',
+			'description' => 'As the Bundles screen\'s Add a copy of a page and Add a draft. Send live_page_id to copy a live page of a visual design into Drafts as its replacement, or draft_page_id to add a draft as a new page; one of the two. A draft\'s own publish time is cleared: the bundle publishes it. While the bundle is open the draft cannot be published alone or deleted. 409 bundle_page_refused when the bundle is published, the page is a classic page or not on the site, the page has an open experiment, the draft is an open experiment\'s variant, or the draft or the live page is in an open bundle already. Answers the bundle with its pages.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'live_page_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A live page of a visual design: its copy is added as its replacement.'),
+				array('name' => 'draft_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft of a visual design, added as a new page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/bundles/{id}/pages/{page_id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_remove',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Remove a page from a release bundle',
+			'description' => 'The page leaves the bundle and its draft stays in Drafts, as the screen\'s Remove. page_id is the bundle page\'s id from GET /design/bundles/{id}, not a page id. 404 for a page that is not waiting in this bundle; 409 bundle_state once the bundle is published; 409 bundle_busy while the bundle is being published. A default IIS install answers DELETE itself before PHP is reached: POST /design/bundles/{id}/pages/{page_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'page_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The bundle page\'s id.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.pages.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/pages/{page_id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_pages_remove',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Remove a page from a release bundle (POST)',
+			'description' => 'The same as DELETE /design/bundles/{id}/pages/{page_id}, for clients and servers that cannot send DELETE. The same refusals apply.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'page_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The bundle page\'s id.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.publish',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/publish',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_publish',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Publish a release bundle',
+			'description' => 'Every waiting page goes live at one moment, as the Bundles screen\'s Publish: a new page leaves Drafts, a replacement\'s design, title and description are saved onto its live page as one revision with the source bundle, and the used replacement goes to the recycle bin. Every page is checked before anything is written; a failure while writing takes back at once what was written and leaves the bundle as it was (409 bundle_publish_failed, failed_reason on the bundle); only when that take-back fails too is the bundle partial, and the same call publishes the rest. A refusal lists the pages in error.errors (field the bundle page\'s id, code locked, refused or changed): 409 page_open_in_editor while somebody has one of the pages open in the editor, 409 bundle_page_refused when the page save refuses a page, 409 bundle_changed_since while a replacement\'s live page was published by hand since the copy and is in neither replace nor leave, 409 bundle_empty with no page to publish, 409 bundle_state unless the bundle is open, scheduled or partial, 409 bundle_busy while it is being published. The dry run answers the checks\' list: detail.pages with each page\'s state (ready, left_out), detail.write and detail.leave.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'replace', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Bundle page ids changed since, to replace anyway.'),
+				array('name' => 'leave',   'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Bundle page ids changed since, to leave out: they stay drafts.')
+			)
+		),
+
+		array(
+			'id'      => 'design.bundles.take_back',
+			'method'  => 'POST',
+			'path'    => '/design/bundles/{id}/take-back',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_bundles_take_back',
+			'dry_run' => true,
+			'returns' => 'DesignBundle',
+			'summary' => 'Take a release bundle back',
+			'description' => 'As the Bundles screen\'s Take back: a replaced page returns to the revision it had before, as a new publish with the source restore, and a new page goes back to Drafts. A page comes back only while it is as the bundle wrote it: one published since, gone, made the home page, or whose revision was trimmed stays, and its id has to be sent in kept, so that nothing is kept silently (409 bundle_pages_kept lists them in error.errors with the reason as code: gone, home, unfinished, changed, swept). 409 page_open_in_editor while somebody has one of the pages to take back open in the editor; 409 bundle_state unless the bundle is published or partial; 409 bundle_busy while it is being published; 409 bundle_take_back_failed when a page could not be written back: the bundle stays published, to be tried again. The dry run answers detail.can (the bundle page ids that come back) and detail.kept.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'kept', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'The bundle page ids that cannot be taken back, acknowledged.')
+			)
+		),
+
 		// Share links of a design's prototype (includes/fn/prototype_links.php).
 		// Never MCP tools: a public link to unpublished pages is minted by a
 		// person or an integration they set up, not by an AI app.
@@ -5345,7 +5505,8 @@ function api_schema() {
 				array('name' => 'audience',      'in' => 'body', 'type' => 'enum', 'values' => array('anyone', 'team'), 'required' => true, 'description' => 'anyone: whoever has the link; team: signed-in administrators, designers and managers.'),
 				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
 				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
-				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.')
+				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.'),
+				array('name' => 'allow_comments', 'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'Whoever opens the link can pin comments with a name on its pages and answer them. Off unless sent as true.')
 			)
 		),
 
@@ -5665,10 +5826,10 @@ function api_schema() {
 			'returns' => 'DesignAutoDialog',
 			'status'  => 201,
 			'summary' => 'Create an auto dialog',
-			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. Name and URL are required; no other auto dialog may have the name (409 name_taken).',
+			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. A name is required, and a URL unless it shows a designed pop-up (content component); no other auto dialog may have the name (409 name_taken).',
 			'params'  => array(
 				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
-				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as a short link destination (no other scheme, no //host, no backslash or space; 422 otherwise).'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as a short link destination (no other scheme, no //host, no backslash or space; 422 otherwise). Required unless content is component; kept beside a component, for switching back.'),
 				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors. false when left out.'),
 				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
@@ -5678,7 +5839,9 @@ function api_schema() {
 				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
 				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
 				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
-				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.'),
+				array('name' => 'content',   'in' => 'body', 'type' => 'enum', 'values' => array('url', 'component'), 'nullable' => true, 'description' => 'What it shows: url (its address in a frame, the default) or component (the shared component component_id, designed in the visual designer and drawn into the page).'),
+				array('name' => 'component_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The shared component a designed pop-up shows; required with content component and one that exists and is no system widget (422 otherwise). 0 or null for none.')
 			)
 		),
 
@@ -5706,7 +5869,9 @@ function api_schema() {
 				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
 				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
 				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
-				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.'),
+				array('name' => 'content',   'in' => 'body', 'type' => 'enum', 'values' => array('url', 'component'), 'nullable' => true, 'description' => 'What it shows: url (its address in a frame, the default) or component (the shared component component_id, designed in the visual designer and drawn into the page).'),
+				array('name' => 'component_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The shared component a designed pop-up shows; required with content component and one that exists and is no system widget (422 otherwise). 0 or null for none.')
 			)
 		),
 
@@ -6296,12 +6461,17 @@ function api_error_catalogue() {
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
 		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
 
+		'precondition_failed'      => array(412, 'The record changed since the ETag sent in If-Match was read; nothing was written. Read it again and repeat the change.'),
+
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
 		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
+		'limit_message_mine'       => array(422, 'The person already keeps 10 highlights on this message. Remove one first.'),
+		'limit_message'            => array(422, 'The message already carries 30 highlights, as many as it can.'),
+		'limit_person'             => array(422, 'The person keeps 2,000 highlights, as many as they can. Remove some first.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

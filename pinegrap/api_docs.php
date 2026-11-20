@@ -224,6 +224,8 @@ echo pg_page_shell(array(
 @media (min-width: 1025px) {
 	.api-docs .doc-nav { top: calc(var(--pg-navbar-h) + 1rem); max-height: calc(100vh - var(--pg-navbar-h) - 2rem); }
 }
+/* A link from the index lands below the fixed navbar, not under it. */
+.api-docs .doc-ep, .api-docs .doc-conv, .api-docs .doc-conv-item, .api-docs .doc-group-h { scroll-margin-top: calc(var(--pg-navbar-h) + 1rem); }
 .doc-cred { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 /* Long addresses break inside the line on a phone instead of widening the page. */
 .doc-cred > div { min-width: 0; max-width: 100%; }
@@ -265,11 +267,7 @@ echo pg_page_shell(array(
 						<i class="bi bi-braces me-1"></i>' . lang('View') . '</a>
 				</div>
 			</div>
-			<p class="small opacity-75 mb-0 mt-5">
-				<i class="bi bi-info-circle me-1"></i>'
-				. lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '
-			</p>
-			<p class="small fg-2 mb-0 mt-3">
+			<p class="small fg-2 mb-0 mt-5">
 				<i class="bi bi-terminal me-1"></i>'
 				. lang(array(
 					'string' => 'Developers without a panel account can use the console at {var:1}.',
@@ -278,6 +276,8 @@ echo pg_page_shell(array(
 			</p>
 		</div>
 	</div>
+
+	' . api_console_conventions_html(api_console_conventions(api_openapi_base_url())) . '
 
 	<div class="doc-wrap">
 		<div class="doc-nav card"><div class="card-body p-3">' . $nav . '</div></div>
