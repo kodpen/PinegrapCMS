@@ -396,6 +396,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_parts_forms`: [[widget-default-parts-cart-form]], [[widget-default-parts-order-forms]]
 - `widgets_photo_gallery`: [[photo-gallery-widget]]
 - `widgets_placement`: [[widget-placement-settings]]
+- `widgets_referral`: [[referral-account-part]]
 - `widgets_region_starters`: [[legacy-to-designer-bulk-run]]
 - `widgets_shipping_address`: [[checkout-state-list]], [[shipping-address-verified-box]], [[shipping-address-widget]]
 - `widgets_shipping_method`: [[shipping-method-widget]]

@@ -321,6 +321,7 @@
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule. [decision: decisions-made-product-26.md]
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
+- referral-account-part.md: Referral programme in My Account (RF3): section referral, flags has_referral and can_refer, __referral_url, why a customer cannot refer, referrals as initials
 - referral-checks.md: What each check of a referred friend's order reads (pg_referral_check()): the code's one spelling, self by both e-mails, the friend's other orders; open gaps
 - referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind [decision: here]
 - referral-report-and-event.md: Referrals Report (view_referral_report.php): who sees it, what each column counts from the referral rows, top referrers' names; the referral.rewarded event for webhooks and flows
