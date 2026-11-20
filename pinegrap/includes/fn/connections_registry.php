@@ -472,6 +472,7 @@ function pg_connections_transfer_fields()
         'search_console' => array('US', $none),
         'indexnow' => array('US', $none),
         'meta_capi' => array('US', array('contact', 'order_payment', 'ip_cookie')),
+        'tiktok_events' => array('SG', array('contact', 'order_payment', 'ip_cookie')),
 
         'google_places' => array('US', array('address')),
         'mapbox' => array('US', array('address')),
@@ -707,6 +708,9 @@ function pg_connections_registry()
         // Ad conversions sent from the server (ad_conversions_meta.php).
         'meta_capi' => array('name' => 'Meta Conversions API', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-cookies', 'uses' => 'Purchases sent from the server to Meta',
             'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_meta_connected')),
+        // Ad conversions sent from the server (ad_conversions_tiktok.php).
+        'tiktok_events' => array('name' => 'TikTok Events API', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-cookies', 'uses' => 'Purchases sent from the server to TikTok',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_tiktok_connected')),
 
         // Maps and places.
         'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',

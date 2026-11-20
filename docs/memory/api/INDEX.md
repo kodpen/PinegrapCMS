@@ -5,6 +5,7 @@
 - ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, SC1b): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache [decision: here]
 - ad-conversions-meta.md: Meta Conversions API (ad-conversions SC2): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
 - ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep, privacy
+- ad-conversions-tiktok.md: TikTok Events API (ad-conversions SC4): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
 - agent-guide-areas.md: The guide's content, forms and store topics (agent_guide_content/forms/store.php): sections, which tools each names, values read from their registries, money tools named, the store prefixes, bytes
 - agent-guide-designer.md: The guide's designer topic: lines shared with the built-in assistant, <pg-keep> kinds, worked lists the test applies, colours and fonts on design_designs_list, the design_change prompt
 - agent-guide-engine.md: The guide for AI agents (agent_guide.php): topic registry, topic files, GET /guide (guide.read, no scope), MCP guide_read, pinegrap://guide resources, "Guide: <topic>." on tools, size limits
@@ -96,6 +97,7 @@
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events [decision: decisions-made-schema-9.md]
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
 - api-sales-report-periods.md: GET /reports/sales: periods are site days and months by site.timezone's rules across clock changes; only periods with orders come back, at most 400; more is refused with 422 instead of being cut
+- api-sales-watch-report.md: GET /reports/sales-watch (#10817, orders:read, an MCP tool): per channel the norm and the 12 hours before and after, the last pass, 7 days of sales alerts, products taken off sale
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-settings-no-endpoint.md: Why settings, firewall, sessions, backups and updates have no external API endpoint (#5238), and the two doors that stay open
 - api-single-value-fields.md: The external API refuses a JSON list or object in a field that takes one value (422), before any cast.
@@ -124,6 +126,7 @@
 - application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
 - application-access-new-sheet.md: Application Access's New application sheet: a drawer in three steps, the starting point cards of api_app_templates(), what each ticks, the sign-in card when OAuth is set up, the create branch's checks
+- application-access-permission-picker.md: Application Access permission picker: areas with icons, a row per scope group, None / Read / Write, search, counts, the four bulk buttons and their rule, the money pill
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]
@@ -133,7 +136,7 @@
 - claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
 - claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
 - connections-registry-rows.md: Every row of the registry of outside services by group: the place of its setting (Site Settings card or screen) and how its state is read, and the services that show no state, with why
-- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (79 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
+- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (80 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
@@ -148,6 +151,7 @@
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used [decision: here]
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
+- tiktok-events-facts.md: TikTok Events API 2.0 as TikTok's own documents say it (read 2026-11-20): address, Access-Token header, body, hashing (phone in E.164 with +), test code, answers, what could not be checked
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
 - workspace-api-link-preview.md: link_preview on a Workspace message read over the external API and MCP (LP3): the card's plain fields, the states and the switch that leave it null, which routes carry it
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)

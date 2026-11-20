@@ -4,8 +4,9 @@
  *
  * Stock per location at the points that take units away or count them in:
  * the order's location, the checkout's stock check, order completion, the
- * local sale, a bundle's components, the barcode scans and the inventory
- * API.
+ * local sale, a bundle's components, the barcode scans, the inventory API
+ * and the writers that work on the total (marketplace orders, ERP,
+ * Workspace: pg_stock_total_write()).
  *
  * A site without locations takes none of these paths: each caller keeps its
  * own statement on products.inventory_quantity, so its writes are the ones
@@ -258,21 +259,22 @@ function pg_stock_quantity_at($product_id, $location_id, $total)
  *
  * @param int      $product_id
  * @param int      $location_id
- * @param callable $delta_for function (int $at_location): int
+ * @param callable $delta_for function (int $at_location, int $total): int
  * @param string   $reason
  * @param string   $ref
+ * @param array    $options   see pg_stock_change()
  * @return array pg_stock_change()'s answer, plus delta (what was applied)
  */
-function pg_stock_change_from_row($product_id, $location_id, $delta_for, $reason, $ref)
+function pg_stock_change_from_row($product_id, $location_id, $delta_for, $reason, $ref, array $options = array())
 {
     $result = array();
 
     for ($attempt = 0; $attempt < 3; $attempt++) {
         $rows = pg_stock_rows($product_id);
         $total = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $product_id . "'");
-        $delta = (int) $delta_for(pg_stock_available_at($rows, $location_id, pg_stock_default_location(), $total));
+        $delta = (int) $delta_for(pg_stock_available_at($rows, $location_id, pg_stock_default_location(), $total), $total);
 
-        $result = pg_stock_change($product_id, $location_id, $delta, $reason, $ref);
+        $result = pg_stock_change($product_id, $location_id, $delta, $reason, $ref, $options);
         $result['delta'] = $delta;
 
         if ($result['error'] !== 'not_enough') {
@@ -321,6 +323,64 @@ function pg_stock_sale_take($product_id, $quantity, $location_id, $reason, $ref 
             'quantity' => isset($rows[$location_id]) ? (int) $rows[$location_id] : 0,
         ),
     );
+}
+
+/**
+ * The change a writer that names no stock row (a marketplace order, ERP,
+ * Workspace) makes at a location that holds $at_location: set asks for a
+ * new total, adjust moves by the signed amount. An increase lands whole at
+ * the location; a decrease takes only what the location holds, never from
+ * another location.
+ *
+ * @param string $op          set or adjust
+ * @param int    $quantity    the total asked for (set) or the signed amount (adjust)
+ * @param int    $at_location
+ * @param int    $total       products.inventory_quantity
+ * @return int the delta for pg_stock_change()
+ */
+function pg_stock_total_delta($op, $quantity, $at_location, $total)
+{
+    $quantity = (int) $quantity;
+    $delta = ($op === 'set') ? max(0, $quantity) - max(0, (int) $total) : $quantity;
+
+    return max($delta, -max(0, (int) $at_location));
+}
+
+/**
+ * Change a tracked product's stock for a writer that works on the total
+ * (marketplace orders and their cancellation, ERP documents and counts,
+ * Workspace). Answers null when the site has no locations or the product
+ * does not track stock (it has no rows): the caller then runs its own
+ * statement on products.inventory_quantity, as before. With locations the
+ * change goes through pg_stock_change() at $location_id, so the rows and
+ * the total stay one sum and the move is recorded.
+ *
+ * @param int    $product_id
+ * @param string $op          set or adjust (see pg_stock_total_delta())
+ * @param int    $quantity
+ * @param int    $location_id 0 = the default location
+ * @param string $reason      a key of pg_stock_reasons()
+ * @param string $ref         what caused it (an order number, a document id)
+ * @param array  $options     see pg_stock_change() (transaction => false inside a caller's transaction)
+ * @return array|null pg_stock_change()'s answer, plus delta (what was applied)
+ */
+function pg_stock_total_write($product_id, $op, $quantity, $location_id, $reason, $ref = '', array $options = array())
+{
+    if (!pg_stock_has_locations()) {
+        return null;
+    }
+
+    if ((string) db_value("SELECT inventory FROM products WHERE id = '" . (int) $product_id . "'") !== '1') {
+        return null;
+    }
+
+    $location_id = (int) $location_id ? (int) $location_id : pg_stock_default_location();
+
+    return pg_stock_change_from_row($product_id, $location_id,
+        function ($at_location, $total) use ($op, $quantity) {
+            return pg_stock_total_delta($op, $quantity, $at_location, $total);
+        },
+        $reason, $ref, $options);
 }
 
 /**

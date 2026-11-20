@@ -320,18 +320,71 @@ function ws_mail_connections_url($provider, $return = 'settings_mailboxes.php#pg
 }
 
 /**
- * How many of a provider's accounts may read mailboxes (purpose mail_read).
+ * A provider's accounts as the Mailboxes card reads them
+ * (ws_mail_connection_state()).
  *
  * @param string $provider microsoft | google
- * @return int
+ * @return array count, other
  */
-function ws_mail_connection_count($provider)
+function ws_mail_connection_read($provider)
 {
     if (!function_exists('pg_connect_accounts') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
-        return 0;
+        return ws_mail_connection_state(array());
     }
 
-    return count(pg_connect_accounts(array('purpose' => 'mail_read', 'provider' => ($provider === 'google') ? 'google' : 'microsoft')));
+    return ws_mail_connection_state(pg_connect_accounts(array('provider' => ($provider === 'google') ? 'google' : 'microsoft')));
+}
+
+/**
+ * The state of a provider's connected accounts for Reading mailboxes. An
+ * account connected on Connections for another purpose (Gmail's row there
+ * connects for Sending e-mail, purpose mail) reads as connected on that
+ * screen but holds no permission to read mail; the purposes it holds are
+ * returned so the card can name the sign-in still missing. Pure.
+ *
+ * @param array[] $accounts the provider's pg_connect_accounts() rows
+ * @return array count (int, accounts serving mail_read), other (string[],
+ *               the purposes held when none serves mail_read)
+ */
+function ws_mail_connection_state($accounts)
+{
+    $count = 0;
+    $other = array();
+
+    foreach ((array) $accounts as $account) {
+        $purposes = (isset($account['purposes']) && is_array($account['purposes'])) ? $account['purposes'] : array();
+
+        if (in_array('mail_read', $purposes, true)) {
+            $count++;
+            continue;
+        }
+
+        foreach ($purposes as $purpose) {
+            if (!in_array((string) $purpose, $other, true)) {
+                $other[] = (string) $purpose;
+            }
+        }
+    }
+
+    return array('count' => $count, 'other' => ($count > 0) ? array() : $other);
+}
+
+/**
+ * The names of purposes, for the card's words.
+ *
+ * @param string[] $keys
+ * @return string
+ */
+function ws_mail_connection_purpose_names($keys)
+{
+    $names = array();
+
+    foreach ((array) $keys as $key) {
+        $purpose = function_exists('pg_connect_purpose') ? pg_connect_purpose((string) $key) : null;
+        $names[] = (is_array($purpose) && isset($purpose['label'])) ? (string) $purpose['label'] : (string) $key;
+    }
+
+    return implode(', ', $names);
 }
 
 /**
@@ -341,9 +394,15 @@ function ws_mail_connection_count($provider)
  * connected. A user below manager cannot open Connections, so they are told
  * who connects it. Pure but for the words.
  *
- * @param array  $viewer
- * @param string $provider microsoft | google
- * @param int    $count    ws_mail_connection_count()
+ * An account connected for other purposes only reads "Connected for
+ * another purpose", names them and the missing Reading mailboxes sign-in
+ * and leads to it; a connected one, on the card, says where the mailbox is
+ * added next.
+ *
+ * @param array     $viewer
+ * @param string    $provider microsoft | google
+ * @param array|int $count    ws_mail_connection_state(), or the number of
+ *                            accounts serving mail_read
  * @param bool   $ready    the provider's application is set up
  *                         (ws_mail_connect_ready())
  * @param bool   $new_tab  open the page in a new tab: a box's drawer, whose
@@ -354,10 +413,29 @@ function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = 
 {
     $google = ($provider === 'google');
     $provider = $google ? 'google' : 'microsoft';
-    $connected = ((int) $count > 0);
-    $pill = $connected
-        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
-        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>';
+    $state = is_array($count) ? $count : array('count' => (int) $count, 'other' => array());
+    $connected = (isset($state['count']) && ((int) $state['count'] > 0));
+    $other = (!$connected && !empty($state['other'])) ? (array) $state['other'] : array();
+
+    if ($connected) {
+        $pill = '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>';
+    } elseif ($other) {
+        $pill = '<span class="pg-pill pg-tone-amber">' . h(lang('Connected for another purpose')) . '</span>';
+    } else {
+        $pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>';
+    }
+
+    if ($connected) {
+        $note = $new_tab ? '' : lang(array(
+            'string' => 'Next, add the mailbox with Add a mailbox and choose Mail service: {var:1}.',
+            'vars'   => $google ? lang('Gmail or Google Workspace') : lang('Microsoft 365 or Outlook.com')));
+    } elseif ($other) {
+        $note = lang(array(
+            'string' => 'The account is connected for {var:1} only; reading mail needs one more sign-in, for {var:2}.',
+            'vars'   => array(ws_mail_connection_purpose_names($other), lang('Reading mailboxes'))));
+    } else {
+        $note = '';
+    }
 
     if ((int) $viewer['role'] > 2) {
         $side = '<span class="pg-text-meta">' . h($google
@@ -366,7 +444,7 @@ function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = 
     } else {
         $side = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_mail_connections_url($provider)) . '"'
             . ($new_tab ? ' target="_blank" rel="noopener"' : '') . '>'
-            . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>';
+            . h($connected ? lang('Manage in Connections') : ($other ? lang('Sign in for mailboxes in Connections') : lang('Connect in Connections'))) . '</a>';
     }
 
     return '
@@ -375,7 +453,8 @@ function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = 
                         . h($google ? lang('Google account for mailboxes') : lang('Microsoft account for mailboxes')) . '</span>
                     ' . $pill . '
                     ' . $side . '
-                </div>' . ($ready ? '' : '
+                </div>' . (($note === '') ? '' : '
+                <div class="pg-field-help mt-1">' . h($note) . '</div>') . ($ready ? '' : '
                 <div class="pg-field-help mt-1">' . h($google ? lang('The Google application is not set up yet.') : lang('The Microsoft application is not set up yet.')) . '</div>');
 }
 
@@ -394,7 +473,7 @@ function ws_mail_connections_html($viewer)
     $html = '';
 
     foreach (array('microsoft', 'google') as $provider) {
-        $html .= ws_mail_connection_html($viewer, $provider, ws_mail_connection_count($provider), ws_mail_connect_ready($provider));
+        $html .= ws_mail_connection_html($viewer, $provider, ws_mail_connection_read($provider), ws_mail_connect_ready($provider));
     }
 
     return $html;
@@ -426,7 +505,7 @@ function ws_mail_connect_ready($provider = 'microsoft')
 function ws_mail_google_parts($viewer)
 {
     $connect = (function_exists('pg_connect_purpose') && pg_connect_purpose('mail_read'))
-        ? ws_mail_connection_html($viewer, 'google', ws_mail_connection_count('google'), ws_mail_connect_ready('google'), true)
+        ? ws_mail_connection_html($viewer, 'google', ws_mail_connection_read('google'), ws_mail_connect_ready('google'), true)
         : '';
 
     return array('connect' => $connect, 'addresses' => pg_google_cloud_redirect_addresses('google'));

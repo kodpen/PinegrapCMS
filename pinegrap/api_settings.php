@@ -34,6 +34,7 @@ require_once(dirname(__FILE__) . '/includes/api/keys.php');
 require_once(dirname(__FILE__) . '/includes/api/app_access.php');
 require_once(dirname(__FILE__) . '/includes/api/app_templates.php');
 require_once(dirname(__FILE__) . '/includes/api/app_new_view.php');
+require_once(dirname(__FILE__) . '/includes/api/app_permissions_view.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
@@ -864,55 +865,6 @@ $oauth_served_id = api_app_oauth_served_id($apps, time());
    Presentation helpers
    --------------------------------------------------------------------------- */
 
-// Short Turkish-friendly labels for the resource rows, and the sentence under
-// each one saying what it actually reaches.
-function api_settings_group_text($key, $group = array()) {
-
-	$text = array(
-		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products, product groups and product attributes, and deleting them'), 'bi-box-seam'),
-		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
-		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes'), 'bi-cart3'),
-		'store'     => array(lang('Store settings'), lang('Writing the shipping methods, shipping zones and tax zones checkout charges by - reading them is under Orders'), 'bi-geo-alt'),
-		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
-		'pages'     => array(lang('Pages'),      lang('Page details, comment settings, folders, menus and short links'), 'bi-file-earmark'),
-		'design'    => array(lang('Page design'), lang('The layout of the Page Design Studio\'s pages and the site\'s ads; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, putting back a published revision, sharing the drafts as a prototype by a link, or adding, changing and removing ads and ad regions, which go live at once'), 'bi-palette'),
-		'comments'  => array(lang('Comments'),   lang('What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one'), 'bi-chat-left-text'),
-		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
-		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),
-		'gift_cards' => array(lang('Gift Cards'), lang('The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it'), 'bi-gift'),
-		'commissions' => array(lang('Commissions'), lang('What the affiliate program owes each affiliate, with its status and the order it came from - read only'), 'bi-cash-coin'),
-		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
-		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
-		'calendars' => array(lang('Calendars'),  lang('The calendars and the events on them; writing adds, changes, publishes or removes an event, not its repeats or reservations'), 'bi-calendar-event'),
-		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site and the addresses visitors did not find, as lists to work through'), 'bi-graph-up-arrow'),
-		'webhooks'  => array(lang('Webhooks'),   lang('Registering, changing and testing an address for event notifications'), 'bi-megaphone'),
-		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
-		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring, and the audit trail'), 'bi-activity'),
-		'visitors'  => array(lang('Visitors'),   lang('Visits and page views, the most viewed content and where visits came from, as totals - never a single visit'), 'bi-bar-chart'),
-		'site_log'  => array(lang('Site Log'),   lang('Who did what on the site and from which address - read only'), 'bi-journal-text'),
-		'campaigns' => array(lang('Campaigns'),  lang('E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together'), 'bi-envelope'),
-		'contact_groups' => array(lang('Contact Groups'), lang('The lists campaigns go to and who is on them; writing makes, renames and removes empty groups, puts contacts in or takes them out and records their e-mail choice'), 'bi-people'),
-		'account'   => array(lang('Own account'), lang('Notifications, signed-in devices and push registration of the account the calls act for'), 'bi-person-badge')
-	);
-
-	if (isset($text[$key])) {
-
-		return $text[$key];
-
-	}
-
-	// A group a module contributed (see includes/api/modules.php). It carries
-	// its own wording, because this screen cannot know what an ERP permission
-	// covers - and "Erp" with an empty line under it is what the operator would
-	// otherwise be asked to grant.
-	return array(
-		isset($group['label']) && ($group['label'] !== '') ? $group['label'] : ucfirst($key),
-		isset($group['description']) ? $group['description'] : '',
-		isset($group['icon']) && ($group['icon'] !== '') ? $group['icon'] : 'bi-key'
-	);
-
-}
-
 // Which of the three positions a stored scope set puts a resource in.
 function api_settings_group_choice($granted, $group) {
 
@@ -1321,58 +1273,6 @@ foreach ($apps as $app) {
 if ($app_rows === '') {
 
 	$app_rows = '<div class="api-empty">' . lang('No application yet. Create one to let an outside system reach this site.') . '</div>';
-
-}
-
-/* ---------------------------------------------------------------------------
-   The permission rows, drawn once and reused by the drawer and the new-app form
-   --------------------------------------------------------------------------- */
-
-function api_settings_permission_rows($prefix, $id_prefix = '') {
-
-	// The rows are drawn in two places on one page. The posted name has to be
-	// the same in both, the element ids must not be: a duplicate id makes a
-	// label drive the first copy of the control instead of its own.
-	if ($id_prefix === '') { $id_prefix = $prefix; }
-
-	$html = '';
-
-	foreach (api_scope_groups() as $group_key => $group) {
-
-		$text = api_settings_group_text($group_key, $group);
-
-		$name = $prefix . '[' . $group_key . ']';
-
-		$id = $id_prefix . '_' . $group_key;
-
-		// A resource with only one half offers a dash in the other position, so
-		// every row keeps the same three-column shape and the missing half reads
-		// as "not offered" rather than as an option that failed to draw.
-		$read = ($group['read'] !== '')
-			? '<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_read" value="read">
-			   <label class="btn" for="' . $id . '_read">' . lang('Read') . '</label>'
-			: '<span class="api-seg-none">&mdash;</span>';
-
-		$write = ($group['write'] !== '')
-			? '<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_write" value="write">
-			   <label class="btn" for="' . $id . '_write">' . ($group_key === 'webhooks' ? lang('Manage') : lang('Write')) . '</label>'
-			: '<span class="api-seg-none">&mdash;</span>';
-
-		$html .= '
-		<div class="api-perm" data-group="' . h($group_key) . '">
-			<i class="bi ' . $text[2] . '"></i>
-			<div class="api-perm-text"><b id="' . $id . '_label">' . h($text[0]) . '</b><span>' . h($text[1]) . '</span></div>
-			<div class="api-seg btn-group btn-group-sm" role="group" aria-labelledby="' . $id . '_label">
-				<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_none" value="" checked>
-				<label class="btn" for="' . $id . '_none">' . lang('None') . '</label>
-				' . $read . '
-				' . $write . '
-			</div>
-		</div>';
-
-	}
-
-	return $html;
 
 }
 

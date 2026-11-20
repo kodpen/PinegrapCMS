@@ -150,6 +150,8 @@ function pg_reseal_registry()
     $registry[] = $config_text('event_tickets', 'event_tickets_key', 'iv');
     // Meta Conversions API's access token (ad_conversions_meta.php).
     $registry[] = $config_text('ad_conversions', 'ad_conversions_meta_capi', 'connect', array('fields' => array('token')));
+    // TikTok Events API's access token (ad_conversions_tiktok.php).
+    $registry[] = $config_text('ad_conversions', 'ad_conversions_tiktok_events', 'connect', array('fields' => array('token')));
 
     return $registry;
 }

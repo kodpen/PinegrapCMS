@@ -10,6 +10,6 @@ description: Decisions list, product part 84 (2026-11-20 on): the sales watch, w
 - "Evet, plana girsin": all five signals (orders stopped, a channel silent, payment broken, the price error shield, the return spike), told through the operations alert channels once a day; a small shop stays quiet.
 - On a price error the product is taken off sale only when a setting allows it; one click puts it back; stock is never changed.
 - Not chosen: "Evet, ama yalnız uyarsın" (never take a product off sale), "Evet, önce sipariş durdu ve ödeme kırıldı" (the two flow signals first), "Hayır, gerek yok".
-- The architect's answers on how it is built (no table, the bell's readers, defaults, the brakes): `plans/sales-watch.md`, agent channel message 10453.
+- The architect's answers on how it is built (no table, the bell's readers, defaults, the brakes): `commerce/sales-watch.md`, agent channel message 10453.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/sales-watch.md, docs/memory/platform/ops-alerts.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/sales-watch.md, docs/memory/platform/ops-alerts.md

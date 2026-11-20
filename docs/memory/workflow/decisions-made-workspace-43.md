@@ -18,4 +18,4 @@ description: Decisions made, workspace part 43 (2026-11-20 on): a Claude Console
 - New: a line under a person's `@herkes` that woke no agent there, saying why; the channel's agents added to a discussion in one go, all or the picked ones.
 - Not chosen: "Kanalın tüm ajanları da uyansın" (every allowed application agent of the channel woken, added or not), "Olduğu gibi kalsın".
 - His case, in the architect's window: "ajanları eklediğim halde @herkes etiketi çalışmıyor". In the discussion "Hızlı bir koordinasyon turu" the tag was written a minute before the three agents were added, so it woke nobody; the later edit did not add the tag, so it woke nobody either.
-- The plan: `plans/discussion-everyone-hint.md`.
+- Built in DE1: `workspace/workspace-everyone-mention.md` (the hint) and `workspace/discussion-agents-panel.md` (the one-go add).

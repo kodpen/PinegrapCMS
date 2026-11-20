@@ -25,7 +25,7 @@ module: stock_sales
 - `pg_product_stock_changed()` and `pg_product_stock_events()` take an optional `$location` (id, name, quantity left there): `inventory.changed` and `stock.low` then carry `location_id`, `location_name`, `location_quantity` (`pg_stock_event_location_fields()`); `quantity` stays the total. Without a location the payloads are unchanged.
 
 ## Which writers still change the total only?
-- Marketplace order import and cancellation (`mp_order_take_stock()`, `mp_order_return_stock()`), order cancellation, ERP, Workspace, product import: the plan leaves their location to later steps; with locations a later `pg_stock_change()` recomputes the total from the rows.
+- None on a site with locations: they go through `pg_stock_total_write()`; which writer, at which location, and the tracking switch: `stock-locations-total-writers.md`.
 
 ## What guards it?
 - `tests/stock_locations_completion_test.php`: the order location pick, units at a location, the sale and API amounts, the event keys and the payload parity, source pins of every caller's no-locations path, the API route params.
