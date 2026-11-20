@@ -28,9 +28,10 @@ function sheet_read_xls_test_record($code, $body)
 }
 
 /**
- * A stream in a compound file (OLE2) of one FAT sector, a directory sector
- * and the stream's own sectors, as the reader and PHPExcel read it. The
- * stream is padded to 4,096 bytes so it lies in big blocks.
+ * A stream in a compound file (OLE2): its FAT sectors, a directory sector
+ * and the stream's own sectors, as the reader and PHPExcel read it (up to
+ * 109 FAT sectors, about 7 MB). The stream is padded to 4,096 bytes so it
+ * lies in big blocks.
  */
 function sheet_read_xls_test_ole($stream, $name = 'Workbook')
 {
@@ -38,19 +39,24 @@ function sheet_read_xls_test_ole($stream, $name = 'Workbook')
 	$sectors = (int) (strlen($stream) / 512);
 	$end = 0xFFFFFFFE;
 	$free = 0xFFFFFFFF;
+	$fats = (int) ceil(($sectors + 2) / 127);
+	$difat = '';
+
+	for ($index = 0; $index < 109; $index++) {
+		$difat .= pack('V', ($index < $fats) ? $index : $free);
+	}
 
 	$header = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1" . str_repeat("\0", 16)
 		. pack('vvvvv', 0x3E, 3, 0xFFFE, 9, 6) . str_repeat("\0", 6)
-		. pack('VVVVVVVVV', 0, 1, 1, 0, 4096, $end, 0, $end, 0)
-		. pack('V', 0) . str_repeat(pack('V', $free), 108);
+		. pack('VVVVVVVVV', 0, $fats, $fats, 0, 4096, $end, 0, $end, 0) . $difat;
 
-	$fat = array(0xFFFFFFFD, $end);
+	$fat = array_merge(array_fill(0, $fats, 0xFFFFFFFD), array($end));
 
 	for ($index = 0; $index < $sectors; $index++) {
-		$fat[] = ($index === $sectors - 1) ? $end : (3 + $index);
+		$fat[] = ($index === $sectors - 1) ? $end : ($fats + 2 + $index);
 	}
 
-	$fat = array_pad($fat, 128, $free);
+	$fat = array_pad($fat, $fats * 128, $free);
 	$fat_sector = '';
 
 	foreach ($fat as $entry) {
@@ -65,7 +71,7 @@ function sheet_read_xls_test_ole($stream, $name = 'Workbook')
 			. pack('VVV', $start, $size, 0);
 	};
 
-	$directory = $entry('Root Entry', 5, 1, $end, 0) . $entry($name, 2, 0xFFFFFFFF, 2, strlen($stream))
+	$directory = $entry('Root Entry', 5, 1, $end, 0) . $entry($name, 2, 0xFFFFFFFF, $fats + 1, strlen($stream))
 		. $entry('', 0, 0xFFFFFFFF, 0, 0) . $entry('', 0, 0xFFFFFFFF, 0, 0);
 
 	return $header . $fat_sector . $directory . $stream;
@@ -260,4 +266,63 @@ function test_sheet_read_xls_long_shared_string()
 
 	pg_assert_same('', $error, 'the file is read');
 	pg_assert_same(array(1 => $long, 2 => 'İkinci', 3 => str_repeat('x', 29), 4 => 'Son'), $read, 'every string');
+}
+
+// -- memory -----------------------------------------------------------------
+
+// A product list of 6,000 rows and ten columns (60,000 cells, a 1.3 MB
+// workbook stream). PHPExcel read it at a 24.5 MB peak; the reader kept the
+// library's cell, its formatted text and eight details for every cell, over
+// 100 MB, so a list PHPExcel read under a 128 MB limit stopped the import
+// with a fatal error.
+function test_sheet_read_xls_memory_stays_near_the_cells()
+{
+	// The peak is measured from here, which needs PHP 8.2.
+	if (!function_exists('memory_reset_peak_usage')) {
+		return;
+	}
+
+	$strings = array();
+	$cells = array();
+
+	for ($row = 0; $row < 6000; $row++) {
+		$strings[] = array('Açıklama satırı ' . $row);
+		$cells[] = sheet_read_xls_test_record(0x0203, pack('vvv', $row, 0, 17) . pack('d', 46000 + $row));
+		$cells[] = sheet_read_xls_test_record(0xFD, pack('vvvV', $row, 1, 16, $row));
+
+		for ($column = 2; $column < 10; $column++) {
+			$cells[] = sheet_read_xls_test_record(0x0203, pack('vvv', $row, $column, 16) . pack('d', $row * 1.25 + $column));
+		}
+	}
+
+	$globals = '';
+
+	foreach (sheet_read_xls_test_sst($strings, 8224) as $index => $body) {
+		$globals .= sheet_read_xls_test_record(($index === 0) ? 0xFC : 0x3C, $body);
+	}
+
+	$path = tempnam(sys_get_temp_dir(), 'pg_sheet_xls') . '.xls';
+	file_put_contents($path, sheet_read_xls_test_ole(sheet_read_xls_test_book($globals, $cells)));
+	unset($strings, $cells, $globals);
+
+	$error = 'not run';
+	$rows = 0;
+	$last = null;
+	$before = memory_get_usage();
+	memory_reset_peak_usage();
+
+	foreach (pg_sheet_rows($path, 'xls', $error) as $number => $row) {
+		$rows++;
+		$last = $row;
+	}
+
+	$used = memory_get_peak_usage() - $before;
+	unlink($path);
+
+	pg_assert_same('', $error, 'the file is read');
+	pg_assert_same(6000, $rows, 'every row');
+	pg_assert_same(array('t' => 'd', 'v' => '51999'), $last[0], 'a date cell');
+	pg_assert_same(array('t' => 's', 'v' => 'Açıklama satırı 5999'), $last[1], 'a shared string');
+	pg_assert_same(array('t' => 'n', 'v' => '7500.75'), $last[2], 'a number');
+	pg_assert_true($used < 40 * 1024 * 1024, 'read within 40 MB (used ' . round($used / 1048576, 1) . ' MB)');
 }
