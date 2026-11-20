@@ -1029,7 +1029,7 @@ function pg_ad_conversion_visitor_services($event, $form_page_id = 0)
 
 /**
  * Writes a visitor's event for each service, due at once, with that
- * service's ids (cookies, held click ids, address, browser name) and the
+ * service's ids (cookies, address, browser name) and the
  * hashed e-mail when one is given. A row already there for the event id is
  * left as it is.
  *
@@ -1052,13 +1052,7 @@ function pg_ad_conversion_visitor_write($event, array $event_ids, $order_id, arr
             continue;
         }
 
-        $ids = pg_ad_conversion_ids_for($service, $_COOKIE, $ip, $user_agent);
-
-        if (function_exists('pg_ad_click_ids_held_for')) {
-            $ids += pg_ad_click_ids_held_for($service);
-        }
-
-        $ids = json_encode(pg_ad_conversion_visitor_ids($ids, $email));
+        $ids = json_encode(pg_ad_conversion_visitor_ids(pg_ad_conversion_ids_for($service, $_COOKIE, $ip, $user_agent), $email));
 
         db_q(pg_ad_conversion_insert_sql(), array($service, $event, (int) $order_id, $event_id, $ids, $detail, 1, 1, $now, $now));
     }
