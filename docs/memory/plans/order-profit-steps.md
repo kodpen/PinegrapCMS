@@ -17,7 +17,7 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
   - `includes/api/outbound/connectors/trendyol.php` (a paged finance read; endpoints from Trendyol's document, written into `commerce/trendyol-api-facts.md`), its pass; tests on recorded answers. Feature: N4.
 - NP5a (S) after NP1: the order's Profit card and the list. Done in #10664.
   - `view_order.php` (the Profit card in `pg_order_view_card_column()`), `view_orders.php` and `includes/fn/commerce_list.php` (profit column, "Sold at a loss" filter), new `includes/erp/order_profit_view.php`. Features: N9, N10.
-- NP5b (M) after NP5a: Accounting › Profitability.
+- NP5b (M) after NP5a: Accounting › Profitability. Done in #10698.
   - New `erp_profitability.php` with its menu entry, settings card (typed rates, target margin) and workbook. Feature: N11.
   - No pictures (`workflow/look-pictures-none.md`) for NP5a or NP5b.
 - NP6 (S) after NP5b: break-even, bell, API.
