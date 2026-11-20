@@ -636,13 +636,68 @@ function pg_sheet_import_ask($path, $name, $kind, $names, $title, $options = arr
 }
 
 /**
+ * The reader for an uploaded file by its content: an OLE file is xls, a zip
+ * package ods when its mimetype says so, else xlsx; text is '' (a CSV file).
+ * Many programs save tab-separated text or a workbook under the other's
+ * extension; the name decides only for a zip package that is neither.
+ *
+ * @param string $path
+ * @param string $name the uploaded file's name
+ * @return string xlsx, ods, xls or ''
+ */
+function pg_sheet_import_content_kind($path, $name)
+{
+    $handle = @fopen((string) $path, 'rb');
+    $head = $handle ? (string) fread($handle, 8) : '';
+
+    if ($handle) {
+        fclose($handle);
+    }
+
+    if ($head === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1") {
+        return 'xls';
+    }
+
+    if (substr($head, 0, 4) !== "PK\x03\x04") {
+        return '';
+    }
+
+    if (class_exists('ZipArchive')) {
+        $zip = new ZipArchive();
+
+        if ($zip->open((string) $path) === true) {
+            $mimetype = $zip->getFromName('mimetype', 200);
+            $workbook = $zip->locateName('xl/workbook.xml') !== false;
+            $zip->close();
+
+            if (is_string($mimetype) && (strpos($mimetype, 'opendocument.spreadsheet') !== false)) {
+                return 'ods';
+            }
+
+            if ($workbook) {
+                return 'xlsx';
+            }
+        }
+    }
+
+    // Another zip package: the name's reader, which refuses what it cannot read.
+    $kind = pg_sheet_kind($name);
+
+    return ($kind === '') ? 'xlsx' : $kind;
+}
+
+/**
  * The upload in a file field when it is a workbook PHP received: its path,
  * name and kind; null for a CSV, no file or a failed upload.
  *
  * @param string $field
+ * @param bool   $by_content the kind by the file's content
+ *                           (pg_sheet_import_content_kind()), for the CSV
+ *                           importers; else by its name, for the importers
+ *                           whose own reader goes by the name
  * @return array|null ['path', 'name', 'kind']
  */
-function pg_sheet_import_uploaded_workbook($field)
+function pg_sheet_import_uploaded_workbook($field, $by_content = false)
 {
     $upload = isset($_FILES[$field]) && is_array($_FILES[$field]) ? $_FILES[$field] : null;
 
@@ -650,7 +705,7 @@ function pg_sheet_import_uploaded_workbook($field)
         return null;
     }
 
-    $kind = pg_sheet_kind($upload['name']);
+    $kind = $by_content ? pg_sheet_import_content_kind($upload['tmp_name'], $upload['name']) : pg_sheet_kind($upload['name']);
 
     return ($kind === '') ? null : array('path' => $upload['tmp_name'], 'name' => $upload['name'], 'kind' => $kind);
 }
@@ -700,7 +755,7 @@ function pg_sheet_import_upload($field, $title, $options = array())
         $kind = $answer['kind'];
         $sheet = $answer['sheet'];
     } else {
-        $workbook = pg_sheet_import_uploaded_workbook($field);
+        $workbook = pg_sheet_import_uploaded_workbook($field, true);
 
         if ($workbook === null) {
             return '';
