@@ -2229,6 +2229,7 @@
     "A place for a map beside a short contact form.": "Kısa bir iletişim formunun yanında harita için yer.",
     "A place for a map beside the address, opening hours, phone and a directions button.": "Adres, çalışma saatleri, telefon ve yol tarifi düğmesinin yanında harita için yer.",
     "A place for everyone": "Herkese yer var",
+    "A place has freed for {var:1}": "{var:1} için bir yer boşaldı",
     "A place is known for {var:1} of {var:2} visits: it is saved from the billing address a visit gives.": "{var:2} ziyaretin {var:1} tanesinde yer biliniyor: yer, ziyaretin verdiği fatura adresinden kaydedilir.",
     "A place on the same page": "Aynı sayfada bir yer",
     "A place to ask questions about the app, share what you made and learn from each other.": "Uygulama hakkında soru sorabileceğiniz, yaptıklarınızı paylaşabileceğiniz ve birbirinizden öğrenebileceğiniz bir yer.",
