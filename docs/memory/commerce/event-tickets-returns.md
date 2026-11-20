@@ -24,7 +24,7 @@ module: event_tickets
 - `pg_event_tickets_order_restored()` gives back every void ticket, then voids again, by the same pick, as many per line as the order's refunded returns took (`pg_event_tickets_returns_reapply()`), so a refunded unit stays void.
 
 ## What is left open?
-- A cancel after a refunded return gives back the line's whole quantity of places, and a restore takes the whole quantity again: `pg_order_event_places_move()` (`includes/fn/ecommerce.php`) does not subtract refunded returned units yet. Written in #10756's PR under "After #10759".
+- A cancel after a refunded return gives back the line's whole quantity of places, and a restore takes the whole quantity again: `pg_order_event_places_move()` (`includes/fn/ecommerce.php`) does not subtract refunded returned units yet. Written in PR #10773 under "After #10759".
 
 Test: `tests/event_tickets_returns_test.php`. The database writes (void, places, restore re-void) were not run on a database.
 

@@ -15,6 +15,7 @@ module: event_tickets
 - `event-tickets-check-in.md`: `event_check_in.php`, its answers, rights, search, undo (TK3, #10587).
 - `event-tickets-waiting-list.md`: places back on cancel and the waiting list in `stock_notify` (TK4, #10578).
 - `event-tickets-api.md`: `GET /calendars/events/{id}/tickets`, `ticket.checked_in`, the product's mark, the export (TK5, #10643).
+- `event-tickets-returns.md`: a refunded return voids its units' tickets and gives the places back (#10773).
 
 ## Which feature is where? (checked against the code at the close-out)
 - T1 lines that give tickets, one per unit, 100 a line: TK1; the product screen's "Gives tickets": TK5.

@@ -26,6 +26,7 @@ module: event_tickets
 - `process_order_cancellation()` calls `pg_event_tickets_order_cancelled()` after the folder access take-back: one `UPDATE … SET state = 'void' WHERE order_id AND state <> 'void'`.
 - `pg_order_restore_cancelled()` calls `pg_event_tickets_order_restored()` after the folder access: void rows go back to `used` when `used_at > 0`, else `valid`.
 - Both run whatever the switch says, so a cancelled order's tickets never stay valid.
+- After the restore, units refunded returns took are voided again (#10773): `event-tickets-returns.md`.
 
 ## What mail does the buyer get?
 - After the lines, `pg_order_complete()` calls `pg_event_tickets_order_mail()` when tickets were made: subject "Your tickets for order #…", one signed link `tickets.php?o=<order id>&t=<token>` (`pg_event_tickets_link_token()`, HMAC of the order under the tickets key), through the queue (`'queue' => true`). No QR picture in a mail.
