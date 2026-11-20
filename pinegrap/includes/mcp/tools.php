@@ -569,13 +569,13 @@ function pg_mcp_route_run($route, $arguments, $answer) {
 
 	if ($split['dry_run'] === null) {
 
-		api_fail(400, 'invalid_dry_run', lang('dry_run must be true or false.'), 'dry_run');
+		api_fail(400, 'invalid_dry_run', 'dry_run must be true or false.', 'dry_run');
 
 	}
 
 	if ($split['dry_run'] && empty($route['dry_run'])) {
 
-		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run.'));
+		api_fail(400, 'dry_run_unsupported', 'This endpoint cannot rehearse a call. Send it without X-Dry-Run.');
 
 	}
 
@@ -998,19 +998,19 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 		if (!is_string($words) || (mb_strlen($words) > 200)) {
 
-			return $refuse(422, 'validation_failed', lang('words must be text of at most 200 characters.'), 'words');
+			return $refuse(422, 'validation_failed', 'words must be text of at most 200 characters.', 'words');
 
 		}
 
 		if (!is_string($area) || (($area !== '') && !in_array($area, pg_mcp_compact_areas($routes), true))) {
 
-			return $refuse(422, 'validation_failed', lang('area must be one of the areas tools_find lists.'), 'area');
+			return $refuse(422, 'validation_failed', 'area must be one of the areas tools_find lists.', 'area');
 
 		}
 
 		if ((trim($words) === '') && ($area === '')) {
 
-			return $refuse(422, 'validation_failed', lang('Give words, an area or both.'), 'words');
+			return $refuse(422, 'validation_failed', 'Give words, an area or both.', 'words');
 
 		}
 
@@ -1038,7 +1038,7 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 		if (!$valid) {
 
-			return $refuse(422, 'validation_failed', sprintf(lang('names must list one to %d tool names.'), $limits['describe']), 'names');
+			return $refuse(422, 'validation_failed', sprintf('names must list one to %d tool names.', $limits['describe']), 'names');
 
 		}
 
@@ -1050,13 +1050,13 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 	if ($name === '') {
 
-		return $refuse(422, 'validation_failed', lang('name is required: the tool\'s name, as tools_find answers it.'), 'name');
+		return $refuse(422, 'validation_failed', 'name is required: the tool\'s name, as tools_find answers it.', 'name');
 
 	}
 
 	if (!isset($routes[$name])) {
 
-		return $refuse(404, 'not_found', lang('There is no tool of that name. Find one with tools_find.'), 'name');
+		return $refuse(404, 'not_found', 'There is no tool of that name. Find one with tools_find.', 'name');
 
 	}
 
@@ -1066,7 +1066,7 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 	if (!is_array($call)) {
 
-		return $refuse(422, 'validation_failed', lang('arguments must be an object of the tool\'s own arguments.'), 'arguments');
+		return $refuse(422, 'validation_failed', 'arguments must be an object of the tool\'s own arguments.', 'arguments');
 
 	}
 
@@ -1074,7 +1074,7 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 		if ($route['method'] !== 'GET') {
 
-			return $refuse(400, 'tool_writes', lang('This tool writes: run it with tools_write.'), 'name');
+			return $refuse(400, 'tool_writes', 'This tool writes: run it with tools_write.', 'name');
 
 		}
 
@@ -1084,13 +1084,13 @@ function pg_mcp_compact_target($routes, $tool, $arguments) {
 
 	if ($route['method'] === 'GET') {
 
-		return $refuse(400, 'tool_reads', lang('This tool only reads: run it with tools_read.'), 'name');
+		return $refuse(400, 'tool_reads', 'This tool only reads: run it with tools_read.', 'name');
 
 	}
 
 	if (pg_mcp_route_moves_money($route)) {
 
-		return $refuse(400, 'tool_moves_money', lang('This tool moves money: call it by its own name, after the person\'s yes.'), 'name');
+		return $refuse(400, 'tool_moves_money', 'This tool moves money: call it by its own name, after the person\'s yes.', 'name');
 
 	}
 
