@@ -1767,6 +1767,49 @@ function validate_time($time)
     }
 }
 /**
+ * The form_data row of a product form answer the designer cart widget saves
+ * (cart_action.php), column => value. name is the field's name, as the
+ * classic cart and the express order write it: View Order, Print order, the
+ * orders CSV export and order completion read the answer's label from it.
+ *
+ * @param array  $field           the field's row: id, name
+ * @param int    $order_id
+ * @param int    $order_item_id
+ * @param int    $quantity_number
+ * @param string $data            the value as stored
+ * @param string $type            the form_data type (standard, date, ...)
+ * @return array
+ */
+function pg_product_form_answer_row(array $field, $order_id, $order_item_id, $quantity_number, $data, $type)
+{
+    return array(
+        'form_id' => 0,
+        'form_field_id' => (int) (isset($field['id']) ? $field['id'] : 0),
+        'data' => (string) $data,
+        'file_id' => 0,
+        'order_id' => (int) $order_id,
+        'order_item_id' => (int) $order_item_id,
+        'quantity_number' => (int) $quantity_number,
+        'name' => isset($field['name']) ? (string) $field['name'] : '',
+        'type' => (string) $type,
+        'ship_to_id' => 0,
+    );
+}
+
+/**
+ * SQL for a form_data answer's name: the stored name, or the field's name
+ * when the stored one is empty (designer cart answers saved before the cart
+ * wrote it), or '' when the field is gone. The caller aliases it.
+ *
+ * @return string
+ */
+function pg_form_data_name_sql()
+{
+    return "IF(form_data.name = '', COALESCE((SELECT form_fields.name FROM form_fields"
+        . " WHERE form_fields.id = form_data.form_field_id LIMIT 1), ''), form_data.name)";
+}
+
+/**
  * The error a product form value gets when the designer cart widget posts
  * it (cart_action.php), as HTML; null when it passes. A date, a date and
  * time, an e-mail address or a time must be one, as the classic cart and
