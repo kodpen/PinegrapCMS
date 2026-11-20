@@ -1,11 +1,11 @@
 ---
 name: office-pptx-preview
-description: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10583): title, text in reading order, pictures, speaker notes; limits, refusals, view only
+description: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 module: office
 ---
 
 ## What does a .pptx show?
-- Since PR #10583: Quick Look and the file window in the File Manager, and a channel's Preview, draw a presentation as a list of its slides: "Slide N" and its title, its text and pictures in reading order, a table's rows (cells apart by a tab), its speaker notes under "Speaker notes", a hidden slide marked "Hidden slide". Before it, it had no preview and the browser downloaded it.
+- Since PR #10585: Quick Look and the file window in the File Manager, and a channel's Preview, draw a presentation as a list of its slides: "Slide N" and its title, its text and pictures in reading order, a table's rows (cells apart by a tab), its speaker notes under "Speaker notes", a hidden slide marked "Hidden slide". Before it, it had no preview and the browser downloaded it.
 - Not read: slide layout and positions, the layout's and master's text, themes, fonts, colours, animation, transitions, charts, SmartArt, shapes without text, comments, audio and video.
 - Forms: .pptx, .ppsx, .potx and .pptm (`pg_office_preview_kind()` gives `pptx`); `pg_office_kind()`, which every edit asks, gives '', so it is never edited (`plans/office-own-code.md`). A channel still refuses .pptm uploads (`workspace/workspace-upload-refusals.md`). The binary .ppt has no preview.
 
