@@ -130,6 +130,15 @@ function pg_ops_alert_codes()
             'url'   => 'settings_commerce.php#pgset-payments',
             'group' => 'sales',
         ),
+        // The bell row links the product it names first
+        // (pg_sales_watch_price_check()); the e-mail and the chat targets the
+        // products list.
+        'price_error' => array(
+            'label' => lang('A product sells at a wrong price'),
+            'type'  => 'error',
+            'url'   => 'view_products.php',
+            'group' => 'sales',
+        ),
     );
 }
 
@@ -525,9 +534,11 @@ function pg_ops_alert_last_sent($code, $subject = '')
  * @param string $code   a key of pg_ops_alert_codes()
  * @param string $detail  what happened, in a sentence; plain text
  * @param string $subject what the alert is about, for the once-a-day rule
+ * @param int    $product_id the product the bell row opens, 0 for the
+ *                           code's own screen
  * @return array array('sent' => bool, 'notification_id' => int, 'email' => bool)
  */
-function pg_ops_alert($code, $detail = '', $subject = '')
+function pg_ops_alert($code, $detail = '', $subject = '', $product_id = 0)
 {
     $result = array('sent' => false, 'notification_id' => 0, 'email' => false);
 
@@ -580,6 +591,7 @@ function pg_ops_alert($code, $detail = '', $subject = '')
         // "no detail" (pg_notification_display()).
         'title'       => ($detail !== '') ? $detail : $code,
         'order_total' => $code,
+        'product_id'  => ((int) $product_id > 0) ? (int) $product_id : '',
         'user'        => 'system',
     ));
 
@@ -1478,6 +1490,8 @@ function pg_ops_alert_sources()
         'storage'     => 'pg_ops_alerts_check_storage',
         // Orders stopped and payment broken (includes/fn/sales_watch.php).
         'sales'       => 'pg_sales_watch_check',
+        // A price error that sells (includes/fn/sales_watch.php).
+        'sales_price' => 'pg_sales_watch_price_check',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',
