@@ -67,6 +67,7 @@ if (!$_POST) {
         $liveform->assign_field_value('notes', $account['notes']);
         $liveform->assign_field_value('payment_days', (string) (int) ($account['payment_days'] ?? 0));
         $liveform->assign_field_value('overdue_notify_days', (string) (int) ($account['overdue_notify_days'] ?? 0));
+        $liveform->assign_field_value('lead_days', (string) (int) ($account['lead_days'] ?? 0));
         // On until the column arrives, which is also what the upgrade writes.
         $liveform->assign_field_value('overdue_notify_customer', ((int) ($account['overdue_notify_customer'] ?? 1) === 1) ? '1' : '');
         $liveform->assign_field_value('invoice_email', (string) ($account['invoice_email'] ?? ''));
@@ -390,9 +391,7 @@ if (!$_POST) {
 
     // An empty country choice is saved as empty: the store's country applies.
     $result = erp_account_save(array('id' => $account_id) + erp_account_form_save_fields($liveform, $country_code, $currency, $contact_id,
-        $payment_days, $overdue_notify_days, '') + array('created_by' => (int) $user['id'])
-        // The card has no Lead time field yet: the stored one is kept.
-        + array('lead_days' => (int) (is_array($stored) ? ($stored['lead_days'] ?? 0) : 0)));
+        $payment_days, $overdue_notify_days, '') + array('created_by' => (int) $user['id']));
 
     if (!$result['success']) {
         $liveform->mark_error('_error', $result['error']);
