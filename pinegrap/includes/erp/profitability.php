@@ -623,13 +623,13 @@ function erp_profitability_report($from, $to, $channel = '')
 {
     $start = (int) strtotime($from . ' 00:00:00');
     $end = (int) strtotime($to . ' 00:00:00 +1 day');
-    $where = "order_date >= '" . $start . "' AND order_date < '" . $end . "'"
-        . (($channel !== '') ? " AND channel = '" . e($channel) . "'" : '');
 
-    $profits = (array) db_items("SELECT order_id, channel, state, revenue, cost_product, cost_payment, cost_marketplace,
-            cost_shipping, cost_other, net
-        FROM erp_order_profit WHERE " . $where . "
-        ORDER BY order_date ASC, order_id ASC
+    $profits = (array) db_items("SELECT erp_order_profit.order_id, erp_order_profit.channel, erp_order_profit.state,
+            erp_order_profit.revenue, erp_order_profit.cost_product, erp_order_profit.cost_payment,
+            erp_order_profit.cost_marketplace, erp_order_profit.cost_shipping, erp_order_profit.cost_other,
+            erp_order_profit.net
+        " . erp_profitability_profit_from($start, $end, $channel) . "
+        ORDER BY erp_order_profit.order_date ASC, erp_order_profit.order_id ASC
         LIMIT " . (ERP_PROFITABILITY_MAX_ORDERS + 1));
 
     $capped = count($profits) > ERP_PROFITABILITY_MAX_ORDERS;
@@ -709,6 +709,23 @@ function erp_profitability_report($from, $to, $channel = '')
         'products' => $products,
         'uncomputed' => ($channel === '') ? $uncomputed : 0,
     );
+}
+
+/**
+ * The FROM and WHERE of the profit rows a period reads: orders placed in it
+ * that are still finished sales (erp_order_profit_counted_join()), on one
+ * channel or all. Pure.
+ *
+ * @param int    $start    Unix time the period starts
+ * @param int    $end      Unix time after its last day
+ * @param string $channel  '' for all, web or marketplace:<id>
+ * @return string  SQL
+ */
+function erp_profitability_profit_from($start, $end, $channel)
+{
+    return "FROM erp_order_profit " . erp_order_profit_counted_join() . "
+        WHERE erp_order_profit.order_date >= '" . (int) $start . "' AND erp_order_profit.order_date < '" . (int) $end . "'"
+        . (((string) $channel !== '') ? " AND erp_order_profit.channel = '" . e((string) $channel) . "'" : '');
 }
 
 /**

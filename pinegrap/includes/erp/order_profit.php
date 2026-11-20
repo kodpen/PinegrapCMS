@@ -702,6 +702,20 @@ function erp_order_profit_mark($order_id)
 }
 
 /**
+ * The join that keeps a profit row only while its order is a finished sale
+ * (erp_order_billable_statuses()). The pass removes a cancelled order's rows
+ * when its recheck reaches the order; until then every screen that reads the
+ * rows leaves it out through this join. Pure.
+ *
+ * @return string  SQL, to follow FROM erp_order_profit
+ */
+function erp_order_profit_counted_join()
+{
+    return "INNER JOIN orders AS profit_order ON profit_order.id = erp_order_profit.order_id AND "
+        . erp_order_billable_sql('profit_order.status');
+}
+
+/**
  * Remove an order's cost and profit rows: the order was deleted, or it is no
  * longer a finished sale (cancelled). Real figures recorded for it go too:
  * they are kept for the order alone.
