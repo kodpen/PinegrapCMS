@@ -5,8 +5,8 @@ description: Workspace calls of two people on the channel screen (CL2, #10522): 
 
 ## Where are the call buttons?
 - In the channel head, before the tour: a telephone (Voice call) and a camera (Video call), `pg-icon-button`s from `PGWsCalls.headButtons()` (`assets/js/workspace_calls.js`, in `workspace.min.js`).
-- Only in a conversation of two people the viewer is a member of (`callable()`): not archived, not a mailbox, discussion or guest room, not an earlier version; only with WebRTC and `CFG.calls` (the call tables exist and the Calls card's switch is on). Marked `ws-head-wide`, so a phone's narrow head hides them until CL8.
-- A group's call (CL3) and a guest's (CL5) are later steps.
+- In a channel of two people or more the viewer is a member of (`callable()`, groups in `calls-group.md`): not archived, not a mailbox, discussion or guest room, not an earlier version; only with WebRTC and `CFG.calls` (the call tables exist and the Calls card's switch is on). Marked `ws-head-wide`, so a phone's narrow head hides them until CL8.
+- A group's call: `calls-group.md` (CL3). A guest's (CL5) is a later step.
 
 ## How does the other person hear it?
 - Where a mention sounds: the channel screen's 4 s look (`ws_sync`) carries `rings` from `ws_call_rings_for()` (calls.php), asked only while the stamp says a call is live (`calls-signalling.md`).

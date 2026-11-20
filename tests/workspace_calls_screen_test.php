@@ -115,6 +115,7 @@ function copy(o, change) { var c = {}; Object.keys(o).forEach(function (k) { c[k
 console.log(JSON.stringify({
 	two: C.callable(two, view),
 	three: C.callable(copy(two, { members: [{ id: 3 }, { id: 4 }, { id: 5 }] }), view),
+	alone: C.callable(copy(two, { members: [{ id: 3 }] }), view),
 	not_joined: C.callable(copy(two, { joined: false }), view),
 	archived: C.callable(copy(two, { archived: true }), view),
 	mailbox: C.callable(copy(two, { kind: 'mailbox' }), view),
@@ -141,7 +142,8 @@ JS
 
 	pg_assert_true(is_array($got), 'workspace_calls.js runs under node');
 	pg_assert_true($got['two'], 'a conversation of two people carries the call buttons');
-	pg_assert_false($got['three'], 'a channel of three does not, yet');
+	pg_assert_true($got['three'], 'a channel of three does too: a group\'s call');
+	pg_assert_false($got['alone'], 'a channel of one has nobody to call');
 	pg_assert_false($got['not_joined'], 'nor one the viewer only reads');
 	pg_assert_false($got['archived'], 'nor an archived one');
 	pg_assert_false($got['mailbox'], 'nor a mailbox room');
@@ -184,4 +186,81 @@ function test_workspace_calls_screen_wiring()
 	pg_assert_true((bool) preg_match('/Permissions-Policy: [^\']*camera=\(self\)/', $waf), 'the camera is let through on the site\'s own pages, the Workspace and the guest page among them');
 	pg_assert_true((bool) preg_match('/Permissions-Policy: [^\']*microphone=\(self\)/', $waf), 'so is the microphone');
 	pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_guest.php'), 'Permissions-Policy') !== false, 'the guest page sends no narrower policy of its own');
+}
+
+function test_workspace_calls_screen_a_group()
+{
+	$got = workspace_calls_screen_test_run(<<<'JS'
+var members = function (n) { var list = []; for (var i = 1; i <= n; i++) { list.push({ member_id: 20 + i, name: 'P' + i }); } return list; };
+var part = function (n, mine) { return { call: { id: 7, kind: 'video', members: members(n) }, member_id: mine || 0, signals: [] }; };
+var quiet = []; for (var i = 0; i < 256; i++) { quiet.push(128); }
+var loud = []; for (var j = 0; j < 256; j++) { loud.push(j % 2 ? 160 : 96); }
+console.log(JSON.stringify({
+	group_of_three: C.isGroup({ members: [{}, {}, {}] }),
+	two_no_group: C.isGroup({ members: [{}, {}] }),
+	no_call: C.joinState(null, 0, 4),
+	ended: C.joinState({ call: null, member_id: 0 }, 0, 4),
+	two_in: C.joinState(part(2), 0, 4),
+	full: C.joinState(part(4), 0, 4),
+	in_it: C.joinState(part(3, 22), 0, 4),
+	this_screen: C.joinState(part(3), 7, 4),
+	group_waits: C.aloneOutcome(true, true, 1000, 1000 + 60000, 45),
+	group_gives_up: C.aloneOutcome(true, true, 1000, 1000 + 301000, 45),
+	two_left: C.aloneOutcome(false, true, 1000, 1001, 45),
+	two_rings: C.aloneOutcome(false, false, 1000, 1000 + 30000, 45),
+	two_unanswered: C.aloneOutcome(false, false, 1000, 1000 + 46000, 45),
+	quiet: C.level(quiet),
+	loud: C.level(loud),
+	empty: C.level([]),
+	speaks: C.speaking(C.level(loud), 0, 5000),
+	silent: C.speaking(0, 0, 5000),
+	held: C.speaking(0, 4600, 5000),
+	dropped: C.speaking(0, 4000, 5000),
+	mesh: C.peersDiff(members(4), 22, []).add
+}));
+JS
+	);
+
+	if ($got === false) {
+		return;
+	}
+
+	pg_assert_true($got['group_of_three'], 'a channel of three holds a group\'s call');
+	pg_assert_false($got['two_no_group'], 'a conversation of two does not');
+	pg_assert_false($got['no_call']['show'], 'no Join without a call');
+	pg_assert_false($got['ended']['show'], 'nor once it ended');
+	pg_assert_same(array('show' => true, 'full' => false, 'count' => 2, 'callId' => 7, 'kind' => 'video'), $got['two_in'], 'a call of two in a channel: Join, with how many are in it and its kind');
+	pg_assert_true($got['full']['show'] && $got['full']['full'], 'four in it: the fifth sees that the call is full');
+	pg_assert_false($got['in_it']['show'], 'no Join for one already in it');
+	pg_assert_false($got['this_screen']['show'], 'nor for the call this screen is in');
+	pg_assert_same('', $got['group_waits'], 'a group\'s call waits while one is alone in it');
+	pg_assert_same('call_ended', $got['group_gives_up'], 'for five minutes');
+	pg_assert_same('call_ended', $got['two_left'], 'a call of two ends when the other one leaves');
+	pg_assert_same('', $got['two_rings'], 'and waits while it rings');
+	pg_assert_same('call_unanswered', $got['two_unanswered'], 'until nobody answered');
+	pg_assert_same(0, $got['quiet'], 'silence is no level');
+	pg_assert_true($got['loud'] > 0.2, 'a voice is');
+	pg_assert_same(0, $got['empty'], 'nothing measured is silence');
+	pg_assert_true($got['speaks'], 'a loud voice is marked as speaking');
+	pg_assert_false($got['silent'], 'silence is not');
+	pg_assert_true($got['held'], 'the mark stays a moment after the voice drops');
+	pg_assert_false($got['dropped'], 'then goes');
+	pg_assert_same(array(21, 23, 24), $got['mesh'], 'in a call of four every member connects to the three others');
+}
+
+function test_workspace_calls_screen_group_wiring()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$config = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
+	$strings = ws_call_js_strings();
+
+	pg_assert_contains('window.PGWsCalls.channelCall(self.channel.id, data.call', $screen, 'the channel\'s look hands its call to the head\'s Join button');
+	pg_assert_contains("'max' => WS_CALL_MAX_MEMBERS", $config, 'the screen knows how many a call holds');
+	pg_assert_same(lang('This call is full.'), $strings['call_full'], 'the full call says the server\'s words');
+
+	foreach (array('call_join', 'call_join_count', 'call_waiting', 'call_you') as $key) {
+		pg_assert_true(isset($strings[$key]), 'the text ' . $key . ' is given to the screen');
+	}
+
+	pg_assert_false(ws_call_rings(array('state' => 'live', 'started_by' => 3, 'started_at' => 1000), 4, array(3), 3, 1010), 'a group\'s call rings nobody: it is joined from the channel');
 }

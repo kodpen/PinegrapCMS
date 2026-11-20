@@ -1019,7 +1019,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'poll'         => array('active' => 4),
         // Calls from the channel's head (workspace_calls.js): the public
         // route the browsers ask for, null while the database has no calls.
-        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING) : null,
+        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING, 'max' => WS_CALL_MAX_MEMBERS) : null,
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,
