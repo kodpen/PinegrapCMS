@@ -1036,6 +1036,10 @@ function pg_settings_legacy_anchors()
         // Google's sign-in fields moved onto Google's page of Connections; an
         // old link to them lands on the card's row that leads there.
         'oauth_google_row' => array('security',   'pgset-signin'),
+        // Apple's application moved onto Sign in with Apple's page; an old
+        // link to its fields lands on the card's row that leads there.
+        'signin_apple_row' => array('security',   'pgset-signin'),
+        'apple_client_id'  => array('security',   'pgset-signin'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

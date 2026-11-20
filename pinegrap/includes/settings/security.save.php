@@ -19,43 +19,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
-    // Sign in with Apple's application is checked before anything on this
-    // screen is written: a refused field leaves every setting as it was, and
-    // the form keeps what was typed.
-    $apple_post = (post_value('apple_client_id') !== NULL)
-        && function_exists('pg_signin_schema_ready') && pg_signin_schema_ready();
-
-    if ($apple_post) {
-        $apple_client_id = trim((string) post_value('apple_client_id'));
-        $apple_team_id = strtoupper(trim((string) post_value('apple_team_id')));
-        $apple_key_id = strtoupper(trim((string) post_value('apple_key_id')));
-        $apple_key = trim((string) post_value('apple_private_key'));
-
-        if (($apple_client_id !== '') && !preg_match('/^[A-Za-z0-9.\-]{1,255}$/', $apple_client_id)) {
-            $liveform->mark_error('apple_client_id', lang('A Services ID is written like a domain in reverse, for example com.example.signin.'));
-        }
-
-        foreach (array('apple_team_id' => $apple_team_id, 'apple_key_id' => $apple_key_id) as $apple_field => $apple_value) {
-            if (($apple_value !== '') && !preg_match('/^[A-Z0-9]{10}$/', $apple_value)) {
-                $liveform->mark_error($apple_field, lang('Apple writes this as ten letters and digits.'));
-            }
-        }
-
-        $apple_problem = ($apple_key !== '') ? pg_signin_apple_key_problem($apple_key) : '';
-
-        if ($apple_problem !== '') {
-            $liveform->mark_error('apple_private_key', $apple_problem);
-        }
-
-        if ((($apple_client_id !== '') || ($apple_key !== '')) && !pg_connect_can_seal()) {
-            $liveform->mark_error('apple_private_key', lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
-        }
-
-        if ($liveform->check_form_errors()) {
-            return;
-        }
-    }
-
     // The Audit Trail card: checked before anything is written, and written
     // on its own, only once the 2026.11.0 step has added the column and the
     // card's field was posted.
@@ -372,8 +335,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db("UPDATE config SET passkey_signin = " . ((post_value('passkey_signin') == '1') ? 1 : 0));
     }
 
-    // Sign in with Microsoft and Apple (10.74): the switches, and Apple's
-    // application. Both wait for the upgrade, like the columns above.
+    // Sign in with Microsoft and Apple (10.74): the switches; their
+    // applications are saved on their pages of Connections. They wait for
+    // the upgrade, like the columns above.
     if (function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && pg_schema_has('config', 'signin_providers')) {
 
         $signin_list = array();
@@ -392,28 +356,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         db("UPDATE config SET signin_providers = '" . escape(implode(',', $signin_list)) . "'");
-
-        if ($apple_post) {
-            $apple_existing = pg_connect_app('apple');
-
-            // Nothing typed and nothing stored: no row is opened for an
-            // application the site does not use.
-            if (($apple_client_id !== '') || ($apple_team_id !== '') || ($apple_key_id !== '') || ($apple_key !== '')
-                || (is_array($apple_existing) && ($apple_existing['source'] === 'connect'))) {
-                pg_connect_app_save(
-                    'apple',
-                    $apple_client_id,
-                    ($apple_key !== '') ? pg_signin_pem_private_key($apple_key) : null,
-                    array('team_id' => $apple_team_id, 'key_id' => $apple_key_id),
-                    true,
-                    USER_ID);
-            }
-        }
     }
 
     // The Encryption Key card: a new key in config.php, then the values the
     // re-seal registry lists sealed again with it. Last, after every write
-    // above: those that seal a value (Apple's application, the CAPTCHA keys)
+    // above: those that seal a value (the CAPTCHA keys)
     // seal it with the ENCRYPTION_KEY constant, which holds the old key in
     // this request, and the re-seal then carries them to the new one with
     // the rest.

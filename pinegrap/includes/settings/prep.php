@@ -68,8 +68,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
-    // applications they use (connect_apps; Microsoft's is set up on Connected
-    // accounts, Apple's on its card here). Empty until the upgrade has run.
+    // applications they use (connect_apps; each is set up on its page of
+    // Connections, the card reads them for its state). Empty until the
+    // upgrade has run.
     $signin_ready = function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && array_key_exists('signin_providers', $row);
     $signin_on = $signin_ready ? pg_connect_scope_list(str_replace(',', ' ', (string) $row['signin_providers'])) : array();
     $signin_microsoft_checked = in_array('microsoft', $signin_on, true) ? ' checked="checked"' : '';

@@ -563,6 +563,55 @@ if ($_POST) {
 
 	}
 
+	// Sign in with Apple's application, saved or removed on its page under
+	// the gate of the sign-in settings it came from, with the checks the
+	// card ran: a refused field writes nothing. The switch that shows the
+	// button stays on the card.
+	if (in_array($action, array('apple_save', 'apple_remove'), true)) {
+
+		if (connections_signin_may_manage($user)) {
+
+			if (!pg_signin_schema_ready()) {
+				$liveform->add_error(lang('The database has not been upgraded yet. Run the software update first.'));
+			} elseif ($action === 'apple_remove') {
+
+				pg_connect_app_remove('apple');
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'Sign in with Apple')));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Sign in with Apple')), $_SESSION['sessionusername']);
+
+			} else {
+
+				$apple = pg_signin_apple_app_decide($_POST, pg_connect_can_seal());
+
+				foreach ($apple['marks'] as $apple_field => $apple_mark) {
+					$liveform->mark_error($apple_field, $apple_mark);
+				}
+
+				if (!$apple['marks']) {
+
+					pg_connect_app_save(
+						'apple',
+						$apple['client_id'],
+						($apple['private_key'] !== '') ? pg_signin_pem_private_key($apple['private_key']) : null,
+						array('team_id' => $apple['team_id'], 'key_id' => $apple['key_id']),
+						true,
+						(int) $user['id']);
+
+					$liveform->add_notice(lang(array('string' => 'The {var:1} application was saved.', 'vars' => 'Sign in with Apple')));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Sign in with Apple')), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?service=signin_apple');
+		exit();
+
+	}
+
 	// The provider whose panel opens again after the write.
 	$return_provider = '';
 
@@ -1253,6 +1302,101 @@ function connections_translate_page($page, $may_manage, $can_seal) {
 						<span class="pg-text-meta d-block">' . h($languages ? implode(', ', $languages) : lang('No language is set to it yet.')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill($stored ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Sign in with Apple's page: "Connection details" holds the application the
+   Accounts and sign-in card held (the Services ID, the Team ID, the Key ID
+   and the .p8 key, never drawn back), for who may open that category;
+   Status has Disconnect while one is stored; "Where it is used" leads to
+   the card's switch, which stays there. */
+
+function connections_signin_apple_page($page, $may_manage, $can_seal) {
+
+	$provider = pg_connect_provider('apple');
+	$app = pg_signin_schema_ready() ? pg_connect_app('apple') : null;
+	$ready = is_array($provider) && pg_signin_app_ready($provider, $app);
+
+	if ($may_manage && is_array($provider) && in_array('details', $page['cards'], true)) {
+
+		$option = function ($name) use ($app) {
+			return (is_array($app) && isset($app['options'][$name])) ? (string) $app['options'][$name] : '';
+		};
+
+		$steps = '';
+
+		foreach ($provider['setup'] as $step) {
+			$steps .= '<li>' . h($step) . '</li>';
+		}
+
+		$key_stored = is_array($app) && $app['secret_stored'];
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The Apple application visitors sign in through. Whether the button is shown is switched in Site Settings › Accounts and sign-in.')) . '</p>
+			' . ($ready ? '' : '<div class="alert theme-warning py-3 small mb-4">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div>') . '
+			<ol class="pg-text-meta ps-5 mb-4">' . $steps . '</ol>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="apple_save">
+				<div>
+					<label class="pg-field-label" for="signin_apple_redirect">' . h(lang('Return URL (add this to the Services ID)')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="signin_apple_redirect" readonly onclick="this.select()" value="' . h(pg_signin_redirect_uri('apple')) . '">
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_client_id">' . h(lang('Services ID')) . '</label>
+					<input type="text" class="pg-input" id="apple_client_id" name="apple_client_id" value="' . h(is_array($app) ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off" spellcheck="false" placeholder="com.example.signin">
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_team_id">' . h(lang('Team ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="apple_team_id" name="apple_team_id" value="' . h($option('team_id')) . '" maxlength="10" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h($provider['options']['team_id']['help']) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_key_id">' . h(lang('Key ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="apple_key_id" name="apple_key_id" value="' . h($option('key_id')) . '" maxlength="10" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h($provider['options']['key_id']['help']) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_private_key">' . h(lang('Private key (.p8)')) . '</label>
+					<textarea class="pg-input font-monospace" id="apple_private_key" name="apple_private_key" rows="4" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true"
+						placeholder="' . h($key_stored ? lang('Stored. Leave empty to keep it.') : '-----BEGIN PRIVATE KEY-----') . '"></textarea>
+					<div class="pg-field-help">' . h(lang('Kept encrypted with the site\'s key and never shown again.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<a class="pg-button pg-button-sm pg-button-quiet" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
+						<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
+				</div>
+			</form>
+		</section>';
+
+		if (is_array($app)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="apple_remove" data-id="0"
+					data-confirm="' . h(lang('The Sign in with Apple application is removed: the Apple button stays hidden until one is set up again. Accounts that signed in with Apple keep their other ways in.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$switched_on = in_array('apple', pg_signin_switched_on(), true);
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Visitors sign in with Apple')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Accounts and sign-in')) . ' › ' . h(lang('Sign in with Google, Microsoft and Apple')) . '</span>
+						<span class="pg-text-meta d-block">' . h($switched_on ? lang('The button is switched on.') : lang('The button is switched off.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($ready ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -2555,14 +2699,20 @@ if ($provider_page !== '') {
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
+			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple'), true),
 	);
+
+	// Sign in with Apple's page: its application and the switch that uses it.
+	if ($page_id === 'signin_apple') {
+		$page = connections_signin_apple_page($page, connections_signin_may_manage($user), $can_seal);
+	}
 
 	// An SMS provider's page: its account and the SMS cards that use it.
 	if (in_array($page_id, array('netgsm', 'iletimerkezi', 'twilio'), true)) {
