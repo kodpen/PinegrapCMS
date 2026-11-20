@@ -358,21 +358,14 @@ function pg_import_wp_site($file)
 }
 
 /**
- * An XMLReader on the export, null when it cannot be opened. PHPExcel
- * switches libxml's entity loader off for the whole request, which stops
- * XMLReader opening any file; it is switched on again as for the office
- * readers (includes/fn/office.php). Nothing here asks libxml to resolve
- * entities (no LIBXML_NOENT, always LIBXML_NONET).
+ * An XMLReader on the export, null when it cannot be opened. Nothing here
+ * asks libxml to resolve entities (no LIBXML_NOENT, always LIBXML_NONET).
  *
  * @param string $file
  * @return XMLReader|null
  */
 function pg_import_wp_reader($file)
 {
-    if (function_exists('libxml_disable_entity_loader')) {
-        @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the export
-    }
-
     $reader = new XMLReader();
 
     return @$reader->open((string) $file, null, LIBXML_NONET) ? $reader : null;

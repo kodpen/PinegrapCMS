@@ -4,7 +4,7 @@ description: The areas given to a bug hunt from 2026-11-17 on (wholesale prices,
 ---
 
 ## Which areas were hunted from 2026-11-17 on, and what did each find?
-- The hunts before: `bug-hunt-areas.md`; from 2026-11-19 on: `bug-hunt-areas-3.md`. The next area is none of the three files.
+- The hunts before: `bug-hunt-areas.md`; after: `bug-hunt-areas-3.md`. The next area is none of the three files.
 - Given on 2026-11-17 (channel message 8165), every open bug issue having a PR or a worker: the wholesale prices (the offers' group condition, shared prices, the minimum order, quantity prices on a product page; WS1, WS2, WS4, WS5). It ended the same day with #10195 to #10197 (channel message 8182).
 - Read and found clean there: the group condition on every offer path; the one-hop pointer and its refusals; the lower of an account's and a campaign's price, never stacked; retail in feeds, structured data, price history and the API; the page copy marked personal; the minimum's highest group and its refusal at submit.
 - Given on 2026-11-17 (channel message 8337): publish approval's server side (PA2 #9892, PA4a #9930, PA4b #9939, PA5 #9968): every save door, who may apply, a page changed since, what a visitor sees meanwhile. Known, not reported: PA3 (#10188) and the close-out. It ended the same day with #10215 to #10220 (channel message 8399).

@@ -22,4 +22,4 @@ description: OS2 census of plan office-own-code: the importers that take only CS
 
 ## How is it cut?
 - OS2a (#10523): the shared helper and sheet question, importers 1 to 9 (Translations taken in too once AC2a had landed and freed `translations.php`); no OS2b.
-- OS2c: the sheet question for the product and bank statement imports, after XL5.
+- OS2c (#10548): the sheet question for the product and bank statement imports, after XL5.

@@ -127,7 +127,7 @@ function workspace_mail_room_hidden_test_found()
 {
 	$root = PG_FUNCTIONS_DIR;
 	$skip = array('includes/local/', 'includes/migrations/', 'install/', 'includes/phpmailer/', 'includes/stripe/', 'includes/iyzipay-php/',
-		'includes/phpexcel/', 'includes/boxpacker/', 'includes/dompdf/', 'assets/', 'data/', 'files/');
+		'includes/boxpacker/', 'includes/dompdf/', 'assets/', 'data/', 'files/');
 	$found = array();
 
 	foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)) as $file) {

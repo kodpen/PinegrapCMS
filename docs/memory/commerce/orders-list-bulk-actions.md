@@ -12,7 +12,7 @@ module: order_list
 - `pg_order_parasut_tax_rate()`: empty is 0, a number from 0 to 100 (decimal comma accepted), anything else refused with an error before any file is built. The dialog field carries `min="0" max="100" step="0.01"`.
 
 ## How does the export end?
-- The log line and the liveform notice are written before the zip is streamed; after it only this export's folder (`includes/phpexcel/temps/parasut_<date>/`) is removed and the script `exit`s. Before (#5296) the redirect after the zip added a "headers already sent" warning to the file and the whole `temps/` folder (another export's files too) was deleted.
+- The log line and the liveform notice are written before the zip is streamed; after it only this export's folder (`data/temp/parasut_<date>/`) is removed and the script `exit`s. Before (#5296) the redirect after the zip added a "headers already sent" warning to the file and the whole `temps/` folder (another export's files too) was deleted.
 
 ## How does a refused Paraşüt export reach the operator?
 - `pgParasutOrderExport()` (backend.src.js) fetches with `redirect: 'manual'`: a refusal (tax rate, nothing exportable) is an `opaqueredirect`, so the list reloads and prints the liveform reason. Followed, the hidden page consumed the message and only the generic toast showed. The tax rate field is checked with `reportValidity()` first (#6513).

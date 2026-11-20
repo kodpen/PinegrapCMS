@@ -1,18 +1,18 @@
 ---
 name: bug-hunt-areas-3
-description: Bug hunt areas given from 2026-11-19 on: fifteen panel screens, the own sheet reader, two Workspace screens at phone width, prototype comments' guest side, picture text translation's server side
+description: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 ---
 
-## Which areas were hunted from 2026-11-19 on?
-- The hunts before: `bug-hunt-areas.md` and `bug-hunt-areas-2.md`. The next area is none of the three files.
-- 2026-11-19, one screen per hunt, each fixing its finds in its own PR (the PR body lists them): Customers report #10357, Courses screen #10358, Communication Templates #10359, Communication Sends #10360, Meeting link page #10361, Product screen #10368, Order screen #10369, Workspace Data #10370, Edit User screen #10371, Translations screen #10372, Communication Automatic sends #10375, Order Report screen #10381, Create Order screen #10384, Contacts screens #10397, Bookings screens #10399.
-- 2026-11-20: the own sheet reader and its importers, compared cell by cell with PHPExcel before its removal (#10537; left open: #10544); Incoming e-mail and Mailboxes at phone width (#10543; left open: #10545); a Workspace channel at phone width (#10554; left open: #10549 to #10552).
+## Which areas were hunted from 2026-11-20 on, and what did each find?
+- The hunts before: `bug-hunt-areas.md`, `bug-hunt-areas-2.md`; beside this file: `bug-hunt-areas-4.md`. The next area is none of the four files.
+- Given on 2026-11-20 (channel message 9983): the own sheet reader (`platform/sheet-reader.md`, XL1 #10466) and the importers on it (product import XL2 #10501, bank statement import XL3 #10503), before XL5 removes PHPExcel. Every difference from PHPExcel on the same file counts as a fault.
+- It ended with #10537, three faults fixed: an .xls whose shared strings a CONTINUE record splits in formatting runs refused, or a string cut; an .xls read at 3 to 5 times PHPExcel's memory; a .xlsx whose shared strings (and, in the product import, styles) are not at the usual name read empty. Issue #10544: the sheet reader's .xlsx styles part (held `office.php`).
+- Read and found clean, cell by cell against PHPExcel: LibreOffice .xls/.xlsx/.ods of a 3,000-row Turkish bank statement (merged title, empty cells, dates, date-times, times, amounts as text) and of 20,000 rows (8 MB, extension FAT blocks); a sheet with only a head; the second and an empty third sheet; numbers stored as text and large numbers; a hand-built Excel 95 file in code page 1254 (LABEL, RK, NUMBER, custom date formats).
+- Left as PHPExcel had them: an .xls number is PHP's float text (a 16-digit code reads in E notation); an encrypted .xls is refused (PHPExcel read only the legacy RC4 kind); dates before 1 March 1900 a day off.
+- Given on 2026-11-20 (agent channel message 9983), after the owner met a fault there (message 9832; the long subject in the open mail's head was #10496): Communication › Incoming e-mail and Site Settings › Mailboxes at 390 and 320 px. A headless browser run was allowed for it, as layout reaches no unit test.
+- Fixed in #10543, each pinned in `tests/mail_phone_width_test.php`: the list's views ran past the screen's edge (Blocked e-mail and Drafts unseen); a mailbox row's Edit ran off the card at 320 px; the box form's sent-copy check box stood apart from its label; the open conversation's status and holder were 23 px high.
+- Opened: #10545, the channel pill in the open conversation's head is a 22 px target (`backend.src.css`, held by #10522 at the time).
+- Read and found clean there: the list rows (subject and customer cut with an ellipsis by design), the open conversation's head, mails and long links, Reply by e-mail and New e-mail drawers, Remind me later's menu and its time drawer, Block sender, Add to my calendar, My e-mail settings, the Mailboxes card's text and the box form's fields at both widths.
+- Not verified: a drawer under a phone's keyboard (a headless browser has none). Seen and left: the Communication tab strip and the panel header pass 320 px by a few pixels (shared shell, not the area); fields at 14 px let iOS zoom in on focus panel-wide.
 
-## Which two areas were given on 2026-11-20? (channel message 10096, answer to K2's request 1675)
-- Prototype comments' guest side (#9915, #10025, #10459, #10486): the guest's door `prototype_comment.php`, `includes/fn/prototype_comments.php`, the share links `includes/fn/prototype_links.php`, the viewer `prototype.php` and `assets/js/pg_proto_comments.js`.
-  - Not touched: `assets/js/pg_proto_hotspots.js`, `style_designer.src.js`, `style_designer_comments.js` (held by open steps and by the step that moves the Comments button, PN6). Known, not reported: where the button and the list sit.
-- Picture text translation's server side (#10028 to #10448): `includes/fn/picture_translation.php` (states, hooks, the page pass, the prune), the automatic draw's rows and jobs (`translation_job.php`, `includes/fn/picture_server_draw.php`), the file doors (`get_file.php`, `edit_files.php`, `handle_recycle.php`).
-  - Not touched: the Translations screen's files (held by S6c #10547), `view_folder_and_files_f.php` (#10542), the Design Canvas scripts. Decided, no fault: `core/picture-text-overview.md`.
-- What the two hunts found is added here when they end.
-
-Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-2.md
+Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-2.md, docs/memory/platform/sheet-reader.md, docs/memory/workspace/mail-screen-phone.md
