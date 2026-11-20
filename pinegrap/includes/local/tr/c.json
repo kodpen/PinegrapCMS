@@ -3422,6 +3422,7 @@
     "Connected as": "Bağlı uygulama",
     "Connected as {var:1}.": "{var:1} olarak bağlı.",
     "Connected as {var:1}. Turn writing on to make a Workspace tasks calendar in this account and keep your tasks in it.": "{var:1} olarak bağlı. Bu hesapta bir Çalışma Alanı görevleri takvimi oluşturmak ve görevlerinizi orada tutmak için yazmayı açın.",
+    "Connected for another purpose": "Başka bir amaçla bağlı",
     "Connected on {var:1}": "{var:1} tarihinde bağlandı",
     "Connected sign-in accounts": "Bağlı giriş hesapları",
     "Connected sign-ins": "Bağlı girişler",
