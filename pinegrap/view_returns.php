@@ -101,7 +101,7 @@ foreach ($rows as $row) {
     }
 
     $order_number = ((string) $row['order_number'] !== '') ? (string) $row['order_number'] : (string) (int) $row['order_id'];
-    $refund_due = pg_return_refund_due($row);
+    $refund_due = pg_return_refund_due($row, (string) $row['order_status']);
     $output_refund_due = '';
 
     if ($refund_due !== '') {

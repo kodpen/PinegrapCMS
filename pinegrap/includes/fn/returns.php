@@ -1811,9 +1811,16 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
     // A request with an active carrier return label offers its download,
     // whatever the setting: staff made the label for the customer to print.
     $labelled = pg_shipment_label_labelled_returns($order_id);
+    $order_open = pg_return_refund_order_open((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'"));
 
     foreach (pg_returns_of_order($order_id) as $return) {
         $shown = pg_return_present($return, $enabled, $format);
+
+        // A cancelled order's money went back with the cancellation: no
+        // refund of the return falls due.
+        if (!$order_open) {
+            $shown['refund_deadline'] = '';
+        }
 
         if (pg_shipment_label_customer_offered($shown['status'], in_array($shown['id'], $labelled, true))) {
             $shown['label_url'] = pg_return_label_url($order_id, $shown['id']);
@@ -1824,7 +1831,7 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
 
     $view['has_returns'] = !empty($view['returns']);
 
-    if (!$enabled || !in_array((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'"), array('complete', 'exported'), true)) {
+    if (!$enabled || !$order_open) {
         return $view;
     }
 
@@ -2492,6 +2499,7 @@ function pg_returns_panel_rows($statuses, $limit = PG_RETURN_PANEL_LIMIT)
         "SELECT
             order_returns.*,
             orders.order_number,
+            orders.status AS order_status,
             orders.billing_first_name,
             orders.billing_last_name,
             orders.billing_email_address
@@ -2559,14 +2567,23 @@ function pg_return_time_text($stamp)
 
 /**
  * The refund due date of a return, while it is due: from the moment the
- * goods are on their way back until the money is.
+ * goods are on their way back until the money is. A return of an order that
+ * is no longer complete or exported is never refunded (its money goes back
+ * with the cancellation, pg_return_refund_order_open()), so nothing falls
+ * due for it.
  *
- * @param array $return a row of order_returns
+ * @param array       $return       a row of order_returns
+ * @param string|null $order_status orders.status ('' when the order is
+ *                                  gone); null when the caller does not know it
  * @return string Y-m-d, or ''
  */
-function pg_return_refund_due($return)
+function pg_return_refund_due($return, $order_status = null)
 {
     if (!in_array((string) $return['status'], array('shipped', 'received'), true)) {
+        return '';
+    }
+
+    if (($order_status !== null) && !pg_return_refund_order_open($order_status)) {
         return '';
     }
 
@@ -4655,8 +4672,16 @@ function pg_return_remind_refunds($today = '')
         $today = date('Y-m-d');
     }
 
-    foreach (db_items("SELECT * FROM order_returns WHERE status IN ('shipped', 'received')") as $row) {
-        $stage = pg_return_reminder_stage(pg_return_refund_due($row), $today);
+    // The order's status too: a return of a cancelled order is never refunded,
+    // so no reminder rings for it.
+    $rows = db_items(
+        "SELECT order_returns.*, orders.status AS order_status
+        FROM order_returns
+        LEFT JOIN orders ON orders.id = order_returns.order_id
+        WHERE order_returns.status IN ('shipped', 'received')");
+
+    foreach ($rows as $row) {
+        $stage = pg_return_reminder_stage(pg_return_refund_due($row, (string) $row['order_status']), $today);
         $column = pg_return_reminder_stamp_column($stage);
 
         if (($column === '') || ((int) $row[$column] > 0)) {
