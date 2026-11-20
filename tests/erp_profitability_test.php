@@ -196,3 +196,17 @@ function test_erp_profitability_rate_changed()
 	pg_assert_same(false, erp_profitability_rate_changed(null, erp_profitability_rate_in('', '')), 'none kept, none typed');
 	pg_assert_same(true, erp_profitability_rate_changed(null, erp_profitability_rate_in('0', '')), 'a new rate of 0 percent');
 }
+
+// The report reads the profit rows of finished sales only: an order cancelled
+// after the pass computed it is left out at once, not when the pass reaches
+// it again.
+function test_erp_profitability_reads_finished_sales_only()
+{
+	$sql = erp_profitability_profit_from(1767225600, 1769904000, 'marketplace:5');
+
+	pg_assert_true(strpos($sql, erp_order_profit_counted_join()) !== false, 'only finished sales');
+	pg_assert_true(strpos($sql, "erp_order_profit.order_date >= '1767225600'") !== false, 'the period start');
+	pg_assert_true(strpos($sql, "erp_order_profit.order_date < '1769904000'") !== false, 'the period end');
+	pg_assert_true(strpos($sql, "erp_order_profit.channel = 'marketplace:5'") !== false, 'the channel');
+	pg_assert_true(strpos(erp_profitability_profit_from(1, 2, ''), 'channel') === false, 'every channel');
+}
