@@ -74,7 +74,7 @@ function mp_pricing_settings_list_value($input, $key, $index)
  * dropped; an empty box takes its default.
  *
  * Fields: pr_percent, pr_fixed, pr_rounding, pr_try (the Try first switch),
- * pr_step, pr_margin, pr_grow, and the lists pr_rule_scope ("c:<group id>"
+ * pr_step with pr_step_unit ('amount' or 'percent'), pr_margin, pr_grow, and the lists pr_rule_scope ("c:<group id>"
  * or "b:<brand>"), pr_rule_percent, pr_rule_fixed, pr_rule_rounding.
  *
  * @param array $input         $_POST
@@ -101,6 +101,7 @@ function mp_pricing_settings_parse($input, $category_ids)
         return $value;
     };
 
+    $step_unit = (($input['pr_step_unit'] ?? '') === 'percent') ? MP_PRICING_STEP_PERCENT : MP_PRICING_STEP_AMOUNT;
     $percent_message = lang('A percent from -90 to 1000.');
     $amount_message = lang('An amount up to 1,000,000.');
 
@@ -115,7 +116,10 @@ function mp_pricing_settings_parse($input, $category_ids)
         // it (no pr_step either) keeps try first on.
         'robot' => (!empty($input['pr_try']) || !array_key_exists('pr_step', $input))
             ? MP_PRICING_ROBOT_TRY : MP_PRICING_ROBOT_ON,
-        'step' => $figure('pr_step', 100, 1, 100000000, lang('A step of more than zero.')),
+        'step_unit' => $step_unit,
+        'step' => ($step_unit === MP_PRICING_STEP_PERCENT)
+            ? $figure('pr_step', 100, 1, 1000, lang('A step from 0.01 to 10 percent.'))
+            : $figure('pr_step', 100, 1, 100000000, lang('A step of more than zero.')),
         'min_margin' => $figure('pr_margin', MP_PRICING_DEFAULT_MARGIN, 0, 9000, lang('A margin from 0 to 90 percent.')),
         'grow_cap' => $figure('pr_grow', 1000, 0, 10000, lang('A limit from 0 to 100 percent.')),
     );
@@ -358,20 +362,25 @@ function mp_pricing_settings_save($account_id, $rules, $user_id)
     $account_id = (int) $account_id;
     $keep = array();
     $ok = true;
+    // Before step 11.0.259 has run, the step is an amount and has no column
+    // of its unit.
+    $unit_column = mp_pricing_step_unit_ready() ? 'step_unit, ' : '';
 
     foreach ((array) $rules as $rule) {
         $own = ((int) $rule['scope'] === MP_PRICING_SCOPE_ACCOUNT);
 
         $ok = (db_q("INSERT INTO marketplace_price_rules
-                (account_id, scope, scope_id, scope_key, percent, fixed, rounding, robot, step, min_margin, grow_cap, updated_at, updated_by)
+                (account_id, scope, scope_id, scope_key, percent, fixed, rounding, robot, step, " . $unit_column . "min_margin, grow_cap, updated_at, updated_by)
             VALUES ('" . $account_id . "', '" . (int) $rule['scope'] . "', '" . (int) $rule['scope_id'] . "',
                 '" . e((string) $rule['scope_key']) . "', '" . (int) $rule['percent'] . "', '" . (int) $rule['fixed'] . "',
                 '" . e(mp_pricing_rounding($rule['rounding'])) . "',
-                '" . ($own ? (int) $rule['robot'] : 0) . "', '" . ($own ? (int) $rule['step'] : 100) . "',
+                '" . ($own ? (int) $rule['robot'] : 0) . "', '" . ($own ? (int) $rule['step'] : 100) . "', " . ($unit_column !== ''
+                    ? "'" . ($own ? (int) ($rule['step_unit'] ?? 0) : 0) . "', " : '') . "
                 '" . ($own ? (int) $rule['min_margin'] : MP_PRICING_DEFAULT_MARGIN) . "', '" . ($own ? (int) $rule['grow_cap'] : 1000) . "',
                 UNIX_TIMESTAMP(), '" . (int) $user_id . "')
             ON DUPLICATE KEY UPDATE scope_key = VALUES(scope_key), percent = VALUES(percent), fixed = VALUES(fixed),
-                rounding = VALUES(rounding), robot = VALUES(robot), step = VALUES(step), min_margin = VALUES(min_margin),
+                rounding = VALUES(rounding), robot = VALUES(robot), step = VALUES(step), " . (($unit_column !== '')
+                    ? 'step_unit = VALUES(step_unit), ' : '') . "min_margin = VALUES(min_margin),
                 grow_cap = VALUES(grow_cap), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)") !== false) && $ok;
 
         $keep[] = "((scope = '" . (int) $rule['scope'] . "') AND (scope_id = '" . (int) $rule['scope_id'] . "')

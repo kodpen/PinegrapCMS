@@ -1983,6 +1983,31 @@ function mp_settings_pricing_pane($account, $rules, $errors) {
 
 	}
 
+	// The step's unit, once its column is there (11.0.259): Amount or Percent
+	// as segments over the one field, whose end follows the choice.
+	$percent_step = mp_pricing_step_unit_ready() && ((int) ($own['step_unit'] ?? 0) === MP_PRICING_STEP_PERCENT);
+
+	$unit_seg = '';
+
+	if (mp_pricing_step_unit_ready()) {
+
+		$unit_seg = '<span class="pg-seg mb-2" role="radiogroup" aria-label="' . h(lang('Step')) . '">';
+
+		foreach (array('amount' => lang('Amount'), 'percent' => lang('Percent')) as $value => $label) {
+
+			$unit_seg .= '<label class="pg-seg-item"><input type="radio" class="visually-hidden" name="pr_step_unit" value="' . $value . '" data-mp-step-unit'
+				. ((($value === 'percent') === $percent_step) ? ' checked' : '') . '>' . h($label) . '</label>';
+
+		}
+
+		$unit_seg .= '</span>';
+
+	}
+
+	// Advanced opens by itself when its field holds other than its default
+	// or was refused.
+	$advanced_open = isset($errors['pr_grow']) || ((int) $own['grow_cap'] !== 1000);
+
 	$percent = $field_error('pr_percent');
 	$fixed = $field_error('pr_fixed');
 	$step = $field_error('pr_step');
@@ -2024,16 +2049,18 @@ function mp_settings_pricing_pane($account, $rules, $errors) {
 						<div class="pg-field-help" id="pr_try_help">' . h(lang('Writes what it would send to the log and sends nothing')) . '</div></div>
 				</div>
 				<div class="mp-pr-line mb-4">
-					<div><label class="pg-field-label" for="pr_step">' . h(lang('Step')) . '</label>
+					<div><label class="pg-field-label" for="pr_step">' . h(lang('Step')) . '</label>'
+						. $unit_seg . '
 						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_step" name="pr_step" value="'
-							. h(mp_settings_pr_figure($own['step'])) . '"' . $step[0] . '><span class="pg-input-end">' . BASE_CURRENCY_SYMBOL . '</span></span>' . $step[1] . '</div>
+							. h(mp_settings_pr_figure($own['step'])) . '"' . $step[0] . '><span class="pg-input-end" data-mp-step-end data-mp-amount="'
+							. h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8')) . '">' . ($percent_step ? '%' : BASE_CURRENCY_SYMBOL) . '</span></span>' . $step[1] . '</div>
 					<div><label class="pg-field-label" for="pr_margin">' . h(lang('Minimum margin')) . '</label>
 						<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_margin" name="pr_margin" value="'
 							. h(mp_settings_pr_figure($own['min_margin'])) . '"' . $margin[0] . '><span class="pg-input-end">%</span></span>' . $margin[1] . '</div>
 				</div>
-				<button type="button" class="pg-gather-toggle" aria-expanded="' . (isset($errors['pr_grow']) ? 'true' : 'false') . '" aria-controls="mp_pr_advanced" data-mp-fold>'
-					. h(lang('Advanced')) . '<span class="bi bi-chevron-down" aria-hidden="true"></span></button>
-				<div id="mp_pr_advanced" class="mt-3"' . (isset($errors['pr_grow']) ? '' : ' hidden') . '>
+				<button type="button" class="pg-gather-toggle" aria-expanded="' . ($advanced_open ? 'true' : 'false') . '" aria-controls="mp_pr_advanced" data-mp-fold>'
+					. h(lang('Advanced')) . '<span class="bi ' . ($advanced_open ? 'bi-chevron-up' : 'bi-chevron-down') . '" aria-hidden="true"></span></button>
+				<div id="mp_pr_advanced" class="mt-3"' . ($advanced_open ? '' : ' hidden') . '>
 					<label class="pg-field-label" for="pr_grow">' . h(lang('Grow while winning: at most over the channel price')) . '</label>
 					<span class="pg-input mp-pr-narrow"><input type="text" inputmode="decimal" id="pr_grow" name="pr_grow" value="'
 						. h(mp_settings_pr_figure($own['grow_cap'])) . '"' . $grow[0] . '><span class="pg-input-end">%</span></span>' . $grow[1] . '
@@ -3458,6 +3485,33 @@ echo '
 					box.hidden = !open;
 
 				}
+
+				var chevron = fold.querySelector(".bi");
+
+				if (chevron) {
+
+					chevron.className = "bi " + (open ? "bi-chevron-up" : "bi-chevron-down");
+
+				}
+
+			}
+
+		});
+
+		// The step box ends in the currency or % as its unit is chosen.
+		drawer.addEventListener("change", function (event) {
+
+			if (!event.target.matches || !event.target.matches("[data-mp-step-unit]")) {
+
+				return;
+
+			}
+
+			var end = drawer.querySelector("[data-mp-step-end]");
+
+			if (end) {
+
+				end.textContent = (event.target.value === "percent") ? "%" : end.getAttribute("data-mp-amount");
 
 			}
 

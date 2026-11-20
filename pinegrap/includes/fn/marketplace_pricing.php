@@ -56,6 +56,12 @@ define('MP_PRICING_ROBOT_TRY', 1);
 /** marketplace_price_rules.robot: the robot sends its prices. */
 define('MP_PRICING_ROBOT_ON', 2);
 
+/** marketplace_price_rules.step_unit: the step is an amount in minor units. */
+define('MP_PRICING_STEP_AMOUNT', 0);
+
+/** marketplace_price_rules.step_unit: the step is hundredths of a percent. */
+define('MP_PRICING_STEP_PERCENT', 1);
+
 /** product_price_history.source of a channel price from the rules. */
 define('MP_PRICING_HISTORY_SOURCE', 'rule');
 
@@ -150,6 +156,43 @@ function mp_pricing_round_up($price, $rounding)
     $up = (int) ceil(($price - $ending) / 100) * 100 + $ending;
 
     return ($up < 0) ? $ending : $up;
+}
+
+/**
+ * The robot's step in minor units from the price it moves from (the buybox
+ * price for Win, the listing's own price for Grow while winning): an amount
+ * as stored, a percent of that price rounded half away from zero, never
+ * under one minor unit.
+ *
+ * @param int $from  minor units
+ * @param int $step  marketplace_price_rules.step
+ * @param int $unit  marketplace_price_rules.step_unit
+ * @return int
+ */
+function mp_pricing_step($from, $step, $unit)
+{
+    if ((int) $unit === MP_PRICING_STEP_PERCENT) {
+        return max(1, (int) pg_percent_of(max(0, (int) $from), (int) $step / 100));
+    }
+
+    return max(1, (int) $step);
+}
+
+/**
+ * Whether marketplace_price_rules has its step_unit column (2026.11.0,
+ * 11.0.259).
+ *
+ * @return bool
+ */
+function mp_pricing_step_unit_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('marketplace_price_rules', 'step_unit');
+    }
+
+    return $ready;
 }
 
 /**
@@ -444,7 +487,8 @@ function mp_pricing_account_rules($account_id)
 
     if (!isset($cache[$account_id])) {
         $cache[$account_id] = ($account_id > 0) && mp_pricing_ready()
-            ? (array) db_items("SELECT scope, scope_id, scope_key, percent, fixed, rounding, robot, step, min_margin, grow_cap
+            ? (array) db_items("SELECT scope, scope_id, scope_key, percent, fixed, rounding, robot, step,
+                " . (mp_pricing_step_unit_ready() ? 'step_unit' : '0 AS step_unit') . ", min_margin, grow_cap
                 FROM marketplace_price_rules WHERE account_id = '" . $account_id . "'")
             : array();
     }

@@ -175,3 +175,35 @@ function test_marketplace_pricing_listing_own_price()
 	pg_assert_true(mp_pricing_listing_parse('0', '0', 'n11')['error'] !== '', 'zero typed');
 	pg_assert_true(mp_pricing_listing_parse('99999999', '0', 'n11')['error'] !== '', 'too large');
 }
+
+// The step's unit: an amount (0, minor units, at least 1) or a percent (1,
+// hundredths, 0.01 to 10.00), read on the account's row.
+function test_marketplace_pricing_settings_step_unit()
+{
+	$amount = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array('pr_step' => '0,01')), array());
+	pg_assert_same(array(), $amount['errors'], 'one minor unit');
+	pg_assert_same(array(MP_PRICING_STEP_AMOUNT, 1), array($amount['rules'][0]['step_unit'], $amount['rules'][0]['step']), 'amount');
+
+	$percent = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array('pr_step_unit' => 'percent', 'pr_step' => '2,5')), array());
+	pg_assert_same(array(), $percent['errors'], 'percent in range');
+	pg_assert_same(array(MP_PRICING_STEP_PERCENT, 250), array($percent['rules'][0]['step_unit'], $percent['rules'][0]['step']), 'percent');
+	pg_assert_false(mp_pricing_settings_is_default($percent['rules']), 'a percent step is not the default');
+
+	foreach (array('0', '10,01', '-1') as $typed) {
+		$refused = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array('pr_step_unit' => 'percent', 'pr_step' => $typed)), array());
+		pg_assert_true(isset($refused['errors']['pr_step']), 'percent ' . $typed);
+	}
+
+	pg_assert_same(MP_PRICING_STEP_AMOUNT, mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array('pr_step_unit' => 'x')), array())['rules'][0]['step_unit'], 'junk unit');
+}
+
+// A step in minor units from the price it moves from: an amount as it is, a
+// percent of that price rounded, never under one minor unit.
+function test_marketplace_pricing_step_amount()
+{
+	pg_assert_same(100, mp_pricing_step(12990, 100, MP_PRICING_STEP_AMOUNT), 'amount');
+	pg_assert_same(1, mp_pricing_step(12990, 0, MP_PRICING_STEP_AMOUNT), 'amount at least 1');
+	pg_assert_same(325, mp_pricing_step(12990, 250, MP_PRICING_STEP_PERCENT), '2.5% of 129.90 is 3.2475');
+	pg_assert_same(1, mp_pricing_step(10, 100, MP_PRICING_STEP_PERCENT), 'percent at least 1');
+	pg_assert_same(5, mp_pricing_step(1000, 50, MP_PRICING_STEP_PERCENT), '0.5% of 10.00');
+}
