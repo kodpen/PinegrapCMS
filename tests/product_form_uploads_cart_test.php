@@ -91,3 +91,21 @@ function test_product_form_uploads_cart_kept_file_row()
 
 	pg_assert_same('', pg_pfu_kept_file_html(null, 'f', '/'), 'no kept file drew a row');
 }
+
+function test_product_form_uploads_cart_classic_pages_use_the_file_path()
+{
+	$root = PG_FUNCTIONS_DIR;
+
+	foreach (array('shopping_cart.php', 'express_order.php') as $file) {
+		$code = (string) file_get_contents($root . '/' . $file);
+		pg_assert_true(strpos($code, 'pg_upload_refuse_discarded_body()') !== false, $file . ' reads a discarded body as a missing token');
+		pg_assert_true(strpos($code, 'pg_pfu_cart_reset(') !== false, $file . ' clears the kept files on every save');
+		pg_assert_true(strpos($code, 'pg_pfu_cart_save_file(') !== false, $file . ' does not save the file');
+		pg_assert_false(strpos($code, "DELETE FROM form_data WHERE (order_item_id = ?)") !== false, $file . ' still clears every answer of the line');
+	}
+
+	foreach (array('get_shopping_cart.php', 'get_express_order.php') as $file) {
+		$code = (string) file_get_contents($root . '/' . $file);
+		pg_assert_same(2, substr_count($code, 'enctype="multipart/form-data"'), $file . ' does not post multipart in both layouts');
+	}
+}
