@@ -1870,6 +1870,8 @@
     "Returns box open around the clock": "Günün her saati açık iade kutusu",
     "Returns from {var:1}": "{var:1} iadeleri",
     "Returns invoice {var:1}": "{var:1} faturasının iadesi",
+    "Returns of a product rose": "Bir ürünün iadeleri arttı",
+    "Returns rose on {var:1} products in the last 30 days": "Son 30 günde {var:1} üründe iadeler arttı",
     "Returns to suppliers": "Tedarikçiye iadeler",
     "Returns to the version it had before the bundle, published again.": "Paketten önceki sürümüne döner, yeniden yayınlanır.",
     "Returns when we are closed": "Kapalıyken iade",

@@ -139,6 +139,12 @@ function pg_ops_alert_codes()
             'url'   => 'view_products.php',
             'group' => 'sales',
         ),
+        'return_spike' => array(
+            'label' => lang('Returns of a product rose'),
+            'type'  => 'warning',
+            'url'   => 'view_returns.php',
+            'group' => 'sales',
+        ),
     );
 }
 
@@ -1492,6 +1498,8 @@ function pg_ops_alert_sources()
         'sales'       => 'pg_sales_watch_check',
         // A price error that sells (includes/fn/sales_watch.php).
         'sales_price' => 'pg_sales_watch_price_check',
+        // The return spike, once a night (includes/fn/sales_watch_returns.php).
+        'returns'     => 'pg_sales_watch_check_returns',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',
