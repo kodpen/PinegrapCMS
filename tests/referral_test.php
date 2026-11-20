@@ -106,6 +106,79 @@ function test_referral_fold_email()
 	pg_assert_same('', pg_referral_fold_email('not an address'));
 }
 
+// #10629: the friend's earlier order counts by account and by the folded
+// e-mail together; the buyer's e-mails are the billing one and the account's.
+function test_referral_buyer_emails_are_billing_and_account()
+{
+	pg_assert_same(array('friend@gmail.com'), pg_referral_buyer_emails(' F.riend+2@gmail.com ', 'friend@googlemail.com'), 'one address once, folded');
+	pg_assert_same(array('guest@example.com', 'own@example.net'), pg_referral_buyer_emails('Guest@Example.com', 'own@example.net'));
+	pg_assert_same(array('own@example.net'), pg_referral_buyer_emails('', 'own@example.net'), 'no billing e-mail');
+	pg_assert_same(array(), pg_referral_buyer_emails('', ''));
+}
+
+function test_referral_friend_orders_sql_narrows_by_account_and_email()
+{
+	$sql = pg_referral_friend_orders_sql(array('id' => 30), 9, array('friend@gmail.com', 'a_b@example.com'));
+
+	pg_assert_contains("user_id = '9'", $sql, 'the account');
+	pg_assert_contains("LIKE 'f%r%i%e%n%d%@g%mail.com'", $sql, 'gmail: dots and +tag still match');
+	pg_assert_contains("LIKE 'a\\\\_b%@example.com'", $sql, 'a LIKE wildcard in the address is literal');
+	pg_assert_contains(' OR ', $sql, 'account or e-mail, not account else e-mail');
+	pg_assert_contains("id <> '30'", $sql);
+	pg_assert_same('', pg_referral_friend_orders_sql(array('id' => 30), 0, array()), 'a guest without an e-mail');
+	pg_assert_true(strpos(pg_referral_friend_orders_sql(array('id' => 30), 0, array('x@example.com')), 'user_id') === false, 'a guest: e-mail only');
+}
+
+function test_referral_friend_orders_count_folds_in_php()
+{
+	$rows = array(
+		array('user_id' => 0, 'billing_email_address' => 'friend@example.com'),
+		array('user_id' => 0, 'billing_email_address' => 'F.Riend+2@googlemail.com'),
+		array('user_id' => 0, 'billing_email_address' => 'friends@gmail.com'),
+		array('user_id' => 9, 'billing_email_address' => 'other@example.org'),
+	);
+
+	pg_assert_same(1, pg_referral_friend_orders_count(array($rows[0]), 9, array('friend@example.com')), 'an earlier guest order of the account holder');
+	pg_assert_same(1, pg_referral_friend_orders_count(array($rows[1], $rows[2]), 0, array('friend@gmail.com')), 'a variant counts, a look-alike does not');
+	pg_assert_same(1, pg_referral_friend_orders_count(array($rows[3]), 9, array('friend@example.com')), 'by account');
+	pg_assert_same(0, pg_referral_friend_orders_count(array($rows[3]), 0, array('friend@example.com')), 'a candidate the fold does not match');
+}
+
+// #10631: only an order whose try came back busy waits on referral_pending.
+function test_referral_pending_list()
+{
+	$now = 1800000000;
+	$list = pg_referral_pending_add(array(), 30, $now);
+
+	pg_assert_same(array(30 => $now), $list);
+	pg_assert_same($list, pg_referral_pending_add($list, 30, $now + 60), 'busy again keeps the first time');
+	pg_assert_same(array(), pg_referral_pending_after($list, 30, 'done'), 'any other answer removes it');
+	pg_assert_same(array(), pg_referral_pending_after($list, 30, 'month'), 'a refusal too');
+	pg_assert_same($list, pg_referral_pending_after($list, 30, 'busy'), 'busy keeps it');
+	pg_assert_same(array(), pg_referral_pending_prune(array(30 => $now - 7 * 86400 - 1), $now), 'older than seven days drops');
+
+	$full = array();
+	for ($i = 1; $i <= 205; $i++) {
+		$full = pg_referral_pending_add($full, $i, $now + $i);
+	}
+	pg_assert_same(200, count($full), 'at most 200 orders');
+	pg_assert_true(!isset($full[1]) && isset($full[205]), 'the oldest go first');
+
+	pg_assert_same(array(30 => $now), pg_referral_pending_parse(pg_referral_pending_text($list)), 'stored and read back');
+	pg_assert_same(array(), pg_referral_pending_parse(''));
+	pg_assert_same(array(), pg_referral_pending_parse('not json'));
+}
+
+function test_referral_pending_is_wired()
+{
+	$referral = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/referral.php');
+	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
+
+	pg_assert_contains("pg_config_text_claim('referral_pending'", $referral, 'written with a claim');
+	pg_assert_contains('pg_referral_pending_note($order_id);', $referral, 'a busy try is noted');
+	pg_assert_contains('pg_referral_pending_run(', $job, 'the general job retries');
+}
+
 function test_referral_month_start()
 {
 	$now = mktime(15, 30, 0, 11, 20, 2026);
@@ -333,14 +406,11 @@ function test_referral_code_refuses_another_spelling_of_the_number()
 // earned a second reward for the same friend.
 function test_referral_friend_orders_count_any_other_completed_order()
 {
-	$by_account = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 9, 'billing_email_address' => 'friend@example.com'));
-	$by_email = pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' Friend@Example.com '));
+	$by_account = pg_referral_friend_orders_sql(array('id' => 10), 9, array('friend@example.com'));
 
 	pg_assert_contains("(id <> '10')", $by_account, 'every other order of the friend counts, whatever its number');
 	pg_assert_contains("user_id = '9'", $by_account, 'by account');
 	pg_assert_contains("(status IN ('complete', 'exported'))", $by_account, 'only orders that count');
-	pg_assert_contains("= 'friend@example.com'", $by_email, 'else by billing e-mail');
-	pg_assert_same('', pg_referral_friend_orders_sql(array('id' => 10, 'user_id' => 0, 'billing_email_address' => ' ')), 'a guest without an e-mail matches nothing');
 }
 
 // A referrer whose account e-mail differs from their contact's e-mail
