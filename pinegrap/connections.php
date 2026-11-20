@@ -159,6 +159,20 @@ function connections_languages_may_manage($user) {
 
 }
 
+// May the user change the WhatsApp or İYS account? They came from Site
+// Settings › Communication, so they keep that category's gate.
+function connections_contact_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('contact', $user);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -373,6 +387,54 @@ if ($_POST) {
 						$liveform->add_error(h((string) $translate_try['error']));
 					}
 
+				}
+
+			}
+
+		}
+
+	}
+
+	// The WhatsApp and İYS accounts, saved or removed on their pages under
+	// the gate of the Communication cards they came from. The same checks as
+	// the cards ran: a changed account is asked about at Meta or İYS first,
+	// and a refusal is marked on its field with nothing written.
+	if (in_array($action, array('whatsapp_save', 'whatsapp_remove', 'iys_save', 'iys_remove'), true) && connections_contact_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+		require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
+
+		$contact_name = (strncmp($action, 'iys_', 4) === 0) ? 'İYS' : 'WhatsApp';
+
+		if (in_array($action, array('whatsapp_remove', 'iys_remove'), true)) {
+
+			$contact_forget = array('action' => 'forget', 'notices' => array(), 'test_to' => '');
+
+			if ($action === 'iys_remove') {
+				pg_iys_settings_save($contact_forget, (int) $user['id'], $liveform);
+			} else {
+				pg_whatsapp_settings_save($contact_forget, (int) $user['id'], $liveform);
+			}
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $contact_name)));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $contact_name)), $_SESSION['sessionusername']);
+
+		} else {
+
+			$contact_decision = ($action === 'iys_save') ? pg_iys_settings_check($_POST, $liveform) : pg_whatsapp_settings_check($_POST, $liveform);
+
+			if (is_array($contact_decision) && !$liveform->check_form_errors()) {
+
+				if ($action === 'iys_save') {
+					pg_iys_settings_save($contact_decision, (int) $user['id'], $liveform);
+				} else {
+					pg_whatsapp_settings_save($contact_decision, (int) $user['id'], $liveform);
+				}
+
+				if ($contact_decision['action'] !== 'none') {
+					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => $contact_name)));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $contact_name)), $_SESSION['sessionusername']);
 				}
 
 			}
@@ -1141,6 +1203,101 @@ function connections_translate_page($page, $may_manage, $can_seal) {
 					<span class="connections-row-side">' . connections_state_pill($stored ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
+
+	return $page;
+
+}
+
+/* The page of a Communication service, WhatsApp or İYS: "Connection
+   details" holds the account the card of Site Settings › Communication held
+   (its secrets never drawn back), for who may open that category; Status
+   has Disconnect while an account is stored; "Where it is used" leads to the
+   cards that use it. */
+
+function connections_contact_page($page, $id, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
+
+	if ($id === 'iys') {
+
+		$app = pg_iys_settings_before();
+		$stored = ($app['user'] !== '') || $app['password_stored'];
+		$connected = $app['enabled'] && pg_iys_app_complete($app);
+		$sub = lang('The İYS account the e-mail and SMS marketing answers are synced with, and how the sync runs.');
+		$confirm = lang('The İYS account is removed from this site: marketing answers are no longer synced with İYS.');
+		$uses = array(
+			array(lang('Marketing consent records'), 'pgset-iys', lang('İYS')),
+		);
+
+	} else {
+
+		$app = pg_whatsapp_app();
+		$stored = $app['stored'];
+		$connected = $app['enabled'] && pg_whatsapp_app_complete($app);
+		$sub = lang('The site\'s own WhatsApp Business account on Meta\'s Cloud API, set up in five steps.');
+		$confirm = lang('The WhatsApp account is removed from this site: no WhatsApp message goes out and replies no longer arrive.');
+		$uses = array(
+			array(lang('Template messages and replies into the Workspace'), 'pgset-whatsapp', lang('WhatsApp')),
+			array(lang('WhatsApp Messages'), 'pgset-whatsapp-messages', lang('WhatsApp Messages')),
+		);
+
+	}
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		if ($id === 'iys') {
+			$fields = pg_iys_settings_fields();
+		} else {
+			$test_to = '';
+
+			if (defined('USER_CONTACT_ID') && USER_CONTACT_ID) {
+				$digits = pg_sms_number((string) db_value("SELECT mobile_phone FROM contacts WHERE id = '" . (int) USER_CONTACT_ID . "'"));
+				$test_to = ($digits !== '') ? '+' . $digits : '';
+			}
+
+			$fields = pg_whatsapp_settings_html($app, array(
+				'refusal'     => pg_whatsapp_settings_refusal(),
+				'webhook_url' => pg_whatsapp_webhook_url(),
+				'test_to'     => $test_to,
+			));
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h($sub) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="' . h($id) . '_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $fields . '
+			</form>
+		</section>';
+
+		if ($stored) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="' . h($id) . '_remove" data-id="0"
+					data-confirm="' . h($confirm) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	foreach ($uses as $use) {
+		$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('contact', $use[1])) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use[0]) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Communication')) . ' › ' . h($use[2]) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($connected ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+	}
 
 	return $page;
 
@@ -2238,14 +2395,20 @@ if ($provider_page !== '') {
 			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
+			'contact'      => in_array($page_id, array('whatsapp', 'iys'), true) && connections_contact_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys'), true),
 	);
+
+	// WhatsApp's and İYS's pages: the account and the cards that use it.
+	if (in_array($page_id, array('whatsapp', 'iys'), true)) {
+		$page = connections_contact_page($page, $page_id, connections_contact_may_manage($user));
+	}
 
 	// Google Cloud Translation's page: its key and the languages that use it.
 	if ($page_id === 'google_translate') {

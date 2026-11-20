@@ -1714,6 +1714,7 @@
     "WhatsApp messages": "WhatsApp mesajları",
     "WhatsApp messages queued": "Kuyruğa eklenen WhatsApp mesajları",
     "WhatsApp messages received": "Alınan WhatsApp mesajları",
+    "WhatsApp needs the site's own WhatsApp Business account on Meta's Cloud API. The account is set up on WhatsApp's page of Connections.": "WhatsApp, sitenin Meta Cloud API üzerindeki kendi WhatsApp Business hesabını ister. Hesap, Bağlantılar'daki WhatsApp sayfasında kurulur.",
     "WhatsApp rejected this template. Change it and send it for approval again; its name and language stay.": "WhatsApp bu şablonu reddetti. Değiştirip yeniden onaya gönderin; adı ve dili aynı kalır.",
     "WhatsApp settings": "WhatsApp ayarları",
     "WhatsApp takes a JPG or PNG picture, an MP4 or 3GP video, or a PDF, Word, Excel, PowerPoint or text document.": "WhatsApp JPG veya PNG resim, MP4 veya 3GP video ya da PDF, Word, Excel, PowerPoint veya metin belgesi alır.",

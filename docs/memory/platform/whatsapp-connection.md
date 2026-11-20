@@ -1,6 +1,6 @@
 ---
 name: whatsapp-connection
-description: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
+description: WhatsApp account (WA1, #9067): its five steps on WhatsApp's page of Connections (CX11d), connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 module: whatsapp
 ---
 
@@ -8,8 +8,9 @@ module: whatsapp
 - `connect_apps` row `whatsapp` (`pg_whatsapp_app_key()`), no schema: `client_id` the App ID; `secret` sealed (`pg_connect_seal()`, re-sealed by `reseal.php`) holding `client_secret` (App secret), `access_token`, `verify_token`; `options` JSON with phone_number_id, account_id, display_phone_number, verified_name, quality_rating, checked (time of Meta's last yes).
 - `pg_whatsapp_app()` reads it; `pg_whatsapp_ready()` is enabled, complete and not a demo site. The secrets are never put back in a field, logged or exported: an empty field keeps the stored value.
 
-## What does the card show?
-- Communication › WhatsApp (`pgset-whatsapp`, before İYS): a switch, then five numbered steps as `<h6>` group headings with help (App ID and App Secret, Access Token, Phone Number ID, WhatsApp Business Account ID, Webhook), a Test Number filled from the signed-in person's mobile and "Save and send a test message". Drawn: `platform/whatsapp-look/settings-card.html`.
+## Where is the account typed?
+- On `connections.php?service=whatsapp`, "Connection details" (`pg_whatsapp_settings_html()`, since CX11d, `ui/connections-communication-page.md`): a switch, then five numbered steps with help (App ID and App Secret, Access Token, Phone Number ID, WhatsApp Business Account ID, Webhook), a Test Number filled from the signed-in person's mobile, "Save" and "Save and send a test message".
+- The Communication › WhatsApp card (`pgset-whatsapp`) shows the connection and keeps the Workspace's Conversations field (`pg_whatsapp_settings_card_html()`).
 - After a check: "Connected: name, number, quality … Checked with Meta on …". Step 5 shows the read-only Callback URL and Verify Token once an account is stored, with a warning when the site is not on https (Meta calls only https).
 
 ## What does Save do?

@@ -8,7 +8,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - The page's technical rules: `connections-merges-panel-rules.md`. The rules binding every step: `connections-merges.md`.
 
 ## What does every build step bring to the architect?
-- Its pictures from a real panel, 1440 and 390, light and one dark, Turkish, before it is marked ready (`ui/panel-screenshots.md`).
+- Its pictures from a real panel, 1440 and 390, light and one dark, Turkish (`ui/panel-screenshots.md`).
 - A page that needs something the sheet does not show, or a table or a column, goes to the architect first.
 
 ## Which steps are there?
@@ -17,10 +17,10 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX9 AI providers, after CX2 has landed: one connection per provider, the idempotent data step and the feature cards without a key (Voice message transcripts, the assistants and agents), as `connections-merges-panel-rules.md` says.
 - CX9 done in two: CX9a #10470, connections, pages, data step (`api/ai-connections.md`); CX9b #10493, the feature cards without a key (`api/ai-connections-feature-cards.md`).
 - CX10 Google and Microsoft: the application and each connected account on the provider's page. It answers CX4 (a provider's client is typed on its page).
-- CX10 also shows the redirect addresses, the APIs to enable, a plain "API not enabled" error and Google's verification warning: `connections-merges-cx10-google.md`.
-- CX10 done, cut in two (`ui/connections-provider-page.md`). CX10a #10512: Google's and Microsoft's pages, application, accounts, the four parts. CX10b #10529: the Sign in with Google application on Google's page under its card's gate.
-- CX11 The other groups, one step each in the census's order (`integrations-census-screens.md`: SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance, the Workspace's categories), on the same cards: CX11a, CX11b… cut when the step before lands.
-- Done: CX11a SEO #10553 (IndexNow), CX11b Visitors and privacy #10562 (Google Analytics); pages in `ui/connections-service-page.md`. CX11c Languages #10576 (Google Cloud Translation key, message 10151).
+- CX10 also shows the redirect addresses, the APIs to enable, an "API not enabled" error, Google's verification warning: `connections-merges-cx10-google.md`.
+- CX10 done in two (`ui/connections-provider-page.md`). CX10a #10512: Google's and Microsoft's pages, application, accounts, the four parts. CX10b #10529: the Sign in with Google application on Google's page under its card's gate.
+- CX11 The other groups, one step each in the census's order (`integrations-census-screens.md`: SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance, the Workspace's categories), cut when the step before lands.
+- Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576 (message 10151), CX11d Communication #PR (WhatsApp, İYS); the SMS card's three providers are a step of their own after the architect's answer.
 
 ## What binds CX9 already?
 - Architect (2026-11-17, message 9391): one connection per provider, no table and no column, stored where the registry's key services keep theirs.

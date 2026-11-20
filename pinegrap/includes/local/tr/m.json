@@ -1034,6 +1034,7 @@
     "Messages cannot be forwarded into a room with a guest.": "Misafirin bulunduğu odaya mesaj iletilemez.",
     "Messages from #{var:1}": "#{var:1} kanalından mesajlar",
     "Messages from {var:1} on": "{var:1} tarihinden itibaren mesajlar",
+    "Messages go out through the site's own WhatsApp Business account. The account is kept on WhatsApp's page of Connections.": "Mesajlar sitenin kendi WhatsApp Business hesabından gider. Hesap, Bağlantılar'daki WhatsApp sayfasında tutulur.",
     "Messages sent from the contact page are collected in the panel, ready to answer.": "İletişim sayfasından gönderilen mesajlar panelde toplanır, yanıtlamaya hazır bekler.",
     "Messages set to be sent later, on their own.": "Daha sonra kendiliğinden gönderilecek mesajlar.",
     "Messages starting with a prefix": "Bir önekle başlayan mesajlar",
