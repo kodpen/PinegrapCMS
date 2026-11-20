@@ -87,3 +87,41 @@ function test_returns_hunt_gift_card_line_on_the_form()
 	$view = returns_hunt_test_body('includes/fn/returns.php', 'pg_return_customer_view');
 	pg_assert_contains("'gift_card' => !empty(\$line['gift_card'])", $view, 'the view hands the flag to the form');
 }
+
+// Every line of the order given back by refunded returns: no purchase is
+// left (owner decision #7202), so the waiting review request goes (#10651).
+function test_returns_hunt_order_fully_refunded()
+{
+	pg_assert_true(pg_return_order_refunded_whole(array(
+		array('quantity' => 2, 'refunded' => 2),
+		array('quantity' => 1, 'refunded' => 1),
+	)), 'every unit back and refunded');
+	pg_assert_false(pg_return_order_refunded_whole(array(
+		array('quantity' => 2, 'refunded' => 1),
+		array('quantity' => 1, 'refunded' => 1),
+	)), 'one unit kept');
+	pg_assert_false(pg_return_order_refunded_whole(array(
+		array('quantity' => 2, 'refunded' => 2),
+		array('quantity' => 1, 'refunded' => 0),
+	)), 'a line not returned (a download, a line sent to no address)');
+	pg_assert_true(pg_return_order_refunded_whole(array(
+		array('quantity' => 2, 'refunded' => 2),
+		array('quantity' => 0, 'refunded' => 0),
+	)), 'a line of no quantity counts for nothing');
+	pg_assert_false(pg_return_order_refunded_whole(array()), 'no lines');
+}
+
+// The refund cancels the order's waiting review request once nothing of the
+// order is left with the customer, after the ratings are refreshed.
+function test_returns_hunt_refund_cancels_the_review_request()
+{
+	$refund = returns_hunt_test_body('includes/fn/returns.php', 'pg_return_refund');
+	pg_assert_contains("if (pg_return_order_fully_refunded(\$return['order_id'])) {", $refund, 'the order is checked');
+	pg_assert_contains("pg_review_request_cancel(\$return['order_id']);", $refund, 'and its request cancelled');
+	pg_assert_true(strpos($refund, 'pg_review_refresh_products($returned_products)') < strpos($refund, 'pg_review_request_cancel('), 'after the ratings');
+	pg_assert_true(strpos($refund, 'pg_review_request_cancel(') < strpos($refund, '$release();' . "\n\n" . '    $after'), 'under the lock, before it is let go');
+
+	$reader = returns_hunt_test_body('includes/fn/returns.php', 'pg_return_order_fully_refunded');
+	pg_assert_contains('order_returns.refunded_at > 0', $reader, 'only refunded returns count');
+	pg_assert_contains('saved_for_later = 0', $reader, 'lines kept for later are no part of the order');
+}

@@ -4317,6 +4317,13 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     pg_review_refresh_products($returned_products);
 
+    // Nothing of the order left with the customer: no purchase stands, so
+    // the review request still waiting to go out is cancelled, as a
+    // cancellation cancels it (process_order_cancellation()).
+    if (pg_return_order_fully_refunded($return['order_id'])) {
+        pg_review_request_cancel($return['order_id']);
+    }
+
     $release();
 
     $after = pg_return_audit_fields($moved['return']);
@@ -4391,6 +4398,59 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         'unclear' => false,
         'credit' => $credit,
     );
+}
+
+/**
+ * Whether refunded returns gave back every unit of an order: each line's
+ * quantity is covered by what its refunded returns took back. A line no
+ * return can reach (a download, a line sent to no address) keeps the
+ * purchase. Pure.
+ *
+ * @param array $lines each: quantity, refunded (units of refunded returns)
+ * @return bool false for an order without lines
+ */
+function pg_return_order_refunded_whole($lines)
+{
+    $any = false;
+
+    foreach ((array) $lines as $line) {
+        $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 0;
+
+        if ($quantity <= 0) {
+            continue;
+        }
+
+        $any = true;
+
+        if ((isset($line['refunded']) ? (int) $line['refunded'] : 0) < $quantity) {
+            return false;
+        }
+    }
+
+    return $any;
+}
+
+/**
+ * Whether refunded returns gave back every unit of an order
+ * (pg_return_order_refunded_whole()), read from its lines; the review rating
+ * reads a purchase the same way (pg_review_purchase_stands_sql()).
+ *
+ * @param int $order_id
+ * @return bool
+ */
+function pg_return_order_fully_refunded($order_id)
+{
+    $lines = db_items(
+        "SELECT
+            order_items.quantity,
+            (SELECT COALESCE(SUM(order_return_items.quantity), 0)
+                FROM order_return_items
+                JOIN order_returns ON order_returns.id = order_return_items.return_id
+                WHERE (order_return_items.order_item_id = order_items.id) AND (order_returns.refunded_at > 0)) AS refunded
+        FROM order_items
+        WHERE (order_items.order_id = '" . (int) $order_id . "') AND (order_items.saved_for_later = 0)");
+
+    return pg_return_order_refunded_whole(is_array($lines) ? $lines : array());
 }
 
 /**
