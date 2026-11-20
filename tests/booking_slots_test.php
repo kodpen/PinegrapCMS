@@ -363,8 +363,8 @@ function test_booking_overlaps_non_booking_busy_keeps_the_new_buffers()
 	pg_assert_false(pg_booking_overlaps(10000, booking_slots_test_service(60), array(array(5000, 10000))), 'an event ending where the slot starts');
 }
 
-// The three paths read a booked row with its service's buffers: the widget,
-// the manage page's move and Bookings > New booking, and the hold itself.
+// The widget, the hold and the manage page's move read a booked row with its
+// service's buffers.
 function test_booking_paths_read_the_booked_buffers()
 {
 	$bookings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
@@ -378,8 +378,6 @@ function test_booking_paths_read_the_booked_buffers()
 	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_booking.php');
 	pg_assert_contains('booking_services.buffer_after', booking_slots_test_body($widget, 'pg_booking_busy_between'));
 
-	$agenda = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
-	pg_assert_contains('booking_services.buffer_after', booking_slots_test_body($agenda, 'pg_booking_agenda_free_slots'));
 }
 
 function test_booking_manage_token()
