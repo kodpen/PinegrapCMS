@@ -929,6 +929,7 @@
     "Search engines index": "Arama motorları indeksler",
     "Search engines may index this page in {var:1}.": "Arama motorları bu sayfayı {var:1} dilinde dizine ekleyebilir.",
     "Search engines read this file as it is; the look is only for reading it in a browser.": "Arama motorları bu dosyayı olduğu gibi okur; bu görünüm yalnız tarayıcıda okumak içindir.",
+    "Search engines that support IndexNow are told when the sitemap.xml file changes. Its key is kept on IndexNow's page of Connections.": "IndexNow'u destekleyen arama motorlarına sitemap.xml dosyası değiştiğinde haber verilir. Anahtarı Bağlantılar'daki IndexNow sayfasında tutulur.",
     "Search engines, structured data and visitor tracking.": "Arama motorları, yapılandırılmış veri ve ziyaretçi takibi.",
     "Search engines, structured data, AI crawlers and product feeds.": "Arama motorları, yapılandırılmış veri, yapay zekâ botları ve ürün akışları.",
     "Search engines, the site icon, social sharing, structured data and AI crawlers.": "Arama motorları, site simgesi, sosyal paylaşım, yapılandırılmış veri ve yapay zekâ tarayıcıları.",

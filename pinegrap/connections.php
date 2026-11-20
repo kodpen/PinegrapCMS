@@ -131,6 +131,20 @@ function connections_signin_may_manage($user) {
 
 }
 
+// May the user change the IndexNow key? It came from Site Settings › SEO,
+// so it keeps that category's gate.
+function connections_seo_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('seo', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -236,6 +250,48 @@ if ($_POST) {
 
 				}
 
+			}
+
+		}
+
+	}
+
+	// The IndexNow key, saved, generated or removed on IndexNow's page under
+	// the gate of the SEO card it came from; the write returns to the page.
+	if (in_array($action, array('indexnow_save', 'indexnow_remove'), true) && connections_seo_may_manage($user)) {
+
+		if ($action === 'indexnow_remove') {
+
+			pg_indexnow_key_save('');
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'IndexNow')));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'IndexNow')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$indexnow_key = !empty($_POST['submit_generate'])
+				? pg_indexnow_key_new()
+				: ((isset($_POST['indexnow_key']) && is_string($_POST['indexnow_key'])) ? trim($_POST['indexnow_key']) : '');
+
+			if ($indexnow_key === '') {
+				$liveform->add_error(lang('Type a key, or generate one.'));
+			} elseif (!pg_indexnow_key_save($indexnow_key)) {
+				$liveform->add_error(lang('The IndexNow key must be 8 to 128 characters long and may only contain letters, digits and dashes.'));
+			} else {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} key was saved.', 'vars' => 'IndexNow')));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'IndexNow')), $_SESSION['sessionusername']);
+
+				// Save and try: the key file search engines read is checked
+				// where the site serves its files.
+				if (!empty($_POST['submit_try'])) {
+
+					if (pg_indexnow_key_file_ok($indexnow_key)) {
+						$liveform->add_notice(lang('The key file search engines check is in place.'));
+					} else {
+						$liveform->add_error(lang('The key was saved, but its key file could not be written to the files directory.'));
+					}
+
+				}
 			}
 
 		}
@@ -601,6 +657,12 @@ foreach ($registry as $id => $service) {
 		continue;
 	}
 
+	// A service whose settings moved onto its page here keeps the gate of
+	// the Site Settings card they came from ('found_at').
+	if (isset($service['found_at']) && !pg_connections_screen_may_see($service['found_at'], $open_categories, $tool_labels, $is_manager)) {
+		continue;
+	}
+
 	// An AI provider's connection keeps the gate of the assistants' card its
 	// key came from.
 	if (isset($ai_services[$id]) && empty($open_categories[pg_ai_connection_category()])) {
@@ -815,6 +877,76 @@ function connections_ai_page($page, $id, $name, $provider, $may_manage, $can_sea
 						<span class="connections-row-name">' . h(lang('Workspace assistants')) . '</span>
 						<span class="pg-text-meta d-block">' . h(lang('No assistant uses it yet.')) . '</span>
 					</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* IndexNow's page: "Connection details" holds the key (typed, or
+   generated here) for who may open Site Settings › SEO, Status says whether
+   the key file is in place and has Disconnect, and "Where it is used" leads
+   to the SEO card that shows the connection. */
+
+function connections_indexnow_page($page, $may_manage) {
+
+	$key = defined('INDEXNOW_KEY') ? trim((string) INDEXNOW_KEY) : '';
+	$seo_url = pg_settings_link('seo', 'pgset-seo');
+
+	if ($key !== '') {
+		$file_ok = pg_indexnow_key_file_ok($key);
+		$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Key file')) . '</div>
+				' . ($file_ok
+					? '<div class="pg-text-2"><a href="' . h(PATH . $key . '.txt') . '" target="_blank" rel="noopener">' . h($key . '.txt') . '</a></div>'
+					: '<div class="alert theme-warning small py-3 mb-0">' . h(lang('The key is set but its key file is missing: save the key again.')) . '</div>') . '
+			</div>';
+	}
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The key search engines that support IndexNow check before they take a change. It is written to a file of the site\'s own, so it is no secret.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="indexnow_save">
+				<input type="hidden" name="connections_return" value="indexnow">
+				<div>
+					<label class="pg-field-label" for="indexnow_key">' . h(lang('IndexNow Key')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="indexnow_key" name="indexnow_key" value="' . h($key) . '" maxlength="128" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h(lang('8 to 128 letters, digits and dashes. Generate makes a new one and saves it.')) . '
+						<a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank" rel="noopener">' . h(lang('Learn more about IndexNow')) . '</a></div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet">' . h(lang('Save and try')) . '</button>
+					<button type="submit" name="submit_generate" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Generate')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if ($key !== '') {
+			$page['status_extra'] .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="indexnow_remove" data-id="0"
+					data-confirm="' . h(lang('The IndexNow key and its key file are removed: search engines are no longer told when the site map changes.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h($seo_url) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Tells search engines a page changed')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › SEO › ' . h(lang('Search Engine Optimization')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($key !== '') ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -1771,14 +1903,20 @@ if ($provider_page !== '') {
 			'manager'      => $is_manager,
 			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
 			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
+			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]),
+		'here'         => isset($ai_services[$page_id]) || ($page_id === 'indexnow'),
 	);
+
+	// IndexNow's page: its key and the SEO card that shows it.
+	if ($page_id === 'indexnow') {
+		$page = connections_indexnow_page($page, connections_seo_may_manage($user));
+	}
 
 	// An AI provider's page: its key, and the assistants that use it.
 	if (isset($ai_services[$page_id])) {
