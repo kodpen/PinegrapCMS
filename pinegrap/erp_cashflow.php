@@ -287,6 +287,7 @@ $query = $query_base . '&group=' . $options['group'];
 // The file: the period table, written before any page output.
 if (!empty($_GET['csv'])) {
     $csv = erp_cashflow_csv($report, $options);
+    pg_list_excel_capture(array(1 => 'date', 2 => 'date', 3 => 'money', 4 => 'money', 5 => 'money', 6 => 'number', 7 => 'money'), lang('Cash flow'));
 
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="cashflow_' . $options['from'] . '_' . $options['to'] . '.csv"');
@@ -484,6 +485,7 @@ pg_page_shell(array(
                 </span>
                 <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
                 <a class="pg-button pg-button-quiet ms-auto" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . lang('Download CSV') . '</a>
+                ' . pg_list_excel_link('erp_cashflow.php?' . $query . '&csv=1', 'pg-button pg-button-quiet') . '
             </form>
             <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_group">' . $output_keep(array('from', 'to', 'till')) . '</form>
             <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_range">' . $output_keep(array('from', 'to', 'till', 'group')) . '</form>

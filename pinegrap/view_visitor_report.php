@@ -962,6 +962,7 @@ if (!$_POST) {
         $export_name = pg_transliterate_to_ascii($export_name);
         $export_name = preg_replace('/[^A-Za-z0-9_-]+/', '-', $export_name);
 
+        pg_list_excel_capture(array(lang('Visitor Number') => 'number', lang('Page Views') => 'number', lang('Order Total') => 'money'), lang('Visitor Report'));
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $export_name . '-' . date('Y-m-d') . '.csv"');
         header('Cache-Control: no-store');
@@ -1048,7 +1049,9 @@ if (!$_POST) {
             // Push each batch down the wire rather than letting it pile up in
             // PHP's output buffer, which would recreate the memory problem in
             // a different place.
-            if ((++$written % 1000) === 0) {
+            // An Excel export holds the file back whole: a flush would send
+            // the CSV's headers.
+            if (((++$written % 1000) === 0) && !pg_list_excel_capturing()) {
                 if (ob_get_level() > 0) @ob_flush();
                 @flush();
             }
@@ -1766,6 +1769,7 @@ if (!$_POST) {
                     <a class="btn btn-sm btn-outline theme-secondary" href="' . h($csv_url) . '">
                         <i class="bi bi-filetype-csv me-1"></i>' . lang('Export All to CSV') . '
                     </a>
+                    ' . pg_list_excel_link($csv_url) . '
                     <nav aria-label="' . h(lang('Pagination')) . '"><ul class="pagination pagination-sm mb-0">'
                         . $pager_link(1, '&laquo;', lang('First page'), $detail_page <= 1)
                         . $pager_link($detail_page - 1, '&lsaquo;', lang('Previous page'), $detail_page <= 1)
