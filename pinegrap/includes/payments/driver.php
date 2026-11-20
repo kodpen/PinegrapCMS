@@ -99,6 +99,16 @@
  *   card_ref          string  the service's token of the card it stored for
  *                             renewals, '' when none; at most 150 characters,
  *                             so its sealed form fits subscriptions.card_ref
+ *   fee               int|null hundredths of fee_currency the service kept
+ *                             for the payment (its commission and fixed
+ *                             fee), null when it does not say; only on a
+ *                             success (pg_payment_fee())
+ *   fee_currency      string  the fee's currency (ISO 4217, upper case), ''
+ *                             when it is the order's own
+ *   fee_rate          float   order currency per one unit of fee_currency,
+ *                             as the service converted this payment; 0 when
+ *                             the fee is in the order's currency or no rate
+ *                             was given
  *   refund_reference  string  the service's id of a refund
  *   order_reference   string  notify(): which order the message is about: its
  *                             id, or the payment id the order keeps as its
@@ -460,6 +470,9 @@ function pg_payment_answer($operation, $answer)
         'card_exp_month'   => '',
         'card_exp_year'    => '',
         'card_ref'         => '',
+        'fee'              => null,
+        'fee_currency'     => '',
+        'fee_rate'         => 0.0,
         'redirect_url'     => '',
         'html'             => '',
         'client'           => array(),
@@ -563,7 +576,82 @@ function pg_payment_answer($operation, $answer)
         $shape['html'] = '';
     }
 
+    if ($shape['success']) {
+        $shape = array_merge($shape, pg_payment_answer_fee($answer));
+    }
+
     return $shape;
+}
+
+/**
+ * The fee keys of a successful answer, each only in a shape that can be
+ * nothing else: whole hundredths of zero or more, a three-letter code, a
+ * rate above zero. A fee in another currency with no rate keeps its code,
+ * so the caller can still convert it at the day's rate.
+ *
+ * @param array $answer a driver's answer
+ * @return array fee, fee_currency, fee_rate
+ */
+function pg_payment_answer_fee($answer)
+{
+    $fee = array('fee' => null, 'fee_currency' => '', 'fee_rate' => 0.0);
+    $amount = $answer['fee'] ?? null;
+
+    if (is_string($amount) && (preg_match('/^[0-9]+$/', $amount) === 1)) {
+        $amount = (int) $amount;
+    }
+
+    if (!is_int($amount) || ($amount < 0)) {
+        return $fee;
+    }
+
+    $fee['fee'] = $amount;
+    $currency = (isset($answer['fee_currency']) && is_string($answer['fee_currency'])) ? strtoupper(trim($answer['fee_currency'])) : '';
+
+    if (preg_match('/^[A-Z]{3}$/', $currency) === 1) {
+        $fee['fee_currency'] = $currency;
+    }
+
+    $rate = $answer['fee_rate'] ?? 0;
+
+    if ((is_int($rate) || is_float($rate)) && is_finite((float) $rate) && ((float) $rate > 0)) {
+        $fee['fee_rate'] = (float) $rate;
+    }
+
+    return $fee;
+}
+
+/**
+ * The fee keys a driver answers with: the fee in the currency the service
+ * took the payment in, and, when that is not the order's currency, the rate
+ * the payment itself was converted at (the order amount over the amount the
+ * service took), so the fee is converted the same way.
+ *
+ * @param int|null $fee            hundredths of $currency, null when not given
+ * @param string   $currency       the payment's currency at the service
+ * @param string   $order_currency the order's currency
+ * @param int      $order_amount   hundredths of the order's currency the payment was for
+ * @param int      $paid_amount    hundredths of $currency the service took for it
+ * @return array fee, fee_currency, fee_rate; empty when no fee was given
+ */
+function pg_payment_fee($fee, $currency, $order_currency, $order_amount, $paid_amount)
+{
+    if (!is_int($fee) || ($fee < 0)) {
+        return array();
+    }
+
+    $currency = strtoupper(trim((string) $currency));
+    $order_currency = strtoupper(trim((string) $order_currency));
+
+    if (($currency === '') || ($currency === $order_currency)) {
+        return array('fee' => $fee, 'fee_currency' => '', 'fee_rate' => 0.0);
+    }
+
+    return array(
+        'fee'          => $fee,
+        'fee_currency' => $currency,
+        'fee_rate'     => (((int) $order_amount > 0) && ((int) $paid_amount > 0)) ? (int) $order_amount / (int) $paid_amount : 0.0,
+    );
 }
 
 /**

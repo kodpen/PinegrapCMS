@@ -516,3 +516,33 @@ function test_payment_drivers_fields_html_escapes_and_never_draws_secrets()
 	pg_assert_contains('alert theme-warning', $unread, 'secrets the site\'s key cannot read');
 	pg_assert_false(strpos($unread, 'placeholder="') !== false, 'nothing readable is stored');
 }
+
+// The fee keys: whole hundredths of zero or more, a three-letter code, a rate
+// above zero; only on a success.
+function test_payment_drivers_answer_reads_the_fee()
+{
+	$paid = array('success' => true, 'status' => 'paid');
+
+	$answer = pg_payment_answer('authorize', $paid + array('fee' => 292, 'fee_currency' => 'usd', 'fee_rate' => 33.69));
+	pg_assert_same(292, $answer['fee']);
+	pg_assert_same('USD', $answer['fee_currency']);
+	pg_assert_same(33.69, $answer['fee_rate']);
+
+	pg_assert_same(292, pg_payment_answer('authorize', $paid + array('fee' => '292'))['fee']);
+	pg_assert_same(0, pg_payment_answer('authorize', $paid + array('fee' => 0))['fee'], 'no fee kept is a fee of 0');
+	pg_assert_same(null, pg_payment_answer('authorize', $paid + array('fee' => 2.92))['fee'], 'a float is not hundredths');
+	pg_assert_same(null, pg_payment_answer('authorize', $paid + array('fee' => -1))['fee']);
+	pg_assert_same(null, pg_payment_answer('authorize', $paid)['fee']);
+	pg_assert_same('', pg_payment_answer('authorize', $paid + array('fee' => 1, 'fee_currency' => 'dollar'))['fee_currency']);
+	pg_assert_same(0.0, pg_payment_answer('authorize', $paid + array('fee' => 1, 'fee_rate' => -2))['fee_rate']);
+	pg_assert_same(null, pg_payment_answer('authorize', array('success' => false, 'fee' => 292))['fee'], 'a failure has no fee');
+	pg_assert_same(null, pg_payment_answer('authorize', array('success' => true, 'status' => 'nonsense', 'fee' => 292))['fee'], 'nor an unreadable success');
+}
+
+function test_payment_drivers_fee_helper()
+{
+	pg_assert_same(array(), pg_payment_fee(null, 'TRY', 'TRY', 100, 100));
+	pg_assert_same(array('fee' => 50, 'fee_currency' => '', 'fee_rate' => 0.0), pg_payment_fee(50, 'try', 'TRY', 100, 100));
+	pg_assert_same(array('fee' => 50, 'fee_currency' => 'USD', 'fee_rate' => 10714 / 318), pg_payment_fee(50, 'usd', 'TRY', 10714, 318));
+	pg_assert_same(array('fee' => 50, 'fee_currency' => 'USD', 'fee_rate' => 0.0), pg_payment_fee(50, 'USD', 'TRY', 10714, 0), 'no amount to take the rate from');
+}

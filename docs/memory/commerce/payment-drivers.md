@@ -30,6 +30,6 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 - Save: `pg_payment_settings_check()` before the card's UPDATE (marks refuse it), `_save()` after. `pg_payment_settings_decide()` (pure): only drivers whose `payment_<key>__present` was posted; empty secret keeps; required only when active; no row while all values are defaults.
 
 ## How was it verified?
-- `tests/payment_drivers_test.php`; sandbox with a registered driver.
+- `tests/payment_drivers_test.php`; sandbox, registered driver.
 
-Related: commerce/payment-driver-iyzico.md, payment-driver-stripe.md, payment-driver-paypal.md, payment-refunds.md, commerce/payment-driver-layer-decisions.md, platform/sms-provider-layer.md
+Related: erp/erp-order-profit-payment-fee.md, commerce/payment-driver-iyzico.md, payment-driver-stripe.md, payment-driver-paypal.md, payment-refunds.md, commerce/payment-driver-layer-decisions.md, platform/sms-provider-layer.md

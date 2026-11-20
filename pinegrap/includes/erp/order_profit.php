@@ -33,12 +33,20 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/fx.php');
 
 /** Orders computed per database read in the pass. */
 const ERP_ORDER_PROFIT_BATCH = 100;
 
 /** The config_text row that keeps where the recheck of computed orders stands. */
 const ERP_ORDER_PROFIT_CURSOR = 'erp_order_profit_cursor';
+
+/**
+ * The source_ref of the fee a payment service kept (source gateway): one row
+ * per order, as an order is paid once; a second write for it (a repeated
+ * checkout) replaces the amount.
+ */
+const ERP_ORDER_PROFIT_GATEWAY_REF = 'gateway';
 
 /**
  * The kinds of cost an order has.
@@ -741,4 +749,99 @@ function erp_order_profit_run($time_left, $enabled = null)
             return array('reason' => 'more', 'done' => $done);
         }
     }
+}
+
+/**
+ * A payment service's fee in the order's own currency (the store's base), in
+ * minor units: as answered when it is in that currency; otherwise converted
+ * with erp_to_base() at the rate the service converted the payment at, else
+ * at the day's rate. Null when it cannot be converted or is not a fee.
+ *
+ * @param array  $fee            pg_payment_answer(): fee, fee_currency, fee_rate
+ * @param string $base_currency  the order's currency
+ * @param float  $day_rate       base units per unit of fee_currency on the day; 0 when none
+ * @return int|null
+ */
+function erp_order_profit_fee_amount($fee, $base_currency, $day_rate)
+{
+    $amount = (is_array($fee) && isset($fee['fee'])) ? $fee['fee'] : null;
+
+    if (!is_int($amount) || ($amount < 0)) {
+        return null;
+    }
+
+    $currency = strtoupper(trim((string) ($fee['fee_currency'] ?? '')));
+
+    if (($currency === '') || ($currency === strtoupper(trim((string) $base_currency)))) {
+        return $amount;
+    }
+
+    $rate = (float) ($fee['fee_rate'] ?? 0);
+
+    if (!($rate > 0)) {
+        $rate = (float) $day_rate;
+    }
+
+    if (!($rate > 0) || ($rate > ERP_MAX_EXCHANGE_RATE) || !erp_base_amount_fits($amount, $rate)) {
+        return null;
+    }
+
+    return erp_to_base($amount, $rate);
+}
+
+/**
+ * Record the fee a payment service kept for an order as its payment cost
+ * (source gateway, ERP_ORDER_PROFIT_GATEWAY_REF), and ask the pass to compute
+ * the order again: the real fee replaces the payment method's typed rate.
+ * Nothing else is written: no receipt, till, bank or account move.
+ *
+ * With the Accounting module off it reads and writes nothing.
+ *
+ * @param int       $order_id
+ * @param array     $fee      pg_payment_answer(): fee, fee_currency, fee_rate
+ * @param bool|null $enabled  Whether the Accounting module is on; null reads ERP_ENABLED
+ * @return bool  whether a row was written
+ */
+function erp_order_profit_record_fee($order_id, $fee, $enabled = null)
+{
+    if ($enabled === null) {
+        $enabled = defined('ERP_ENABLED') && ERP_ENABLED;
+    }
+
+    $order_id = (int) $order_id;
+
+    if (!$enabled || ($order_id <= 0) || !is_array($fee) || !isset($fee['fee']) || !is_int($fee['fee']) || !erp_order_profit_ready()) {
+        return false;
+    }
+
+    $base = erp_base_currency();
+    $currency = strtoupper(trim((string) ($fee['fee_currency'] ?? '')));
+    $day_rate = 0.0;
+
+    if (($currency !== '') && ($currency !== $base) && !((float) ($fee['fee_rate'] ?? 0) > 0)) {
+        $rate = erp_fx_rate_for($currency, date('Y-m-d'));
+        $day_rate = is_array($rate) ? (float) $rate['rate'] : 0.0;
+    }
+
+    $amount = erp_order_profit_fee_amount($fee, $base, $day_rate);
+
+    if ($amount === null) {
+        log_activity(pg_log_lang(array('string' => 'The payment fee of order #{var:1} ({var:2} minor units of {var:3}) could not be converted into {var:4}: no exchange rate. The typed rate stays.',
+            'vars' => array($order_id, $fee['fee'], $currency, $base))));
+
+        return false;
+    }
+
+    $now = time();
+
+    $ok = db_q("INSERT INTO erp_order_costs (order_id, kind, source, source_ref, amount, created_at, updated_at)
+        VALUES (?, 'payment', 'gateway', ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE source = VALUES(source), amount = VALUES(amount), updated_at = VALUES(updated_at)",
+        array($order_id, ERP_ORDER_PROFIT_GATEWAY_REF, $amount, $now, $now)) !== false;
+
+    if ($ok) {
+        erp_order_profit_mark($order_id);
+    }
+
+    return $ok;
 }
