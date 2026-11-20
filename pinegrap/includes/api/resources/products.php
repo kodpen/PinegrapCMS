@@ -2182,7 +2182,7 @@ function api_price_history_entry_present($row) {
 	return array(
 		'id'              => (int)$row['id'],
 		// 'web' for the shop's own price; a price kept per sales channel is
-		// 'pos' or 'marketplace:<code>'.
+		// 'pos' or 'marketplace:<account id>'.
 		'channel'         => (string)$row['channel'],
 		'price'           => api_money($row['price']),
 		'currency'        => (string)$row['currency'],
