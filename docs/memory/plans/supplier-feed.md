@@ -24,12 +24,16 @@ priority: 6
 - Large feeds: streamed to `data/temp/`, read row by row with a resumable cursor in job ticks, one lock per feed.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10643)
-- Schema: the three tables are the shape; asked of the owner in poll 185, columns written after a yes. The F5 switch and a held price live on the `supplier_feed_items` row (no `products` column); category and brand rules stay in the feed's rules JSON.
+- The F5 switch and a held price live on the `supplier_feed_items` row (no `products` column); category and brand rules stay in the feed's rules JSON.
 - Cost: a third source, read only (F11); an order with a feed cost stays `estimate`.
 - A dropped product is closed in the same pull (F7); F13's brake holds a mass drop.
 - http only per feed with its box, key in the address only (F1).
 - Price brake both ways, under half or over ten times (F13).
 - Screen: Products › Supplier feeds, behind `view_products.php`'s gate (role under 3 or manage_ecommerce); F14's scopes for the API.
+
+## Which tables? (owner 2026-11-20, poll 185, channel message 10642)
+- "Evet, üç tablo eklensin": `supplier_feeds`, `supplier_feed_items`, `supplier_feed_runs`; no `products` column. The columns: architect, channel message 10647, kept in the schema decisions list.
+- SF1's worker writes the columns into its PR body and asks the architect before it is marked ready.
 
 ## What is built?
 - Features: `supplier-feed-features.md` (F1 to F14). Steps: `supplier-feed-steps.md`. Claim as `[plan:supplier-feed] <step> — <topic>`.

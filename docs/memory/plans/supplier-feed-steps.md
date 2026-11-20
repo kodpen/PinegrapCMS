@@ -5,7 +5,7 @@ description: Plan supplier-feed, steps SF1 to SF7: tables and readers, the feed 
 
 ## Which steps are there?
 - SF1 (M) first: tables and readers.
-  - Waits for the owner's yes in poll 185; the migration step adds the three tables with the columns the architect writes, with the idempotent helpers; types in the PR body.
+  - The migration step adds the three tables (`supplier-feed.md`, Which tables?) with the idempotent helpers; the columns in the PR body, asked of the architect before ready.
   - New `includes/fn/supplier_feed.php`: the format told from the first bytes, the XML (XMLReader), CSV (`pg_csv_read_separator()`) and JSON readers with a resumable cursor, the field proposal, the price rule (pure). `tests/supplier_feed_test.php`, red first, on fixtures of common shapes: nested XML, a CSV with a BOM and `;`, JSON lists, Turkish decimal commas, rounding endings, the floor.
   - Features: F2 (proposal), F4.
 - SF2 (M) after SF1: Products › Supplier feeds: the list, add and edit (F1) with the http box, the encrypted fields, the first pull through `api_http_request()` to a file under `data/temp/`, the mapping form (F2), the test pull (F3). Translations with `tools/tr_add.php`.
