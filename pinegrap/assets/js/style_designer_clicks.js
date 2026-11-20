@@ -559,6 +559,15 @@ StyleDesigner.definePart('clicks', function (K) {
                     throw new Error('refused');
                 }
 
+                // The read says whether the switch is on: a "Turn on" post
+                // the switch did not take looks like the switch's own answer.
+                if (body.on === false) {
+                    s.on = false;
+                    refresh();
+
+                    return null;
+                }
+
                 state.report = body.page ? body.page : { views: 0, reach: [], elements: [], other: 0 };
                 refresh();
 
@@ -575,7 +584,10 @@ StyleDesigner.definePart('clicks', function (K) {
 
     // The empty state's button: the Visitors section's form post, which
     // checks the Features right and the token and saves through the one
-    // saver. Its answer is a redirect, not followed.
+    // saver. Its answer is a redirect, not followed; so is the sign-in
+    // page's when the session ran out, and a refused token answers 200 with
+    // an error page. Whether the switch took is read from the figures' read
+    // that follows (load()).
     function turnOn(button) {
         var s = settings();
         var body = new FormData();
@@ -594,9 +606,23 @@ StyleDesigner.definePart('clicks', function (K) {
                 }
 
                 s.on = true;
+
                 return load();
             })
+            .then(function (report) {
+                if (!report || !s.on) {
+                    throw new Error('not on');
+                }
+
+                return report;
+            })
             .catch(function () {
+                s.on = false;
+
+                if (H) {
+                    refresh();
+                }
+
                 if (button) {
                     button.disabled = false;
                 }
