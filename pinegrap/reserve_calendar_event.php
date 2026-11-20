@@ -161,7 +161,10 @@ if ((string) $liveform->get_field_value('waiting_list') === '1') {
         : pg_stock_notify_event_status_message($waiting_status);
 
     if (pg_stock_notify_status_ok($waiting_status)) {
-        $liveform->add_notice(h($waiting_message));
+        // The sentence carries "Stop waiting"; the date's waiting line prints
+        // the hidden form it posts (pg_stock_notify_event_line()).
+        pg_stock_notify_withdraw_offer('event', $calendar_event_id, $recurrence_number, (string) $liveform->get_field_value('email_address'));
+        $liveform->add_notice(h($waiting_message) . ' ' . pg_stock_notify_withdraw_button_html());
     } else {
         $liveform->mark_error('email_address', h($waiting_message));
     }

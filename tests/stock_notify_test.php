@@ -426,3 +426,104 @@ function test_stock_notify_unsent_mail_waits_again()
 		pg_assert_contains('pg_stock_notify_mail_unsent(', $source, $function . ': asks whether it went');
 	}
 }
+
+// A stock_notify row as the withdraw reads it.
+function stock_notify_test_wait($id, $product_id, $email, $user_id, $sent_at = 0, $event_id = 0, $date = 0)
+{
+	return array(
+		'id'                => (string) $id,
+		'product_id'        => (string) $product_id,
+		'calendar_event_id' => (string) $event_id,
+		'recurrence_number' => (string) $date,
+		'email_address'     => (string) $email,
+		'user_id'           => (string) $user_id,
+		'sent_at'           => (string) $sent_at,
+	);
+}
+
+// Withdrawing: the signed-in account's waiting row, else the typed address's;
+// a sent row, another product's, another address's and another date's stay.
+function test_stock_notify_withdraw_status()
+{
+	$rows = array(
+		stock_notify_test_wait(1, 40, 'a@example.com', 0),
+		stock_notify_test_wait(2, 40, 'b@example.com', 0),
+		stock_notify_test_wait(3, 40, 'c@example.com', 7),
+		stock_notify_test_wait(4, 40, 'a@example.com', 0, 1700000000),
+		stock_notify_test_wait(5, 41, 'a@example.com', 0),
+		stock_notify_test_wait(6, 0, 'a@example.com', 0, 0, 9, 3),
+		stock_notify_test_wait(7, 0, 'a@example.com', 0, 0, 9, 4),
+		stock_notify_test_wait(8, 0, 'a@example.com', 0, 1700000000, 9, 3),
+	);
+
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(3)), pg_stock_notify_withdraw_status(true, 'product', 40, 0, '', 7, $rows), 'by account, whatever address it typed');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(3)), pg_stock_notify_withdraw_status(true, 'product', 40, 0, 'a@example.com', 7, $rows), 'signed in: the account, not the address typed');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(1)), pg_stock_notify_withdraw_status(true, 'product', 40, 0, 'a@example.com', 0, $rows), 'by address; the sent row stays');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(1)), pg_stock_notify_withdraw_status(true, 'product', 40, 0, 'A@Example.com', 0, $rows), 'an address in other letters');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(2)), pg_stock_notify_withdraw_status(true, 'product', 40, 0, 'b@example.com', 0, $rows), "someone else's address: only that address's row");
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array()), pg_stock_notify_withdraw_status(true, 'product', 40, 0, 'z@example.com', 0, $rows), 'no row: the same answer');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array()), pg_stock_notify_withdraw_status(true, 'product', 42, 0, 'a@example.com', 0, $rows), 'no row for the product');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(6)), pg_stock_notify_withdraw_status(true, 'event', 9, 3, 'a@example.com', 0, $rows), "an event's date: its waiting row only");
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array(7)), pg_stock_notify_withdraw_status(true, 'event', 9, 4, 'a@example.com', 0, $rows), 'another date of the event');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array()), pg_stock_notify_withdraw_status(true, 'event', 40, 0, 'a@example.com', 0, $rows), "a product's rows are no event's");
+	pg_assert_same(array('status' => 'email', 'ids' => array()), pg_stock_notify_withdraw_status(true, 'product', 40, 0, '', 0, $rows), 'a guest with no address');
+	pg_assert_same(array('status' => 'unavailable', 'ids' => array()), pg_stock_notify_withdraw_status(false, 'product', 40, 0, 'a@example.com', 0, $rows), 'no table');
+	pg_assert_same(array('status' => 'withdrawn', 'ids' => array()), pg_stock_notify_withdraw_status(true, 'other', 40, 0, 'a@example.com', 0, $rows), 'an unknown kind touches nothing');
+}
+
+// The answer to a withdraw says nothing about whether a row was there.
+function test_stock_notify_withdraw_message()
+{
+	pg_assert_same('You will get no message about this product.', pg_stock_notify_withdraw_message('product'), 'product');
+	pg_assert_same('You will get no message about this date.', pg_stock_notify_withdraw_message('event'), 'event date');
+}
+
+// The hidden form the "Stop waiting" button of the notice posts.
+function test_stock_notify_withdraw_form_html()
+{
+	$product = pg_stock_notify_withdraw_form_html('/stock_notify.php', '<input type="hidden" name="token" value="t">', '/shop?x=1&y=2', array('kind' => 'product', 'id' => 40, 'recurrence' => 0, 'email' => 'a"b@example.com'));
+	pg_assert_contains('id="' . PG_STOCK_NOTIFY_STOP_FORM . '"', $product, 'the id the button names');
+	pg_assert_contains('name="withdraw" value="1"', $product, 'a withdraw');
+	pg_assert_contains('name="product_id" value="40"', $product, 'the product');
+	pg_assert_contains('value="a&quot;b@example.com"', $product, 'the address escaped');
+	pg_assert_contains('value="/shop?x=1&amp;y=2"', $product, 'the page to come back to, escaped');
+	pg_assert_contains('name="token" value="t"', $product, 'the token');
+	pg_assert_false(strpos($product, 'calendar_event_id') !== false, 'no event field for a product');
+
+	$event = pg_stock_notify_withdraw_form_html('/stock_notify.php', '', '/', array('kind' => 'event', 'id' => 9, 'recurrence' => 3, 'email' => ''));
+	pg_assert_contains('name="calendar_event_id" value="9"', $event, 'the event');
+	pg_assert_contains('name="recurrence_number" value="3"', $event, 'its date');
+	pg_assert_contains('name="product_id" value="0"', $event, 'no product');
+
+	pg_assert_same('', pg_stock_notify_withdraw_form_html('/stock_notify.php', '', '/', array('kind' => 'product', 'id' => 0)), 'no id: no form');
+	pg_assert_same('', pg_stock_notify_withdraw_form_html('/stock_notify.php', '', '/', null), 'no offer: no form');
+
+	$button = pg_stock_notify_withdraw_button_html();
+	pg_assert_contains('form="' . PG_STOCK_NOTIFY_STOP_FORM . '"', $button, 'posts the hidden form, wherever the notice sits');
+	pg_assert_contains('type="submit"', $button, 'a submit button');
+	pg_assert_contains('Stop waiting', $button, 'its words');
+}
+
+// The withdraw goes through the endpoint's checks and offers itself only
+// after added or already.
+function test_stock_notify_withdraw_endpoint()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
+	$token = strpos($source, 'hash_equals(');
+	$rate = strpos($source, 'pg_stock_notify_throttled()');
+	$withdraw = strpos($source, 'pg_stock_notify_withdraw(');
+
+	pg_assert_true(($withdraw !== false) && ($token < $withdraw) && ($rate < $withdraw), 'the token and the rate before the withdraw');
+	pg_assert_contains("'withdraw'", $source, 'the JSON offers the withdraw');
+	pg_assert_contains('pg_stock_notify_withdraw_offer(', $source, 'the form path offers it');
+	pg_assert_contains('pg_stock_notify_withdraw_offer(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/reserve_calendar_event.php'), 'the waiting list offers it');
+
+	$delete = pg_test_function_source('pg_stock_notify_withdraw');
+	pg_assert_contains('(sent_at = 0)', $delete, 'a row sent meanwhile stays');
+	pg_assert_contains('site_push_watch', $delete, "the row's device waits go with it");
+	pg_assert_contains('pg_stock_notify_withdraw_status(', $delete, 'the pure decision');
+
+	pg_assert_contains('pg_stock_notify_withdraw_form_once(', pg_test_function_source('pg_stock_notify_event_line'), 'the event line prints the stop form');
+	pg_assert_contains('pg_stock_notify_withdraw_form_once(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php'), 'the item view prints the stop form');
+	pg_assert_contains('pg_stock_notify_withdraw_form_html(', pg_test_function_source('pg_stock_notify_withdraw_form_once'), 'once, from the pure builder');
+}

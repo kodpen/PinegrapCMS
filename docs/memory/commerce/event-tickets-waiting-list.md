@@ -22,6 +22,7 @@ module: stock_notify
 - `pg_stock_notify_event_state()`: `full` (limited and no place left, product sellable), `open`, `none` (no reservations, product gone or off, ended, product out of stock: that is the product's notice).
 - The line, `pg_stock_notify_event_line()`: under the legacy event page's no-spots message, and as the designed page's `reserve_form` on a full date: "Tell me when a place frees", an address, "Tell me".
 - It posts `waiting_list=1` to `reserve_calendar_event.php`, after all its page checks, before the cart: `pg_stock_notify_throttled()` (shared with products), then `pg_stock_notify_event_request()`; the answer returns in the `reserve_calendar_event` liveform.
+- Leaving the list: [[back-in-stock-withdraw]].
 - Answers: `added`, `already` (address or account waits for that date), `limit` (`PG_STOCK_NOTIFY_PENDING_LIMIT` across products and dates), `open`, `event`, `email`, `unavailable`.
 
 ## When does the mail go?
@@ -29,6 +30,6 @@ module: stock_notify
 - `pg_stock_notify_event_send()` reads the date again (must be `open`), then per waiting row: `pg_stock_notify_claim()` (conditional UPDATE) and only then the mail, so two frees at once mail once. Queued while the mail job runs (500), else 10 in the request.
 - Mail only (no SMS, WhatsApp or push): the event and date, a link to the site, no place held.
 
-Test: `tests/event_waiting_list_test.php` (the step run twice against stubs).
+Test: `tests/event_waiting_list_test.php` (step run twice on stubs).
 
 Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/back-in-stock-notices.md, docs/memory/plans/event-tickets.md

@@ -558,6 +558,8 @@
     "You were mentioned {var:1} times here since you last looked.": "Son bakışınızdan bu yana burada {var:1} kez anıldınız.",
     "You were not asked to approve this.": "Bunu onaylamanız istenmedi.",
     "You will find the widget theme settings in Site Settings, under Appearance.": "Widget tema ayarlarını Site Ayarları'nda, Görünüm altında bulursun.",
+    "You will get no message about this date.": "Bu tarihle ilgili size ileti gönderilmeyecek.",
+    "You will get no message about this product.": "Bu ürünle ilgili size ileti gönderilmeyecek.",
     "You will no longer be notified when a {var:1} is added.": "Artık bir {var:1} eklendiğinde bilgilendirilmeyeceksiniz.",
     "You will now be notified when a {var:1} is added.": "Artık bir {var:1} eklendiğinde bilgilendirileceksiniz.",
     "Young (13–17)": "Genç (13–17)",

@@ -6579,6 +6579,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             . '</form>'
         : '';
 
+    // The hidden form of the notice's "Stop waiting" button, while the
+    // session offers to take a product's request back.
+    if ($_civ_notify_html !== '') {
+        $_civ_notify_html .= pg_stock_notify_withdraw_form_once('product', $_civ_out_path . $_civ_sw_dir . '/stock_notify.php', $_civ_current_url);
+    }
+
     // No auto-prepended messages placeholder — designer controls placement
     // via a Messages content node inside the widget tree.
     return _pg_widget_layout_css_once()
