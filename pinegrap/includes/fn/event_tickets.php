@@ -790,6 +790,28 @@ function pg_event_tickets_refunded_units($order_id)
 }
 
 /**
+ * An order's reservation lines less the units its refunded returns took:
+ * those places came back with the refund, so a later cancel gives back, and
+ * a restore takes again, only the rest. Never below 0. Pure.
+ *
+ * @param array $lines    rows with order_item_id and quantity
+ * @param array $refunded order item id => units (pg_event_tickets_refunded_units())
+ * @return array the lines with what is left of each quantity
+ */
+function pg_event_tickets_places_left(array $lines, array $refunded)
+{
+    foreach ($lines as $index => $line) {
+        $units = (int) ($refunded[(int) ($line['order_item_id'] ?? 0)] ?? 0);
+
+        if ($units > 0) {
+            $lines[$index]['quantity'] = max(0, (int) ($line['quantity'] ?? 0) - $units);
+        }
+    }
+
+    return $lines;
+}
+
+/**
  * After a restore gave every void ticket back, the units refunded returns
  * took stay void: as many per line as those returns took, by the same pick.
  *

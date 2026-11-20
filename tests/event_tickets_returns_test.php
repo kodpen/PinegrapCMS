@@ -147,3 +147,21 @@ function test_event_tickets_refund_and_restore_call_it()
 	pg_assert_same(1, substr_count($returns, 'pg_event_tickets_return_refunded($return[\'order_id\'], $returned_quantities)'), 'the refund voids the returned tickets');
 	pg_assert_same(1, substr_count($tickets, '- pg_event_tickets_returns_reapply($order_id)'), 'a restore keeps refunded units void');
 }
+
+function test_event_tickets_places_left_after_refunded_returns()
+{
+	$lines = array(
+		array('order_item_id' => 501, 'calendar_event_id' => 12, 'quantity' => 4, 'reservations' => 1, 'limit_reservations' => 1, 'recurrence' => 0, 'separate_reservations' => 0, 'recurrence_number' => 0),
+		array('order_item_id' => 502, 'calendar_event_id' => 13, 'quantity' => 2, 'reservations' => 1, 'limit_reservations' => 1, 'recurrence' => 0, 'separate_reservations' => 0, 'recurrence_number' => 0),
+	);
+
+	$left = pg_event_tickets_places_left($lines, array(501 => 1, 502 => 3));
+
+	pg_assert_same(3, $left[0]['quantity'], 'a cancel or restore moves only the places the return left');
+	pg_assert_same(0, $left[1]['quantity'], 'a line returned whole moves none, never below 0');
+	pg_assert_same(array(array(12, 0, 3)), pg_order_event_places($left, true, true), 'so only the remaining places move');
+	pg_assert_same($lines, pg_event_tickets_places_left($lines, array()), 'no refunded return, the whole line');
+
+	$ecommerce = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+	pg_assert_contains('pg_event_tickets_places_left((array) $lines, pg_event_tickets_refunded_units($order_id))', $ecommerce, 'the cancel and the restore take refunded returns off');
+}
