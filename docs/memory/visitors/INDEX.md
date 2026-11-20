@@ -12,6 +12,7 @@
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-clicks-designer-layer.md: The designer's Clicks layer (part clicks #10056, wired #10715): toolbar toggle and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
+- page-clicks-scope.md: What the clicks and scroll depth counter is for and where it stops: the owner's and the architect's lines of 2026-11-16 (polls 67 and 75, messages 5763, 5774), the bounds, what is left out, whose look [decision: here]
 - page-clicks-script.md: The clicks and scroll depth script (pg_clicks.src.js, CM2 #9946): who gets it, how it names and folds an element, the depth, the one request it shares with the speed beacon, the consent check
 - page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where [decision: here]
 - page-clicks.md: Clicks and scroll depth counter (page_click_daily, #9902): row kinds, the beacon in page_view.php and its gate, the fold, the 200-element bound, figures, 400-day sweep, the hunt of 10214 [decision: decisions-made-schema-23.md]
