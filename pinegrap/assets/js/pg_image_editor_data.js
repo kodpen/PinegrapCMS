@@ -17,7 +17,13 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, section = X.section, find = X.find;
+
+    // A chevron to the left: the picker's Back.
+    X.icons.chevl = X.icons.chevl || 'M14.5 6.5L9 12l5.5 5.5';
+
+    // The kinds of the Data menu and the panel, in their order, by label.
+    var KIND_LABELS = { table: 'data_kind_table', bar: 'data_kind_bar', stacked_bar: 'data_kind_stacked_bar', line: 'data_kind_line', area: 'data_kind_area', donut: 'data_kind_donut' };
 
     // The rows a layer's table gave this reader, as the editor holds them:
     // { columns, rows }, or { state: 'refused' }; nothing before the read.
@@ -37,6 +43,10 @@
         }
 
         read = this.dataReads[String(c.data.table)];
+
+        if (read === undefined) {
+            this.dataLoad(c.data.table);
+        }
 
         if (read && (read.state !== 'refused')) {
             read = M.dataSeries(c.data, read.columns, read.rows, words);
@@ -151,10 +161,453 @@
             var c = M.dataCheck(l.data), s = c.ok ? c.data.title : '';
 
             return (s.length > 32) ? s.slice(0, 31) + '…' : s;
+        },
+        // One data layer's own controls, first in Select's panel.
+        panel: function (body, layers) {
+            if (layers.length === 1) {
+                this.dataPanel(body, layers[0]);
+            }
         }
     };
 
     Editor.inits.push(function () {
         this.dataReads = {};
+        // Tables asked for, the picker's list, the panel's open group.
+        this.dataAsked = {};
+        this.dataTables = null;
+        this.dataPick = null;
+        this.dataFold = 'data';
     });
+
+    // ---- reading ----
+
+    // The rows of a table read once for this reader (action data_rows),
+    // handed to dataRead(); then(read) when given.
+    Editor.prototype.dataLoad = function (table, then) {
+        var self = this, key = String(table);
+
+        if (!X.config().api || this.dataAsked[key]) {
+            return;
+        }
+
+        this.dataAsked[key] = true;
+        this.request({ action: 'data_rows', table: Number(table) }).then(function (r) {
+            var read = (r && (r.status === 'success') && r.read) ? r.read : { state: 'refused' };
+
+            if (!self.finished) {
+                self.dataRead(table, read);
+                self.renderPanel();
+
+                if (then) {
+                    then(read);
+                }
+            }
+        }, function () {
+            delete self.dataAsked[key];
+        });
+    };
+
+    // The tables this reader may read (action data_tables), once:
+    // [{ id, name, channel, rows, tone: { light, dark } }]; then(list),
+    // null when they could not be read.
+    Editor.prototype.dataTablesLoad = function (then) {
+        var self = this;
+
+        if (this.dataTables) {
+            then(this.dataTables);
+            return;
+        }
+
+        this.request({ action: 'data_tables' }).then(function (r) {
+            if ((r && (r.status === 'success')) && Array.isArray(r.tables)) {
+                self.dataTables = r.tables;
+            }
+
+            then(self.dataTables);
+        }, function () {
+            then(null);
+        });
+    };
+
+    Editor.prototype.dataTableOf = function (id) {
+        return (this.dataTables || []).filter(function (x) { return Number(x.id) === Number(id); })[0] || null;
+    };
+
+    // ---- the Data menu ----
+
+    // "Data" in the Import menu, where layers are added, with the API.
+    Editor.importItems.push(function () {
+        var self = this;
+
+        return X.config().api ? [t('layer_data'), function () { self.openDataPicker(null); }] : null;
+    });
+
+    // The picker over the editor in two steps: "Pick a table" (a search
+    // and the tables as rows), then "Pick a view" (a sample card for each
+    // kind the table's columns fit). A card puts the layer on the stage, or
+    // given a layer id (the panel's Change) gives that layer the table.
+    Editor.prototype.openDataPicker = function (layerId) {
+        var self = this, back = document.activeElement;
+
+        this.closeConfirm();
+        this.dataPick = { layer: layerId || null, search: '', table: null };
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-data-title' }, [
+            el('div', { class: 'pgie-confirm-box pgie-importbox pgie-databox' })
+        ]);
+        this.confirmReturn = (back && this.root.contains(back)) ? back : this.importBtn;
+        this.root.appendChild(this.confirmBox);
+        this.dataPickTables();
+    };
+
+    // The head of a step: its title, Back on the second step, Close.
+    function pickHead(self, title, onBack) {
+        var close = X.button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); });
+
+        return el('div', { class: 'pgie-importhead' }, [
+            onBack ? X.button('pgie-ibtn', t('dataBack'), 'chevl', onBack) : null,
+            el('h2', { id: 'pgie-data-title', text: title }),
+            close
+        ]);
+    }
+
+    Editor.prototype.dataPickTables = function () {
+        var self = this, box = this.confirmBox && this.confirmBox.firstChild, st = this.dataPick, list = el('div', { class: 'pgie-datatables', role: 'list' });
+        var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('dataFind'), 'aria-label': t('dataFind') });
+
+        if (!box) {
+            return;
+        }
+
+        box.textContent = '';
+        box.appendChild(pickHead(this, t('dataPickTable'), null));
+        box.appendChild(find);
+        box.appendChild(list);
+        find.addEventListener('input', function () {
+            st.search = find.value;
+            self.dataTableRows(list);
+        });
+        list.appendChild(el('p', { class: 'pgie-note', text: t('dataReading') }));
+        this.dataTablesLoad(function () {
+            self.dataTableRows(list);
+        });
+        find.focus();
+    };
+
+    // The tables as rows (name, channel, row count), filtered by the search.
+    Editor.prototype.dataTableRows = function (list) {
+        var self = this, words = String(this.dataPick ? this.dataPick.search : '').toLowerCase().trim();
+        var shown = (this.dataTables || []).filter(function (x) {
+            return !words || (String(x.name) + ' ' + String(x.channel || '')).toLowerCase().indexOf(words) >= 0;
+        });
+
+        list.textContent = '';
+
+        if (!this.dataTables || !shown.length) {
+            list.appendChild(el('p', { class: 'pgie-note', text: t(!this.dataTables ? 'dataTablesError' : 'dataNoTables') }));
+            return;
+        }
+
+        shown.forEach(function (x) {
+            list.appendChild(el('button', { type: 'button', class: 'pgie-datatable', role: 'listitem', onclick: function () { self.dataPickViews(x); } }, [
+                el('b', { text: String(x.name) }),
+                el('span', { text: (x.channel ? '#' + x.channel : t('dataNoChannel')) + ' · ' + String(t('dataRowsCount')).replace('%d', String(x.rows || 0)) })
+            ]));
+        });
+    };
+
+    // Step two: the table's rows read, a sample card for each kind it fits.
+    Editor.prototype.dataPickViews = function (x) {
+        var self = this, box = this.confirmBox && this.confirmBox.firstChild, cards = el('div', { class: 'pgie-presets pgie-datacards' });
+
+        if (!box) {
+            return;
+        }
+
+        this.dataPick.table = x;
+        box.textContent = '';
+        box.appendChild(pickHead(this, t('dataPickView'), function () { self.dataPickTables(); }));
+        box.appendChild(cards);
+        cards.appendChild(el('p', { class: 'pgie-note', text: t('dataReading') }));
+
+        var draw = function (read) {
+            var kinds;
+
+            if (!self.confirmBox || !self.confirmBox.contains(cards)) {
+                return;
+            }
+
+            cards.textContent = '';
+
+            if (!read || (read.state === 'refused')) {
+                cards.appendChild(el('p', { class: 'pgie-note', text: t('dataRefused') }));
+                return;
+            }
+
+            kinds = M.dataFits(read.columns, read.rows);
+
+            if (kinds.length === 1) {
+                box.insertBefore(el('p', { class: 'pgie-note', text: t('dataOnlyTable') }), cards);
+            }
+
+            kinds.forEach(function (kind) {
+                var d = M.dataStart(Number(x.id), kind, read.columns, read.rows, x.name);
+
+                cards.appendChild(self.dataCard(d, read, kind, false, function () { self.dataPlace(d); }));
+            });
+
+            if (cards.firstChild) {
+                cards.firstChild.focus();
+            }
+        };
+
+        if (this.dataReads[String(x.id)]) {
+            draw(this.dataReads[String(x.id)]);
+        } else {
+            delete this.dataAsked[String(x.id)];
+            this.dataLoad(x.id, draw);
+        }
+    };
+
+    // A sample card: the description drawn small from the table's first
+    // rows, its kind's name under it; on marks it pressed.
+    Editor.prototype.dataCard = function (d, read, kind, on, pick) {
+        var svg = document.createElementNS(SVGNS, 'svg'), rows = (read.rows || []).slice(0, M.DATA_SAMPLE_ROWS), w = 240, h = 150;
+        var l = { x: 0, y: 0, w: w, h: h, rot: 0, data: Object.assign({}, d, { title: '' }) };
+
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        svg.setAttribute('class', 'pgie-datasample');
+        svg.appendChild(dataNode.call({ dataMarksOf: function () {
+            return M.dataMarks(l.data, w, h, M.dataSeries(l.data, read.columns, rows, marksWords()), marksWords());
+        } }, l));
+
+        return el('button', { type: 'button', class: 'pgie-preset pgie-datacard' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : null, onclick: pick }, [
+            svg, el('span', { text: t(KIND_LABELS[kind]) })
+        ]);
+    };
+
+    function marksWords() {
+        return { empty: t('dataEmpty'), refused: t('dataRefused'), more: t('dataMore'), count: t('dataCount'), other: t('dataOther') };
+    }
+
+    // The picked view as a new layer in the middle of the canvas, 60 % of
+    // its width at the card's shape, selected; or, from Change, as the
+    // picked layer's new description in its box.
+    Editor.prototype.dataPlace = function (d) {
+        var self = this, at = this.dataPick ? this.dataPick.layer : null, size = M.docSize(this.doc), id;
+        var w = Math.round(Math.min(size.w * 0.6, size.h * 0.6 * 16 / 9)), h = Math.round(w * 9 / 16);
+
+        this.closeConfirm();
+        this.dataPick = null;
+
+        if (!d) {
+            return;
+        }
+
+        if (at && find(this.doc, at)) {
+            this.change(function (doc) { find(doc, at).data = d; });
+            return;
+        }
+
+        this.toSelect();
+        this.change(function (doc) {
+            id = M.newId(doc);
+            doc.layers.push({ id: id, type: 'data', x: Math.round((size.w - w) / 2), y: Math.round((size.h - h) / 2), w: w, h: h, rot: 0, opacity: 1, data: d });
+        });
+        self.select([id]);
+    };
+
+    // ---- the panel ----
+
+    // The layer's panel in three groups folded one at a time: Data (the
+    // table, columns, grouping, sort, row limit), Look (the kind as sample
+    // cards, colours, legend) and Text (title, number format, type size). A
+    // group shows only what the kind uses.
+    Editor.prototype.dataPanel = function (body, l) {
+        var self = this, c = M.dataCheck(l.data), d = c.ok ? c.data : null, read = d ? this.dataReads[String(d.table)] : null;
+        // A change of the description; quiet keeps the panel as it is (a
+        // title being typed, a slider or colour moving).
+        var set = function (patch, key, quiet) {
+            var next = M.dataCheck(Object.assign({}, d, patch));
+
+            if (next.ok) {
+                self.change(function (doc) {
+                    var o = find(doc, l.id);
+
+                    if (o) {
+                        o.data = next.data;
+                    }
+                }, key || null, !!quiet);
+            }
+        };
+
+        if (!d) {
+            return;
+        }
+
+        if (!this.dataTables) {
+            this.dataTablesLoad(function () { self.renderPanel(); });
+        }
+
+        [['data', t('layer_data')], ['look', t('dataGroupLook')], ['text', t('dataGroupText')]].forEach(function (g) {
+            var open = (self.dataFold === g[0]);
+
+            body.appendChild(el('button', { type: 'button', class: 'pgie-more pgie-datafold' + (open ? ' on' : ''), 'aria-expanded': open ? 'true' : 'false', onclick: function () {
+                self.dataFold = open ? '' : g[0];
+                self.renderPanel();
+            } }, [el('span', { text: g[1] }), X.icon('chev')]));
+
+            if (open) {
+                self['dataGroup_' + g[0]](body, l, d, read, set);
+            }
+        });
+    };
+
+    // A select of choices [[value, label]].
+    function choose(label, choices, value, pick) {
+        var s = el('select', { class: 'pgie-input', 'aria-label': label });
+
+        choices.forEach(function (o) {
+            s.appendChild(el('option', { value: o[0], text: o[1], selected: o[0] === value }));
+        });
+        s.addEventListener('change', function () { pick(s.value); });
+
+        return section(label, s);
+    }
+
+    Editor.prototype.dataGroup_data = function (body, l, d, read, set) {
+        var self = this, x = this.dataTableOf(d.table), cols, nums, cap, kinds;
+
+        body.appendChild(section(t('dataTable'), el('div', { class: 'pgie-datatablerow' }, [
+            el('span', { text: x ? String(x.name) : '…' }),
+            el('button', { type: 'button', class: 'pgie-btn', text: t('dataChange'), onclick: function () { self.openDataPicker(l.id); } })
+        ])));
+
+        if (!read || (read.state === 'refused')) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t(read ? 'dataRefused' : 'dataReading') }));
+            return;
+        }
+
+        cols = M.dataColumns(read.columns, read.rows);
+        nums = cols.filter(function (o) { return (d.kind === 'table') || o.number; });
+        body.appendChild(choose(t('dataLabel'), cols.map(function (o) { return [o.id, o.name]; }), d.label, function (v) {
+            set({ label: v, values: d.values.filter(function (id) { return id !== v; }) });
+        }));
+
+        if (d.group !== 'count') {
+            if (d.kind === 'donut') {
+                body.appendChild(choose(t('dataValues'), nums.filter(function (o) { return o.id !== d.label; }).map(function (o) { return [o.id, o.name]; }), d.values[0], function (v) {
+                    set({ values: [v] });
+                }));
+            } else {
+                body.appendChild(section(t('dataValues'), el('div', { class: 'pgie-datavalues' }, nums.filter(function (o) { return o.id !== d.label; }).map(function (o) {
+                    var on = d.values.indexOf(o.id) >= 0, box = el('input', { type: 'checkbox' });
+
+                    box.checked = on;
+                    // Five at most; a chart keeps one.
+                    box.disabled = (!on && (d.values.length >= M.DATA_MAX.values)) || (on && (d.kind !== 'table') && (d.values.length === 1));
+                    box.addEventListener('change', function () {
+                        set({ values: box.checked ? d.values.concat([o.id]) : d.values.filter(function (id) { return id !== o.id; }) });
+                    });
+
+                    return el('label', { class: 'pgie-check' }, [box, el('span', { text: o.name })]);
+                }))));
+            }
+        }
+
+        body.appendChild(section(t('dataGrouping'), this.drawSegment([['none', t('dataGroupNone')], ['sum', t('dataSum')], ['count', t('dataCount')], ['average', t('dataAverage')]], d.group, function (v) {
+            var back = (v !== 'count') && !d.values.length ? (M.dataStart(d.table, (d.kind === 'table') ? 'table' : d.kind, read.columns, read.rows, '') || { values: [] }).values : d.values;
+
+            set({ group: v, values: back });
+        })));
+
+        if (d.kind !== 'donut') {
+            body.appendChild(section(t('dataSort'), this.drawSegment([['none', t('dataGroupNone')], ['label', t('dataSortLabel')], ['value', t('dataSortValue')]], d.sort, function (v) {
+                set({ sort: v });
+            })));
+
+            if (d.sort !== 'none') {
+                body.appendChild(this.drawSegment([['asc', t('dataAsc')], ['desc', t('dataDesc')]], d.dir, function (v) { set({ dir: v }); }));
+            }
+
+            cap = (d.kind === 'table') ? M.DATA_MAX.tableRows : M.DATA_MAX.labels;
+            body.appendChild(this.drawSlider(t('dataLimit'), 1, cap, d.limit || cap, String, function (n, live) {
+                set({ limit: (n >= cap) ? 0 : n }, 'data-limit-' + l.id, live);
+            }));
+        }
+
+        kinds = M.dataFits(read.columns, read.rows);
+
+        if (kinds.length === 1) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('dataOnlyTable') }));
+        }
+    };
+
+    Editor.prototype.dataGroup_look = function (body, l, d, read, set) {
+        var self = this, x = this.dataTableOf(d.table), tone = (x && x.tone) ? x.tone[d.theme] : '', cards, series, n, mode, now;
+
+        if (read && (read.state !== 'refused')) {
+            cards = el('div', { class: 'pgie-presets pgie-datacards pgie-datakinds' });
+            M.dataFits(read.columns, read.rows).forEach(function (kind) {
+                var next = (kind === d.kind) ? d : M.dataWithKind(d, kind, read.columns, read.rows);
+
+                if (next) {
+                    cards.appendChild(self.dataCard(next, read, kind, kind === d.kind, function () { set(next); }));
+                }
+            });
+            body.appendChild(section(t('dataKind'), cards));
+            series = M.dataSeries(d, read.columns, read.rows, marksWords());
+        }
+
+        n = (d.kind === 'donut') ? Math.min(M.DATA_MAX.colours, series ? series.labels.length : 1) : Math.min(M.DATA_MAX.colours, series ? series.series.length : 1);
+        mode = !d.colours.length ? 'palette' : (((d.colours.length === 1) && (d.colours[0] === tone)) ? 'channel' : 'chosen');
+        body.appendChild(section(t('dataColours'), this.drawSegment([['palette', t('dataPalette')]].concat(tone ? [['channel', t('dataChannel')]] : []).concat([['chosen', t('dataChosen')]]), mode, function (v) {
+            var p = M.DATA_GUIDE.palettes[d.theme].series;
+
+            set({ colours: (v === 'palette') ? [] : ((v === 'channel') ? [tone] : p.slice(0, Math.max(1, n))) });
+        })));
+
+        if (mode === 'chosen') {
+            now = d.colours.slice();
+
+            for (var j = 0; j < Math.max(1, n); j++) {
+                (function (j) {
+                    var name = series ? ((d.kind === 'donut') ? series.labels[j] : (series.series[j] || {}).name) : '';
+
+                    body.appendChild(X.swatches(name || t('dataColours'), now[j % now.length] || '', function (colour, live) {
+                        var next = d.colours.slice();
+
+                        while (next.length <= j) {
+                            next.push(next[next.length - 1] || colour);
+                        }
+
+                        next[j] = colour;
+                        set({ colours: next }, live ? 'data-colour-' + j : null, live);
+                    }));
+                }(j));
+            }
+        }
+
+        if ((d.kind !== 'donut') && (d.kind !== 'table') && series && (series.series.length > 1)) {
+            body.appendChild(section(t('dataLegend'), this.drawSegment([['off', t('dataOff')], ['top', t('dataTop')], ['bottom', t('dataBottom')]], d.legend ? d.legendAt : 'off', function (v) {
+                set((v === 'off') ? { legend: false } : { legend: true, legendAt: v });
+            })));
+        }
+    };
+
+    Editor.prototype.dataGroup_text = function (body, l, d, read, set) {
+        var title = el('input', { type: 'text', class: 'pgie-input', maxlength: String(M.DATA_MAX.title), value: d.title, 'aria-label': t('dataTitle') });
+
+        title.addEventListener('input', function () {
+            set({ title: title.value.replace(/[\n\r]+/g, ' ') }, 'data-title-' + l.id, true);
+        });
+        body.appendChild(section(t('dataTitle'), title));
+        body.appendChild(section(t('dataFormatNumbers'), this.drawSegment([['en', M.dataFormat(12345.6, 'en')], ['tr', M.dataFormat(12345.6, 'tr')]], d.format, function (v) {
+            set({ format: v });
+        })));
+        body.appendChild(section(t('dataSize'), this.drawSegment([['s', t('dataSmall')], ['m', t('dataMedium')], ['l', t('dataLarge')]], d.size, function (v) {
+            set({ size: v });
+        })));
+    };
 }(window.PgImageEditor.parts));

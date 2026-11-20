@@ -11782,6 +11782,8 @@
     var DATA_GROUPS = ['none', 'sum', 'count', 'average'];
     var DATA_SORTS = ['none', 'label', 'value'];
     var DATA_MAX = { values: 5, title: 120, colours: 5, labels: 24, slices: 6, tableRows: 50, rows: 5000, cell: 80 };
+    // The type sizes a layer's words take, as a share of the guide's.
+    var DATA_SIZES = { s: 0.85, m: 1, l: 1.2 };
 
     // The values of the Workspace canvas guide a data layer draws by
     // (ws_canvas_guide_values(); tests/image_editor_data_test.php holds the
@@ -11820,7 +11822,10 @@
     // A description checked and filled with its defaults: { ok, data } or
     // { ok: false, error } with error data_table, data_show, data_kind,
     // data_columns, data_group, data_sort, data_format, data_title,
-    // data_colours, data_theme or data_font.
+    // data_colours, data_theme, data_font, data_legend, data_limit or
+    // data_size. limit (0: the kind's own) keeps that many labels or rows;
+    // legendAt puts the legend over or under the plot; size scales the
+    // words (DATA_SIZES).
     function dataCheck(d) {
         var out = {}, fail = function (code) { return { ok: false, error: code }; };
 
@@ -11907,6 +11912,23 @@
         }
 
         out.legend = (d.legend === undefined) ? true : !!d.legend;
+        out.legendAt = (d.legendAt === undefined) ? 'top' : d.legendAt;
+
+        if ((out.legendAt !== 'top') && (out.legendAt !== 'bottom')) {
+            return fail('data_legend');
+        }
+
+        out.limit = (d.limit === undefined) ? 0 : d.limit;
+
+        if ((typeof out.limit !== 'number') || !(out.limit >= 0) || (Math.floor(out.limit) !== out.limit) || (out.limit > DATA_MAX.tableRows)) {
+            return fail('data_limit');
+        }
+
+        out.size = (d.size === undefined) ? 'm' : d.size;
+
+        if ((typeof out.size !== 'string') || !DATA_SIZES.hasOwnProperty(out.size)) {
+            return fail('data_size');
+        }
 
         return { ok: true, data: out };
     }
@@ -12063,6 +12085,7 @@
             entries = entries.slice(0, DATA_MAX.slices - 1).concat([other]);
         } else {
             i = (d.kind === 'table') ? DATA_MAX.tableRows : DATA_MAX.labels;
+            i = d.limit ? Math.min(i, d.limit) : i;
             cut = Math.max(0, entries.length - i);
             entries = entries.slice(0, i);
         }
@@ -12116,7 +12139,7 @@
     function dataMarks(d, w, h, read, words) {
         var g = DATA_GUIDE, p = g.palettes[d.theme], mk = g.marks, s = Math.max(0.01, Math.min(w, h) / g.base), W = w / s, H = h / s;
         var marks = [], M0 = g.grid.margin, series = (read && read.series) || [], labels = (read && read.labels) || [], n = labels.length;
-        var colours, legend = [], top, bot, empty;
+        var colours, legend = [], top, bot, empty, k = DATA_SIZES[d.size] || 1, under = (d.legendAt === 'bottom');
 
         words = words || {};
 
@@ -12142,13 +12165,13 @@
             var r = g.type[role];
 
             if (v !== '') {
-                marks.push({ t: 'text', x: dataRound(x * s), y: dataRound(y * s), v: v, size: dataRound(r[0] * s), weight: r[1], fill: fill || p[r[2]], anchor: anchor || 'start' });
+                marks.push({ t: 'text', x: dataRound(x * s), y: dataRound(y * s), v: v, size: dataRound(r[0] * k * s), weight: r[1], fill: fill || p[r[2]], anchor: anchor || 'start' });
             }
         }
 
         // Words cut to a width, by the guide's average letter of 0.56 em.
         function fit(v, role, room) {
-            var most = Math.max(1, Math.floor(room / (g.type[role][0] * 0.56)));
+            var most = Math.max(1, Math.floor(room / (g.type[role][0] * k * 0.56)));
 
             return (v.length > most) ? v.slice(0, Math.max(1, most - 1)) + '…' : v;
         }
@@ -12158,24 +12181,31 @@
             poly(dataArc(x, y, mk.dot, 0, 2 * Math.PI).slice(0, -1), colour);
         }
 
+        // The legend's keys along a line, y its baseline.
+        function keys(y) {
+            var x = M0;
+
+            legend.forEach(function (e) {
+                rect(x, y - 15, 16, 16, e[1]);
+                text(x + 24, y, e[0], 'label');
+                x += 24 + e[0].length * g.type.label[0] * k * 0.56 + g.grid.gutter;
+            });
+        }
+
         function head() {
-            var y = M0, x = M0;
+            var y = M0, over = legend.length && !under;
 
             if (d.title !== '') {
-                y += g.type.title[0] * 0.8;
+                y += g.type.title[0] * k * 0.8;
                 text(M0, y, fit(d.title, 'title', W - 2 * M0), 'title');
             }
 
-            if (legend.length) {
-                y += ((d.title !== '') ? g.spacing.legend : 0) + g.type.label[0];
-                legend.forEach(function (e) {
-                    rect(x, y - 15, 16, 16, e[1]);
-                    text(x + 24, y, e[0], 'label');
-                    x += 24 + e[0].length * g.type.label[0] * 0.56 + g.grid.gutter;
-                });
+            if (over) {
+                y += ((d.title !== '') ? g.spacing.legend : 0) + g.type.label[0] * k;
+                keys(y);
             }
 
-            return y + ((d.title !== '' || legend.length) ? g.spacing.plot : 0);
+            return y + ((d.title !== '' || over) ? g.spacing.plot : 0);
         }
 
         function axis(x0, x1, top, bot, max) {
@@ -12212,6 +12242,12 @@
 
         top = head();
         bot = H - M0 - g.type.axis[0] - 14;
+
+        // A legend under the plot takes its line from the plot's foot.
+        if (legend.length && under) {
+            bot -= g.type.label[0] * k + g.spacing.legend;
+            keys(H - M0 + 4);
+        }
 
         if (empty) {
             text(W / 2, Math.max(top, (top + H - M0) / 2), fit((read && (read.state === 'refused')) ? (words.refused || '') : (words.empty || ''), 'label', W - 2 * M0), 'label', p.ink3, 'middle');
@@ -12383,7 +12419,114 @@
         }
     }
 
+    // The rows the Data menu's samples are drawn from.
+    var DATA_SAMPLE_ROWS = 50;
+
+    // A table's columns in order as the Data menu reads them: [{ id, name,
+    // number }], number when the column has a cell that is a number among
+    // the first rows and every cell there that is not empty is one.
+    // columns: { id: { name } } in the table's order; rows as dataSeries().
+    function dataColumns(columns, rows) {
+        var first = (Array.isArray(rows) ? rows : []).slice(0, 200);
+
+        return Object.keys(columns || {}).filter(dataColumnId).map(function (id) {
+            var seen = 0, ok = true;
+
+            first.forEach(function (r) {
+                var v = (r && r.cells && (typeof r.cells === 'object')) ? r.cells[id] : undefined;
+
+                if (dataText(v) === '') {
+                    return;
+                }
+
+                if (dataNumber(v) === null) {
+                    ok = false;
+                } else {
+                    seen++;
+                }
+            });
+
+            return { id: id, name: String((columns[id] && columns[id].name) || ''), number: ok && (seen > 0) };
+        });
+    }
+
+    // A starting description of a kind ('table' or a chart kind) for a
+    // table, or null when its columns do not fit the kind: a chart needs a
+    // number column (a stacked bar two, a line or an area two rows). The
+    // label is the first column that is no number (else the first), the
+    // values the number columns beside it, up to five (a donut one, a
+    // plain table any five columns); a label that comes again is grouped
+    // with sum. title: the table's name.
+    function dataStart(table, kind, columns, rows, title) {
+        var cols = dataColumns(columns, rows), label, values, labels = {}, again = false, d;
+
+        rows = Array.isArray(rows) ? rows : [];
+
+        if (!cols.length) {
+            return null;
+        }
+
+        label = (cols.filter(function (c) { return !c.number; })[0] || cols[0]).id;
+
+        if (kind === 'table') {
+            values = cols.filter(function (c) { return c.id !== label; }).slice(0, DATA_MAX.values).map(function (c) { return c.id; });
+            d = { table: table, show: 'table', label: label, values: values };
+        } else {
+            values = cols.filter(function (c) { return c.number && (c.id !== label); }).map(function (c) { return c.id; });
+            values = values.slice(0, (kind === 'donut') ? 1 : DATA_MAX.values);
+
+            if (!values.length || ((kind === 'stacked_bar') && (values.length < 2)) || (((kind === 'line') || (kind === 'area')) && (rows.length < 2)) || (DATA_KINDS.indexOf(kind) < 0)) {
+                return null;
+            }
+
+            rows.forEach(function (r) {
+                var v = dataText((r && r.cells) ? r.cells[label] : '');
+
+                again = again || labels.hasOwnProperty('=' + v);
+                labels['=' + v] = true;
+            });
+            d = { table: table, show: 'chart', kind: kind, label: label, values: values, group: again ? 'sum' : 'none' };
+        }
+
+        d.title = String(title || '').replace(/[\n\r]+/g, ' ').trim().slice(0, DATA_MAX.title);
+
+        return dataCheck(d).ok ? dataCheck(d).data : null;
+    }
+
+    // The kinds the Data menu offers for a table, in the menu's order:
+    // 'table' and each chart kind its columns fit (dataStart()).
+    function dataFits(columns, rows) {
+        return ['table'].concat(DATA_KINDS).filter(function (kind) {
+            return dataStart(1, kind, columns, rows, '') !== null;
+        });
+    }
+
+    // A checked description turned to another kind, its choices kept where
+    // the kind takes them: a donut keeps the first value, a chart without a
+    // value takes the first number column; null when the columns do not fit.
+    function dataWithKind(d, kind, columns, rows) {
+        var out = clone(d), nums;
+
+        if (kind === 'table') {
+            out.show = 'table';
+            delete out.kind;
+        } else {
+            out.show = 'chart';
+            out.kind = kind;
+            nums = dataColumns(columns, rows).filter(function (c) { return c.number && (c.id !== out.label); }).map(function (c) { return c.id; });
+
+            if (out.group !== 'count') {
+                out.values = out.values.filter(function (id) { return nums.indexOf(id) >= 0; });
+                out.values = out.values.length ? out.values : nums.slice(0, 1);
+                out.values = (kind === 'donut') ? out.values.slice(0, 1) : out.values;
+            }
+        }
+
+        return dataCheck(out).ok ? dataCheck(out).data : null;
+    }
+
     var DATA = {
+        DATA_SIZES: DATA_SIZES, DATA_SAMPLE_ROWS: DATA_SAMPLE_ROWS, dataColumns: dataColumns, dataStart: dataStart, dataFits: dataFits, dataWithKind: dataWithKind,
         DATA_KINDS: DATA_KINDS, DATA_GROUPS: DATA_GROUPS, DATA_SORTS: DATA_SORTS, DATA_MAX: DATA_MAX, DATA_GUIDE: DATA_GUIDE,
         dataCheck: dataCheck, dataNumber: dataNumber, dataText: dataText, dataFormat: dataFormat, dataStep: dataStep,
         dataSeries: dataSeries, dataMarks: dataMarks

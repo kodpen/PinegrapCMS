@@ -26,6 +26,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The type sizes a data layer's words take, as a share of the guide's
+ * (M.DATA_SIZES).
+ *
+ * @return array s, m, l => share
+ */
+function pg_image_draw_data_sizes()
+{
+    return array('s' => 0.85, 'm' => 1, 'l' => 1.2);
+}
+
+/**
  * The bounds of a data layer (M.DATA_MAX).
  *
  * @return array values, title, colours, labels, slices, tableRows, rows, cell
@@ -284,6 +295,25 @@ function pg_image_draw_data_check($d)
     }
 
     $out['legend'] = $has('legend') ? pg_image_draw_data_truthy($d['legend']) : true;
+    $out['legendAt'] = $has('legendAt') ? $d['legendAt'] : 'top';
+
+    if (($out['legendAt'] !== 'top') && ($out['legendAt'] !== 'bottom')) {
+        return $fail('data_legend');
+    }
+
+    // A whole number as JavaScript has it: 3.0 decoded from JSON is 3.
+    $out['limit'] = $has('limit') ? $d['limit'] : 0;
+
+    if (!(is_int($out['limit']) || (is_float($out['limit']) && (floor($out['limit']) === $out['limit']))) || ($out['limit'] < 0) || ($out['limit'] > $max['tableRows'])) {
+        return $fail('data_limit');
+    }
+
+    $out['limit'] = (int) $out['limit'];
+    $out['size'] = $has('size') ? $d['size'] : 'm';
+
+    if (!is_string($out['size']) || !isset(pg_image_draw_data_sizes()[$out['size']])) {
+        return $fail('data_size');
+    }
 
     return array('ok' => true, 'data' => $out);
 }
@@ -507,6 +537,7 @@ function pg_image_draw_data_series($d, $columns, $rows, $words)
         $entries = array_merge(array_slice($entries, 0, $max['slices'] - 1), array($other));
     } else {
         $keep = ($d['kind'] === 'table') ? $max['tableRows'] : $max['labels'];
+        $keep = !empty($d['limit']) ? min($keep, (int) $d['limit']) : $keep;
         $cut = max(0, count($entries) - $keep);
         $entries = array_slice($entries, 0, $keep);
     }
@@ -591,6 +622,8 @@ function pg_image_draw_data_marks($d, $w, $h, $read, $words)
     $n = count($labels);
     $refused = is_array($read) && (($read['state'] ?? '') === 'refused');
     $marks = array();
+    $k = pg_image_draw_data_sizes()[$d['size'] ?? 'm'] ?? 1;
+    $under = (($d['legendAt'] ?? 'top') === 'bottom');
 
     $pt = function ($x, $y) use ($s) {
         return array(pg_image_draw_data_round($x * $s), pg_image_draw_data_round($y * $s));
@@ -610,17 +643,17 @@ function pg_image_draw_data_marks($d, $w, $h, $read, $words)
             return $pt($q[0], $q[1]);
         }, $pts), 'stroke' => $stroke, 'width' => pg_image_draw_data_round($width * $s));
     };
-    $text = function ($x, $y, $v, $role, $fill = null, $anchor = null) use (&$marks, $g, $p, $s) {
+    $text = function ($x, $y, $v, $role, $fill = null, $anchor = null) use (&$marks, $g, $p, $s, $k) {
         $r = $g['type'][$role];
 
         if ($v !== '') {
             $marks[] = array('t' => 'text', 'x' => pg_image_draw_data_round($x * $s), 'y' => pg_image_draw_data_round($y * $s), 'v' => $v,
-                'size' => pg_image_draw_data_round($r[0] * $s), 'weight' => $r[1], 'fill' => $fill ?: $p[$r[2]], 'anchor' => $anchor ?: 'start');
+                'size' => pg_image_draw_data_round($r[0] * $k * $s), 'weight' => $r[1], 'fill' => $fill ?: $p[$r[2]], 'anchor' => $anchor ?: 'start');
         }
     };
     // Words cut to a width, by the guide's average letter of 0.56 em.
-    $fit = function ($v, $role, $room) use ($g) {
-        $most = max(1, (int) floor($room / ($g['type'][$role][0] * 0.56)));
+    $fit = function ($v, $role, $room) use ($g, $k) {
+        $most = max(1, (int) floor($room / ($g['type'][$role][0] * $k * 0.56)));
 
         return (mb_strlen($v) > $most) ? mb_substr($v, 0, max(1, $most - 1)) . '…' : $v;
     };
@@ -662,27 +695,39 @@ function pg_image_draw_data_marks($d, $w, $h, $read, $words)
         }
     }
 
-    // The head: title and legend; the plot starts below it.
+    // The legend's keys along a line, $y its baseline.
+    $keys = function ($y) use ($legend, $rect, $text, $g, $k, $M0) {
+        $x = $M0;
+
+        foreach ($legend as $e) {
+            $rect($x, $y - 15, 16, 16, $e[1]);
+            $text($x + 24, $y, $e[0], 'label');
+            $x += 24 + mb_strlen($e[0]) * $g['type']['label'][0] * $k * 0.56 + $g['grid']['gutter'];
+        }
+    };
+
+    // The head: title and legend over the plot; the plot starts below it.
     $top = $M0;
-    $x = $M0;
+    $over = $legend && !$under;
 
     if ($d['title'] !== '') {
-        $top += $g['type']['title'][0] * 0.8;
+        $top += $g['type']['title'][0] * $k * 0.8;
         $text($M0, $top, $fit($d['title'], 'title', $W - 2 * $M0), 'title');
     }
 
-    if ($legend) {
-        $top += (($d['title'] !== '') ? $g['spacing']['legend'] : 0) + $g['type']['label'][0];
-
-        foreach ($legend as $e) {
-            $rect($x, $top - 15, 16, 16, $e[1]);
-            $text($x + 24, $top, $e[0], 'label');
-            $x += 24 + mb_strlen($e[0]) * $g['type']['label'][0] * 0.56 + $g['grid']['gutter'];
-        }
+    if ($over) {
+        $top += (($d['title'] !== '') ? $g['spacing']['legend'] : 0) + $g['type']['label'][0] * $k;
+        $keys($top);
     }
 
-    $top += (($d['title'] !== '') || $legend) ? $g['spacing']['plot'] : 0;
+    $top += (($d['title'] !== '') || $over) ? $g['spacing']['plot'] : 0;
     $bot = $H - $M0 - $g['type']['axis'][0] - 14;
+
+    // A legend under the plot takes its line from the plot's foot.
+    if ($legend && $under) {
+        $bot -= $g['type']['label'][0] * $k + $g['spacing']['legend'];
+        $keys($H - $M0 + 4);
+    }
 
     if ($empty) {
         $text($W / 2, max($top, ($top + $H - $M0) / 2), $fit((string) ($refused ? ($words['refused'] ?? '') : ($words['empty'] ?? '')), 'label', $W - 2 * $M0), 'label', $p['ink3'], 'middle');
