@@ -71,6 +71,25 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		// No scope: the guide holds no record of the site, only how the
+		// software is used, so any valid credentials read it; 'mcp' => true
+		// offers it as a tool all the same (pg_mcp_route_is_offered()).
+		array(
+			'id'      => 'guide.read',
+			'method'  => 'GET',
+			'path'    => '/guide',
+			'scope'   => '',
+			'mcp'     => true,
+			'handler' => 'api_guide_read',
+			'returns' => array('version' => 'string', 'digest' => 'string', 'topic' => 'string?', 'section' => 'string?', 'topics' => 'string[]', 'text' => 'string'),
+			'summary' => 'Read the guide for AI agents',
+			'description' => 'How to work on this site, in Markdown: without topic the list of topics, with topic one topic, with section one of its sections. Read start first, then an area\'s topic before the first work in it. topics lists the ids open to this caller; digest changes whenever text does.',
+			'params'  => array(
+				array('name' => 'topic',   'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A topic id from topics, such as start.'),
+				array('name' => 'section', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A section id of that topic, the part after # in its headings.')
+			)
+		),
+
 		/* ----- Products ---------------------------------------------------- */
 
 		array(
