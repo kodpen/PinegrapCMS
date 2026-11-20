@@ -1,6 +1,6 @@
 ---
 name: mail-box-remove
-description: Removing a mailbox (Site Settings › Mailboxes, MT1): the row, its settings, password, rules and own blocks go; every conversation stays; the check, posted name and confirm
+description: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the row, its settings, password, rules and own blocks go; every conversation stays; the check, posted name and confirm
 ---
 
 ## What does Remove delete?
@@ -9,7 +9,7 @@ description: Removing a mailbox (Site Settings › Mailboxes, MT1): the row, its
 - Reading stops at once: the fetch reads only rows that exist.
 
 ## What stays?
-- Architect (2026-11-20): Remove deletes the box's settings and never a conversation. `ws_mail_conversations`, `ws_mail_items`, their cards in `ws_messages`, a box's room (`ws_channels` kind mailbox), reads and reminders are never touched; `tests/settings_mailboxes_tidy_test.php` fails if the SQL names one of them.
+- Architect (2026-11-20): Remove deletes the box's settings and never a conversation. Built by #10900. `ws_mail_conversations`, `ws_mail_items`, their cards in `ws_messages`, a box's room (`ws_channels` kind mailbox), reads and reminders are never touched; `tests/settings_mailboxes_tidy_test.php` fails if the SQL names one of them.
 - A conversation of a removed box keeps its `box_id`; a reply from it finds no box (`ws_mail_box()` is null), so nothing is sent through the removed box.
 
 ## Who may remove, and how is it posted?
