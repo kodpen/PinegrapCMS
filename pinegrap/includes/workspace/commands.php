@@ -623,8 +623,23 @@ function ws_commands($viewer = null, $shadowed = false, $channel = null)
 
     // The commands applications registered, after the built-in ones; only for
     // a person, so the registry without one touches no table.
+    // An agent's command carries the channels its agent is allowed in
+    // (agent_channels) and is left out of a channel that does not allow it.
     if (is_array($viewer) && function_exists('ws_app_commands_live')) {
+        $agents = ws_app_command_agents();
+        $reach = null;
+
         foreach (ws_command_app_entries(ws_app_commands_live(), $shadowed) as $app_entry) {
+            $app_entry = ws_app_command_entry_reach($app_entry, $agents);
+
+            if (is_array($channel) && ($app_entry['agent_channels'] !== null)) {
+                $reach = ($reach === null) ? ws_agent_reach_rows($channel) : $reach;
+
+                if (ws_app_command_route(ws_app_command_agent_of($agents, $app_entry['app_id']), $reach) === 'none') {
+                    continue;
+                }
+            }
+
             $out[] = $app_entry + array('group' => 'agents', 'where' => 'any');
         }
     }
@@ -642,7 +657,9 @@ function ws_commands($viewer = null, $shadowed = false, $channel = null)
  *                 with its slash, for the composer's / picker), example,
  *                 description; and from the registry key, name, usage, args,
  *                 live for the composer's argument popup and live line;
- *                 group, group_label and where for the list's headers
+ *                 group, group_label and where for the list's headers;
+ *                 agent_channels for an agent's command (the channels its
+ *                 agent is allowed in, null for any other)
  */
 function ws_command_help($viewer = null, $channel = null)
 {
@@ -664,6 +681,8 @@ function ws_command_help($viewer = null, $channel = null)
             'group'       => $entry['group'],
             'group_label' => $labels[$entry['group']] ?? '',
             'where'       => $entry['where'],
+            // An agent's command: the channels its agent is allowed in.
+            'agent_channels' => $entry['agent_channels'] ?? null,
         );
     }
 

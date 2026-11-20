@@ -23,7 +23,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
   - Pictures: an application command's strip and argument list. The PR body names the `[SCHEME]` item.
   - Memory: `workspace/workspace-app-commands.md`. Feature: K26.
 
-- CC11 (M) after CC10: an agent's command.
+- CC11 (M) after CC10: an agent's command. Done: #10586.
   - Existing: `includes/workspace/app_commands.php`, `includes/workspace/agent_queue.php` (the request is made as a mention makes it).
   - Tests: a command typed for an agent that waits on its queue posts the line as the writer's message and makes one request with the command and values in its brief; an agent not allowed in the channel not offered; the loop guard and the braked line; an application without an agent unchanged; the webhook event sent once.
   - Picture: the line, the agent's line under it.
