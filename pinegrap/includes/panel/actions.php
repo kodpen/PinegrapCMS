@@ -296,7 +296,7 @@ function pg_panel_actions()
         'ws_scheduled_status', 'ws_scheduled_run_now',
         'ws_scheduled_message_save', 'ws_scheduled_messages',
         'ws_scheduled_message_delete', 'ws_scheduled_message_send',
-        'ws_sync', 'ws_call_start', 'ws_call_join', 'ws_call_leave', 'ws_call_end', 'ws_call_signal', 'ws_messages_before', 'ws_send', 'ws_command_suggest', 'ws_edit', 'ws_edit_hold', 'ws_delete',
+        'ws_sync', 'ws_call_start', 'ws_call_join', 'ws_call_leave', 'ws_call_end', 'ws_call_signal', 'ws_call_decline', 'ws_call_sync', 'ws_messages_before', 'ws_send', 'ws_command_suggest', 'ws_edit', 'ws_edit_hold', 'ws_delete',
         'ws_mark', 'ws_attach', 'ws_library_channels',
         'ws_library_attach', 'ws_channel_create', 'ws_templates',
         'ws_template_apply', 'ws_template_from_channel',
