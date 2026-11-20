@@ -8128,6 +8128,9 @@ function pg_js_bundles()
         // The Options panel's search: its pure fold-and-match module
         // (window.PGOptionsSearch), then the part that lists the results.
         'assets/js/style_designer_optsearch.min.js' => array('assets/js/pg_options_search.js', 'assets/js/style_designer_optsearch.js'),
+        // "Only what I changed" of the Options panel: its pure list and
+        // reset loop (window.PGOptionsReview), then the part that draws it.
+        'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
@@ -8226,6 +8229,9 @@ function pg_designer_parts()
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
         'pages' => 'assets/js/style_designer_pages.min.js',
+        // "Only what I changed": the list of the changed rows of all three
+        // Options tabs with their reset arrows and "Reset all".
+        'review' => 'assets/js/style_designer_review.min.js',
     );
 }
 

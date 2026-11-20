@@ -15,6 +15,7 @@ description: Start file of the designer-options-* files: what the Options panel 
 - Several elements selected: `designer-options-multiple.md`.
 - Accessible names and keyboard section heads: `designer-options-panel-names.md`.
 - "Search or add an option…" (results, Enter, the class offered): `designer-options-search.md`; the label filter under it: `designer-options-panel-search.md`.
+- "Only what I changed" (the switch at the bottom, the list of changed rows, "Reset all"): `designer-options-review.md`.
 
 ## How is a part added?
 - New code a page does not need to open goes into a part (`designer-parts-on-demand.md`), a decision into a pure module tested under Node (`pg_spacing_box.js`, `pg_options_search.js`); the core gets the hooks.

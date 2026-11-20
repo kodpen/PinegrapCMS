@@ -8136,6 +8136,7 @@
     "The {var:1} who joined this week has not heard from you yet.": "Bu hafta katılan {var:1} senden henüz haber almadı.",
     "The {var:1} who joined this week have not heard from you yet.": "Bu hafta katılan {var:1} senden henüz haber almadı.",
     "The {var:1} you entered was not found. Please enter a different {var:1}.": "Girdiğiniz {var:1} bulunamadı. Lütfen farklı bir {var:1} girin.",
+    "The {var} changed options go back to their defaults. Undo brings them back.": "Değiştirilen {var} seçenek varsayılanına döner. Geri al ile geri gelirler.",
     "The {var} draft pages of the design will be put on the site: visitors will be able to open them.": "Tasarımın {var} taslak sayfası yayına alınacak; ziyaretçiler açabilecek.",
     "The İYS account is removed from this site: marketing answers are no longer synced with İYS.": "İYS hesabı bu siteden kaldırılır: pazarlama yanıtları artık İYS ile eşitlenmez.",
     "The İYS account the e-mail and SMS marketing answers are synced with, and how the sync runs.": "E-posta ve SMS pazarlama yanıtlarının eşitlendiği İYS hesabı ve eşitlemenin nasıl çalıştığı.",
