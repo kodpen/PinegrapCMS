@@ -5344,7 +5344,18 @@ function ws_handle_action($action, $request)
                 ? ws_call_start($party, $channel, (string) ($request['kind'] ?? ''))
                 : ws_call_join($party, $channel, (int) ($request['call_id'] ?? 0));
 
-            return $result['ok'] ? ws_action_ok(array('call_id' => $result['call_id'], 'member_id' => $result['member_id'])) : ws_action_error($result['error']);
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            // The relay's short-lived credentials go to a member of the
+            // call only, with the start or join that made it one.
+            return ws_action_ok(array('call_id' => $result['call_id'], 'member_id' => $result['member_id'], 'ice' => ws_call_member_ice()));
+
+        case 'ws_calls_test_ice':
+            $result = ws_calls_test_ice($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('ice' => $result['ice'], 'turn' => $result['turn'])) : ws_action_error($result['error']);
 
         case 'ws_call_leave':
         case 'ws_call_end':
