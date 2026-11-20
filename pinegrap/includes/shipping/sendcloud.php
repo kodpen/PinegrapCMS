@@ -620,6 +620,21 @@ function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option,
  */
 function pg_label_sendcloud_option_pick($options, $return = false, $incoterm = '')
 {
+    $cheapest = pg_label_sendcloud_option_cheapest($options, $return, $incoterm);
+
+    return ($cheapest === null) ? '' : $cheapest['code'];
+}
+
+/**
+ * The option pg_label_sendcloud_option_pick() takes, with its price. Pure.
+ *
+ * @param mixed  $options
+ * @param bool   $return
+ * @param string $incoterm
+ * @return array|null pg_label_sendcloud_option_priced()
+ */
+function pg_label_sendcloud_option_cheapest($options, $return = false, $incoterm = '')
+{
     $cheapest = null;
 
     foreach (is_array($options) ? $options : array() as $option) {
@@ -630,7 +645,7 @@ function pg_label_sendcloud_option_pick($options, $return = false, $incoterm = '
         }
     }
 
-    return ($cheapest === null) ? '' : $cheapest['code'];
+    return $cheapest;
 }
 
 /**
@@ -642,7 +657,7 @@ function pg_label_sendcloud_option_pick($options, $return = false, $incoterm = '
  * @param bool   $return
  * @param string $incoterm DDU, DAP or DDP for a declared parcel, '' for none
  * @return array|null code, carrier (Sendcloud's code), total (float),
- *                    currency
+ *                    value (the total as Sendcloud wrote it), currency
  */
 function pg_label_sendcloud_option_priced($option, $return = false, $incoterm = '')
 {
@@ -671,6 +686,7 @@ function pg_label_sendcloud_option_priced($option, $return = false, $incoterm = 
         'code'     => $code,
         'carrier'  => isset($option['carrier']) ? pg_label_sendcloud_text($option['carrier'], 'code') : '',
         'total'    => (float) $total,
+        'value'    => $total,
         'currency' => strtoupper(pg_label_sendcloud_text($price, 'currency')),
     );
 }
@@ -1113,6 +1129,7 @@ function pg_label_sendcloud_create($shipment, $account)
     $incoterm = (($customs['items'] !== null) && !in_array($incoterm, array('DDU', 'DAP', 'DDP'), true)) ? 'DDU' : $incoterm;
 
     $parcel = pg_label_sendcloud_parcel(isset($shipment['parcel']) ? $shipment['parcel'] : array());
+    $price = array();
 
     if ($account['mode'] !== 'live') {
         $option = 'sendcloud:letter';
@@ -1133,7 +1150,12 @@ function pg_label_sendcloud_create($shipment, $account)
             return pg_label_sendcloud_failure($read, false);
         }
 
-        $option = pg_label_sendcloud_option_pick(isset($read['data']['data']) ? $read['data']['data'] : array(), false, $incoterm);
+        $cheapest = pg_label_sendcloud_option_cheapest(isset($read['data']['data']) ? $read['data']['data'] : array(), false, $incoterm);
+        $option = ($cheapest === null) ? '' : $cheapest['code'];
+
+        // The price of the option chosen here; an option the shop set is
+        // not priced, and its order keeps the rate typed for its method.
+        $price = ($cheapest === null) ? array() : pg_label_price_normalize(array('value' => $cheapest['value'], 'currency' => $cheapest['currency']));
 
         if ($option === '') {
             $words = pg_label_sendcloud_text($read['data'], 'message');
@@ -1185,6 +1207,7 @@ function pg_label_sendcloud_create($shipment, $account)
         'status'          => 'created',
         'log'             => array('Sendcloud label ' . $reference . ' made with ' . $option . (($account['mode'] === 'live') ? '' : ' (test)') . '.'),
         'raw'             => $read['raw'],
+        'price'           => $price,
     );
 
     $format = ($account['label_format'] === 'zpl') ? 'zpl' : 'pdf';
