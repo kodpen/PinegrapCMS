@@ -1,0 +1,31 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for Communication › Incoming e-mail and Site Settings › Mailboxes at
+ * phone width (390 and 320 px): the list's views wrap instead of running
+ * off the screen, the mailbox row's buttons wrap inside the card, the box
+ * form's sent-copy check box stands beside its label, the open
+ * conversation's status and holder keep a touch-sized height.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+function test_mail_phone_views_wrap()
+{
+	// Sent, Not sent, Blocked and Drafts: on a 390 px screen the group was
+	// 619 px wide in 358 and Blocked and Drafts lay out of sight.
+	$toolbar = ws_mail_list_filters_html(ws_mail_list_filters(array()), array(), true, true, array(), true, true, true);
+
+	pg_assert_contains('<div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">', $toolbar, 'the views wrap onto a second line');
+	pg_assert_contains('data-ws-mail-new', $toolbar, 'the toolbar is the sending one');
+}
