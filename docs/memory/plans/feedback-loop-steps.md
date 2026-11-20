@@ -4,7 +4,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 ---
 
 ## Which steps are there?
-- FD1a (S) first, no schema: new `includes/fn/feedback.php`, pure: score bands and their kinds, NPS, CSAT and effort sums, the fatigue rule, the low-score rule, the owner chooser, the signed token made and checked. `tests/feedback_test.php` red first: an NPS of 6 and 7, a person asked 29 and 31 days ago, a staff address, a booking with no staff user, a token of another purpose. Features: Q1, Q6, Q10 (the rules).
+- FD1a (S) first, no schema, done (PR #10808): new `includes/fn/feedback.php`, pure: score bands and their kinds, NPS, CSAT and effort sums, the fatigue rule, the low-score rule, the owner chooser, the signed token made and checked. `tests/feedback_test.php` red first: an NPS of 6 and 7, a person asked 29 and 31 days ago, a staff address, a booking with no staff user, a token of another purpose. Features: Q1, Q6, Q10 (the rules).
 
 - FD1b (M) after FD1a (the owner said yes to poll 197, message 10847): `feedback_surveys` and `feedback_responses` as a migration step in the open version, the columns of `decisions-made-schema-45.md`, in the PR body, asked of the architect before ready; the five privacy registrations and their tests. Features: Q16.
 
