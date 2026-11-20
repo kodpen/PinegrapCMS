@@ -30,6 +30,7 @@
 - canvas-closed-blocks-widgets.md: Sections and HTML values inside system widgets on the canvas today, per widget kind: opened as a tree, drawn true (settings only) or kept, with the step and memory file of each
 - canvas-closed-blocks.md: Designer canvas closed blocks after their opening (CB0-CB10, 2026-11): the rules an opened block keeps, which step opened what (file, PR), what stays closed [decision: decisions-made-product-48.md, decisions-made-product-54.md]
 - canvas-drop-zone.md: Canvas drop bands (before, inside, after) by pointer height; a closed element's middle band falls back beside it; when an ancestor takes over; one insert line at a time.
+- canvas-link-marks.md: Link marks on the editor canvas: red on a broken link, amber on one without a target; a click focuses its link field in Options; data from the Prototype view (canvasMarks())
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
@@ -116,6 +117,7 @@
 - content-proposals-designer-side.md: Waiting content changes, the designer's side: the list screen, Compare, apply through the gate with one revision, stale, dismiss with a reason, take back
 - content-proposals-workspace.md: Waiting content changes asked in the Workspace: when and as whom, who is asked, what a yes or no does, a withdrawn or replaced change taking its request back
 - content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows [decision: here]
+- course-progress.md: Start file of courses: ordered and timed lessons on a private folder's pages, progress, quiz lessons, the learner's blocks, the certificate, the Courses screen; decisions, PRs, files, left out [decision: decisions-made-product-34.md]
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic. [decision: decisions-made-product-9.md]
 - custom-form-logic.md: The designed forms' Shown-when rules, steps with progress and payment step as one feature: what binds all three, which questions were decided (#5035), where each part is described [decision: decisions-made-product-19.md, decisions-made-schema-9.md]

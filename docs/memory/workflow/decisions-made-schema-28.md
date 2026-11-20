@@ -16,4 +16,8 @@ description: Decisions list, schema part 28 (2026-11-19 on): schema the open ver
 - "Her kişi kendisi sabitler (Notlarım gibi)", the option that named the column: `ws_profiles.mail_pinned`, beside `notes_pinned`, added by one sub-step of the open version with `install_add_column()`. The other choice, one site-wide switch in config, needed none.
 - Built in #10408, step 11.0.239 of 2026.11.0: `ui/main-menu-mail-row.md`.
 
+## Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-19, agent channel message 9861, confirmed in PU6's draft, #10450)
+- Under the owner's yes to new columns on `auto_dialogs` (`decisions-made-schema-21.md`, message 5139): `content` VARCHAR(10) NOT NULL DEFAULT 'url' after `place` (url, component; checked in code, an unknown value reads as url); `component_id` INT UNSIGNED NOT NULL DEFAULT 0 after `content`. No index, no backfill, no foreign key. Step 11.0.242: `platform/auto-dialog-content.md`.
+- Not chosen: only `component_id`, content read from it. A row must keep its address while it shows a component and switch back without retyping it.
+
 Related: docs/memory/workflow/decisions-made.md, docs/memory/release/released-vs-open-version.md

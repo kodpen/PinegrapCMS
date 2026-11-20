@@ -79,10 +79,18 @@ function ods_cell_ceiling_test_quiet($callback)
 	}
 }
 
-// The product importer's CSV as rows, or its error.
+// The product importer's CSV as rows, or its error. The product importer
+// reads through the sheet reader; PHPExcel, loaded by the bank statement
+// importer earlier in this process, switches libxml's entity loader off on
+// every load, which stops XMLReader opening a zip entry. A request that
+// imports products never loads PHPExcel.
 function ods_cell_ceiling_test_products($path)
 {
 	return ods_cell_ceiling_test_quiet(function () use ($path) {
+		if (function_exists('libxml_disable_entity_loader')) {
+			@libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off in this test process
+		}
+
 		$error = '';
 		$csv = pg_products_import_to_csv($path, 'products.ods', $error);
 
@@ -335,13 +343,21 @@ function test_ods_cell_ceiling_importers_turn_away_expansion()
 		'used range one row past' => '<table:table table:name="S">' . $heading . '<table:table-row table:number-rows-repeated="' . (intdiv(PG_PRODUCTS_IMPORT_ODS_MAX_RANGE, 1024) - 1) . '"><table:table-cell/></table:table-row><table:table-row><table:table-cell table:number-columns-repeated="1023"/>' . $t('x') . '</table:table-row></table:table>',
 	);
 
+	// The product importer's sheet reader makes no cells of a merged range
+	// (its value stands in the first cell) and reads no sheet but the
+	// first, so those two cost it nothing and are read.
+	$product_reads = array(
+		'merged range' => array(array('Tarih', 'Tutar'), array('x', '')),
+		'second sheet' => array(array('Tarih', 'Tutar')),
+	);
+
 	foreach ($cases as $label => $tables) {
 		$path = ods_cell_ceiling_test_file($tables);
 		clearstatcache();
 		pg_assert_true(filesize($path) < 2048, $label . ': a small file');
 
 		$started = microtime(true);
-		pg_assert_same($large, ods_cell_ceiling_test_products($path), $label . ': product importer');
+		pg_assert_same(isset($product_reads[$label]) ? $product_reads[$label] : $large, ods_cell_ceiling_test_products($path), $label . ': product importer');
 		pg_assert_same($large, ods_cell_ceiling_test_bank($path), $label . ': bank statement importer');
 		pg_assert_true((microtime(true) - $started) < 5, $label . ': at once');
 

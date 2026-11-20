@@ -1324,6 +1324,68 @@ function test_proto_hotspots_view_what_to_check()
 	}
 }
 
+// The links the designer's canvas marks (canvasMarks()): of the drawable
+// links of a marked design, page frames first, then shared components, in
+// document order, the broken ones with why they are broken and the ones
+// without a target ('' or '#'). A link kept by a page that is gone is
+// broken as 'kept'. A tab, a site page, an anchor, a toggle, a classic
+// menu and a region's links get none. Without the map read (`known`
+// false) a link cannot be called broken: only the empty ones are marked.
+// The read is asked for the addresses but the empty ones and for the kept
+// pages (canvasRequest()), never for a menu or a region.
+function test_proto_hotspots_canvas_marks()
+{
+	$link = function ($id, $text, $href) {
+		return array('_id' => $id, 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => $text, 'href' => $href), 'children' => array());
+	};
+	$tree = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array(
+		$link('l1', 'Old', '/old'),
+		$link('l2', 'Lost', '/nothing'),
+		$link('l3', 'Blank', ''),
+		array('_id' => 'l4', 'type' => 'component', 'props' => array('componentType' => 'btn', 'text' => 'Buy'), 'children' => array()),
+		array('_id' => 'l5', 'type' => 'semantic', 'props' => array('tag' => 'a', 'text' => 'Top', 'href' => '#top'), 'children' => array()),
+		$link('l6', 'About', '/about'),
+		$link('l7', 'Home', '/home'),
+		array('_id' => 't1', 'type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'See <a href="/nothing">x</a>, <a href="/about">y</a>, <a href="#" data-bs-toggle="tab">t</a> and <a href="#">z</a>'), 'children' => array()),
+		proto_hotspots_test_bound(10),
+		array('_id' => 'm', 'type' => 'region', 'props' => array('regionType' => 'menu', 'regionName' => 'Gone'), 'children' => array()),
+		array('_id' => 'f', 'type' => 'region', 'props' => array('regionType' => 'common', 'regionName' => 'Footer'), 'children' => array()),
+		array('_id' => 's', 'type' => 'shared_ref', 'props' => array('sharedId' => 5), 'children' => array()),
+	));
+	$shared = array(5 => array('name' => 'Header', 'tree' => array('_id' => 'sr', 'type' => 'root', 'props' => array(), 'children' => array(
+		$link('se', 'Cart', ''),
+		$link('so', 'Gone', '/old'),
+	))));
+	$out = proto_hotspots_test_node('var read = ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ', tabs = [{ key: "p1", page_id: 1, page_name: "home" }];'
+		. ' var d = H.design([{ key: "p1", page_id: 1, page_name: "home", tree: ' . proto_hotspots_test_js($tree) . ' }], ' . proto_hotspots_test_js($shared) . ');'
+		. ' var line = function (m) { return m.nodeId + " " + m.source + "." + m.index + " " + m.mark + (m.why ? " " + m.why : "") + (m.sharedId ? " @" + m.sharedId : ""); };'
+		. ' var all = H.canvasMarks(H.mark(d, read, tabs), true);'
+		. ' out = { known: all.map(line), first: all[0], unknown: H.canvasMarks(H.mark(d, {}, tabs), false).map(line), none: [H.canvasMarks(null, true), H.canvasMarks({ pages: [], shared: [] }, true)],'
+		. ' request: H.canvasRequest(d), asked: d.request.menus.concat(d.request.regions), nothing: H.canvasRequest(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'l1 href.0 broken page',
+		'l2 href.0 broken page',
+		'l3 href.0 empty',
+		'l4 btn.0 empty',
+		't1 text.0 broken page',
+		't1 text.3 empty',
+		'b10 href.0 broken kept',
+		'se href.0 empty @5',
+		'so href.0 broken page @5',
+	), $out['known'], 'the broken and the empty links, a shared component\'s with its id');
+	pg_assert_same(array('nodeId' => 'l1', 'sharedId' => 0, 'source' => 'href', 'index' => 0, 'mark' => 'broken', 'label' => 'Old', 'href' => '/old', 'why' => 'page'), $out['first'], 'what a mark carries');
+	pg_assert_same(array('l3 href.0 empty', 'l4 btn.0 empty', 't1 text.3 empty', 'se href.0 empty @5'), $out['unknown'], 'without the read only the empty links');
+	pg_assert_same(array(array(), array()), $out['none'], 'nothing marked, nothing drawn');
+	pg_assert_same(array('hrefs' => array('/old', '/nothing', '#top', '/about', '/home'), 'page_ids' => array(10), 'menus' => array(), 'regions' => array()), $out['request'], 'the read asked without the empty addresses, menus and regions');
+	pg_assert_same(array('Gone', 'Footer'), $out['asked'], 'which the Prototype view asks');
+	pg_assert_same(array('hrefs' => array(), 'page_ids' => array(), 'menus' => array(), 'regions' => array()), $out['nothing'], 'no design, nothing asked');
+}
+
 // A system widget leads to pages its settings name (the login widget's
 // "Giriş Yap" to the login page): those pages are reached as by a shared
 // part's link. A form's data page and an e-mail's page are no links; a

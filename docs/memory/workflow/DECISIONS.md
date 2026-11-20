@@ -510,9 +510,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-28.md: Where are the rules and the earlier parts?
 - decisions-made-schema-28.md: Is schema the open version added and then gave up kept? (owner, 2026-11-19, in the architect's window, agent channel message 9493)
 - decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
+- decisions-made-schema-28.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-19, agent channel message 9861, confirmed in PU6's draft, #10450)
 - decisions-made-schema-29.md: Where are the rules and the earlier parts?
 - decisions-made-schema-29.md: Which tables do Workspace calls add? (owner, 2026-11-20, poll 158, channel message 9839)
 - decisions-made-schema-29.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-20, agent channel, answer to K2's request 1584)
+- decisions-made-schema-29.md: Does `prototype_links` get a column for a release bundle's share link? (owner, 2026-11-20, poll 159, channel message 9931)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -837,6 +839,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
 - designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
 - designer/content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows
+- designer/course-progress.md: Start file of courses: ordered and timed lessons on a private folder's pages, progress, quiz lessons, the learner's blocks, the certificate, the Courses screen; decisions, PRs, files, left out
 - designer/custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added
 - designer/custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - designer/custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off

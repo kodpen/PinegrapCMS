@@ -10119,6 +10119,7 @@ const StyleDesigner = (function () {
         // element lacks them); the debounced pass below refreshes them.
         applyIssueBadges(_redrawn);
         scheduleValidation();
+        _sdLinkMarksSoon();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
     }
@@ -74592,6 +74593,9 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoButtonState() {
+        // The canvas's link marks hide while the view is open and are read
+        // again when it closes (an arrow may have changed a link).
+        _sdLinkMarksSoon();
         var btn = document.getElementById('sd-vb-proto');
         if (!btn) return;
         btn.classList.toggle('active', _sdProto.open);
@@ -87877,6 +87881,306 @@ const StyleDesigner = (function () {
             if (sbCount) sbCount.textContent = _sdT('Validate');
             sbBtn.title = _sdT('Validate the HTML');
         }
+    }
+
+    // ── Link marks on the canvas ──────────────────────────────────────
+    // A link of the open page that is broken (no page at its address, the
+    // page it was kept by is gone) or has no target ('' or '#') gets a mark
+    // at the right edge of its element; a click on the mark selects the
+    // element (a text's link is picked inside the text) and focuses its
+    // link field in the Options panel. The links and their marks are the
+    // Prototype view's own: PGProtoHotspots.design() over the open tab, the
+    // prototype_map read, mark(), canvasMarks(). The read is asked once the
+    // redraws pause, once per set of addresses, and kept a while; the
+    // answer for a set the open tab no longer has is dropped. The marks are
+    // buttons in the editor's document over the canvas frame: the canvas,
+    // its markup and its chrome stay as they are.
+    // pause: ms after the last redraw; reads: answers kept; ttl: ms an
+    // answer (or a read on its way) counts for.
+    var SD_LINK_MARKS = { pause: 600, reads: 6, ttl: 60000 };
+    // key: the tab `list` is of; list: its canvasMarks(); run: the last
+    // run's { key, tabs, designed, sig }; reads: answers by request, each
+    // { at, read }, order: their requests, oldest first; asking: the
+    // requests on their way, by when they were sent; els: the canvas
+    // elements of `shown`, the list they were found for ({ i, el }), found
+    // again once `dirty` (the list or the canvas changed); drawn: what the
+    // buttons say; layer, doc, area, observer, sizer, raf, resize: the
+    // drawing and what redraws it.
+    var _sdLinkMarks = { timer: 0, key: '', list: [], run: null, reads: {}, order: [], asking: {}, shown: [], els: [], dirty: true, drawn: '', layer: null, doc: null, area: null, observer: null, sizer: null, raf: 0, resize: false };
+
+    function _sdLinkMarksSoon() {
+        clearTimeout(_sdLinkMarks.timer);
+        _sdLinkMarks.timer = setTimeout(_sdLinkMarksRun, SD_LINK_MARKS.pause);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksRun() {
+        var S = _sdLinkMarks;
+        var H = window.PGProtoHotspots;
+        var key = _activeKey;
+        // The Prototype view reads the links itself; its closing runs this.
+        if (_sdProto.open) return;
+        if (!H || typeof H.canvasMarks !== 'function' || !tree || !key) {
+            S.run = null;
+            S.key = '';
+            S.list = [];
+            _sdLinkMarksPlace();
+            return;
+        }
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs.filter(function (t) { return t.key === key; }), _sharedCache);
+        var request = H.canvasRequest(designed);
+        var sig = JSON.stringify(request);
+        var run = S.run = { key: key, tabs: tabs, designed: designed, sig: sig };
+        var kept = S.reads[sig];
+        if (!request.hrefs.length && !request.page_ids.length) {
+            _sdLinkMarksShow(run, {}, true);
+            return;
+        }
+        if (kept && Date.now() - kept.at < SD_LINK_MARKS.ttl) {
+            _sdLinkMarksShow(run, kept.read, true);
+            return;
+        }
+        // Another tab shows its links without a target at once and its
+        // broken ones once the read answers; the same tab keeps its marks
+        // meanwhile.
+        if (S.key !== key) _sdLinkMarksShow(run, {}, false);
+        if (S.asking[sig] && Date.now() - S.asking[sig] < SD_LINK_MARKS.ttl) return;
+        S.asking[sig] = Date.now();
+        var answer = function (read) {
+            delete S.asking[sig];
+            var ok = !!(read && read.status === 'success');
+            if (ok) {
+                if (!S.reads[sig]) S.order.push(sig);
+                S.reads[sig] = { at: Date.now(), read: read };
+                while (S.order.length > SD_LINK_MARKS.reads) delete S.reads[S.order.shift()];
+            }
+            // Without an answer no link is called broken.
+            if (S.run && S.run.sig === sig) _sdLinkMarksShow(S.run, ok ? read : {}, ok);
+        };
+        _pgApiPost('prototype_map', request).then(answer, function () { answer(null); });
+    }
+
+    function _sdLinkMarksShow(run, read, known) {
+        var H = window.PGProtoHotspots;
+        _sdLinkMarks.key = run.key;
+        _sdLinkMarks.list = H.canvasMarks(H.mark(run.designed, read, run.tabs), known);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksPlace() {
+        if (_sdLinkMarks.raf) return;
+        _sdLinkMarks.raf = requestAnimationFrame(function () {
+            _sdLinkMarks.raf = 0;
+            _sdLinkMarksDraw();
+        });
+    }
+
+    // Drawn again when the canvas is drawn, scrolled, zoomed (a style on
+    // its <html>) or resized, and when the editor's window is resized or
+    // the canvas area scrolled.
+    function _sdLinkMarksBind(area) {
+        var S = _sdLinkMarks;
+        if (!S.resize) {
+            S.resize = true;
+            window.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (area !== S.area) {
+            if (S.area) S.area.removeEventListener('scroll', _sdLinkMarksPlace);
+            S.area = area;
+            area.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+        }
+        if (canvasDoc === S.doc) return;
+        if (S.observer) S.observer.disconnect();
+        if (S.sizer) S.sizer.disconnect();
+        S.sizer = null;
+        S.doc = canvasDoc;
+        S.dirty = true;
+        S.observer = new MutationObserver(function () {
+            S.dirty = true;
+            _sdLinkMarksPlace();
+        });
+        S.observer.observe(canvasDoc.body, { childList: true, subtree: true });
+        S.observer.observe(canvasDoc.documentElement, { attributes: true, attributeFilter: ['style'] });
+        var win = canvasDoc.defaultView;
+        if (win) {
+            win.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+            win.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (window.ResizeObserver) {
+            S.sizer = new ResizeObserver(function () { _sdLinkMarksPlace(); });
+            S.sizer.observe(canvasDoc.body);
+            if (win && win.frameElement) S.sizer.observe(win.frameElement);
+        }
+    }
+
+    // The marks of the open tab over the part of the canvas frame the
+    // canvas area shows; none while the Prototype view is open. A mark of
+    // a link being written in is left out. A scroll or a resize measures
+    // the elements found before; the buttons are moved in place while what
+    // they say stays the same, so a focused mark keeps its focus.
+    function _sdLinkMarksDraw() {
+        var S = _sdLinkMarks;
+        var frame = canvasIframe;
+        var area = frame ? frame.closest('.sd-iframe-area') : null;
+        var host = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!S.list.length || S.key !== _activeKey || _sdProto.open || !canvasDoc || !canvasDoc.body || !host) {
+            if (S.layer) S.layer.hidden = true;
+            return;
+        }
+        _sdLinkMarksBind(area);
+        if (!S.layer) {
+            S.layer = document.createElement('div');
+            S.layer.className = 'sd-lm-layer';
+            S.layer.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('[data-lm]') : null;
+                var link = btn ? S.shown[parseInt(btn.getAttribute('data-lm'), 10)] : null;
+                if (link) _sdLinkMarkOpen(link);
+            });
+        }
+        if (S.layer.parentNode !== host) host.appendChild(S.layer);
+        var fr = frame.getBoundingClientRect();
+        var ar = area.getBoundingClientRect();
+        var hr = host.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var w = Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left;
+        var h = Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top;
+        if (w <= 0 || h <= 0) {
+            S.layer.hidden = true;
+            return;
+        }
+        S.layer.hidden = false;
+        S.layer.style.left = (left - hr.left) + 'px';
+        S.layer.style.top = (top - hr.top) + 'px';
+        S.layer.style.width = w + 'px';
+        S.layer.style.height = h + 'px';
+        // getBoundingClientRect() inside the frame answers in the canvas's
+        // CSS pixels: the zoom on its <html> (read as the comment pins read
+        // it) and the Fit scale draw them larger or smaller.
+        var docEl = canvasDoc.documentElement;
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        if (S.dirty || S.shown !== S.list || S.els.some(function (e) { return !e.el.isConnected; })) {
+            S.dirty = false;
+            S.shown = S.list;
+            S.els = [];
+            S.list.forEach(function (link, i) {
+                _sdLinkMarkEls(link).forEach(function (el) { S.els.push({ i: i, el: el }); });
+            });
+        }
+        var marks = [];
+        S.els.forEach(function (e) {
+            if (e.el.isContentEditable) return;
+            var at = _sdLinkMarkAt(e.el.getBoundingClientRect(), fr.left - left, fr.top - top, k, w, h);
+            if (!at) return;
+            var link = S.shown[e.i];
+            var m = SD_PROTO_MARKS[link.mark] || SD_PROTO_MARKS.broken;
+            var says = _sdT('{var:1} “{var:2}”: open its link field', [m.text(), link.label]);
+            var why = link.why ? _sdProtoWhy(link.why) : '';
+            marks.push({ at: at, html: '<button type="button" class="sd-lm sd-lm-' + esc(link.mark) + '" data-lm="' + e.i + '"' +
+                ' title="' + esc(says + (why ? '\n' + why : '')) + '" aria-label="' + esc(says + (why ? '. ' + why : '')) + '">' +
+                '<span class="bi ' + m.icon + '" aria-hidden="true"></span></button>' });
+        });
+        var drawn = marks.map(function (m) { return m.html; }).join('');
+        if (drawn !== S.drawn) {
+            S.drawn = drawn;
+            S.layer.innerHTML = drawn;
+        }
+        marks.forEach(function (m, j) {
+            var btn = S.layer.children[j];
+            btn.style.left = m.at.x + 'px';
+            btn.style.top = m.at.y + 'px';
+        });
+    }
+
+    // Where a mark goes in a `w` x `h` layer: at the right edge of the
+    // link's box `r` (in canvas pixels, drawn `k` times their size, the
+    // canvas's top left at `fx`, `fy`), 10 px under its top or at its
+    // middle when that is higher, kept 9 px inside the layer; null for a
+    // box with no size or out of view.
+    function _sdLinkMarkAt(r, fx, fy, k, w, h) {
+        if (!(r.right > r.left || r.bottom > r.top)) return null;
+        var left = fx + r.left * k;
+        var right = fx + r.right * k;
+        var top = fy + r.top * k;
+        var bottom = fy + r.bottom * k;
+        if (right <= 0 || bottom <= 0 || left >= w || top >= h) return null;
+        var y = top + Math.min(10, (bottom - top) / 2);
+        return { x: Math.round(Math.min(Math.max(right, 9), w - 9)), y: Math.round(Math.min(Math.max(y, 9), h - 9)) };
+    }
+
+    // The node of a mark's link: in the page's tree, or in the tree of the
+    // shared component it belongs to.
+    function _sdLinkMarkNode(link) {
+        var cached = link.sharedId ? _sharedCache[link.sharedId] : null;
+        var root = link.sharedId ? (cached && cached.tree) : tree;
+        return root ? findNodeById(link.nodeId, root) : null;
+    }
+
+    // The canvas elements a link's mark goes on: its node's element, for a
+    // link inside a text that link (_sdLinkNth()); one for each place a
+    // shared component is drawn at; none while its node is not drawn.
+    function _sdLinkMarkEls(link) {
+        var node = _sdLinkMarkNode(link);
+        return node ? _sdIssueWrapsOf(node).map(function (wrap) {
+            var el = _sdWrapEl(wrap) || wrap;
+            return (link.source === 'text') ? (_sdLinkNth(el, link.index, wrap) || el) : el;
+        }) : [];
+    }
+
+    // The nth <a href> inside `el`, counted as htmlLinks() counts a text's
+    // links; the designer's chrome left out and, given `wrap`, the links of
+    // the child nodes drawn in their own wrappers.
+    function _sdLinkNth(el, index, wrap) {
+        var n = 0;
+        var links = el.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            if (wrap && links[i].closest('.sd-wrap') !== wrap) continue;
+            if (links[i].closest(_SD_FX_CHROME)) continue;
+            if (n++ === index) return links[i];
+        }
+        return null;
+    }
+
+    // The link field of the Options panel `panel`: a text's picked link,
+    // the element's own address, the button of a link kept by page id back
+    // to a typed address, or the notice of an address that is bound.
+    function _sdLinkFieldOf(panel) {
+        if (!panel) return null;
+        return panel.querySelector('#sd-inner-href') || panel.querySelector('input[data-prop="href"]') ||
+            panel.querySelector('.sd-bound-href-note [data-sd-page-unlink]') || panel.querySelector('.sd-bound-href-note');
+    }
+
+    // A mark clicked: its link selected (a text's link picked inside the
+    // text), the Options panel shown, a docked one opened, and the link
+    // field drawn (in a closed card or a tab not drawn), shown and focused.
+    function _sdLinkMarkOpen(link) {
+        var node = _sdLinkMarkNode(link);
+        if (!node) return;
+        var path = null;
+        if (link.source === 'text' && _sdTextInnerHost(node) && _sdTextInnerPickable(node)) {
+            var box = document.createElement('div');
+            box.appendChild(_sdIlParse(node.props.text));
+            var a = _sdLinkNth(box, link.index, null);
+            path = a ? _sdTextInnerPathOf(box, a) : null;
+        }
+        _sdTextInnerSelect(node, path);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        _sdRcolShow('options');
+        _sdDockSetOpen('right', true);
+        var find = function () { return _sdLinkFieldOf(document.getElementById('sd-properties')); };
+        var field = find();
+        if (!field || !field.offsetParent) field = _sdOptReveal(find) || field;
+        if (!field) return;
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.classList.add('sd-ctrl-flash');
+        setTimeout(function () { field.classList.remove('sd-ctrl-flash'); }, 1200);
+        field.focus({ preventScroll: true });
     }
 
     // The audit panel: HTML warnings from the tree walk (instant, with a
