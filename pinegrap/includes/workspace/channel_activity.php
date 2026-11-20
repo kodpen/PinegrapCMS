@@ -548,7 +548,7 @@ function ws_channel_activity_js_strings()
         'act_tab_info'        => lang('Info'),
         'act_tab_activity'    => lang('Activity'),
         'act_project'         => ws_js_template('Project: {var:1}', 1),
-        'act_agents'          => lang('Agents'),
+        'act_agents'          => lang('Agents here'),
         'act_asked_by'        => ws_js_template('Asked by {var:1}', 1),
         'act_context'         => ws_js_template('{var:1} of {var:2} tokens', 2),
         'act_requests'        => lang('Requests'),
