@@ -13,7 +13,8 @@
 // the check of a shopper's file against it, placing the file as an
 // attachment in the field's folder, keeping it on the cart line's answer
 // (form_data.file_id), who may open it (get_file.php), and removing it with
-// the line, the unit or the order it belongs to.
+// the line, the unit or the order it belongs to, and the general job's
+// sweep of the files of carts that never became an order.
 //
 // Not in the functions.php manifest: loaded with require_once by the places
 // that need it (the field editor, the cart and order paths, get_file.php).
@@ -22,6 +23,26 @@
 // escape() and PHP itself.
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
+}
+
+// A cart's uploaded files are deleted this many days after its last touch.
+if (!defined('PG_PFU_SWEEP_DAYS')) {
+    define('PG_PFU_SWEEP_DAYS', 30);
+}
+
+// How often a sweep starts, in seconds; one under way carries on every tick.
+if (!defined('PG_PFU_SWEEP_EVERY')) {
+    define('PG_PFU_SWEEP_EVERY', 86400);
+}
+
+// Seconds the sweep may work in one tick of the general job.
+if (!defined('PG_PFU_SWEEP_BUDGET')) {
+    define('PG_PFU_SWEEP_BUDGET', 5);
+}
+
+// Carts read per chunk of the sweep.
+if (!defined('PG_PFU_SWEEP_CHUNK')) {
+    define('PG_PFU_SWEEP_CHUNK', 200);
 }
 
 /**
@@ -578,4 +599,662 @@ function pg_pfu_access_verdict($lines, $viewer)
     }
 
     return false;
+}
+
+/**
+ * A cart's last touch, pure: the newest of the time it was started, its last
+ * change and the newest file uploaded into its answers.
+ *
+ * @param array $cart order_date, last_modified_timestamp, file_touch
+ * @return int unix time, 0 when nothing is known
+ */
+function pg_pfu_sweep_last_touch($cart)
+{
+    return max(
+        0,
+        (int) ($cart['order_date'] ?? 0),
+        (int) ($cart['last_modified_timestamp'] ?? 0),
+        (int) ($cart['file_touch'] ?? 0));
+}
+
+/**
+ * The newest last touch a cart may have for its files to be swept at a
+ * moment: PG_PFU_SWEEP_DAYS before it.
+ *
+ * @param int $now
+ * @return int
+ */
+function pg_pfu_sweep_before($now)
+{
+    return (int) $now - PG_PFU_SWEEP_DAYS * 86400;
+}
+
+/**
+ * Whether a cart's uploaded files are swept, pure: the cart never became an
+ * order (still incomplete) and its last touch is PG_PFU_SWEEP_DAYS days ago
+ * or more. A cart with no known time is kept.
+ *
+ * @param array $cart status, order_date, last_modified_timestamp, file_touch
+ * @param int   $now
+ * @return bool
+ */
+function pg_pfu_sweep_chosen($cart, $now)
+{
+    if ((string) ($cart['status'] ?? '') !== 'incomplete') {
+        return false;
+    }
+
+    $touch = pg_pfu_sweep_last_touch($cart);
+
+    return ($touch > 0) && ($touch <= pg_pfu_sweep_before($now));
+}
+
+/**
+ * The carts of a chunk whose files are swept, pure.
+ *
+ * @param array $carts pg_pfu_sweep_carts_sql() rows
+ * @param int   $now
+ * @return int[] order ids
+ */
+function pg_pfu_sweep_pick($carts, $now)
+{
+    $out = array();
+
+    foreach ((array) $carts as $cart) {
+        $id = (int) ($cart['id'] ?? 0);
+
+        if (($id > 0) && pg_pfu_sweep_chosen($cart, $now) && !in_array($id, $out, true)) {
+            $out[] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The sweep's marker: where a pass under way stands and when the last one
+ * finished.
+ *
+ * @return string
+ */
+function pg_pfu_sweep_marker()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/product_form_upload_sweep.json';
+}
+
+/**
+ * The marker as it is used, pure. Anything unreadable is a sweep that never
+ * ran.
+ *
+ * @param mixed $raw the decoded marker
+ * @return array after_id (int), done_at (int)
+ */
+function pg_pfu_sweep_state($raw)
+{
+    $raw = is_array($raw) ? $raw : array();
+
+    return array(
+        'after_id' => isset($raw['after_id']) ? max(0, (int) $raw['after_id']) : 0,
+        'done_at' => isset($raw['done_at']) ? max(0, (int) $raw['done_at']) : 0,
+    );
+}
+
+/**
+ * Whether a sweep is due at a moment, pure: one is under way, or the last
+ * one finished PG_PFU_SWEEP_EVERY seconds ago or more.
+ *
+ * @param array $state pg_pfu_sweep_state()
+ * @param int   $now
+ * @return bool
+ */
+function pg_pfu_sweep_due_at($state, $now)
+{
+    return ($state['after_id'] > 0) || ($state['done_at'] <= ((int) $now - PG_PFU_SWEEP_EVERY));
+}
+
+/**
+ * Whether the general job runs the sweep on this tick: one read of a small
+ * file.
+ *
+ * @return bool
+ */
+function pg_pfu_sweep_due()
+{
+    return pg_pfu_sweep_due_at(pg_pfu_sweep_state(@json_decode((string) @file_get_contents(pg_pfu_sweep_marker()), true)), time());
+}
+
+/**
+ * The query for the next carts the sweep walks: the orders whose product
+ * form answers hold a file, after the last one done, in order (form_data's
+ * order_id index).
+ *
+ * @param int $after_id
+ * @param int $rows
+ * @return string
+ */
+function pg_pfu_sweep_walk_sql($after_id, $rows)
+{
+    return "SELECT DISTINCT order_id
+        FROM form_data
+        WHERE
+            (order_id > '" . max(0, (int) $after_id) . "')
+            AND (form_id = '0')
+            AND (order_item_id > 0)
+            AND (file_id > 0)
+        ORDER BY order_id
+        LIMIT " . max(1, (int) $rows);
+}
+
+/**
+ * The query for a chunk's carts with what their last touch is made of: the
+ * order's status and times, and the newest file in its answers. An answer
+ * whose order row is gone has no row here and is never swept.
+ *
+ * @param int[] $ids
+ * @return string '' without an id
+ */
+function pg_pfu_sweep_carts_sql($ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), function ($id) { return $id > 0; })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT
+            orders.id,
+            orders.status,
+            orders.order_date,
+            orders.last_modified_timestamp,
+            MAX(files.timestamp) AS file_touch
+        FROM orders
+        LEFT JOIN form_data ON
+            (form_data.order_id = orders.id)
+            AND (form_data.form_id = '0')
+            AND (form_data.order_item_id > 0)
+            AND (form_data.file_id > 0)
+        LEFT JOIN files ON files.id = form_data.file_id
+        WHERE orders.id IN (" . implode(', ', $ids) . ")
+        GROUP BY orders.id, orders.status, orders.order_date, orders.last_modified_timestamp";
+}
+
+/**
+ * The form_data condition of the answers whose files a sweep deletes: the
+ * picked carts' product form answers, while the cart is still incomplete and
+ * still untouched since the cutoff, read again at the delete so a cart that
+ * became an order or came back meanwhile keeps its files.
+ *
+ * @param int[] $ids    pg_pfu_sweep_pick()
+ * @param int   $before pg_pfu_sweep_before()
+ * @return string '' without an id
+ */
+function pg_pfu_sweep_where($ids, $before)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), function ($id) { return $id > 0; })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    $before = (int) $before;
+
+    return "(form_data.order_item_id > 0) AND form_data.order_id IN (
+            SELECT orders.id
+            FROM orders
+            WHERE
+                (orders.id IN (" . implode(', ', $ids) . "))
+                AND (orders.status = 'incomplete')
+                AND (orders.last_modified_timestamp <= '" . $before . "')
+                AND (orders.order_date <= '" . $before . "'))";
+}
+
+/**
+ * Sweeps the uploaded files of carts that never became an order,
+ * PG_PFU_SWEEP_DAYS days after their last touch, for the general job: a
+ * chunk of carts at a time until the time is up, the place kept in the
+ * marker so the next tick carries on. Files go through
+ * pg_pfu_remove_files_where(), so a file another answer still holds stays;
+ * the swept answers then lose their file, so a required file is asked for
+ * again if the shopper comes back. An order is never swept.
+ *
+ * @param int $seconds
+ * @return array state (skipped, more, done), carts, files
+ */
+function pg_pfu_sweep_run($seconds)
+{
+    $result = array('state' => 'skipped', 'carts' => 0, 'files' => 0);
+
+    if (!class_exists('db', false) || empty(db::$con)) {
+        return $result;
+    }
+
+    $marker = pg_pfu_sweep_marker();
+    $state = pg_pfu_sweep_state(@json_decode((string) @file_get_contents($marker), true));
+    $now = time();
+    $before = pg_pfu_sweep_before($now);
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $result['state'] = 'more';
+
+    while (microtime(true) < $deadline) {
+        // A failed read ends the tick without marking the pass done.
+        $walk = @mysqli_query(db::$con, pg_pfu_sweep_walk_sql($state['after_id'], PG_PFU_SWEEP_CHUNK));
+
+        if (!$walk) {
+            break;
+        }
+
+        $ids = array();
+
+        while ($row = mysqli_fetch_row($walk)) {
+            $ids[] = (int) $row[0];
+        }
+
+        if (!$ids) {
+            $state = array('after_id' => 0, 'done_at' => $now);
+            $result['state'] = 'done';
+            break;
+        }
+
+        $carts_result = @mysqli_query(db::$con, pg_pfu_sweep_carts_sql($ids));
+
+        if (!$carts_result) {
+            break;
+        }
+
+        $carts = array();
+
+        while ($row = mysqli_fetch_assoc($carts_result)) {
+            $carts[] = $row;
+        }
+
+        $picked = pg_pfu_sweep_pick($carts, $now);
+
+        if ($picked) {
+            $where = pg_pfu_sweep_where($picked, $before);
+            $result['files'] += pg_pfu_remove_files_where($where);
+
+            // The answers stay with their cart; the file they named is gone.
+            db("UPDATE form_data
+                SET file_id = '0', data = ''
+                WHERE
+                    (form_data.form_id = '0')
+                    AND (form_data.file_id > 0)
+                    AND (" . $where . ")
+                    AND NOT EXISTS (SELECT 1 FROM files WHERE files.id = form_data.file_id)");
+
+            $result['carts'] += count($picked);
+        }
+
+        $state['after_id'] = max($ids);
+    }
+
+    @file_put_contents($marker, json_encode($state), LOCK_EX);
+
+    return $result;
+}
+
+/**
+ * The name of the check that removes a kept file: the field's control name
+ * with "_remove". The cart's answer pattern ends at the field id, so the
+ * check is never read as an answer of its own.
+ *
+ * @param string $control_name order_item_<id>_quantity_number_<n>_form_field_<id>
+ * @return string
+ */
+function pg_pfu_remove_name($control_name)
+{
+    return (string) $control_name . '_remove';
+}
+
+/**
+ * What a cart save does with a unit's File Upload answer: refuse the file
+ * sent (the refusal says why), place a new one, remove the kept one (the
+ * check ticked, no new file) or keep what is stored (nothing sent, the
+ * page from before multipart, or a hand-made list of files).
+ *
+ * @param mixed  $upload  one $_FILES entry, or null
+ * @param bool   $remove  the Remove check was ticked
+ * @param string $refusal pg_pfu_file_refusal()
+ * @return string refuse, place, remove or keep
+ */
+function pg_pfu_cart_file_step($upload, $remove, $refusal)
+{
+    if ((string) $refusal !== '') {
+        return 'refuse';
+    }
+
+    if (is_array($upload) && isset($upload['error']) && is_scalar($upload['error'])
+        && ((int) $upload['error'] === UPLOAD_ERR_OK) && is_scalar($upload['tmp_name'] ?? null) && ((string) $upload['tmp_name'] !== '')) {
+        return 'place';
+    }
+
+    return $remove ? 'remove' : 'keep';
+}
+
+/**
+ * Whether a unit number belongs to a cart line: 1 to its quantity for a form
+ * per unit, only 1 for a form per product. A line so holds at most its
+ * quantity times its file fields.
+ *
+ * @param int    $quantity_number
+ * @param int    $quantity           order_items.quantity
+ * @param string $form_quantity_type products.form_quantity_type
+ * @return bool
+ */
+function pg_pfu_unit_in_line($quantity_number, $quantity, $form_quantity_type)
+{
+    $quantity_number = (int) $quantity_number;
+    $units = ((string) $form_quantity_type === 'One Form per Quantity') ? (int) $quantity : min(1, (int) $quantity);
+
+    return ($quantity_number >= 1) && ($quantity_number <= $units);
+}
+
+/**
+ * A kept file as the cart shows it: its name, size, address and, for an
+ * image, the same address for the preview. Empty when the answer holds no
+ * file (an answer saved as text before uploads were stored has no file_id).
+ *
+ * @param array  $answer form_data file_id, data (the file name) and file_size (files.size)
+ * @param string $path   the site's path (PATH)
+ * @return array name, size (text, '' when not known), url, image_url
+ */
+function pg_pfu_kept_file($answer, $path)
+{
+    $name = pg_basename(str_replace('\\', '/', (string) ($answer['data'] ?? '')));
+
+    if (((int) ($answer['file_id'] ?? 0) <= 0) || ($name === '')) {
+        return array();
+    }
+
+    $size = (int) ($answer['file_size'] ?? 0);
+    $url = (string) $path . encode_url_path($name);
+    $dot = mb_strrpos($name, '.');
+    $extension = ($dot === false) ? '' : mb_strtolower(mb_substr($name, $dot + 1));
+
+    return array(
+        'name' => $name,
+        'size' => ($size > 0) ? convert_bytes_to_string($size, 'auto') : '',
+        'url' => $url,
+        'image_url' => in_array($extension, pg_pfu_image_extensions(), true) ? $url : '',
+    );
+}
+
+/**
+ * How many files one visitor may send to the cart in an hour (U7).
+ *
+ * @return int
+ */
+function pg_pfu_upload_rate_limit()
+{
+    return 60;
+}
+
+/**
+ * Whether the visitor has sent more files to the cart than the hour allows;
+ * each call counts one file. Without the firewall's counters nothing is
+ * counted.
+ *
+ * @return bool
+ */
+function pg_pfu_upload_rate_exceeded()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+        return false;
+    }
+
+    return waf_rate_exceeded(waf_ip_subject(waf_client_ip()), 'pfu_upload', pg_pfu_upload_rate_limit(), 3600);
+}
+
+/**
+ * Removes a unit's File Upload answer and its file (the Remove check).
+ *
+ * @param int $order_item_id
+ * @param int $quantity_number
+ * @param int $field_id
+ */
+function pg_pfu_remove_unit_answer($order_item_id, $quantity_number, $field_id)
+{
+    $where = "(form_data.order_item_id = '" . (int) $order_item_id . "') AND (form_data.order_item_id != '0')"
+        . " AND (form_data.form_id = '0') AND (form_data.form_field_id = '" . (int) $field_id . "')"
+        . " AND (form_data.quantity_number = '" . (int) $quantity_number . "')";
+
+    pg_pfu_remove_files_where($where);
+    db("DELETE FROM form_data WHERE " . $where);
+}
+
+/**
+ * Removes the files, and the File Upload answers holding them, of a line's
+ * units above its new quantity: the cart calls it when a quantity is
+ * lowered, so a raised quantity never shows a file that is gone.
+ *
+ * @param int $order_item_id
+ * @param int $quantity the line's new quantity
+ */
+function pg_pfu_drop_units_above($order_item_id, $quantity)
+{
+    $order_item_id = (int) $order_item_id;
+
+    if ($order_item_id <= 0) {
+        return;
+    }
+
+    pg_pfu_remove_unit_files($order_item_id, $quantity);
+    db("DELETE FROM form_data WHERE (order_item_id = '" . $order_item_id . "') AND (form_id = '0')"
+        . " AND (file_id > 0) AND (quantity_number > '" . max(0, (int) $quantity) . "')");
+}
+
+/**
+ * A cart save of one unit's File Upload answer (the designer cart and express
+ * order widgets, cart_action.php): the file sent is checked against the
+ * field's rule and placed, the kept one stays when none comes, the Remove
+ * check removes it.
+ *
+ * @param int        $order_id
+ * @param int        $order_item_id
+ * @param int        $quantity_number
+ * @param array      $field  form_fields id, name, upload_folder_id, rules
+ * @param array|null $upload the control's $_FILES entry
+ * @param bool       $remove the Remove check was ticked
+ * @return string why the file was refused, as text ('' when saved or kept)
+ */
+function pg_pfu_cart_save($order_id, $order_item_id, $quantity_number, $field, $upload, $remove)
+{
+    $limits = pg_upload_limits();
+    $refusal = pg_pfu_file_refusal($upload, pg_pfu_rule_clean($field['rules'] ?? null), (int) $limits['file_max']);
+    $step = pg_pfu_cart_file_step($upload, $remove, $refusal);
+
+    if ($step === 'refuse') {
+        return $refusal;
+    }
+
+    if ($step === 'remove') {
+        pg_pfu_remove_unit_answer($order_item_id, $quantity_number, (int) $field['id']);
+    }
+
+    if ($step !== 'place') {
+        return '';
+    }
+
+    $sent = pg_basename(str_replace('\\', '/', is_scalar($upload['name'] ?? null) ? (string) $upload['name'] : ''));
+
+    if (pg_pfu_upload_rate_exceeded()) {
+        return lang(array('string' => '{var:1} was not saved: too many files were sent from your connection. Please try again later.', 'vars' => array($sent)));
+    }
+
+    $file = ((int) ($field['upload_folder_id'] ?? 0) > 0)
+        ? pg_pfu_place($upload, (int) $field['upload_folder_id'], defined('USER_ID') ? (int) USER_ID : 0)
+        : false;
+
+    if (!$file) {
+        return lang(array('string' => 'The server could not accept {var:1}. Please try again.', 'vars' => array($sent)));
+    }
+
+    pg_pfu_keep($order_id, $order_item_id, $quantity_number, $field, $file);
+
+    return '';
+}
+
+/**
+ * What a product form answer shows in a list or an export: the name of the
+ * file it holds, else its own text (a file deleted from Files since keeps
+ * the name the answer was given). Pure.
+ *
+ * @param string      $data      form_data.data
+ * @param string|null $file_name files.name of form_data.file_id, null for none
+ * @return string
+ */
+function pg_pfu_answer_text($data, $file_name)
+{
+    return (($file_name !== null) && ((string) $file_name !== '')) ? (string) $file_name : (string) $data;
+}
+
+/**
+ * The product form field a submit-form value names for a File Upload field:
+ * a value that is one variable alone (^^photo^^) names that field; anything
+ * else names none. Pure.
+ *
+ * @param string $value product_submit_form_fields.value
+ * @return string the field's name, '' for none
+ */
+function pg_pfu_submit_form_source_name($value)
+{
+    return preg_match('/^\s*\^\^([^\^]+)\^\^\s*$/', (string) $value, $match) ? trim($match[1]) : '';
+}
+
+/**
+ * The file a submit-form value takes from a unit's product form answers:
+ * the file of the answer whose field the value names, matched without case
+ * as variables are; 0 for none. Pure.
+ *
+ * @param string $value   product_submit_form_fields.value
+ * @param array  $answers the unit's answers: name, file_id
+ * @return int
+ */
+function pg_pfu_submit_form_file_id($value, $answers)
+{
+    $name = mb_strtolower(pg_pfu_submit_form_source_name($value));
+
+    if ($name === '') {
+        return 0;
+    }
+
+    foreach ((array) $answers as $answer) {
+        if ((mb_strtolower(trim((string) ($answer['name'] ?? ''))) === $name) && ((int) ($answer['file_id'] ?? 0) > 0)) {
+            return (int) $answer['file_id'];
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Copies a file into a folder as a file of its own: a new unique name, its
+ * bytes copied (from storage when they are not on this disk), and a files
+ * row marked as an attachment. Deleting either copy never takes the other.
+ * Nothing is left behind when the copy fails.
+ *
+ * @param int $file_id
+ * @param int $folder_id the destination field's upload_folder_id
+ * @param int $user_id   files.user of the copy
+ * @return array|false id, name, size
+ */
+function pg_pfu_copy_file($file_id, $folder_id, $user_id = 0)
+{
+    $source = db_item("SELECT name, type FROM files WHERE id = '" . (int) $file_id . "'");
+
+    if (empty($source['name']) || ((int) $folder_id <= 0)) {
+        return false;
+    }
+
+    $path = function_exists('pg_file_reader_path') ? pg_file_reader_path($source['name']) : FILE_DIRECTORY_PATH . '/' . $source['name'];
+
+    if (($path === '') || !is_file($path)) {
+        return false;
+    }
+
+    $name = get_unique_name(array('name' => $source['name'], 'type' => 'file'));
+    $destination = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!@copy($path, $destination)) {
+        @unlink($destination);
+
+        return false;
+    }
+
+    $size = (int) @filesize($destination);
+
+    $result = db_q(
+        "INSERT INTO files (name, folder, type, size, user, design, attachment, timestamp)
+        VALUES (?, ?, ?, ?, ?, '0', '1', UNIX_TIMESTAMP())",
+        array($name, (string) (int) $folder_id, (string) $source['type'], (string) $size, (string) (int) $user_id));
+
+    if ($result === false) {
+        @unlink($destination);
+
+        return false;
+    }
+
+    return array('id' => (int) mysqli_insert_id(db::$con), 'name' => $name, 'size' => $size);
+}
+
+/**
+ * Gives a submitted form created at order completion the file a unit's
+ * product form answer holds: a copy of its own in the form field's folder,
+ * as the field's answer. Does nothing when the value names no answer with a
+ * file or the copy fails.
+ *
+ * @param int    $form_id         the new submitted form
+ * @param array  $field           the form's File Upload field: form_field_id, name, upload_folder_id
+ * @param string $value           product_submit_form_fields.value (^^field^^)
+ * @param int    $order_item_id
+ * @param int    $quantity_number the unit whose product form fills the form, 0 for none
+ * @param int    $user_id         the order's user, files.user of the copy
+ * @return bool whether a file was given
+ */
+function pg_pfu_copy_to_submission($form_id, $field, $value, $order_item_id, $quantity_number, $user_id = 0)
+{
+    if (((int) $form_id <= 0) || ((int) $order_item_id <= 0) || ((int) $quantity_number <= 0)) {
+        return false;
+    }
+
+    $answers = db_items(
+        "SELECT " . pg_form_data_name_sql() . " AS name, form_data.file_id
+        FROM form_data
+        WHERE
+            (form_data.order_item_id = '" . (int) $order_item_id . "')
+            AND (form_data.form_id = '0')
+            AND (form_data.quantity_number = '" . (int) $quantity_number . "')
+            AND (form_data.file_id > 0)
+        ORDER BY form_data.id ASC");
+
+    $file_id = pg_pfu_submit_form_file_id($value, (array) $answers);
+
+    if ($file_id <= 0) {
+        return false;
+    }
+
+    $copy = pg_pfu_copy_file($file_id, (int) ($field['upload_folder_id'] ?? 0), $user_id);
+
+    if ($copy === false) {
+        return false;
+    }
+
+    $saved = db_q(
+        "INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+        VALUES (?, ?, ?, ?, ?, 'standard')",
+        array(
+            (string) (int) $form_id,
+            (string) (int) $field['form_field_id'],
+            (string) $copy['id'],
+            (string) $copy['name'],
+            (string) ($field['name'] ?? '')));
+
+    if ($saved === false) {
+        db("DELETE FROM files WHERE id = '" . (int) $copy['id'] . "'");
+        pg_pfu_unlink_files(array($copy['name']), FILE_DIRECTORY_PATH);
+
+        return false;
+    }
+
+    return true;
 }

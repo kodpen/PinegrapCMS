@@ -374,6 +374,7 @@
 - designer-content-roles-translations.md: What a content-level editor (manager, user) may do with translations and drafts in the designer: the Translate section, translations_action.php limits for role 3, a text's page scope, draft state.
 - designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome. [decision: here]
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
+- designer-corner-box.md: Style › Border and corner's corners as one drawing (DP7b, #10633): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.

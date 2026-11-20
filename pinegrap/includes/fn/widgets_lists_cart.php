@@ -150,6 +150,12 @@ function pg_sw_list_cart_sources()
                 array('__field_multiple', lang('Several choices (1 or empty)')),
                 array('__field_options_html', lang('Choices of the pick list (HTML)')),
                 array('__field_file', lang('Current file')),
+                array('__field_file_size', lang('Size of the current file')),
+                array('__field_file_url', lang('Address of the current file')),
+                array('__field_file_image', lang('Preview of the current file (an image\'s address, or empty)')),
+                array('__field_file_remove', lang('Name of the Remove check of the current file')),
+                array('__field_control_required', lang('The control is required (1 or empty; not with a kept file)')),
+                array('__field_error', lang('Message of the last save')),
             ),
         ),
         // The choices of a radio button or check box field, each a control.
@@ -254,6 +260,12 @@ function pg_sw_list_cart_form_rows($items)
                     '__field_multiple'     => $f['multiple'] ? '1' : '',
                     '__field_options_html' => ($f['kind'] === 'select') ? _pg_cart_item_form_options_html($f) : '',
                     '__field_file'         => $f['file'],
+                    '__field_file_size'    => isset($f['file_size']) ? (string)$f['file_size'] : '',
+                    '__field_file_url'     => isset($f['file_url']) ? (string)$f['file_url'] : '',
+                    '__field_file_image'   => isset($f['file_image_url']) ? (string)$f['file_image_url'] : '',
+                    '__field_file_remove'  => isset($f['file_remove']) ? (string)$f['file_remove'] : '',
+                    '__field_control_required' => !empty($f['control_required']) ? '1' : '',
+                    '__field_error'        => isset($f['error']) ? (string)$f['error'] : '',
                 );
                 if ($f['kind'] !== 'choice') continue;
                 foreach ($f['options'] as $opt) {

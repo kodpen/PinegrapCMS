@@ -29,10 +29,8 @@ description: Flow e-mail box to a contact group (post-digest DG2): one campaign 
 ## What did the bug hunt find? (architect, agent channel message 10214, 2026-11-20)
 - Fixed: the two above, and a record's summary cut so 50 records fit (`workspace-flows-records-window.md`).
 - Read clean: one campaign per run (a box that stops half way fails, never runs twice), none at count 0, Try mails only the trier, a deleted group refused at each run, opt-in for marketing.
-- A box's BCC is not given to the group's campaign: a `bug` issue (the PR names it).
+- A box's BCC was not given to the group's campaign, without a word: settled in `workspace-flows-email-group-canvas.md` (#10605).
 
 ## What is not verified?
 - No run on a database.
-
-## Canvas? (#10176)
-- `emailFields()` offers "A contact group" while `FL.steps.mail_groups` (`ws_flow_mail_groups()`: every group, role below 3) is not empty or the box writes to one; `emailGroupFields()`: group, why, "Records drawn after the text" (the flow's `list_records` boxes or none). The box's line: `mailGroupMeta()`.
+- Its fields on the canvas and the BCC rule: `workspace-flows-email-group-canvas.md`.

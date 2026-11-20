@@ -179,7 +179,10 @@ function pg_review_refusal($signed_in, $bought, $free_order_id)
  * Whether this person may review the item now, and the order that lets them.
  *
  * The order is the newest of theirs that holds the item, is bought (see
- * pg_review_bought_sql()) and that no review of the item names yet.
+ * pg_review_bought_sql()) and that no review of the item names yet. An order
+ * whose lines of the item were all returned and refunded is no purchase
+ * (pg_review_order_item_stands_sql()): a review written from it would hide at
+ * once, so it opens none.
  *
  * @param int        $user_id   the signed-in person, 0 for a visitor
  * @param string     $item_type comments.item_type
@@ -206,7 +209,7 @@ function pg_review_eligibility($user_id, $item_type, $item_id)
         WHERE
             (orders.user_id = '" . $user_id . "')
             AND " . pg_review_bought_sql() . "
-            AND EXISTS (SELECT 1 FROM order_items WHERE (order_items.order_id = orders.id) AND " . $lines . ")
+            AND " . pg_review_order_item_stands_sql($item_type, $item_id, pg_review_returns_ready()) . "
         ORDER BY orders.order_date DESC, orders.id DESC");
 
     $free = 0;
@@ -252,6 +255,47 @@ function pg_review_returns_ready()
 }
 
 /**
+ * The SQL subquery of how much of an order_items line was returned and
+ * refunded: a return counts once its money went back (refunded_at > 0, which
+ * a refund the payment service refused clears, and a return closed after its
+ * refund keeps).
+ *
+ * @return string
+ */
+function pg_review_refunded_quantity_sql()
+{
+    return "SELECT COALESCE(SUM(order_return_items.quantity), 0)
+                FROM order_return_items
+                JOIN order_returns ON order_returns.id = order_return_items.return_id
+                WHERE (order_return_items.order_item_id = order_items.id) AND (order_returns.refunded_at > 0)";
+}
+
+/**
+ * The SQL condition an orders row meets while its purchase of the item
+ * stands: it holds a bought line of the item (pg_review_item_lines_sql())
+ * and, with the returns tables, one whose quantity no refunded return took
+ * back in whole. The review form asks it, as pg_review_purchase_stands_sql()
+ * hides a review whose purchase fell away.
+ *
+ * @param string     $item_type 'product' or 'product_group'
+ * @param int|string $item_id
+ * @param bool       $returns   whether the returns tables exist (pg_review_returns_ready())
+ * @return string '' for any other item type
+ */
+function pg_review_order_item_stands_sql($item_type, $item_id, $returns)
+{
+    $lines = pg_review_item_lines_sql($item_type, $item_id);
+
+    if ($lines === '') {
+        return '';
+    }
+
+    $kept = $returns ? " AND (order_items.quantity > (" . pg_review_refunded_quantity_sql() . "))" : '';
+
+    return "EXISTS (SELECT 1 FROM order_items WHERE (order_items.order_id = orders.id) AND " . $lines . $kept . ")";
+}
+
+/**
  * The SQL condition a comment meets while it is a verified review whose
  * purchase still stands. Its order (comments.verified_order_id) is bought
  * (pg_review_bought_sql()): a cancelled order hides the review until it is
@@ -268,10 +312,7 @@ function pg_review_returns_ready()
  */
 function pg_review_purchase_stands_sql($returns)
 {
-    $refunded = "SELECT COALESCE(SUM(order_return_items.quantity), 0)
-                FROM order_return_items
-                JOIN order_returns ON order_returns.id = order_return_items.return_id
-                WHERE (order_return_items.order_item_id = order_items.id) AND (order_returns.refunded_at > 0)";
+    $refunded = pg_review_refunded_quantity_sql();
 
     $lines = "(order_items.order_id = orders.id)
                 AND (order_items.saved_for_later = 0)

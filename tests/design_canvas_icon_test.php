@@ -62,7 +62,7 @@ function test_design_canvas_icon_reaches_its_places()
 	pg_assert_contains("'canvas_icon'  => pg_design_canvas_icon_one_colour(),", $screen, 'Workspace gets the one-colour form');
 
 	$workspace = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
-	pg_assert_same(2, substr_count($workspace, "'pg-design-canvas', "), 'both New canvas entries use it');
+	pg_assert_same(2, preg_match_all("/'pg-design-canvas', (label: )?t\\('canvas_new'\\)/", $workspace), 'both New canvas entries use it');
 	pg_assert_false(strpos($workspace, "'bi-easel', t('canvas_new')") !== false, 'no easel glyph left on New canvas');
 }
 
@@ -124,4 +124,36 @@ function test_design_canvas_icon_on_the_buttons_that_open_the_canvas()
 
 	$guest_css = file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/workspace_guest.css');
 	pg_assert_contains(".pg-guest-canvas-wait .pg-dc-mono .pg-mi-2,\n.pg-guest-canvas-wait .pg-dc-mono .pg-mi-at {\n  fill: none;", $guest_css, 'the guest page drops the tint itself');
+}
+
+function test_design_canvas_icon_on_the_remaining_buttons()
+{
+	$config = pg_image_editor_config();
+	pg_assert_same(pg_design_canvas_icon_one_colour(''), $config['canvasIcon'], 'the canvas config carries the one-colour form beside brandIcon');
+
+	// File Manager: New image in the New menu and the context menu.
+	$folders = file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+	pg_assert_contains("id=\"new_image_button\"><?php echo pg_design_canvas_icon_one_colour('me-3') . lang('New image'); ?>", $folders, 'the New menu draws it on New image');
+	pg_assert_contains("menuItem(L.image_editor_icon, L.new_image, 'new_image_link', !actions.image)", $folders, 'the context menu draws it on New image');
+	pg_assert_false(strpos($folders, 'bi-easel') !== false, 'no easel glyph left in the File Manager');
+
+	// Translations: the queue row's Edit in the Artifact Canvas; the picture chip keeps bi-image.
+	$translations = file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+	pg_assert_contains("'\">' . pg_design_canvas_icon_one_colour('') . lang('Edit in the Artifact Canvas')", $translations, 'the queue row draws it');
+	pg_assert_contains('<i class="bi bi-image me-1" aria-hidden="true"></i>', $translations, 'the picture chip keeps its picture glyph');
+
+	// Channels: Edit image on a message's picture (channel and thread menus), Edit the picture on a note's canvas.
+	$workspace = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_same(2, substr_count($workspace, "items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send')"), 'both message menus use it');
+	pg_assert_contains("return doc ? { icon: icon('pg-design-canvas'), label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;", $workspace, 'a note\'s canvas picture uses it');
+	pg_assert_contains('go.appendChild(offered.icon);', file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js'), 'the note\'s media action takes a drawn icon');
+
+	// Page Design Studio: three buttons and two menu entries, from the canvas's config.
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("return (cfg && cfg.canvasIcon) || '<i class=\"bi bi-brush\" aria-hidden=\"true\"></i>';", $designer, 'the designer reads it from the canvas config');
+	pg_assert_same(3, substr_count($designer, "title=\"' + esc(_sdT('Edit the image in the Artifact Canvas')) + '\"") , 'three buttons say where they open');
+	pg_assert_same(3, substr_count($designer, "\">' + _sdCanvasIcon() + '</button>'"), 'the three buttons draw it');
+	pg_assert_same(2, substr_count($designer, "iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image')"), 'both Edit Image entries');
+	pg_assert_false(strpos($designer, "icon: 'bi-brush', label: _sdT('Edit Image')") !== false, 'no brush glyph left on Edit Image');
+	pg_assert_contains('.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css'), 'the designer sizes it and drops the tint itself');
 }

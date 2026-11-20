@@ -27,7 +27,9 @@
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
+- bug-hunt-customer-reviews.md: Bug hunt of the store's customer reviews (architect, agent channel message 10333, 2026-11-20): the fault fixed, the issue opened, what was read clean
 - bug-hunt-mail-sending.md: Bug hunt of Site Settings › E-mail sending (architect, agent channel message 10151, 2026-11-20): the five faults fixed, the issue opened, what was read clean
+- bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
@@ -135,6 +137,7 @@
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 - decisions-made-product-81.md: Decisions list, product part 81 (2026-11-20 on): the Google Cloud Translation key moves to its own Connections page (the reading of polls 146, 147 and 149); each order's net profit
+- decisions-made-product-82.md: Decisions list, product part 82 (2026-11-20 on): a referred friend is known by account and folded e-mail together; no address match in the self check; a reward met by a busy lock is tried again
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits

@@ -1909,6 +1909,32 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-spb-size.is-has { color: var(--sd-text-muted); }
 .sd-spb-size.is-on { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-spb-size:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
+/* The corners (Style › Border and corner, the same part): a side's number
+   on each edge, the all-corners value in the shape's middle, each corner
+   numbered and drawn with the radius the browser gives it. */
+.sd-rdb-host:empty { min-height: 104px; }
+.sd-rdb {
+    position: relative; padding: 24px 34px; border-radius: 12px; font-size: 11.5px;
+    border: 1px dashed var(--sd-border-strong); background: color-mix(in srgb, var(--sd-text) 3%, transparent);
+}
+.sd-rdb-shape {
+    height: 52px; display: grid; place-items: center; background: var(--sd-input-bg);
+    border: 1.5px solid var(--sd-accent-line);
+    border-top-left-radius: var(--sd-rdb-ts, 3px); border-top-right-radius: var(--sd-rdb-te, 3px);
+    border-bottom-right-radius: var(--sd-rdb-be, 3px); border-bottom-left-radius: var(--sd-rdb-bs, 3px);
+}
+.sd-rdb-shape > .sd-rdb-all { position: relative; }
+.sd-rdb-c {
+    position: absolute; font-size: 9.5px; font-weight: 650; line-height: 1; color: var(--sd-text-muted);
+    pointer-events: none;
+}
+.sd-rdb-ts { top: 6px; left: 9px; }
+.sd-rdb-te { top: 6px; right: 9px; }
+.sd-rdb-be { bottom: 6px; right: 9px; }
+.sd-rdb-bs { bottom: 6px; left: 9px; }
+@container (max-width: 230px) {
+    .sd-rdb { padding-left: 27px; padding-right: 27px; }
+}
 
 /* ── Attributes column (bottom panel, right) ── */
 .sd-bp-attrs-col {
@@ -2174,6 +2200,19 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-tree-ctx-item:hover { background: rgba(var(--sd-accent-rgb), .1); }
 .sd-tree-ctx-item .bi { font-size: .78rem; opacity: .8; }
+/* The Artifact Canvas's own icon in one colour (pgImageEditorConfig.canvasIcon)
+   on the buttons that open it: this screen has no backend.css, so it sizes it
+   and drops the tint here; its lines take the text colour, as the .bi glyphs
+   beside it. */
+.pg-mi.pg-dc-mono {
+    flex: none;
+    width: 1.15em; height: 1.15em;
+    overflow: visible;
+    vertical-align: -0.2em;
+}
+.pg-mi.pg-dc-mono .pg-mi-2,
+.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }
+.sd-tree-ctx-item .pg-dc-mono { font-size: .78rem; opacity: .8; }
 .sd-tree-ctx-danger:hover { background: color-mix(in srgb, var(--sd-danger) 13%, transparent) !important; color: var(--sd-danger); }
 .sd-tree-ctx-sep { border-top: 1px solid var(--sd-panel-border); margin: 3px 0; }
 .sd-tree-ctx-label-wrap { padding: 5px 12px 9px; }

@@ -3617,12 +3617,15 @@ function _pg_cart_item_form($order_item_id, $product_id, $quantity, $product_nam
     );
     if (!$fields) return array();
 
-    // Pre-load existing form_data so we can pre-fill INPUT values on render.
+    // Pre-load existing form_data so we can pre-fill INPUT values on render;
+    // an upload's answer brings its file's size.
     $existing = db_items(
-        "SELECT form_field_id, data, type AS data_type, quantity_number
+        "SELECT form_data.form_field_id, form_data.data, form_data.type AS data_type, form_data.quantity_number,
+                form_data.file_id, files.size AS file_size
          FROM form_data
-         WHERE order_item_id = '" . (int)$order_item_id . "'
-         ORDER BY quantity_number ASC, id ASC"
+         LEFT JOIN files ON (files.id = form_data.file_id) AND (form_data.file_id > 0)
+         WHERE form_data.order_item_id = '" . (int)$order_item_id . "'
+         ORDER BY form_data.quantity_number ASC, form_data.id ASC"
     );
 
     // Pre-load options for pick-list / radio / checkbox fields.
@@ -3675,10 +3678,15 @@ function _pg_cart_item_form($order_item_id, $product_id, $quantity, $product_nam
 // file), label, info, required, name and id as cart_action.php reads them,
 // type (an input's, a choice's radio or checkbox), value as its control
 // takes it (a stored date in the control's shape), maxlength, rows, cols,
-// multiple, options (label, value, selected, id, name) and the stored file
-// name of an upload. Pure: the cart's part and the old block read it.
+// multiple, options (label, value, selected, id, name), control_required
+// (required, but not for an upload whose file is kept), error (the save's
+// message, _pg_cart_item_form_mark_errors()) and an upload's kept file:
+// file (its name), file_size, file_url, file_image_url (an image's preview),
+// file_remove (the name of its Remove check). A stored answer without a
+// file_id keeps no file. Pure: the cart's part and the old block read it.
 function _pg_cart_item_form_blocks($order_item_id, $fields, $existing, $options_by_field, $quantity, $form_qty_type, $legend)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
     $order_item_id = (int)$order_item_id;
     $by_q = array();
     foreach ((array)$existing as $r) {
@@ -3712,11 +3720,16 @@ function _pg_cart_item_form_blocks($order_item_id, $fields, $existing, $options_
             $multiple = ($kind === 'select' && !empty($f['multiple']));
             $name = 'order_item_' . $order_item_id . '_quantity_number_' . $q . '_form_field_' . $fid;
             $id   = 'pgCif_' . $order_item_id . '_q' . $q . '_f' . $fid;
+            $kept = ($kind === 'file' && $row) ? pg_pfu_kept_file($row, defined('PATH') ? PATH : '/') : array();
+            $required = !empty($f['required']) && $kind !== 'info';
             $field = array(
                 'kind'      => $kind,
                 'label'     => (string)$f['label'],
                 'info'      => ($kind === 'info') ? (string)$f['information'] : '',
-                'required'  => !empty($f['required']) && $kind !== 'info',
+                'required'  => $required,
+                // A kept file answers a required upload: the browser does not
+                // ask for another.
+                'control_required' => $required && !$kept,
                 'name'      => $name . (($multiple || $type === 'check box') ? '[]' : ''),
                 'id'        => $id,
                 'type'      => ($kind === 'choice') ? (($type === 'check box') ? 'checkbox' : 'radio')
@@ -3730,7 +3743,12 @@ function _pg_cart_item_form_blocks($order_item_id, $fields, $existing, $options_
                 'cols'      => ($kind === 'textarea') ? max(1, (int)$f['cols_']) : 0,
                 'multiple'  => $multiple,
                 'options'   => array(),
-                'file'      => ($kind === 'file') ? $val_for_input : '',
+                'file'      => $kept ? $kept['name'] : '',
+                'file_size' => $kept ? $kept['size'] : '',
+                'file_url'  => $kept ? $kept['url'] : '',
+                'file_image_url' => $kept ? $kept['image_url'] : '',
+                'file_remove' => $kept ? pg_pfu_remove_name($name) : '',
+                'error'     => '',
             );
             if ($kind === 'select' || $kind === 'choice') {
                 // A check box group stores its ticks comma- or pipe-separated.
@@ -3793,7 +3811,7 @@ function _pg_render_cart_item_form_html($order_item_id, $blocks, $cart_form_id =
                 continue;
             }
             $req      = $f['required'] ? ' <span class="text-danger">*</span>' : '';
-            $req_attr = $f['required'] ? ' required' : '';
+            $req_attr = !empty($f['control_required']) ? ' required' : '';
             $maxl     = $f['maxlength'] > 0 ? ' maxlength="' . (int)$f['maxlength'] . '"' : '';
 
             $out .= '<div class="mb-3">';
@@ -3827,13 +3845,18 @@ function _pg_render_cart_item_form_html($order_item_id, $blocks, $cart_form_id =
                 $out .= '<input type="file" name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
                       . ' class="form-control"'
                       . $form_attr . $req_attr . '>';
-                if ($f['file'] !== '') {
-                    $out .= '<div class="form-text small">' . h(lang('Current file:')) . ' ' . h($f['file']) . '</div>';
-                }
             } else {
                 $out .= '<input type="' . $f['type'] . '" name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
                       . ' class="form-control" value="' . h($f['value']) . '"'
                       . $maxl . $form_attr . $req_attr . '>';
+            }
+
+            if (($f['error'] ?? '') !== '') {
+                $out .= '<div class="invalid-feedback d-block">' . h($f['error']) . '</div>';
+            }
+
+            if ($kind === 'file' && $f['file'] !== '') {
+                $out .= _pg_cart_item_kept_file_html($f, $form_attr);
             }
 
             $out .= '</div>';
@@ -3842,6 +3865,44 @@ function _pg_render_cart_item_form_html($order_item_id, $blocks, $cart_form_id =
     }
     $out .= '</div>';
     return $out;
+}
+
+// The kept file of the upload field $f (_pg_cart_item_form_blocks()) under
+// its control, as the cart's part draws it: an image's preview, the file's
+// name as a link and its size, the way to replace it, and a Remove check in
+// the cart form ($form_attr).
+function _pg_cart_item_kept_file_html($f, $form_attr)
+{
+    $remove_id = $f['id'] . '_remove';
+    return '<div class="form-text small pg-cart-item-file">'
+         . ($f['file_image_url'] !== ''
+             ? '<img class="pg-cart-item-file-preview d-block rounded border mb-1" src="' . h($f['file_image_url']) . '" alt="' . h($f['file']) . '">'
+             : '')
+         . '<span>' . h(lang('Current file:')) . '</span> '
+         . '<a href="' . h($f['file_url']) . '" target="_blank" rel="noopener">' . h($f['file']) . '</a>'
+         . ($f['file_size'] !== '' ? ' <span class="text-muted">' . h($f['file_size']) . '</span>' : '')
+         . ' <span>' . h(lang('Choose another file to replace it.')) . '</span>'
+         . '<div class="form-check">'
+         .   '<input class="form-check-input" type="checkbox" name="' . h($f['file_remove']) . '" id="' . h($remove_id) . '" value="1"' . $form_attr . '>'
+         .   '<label class="form-check-label" for="' . h($remove_id) . '">' . h(lang('Remove')) . '</label>'
+         . '</div>'
+         . '</div>';
+}
+
+// The cart form's blocks ($blocks, _pg_cart_item_form_blocks()) with each
+// field's message from the last save: $errors, the control's name =>
+// its message as text.
+function _pg_cart_item_form_mark_errors($blocks, $errors)
+{
+    foreach ($blocks as &$b) {
+        foreach ($b['fields'] as &$f) {
+            $name = preg_replace('/\[\]$/', '', $f['name']);
+            if (isset($errors[$name]) && (string)$errors[$name] !== '') $f['error'] = (string)$errors[$name];
+        }
+        unset($f);
+    }
+    unset($b);
+    return $blocks;
 }
 
 // The <option>s of the pick list $f (a field of _pg_cart_item_form_blocks()):

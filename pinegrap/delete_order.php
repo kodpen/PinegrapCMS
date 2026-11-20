@@ -61,6 +61,13 @@ function delete_order($request) {
     // door.
     pg_event_tickets_delete_for_order($order['id']);
 
+    // The order's cost rows and its profit (Accounting): kept for the order
+    // alone. The typed rates (erp_cost_rates) belong to no order and stay.
+    if (pg_schema_has('erp_order_profit')) {
+        db("DELETE FROM erp_order_costs WHERE order_id = '" . e($order['id']) . "'");
+        db("DELETE FROM erp_order_profit WHERE order_id = '" . e($order['id']) . "'");
+    }
+
     // Cancel the order abandoned and review request auto campaigns of this
     // order that have not been sent yet: both would reach the customer about
     // an order that is gone.

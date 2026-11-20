@@ -13614,7 +13614,7 @@
                 // A picture is edited in the image editor: in place in the
                 // person's own message, as a copy of their own otherwise.
                 if (message.file.image && self.channel.can_post) {
-                    items.push({ icon: 'bi-brush', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
+                    items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
                 }
 
                 if (message.file.text) {
@@ -22026,7 +22026,7 @@
                     items.push({ icon: 'bi-chat-left-text', label: t('show_in_conversation'), action: function () { self.open(self.channel.id, message.id); } });
 
                     if (message.file.image && self.channel.can_post) {
-                        items.push({ icon: 'bi-brush', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
+                        items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
                     }
 
                     if (message.file.text) {
@@ -30445,7 +30445,7 @@
                         }
 
                         return noteCanvasDoc(current.id, media.name).then(function (doc) {
-                            return doc ? { icon: 'bi-pencil', label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;
+                            return doc ? { icon: icon('pg-design-canvas'), label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;
                         });
                     }
                 },

@@ -19,6 +19,7 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
 
 // A status changed in place on the list (pg_list_edit_request() in
 // includes/fn/output.php). Answered in JSON before anything below runs: the
@@ -1929,16 +1930,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     // get form data items for order item
                     $query =
                         "SELECT
-                            form_field_id,
-                            data,
+                            form_data.form_field_id,
+                            form_data.data,
                             " . pg_form_data_name_sql() . " AS name,
+                            MAX(files.name) AS file_name,
                             count(*) as number_of_values
                         FROM form_data
+                        LEFT JOIN files ON (files.id = form_data.file_id) AND (form_data.file_id > 0)
                         WHERE
-                            (order_item_id = ?)
-                            AND (quantity_number = ?)
-                        GROUP BY form_field_id
-                        ORDER BY id";
+                            (form_data.order_item_id = ?)
+                            AND (form_data.quantity_number = ?)
+                        GROUP BY form_data.form_field_id
+                        ORDER BY form_data.id";
                     $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                     $form_data_items = array();
@@ -1999,7 +2002,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
                         // else there is just one value, so set data
                         } else {
-                            $data = $form_data_item['data'];
+                            // A File Upload answer shows its file's name.
+                            $data = pg_pfu_answer_text($form_data_item['data'], $form_data_item['file_name']);
                         }
 
                         $data_rows .= '"' . csv_cell($data) . '"';
@@ -2166,16 +2170,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         // get form data items for order item
                         $query =
                             "SELECT
-                                form_field_id,
-                                data,
-                                name,
+                                form_data.form_field_id,
+                                form_data.data,
+                                " . pg_form_data_name_sql() . " AS name,
+                                MAX(files.name) AS file_name,
                                 count(*) as number_of_values
                             FROM form_data
+                            LEFT JOIN files ON (files.id = form_data.file_id) AND (form_data.file_id > 0)
                             WHERE
-                                (order_item_id = ?)
-                                AND (quantity_number = ?)
-                            GROUP BY form_field_id
-                            ORDER BY id";
+                                (form_data.order_item_id = ?)
+                                AND (form_data.quantity_number = ?)
+                            GROUP BY form_data.form_field_id
+                            ORDER BY form_data.id";
                         $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                         $form_data_items = array();
@@ -2236,7 +2242,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
                             // else there is just one value, so set data
                             } else {
-                                $data = $form_data_item['data'];
+                                // A File Upload answer shows its file's name.
+                                $data = pg_pfu_answer_text($form_data_item['data'], $form_data_item['file_name']);
                             }
 
                             $data_rows .= '"' . csv_cell($data) . '"';

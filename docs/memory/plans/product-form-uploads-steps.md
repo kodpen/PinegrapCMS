@@ -10,7 +10,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Tests, red first: the allow-list on top of the blocklist; the size cap; who opens the file (cart owner, buyer, order staff, a stranger); a removed line taking its file.
   - Features: U1, U2, U8, U14.
 
-- FU2 (M) after FU1: the designer cart and express order widgets.
+- FU2 (M) after FU1: the designer cart and express order widgets. Done in #10641 (the express order widget's form posts multipart; its save is `express_order.php`, FU3).
   - Existing files: `widgets_cart.php` (multipart on both forms), `widgets_catalog.php` (`_pg_render_cart_item_form_html()`), `cart_action.php` (the upload, the kept file, `pg_post_body_discarded()`). `cart_action.php` is held by RF1 and TK1: never open beside them.
   - Features: U3 to U7 for these widgets.
 
@@ -22,11 +22,11 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Existing files: `view_order.php`, `includes/fn/content.php` (the two product form renderers and `get_form_review_info()`), `widgets_lists_order.php`, `widgets_order_preview.php`, `print_order.php`, `print_packing_slip.php`, `includes/fn/order_completion.php` (the plain receipt; held by RF1 and TK1).
   - Features: U9, U10.
 
-- FU4b (M) after FU1: the API, the CSV and completion.
+- FU4b (M) after FU1: the API, the CSV and completion. Done in #10639.
   - Existing files: `includes/api/resources/orders.php`, `view_orders.php` (both CSV exports), `includes/fn/order_completion.php` (the submit-form copy; held by RF1 and TK1), `includes/fn/privacy_export.php` if its list needs the name.
   - `php tools/check_api_schema.php`. Features: U11, U12, U13, U15.
 
-- FU5 (S) after FU1: the sweep in the general job, in `includes/fn/product_form_uploads.php`; the job's file names the call. 30 days after the cart's last touch (owner, poll 162). Tests: an unordered cart past 30 days swept, one inside them kept, an order never swept. Feature: U16.
+- FU5 (S) after FU1: the sweep in the general job, in `includes/fn/product_form_uploads.php`; the job's file names the call. 30 days after the cart's last touch (owner, poll 162). Tests: an unordered cart past 30 days swept, one inside them kept, an order never swept. Feature: U16. Done in #10638.
 
 - FU6 (S) close-out: every U number checked against the code with its PR; `commerce/product-form-uploads.md` written; `commerce/cart-product-form-file-field.md` rewritten for the built field; this plan's three files deleted.
 

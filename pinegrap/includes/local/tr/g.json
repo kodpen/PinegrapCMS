@@ -894,6 +894,7 @@
     "general job removed {var:1} row(s) from the pop-up counts": "genel iş pop-up sayımlarından {var:1} satır sildi",
     "general job removed {var:1} row(s) from the site search statistics": "genel iş site arama istatistiklerinden {var:1} satır kaldırdı",
     "general job removed {var:1} share card file(s) not asked for in 30 days": "genel görev 30 gündür istenmeyen {var:1} paylaşım kartı dosyasını sildi",
+    "general job removed {var:1} uploaded file(s) of {var:2} cart(s) left unordered for {var:3} days": "genel görev, {var:3} gün siparişe dönüşmeyen {var:2} sepetin {var:1} yüklenen dosyasını sildi",
     "general job removed {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydını sildi",
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
     "getting started": "başlarken",

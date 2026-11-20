@@ -8125,9 +8125,10 @@ function pg_js_bundles()
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
-        // The spacing box of Style › Spacing: its pure class mapping
-        // (window.PGSpacingBox), then the part that draws it.
-        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/style_designer_spacing.js'),
+        // The spacing box of Style › Spacing and the corner box of Style ›
+        // Border and corner: their pure class mappings (window.PGSpacingBox,
+        // window.PGCornerBox), then the part that draws both.
+        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),

@@ -37,7 +37,6 @@ if (($folder_id) && (check_edit_access($folder_id) == true)) {
         WHERE
             (page_id = '" . $page_id . "')
             AND (type != 'information')
-            AND (type != 'file upload')
             AND (name != '')
         ORDER BY sort_order ASC");
 }
