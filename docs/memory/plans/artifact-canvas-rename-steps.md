@@ -25,6 +25,6 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
   - Page Design Studio (`style_designer.src.js`): the three `bi-brush` buttons (a content operator's Image row, the image address field, the background image field) and the two "Edit Image" menu entries; their titles say "Edit the image in the Artifact Canvas". The markup comes from the canvas's config, beside `brandIcon`.
   - Panel: `edit_design_file.php` and `edit_file.php` (`bi-flower2`), `includes/fn/design_file_list_edit.php`, the dashboard's widget 18 and the Translations screen's "Edit in the Design Canvas" (`bi-brush`).
   - Left as they are: a button that does not open the canvas, the Translations screen's picture chip (`bi-image`), a design block's own `bi-easel`.
-  - Pictures, light and dark: the File Manager's menus, a channel's "+" menu and canvas card, the Studio's image fields. To the owner; not marked ready before his look.
+  - No pictures to the owner: the step goes ready when green.
 
 - AC5 (S) close-out: every place of AC2 and AC4 checked against the code with its PR; the topic files of `plans/artifact-canvas-rename.md` say the new state; the pinegrap.com pages that name the canvas are named for who writes them (`workflow/user-docs-pages.md`); the plan's files deleted.
