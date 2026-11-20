@@ -69,7 +69,13 @@ function api_require_scope($needed) {
 
 // Credentials off the wire, in order of preference.
 //
-// HTTP Basic first, because every client speaks it - curl, Postman, Swagger UI,
+// An application token (api_app_token(), Authorization: Bearer pgkt_...)
+// first: it is the key and the secret in one value, taken exactly as Basic
+// is, so the rate limit, the log line, the grace of a previous secret and the
+// firewall's count of a wrong secret are the same. Only from the header,
+// never from the body or the query string.
+//
+// HTTP Basic next, because every client speaks it - curl, Postman, Swagger UI,
 // the automation tools people wire sites into - and because the header is not
 // written to access logs the way a query string is. The two custom headers are
 // for clients that cannot set an Authorization header.
@@ -84,6 +90,14 @@ function api_read_credentials($input) {
 	$secret = '';
 
 	$authorization = api_header('Authorization');
+
+	$token = api_app_token_parse(api_read_bearer());
+
+	if ($token !== null) {
+
+		return $token;
+
+	}
 
 	if ($authorization !== '' && stripos($authorization, 'basic ') === 0) {
 
@@ -174,7 +188,8 @@ function api_read_bearer() {
 // effective scopes already worked out.
 //
 // A Bearer token is a person's own team devices session or an OAuth connection
-// (includes/api/devices.php); anything else is an application's key and
+// (includes/api/devices.php), unless it is an application token
+// (api_app_token_is()); anything else is an application's key and
 // secret. The two never mix: a
 // device application carries no secret, so its key cannot be used as HTTP
 // Basic credentials.
@@ -182,9 +197,19 @@ function api_authenticate($input) {
 
 	$bearer = api_read_bearer();
 
-	if ($bearer !== '') {
+	if (($bearer !== '') && !api_app_token_is($bearer)) {
 
 		return api_device_authenticate($bearer);
+
+	}
+
+	// A token that carries the prefix but not a key and a secret is a wrong
+	// credential, counted like a wrong secret, not a missing one.
+	if (($bearer !== '') && (api_app_token_parse($bearer) === null)) {
+
+		api_offence();
+
+		api_fail_unauthorized();
 
 	}
 
@@ -302,16 +327,7 @@ function api_authenticate($input) {
 // key made without a secret, as Pinegrap AI's is, cannot sign in this way.
 function api_secret_matches($app, $supplied) {
 
-	$supplied_hash = api_secret_hash($supplied);
-
-	if (api_secret_hash_accepts($app['api_secret_hash'], $supplied_hash)) {
-
-		return true;
-
-	}
-
-	return ((int)$app['api_secret_prev_expires'] > time())
-		&& api_secret_hash_accepts($app['api_secret_prev_hash'], $supplied_hash);
+	return api_secret_hash_matches_app($app, api_secret_hash($supplied), time());
 
 }
 

@@ -399,12 +399,14 @@ function api_openapi_security_schemes($oauth = null) {
 			'description' => 'HTTP Basic. The user name is the application key, the password is its secret. '
 				. 'An application key calls in the name of the account that owns it, within the scopes it was given, '
 				. 'and is the only credential that can manage webhook subscriptions. '
-				. 'A call only the person can make - marking what they have read, answering an approval, changing or deleting their own messages - answers 403 forbidden.'
+				. 'A call only the person can make - marking what they have read, answering an approval, changing or deleting their own messages - answers 403 forbidden. '
+				. 'The same key and secret also go as one token, Authorization: Bearer pgkt_<key>.<secret>, for a client that asks for an address and a single token: '
+				. 'it is taken exactly as HTTP Basic is, on this API and on the MCP address, never from the query string.'
 		),
 		'deviceToken' => array(
 			'type'        => 'http',
 			'scheme'      => 'bearer',
-			'description' => 'An access token, of one of two kinds. '
+			'description' => 'An access token, of one of two kinds; a token starting pgkt_ is an application key and its secret instead (see applicationKey). '
 				. 'The person\'s own team devices session (POST /auth/login) calls as that person, within the team devices application\'s permissions, '
 				. 'and is the only credential that can change the person\'s own words: change, delete or schedule their messages, ask or change a poll, pin a message. '
 				. 'An OAuth connection, made through the site\'s OAuth server, calls as the person who approved it, within the scopes they agreed to: '

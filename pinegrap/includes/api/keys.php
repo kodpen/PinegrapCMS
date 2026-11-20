@@ -73,6 +73,81 @@ function api_generate_secret() {
 
 }
 
+// A key and its secret as one token, for a client whose connection form asks
+// for an address and a single token (Authorization: Bearer <token>) rather
+// than a user name and a password. The token is api_app_token_prefix(), the
+// key, a dot and the secret: nothing new is stored, so a rotated secret gives
+// a new token and the previous one keeps answering through the same grace as
+// the previous secret. A key or secret holds only letters, digits and
+// underscores, so the first dot is where the key ends.
+//
+// The prefix tells it apart from a device or OAuth access token (pgat_,
+// includes/api/devices.php) before anything is looked up, and gives secret
+// scanners something to match.
+function api_app_token_prefix() {
+
+	return 'pgkt_';
+
+}
+
+// The token for a key and its secret, or '' when either is missing: a key
+// made without a secret has no token, as it has no way in.
+function api_app_token($key, $secret) {
+
+	$key    = trim((string)$key);
+	$secret = trim((string)$secret);
+
+	if (($key === '') || ($secret === '')) {
+
+		return '';
+
+	}
+
+	return api_app_token_prefix() . $key . '.' . $secret;
+
+}
+
+// Whether a Bearer value is an application token rather than a device or
+// OAuth access token. Only the prefix is looked at.
+function api_app_token_is($token) {
+
+	return is_string($token) && (strpos($token, api_app_token_prefix()) === 0);
+
+}
+
+// The key and the secret inside a token, as array('key' => ..., 'secret' =>
+// ...), or null when it is not a token or either half is empty or malformed.
+function api_app_token_parse($token) {
+
+	if (!api_app_token_is($token)) {
+
+		return null;
+
+	}
+
+	$body = substr($token, strlen(api_app_token_prefix()));
+
+	$dot = strpos($body, '.');
+
+	if ($dot === false) {
+
+		return null;
+
+	}
+
+	$key    = substr($body, 0, $dot);
+	$secret = substr($body, $dot + 1);
+
+	if (!preg_match('/^[A-Za-z0-9_]+$/', $key) || !preg_match('/^[A-Za-z0-9_]+$/', $secret)) {
+
+		return null;
+
+	}
+
+	return array('key' => $key, 'secret' => $secret);
+
+}
+
 // Deterministic, so a supplied secret can be looked up and compared without
 // storing anything reversible.
 //
@@ -104,6 +179,24 @@ function api_secret_hash_accepts($stored_hash, $supplied_hash) {
 	$supplied_hash = (string)$supplied_hash;
 
 	return ($stored_hash !== '') && ($supplied_hash !== '') && hash_equals($stored_hash, $supplied_hash);
+
+}
+
+// Whether an application row takes the hash of a supplied secret at $now:
+// the current secret, or the previous one while its grace runs (Application
+// Access gives a day). api_secret_matches() hashes and asks this; a token
+// (api_app_token()) carries the same secret and is asked the same way.
+function api_secret_hash_matches_app(array $app, $supplied_hash, $now) {
+
+	if (api_secret_hash_accepts(isset($app['api_secret_hash']) ? $app['api_secret_hash'] : '', $supplied_hash)) {
+
+		return true;
+
+	}
+
+	return isset($app['api_secret_prev_expires'], $app['api_secret_prev_hash'])
+		&& ((int)$app['api_secret_prev_expires'] > (int)$now)
+		&& api_secret_hash_accepts($app['api_secret_prev_hash'], $supplied_hash);
 
 }
 
