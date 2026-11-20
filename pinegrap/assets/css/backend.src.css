@@ -19403,6 +19403,7 @@ a.ws-chip-message:hover,
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  position: relative;
 }
 .office-tabs {
   display: flex;
@@ -19518,6 +19519,38 @@ a.ws-chip-message:hover,
 }
 .office-sheet td.office-edited {
   background: var(--pg-warning-bg-subtle);
+}
+/* A row's or column's head opens its insert and delete menu; the line
+   waiting to be inserted is drawn before its row or column, the one waiting
+   to be deleted struck through. */
+.office-sheet .office-head {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.office-sheet .office-head:hover,
+.office-sheet .office-head:focus-visible {
+  color: var(--pg-primary);
+}
+.office-sheet .office-shift-insert-row {
+  box-shadow: inset 0 2px 0 var(--pg-primary);
+}
+.office-sheet .office-shift-insert-column {
+  box-shadow: inset 2px 0 0 var(--pg-primary);
+}
+.office-sheet .office-shift-delete {
+  text-decoration: line-through;
+  background: var(--pg-danger-bg-subtle);
+}
+.office-head-menu {
+  position: absolute;
+  z-index: 5;
 }
 .office-sheet[role="grid"] td.office-locked {
   cursor: default;

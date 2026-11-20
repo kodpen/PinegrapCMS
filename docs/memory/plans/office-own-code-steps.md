@@ -13,7 +13,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OP4, .pptx opens as a list of slides: each slide's title, text in reading order, pictures and speaker notes; no slide layout, no animation; the picture limits of the .docx preview apply. Done: PR #10585 (`platform/office-pptx-preview.md`).
 
 ## Sheet editing (.xlsx)
-- OE1, rows and columns: insert and delete from a row's or column's head menu. References in the same sheet's formulas, merged ranges and the sheet's dimension are shifted; a workbook where the shift cannot be made safely (a table, a defined name, another sheet's formula or a merged range crossing the line) refuses with its reason.
+- OE1, rows and columns: insert and delete from a row's or column's head menu. References in the same sheet's formulas, merged ranges and the sheet's dimension are shifted; a workbook where the shift cannot be made safely (a table, a defined name, another sheet's formula or a merged range crossing the line) refuses with its reason. Done: PR #OE1PR (`platform/office-sheet-rows-columns.md`).
 - OE2, sheets: add, rename, delete and reorder from the sheet tabs; a delete another sheet's formula points to is refused.
 - OE3, format of the selected cells: bold, italic, text colour, fill, alignment, number format (general, number, money, percent, date); written as new styles, existing ones untouched.
 - OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet.
