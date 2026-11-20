@@ -86,6 +86,9 @@ function webhook_payloads_test_builders()
 		'pg_commission_status_event' => function () {
 			return pg_commission_status_event(array('id' => 1, 'reference_code' => 'R', 'affiliate_code' => 'A', 'order_id' => 3, 'amount' => 10, 'status' => 'pending'), 'payable');
 		},
+		'pg_referral_rewarded_event' => function () {
+			return pg_referral_rewarded_event(array('id' => 1, 'reference_code' => 'C', 'affiliate_code' => 'R1-0000000000', 'order_id' => 3, 'amount' => 10, 'contact_id' => 4, 'user_id' => 5, 'card_id' => 6));
+		},
 		'pg_review_created_event' => function () {
 			return pg_review_created_event(4, 'product', 3, 5, 0, '1', '');
 		},
