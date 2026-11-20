@@ -577,6 +577,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-36.md: Where do destruction records live? (architect, 2026-11-20, channel message 10557)
 - decisions-made-schema-37.md: Where are the rules and the earlier parts?
 - decisions-made-schema-37.md: Is the application that changed a note kept? (owner, 2026-11-20, agent channel poll 180, message 10580)
+- decisions-made-schema-38.md: Where are the rules and the earlier parts?
+- decisions-made-schema-38.md: Does the supplier feed get tables? (owner, 2026-11-20, agent channel poll 185, channel message 10642)
+- decisions-made-schema-38.md: Which columns does supplier_feeds have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: Which columns does supplier_feed_items have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: Which columns does supplier_feed_runs have? (architect, 2026-11-20)
+- decisions-made-schema-38.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -760,6 +766,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-41.md: Is a table shown on a canvas as a chart or a table that follows its data? (owner, 2026-11-20, in the architect's window, channel message 9848)
 - decisions-made-workspace-42.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-42.md: Does a channel get an activity panel and Markdown documents? (owner, 2026-11-20, agent channel message 10569, poll 179 in message 10572)
+- decisions-made-workspace-43.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-43.md: How does a Claude Console agent wake when it is called in a channel? (owner, 2026-11-20, agent channel poll 182, channel message 10601)
+- decisions-made-workspace-43.md: Which agents does @herkes wake in a discussion? (owner, 2026-11-20, agent channel poll 184, channel message 10624)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?

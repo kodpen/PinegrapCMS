@@ -19,11 +19,13 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-writing-rules.md: Plan (owner 2026-11-20): the software tells every AI how a Workspace message is written (lists, tables, code, bold); one text for the agent instructions, the AI guide, the assistants; AW1, AW2
 - ai-guide-features-2.md: Plan ai-guide, features G11 to G19: the panel's door for a browser agent, the plugin, the compact tool list, the Design and Content presets, size budgets, hints on refusals, the refused calls report
 - ai-guide-features.md: Plan ai-guide, features G1 to G10: the guide's registry, its text built from code, sizes, version and digest, the topics (start, designer, the design's values, panel) and who reads it where
 - ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
 - ai-guide-steps.md: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine with the API and MCP doors, the designer topic, the other topics, the panel's door, the compact tool list, presets
 - ai-guide.md: Plan (owner 2026-11-20, agent channel poll 170): the site explains itself to AI agents cheaply: a guide generated from code, read over MCP, API and the panel; a compact tool list; AG1 to AG14
+- app-access-redraw-console.md: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console agent as a channel agent: the key as one token, its own routes as MCP tools, the header form, waking on a schedule
 - app-access-redraw-features-2.md: Plan app-access-redraw, features U9 to U14: a guide per way to connect, the key as one token, the Agent tab (agent and channel rows), the edit drawer's tabs, the link with Connections
 - app-access-redraw-features.md: Plan app-access-redraw, features U1 to U8: the New application sheet in three steps, the starting points and who each acts as, the permission picker with search, groups and the four bulk buttons
 - app-access-redraw-steps.md: Plan app-access-redraw, steps AA1 to AA8: the New application sheet, the permission picker, the drawer and guides, the key as one token, the Agent tab, Connections' row, Claude Console, close-out
@@ -85,6 +87,7 @@
 - designer-panels-steps-4.md: Plan designer-panels, steps DP17 to DP25: the page strip (the design's menu, groups, tab states, the Pages window, suggested groups), the canvas bar (zones, Preview menu, Prototype mode), close-out
 - designer-panels-steps.md: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the right column, the Options panel's identity row and section cards, its controls and changed dot, the three tabs
 - designer-panels.md: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from the approved drawings; features D1 to D62, steps DP1 to DP25
+- discussion-everyone-hint.md: Plan (owner 2026-11-20, poll 184): in a discussion a person's @herkes that woke no agent says why under the message, and the channel's agents are added to a discussion in one go; one step, DE1
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
