@@ -5,7 +5,7 @@ module: product_form_uploads
 ---
 
 ## Can a shopper upload a file in the cart?
-- Classic cart (`get_shopping_cart.php` → `shopping_cart.php`) and classic express order (`get_express_order.php` → `express_order.php`): yes, since FU3 (PR #FU3_PR).
+- Classic cart (`get_shopping_cart.php` → `shopping_cart.php`) and classic express order (`get_express_order.php` → `express_order.php`): yes, since FU3 (PR #10642).
 - Designer cart and express order widgets (`widgets_cart.php` → `cart_action.php`): not yet. Their form has no `enctype`, so only the file name arrives as text; FU2 adds it.
 
 ## How do the classic pages draw the field?
