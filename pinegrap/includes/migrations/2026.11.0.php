@@ -236,6 +236,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
+	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
 
 }
 
@@ -7900,5 +7901,44 @@ function upgrade_2026_11_0_ws_app_command_args() {
 	install_add_column('ws_app_commands', 'args', "TEXT NULL");
 
 	install_note('Workspace: an application\'s / command can name its arguments, offered in the channels like a built-in command\'s.');
+
+}
+
+// The daily stock record behind stock planning (2026.11.0, 11.0.249;
+// includes/erp/stock_plan.php, erp_stock_plan_job.php). One row per tracked
+// product and site day, written only when it sold or its stock was 0 at the
+// night pass: the units sold and that stock, NULL when unknown (the 365 days
+// filled from past sales). idx_day serves the nightly pruning of rows older
+// than 400 days. The job is added to the general job's list here, so the
+// history starts the first night after the upgrade.
+function upgrade_2026_11_0_erp_stock_days() {
+
+	install_create_table('erp_stock_days', "CREATE TABLE erp_stock_days (
+		product_id  INT UNSIGNED NOT NULL,
+		day         DATE NOT NULL,
+		sold        INT UNSIGNED NOT NULL DEFAULT 0,
+		stock       INT UNSIGNED NULL,
+		PRIMARY KEY (product_id, day),
+		KEY idx_day (day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_column_exists('config', 'job_dispatch') && install_column_exists('config', 'job_dispatch_enabled')) {
+
+		$row = db_item("SELECT job_dispatch_enabled, job_dispatch FROM config LIMIT 1");
+
+		if (!empty($row) && ((int) $row['job_dispatch_enabled'] === 1)) {
+
+			$list = array_values(array_filter(array_map('trim', explode(',', (string) $row['job_dispatch'])), 'strlen'));
+
+			if (!in_array('erp_stock_plan_job', $list, true)) {
+				$list[] = 'erp_stock_plan_job';
+				db("UPDATE config SET job_dispatch = '" . e(implode(',', $list)) . "'");
+			}
+
+		}
+
+	}
+
+	install_note('Accounting: a daily stock record per product starts tonight, the ground of the coming stock plan.');
 
 }

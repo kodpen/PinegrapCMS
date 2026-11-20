@@ -9042,6 +9042,7 @@ function get_tables() {
 		'erp_signatures',
 		'erp_stock_count_items',
 		'erp_stock_counts',
+		'erp_stock_days',
 		'erp_stock_minimums',
 		'erp_stock_moves',
 		'erp_waybill_items',
