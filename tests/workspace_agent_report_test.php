@@ -236,3 +236,184 @@ function test_workspace_agent_report_with_the_answer()
 
 	pg_assert_contains('"model": "<the model you run on>"', implode("\n", ws_agent_instructions_request_lines()), 'the instructions say it');
 }
+
+// The report's context, project and branch (E10, E11): each refusal, the
+// stored list of an older report still read, the object's round trip and
+// its size.
+function test_workspace_agent_report_fields_refused()
+{
+	$refused = function ($fields, $field, $label) {
+		$check = ws_agent_report_check(null, null, $fields);
+		pg_assert_false($check['ok'], $label);
+		pg_assert_same($field, $check['field'], $label);
+		pg_assert_same(null, $check['values'], $label . ': nothing to write');
+	};
+
+	$refused(array('context' => 'big'), 'context', 'a context that is no object');
+	$refused(array('context' => array(10, 20)), 'context', 'a context that is a list');
+	$refused(array('context' => array('used' => 10)), 'context', 'a context without its size');
+	$refused(array('context' => array('used' => 10, 'size' => 20, 'left' => 10)), 'context', 'a context with a field more');
+	$refused(array('context' => array('used' => '10', 'size' => 20)), 'context', 'a used that is text');
+	$refused(array('context' => array('used' => 10.5, 'size' => 20)), 'context', 'a used that is not whole');
+	$refused(array('context' => array('used' => -1, 'size' => 20)), 'context', 'a negative used');
+	$refused(array('context' => array('used' => 21, 'size' => 20)), 'context', 'used over size');
+	$refused(array('context' => array('used' => 0, 'size' => 0)), 'context', 'a size of nothing');
+	$refused(array('context' => array('used' => 1, 'size' => 10000001)), 'context', 'a size over ten million');
+	$refused(array('project' => str_repeat('p', 81)), 'project', 'a project over 80 characters');
+	$refused(array('project' => "a\tb"), 'project', 'a project with a control character');
+	$refused(array('project' => 5), 'project', 'a project that is no text');
+	$refused(array('project' => "\xC3\x28"), 'project', 'a project that is not UTF-8');
+	$refused(array('branch' => str_repeat('b', 121)), 'branch', 'a branch over 120 characters');
+	$refused(array('branch' => 'a b'), 'branch', 'a branch with a space');
+	$refused(array('branch' => 'a..b'), 'branch', 'a branch with two dots');
+	$refused(array('branch' => '/a'), 'branch', 'a branch that starts with a slash');
+	$refused(array('branch' => 'a/'), 'branch', 'a branch that ends with a slash');
+	$refused(array('branch' => '-a'), 'branch', 'a branch that starts with a dash');
+	$refused(array('branch' => 'a~1'), 'branch', 'a branch with a character git refuses');
+
+	// One field that does not read refuses the whole report.
+	$whole = ws_agent_report_check('model-x', array(array('name' => 'weekly', 'percent' => 10, 'resets_at' => 1800000000)), array('project' => 'ok', 'branch' => 'a b'));
+	pg_assert_false($whole['ok'], 'a good model and windows beside a bad branch');
+
+	pg_assert_true(ws_agent_report_check(null, null, array('context' => array('used' => 0, 'size' => 1)))['ok'], 'a context alone is a report');
+	pg_assert_true(ws_agent_report_check(null, null, array('project' => 'Pinegrap'))['ok'], 'a project alone is a report');
+	pg_assert_true(ws_agent_report_check(null, null, array('branch' => 'claude/ka3-report_fields.2'))['ok'], 'a branch alone is a report');
+	pg_assert_false(ws_agent_report_check(null, null, array('project' => '  ', 'branch' => ''))['ok'], 'empty fields are no report');
+}
+
+function test_workspace_agent_report_fields_round_trip()
+{
+	$windows = array(array('name' => 'weekly', 'percent' => 61, 'resets_at' => 1800000000));
+	$check = ws_agent_report_check('model-x', $windows, array(
+		'context' => array('size' => 1000000, 'used' => 412345),
+		'project' => ' Pinegrap CMS ',
+		'branch'  => 'feature/x',
+	));
+	pg_assert_true($check['ok'], $check['error']);
+	pg_assert_same(array('used' => 412345, 'size' => 1000000), $check['values']['context']);
+	pg_assert_same('Pinegrap CMS', $check['values']['project']);
+	pg_assert_same('feature/x', $check['values']['branch']);
+
+	$stored = json_decode($check['values']['usage'], true);
+	pg_assert_same(array('windows', 'context', 'project', 'branch'), array_keys($stored), 'stored as one object');
+
+	$read = ws_agent_report_read($check['values']['usage']);
+	pg_assert_same($check['values']['windows'], $read['windows']);
+	pg_assert_same($check['values']['context'], $read['context']);
+	pg_assert_same('Pinegrap CMS', $read['project']);
+	pg_assert_same('feature/x', $read['branch']);
+	pg_assert_same($check['values']['windows'], ws_agent_report_windows($check['values']['usage']), 'the windows of the object');
+
+	$agent = array('kind' => 'app', 'report_at' => 1790000000, 'report_usage' => $check['values']['usage']);
+	$context = ws_agent_report_context($agent);
+	pg_assert_same(412345, $context['used']);
+	pg_assert_same(1000000, $context['size']);
+	pg_assert_same(41, $context['percent']);
+	pg_assert_contains('412k', $context['words']);
+	pg_assert_contains('1M', $context['words']);
+	pg_assert_same('Pinegrap CMS', ws_agent_report_project($agent));
+	pg_assert_same('feature/x', ws_agent_report_branch($agent));
+
+	// An older report stored the windows as a list: they still read, and
+	// it carries no context, project or branch.
+	$list = json_encode($windows);
+	$old = ws_agent_report_read($list);
+	pg_assert_same($windows, $old['windows'], 'the stored list still reads as the windows');
+	pg_assert_same(null, $old['context']);
+	pg_assert_same($windows, ws_agent_report_windows($list));
+	pg_assert_same(null, ws_agent_report_context(array('report_usage' => $list)));
+	pg_assert_same(null, ws_agent_report_project(array('report_usage' => $list)));
+	pg_assert_same(null, ws_agent_report_branch(array('report_usage' => $list)));
+	pg_assert_same(null, ws_agent_report_context(array('report_usage' => '')), 'nothing reported');
+
+	// A stored object that does not read gives nothing.
+	pg_assert_same(array(), ws_agent_report_windows('{"windows":[],"context":{"used":5,"size":1},"project":"","branch":""}'));
+	pg_assert_same(null, ws_agent_report_context(array('report_usage' => '{"context":{"used":5,"size":1}}')));
+	pg_assert_same(null, ws_agent_report_project(array('report_usage' => '{"project":"x","extra":1}')));
+
+	// The answer's context replaces the stored one and keeps the rest.
+	$merged = ws_agent_report_usage_with_context($check['values']['usage'], array('used' => 5, 'size' => 10));
+	$again = ws_agent_report_read($merged);
+	pg_assert_same(array('used' => 5, 'size' => 10), $again['context']);
+	pg_assert_same($check['values']['windows'], $again['windows']);
+	pg_assert_same('feature/x', $again['branch']);
+	pg_assert_same(array('used' => 5, 'size' => 10), ws_agent_report_read(ws_agent_report_usage_with_context($list, array('used' => 5, 'size' => 10)))['context'], 'over an older list');
+	pg_assert_same($windows, ws_agent_report_read(ws_agent_report_usage_with_context($list, array('used' => 5, 'size' => 10)))['windows'], 'the list\'s windows kept');
+}
+
+function test_workspace_agent_report_fields_fit_the_column()
+{
+	$four = array();
+
+	foreach (array('five_hour', 'daily', 'weekly_model', 'monthly') as $name) {
+		$four[] = array('name' => $name, 'percent' => 100, 'resets_at' => 9999999999);
+	}
+
+	// The widest characters a project may hold, and a branch at its limit.
+	$check = ws_agent_report_check(str_repeat('m', 80), $four, array(
+		'context' => array('used' => 10000000, 'size' => 10000000),
+		'project' => str_repeat("\xF0\x9F\x98\x80", 80),
+		'branch'  => str_repeat('b', 120),
+	));
+	pg_assert_true($check['ok'], $check['error']);
+	pg_assert_true(strlen($check['values']['usage']) < 1000, 'the largest object fits: ' . strlen($check['values']['usage']) . ' bytes');
+
+	$quotes = ws_agent_report_check(null, $four, array('context' => array('used' => 10000000, 'size' => 10000000), 'project' => str_repeat('"', 80), 'branch' => str_repeat('b', 120)));
+	pg_assert_true(strlen($quotes['values']['usage']) < 1000, 'escaped characters fit too');
+}
+
+function test_workspace_agent_report_tokens()
+{
+	pg_assert_same('950', ws_agent_report_tokens(950));
+	pg_assert_same('412k', ws_agent_report_tokens(412345));
+	pg_assert_same('1M', ws_agent_report_tokens(999999));
+	pg_assert_same('1M', ws_agent_report_tokens(1000000));
+	pg_assert_same('1.5M', ws_agent_report_tokens(1500000));
+	pg_assert_same('10M', ws_agent_report_tokens(10000000));
+}
+
+// The routes, the tool, the instructions and the card carry the fields.
+function test_workspace_agent_report_fields_reach_the_routes()
+{
+	$params = array();
+
+	foreach (ws_agent_request_api_routes() as $route) {
+		foreach ($route['params'] as $param) {
+			$params[$route['id']][$param['name']] = $param;
+		}
+	}
+
+	pg_assert_same('object', $params['workspace.agent_report.set']['context']['type']);
+	pg_assert_same(80, $params['workspace.agent_report.set']['project']['max_length']);
+	pg_assert_same(120, $params['workspace.agent_report.set']['branch']['max_length']);
+	pg_assert_same('object', $params['workspace.agent_requests.answer']['context']['type'], 'the answer takes context beside model');
+
+	$schema = ws_api_agent_report_schema();
+
+	foreach (array('context', 'project', 'branch') as $field) {
+		pg_assert_true(array_key_exists($field, $schema), 'the report route returns ' . $field);
+	}
+
+	$answer = pg_test_function_source('ws_api_agent_request_answer');
+	pg_assert_contains('ws_api_agent_answer_context($params)', $answer);
+	pg_assert_true(strpos($answer, 'ws_api_agent_answer_context($params)') < strpos($answer, 'api_dry_run_stop'), 'checked before the dry run stops');
+	pg_assert_contains('ws_agent_report_context_save(', $answer);
+	pg_assert_contains('ws_agent_report_context_save(', pg_test_function_source('ws_api_agent_task_answer'), 'a task run\'s answer too');
+	pg_assert_contains('ws_agent_report_check(', pg_test_function_source('ws_api_agent_report_set'));
+	pg_assert_contains('\'project\'', pg_test_function_source('ws_api_agent_report_set'));
+
+	$lines = implode("\n", ws_agent_instructions_request_lines());
+	pg_assert_contains('"context": {"used"', $lines, 'the instructions name the context');
+	pg_assert_contains('"project"', $lines);
+	pg_assert_contains('"branch"', $lines);
+
+	pg_assert_contains('ws_agent_report_context(', pg_test_function_source('ws_agent_card'), 'the card carries the context');
+
+	require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_profile.php');
+	$built = ws_profile_body(array('context' => '412345:1000000', 'project' => 'Pinegrap', 'branch' => 'feature/x'));
+	pg_assert_same(array('context' => array('used' => 412345, 'size' => 1000000), 'project' => 'Pinegrap', 'branch' => 'feature/x'), $built['body'], $built['error']);
+	pg_assert_same(null, ws_profile_body(array('context' => '412345'))['body'], 'a context without its size');
+	pg_assert_same(null, ws_profile_body(array('context' => '5:1.5'))['body'], 'a size that is not whole');
+	pg_assert_same(null, ws_profile_body(array('project' => str_repeat('p', 81)))['body'], 'a project over 80 characters');
+	pg_assert_same(null, ws_profile_body(array('branch' => str_repeat('b', 121)))['body'], 'a branch over 120 characters');
+}

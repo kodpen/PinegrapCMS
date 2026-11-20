@@ -102,7 +102,7 @@
 - erp-order-profit-payment-fee.md: The fee a payment service kept (#10655): pg_payment_answer()'s fee keys from iyzico, Stripe and PayPal, the conversion, the gateway cost row written by submit_order.php
 - erp-order-profit-profitability.md: Accounting › Profitability (#10698): product by channel by period from erp_order_profit, the split of an order over its lines, the workbook, the cost rates and target margin card
 - erp-order-profit-rates-revenue.md: How the profit pass works out an order's typed rates (payment, shipping by recipients' part, marketplace) and its revenue less a refund without tax (#10792)
-- erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes [decision: here]
+- erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes [decision: decisions-made-schema-31.md]
 - erp-order-profit-screens.md: Where an order's profit is seen (#10664): the Profit card of view_order.php, the order list's Profit column and "Sold at a loss" filter, the gate, includes/erp/order_profit_view.php [decision: here]
 - erp-order-refund-lines-noted.md: The order screen's refund by lines on an order without an ERP invoice notes the lines it gave back (lines:<id>=<qty>) on order_refunds.notes, so the same line is not refunded twice (#7129) [decision: decisions-made-product-32.md]
 - erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307) [decision: here]
@@ -183,4 +183,5 @@
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies. [decision: here]
 - erp-waybill-save-checks.md: What a delivery note's save checks and fills (named invoice, empty recipient, field-level refusals), the one unit list, the list's three invoice states and the shipment-date term (PR #5708).
+- order-profit.md: Order profit (2026.11.0, #10626 to #10792): each order's costs, net profit and margin; the features N1 to N14 with the PR and file of each, what differs from the plan, what was left out [decision: decisions-made-product-81.md]
 - parasut-import-sheets.md: Paraşüt's two import sheets written from code by pg_xlsx_write_layout(): the head as data, the column formats, what the old template files had that the new file has not

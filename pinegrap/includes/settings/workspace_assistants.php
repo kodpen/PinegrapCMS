@@ -4,18 +4,18 @@
  *
  * Site Settings - Assistants and agents: Claude in the channels (its
  * connection, its key, the connection test, the latest requests and the
- * setup steps), the Workspace agents (each edited in a drawer with its
- * waiting and failed requests), Pinegrap AI in the channels (its switch,
- * application, key and connection test), the voice message transcripts and
- * spoken answers (the services' addresses, models and keys), the
- * assistants' bulk changes, and
- * a card linking the MCP servers, still kept on the Workspace Settings
- * screen. They move here one at a time; each that
- * moves takes its link out of that card.
+ * setup steps), Pinegrap AI in the channels (its switch, application, key
+ * and connection test), the Workspace agents (each edited in a drawer with
+ * its waiting and failed requests), the MCP servers, the voice message
+ * transcripts and spoken answers (the services' addresses, models and keys),
+ * the canvas templates and the assistants' bulk changes.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and workspace_assistants.save.php writes what they edit.
+ * Each part is one folded row (includes/settings/fold.php) holding its card
+ * as the card's own function draws it; the rows' order, lines and pills are
+ * includes/workspace/assistants_fold.php. Fills $pg_settings_cards with the
+ * one list of rows. Which cards belong here is said once, in
+ * includes/settings/registry.php; this file holds them, and
+ * workspace_assistants.save.php writes what they edit.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,9 +33,16 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/assistants_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
 $ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
 $ws_viewer = ws_viewer($user);
+$ws_now = time();
+
+// Each part's card and its line of state, by row key; drawn as rows at the
+// end in ws_assistants_fold_order().
+$ws_parts = array();
 
 // The key and secret Create or Reset secret handed over through the session
 // (ws_claude_key_post()), read once by the draw that follows that save and
@@ -59,7 +66,7 @@ if (is_array($ws_credentials) && (($ws_credentials['agent'] ?? '') === 'claude')
 $ws_card = ws_claude_settings_card('', $ws_viewer, $ws_credentials, $ws_form);
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
+    $ws_parts['ws-claude'] = array('html' => $ws_card) + ws_assistants_fold_claude(ws_assistants_fold_facts_claude(), $ws_now);
 }
 
 // ── Workspace agents ──
@@ -68,12 +75,13 @@ if ($ws_card !== '') {
 $ws_card = ws_agents_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
     $ws_apps = ws_agents_settings_apps();
     $ws_agents = ws_agents_list();
     $ws_counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($ws_agents) : array();
-    // Every agent's open and today's requests, read once for the drawers.
-    $ws_requests = ws_agent_request_counts($ws_agents, time());
+    // Every agent's open and today's requests, read once for the drawers
+    // and the row's line.
+    $ws_requests = ws_agent_request_counts($ws_agents, $ws_now);
+    $ws_parts['ws-agents'] = array('html' => $ws_card) + ws_assistants_fold_agents(ws_assistants_fold_facts_agents($ws_agents, $ws_requests, $ws_now));
 
     foreach ($ws_agents as $ws_agent) {
         $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog), $ws_requests);
@@ -88,14 +96,14 @@ if ($ws_card !== '') {
 $ws_card = function_exists('ws_ai_settings_card') ? ws_ai_settings_card('', $ws_viewer, $ws_form) : '';
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
+    $ws_parts['ws-ai'] = array('html' => $ws_card) + ws_assistants_fold_ai(ws_assistants_fold_facts_ai());
 }
 
 // ── Voice message transcripts ──
 $ws_card = ws_voice_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
+    $ws_parts['ws-voice'] = array('html' => $ws_card) + ws_assistants_fold_voice(ws_assistants_fold_facts_voice());
 }
 
 // ── MCP servers ──
@@ -120,9 +128,8 @@ if (empty($pg_settings_in_dialog) && isset($_GET['mcp_connected']) && !isset($_G
 $ws_card = ws_mcp_settings_card('', $ws_viewer, $ws_mcp_relay, $ws_form);
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
-
     $ws_mcp_servers = ws_mcp_servers();
+    $ws_parts['ws-mcp'] = array('html' => $ws_card) + ws_assistants_fold_mcp(ws_assistants_fold_facts_mcp($ws_mcp_servers));
     $ws_mcp_kept = ws_mcp_settings_kept(((int) $ws_viewer['role'] === 0) ? $ws_mcp_relay : null);
 
     foreach ($ws_mcp_servers as $ws_mcp_server) {
@@ -138,11 +145,26 @@ if ($ws_card !== '') {
 $ws_card = ws_bulk_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
-    $pg_settings_cards[] = $ws_card;
+    $ws_parts['ws-bulk'] = array('html' => $ws_card) + ws_assistants_fold_bulk(ws_bulk_delete_allowed());
 }
 
 // ── Canvas templates ──
 $ws_card = ws_canvas_templates_settings_card($ws_viewer);
+
+if ($ws_card !== '') {
+    $ws_parts['ws-canvas-templates'] = array('html' => $ws_card) + ws_assistants_fold_templates(count(pg_canvas_templates_rows()));
+}
+
+// ── The rows ──
+$ws_rows = array();
+
+foreach (ws_assistants_fold_order() as $ws_key) {
+    if (isset($ws_parts[$ws_key])) {
+        $ws_rows[] = array('key' => $ws_key) + ws_assistants_fold_face($ws_key) + $ws_parts[$ws_key];
+    }
+}
+
+$ws_card = pg_settings_fold($ws_rows);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;

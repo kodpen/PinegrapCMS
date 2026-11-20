@@ -18,7 +18,7 @@ priority: 6
 - Reads after the fact: `order_completion.php`, `cart_action.php` and checkout are not entered.
 - Counter sales (`type = 'local'`) stay out of the norm.
 - Settings in `config_text` rows (`data/config-table-no-varchar.md`); the alerts go through `pg_ops_alert()` and its channels, never a second sender. No table and no column (architect, below).
-- A cost figure in an alert only for a reader with ERP access (`validate_erp_access()`), as in `plans/order-profit.md`.
+- A cost figure in an alert only for a reader with ERP access (`validate_erp_access()`), as in `erp/order-profit.md`.
 - Taking a product off sale goes through the writer the API's product update uses, so the marketplace queue, webhooks and audit trail see it as any other change; stock is never written.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10453)

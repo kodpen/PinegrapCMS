@@ -10,7 +10,8 @@ module: stock_pickup
 - The order takes its units from that location through `pg_stock_order_location()` (the first recipient's method location), so completion and `check_inventory()` already count there (`stock-locations-completion.md`).
 
 ## When does the checkout offer it?
-- `pg_stock_pickup_methods_filter($ids, $order_id)` drops a pickup method whose location is off or does not hold every unit of the cart: the active lines of tracked, non-backorder products summed per product over all recipients (`pg_stock_pickup_cart_needs()`, `pg_stock_pickup_covers()`, units read with `pg_stock_available_at()`). Nothing counts from another location (#5042 question 2).
+- `pg_stock_pickup_methods_filter($ids, $order_id)` drops a pickup method whose location is off or does not hold every unit of the cart: the active lines of tracked, non-backorder products summed per product over all recipients, a bundle line by its tracked components (quantity per bundle × line), never the bundle's own rows (`pg_stock_pickup_cart_needs()`, `pg_stock_pickup_line_needs()`, `pg_stock_pickup_covers()`, units read with `pg_stock_available_at()`).
+- Before the 2026-11-20 hunt a bundle counted by its own rows, which are never kept up: a cart with a bundle saw no pickup but at the default location. Nothing counts from another location (#5042 question 2).
 - Called in both layouts of `get_shipping_method.php`, in `get_shipping_methods()` (express order, widgets, panel, API: an emptied list answers an error) and in `check_shipping_method()` (a chosen pickup that no longer fits is refused on submit).
 - A site without locations: the filter answers the list unchanged without a query.
 

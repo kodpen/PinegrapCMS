@@ -17,7 +17,10 @@
  *   - text in a font the server holds the file of (data/fonts, the bundled
  *     Roboto), in letters that need no shaping and the file has;
  *   - Bootstrap icons;
- *   - pictures from the files the caller answers for, never from an address.
+ *   - pictures from the files the caller answers for, never from an address;
+ *   - data layers (a Workspace table as a chart or a table) from the rows
+ *     the caller reads for the reader, as the marks image_draw_data.php
+ *     lays out alike with the editor.
  *
  * pg_image_draw_can() says what this host's Imagick draws, from a fixture
  * set drawn once per ImageMagick build. A drawing runs under Imagick's
@@ -36,6 +39,8 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_draw_data.php');
 
 /**
  * The limits of a drawing. Pure.
@@ -698,11 +703,15 @@ function pg_image_draw_icon_codes()
  * @param callable|null $picture a picture layer's address => the local path
  *                               of a file the canvas's readers may see, or ''
  * @param float         $until   the time the budget ends
+ * @param callable|null $data    a data layer's table id => the rows read
+ *                               for the reader ({columns, rows}), {state:
+ *                               refused}, or null when not read; without
+ *                               it a data layer waits for a browser
  * @return array error ('' | board | layers | kind | svg | text | font |
- *               picture | time), width, height, background ('' for a
- *               transparent one), items
+ *               picture | data | time), width, height, background ('' for
+ *               a transparent one), items
  */
-function pg_image_draw_plan($doc, $can, $picture = null, $until = 0.0)
+function pg_image_draw_plan($doc, $can, $picture = null, $until = 0.0, $data = null)
 {
     $limits = pg_image_draw_limits();
     $doc = is_object($doc) ? json_decode((string) json_encode($doc), true) : $doc;
@@ -729,6 +738,7 @@ function pg_image_draw_plan($doc, $can, $picture = null, $until = 0.0)
     }
 
     $letters = 0;
+    $reads = array();
 
     foreach ($layers as $layer) {
         if (($until > 0) && (microtime(true) > $until)) {
@@ -862,12 +872,92 @@ function pg_image_draw_plan($doc, $can, $picture = null, $until = 0.0)
             }
 
             $plan['items'][] = $item;
+        } elseif ($type === 'data') {
+            if (!$data || empty($can['text']) || !pg_image_draw_known($layer, array('data'))) {
+                return $fail('data');
+            }
+
+            $table = (int) (is_array($layer['data'] ?? null) ? ($layer['data']['table'] ?? 0) : 0);
+
+            if (($table > 0) && !array_key_exists($table, $reads)) {
+                $reads[$table] = call_user_func($data, $table);
+            }
+
+            $item = pg_image_draw_data_item($item, $layer['data'] ?? null, ($table > 0) ? $reads[$table] : null);
+
+            if ($item === null) {
+                return $fail('font');
+            }
+
+            $letters += $item['letters'];
+
+            if ($letters > $limits['letters']) {
+                return $fail('font');
+            }
+
+            $plan['items'][] = $item;
         } else {
             return $fail('kind');
         }
     }
 
     return $plan;
+}
+
+/**
+ * A data layer laid out for drawing: its marks (image_draw_data.php) with
+ * each text's font file and its letters placed from the font's widths, as
+ * a canvas's fillText() sets a line at its anchor. Null when a text needs
+ * a face or a letter this server lacks.
+ *
+ * @param array      $item  kind, x, y, w, h, rot, opacity
+ * @param mixed      $data  the layer's description
+ * @param array|null $read  see pg_image_draw_plan()'s $data
+ * @return array|null the item with marks (poly and line with their colours
+ *                    read, text with file, size, color, x, y, chars) and
+ *                    letters
+ */
+function pg_image_draw_data_item($item, $data, $read)
+{
+    $strings = function_exists('pg_image_editor_strings_data') ? pg_image_editor_strings_data() : array();
+    $words = array('empty' => $strings['dataEmpty'] ?? 'No rows to show.', 'refused' => $strings['dataRefused'] ?? 'You cannot read this table.',
+        'more' => $strings['dataMore'] ?? '%d more rows', 'count' => $strings['dataCount'] ?? 'Count', 'other' => $strings['dataOther'] ?? 'Other');
+    $drawn = pg_image_draw_data_layer_marks($data, $item['w'], $item['h'], $read, $words);
+    $item['marks'] = array();
+    $item['letters'] = 0;
+    $item['grow'] = 0;
+
+    foreach ($drawn['marks'] as $m) {
+        if ($m['t'] !== 'text') {
+            $m['color'] = pg_image_draw_color($m['t'] === 'poly' ? $m['fill'] : $m['stroke']);
+            $item['grow'] = max($item['grow'], $m['width'] ?? 0);
+            $item['marks'][] = $m;
+            continue;
+        }
+
+        $file = pg_image_draw_font_file($drawn['font'], $m['weight'], false);
+
+        if (($file === '') || !pg_image_draw_text_plain($m['v']) || !pg_image_draw_font_fits($file, $m['weight'], false, $m['v'])) {
+            return null;
+        }
+
+        $font = pg_image_draw_font_read($file);
+        $em = max(0.5, $m['size']) / $font['upem'];
+        $chars = array();
+        $at = 0.0;
+
+        foreach ((array) preg_split('//u', $m['v'], -1, PREG_SPLIT_NO_EMPTY) as $letter) {
+            $chars[] = array($letter, $at);
+            $at += pg_image_draw_font_advance($font, $letter) * $em;
+        }
+
+        $shift = ($m['anchor'] === 'middle') ? $at / 2 : (($m['anchor'] === 'end') ? $at : 0);
+        $item['marks'][] = array('t' => 'text', 'file' => $file, 'size' => max(0.5, $m['size']), 'color' => pg_image_draw_color($m['fill']),
+            'x' => $m['x'] - $shift, 'y' => $m['y'], 'chars' => $chars);
+        $item['letters'] += count($chars);
+    }
+
+    return $item;
 }
 
 /**
@@ -1283,6 +1373,10 @@ function pg_image_draw_item($canvas, $item)
         $tile->clear();
     } elseif ($kind === 'image') {
         pg_image_draw_picture($canvas, $item);
+    } elseif ($kind === 'data') {
+        pg_image_draw_group($canvas, $item, $item['grow'], $item['opacity'], function ($origin, $scale) use ($item, $polygon) {
+            return pg_image_draw_data_draws($item, $origin, $scale, $polygon);
+        }, true);
     } elseif ($kind === 'text') {
         $layout = $item['layout'];
         $size = max(0.5, $item['size']);
@@ -1402,6 +1496,74 @@ function pg_image_draw_item($canvas, $item)
 }
 
 /**
+ * A data layer's marks as drawings in its frame, in their order: a run of
+ * outlines and lines in one drawing, a run of texts in another, letter by
+ * letter at the places the font's widths give (pg_image_draw_data_item()).
+ *
+ * @param array    $item    pg_image_draw_data_item()
+ * @param int[]    $origin
+ * @param int      $scale
+ * @param callable $polygon points => ImageMagick's points
+ * @return ImagickDraw[]
+ */
+function pg_image_draw_data_draws($item, $origin, $scale, $polygon)
+{
+    $draws = array();
+    $draw = null;
+    $run = '';
+
+    foreach ($item['marks'] as $m) {
+        $want = ($m['t'] === 'text') ? 'text' : 'shape';
+
+        if ($want !== $run) {
+            if ($draw) {
+                $draws[] = $draw;
+            }
+
+            $run = $want;
+            $draw = ($want === 'text')
+                ? pg_image_draw_frame(array('x' => $item['x'] * $scale, 'y' => $item['y'] * $scale) + $item, $item['w'] * $scale, $item['h'] * $scale,
+                    array($origin[0] * $scale, $origin[1] * $scale), false, 1, 0)
+                : pg_image_draw_frame($item, $item['w'], $item['h'], $origin, false, $scale);
+
+            if ($want === 'text') {
+                $draw->setTextAntialias(true);
+                $draw->setStrokeColor(new ImagickPixel('none'));
+            }
+        }
+
+        if ($m['t'] === 'text') {
+            $draw->setFont($m['file']);
+            $draw->setFontSize($m['size'] * $scale);
+            $draw->setFillColor(pg_image_draw_pixel($m['color']));
+
+            foreach ($m['chars'] as $char) {
+                if (!in_array($char[0], array(' ', "\xC2\xA0"), true)) {
+                    $draw->annotation(($m['x'] + $char[1]) * $scale, $m['y'] * $scale, $char[0]);
+                }
+            }
+        } elseif ($m['t'] === 'poly') {
+            $draw->setStrokeColor(new ImagickPixel('none'));
+            $draw->setFillColor(pg_image_draw_pixel($m['color']));
+            $draw->polygon($polygon($m['pts']));
+        } else {
+            $draw->setFillColor(new ImagickPixel('none'));
+            $draw->setStrokeColor(pg_image_draw_pixel($m['color']));
+            $draw->setStrokeWidth(max($m['width'] - 0.5, $m['width'] * 0.75));
+            $draw->setStrokeLineCap(Imagick::LINECAP_ROUND);
+            $draw->setStrokeLineJoin(Imagick::LINEJOIN_ROUND);
+            $draw->polyline($polygon($m['pts']));
+        }
+    }
+
+    if ($draw) {
+        $draws[] = $draw;
+    }
+
+    return $draws;
+}
+
+/**
  * A plan drawn: the artboard's fill, then each item in turn, as a PNG.
  *
  * @param array $plan  pg_image_draw_plan(), without an error
@@ -1435,9 +1597,10 @@ function pg_image_draw_paint($plan, $until = 0.0)
  *
  * @param mixed         $doc     arrays or objects
  * @param callable|null $picture see pg_image_draw_plan()
+ * @param callable|null $data    see pg_image_draw_plan()
  * @return string the PNG's bytes, '' when the document waits for a browser
  */
-function pg_image_draw_document($doc, $picture = null)
+function pg_image_draw_document($doc, $picture = null, $data = null)
 {
     $can = pg_image_draw_can();
 
@@ -1446,7 +1609,7 @@ function pg_image_draw_document($doc, $picture = null)
     }
 
     $until = microtime(true) + pg_image_draw_limits()['seconds'];
-    $plan = pg_image_draw_plan($doc, $can, $picture, $until);
+    $plan = pg_image_draw_plan($doc, $can, $picture, $until, $data);
 
     if ($plan['error'] !== '') {
         return '';

@@ -31,6 +31,8 @@
 - app-access-redraw-steps.md: Plan app-access-redraw, steps AA1 to AA8: the New application sheet, the permission picker, the drawer and guides, the key as one token, the Agent tab, Connections' row, Claude Console, close-out
 - app-access-redraw.md: Plan (owner 2026-11-20, urgent): Application Access redrawn: starting points, a permission picker with bulk choices, a guide per way to connect, an agent made from the application; AA1 to AA8
 - application-review-features.md: Plan application-review, features V1 to V16: programme, eligibility, correction link, criteria, assignment, conflicts, blind review, reviewers, jurors, combining, rounds, decisions
+- application-review-screens-review.md: Plan application-review, how reviewing and deciding are put together (AR3 to AR6): "My reviews" and the scoring screen, the outside juror's page, the ranking list, the decisions and their e-mails
+- application-review-screens.md: Plan application-review, how the programme's screens are put together (AR2, AR3): the programmes list, a programme's screen in tabs, Set-up as folded rows, the Reviewers tab
 - application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
 - application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
 - assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
@@ -41,7 +43,9 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
+- canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
+- canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
 - channel-activity-features.md: Plan channel-activity, features E1 to E13: the Activity tab of Channel info, what it shows of agents, requests, polls, decisions and the repository, the report's context, project and branch
 - channel-activity-steps.md: Plan channel-activity, steps KA1 to KA5: the activity read with its API route, the Activity tab's script, the report's context, project and branch, the repository numbers, close-out
 - channel-activity.md: Plan (owner 2026-11-20, agent channel poll 179): an Activity tab in Channel info that tells a channel's state: agents, requests, polls, decisions, repository numbers, reported context; KA1 to KA5
@@ -58,8 +62,10 @@
 - customer-rhythm-steps.md: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store and nightly pass, the events with the brake, the reorder link, report and card, API and group rule, close-out
 - customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
+- delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 - delivery-tower.md: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
+- design-examples-patterns.md: Plan (owner 2026-11-20): the Design examples screen finished with whole patterns: folded settings pane, starting-point sheet, form drawer with tabs and foot, connect row, phone width; DX1-DX5
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -68,6 +74,8 @@
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - feedback-loop-features.md: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, periodic NPS, timing, fatigue, the signed one-click answer, review invitation, follow-up, report, group rule, API, privacy
+- feedback-loop-screens-results.md: Plan feedback-loop, how the answer page and the results are put together (FD4, FD6): the public answer page, the results report, comments and frequent words, the contact card's scores
+- feedback-loop-screens.md: Plan feedback-loop, how its panel screens are put together (FD2): the Surveys tab's list, starting points, a survey's edit screen in cards; each part's Design examples section
 - feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
 - feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -86,10 +94,13 @@
 - kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 - lead-journey-features.md: Plan lead-journey, features J1 to J15: the browser key and the tie, the journey, the interest and fit scores, interests, hot and returning alerts, lead sources, KVKK, API
+- lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- mailboxes-tidy.md: Plan (owner 2026-11-20): Site Settings › Mailboxes tidied: folded parts, a box's drawer in four tabs, a mailbox removed from its drawer, a new box from starting points; MT1 to MT4
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-repricer-features.md: Plan marketplace-repricer, features R1 to R13: channel price rules, own channel price, the floor, buybox reads, the strategies, limits, try-first mode, the log, the report, the API
+- marketplace-repricer-screens.md: Plan marketplace-repricer, how its screens are put together: the Pricing tab of an account's Settings drawer (RP2), the product's marketplace row, the Repricing screen (RP3b)
 - marketplace-repricer-steps.md: Plan marketplace-repricer, steps RP1 to RP6: tables, rules and floor, the account's Pricing part, the buybox read, the robot with try-first and log, API, close-out
 - marketplace-repricer.md: Plan (owner 2026-11-20, poll 173): a price per marketplace account by rules, a profit floor per product, Trendyol buybox reads and a repricer that never goes under the floor; RP1 to RP6
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
@@ -98,18 +109,18 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
-- order-profit-features.md: Plan order-profit, features N1 to N14: an order's cost rows, product cost, payment fee, marketplace deductions, shipping, revenue, profit, the pass, the screens, break-even, bell, API
-- order-profit-steps.md: Plan order-profit, steps NP1 to NP7: the cost record and the pass, payment fees, label prices, Trendyol deductions, the screens (NP5a, NP5b), break-even with bell and API, close-out
-- order-profit.md: Plan (owner 2026-11-20, agent channel poll 164): every order's costs and net profit (product, payment fee, marketplace, shipping), by product and channel, break-even price, bell, API; NP1 to NP7
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
 - pick-pack-features.md: Plan pick-pack, features K1 to K16: shelf addresses, waves and their rules, the pick list, the pack check, the checked pack, short picks, measures, events, API
+- pick-pack-screens-pack.md: Plan pick-pack, how packing is put together (PP4, PP5): the Pack screen's two states, a refused scan, the checked pack, the short pick's drawer, the Packing card
+- pick-pack-screens.md: Plan pick-pack, how the shelf and wave screens are put together (PP2, PP3): the shelf address field, the Pick waves list, "Make a wave", a wave's screen, its pick list on paper and phone
 - pick-pack-steps.md: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses, waves and the pick list, the pack check, label and marketplace on a checked pack, short picks and measures, API, close-out
 - pick-pack.md: Plan (owner 2026-11-20, poll 181): shelf addresses, pick waves in shelf order, barcode pack checks that stop a wrong or short parcel, label on a checked pack, measures, events; PP1a to PP7
 - privacy-centre-features.md: Plan privacy-centre, features P1 to P12: the inventory and its transfers, the retention rules with their dry run and audit-line destruction records, the request box, API
+- privacy-centre-screens.md: Plan privacy-centre, how the request box's screens are put together (KV4): the Requests view of the Privacy centre, a request's drawer with tabs, "Prepare the answer" as numbered steps
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
@@ -129,6 +140,7 @@
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - supplier-feed-features.md: Plan supplier-feed, features F1 to F14: connection, mapping, price rules, hourly sync, closing and reopening, drafts, several suppliers, rates, cost link, run log, brakes, API
+- supplier-feed-screens.md: Plan supplier-feed, how its screens are put together (SF2): the Supplier feeds list, Add and Edit on the edit layout, the mapping grid, the test pull drawer; the Design examples section of each part
 - supplier-feed-steps.md: Plan supplier-feed, steps SF1 to SF7: tables and readers, the feed screen and mapping, the sync, drafts and variants, several suppliers and rates, cost link and API, close-out
 - supplier-feed.md: Plan (owner 2026-11-20, poll 168): the store pulls its suppliers' XML, CSV or JSON lists and keeps price and stock in step hourly; price rules, drafts, several suppliers, cost link; SF1 to SF7
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence

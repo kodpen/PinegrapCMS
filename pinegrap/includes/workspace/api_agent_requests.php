@@ -96,6 +96,7 @@ function ws_agent_request_api_routes()
                 array('name' => 'conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Conclude the discussion the request was asked in, after the answer: only when a person in it asked for it. Never unasked.'),
                 array('name' => 'offer_conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Unasked, when the discussion seems to have reached its end: a Conclude the discussion button under the answer, which a person in it presses. Takes text; not with conclude.'),
                 array('name' => 'model', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_MODEL_MAX, 'description' => 'The model the agent runs on, as POST /workspace/agent-report takes it (one printable line of at most ' . WS_AGENT_REPORT_MODEL_MAX . ' characters): it replaces the reported model and its time and keeps the usage windows. 422 when it breaks the rule; nothing is written then.'),
+                array('name' => 'context', 'in' => 'body', 'type' => 'object', 'description' => 'The agent\'s context as POST /workspace/agent-report takes it, {used, size} in tokens: it replaces the reported context and its time and keeps the rest of the report. Left out by an agent that cannot read it. 422 when it breaks the rule; nothing is written then.'),
             ),
         ),
         array(
@@ -193,12 +194,15 @@ function ws_agent_request_api_routes()
             'mcp'         => false,
             'dry_run'     => true,
             'returns'     => ws_api_agent_report_schema(),
-            'summary'     => 'Report the calling agent\'s model and plan usage',
-            'description' => 'The agent tells the site the model it runs on and its plan\'s usage as it reads it; the Agents card shows the last report with its age. The site cannot check either value. A report needs model or windows; anything outside the rules refuses the whole report with 422. It replaces the previous report: only the last one is kept. An agent that cannot read its usage leaves windows out.' . $only,
+            'summary'     => 'Report the calling agent\'s model, plan usage and context',
+            'description' => 'The agent tells the site the model it runs on, its plan\'s usage, its context, the project and the git branch it works on, as it reads them; the Agents card and the Activity tab of Channel info show the last report with its age. The site cannot check any of it. A report needs one of the fields; anything outside the rules refuses the whole report with 422. It replaces the previous report: only the last one is kept. An agent leaves out what it cannot read.' . $only,
             'params'      => array(
                 array('name' => 'model', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_MODEL_MAX, 'description' => 'The model the agent runs on, as it names it; at most 80 characters.'),
                 array('name' => 'windows', 'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string'), 'max_items' => WS_AGENT_REPORT_WINDOWS_MAX,
                     'description' => 'Up to four usage windows, each exactly {name, percent, resets_at}: name one of ' . implode(', ', array_keys(ws_agent_report_window_list())) . ', each once; percent a whole number 0-100 used; resets_at when the window starts again (ISO-8601 or a unix timestamp).'),
+                array('name' => 'context', 'in' => 'body', 'type' => 'object', 'description' => 'The agent\'s context window as it reads it, exactly {used, size}: whole numbers of tokens, used from 0 to size, size from 1 to ' . WS_AGENT_REPORT_CONTEXT_MAX . '.'),
+                array('name' => 'project', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_PROJECT_MAX, 'description' => 'The project the agent works on, one printable line of at most ' . WS_AGENT_REPORT_PROJECT_MAX . ' characters.'),
+                array('name' => 'branch', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_BRANCH_MAX, 'description' => 'The git branch the agent works on, at most ' . WS_AGENT_REPORT_BRANCH_MAX . ' characters of letters, digits, dot, underscore, slash and dash, no "..".'),
             ),
         ),
     );
@@ -211,6 +215,9 @@ function ws_api_agent_report_schema()
         'handle'      => 'string',
         'model'       => 'string',
         'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'datetime?')),
+        'context'     => 'object?',
+        'project'     => 'string',
+        'branch'      => 'string',
         'reported_at' => 'datetime?',
     );
 }
@@ -231,6 +238,9 @@ function ws_api_agent_report_present($handle, $values, $at)
         'windows'     => array_map(function ($window) {
             return array('name' => $window['name'], 'percent' => (int) $window['percent'], 'resets_at' => api_time($window['resets_at']));
         }, (array) $values['windows']),
+        'context'     => $values['context'] ?? null,
+        'project'     => (string) ($values['project'] ?? ''),
+        'branch'      => (string) ($values['branch'] ?? ''),
         'reported_at' => ((int) $at > 0) ? api_time($at) : null,
     );
 }
@@ -267,7 +277,11 @@ function ws_api_agent_report_set($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    $check = ws_agent_report_check($params['model'] ?? null, ws_api_agent_report_times($params['windows'] ?? null));
+    $check = ws_agent_report_check($params['model'] ?? null, ws_api_agent_report_times($params['windows'] ?? null), array(
+        'context' => $params['context'] ?? null,
+        'project' => $params['project'] ?? null,
+        'branch'  => $params['branch'] ?? null,
+    ));
 
     if (!$check['ok']) {
         api_fail_validation($check['error'], $check['field']);
@@ -590,6 +604,29 @@ function ws_api_agent_answer_model($params)
     return $check['model'];
 }
 
+/**
+ * The context an answer names (its optional context field), checked as the
+ * report's context is: null when it names none or the report columns are
+ * not there yet, a 422 when it breaks the rule.
+ *
+ * @param array $params
+ * @return array|null used, size
+ */
+function ws_api_agent_answer_context($params)
+{
+    if (!array_key_exists('context', $params) || ($params['context'] === null) || !ws_agent_report_ready()) {
+        return null;
+    }
+
+    $check = ws_agent_report_context_check($params['context']);
+
+    if (!$check['ok']) {
+        api_fail_validation($check['error'], 'context');
+    }
+
+    return $check['context'];
+}
+
 function ws_api_agent_request_answer($params)
 {
     $agent = ws_api_agent_caller();
@@ -600,13 +637,14 @@ function ws_api_agent_request_answer($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
-    // The model it names is checked before anything, so a dry run meets the
-    // same refusal; it is written once the answer is.
+    // The model and context it names are checked before anything, so a dry
+    // run meets the same refusal; they are written once the answer is.
     $model = ws_api_agent_answer_model($params);
+    $context = ws_api_agent_answer_context($params);
 
     // A task handed to the agent: the answer is the run's note on the task.
     if ((int) ($row['task_id'] ?? 0) > 0) {
-        ws_api_agent_task_answer($agent, $viewer, $row, $params, $model);
+        ws_api_agent_task_answer($agent, $viewer, $row, $params, $model, $context);
         return;
     }
 
@@ -720,6 +758,10 @@ function ws_api_agent_request_answer($params)
         ws_agent_report_model_save((int) $agent['id'], $model, $now);
     }
 
+    if ($context !== null) {
+        ws_agent_report_context_save((int) $agent['id'], $context, $now);
+    }
+
     // The eye becomes a tick only with a reply; closed without text, the
     // eye stays: the agent saw it.
     if ($reply_id > 0) {
@@ -777,10 +819,12 @@ function ws_agent_task_answer_refusal($params)
  *
  * @param array $agent  the raw ws_agents row
  * @param array $viewer
- * @param array $row    ws_ai_requests, open
- * @param array $params
+ * @param array      $row     ws_ai_requests, open
+ * @param array      $params
+ * @param string|null $model   ws_api_agent_answer_model()
+ * @param array|null  $context ws_api_agent_answer_context()
  */
-function ws_api_agent_task_answer($agent, $viewer, $row, $params, $model = null)
+function ws_api_agent_task_answer($agent, $viewer, $row, $params, $model = null, $context = null)
 {
     $refused = ws_agent_task_answer_refusal($params);
 
@@ -802,6 +846,10 @@ function ws_api_agent_task_answer($agent, $viewer, $row, $params, $model = null)
 
     if ($model !== null) {
         ws_agent_report_model_save((int) $agent['id'], $model, time());
+    }
+
+    if ($context !== null) {
+        ws_agent_report_context_save((int) $agent['id'], $context, time());
     }
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));

@@ -242,17 +242,32 @@ function pg_page_clicks_cut($text, $length)
 /**
  * A path part that looks like a code: more than 16 characters, letters and
  * digits mixed, no hyphen (the key of an unsubscribe, tracking or reset
- * link). Pure.
+ * link). Judged as the word it encodes: a browser's address is
+ * percent-encoded, and "hakk%C4%B1m%C4%B1zda" is "hakkımızda", no code. A
+ * part that does not decode to UTF-8 is judged as it stands, as the
+ * script's decodeURIComponent() leaves it. Pure.
  *
  * @param string $part
  * @return bool
  */
 function pg_page_clicks_code_like($part)
 {
-    return (strlen($part) > 16)
-        && (strpos($part, '-') === false)
-        && preg_match('/[A-Za-z]/', $part)
-        && preg_match('/[0-9]/', $part);
+    $text = (string) $part;
+
+    if ((strpos($text, '%') !== false) && !preg_match('/%(?![0-9A-Fa-f]{2})/', $text)) {
+        $decoded = rawurldecode($text);
+
+        if (preg_match('//u', $decoded)) {
+            $text = $decoded;
+        }
+    }
+
+    $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : preg_match_all('/./su', $text);
+
+    return ($length > 16)
+        && (strpos($text, '-') === false)
+        && preg_match('/[A-Za-z]/', $text)
+        && preg_match('/[0-9]/', $text);
 }
 
 /**

@@ -3799,6 +3799,18 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.sales_watch',
+			'method'  => 'GET',
+			'path'    => '/reports/sales-watch',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_sales_watch',
+			'returns' => 'SalesWatchReport',
+			'summary' => 'The sales watch: the usual order rhythm per channel, its alerts and the products it took off sale',
+			'description' => 'The store learns how many orders each channel (the site, each marketplace account that pulls orders; counter sales left out) usually brings in each hour of the week over 8 weeks, and alerts when orders stop, carts reach payment but are not completed, a product sells at a wrong price or its returns rise. Per channel: whether it has enough history to be judged (learnt; under 20 orders in 8 weeks it has none), the orders expected hour by hour over the next 12 hours, and the last 12 hours\' orders against what was expected. A marketplace channel is counted up to data_until, its last successful order sync. alerts are the sales alerts of the last 7 days, newest first; closed the products the watch took off sale that are still off sale, with the price they sold at in minor units and why (half: under the usual price share, cost: under the goods\' cost). Put a product back with the product update route. Nothing is judged or sent at the call; last_pass says when the watch last ran.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'reports.cart_recovery',
 			'method'  => 'GET',
 			'path'    => '/reports/cart-recovery',

@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas-5
-description: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side (K2); files, what to look at, what is left alone
+description: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
 ---
 
 ## Where are the hunts before?
@@ -20,6 +20,12 @@ description: Bug hunt areas given on the evening of 2026-11-20: order profit and
   - To look at: two visitors on one slot between hold and confirm, daylight saving and buffers at a day's edge, a hold that ran out, cancel and move inside and outside the policy window, what the signed link opens, the deposit.
   - Decided, no fault: `commerce/bookings-decisions.md`, `commerce/booking-deposit-late-payment.md` (#10378).
   - Left alone: `booking_messages.php` and `includes/fn/events.php` (the satisfaction loop's step FD3 enters them), the meeting link's files (`booking_links.php`, `book_with.php`).
+
+## Which second area did K2 get? (architect, 2026-11-20, channel message 10907)
+- Stock per location and the barcode stock screens, hunted in #10818: `includes/fn/stock_locations.php`, `stock_moves.php`, `stock_location_screens.php`, `stock_pickup.php`, `stock_sales.php`, `barcode_increase_inventory.php`, `barcode_decrease_inventory.php`, `barcode_menu.php`, `view_stock_moves.php`.
+  - Decided, no fault: `commerce/stock-locations-decisions.md`, `commerce/barcode-stock-scan-checks.md`, `commerce/barcode-product-code-overlap.md`.
+  - Left alone: `stock_holds.php` and `includes/fn/ecommerce.php` (the stock holds line), `stock_notify.php`, `erp_stock*.php`.
+- Why: not hunted before, and pick and pack (PP2 to PP5) builds on them.
 
 ## What did each find?
 - Written by the hunt's own PR, in a `bug-hunt-<area>.md` file or the area's topic file.

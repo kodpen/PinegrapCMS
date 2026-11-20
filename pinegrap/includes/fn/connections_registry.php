@@ -471,6 +471,7 @@ function pg_connections_transfer_fields()
         'google_analytics' => array('US', array('ip_cookie')),
         'search_console' => array('US', $none),
         'indexnow' => array('US', $none),
+        'meta_capi' => array('US', array('contact', 'order_payment', 'ip_cookie')),
 
         'google_places' => array('US', array('address')),
         'mapbox' => array('US', array('address')),
@@ -703,6 +704,9 @@ function pg_connections_registry()
             'covers' => array('purpose' => array('search_console'))),
         'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
             'state' => array('kind' => 'config', 'names' => array('INDEXNOW_KEY'))),
+        // Ad conversions sent from the server (ad_conversions_meta.php).
+        'meta_capi' => array('name' => 'Meta Conversions API', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-cookies', 'uses' => 'Purchases sent from the server to Meta',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_meta_connected')),
 
         // Maps and places.
         'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',

@@ -22,7 +22,7 @@ module: image_editor
 - Browser: `pg_image_editor_data.js` draws the marks as SVG on the stage and on the save's canvas; `editor.dataRead(table, read)` hands it the rows (`{columns, rows}` or `{state: 'refused'}`). Labels in `pg_image_editor_strings_data()`.
 
 ## What is not built yet?
-- DV1b: the server's draw of a data layer (`platform/image-server-draw.md`; until then a document with one waits for a browser) and the one row read with the reader's rights. The Data menu and panel are DV2.
+- The server's draw and the row read are built (DV1b, `platform/image-server-draw-data.md`); no caller hands it rows yet. The Data menu and panel are DV2, following in a channel DV4.
 
 ## How is it checked?
 - `tests/image_editor_data_test.php` under Node; `tests/fixtures/canvas_data/layers.json` holds descriptions, rows and the marks every kind must give, for the model and the server's port alike.

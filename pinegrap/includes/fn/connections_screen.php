@@ -666,7 +666,9 @@ function pg_connections_screen_page_providers()
  * SEO; Google Analytics' tag and figures, for who may open Visitors and
  * privacy; the Google Cloud Translation key, for who may open Languages and
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
- * open Communication), "uses", then "repositories" on
+ * open Communication; Sign in with Apple's application and the CAPTCHA
+ * providers' keys, for who may open Accounts and sign-in), "uses", then
+ * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
  * is left out. Pure.
@@ -675,7 +677,10 @@ function pg_connections_screen_page_providers()
  * @param array  $can 'manager' (bool), 'repositories' (bool: may manage
  *                    the GitHub repository links), 'ai' (bool: may change
  *                    the assistants, connections_ai_may_manage()), 'signin'
- *                    (bool: may open Accounts and sign-in), 'seo' (bool: may
+ *                    (bool: may open Accounts and sign-in: Google's
+ *                    sign-in application, Apple's application),
+ *                    'security' (bool: may open Accounts and sign-in, the
+ *                    CAPTCHA providers' keys), 'seo' (bool: may
  *                    open the SEO settings, IndexNow's key), 'privacy' (bool:
  *                    may open Visitors and privacy, Google Analytics' tag
  *                    and figures), 'languages' (bool: may open Languages
@@ -710,6 +715,10 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (($id === 'google_translate') && !empty($can['languages'])) {
         $cards[] = 'details';
     } elseif (in_array($id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && !empty($can['contact'])) {
+        $cards[] = 'details';
+    } elseif (($id === 'signin_apple') && !empty($can['signin'])) {
+        $cards[] = 'details';
+    } elseif (in_array($id, array('turnstile', 'hcaptcha'), true) && !empty($can['security'])) {
         $cards[] = 'details';
     }
 

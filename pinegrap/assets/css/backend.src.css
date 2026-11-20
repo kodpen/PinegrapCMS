@@ -11507,6 +11507,96 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* Folded rows of a settings pane (includes/settings/fold.php; Assistants and
+   agents): one framed list, a row a part, its head a button with the icon
+   tile, the name over one line of state, the pill and a chevron. The card a
+   row holds is drawn by its own function: inside the row it loses its frame
+   and its heading, which the head already says; a heading holding a button
+   (Add an agent) keeps the button. */
+.pg-set-fold {
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-card);
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+}
+.pg-set-fold-item + .pg-set-fold-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-set-fold-item.is-open {
+  background: color-mix(in srgb, var(--pg-accent) 3%, transparent);
+}
+.pg-set-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.pg-set-fold-head:hover {
+  background: var(--pg-hover);
+}
+.pg-set-fold-head:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.pg-set-fold-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-set-fold-name {
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-set-fold-line {
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-set-fold-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+  transition: transform .15s ease;
+}
+.pg-set-fold-item.is-open .pg-set-fold-chevron {
+  transform: rotate(180deg);
+}
+.pg-set-fold-body {
+  padding: 2px 16px 18px 63px;
+}
+.pg-set-fold-body > .pg-set-card > .card {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header,
+.pg-set-fold-body > .pg-set-card > .card > .card-body {
+  padding-inline: 0;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:not(:has(button, a)) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header > :not(button, a, form) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:has(button, a) {
+  justify-content: flex-end;
+  padding-block: 0;
+}
+@media (max-width: 575.98px) {
+  .pg-set-fold-body { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-set-fold-chevron { transition: none; }
+}
 /* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
    tables straight under their section title. */
 .pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
@@ -12723,6 +12813,168 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-agent-stack {
   margin-left: .45rem;
+}
+/* Channel info's Info and Activity tabs (workspace_channel_activity.js):
+   the segmented control under the panel's head, each tab its own scrolling
+   pane. */
+.ws-act-tabs-row {
+  flex-shrink: 0;
+  padding: var(--ws-space-2) var(--ws-space-4) 0;
+}
+.ws-act-tabs {
+  display: flex;
+  width: 100%;
+}
+.ws-act-tabs > .pg-seg-item {
+  flex: 1 1 0;
+}
+.ws-act-body[hidden],
+.ws-info-panel > .ws-panel-body[hidden] {
+  display: none;
+}
+/* The Activity tab: the summary line and the project, a row each agent,
+   label and value lines, linked lines with their age at the right, and the
+   bars of context and plan usage. */
+.ws-act-summary {
+  margin-top: var(--ws-space-3);
+}
+.ws-act-project {
+  margin-top: .15rem;
+  overflow-wrap: anywhere;
+}
+.ws-act-count {
+  margin-inline-start: .4rem;
+  vertical-align: baseline;
+}
+.ws-act-agent {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .45rem 0;
+}
+.ws-act-agent + .ws-act-agent {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-agent.is-stale .ws-act-report,
+.ws-act-agent.is-stale .ws-act-context {
+  opacity: .5;
+}
+.ws-act-face {
+  position: relative;
+  flex: none;
+}
+.ws-act-face > .avatar {
+  --bs-avatar-size: 1.75rem;
+}
+.ws-act-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}
+.ws-act-agent-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-act-agent-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .4rem;
+  font-size: var(--pg-text-2);
+}
+.ws-act-agent-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-act-state {
+  margin-inline-start: auto;
+}
+.ws-act-agent-line {
+  margin-top: .15rem;
+  overflow-wrap: anywhere;
+}
+.ws-act-context {
+  margin-top: .25rem;
+}
+.ws-act-bar {
+  height: 6px;
+  margin-top: .2rem;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--pg-quiet);
+}
+.ws-act-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pg-tone-blue);
+}
+.ws-act-bar.is-high > span {
+  background: var(--pg-tone-amber);
+}
+.ws-act-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .3rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-fact + .ws-act-fact {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-fact-key {
+  color: var(--pg-fg-3);
+}
+.ws-act-fact-value {
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.ws-act-line {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  padding: .25rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-line > .bi {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.ws-act-line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-act-line-side {
+  flex: none;
+}
+.ws-act-link {
+  color: inherit;
+  text-decoration: none;
+}
+.ws-act-link:hover,
+.ws-act-link:focus-visible {
+  text-decoration: underline;
+}
+.ws-act-more,
+.ws-act-all {
+  margin-top: .25rem;
+}
+.ws-act-window {
+  padding: .3rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-window + .ws-act-window {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-tip,
+.ws-act-loading {
+  margin: var(--ws-space-3) 0 0;
 }
 /* Channel settings' "Agents in this channel": one compact row an agent in
    an inner card (look A), which opens its settings under it, one agent at

@@ -117,8 +117,9 @@ function connections_ai_may_manage($user) {
 
 }
 
-// May the user change the Sign in with Google application? It came from
-// the Accounts and sign-in card, so it keeps that category's gate.
+// May the user change the Sign in with Google or Apple application, or a
+// CAPTCHA provider's keys? They came from the Accounts and sign-in cards,
+// so they keep that category's gate.
 function connections_signin_may_manage($user) {
 
 	if (!defined('PG_SETTINGS_MENU')) {
@@ -356,6 +357,12 @@ if ($_POST) {
 
 	}
 
+	// Meta Conversions API's pixel, sealed token, events and boxes, saved,
+	// tried or removed on its page under the gate of Visitors and privacy.
+	if (in_array($action, array('meta_capi_save', 'meta_capi_remove'), true) && connections_privacy_may_manage($user)) {
+		pg_ad_conversion_meta_post_page($action, $_POST, $liveform);
+	}
+
 	// The Google Cloud Translation key, saved or removed on its page under the
 	// gate of the Translation Engines card it came from; the write returns to
 	// the page. The key is sealed and never drawn back.
@@ -559,6 +566,126 @@ if ($_POST) {
 		}
 
 		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		exit();
+
+	}
+
+	// Sign in with Apple's application, saved or removed on its page under
+	// the gate of the sign-in settings it came from, with the checks the
+	// card ran: a refused field writes nothing. The switch that shows the
+	// button stays on the card.
+	if (in_array($action, array('apple_save', 'apple_remove'), true)) {
+
+		if (connections_signin_may_manage($user)) {
+
+			if (!pg_signin_schema_ready()) {
+				$liveform->add_error(lang('The database has not been upgraded yet. Run the software update first.'));
+			} elseif ($action === 'apple_remove') {
+
+				pg_connect_app_remove('apple');
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'Sign in with Apple')));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Sign in with Apple')), $_SESSION['sessionusername']);
+
+			} else {
+
+				$apple = pg_signin_apple_app_decide($_POST, pg_connect_can_seal());
+
+				foreach ($apple['marks'] as $apple_field => $apple_mark) {
+					$liveform->mark_error($apple_field, $apple_mark);
+				}
+
+				if (!$apple['marks']) {
+
+					pg_connect_app_save(
+						'apple',
+						$apple['client_id'],
+						($apple['private_key'] !== '') ? pg_signin_pem_private_key($apple['private_key']) : null,
+						array('team_id' => $apple['team_id'], 'key_id' => $apple['key_id']),
+						true,
+						(int) $user['id']);
+
+					$liveform->add_notice(lang(array('string' => 'The {var:1} application was saved.', 'vars' => 'Sign in with Apple')));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Sign in with Apple')), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?service=signin_apple');
+		exit();
+
+	}
+
+	// A CAPTCHA provider's keys, saved or removed on its page under the gate
+	// of the Spam Protection card they came from. The card's checks run as
+	// before: changed keys of the provider forms use are asked about first,
+	// and a refusal is marked with nothing written. Which provider forms use
+	// is still chosen on the card.
+	if (in_array($action, array('captcha_save', 'captcha_remove'), true)) {
+
+		$captcha_provider = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$captcha_definition = pg_captcha_provider_definition($captcha_provider);
+
+		if (($captcha_definition !== null) && connections_signin_may_manage($user)) {
+
+			if ($action === 'captcha_remove') {
+
+				pg_connect_app_remove(pg_captcha_app_key($captcha_provider));
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $captcha_definition['label'])));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $captcha_definition['label'])), $_SESSION['sessionusername']);
+
+			} else {
+
+				$captcha_apps = array();
+
+				foreach (array_keys(pg_captcha_providers()) as $captcha_key) {
+					$captcha_apps[$captcha_key] = pg_captcha_app($captcha_key);
+				}
+
+				$captcha_field = 'captcha_' . $captcha_provider . '_';
+				$captcha_decision = pg_captcha_settings_check(array(
+					'captcha_provider'            => pg_captcha_settings_selected($captcha_apps),
+					$captcha_field . 'site_key'   => (isset($_POST[$captcha_field . 'site_key']) && is_string($_POST[$captcha_field . 'site_key'])) ? $_POST[$captcha_field . 'site_key'] : '',
+					$captcha_field . 'secret'     => (isset($_POST[$captcha_field . 'secret']) && is_string($_POST[$captcha_field . 'secret'])) ? $_POST[$captcha_field . 'secret'] : '',
+				), $liveform);
+
+				if (!$liveform->check_form_errors()) {
+
+					pg_captcha_settings_save($captcha_decision, (int) $user['id'], $liveform);
+
+					if ($captcha_decision['apps'][$captcha_provider]['action'] !== 'none') {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $captcha_definition['label'])));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $captcha_definition['label'])), $_SESSION['sessionusername']);
+					}
+
+					// Save and try: the stored keys are asked about with a
+					// made-up token, as the card's check does.
+					if (!empty($_POST['submit_try'])) {
+
+						$captcha_app = pg_captcha_app($captcha_provider);
+						$captcha_try = pg_captcha_verify_request($captcha_provider, $captcha_app['site_key'], $captcha_app['secret'], 'pinegrap-settings-check', '');
+
+						if ($captcha_try['outcome'] === 'misconfigured') {
+							$liveform->add_error(lang(array('string' => '{var:1} did not accept these keys ({var:2}).', 'vars' => array(h($captcha_definition['label']), h($captcha_try['detail'])))));
+						} elseif ($captcha_try['outcome'] === 'unavailable') {
+							$liveform->add_error(lang(array('string' => '{var:1} could not be reached from this server ({var:2}).', 'vars' => array(h($captcha_definition['label']), h($captcha_try['detail'])))));
+						} else {
+							$liveform->add_notice(lang(array('string' => '{var:1} answered.', 'vars' => $captcha_definition['label'])));
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($captcha_definition !== null) ? '?service=' . $captcha_provider : ''));
 		exit();
 
 	}
@@ -1253,6 +1380,174 @@ function connections_translate_page($page, $may_manage, $can_seal) {
 						<span class="pg-text-meta d-block">' . h($languages ? implode(', ', $languages) : lang('No language is set to it yet.')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill($stored ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Sign in with Apple's page: "Connection details" holds the application the
+   Accounts and sign-in card held (the Services ID, the Team ID, the Key ID
+   and the .p8 key, never drawn back), for who may open that category;
+   Status has Disconnect while one is stored; "Where it is used" leads to
+   the card's switch, which stays there. */
+
+function connections_signin_apple_page($page, $may_manage, $can_seal) {
+
+	$provider = pg_connect_provider('apple');
+	$app = pg_signin_schema_ready() ? pg_connect_app('apple') : null;
+	$ready = is_array($provider) && pg_signin_app_ready($provider, $app);
+
+	if ($may_manage && is_array($provider) && in_array('details', $page['cards'], true)) {
+
+		$option = function ($name) use ($app) {
+			return (is_array($app) && isset($app['options'][$name])) ? (string) $app['options'][$name] : '';
+		};
+
+		$steps = '';
+
+		foreach ($provider['setup'] as $step) {
+			$steps .= '<li>' . h($step) . '</li>';
+		}
+
+		$key_stored = is_array($app) && $app['secret_stored'];
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The Apple application visitors sign in through. Whether the button is shown is switched in Site Settings › Accounts and sign-in.')) . '</p>
+			' . ($ready ? '' : '<div class="alert theme-warning py-3 small mb-4">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div>') . '
+			<ol class="pg-text-meta ps-5 mb-4">' . $steps . '</ol>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="apple_save">
+				<div>
+					<label class="pg-field-label" for="signin_apple_redirect">' . h(lang('Return URL (add this to the Services ID)')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="signin_apple_redirect" readonly onclick="this.select()" value="' . h(pg_signin_redirect_uri('apple')) . '">
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_client_id">' . h(lang('Services ID')) . '</label>
+					<input type="text" class="pg-input" id="apple_client_id" name="apple_client_id" value="' . h(is_array($app) ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off" spellcheck="false" placeholder="com.example.signin">
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_team_id">' . h(lang('Team ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="apple_team_id" name="apple_team_id" value="' . h($option('team_id')) . '" maxlength="10" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h($provider['options']['team_id']['help']) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_key_id">' . h(lang('Key ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="apple_key_id" name="apple_key_id" value="' . h($option('key_id')) . '" maxlength="10" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h($provider['options']['key_id']['help']) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="apple_private_key">' . h(lang('Private key (.p8)')) . '</label>
+					<textarea class="pg-input font-monospace" id="apple_private_key" name="apple_private_key" rows="4" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true"
+						placeholder="' . h($key_stored ? lang('Stored. Leave empty to keep it.') : '-----BEGIN PRIVATE KEY-----') . '"></textarea>
+					<div class="pg-field-help">' . h(lang('Kept encrypted with the site\'s key and never shown again.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<a class="pg-button pg-button-sm pg-button-quiet" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
+						<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
+				</div>
+			</form>
+		</section>';
+
+		if (is_array($app)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="apple_remove" data-id="0"
+					data-confirm="' . h(lang('The Sign in with Apple application is removed: the Apple button stays hidden until one is set up again. Accounts that signed in with Apple keep their other ways in.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$switched_on = in_array('apple', pg_signin_switched_on(), true);
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Visitors sign in with Apple')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Accounts and sign-in')) . ' › ' . h(lang('Sign in with Google, Microsoft and Apple')) . '</span>
+						<span class="pg-text-meta d-block">' . h($switched_on ? lang('The button is switched on.') : lang('The button is switched off.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($ready ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* A CAPTCHA provider's page, Cloudflare Turnstile or hCaptcha: "Connection
+   details" holds the site key and secret key the Spam Protection card held
+   (the secret never drawn back), for who may open Accounts and sign-in;
+   Status has Disconnect while keys are stored; "Where it is used" leads to
+   the card, where the provider forms use is chosen. */
+
+function connections_captcha_page($page, $id, $may_manage, $can_seal) {
+
+	$definition = pg_captcha_provider_definition($id);
+	$app = pg_captcha_app($id);
+	$stored = ($app['site_key'] !== '') || $app['secret_stored'];
+
+	if (($definition !== null) && $may_manage && in_array('details', $page['cards'], true)) {
+
+		$name = 'captcha_' . $id . '_';
+		$refusal = pg_captcha_settings_refusal();
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . lang(array(
+				'string' => 'Enter the site key and secret key of a {var:1} widget made for this site\'s domain. Which check forms use is chosen in Site Settings › Accounts and sign-in › Spam Protection.',
+				'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</p>
+			' . (($refusal === '') ? '' : '<div class="alert theme-warning py-3 small mb-4">' . h($refusal) . '</div>') . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="captcha_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				<div>
+					<label class="pg-field-label" for="' . h($name) . 'site_key">' . h(lang('Site Key')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="' . h($name) . 'site_key" name="' . h($name) . 'site_key" value="' . h($app['site_key']) . '" maxlength="255" autocomplete="off" spellcheck="false">
+				</div>
+				<div>
+					<label class="pg-field-label" for="' . h($name) . 'secret">' . h(lang('Secret Key')) . '</label>
+					<input type="password" class="pg-input font-monospace" id="' . h($name) . 'secret" name="' . h($name) . 'secret" value="" maxlength="255" autocomplete="new-password" spellcheck="false"
+						placeholder="' . h(($app['secret_stored'] && ($app['secret'] !== '')) ? lang('Stored. Leave empty to keep it.') : '') . '">
+					<div class="pg-field-help">' . h(lang('Kept encrypted with the site\'s key and never shown again. While forms use this provider, changed keys are checked with it before they are saved.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if ($stored) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="captcha_remove" data-id="0"
+					data-confirm="' . h(lang(array('string' => 'The {var:1} keys are removed: while forms use it, they show the built-in question until keys are typed again.', 'vars' => ($definition !== null) ? $definition['label'] : $id))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$in_use = (pg_captcha_provider() === $id);
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('security', 'pgset-captcha')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('A check on forms against bots')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Accounts and sign-in')) . ' › ' . h(lang('Spam Protection')) . '</span>
+						<span class="pg-text-meta d-block">' . h($in_use ? lang('Forms use it now.') : lang('Forms do not use it now.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($app['site_key'] !== '' && $app['secret'] !== '') ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -2555,14 +2850,26 @@ if ($provider_page !== '') {
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
+			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
+			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true),
 	);
+
+	// A CAPTCHA provider's page: its keys and the card that chooses it.
+	if (in_array($page_id, array('turnstile', 'hcaptcha'), true)) {
+		$page = connections_captcha_page($page, $page_id, connections_signin_may_manage($user), $can_seal);
+	}
+
+	// Sign in with Apple's page: its application and the switch that uses it.
+	if ($page_id === 'signin_apple') {
+		$page = connections_signin_apple_page($page, connections_signin_may_manage($user), $can_seal);
+	}
 
 	// An SMS provider's page: its account and the SMS cards that use it.
 	if (in_array($page_id, array('netgsm', 'iletimerkezi', 'twilio'), true)) {
@@ -2587,6 +2894,12 @@ if ($provider_page !== '') {
 	// IndexNow's page: its key and the SEO card that shows it.
 	if ($page_id === 'indexnow') {
 		$page = connections_indexnow_page($page, connections_seo_may_manage($user));
+	}
+
+	// Meta Conversions API's page: its pixel and token, the events it gets
+	// and the consent boxes, under the Visitors and privacy gate.
+	if ($page_id === 'meta_capi') {
+		$page = pg_ad_conversion_meta_page($page, connections_privacy_may_manage($user), $can_seal);
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.

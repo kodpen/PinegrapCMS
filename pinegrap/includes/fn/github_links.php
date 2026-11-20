@@ -11,8 +11,8 @@
  *
  * This file holds the rules that need no database: the repository name, the
  * events a link can follow and the GitHub hook events they need, the hook
- * GitHub is asked to create, the X-Hub-Signature-256 check, the delivery id
- * and the lines. The lines keep the formats the repository's own CI wrote
+ * GitHub is asked to create, the X-Hub-Signature-256 check, the delivery id,
+ * the lines, and a written line read back with a day's counts of them. The lines keep the formats the repository's own CI wrote
  * before ([ci] green|red #<n> <branch> <sha7> ... <run url> <title>,
  * [ready] #<n> <branch> <sha7> <title>), so wake rules on those prefixes
  * keep working.
@@ -334,6 +334,188 @@ function pg_github_line_join($parts)
     return implode(' ', array_values(array_filter($parts, function ($part) {
         return $part !== '';
     })));
+}
+
+/**
+ * Reads a line pg_github_line() wrote back into its parts, or null when the
+ * text is not one of its shapes (a person's message, a typed look-alike).
+ * Empty parts were left out when the line was written, so the branch and
+ * the commit are told apart by the commit's seven hex digits, and the check
+ * and the address by their own form. A label named "ci" or "pr" writes
+ * "[ci] #<n> …", told from a CI or pull request line by the missing state.
+ * Pure.
+ *
+ * @param string $text
+ * @return array|null kind (ci|pr|label), state (green|red; opened|reopened|
+ *                    merged|closed; the label), number (int|null), branch,
+ *                    sha, check (<workflow>=<conclusion>, ci only), url, title
+ */
+function pg_github_line_read($text)
+{
+    if (!is_string($text) || !preg_match('~^\[([a-z0-9._-]{1,40})\] (.+)$~s', trim($text), $match)) {
+        return null;
+    }
+
+    $prefix = $match[1];
+    $words = explode(' ', $match[2]);
+    $kind = 'label';
+    $state = $prefix;
+
+    if (($prefix === 'ci') && in_array($words[0], array('green', 'red'), true)) {
+        $kind = 'ci';
+    } elseif (($prefix === 'pr') && in_array($words[0], array('opened', 'reopened', 'merged', 'closed'), true)) {
+        $kind = 'pr';
+    }
+
+    if ($kind !== 'label') {
+        $state = array_shift($words);
+    }
+
+    $number = null;
+
+    if (isset($words[0]) && preg_match('~^#([1-9][0-9]{0,9})$~', $words[0], $found)) {
+        $number = (int) $found[1];
+        array_shift($words);
+    } elseif ($kind !== 'ci') {
+        // A pull request and a label line always carry the number.
+        return null;
+    }
+
+    $read = array('kind' => $kind, 'state' => $state, 'number' => $number, 'branch' => '', 'sha' => '', 'check' => '', 'url' => '', 'title' => '');
+
+    if ($kind === 'ci') {
+        // The check is the first of the next three words that reads as one,
+        // tried from the furthest, so a branch with "=" in it stays a branch.
+        $at = -1;
+
+        for ($i = min(2, count($words) - 1); $i >= 0; $i--) {
+            if (preg_match('~^[a-z0-9._-]{0,40}=(success|neutral|failure|timed_out|action_required|startup_failure|stale)$~', $words[$i])) {
+                $at = $i;
+                break;
+            }
+        }
+
+        if ($at < 0) {
+            return null;
+        }
+
+        $read['check'] = $words[$at];
+        $before = array_slice($words, 0, $at);
+        $words = array_slice($words, $at + 1);
+    } elseif ($kind === 'pr') {
+        $at = -1;
+
+        for ($i = 0; ($i < 3) && ($i < count($words)); $i++) {
+            if (pg_github_line_is_url($words[$i])) {
+                $at = $i;
+                break;
+            }
+        }
+
+        $before = array_slice($words, 0, ($at >= 0) ? $at : min(2, count($words)));
+        $words = array_slice($words, count($before));
+    } else {
+        $before = array_slice($words, 0, min(2, count($words)));
+        $words = array_slice($words, count($before));
+    }
+
+    // Branch and commit: the commit is the last of them when it has the
+    // shape of seven hex digits; whatever else stays goes back to the title.
+    if ($before && preg_match('~^[0-9a-f]{7}$~', (string) end($before))) {
+        $read['sha'] = array_pop($before);
+    }
+
+    if ($before) {
+        $read['branch'] = array_shift($before);
+    }
+
+    $words = array_merge($before, $words);
+
+    if (($kind === 'ci') || ($kind === 'pr')) {
+        if ($words && pg_github_line_is_url($words[0])) {
+            $read['url'] = array_shift($words);
+        }
+    }
+
+    $read['title'] = implode(' ', $words);
+
+    return $read;
+}
+
+/**
+ * Whether a word of a line is a web address a line carries.
+ *
+ * @param string $word
+ * @return bool
+ */
+function pg_github_line_is_url($word)
+{
+    return (bool) preg_match('~^https?://[^\s]+$~i', (string) $word);
+}
+
+/**
+ * The address of a repository's pull request.
+ *
+ * @param string $repository owner/name
+ * @param int    $number
+ * @return string '' when either is missing
+ */
+function pg_github_pull_url($repository, $number)
+{
+    $repository = pg_github_repo_parse($repository);
+
+    return (($repository !== '') && ((int) $number > 0)) ? 'https://github.com/' . $repository . '/pull/' . (int) $number : '';
+}
+
+/**
+ * A day's numbers from the lines the GitHub application wrote into a
+ * channel: pull requests opened (a reopened one counts as opened), merged
+ * and closed, checks green and red, and the newest lines read, each with
+ * its address (a label line, or a check without one, links to its pull
+ * request). Text that does not read as a line counts nothing. Pure.
+ *
+ * @param array[] $rows       id, body, created_at; newest first
+ * @param string  $repository owner/name, for the pull request addresses
+ * @param int     $shown      how many lines to give
+ * @return array pull_requests (opened, merged, closed), checks (green, red),
+ *               lines (message_id, kind, state, number, branch, title, url, created_at)
+ */
+function pg_github_day_counts($rows, $repository, $shown)
+{
+    $out = array(
+        'pull_requests' => array('opened' => 0, 'merged' => 0, 'closed' => 0),
+        'checks'        => array('green' => 0, 'red' => 0),
+        'lines'         => array(),
+    );
+
+    foreach ((array) $rows as $row) {
+        $read = pg_github_line_read($row['body'] ?? '');
+
+        if ($read === null) {
+            continue;
+        }
+
+        if ($read['kind'] === 'pr') {
+            $out['pull_requests'][($read['state'] === 'reopened') ? 'opened' : $read['state']]++;
+        } elseif ($read['kind'] === 'ci') {
+            $out['checks'][$read['state']]++;
+        }
+
+        if (count($out['lines']) < (int) $shown) {
+            $out['lines'][] = array(
+                'message_id' => (int) ($row['id'] ?? 0),
+                'kind'       => $read['kind'],
+                'state'      => $read['state'],
+                'number'     => $read['number'],
+                'branch'     => $read['branch'],
+                'title'      => $read['title'],
+                'url'        => ($read['url'] !== '') ? $read['url'] : pg_github_pull_url($repository, (int) $read['number']),
+                'created_at' => (int) ($row['created_at'] ?? 0),
+            );
+        }
+    }
+
+    return $out;
 }
 
 /**
