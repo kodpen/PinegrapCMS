@@ -247,6 +247,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
+	upgrade_2026_11_0_customer_rhythm();         // 11.0.260
 
 }
 
@@ -8408,5 +8409,49 @@ function upgrade_2026_11_0_ws_note_app() {
 	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
+
+}
+
+// Customer rhythm (2026.11.0, 11.0.260; includes/fn/customer_rhythm_pass.php).
+//
+// One row per customer, keyed by the Customers Report's customer key
+// (pg_customer_value_key(): a hash of the billing e-mail, else c<contact>),
+// written by the nightly pass in the general job. The row keeps the own
+// interval and the stage as fixed at the last order, so a stage only moves
+// forward between orders and each move is seen once. stage: 0 none,
+// 1 Regular, 2 Due, 3 Late, 4 Slipping away, 5 Lost, 6 Won back. Amounts are
+// minor units of the base currency; chance is a per cent. No name, e-mail or
+// address; a marketplace buyer gets no row. No column is added to an
+// existing table.
+function upgrade_2026_11_0_customer_rhythm() {
+
+	install_create_table('customer_rhythm', "CREATE TABLE customer_rhythm (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		customer_key        VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		contact_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		orders              INT UNSIGNED NOT NULL DEFAULT 0,
+		first_order_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		last_order_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_order_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		interval_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		avg_order           INT UNSIGNED NOT NULL DEFAULT 0,
+		stage               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		stage_before        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		stage_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		chance              TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		expected_value      INT UNSIGNED NOT NULL DEFAULT 0,
+		next_due_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		held_back           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		came_back_order_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_customer_key (customer_key),
+		KEY idx_contact (contact_id),
+		KEY idx_stage_at (stage, stage_at),
+		KEY idx_next_due (next_due_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Orders: a table for each customer\'s own order rhythm was added; the general job fills it every night.');
 
 }

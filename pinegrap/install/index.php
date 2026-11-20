@@ -9003,6 +9003,7 @@ function get_tables() {
 		'currency_rates',
 		'custom_form_confirmation_pages',
 		'custom_form_pages',
+		'customer_rhythm',
 		'dregion',
 		'email_a_friend_pages',
 		'email_campaign_profiles',
