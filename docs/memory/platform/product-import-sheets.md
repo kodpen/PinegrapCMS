@@ -4,7 +4,7 @@ description: How the product import turns a .xlsx, .ods or .xls upload into its 
 ---
 
 ## Which path reads which file?
-- `pg_products_import_to_csv($path, $file_name, &$error)` picks by extension (`pg_sheet_kind()`): .xlsx and .xlsm keep the importer's own walk (`pg_products_import_xlsx_to_csv()`, rows written as they go past); .ods and .xls go through the sheet reader (`pg_products_import_sheet_to_csv()` → `pg_sheet_rows()`, `pg_sheet_cell_text()`), first sheet. No PHPExcel since plan `phpexcel-own-code` XL2.
+- `pg_products_import_to_csv($path, $file_name, &$error)` picks by extension (`pg_sheet_kind()`): .xlsx and .xlsm keep the importer's own walk (`pg_products_import_xlsx_to_csv()`, rows written as they go past); .ods and .xls go through the sheet reader (`pg_products_import_sheet_to_csv()` → `pg_sheet_rows()`, `pg_sheet_cell_text()`), first sheet. No PHPExcel since #10501; the library is removed (#10528).
 - The same function serves Products > Import, the workflow table import (`workspace/workflow-table-import.md`) and a channel's bulk product drafts (`workspace/workspace-bulk-sources.md`).
 
 ## What is a row?
@@ -16,7 +16,7 @@ description: How the product import turns a .xlsx, .ods or .xls upload into its 
 
 ## What reads otherwise than with PHPExcel?
 - Kept on purpose (`sheet-reader-differences.md`): an .xls date is a date, not its day count; a time alone is `1899-12-30 hh:mm:ss`, not `1970-01-01 …`; an .ods number is its own text (`2500000000000000`, not `2.5E+15`); .ods `text:s` spaces are kept; a merged range or a large second sheet in an .ods no longer refuses the file.
-- `tests/products_import_sheet_test.php` reads the fixtures of `tests/fixtures/sheet_read/` with PHPExcel (its own process) and with the importer and compares every cell, the differences above listed.
+- `tests/products_import_sheet_test.php` reads the fixtures of `tests/fixtures/sheet_read/` with the importer and compares every cell with the rows PHPExcel gave, frozen in `phpexcel_product_rows.json` before the library was removed; the differences above are listed.
 
-## Which helpers stay only for the bank statement import?
-- `pg_products_import_reader()`, `pg_products_import_ods_check()`, `pg_products_import_ods_load()` and the `PG_PRODUCTS_IMPORT_ODS_*` constants: `includes/erp/bank_import.php` calls them until XL3; XL5 removes what is left unused. The `pg_products_import_xlsx_*()` helpers serve both importers' .xlsx walks.
+## Which helpers are left?
+- The `pg_products_import_xlsx_*()` helpers serve the importer's own .xlsx walk; the bank statement import reads through the sheet reader. `pg_products_import_reader()`, `pg_products_import_ods_check()`, `pg_products_import_ods_load()` and the `PG_PRODUCTS_IMPORT_ODS_*` constants went with PHPExcel (#10528); the .ods ceilings are the sheet reader's (`ods-cell-ceiling.md`).

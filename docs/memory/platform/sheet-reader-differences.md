@@ -19,6 +19,6 @@ module: sheet_read
 - An .ods merged range makes no cells (its value stands in the first) and other sheets are not read, so a small file spanning millions of merged cells, or a huge second sheet, is read, not refused as too large.
 
 ## How is it tested?
-- `tests/sheet_read_test.php`: the fixtures in `tests/fixtures/sheet_read/` (LibreOffice 24.2 .xlsx/.ods/.xls from one openpyxl workbook, a PHPExcel Excel5 .xls, 1904 workbooks) and `tests/fixtures/excel_reader2/products.xls` read by PHPExcel in its own process and by the reader, compared cell by cell; the differences above are listed there.
+- `tests/sheet_read_test.php`: the fixtures in `tests/fixtures/sheet_read/` (LibreOffice 24.2 .xlsx/.ods/.xls from one openpyxl workbook, a PHPExcel Excel5 .xls, 1904 workbooks) and `tests/fixtures/excel_reader2/products.xls` read by the reader and compared cell by cell with what PHPExcel read from them, frozen in `tests/fixtures/sheet_read/phpexcel_cells.json` before the library was removed (#10528); the differences above are listed there.
 - Also: no preview limits, rows one at a time, .ods ceilings, cut and looping .xls files refused within seconds.
-- The product import's CSV from the same fixtures against PHPExcel's: `tests/products_import_sheet_test.php` (`product-import-sheets.md`).
+- The product import's CSV from the same fixtures against PHPExcel's frozen rows: `tests/products_import_sheet_test.php` (`product-import-sheets.md`).
