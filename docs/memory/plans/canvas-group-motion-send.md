@@ -26,7 +26,7 @@ priority: 7
 - (C6) The split button joins the Design examples screen under buttons in the same PR (`workflow/screen-described-in-plan.md`).
 
 ## Which steps are there?
-- CS1 (M): C1, C2. Tests under Node: a group's record gives group keys and none on members; the row's diamonds; the removal.
+- CS1 (M): C1, C2. Tests under Node: a group's record gives group keys and none on members; the row's diamonds; the removal. Done #10857.
 - CS2 (S): C3.
 - CS3 (S) after CS2 (both enter the action bar): C4.
 - CS4 (M) beside CS1: C5, C6; the rights of each choice tested.
