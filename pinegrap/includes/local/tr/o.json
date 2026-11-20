@@ -2192,6 +2192,7 @@
     "Orders placed on a working day usually ship the same day and arrive in one to three working days.": "İş günü verilen siparişler genellikle aynı gün kargoya verilir ve bir ile üç iş günü içinde ulaşır.",
     "Orders read up to {var:1}": "Siparişler {var:1} tarihine kadar okundu",
     "Orders retrieved successfully.": "Siparişler başarıyla getirildi.",
+    "Orders stopped coming in": "Siparişler gelmez oldu",
     "Orders that spent the card": "Kartı harcayan siparişler",
     "Orders to invoice": "Faturalanacak siparişler",
     "Orders today": "Bugünkü siparişler",

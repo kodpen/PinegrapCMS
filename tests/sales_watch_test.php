@@ -21,7 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // Hourly counts: $per_hour orders in every hour of the $weeks weeks before
 // $cut (an hour index), except the weeks listed in $empty_weeks (1 = the
 // week just before $cut).
-function test_sales_watch_counts($cut, $per_hour, $weeks = 8, array $empty_weeks = array())
+function sales_watch_test_counts($cut, $per_hour, $weeks = 8, array $empty_weeks = array())
 {
 	$counts = array();
 
@@ -38,7 +38,7 @@ function test_sales_watch_counts($cut, $per_hour, $weeks = 8, array $empty_weeks
 }
 
 // $n order times spread evenly over ($start, $end].
-function test_sales_watch_times($start, $end, $n)
+function sales_watch_test_times($start, $end, $n)
 {
 	$times = array();
 
@@ -78,7 +78,7 @@ function test_sales_watch_windows()
 function test_sales_watch_norm_holiday_week()
 {
 	$cut = 500000;
-	$norm = pg_sales_watch_norm(test_sales_watch_counts($cut, 4, 8, array(3)), $cut);
+	$norm = pg_sales_watch_norm(sales_watch_test_counts($cut, 4, 8, array(3)), $cut);
 
 	pg_assert_true(is_array($norm));
 	pg_assert_same(4 * 168 * 7, $norm['total']);
@@ -87,13 +87,13 @@ function test_sales_watch_norm_holiday_week()
 	pg_assert_true(($hour > 4.0) && ($hour < 4.7), 'expected ' . $hour);
 
 	// The holiday was last week: the scale stops at one half.
-	$norm = pg_sales_watch_norm(test_sales_watch_counts($cut, 4, 8, array(1)), $cut);
+	$norm = pg_sales_watch_norm(sales_watch_test_counts($cut, 4, 8, array(1)), $cut);
 	pg_assert_same(0.5, $norm['scale']);
 	pg_assert_true(abs(pg_sales_watch_expected_hour($norm, $cut - 1) - 2.0) < 0.0001);
 
 	// Twelve hours without an order after a normal history are told.
 	$end = $cut * 3600;
-	$norm = pg_sales_watch_norm(test_sales_watch_counts($cut, 4), $cut);
+	$norm = pg_sales_watch_norm(sales_watch_test_counts($cut, 4), $cut);
 	$found = pg_sales_watch_judge_orders($norm, array(), $end, 0, 0.002);
 
 	pg_assert_true(is_array($found));
@@ -101,7 +101,7 @@ function test_sales_watch_norm_holiday_week()
 	pg_assert_true($found['expected'] > 7.0);
 
 	// The usual rhythm is not.
-	pg_assert_same(null, pg_sales_watch_judge_orders($norm, test_sales_watch_times($end - 43200, $end, 48), $end, 0, 0.002));
+	pg_assert_same(null, pg_sales_watch_judge_orders($norm, sales_watch_test_times($end - 43200, $end, 48), $end, 0, 0.002));
 }
 
 // A quiet small shop: under 20 orders in the eight weeks there is no norm;
@@ -113,12 +113,12 @@ function test_sales_watch_quiet_small_shop()
 
 	$counts = array();
 	for ($i = 0; $i < 15; $i++) {
-		$counts[$cut - 10 - ($i * 80)] = 1;
+		$counts[$cut - 10 - ($i * 40)] = 1;
 	}
 	pg_assert_same(null, pg_sales_watch_norm($counts, $cut));
 
 	for ($i = 15; $i < 30; $i++) {
-		$counts[$cut - 10 - ($i * 80)] = 1;
+		$counts[$cut - 10 - ($i * 40)] = 1;
 	}
 	$norm = pg_sales_watch_norm($counts, $cut);
 	pg_assert_true(is_array($norm));
@@ -132,11 +132,11 @@ function test_sales_watch_silent_channel_and_store()
 	$cut = 500000;
 	$end = $cut * 3600;
 
-	$site = pg_sales_watch_norm(test_sales_watch_counts($cut, 6), $cut);
-	$market = pg_sales_watch_norm(test_sales_watch_counts($cut, 3), $cut);
+	$site = pg_sales_watch_norm(sales_watch_test_counts($cut, 6), $cut);
+	$market = pg_sales_watch_norm(sales_watch_test_counts($cut, 3), $cut);
 
 	$judged = array(
-		'site'  => array('label' => 'Site', 'result' => pg_sales_watch_judge_orders($site, test_sales_watch_times($end - 43200, $end, 72), $end, 0, 0.002)),
+		'site'  => array('label' => 'Site', 'result' => pg_sales_watch_judge_orders($site, sales_watch_test_times($end - 43200, $end, 72), $end, 0, 0.002)),
 		'mp_4'  => array('label' => 'Trendyol', 'result' => pg_sales_watch_judge_orders($market, array(), $end, 300, 0.002)),
 	);
 
@@ -166,8 +166,8 @@ function test_sales_watch_marketplace_between_syncs()
 	$now = $cut * 3600;
 	$synced = $now - 3000;
 
-	$norm = pg_sales_watch_norm(test_sales_watch_counts($cut, 20), $cut);
-	$times = test_sales_watch_times($synced - 43200, $synced, 240);
+	$norm = pg_sales_watch_norm(sales_watch_test_counts($cut, 20), $cut);
+	$times = sales_watch_test_times($synced - 43200, $synced, 240);
 
 	pg_assert_true(is_array(pg_sales_watch_judge_orders($norm, $times, $now, 300, 0.002)), 'judged at now, the gap looks silent');
 	pg_assert_same(null, pg_sales_watch_judge_orders($norm, $times, $synced, 300, 0.002));
@@ -179,16 +179,16 @@ function test_sales_watch_broken_checkout()
 	$end = 1800000000;
 
 	// Half the carts that reach payment complete, as a rule.
-	pg_assert_same(null, pg_sales_watch_judge_payment(10, 10, array(), test_sales_watch_times($end - 7200, $end, 12), $end, 0.002), 'no norm under 20 orders');
+	pg_assert_same(null, pg_sales_watch_judge_payment(10, 10, array(), sales_watch_test_times($end - 7200, $end, 12), $end, 0.002), 'no norm under 20 orders');
 
-	$found = pg_sales_watch_judge_payment(1000, 1000, array(), test_sales_watch_times($end - 7200, $end, 14), $end, 0.002);
+	$found = pg_sales_watch_judge_payment(1000, 1000, array(), sales_watch_test_times($end - 7200, $end, 14), $end, 0.002);
 	pg_assert_true(is_array($found));
 	pg_assert_same(0, $found['completed']);
 	pg_assert_true($found['carts'] >= 5);
 
 	// The usual share, and too few carts to say.
-	pg_assert_same(null, pg_sales_watch_judge_payment(1000, 1000, test_sales_watch_times($end - 7200, $end, 7), test_sales_watch_times($end - 7200, $end, 7), $end, 0.002));
-	pg_assert_same(null, pg_sales_watch_judge_payment(1000, 1000, array(), test_sales_watch_times($end - 7200, $end, 4), $end, 0.002));
+	pg_assert_same(null, pg_sales_watch_judge_payment(1000, 1000, sales_watch_test_times($end - 7200, $end, 7), sales_watch_test_times($end - 7200, $end, 7), $end, 0.002));
+	pg_assert_same(null, pg_sales_watch_judge_payment(1000, 1000, array(), sales_watch_test_times($end - 7200, $end, 4), $end, 0.002));
 
 	pg_assert_same('Credit/Debit Card (3), not chosen (1)', pg_sales_watch_payment_methods(array('Credit/Debit Card', '', 'Credit/Debit Card', 'Credit/Debit Card')));
 }
