@@ -12,7 +12,7 @@ description: Plan designer-next (architect 2026-11-19): a mark on the designer c
 
 ## What is built?
 - DX1 (M), done (#10469): the canvas marks (designer/canvas-link-marks.md). The open page's links come from the Prototype view's own data (`PGProtoHotspots.design()` over the open tab, the `prototype_map` read, `mark()`), never a second walk; a pure function picks the broken and the empty ones.
-- DX2 (S) after DX1: the key back to the Prototype view with the same link picked. The key is checked against today's shortcuts first (designer-panels-rules K9).
+- DX2 (S), started (branch `plan/designer-next-dx2`): the key back to the Prototype view with the same link picked. The key is checked against today's shortcuts first (designer-panels-rules K9).
 - DX3 (M) after DX2: the tab's tooltip with the three counts.
 - One step at a time: each waits for the merge of the one before it.
 
