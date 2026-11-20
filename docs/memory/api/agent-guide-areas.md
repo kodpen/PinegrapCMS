@@ -9,7 +9,7 @@ module: agent_guide_content, agent_guide_forms, agent_guide_store
 - content (`pages.`, `folders.`, `files.`): page settings vs layout (a page's text is the designer topic's), folder access rules, upload types, a new page is `design_pages_create` in the drafts folder, `access_widening_refused`, recycle bin and `permanent`.
 - forms (`forms.`): form = page, field by name, submission, collection; read `forms_fields` first; which field types an update writes; pictures through `files_create` with `form_id`; `send_notifications` only when asked.
 - store (`products.`, `product_groups.`, `inventory.`, `orders.`, `store.`): SKU name, minor units, stock only through `inventory_write`/`inventory_bulk`, order statuses and types, Idempotency-Key, lists that replace.
-- Built in AG3 of plan ai-guide , PR #10722.
+- Built in AG3 of plan ai-guide, PR #10722.
 
 ## Which values must follow code?
 - The text carries lists other code owns; `tests/agent_guide_areas_test.php` compares them, so a changed list fails the test: folder access rules = `api_folder_access_ranks()` keys in order; upload types = `api_files_allowed_types()`; the update's field types = `api_form_text_field_types()` plus single-answer pick list and radio button (`api_form_field_updatable()`); order statuses = `api_order_statuses()`.
