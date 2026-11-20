@@ -4,7 +4,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 ---
 
 ## What are operations alerts?
-- Failures and the sales watch, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. PR #542 (backup, cron, integrity), PR #543 (errors, disk, mail, webhooks, certificate).
+- Failures and the sales watch, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. PR #542, PR #543.
 
 ## Where is an alert stored?
 - A `notifications` row, `action = 'ops'`, `order_total` = code, `title` = detail (or the code). No table (owner approval 2026-10-19). `pg_notification_display()` words it; `pg_ops_alert_recent()` feeds the System Status tile "Operations Alerts" (reported, not scored).
@@ -23,6 +23,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `integrity`: `check_directory_file_integrity()` run with cwd = software dir (relative paths); not in development mode.
 - `error_spike`: last MB of `php_errors.log` (and `.1` when written within the hour), lines dated in the site zone; names the most frequent message.
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
+- `supplier_feed`: a feed's brake (`commerce/supplier-feed-sync.md`).
 - `payment_notice`: a payment callback's log line (`commerce/payment-callback.md`), PR #2143.
 - Sales watch, `group => 'sales'` (`commerce/sales-watch.md`): sources `sales` (`orders_stopped`, `payment_broken`), `sales_price` (`price_error`), `returns` (`return_spike`, nightly).
 - `cert_expiring`: https and a public host only; read once a day (`pg_ops_certificate_end()`), judged every pass; a failed reading says nothing.
@@ -35,4 +36,4 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - Inline job only while switched on (the mail pass always); dispatched job when selected or while dispatching is off; silent a week past its limit = retired, no longer alerted; never run is not a failure.
 
 ## How was it tested?
-- `tests/ops_alerts_test.php`; sources tried in the sandbox.
+- `tests/ops_alerts_test.php`.
