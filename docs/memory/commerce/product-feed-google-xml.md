@@ -22,5 +22,5 @@ description: The fourth product feed format, google_xml (PR #10133): Google Merc
 - `pg_product_feed_formats_to_build()` names the formats a build writes (switched on, limited to the "Build now" list); a format that is off is not built and loses its file.
 
 ## What is still open?
-- `GET /store/feeds` lists it as a fourth row (content type included); the endpoint's description in `includes/api/schema.php` naming the formats is step TS1b of the plan.
+- `GET /store/feeds` lists it as a fourth row (content type included); the endpoint's description in `includes/api/schema.php` names google_xml after google_tsv (TS1b PR).
 - Whether Akakçe and Cimri take this file as it is: TS2.
