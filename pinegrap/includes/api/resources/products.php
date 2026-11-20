@@ -1412,6 +1412,14 @@ function api_products_update($params) {
 		WHERE id = '" . $id . "'
 		LIMIT 1");
 
+	// Stock locations: switching tracking off drops the product's rows,
+	// switching it on builds the default row from the total.
+	if (array_key_exists('inventory', $params)) {
+
+		pg_stock_tracking_sync(array($id));
+
+	}
+
 	// A row only when the stored price is not the newest one in the history:
 	// the same price sent again adds nothing.
 	if (array_key_exists('price', $params)) {

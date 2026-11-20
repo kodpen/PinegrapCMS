@@ -39,6 +39,7 @@ validate_area_access($user, 'manager');
 validate_ecommerce_access($user);
 
 require_once(dirname(__FILE__) . '/includes/api/outbound/listing_articles.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
 
 $account_id = (isset($_REQUEST['account']) && is_scalar($_REQUEST['account'])) ? (int) $_REQUEST['account'] : 0;
 
@@ -673,6 +674,55 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 		}
 
+	} elseif ($action === 'shop_pricing') {
+
+		// The row's own price and strategy (marketplace_price_state). A
+		// changed price goes out on the next run, for this account only.
+		$ids = array($id);
+
+		$parsed = mp_pricing_listing_parse($_POST['own_price'] ?? '', $_POST['strategy'] ?? '', $account['provider']);
+
+		$match = $id ? mp_matches_row($account_id, $id) : null;
+
+		if (!mp_pricing_ready()) {
+
+			$error = lang('The database has not been upgraded yet. Run the software update first.');
+
+		} elseif ($parsed['error'] !== '') {
+
+			$error = $parsed['error'];
+
+		} elseif (!$match || !(int) $match['map_id']) {
+
+			$error = lang('Match the product first.');
+
+		} else {
+
+			$before = mp_pricing_product_figures($account_id, $id);
+
+			if (!mp_pricing_listing_save($account_id, $id, $parsed['own_price'], $parsed['strategy'])) {
+
+				$error = lang('The pricing could not be saved. Try again.');
+
+			} elseif (($before['own_price'] !== $parsed['own_price']) && mp_matches_send($account, $ids)) {
+
+				$message = lang('Saved. The new price goes out on the next run.');
+
+			} else {
+
+				$message = lang('Saved.');
+
+			}
+
+		}
+
+		// A refused row is not drawn again, so what was typed stays.
+		if ($error !== '') {
+
+			$ids = array();
+
+		}
+
 	} elseif (($action === 'shop_listing_update') && mp_can($account['provider'], 'update_listings')) {
 
 		$queued = mp_matches_listing_update($account, $ids);
@@ -737,6 +787,66 @@ function mp_products_state_pill($state, $provider_name) {
 
 	return '<span class="mpp-pill ' . $pills[$state][0] . '"><i class="bi ' . $pills[$state][1] . ' me-1" aria-hidden="true"></i>'
 		. h($pills[$state][2]) . '</span>';
+
+}
+
+// A matched product's pricing on the account: the channel price it goes
+// out at (grey while the rules set it), the floor, and its own price and
+// strategy with their Save. Empty before the repricer's tables are there.
+function mp_products_pricing_html($account, $row) {
+
+	if (!mp_pricing_ready()) {
+
+		return '';
+
+	}
+
+	$account_id = (int) $account['id'];
+
+	$id = (int) $row['id'];
+
+	$site_price = mp_product_price($row);
+
+	$vat_rate = mp_product_vat_rate($row);
+
+	$vat_rate = ($vat_rate === null) ? mp_pricing_tax_off_rate($row) : $vat_rate;
+
+	$channel = mp_pricing_product_price($account, $row, $site_price, $vat_rate);
+
+	$figures = mp_pricing_product_figures($account_id, $id);
+
+	$floor = ($channel['floor'] !== null) ? $channel['floor']
+		: mp_pricing_product_floor($account_id, mp_pricing_account_rules($account_id), $figures, $vat_rate);
+
+	$strategies = mp_pricing_strategies($account['provider']);
+
+	$options = '';
+
+	foreach ($strategies as $value => $label) {
+
+		$options .= '<option value="' . (int) $value . '"' . (((int) $figures['strategy'] === (int) $value) ? ' selected' : '') . '>' . h($label) . '</option>';
+
+	}
+
+	$own_value = ($figures['own_price'] > 0) ? pg_format_number($figures['own_price'] / 100, 2) : '';
+
+	return '<div class="mpp-pricing">'
+		. '<div class="mpp-meta">'
+		. '<span>' . h(lang('Channel price')) . ': <b class="pg-tabular' . ($channel['own'] ? '' : ' pg-text-2') . '">'
+			. pg_format_money($channel['price'] / 100, BASE_CURRENCY_SYMBOL) . '</b>'
+			. ($channel['own'] ? '' : ' <span class="pg-text-meta">' . h($channel['rule'] ? lang('by the rules') : lang('the site price')) . '</span>') . '</span>'
+		. '<span class="pg-text-meta">' . (($floor !== null)
+			? h(lang('Floor')) . ': <span class="pg-tabular">' . pg_format_money($floor / 100, BASE_CURRENCY_SYMBOL) . '</span>'
+			: h(lang('No floor: no cost is known'))) . '</span>'
+		. '</div>'
+		. '<div class="mpp-pricing-fields">'
+		. '<div><label class="pg-field-label" for="mpp-own-' . $id . '">' . h(lang('Own price')) . '</label>'
+			. '<span class="pg-input mpp-pricing-own"><input type="text" inputmode="decimal" id="mpp-own-' . $id . '" data-mp-own-price value="' . h($own_value) . '"'
+			. ' placeholder="' . h(lang('By the rules')) . '"><span class="pg-input-end">' . BASE_CURRENCY_SYMBOL . '</span></span></div>'
+		. '<div><label class="pg-field-label" for="mpp-strategy-' . $id . '">' . h(lang('Strategy')) . '</label>'
+			. '<select class="pg-input" id="mpp-strategy-' . $id . '" data-mp-strategy' . ((count($strategies) < 2) ? ' disabled' : '') . '>' . $options . '</select></div>'
+		. '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="shop_pricing">' . h(lang('Save')) . '</button>'
+		. '</div></div>';
 
 }
 
@@ -826,6 +936,7 @@ function mp_products_shop_row_html($account, $row) {
 			. '<div class="mpp-code"><code>' . h($row['remote_code']) . '</code></div>'
 			. '<div class="mpp-meta">' . implode('', $details) . '</div>'
 			. (((string) $row['map_error'] !== '') ? '<div class="mpp-err">' . h(mb_substr((string) $row['map_error'], 0, 200)) . '</div>' : '')
+			. mp_products_pricing_html($account, $row)
 			. '</div></div>';
 
 	} else {
@@ -1629,6 +1740,11 @@ echo pg_page_shell(array(
 a.mpp-title:hover { text-decoration: underline; }
 .mpp-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
 .mpp-meta code { font-size: var(--pg-text-count); color: inherit; }
+/* The pricing of a matched row: the price line, then its own price, strategy and
+   Save side by side, wrapping on a narrow row. */
+.mpp-pricing { margin-top: 8px; }
+.mpp-pricing-fields { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; margin-top: 6px; }
+.mpp-pricing-own { width: 130px; }
 .mpp-link { display: flex; justify-content: center; }
 .mpp-score { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: var(--pg-fg-2); }
 .mpp-score b { font-size: var(--pg-text-section-title); font-weight: var(--pg-weight-title); line-height: 1; color: var(--pg-fg-emphasis); font-variant-numeric: tabular-nums; }

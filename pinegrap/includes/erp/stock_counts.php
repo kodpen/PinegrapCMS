@@ -409,13 +409,29 @@ function erp_stock_count_apply($count_id, $user_id)
             WHERE count_id = '" . (int) $count_id . "' AND product_id = '" . (int) $item['product_id'] . "'");
 
         if (($ok !== false) && ($before !== $counted)) {
-            // A count announces no webhook event, so the stamp is what lets
-            // a system syncing with GET /products?updated_since= see it.
-            $ok = erp_query("UPDATE products SET inventory_quantity = '" . $counted . "',
-                    out_of_stock = '" . (($counted <= 0) ? 1 : 0) . "',
-                    timestamp = UNIX_TIMESTAMP()"
-                . (($counted <= 0) ? ", out_of_stock_timestamp = UNIX_TIMESTAMP()" : "") . "
-                WHERE id = '" . (int) $item['product_id'] . "'");
+            // With stock locations the count sets the total through the
+            // writer at the default location, inside this transaction: an
+            // increase lands there, a decrease takes what it holds there.
+            $written = pg_stock_total_write((int) $item['product_id'], 'set', $counted, 0, 'erp', 'erp_count:' . (int) $count_id,
+                array('transaction' => false));
+
+            if ($written === null) {
+                // A count announces no webhook event, so the stamp is what lets
+                // a system syncing with GET /products?updated_since= see it.
+                $ok = erp_query("UPDATE products SET inventory_quantity = '" . $counted . "',
+                        out_of_stock = '" . (($counted <= 0) ? 1 : 0) . "',
+                        timestamp = UNIX_TIMESTAMP()"
+                    . (($counted <= 0) ? ", out_of_stock_timestamp = UNIX_TIMESTAMP()" : "") . "
+                    WHERE id = '" . (int) $item['product_id'] . "'");
+            } else {
+                $left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $item['product_id'] . "'");
+
+                $ok = erp_query("UPDATE products SET out_of_stock = '" . (($left <= 0) ? 1 : 0) . "',
+                        timestamp = UNIX_TIMESTAMP()"
+                    . (($left <= 0) ? ", out_of_stock_timestamp = UNIX_TIMESTAMP()" : "") . "
+                    WHERE id = '" . (int) $item['product_id'] . "'");
+            }
+
             $changed++;
             $touched[] = (int) $item['product_id'];
         }

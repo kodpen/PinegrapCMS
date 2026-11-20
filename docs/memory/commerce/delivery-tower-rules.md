@@ -5,7 +5,7 @@ module: delivery_tower
 ---
 
 ## What does the module hold?
-- Only pure functions (plan `plans/delivery-tower.md`, step DT1a, #10801): no query. The nightly summary and the hourly problem pass (DT1b) read the parcel rows and hand them in.
+- Only pure functions (plan `plans/delivery-tower.md`, step DT1a, #10801): no query. The nightly summary and the hourly problem pass (`delivery-tower-passes.md`) read the parcel rows and hand them in.
 - Province key `pg_delivery_tower_province_key($state, $city)`: the state, else the city; trimmed, spaces collapsed, lower case, every Turkish i (İ, I, ı) folded to `i`, so "İstanbul" and "ISTANBUL" are one key. Neither: `''` (only the country figure applies).
 
 ## How are days counted?
@@ -32,4 +32,4 @@ module: delivery_tower
 - A delivery closes every open kind with reason `delivered`. Otherwise a kind closes once the status left its own statuses: `scanned` for not_handed_over, `status_changed` for the rest. A stuck parcel still in transit stays open even when a new figure no longer finds it.
 
 ## Which settings are there?
-- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Stored in `config_text` from DT5.
+- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Kept in `config_text` `delivery_tower_settings`: read by the passes (`delivery-tower-passes.md`), written by the settings from DT5.

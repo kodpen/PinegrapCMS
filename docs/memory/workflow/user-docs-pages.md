@@ -16,6 +16,9 @@ description: User documentation on pinegrap.com: the 28 documentation pages by a
 - Last change by the sitemap (UTC): 2026-10-12 for `/installation`, `/system`, `/files`, `/calendars`, `/forms`, `/contacts`, `/users`, `/campaigns`, `/ads`, `/chat`, `/seo`; 2026-10-13 for `/commerce-cont`, `/multilingual`; 2026-10-16 for the other 15.
 - What each page covers and the memory it is written from: `user-docs-coverage-content.md`, `user-docs-coverage-modules.md`. A page's sections that a screen links to are its rows in `pinegrap/get_help_url.php`; the ones a page lacks: `user-docs-help-anchors.md`.
 
+## Which new features wait for a section?
+- The Activity tab of Channel info (#10751, #10813, #10810, #10803; `workspace/channel-activity-tab.md`): `/workspace`, beside Channel info; the report's context, project and branch on `/workspace-cont`, with the AI assistants.
+
 ## How does a mark move?
 - The session that publishes a page moves its address to the line of its new mark here, in the same round. One line per mark, no dated history.
 

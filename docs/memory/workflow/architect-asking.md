@@ -1,6 +1,6 @@
 ---
 name: architect-asking
-description: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends
+description: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
 ---
 
 ## How is one asked?
@@ -11,6 +11,7 @@ description: How a session asks a decision question or the owner's approval of s
 - The question reaches the owner in Turkish from the architect, never from the asking session (`agent-channel-language.md`).
 
 ## How is the owner's approval of a PR asked?
+- Since 2026-11-20 no step asks it for a look: the owner ended screenshot approvals, and a plan describes its screens in words (`screen-described-in-plan.md`). The lines below hold for a PR opened before that day with `Approval:` in its body.
 - A PR whose plan says the owner approves its screens before merge: once green, the pictures go straight into the agent channel (dark and light, 1440 and 390 px) with the PR and the step named; the owner looks and answers there (`owner-contact-channel.md`). Pictures kept on the PR's branch for it (`docs/memory/plans/<plan>/<step>/`) are removed before the PR goes ready.
 - Since 2026-11-14 the look at a screen its plan has decided is the architect's; the owner looks at new designs only (`owner-contact-channel.md`). The steps below are the same for both.
 - The session writes `Approval: channel` in the PR body, keeps `ready` and ends; no approval issue is opened. Without the line the PR lands before his answer (B10/B11 on 2026-11-01, #8222 on 2026-11-08).

@@ -3938,10 +3938,32 @@
         }
         node.appendChild(facts);
 
-        if (data.windows && data.windows.length) {
+        if ((data.windows && data.windows.length) || data.context) {
             var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
 
-            data.windows.forEach(function (window) {
+            // The reported context, "Context 412k of 1M tokens (41%)", with
+            // its bar, marked from 90% as a plan window is.
+            if (data.context) {
+                var held = Math.max(0, Math.min(100, data.context.percent));
+                var ctxItem = el('div', 'ws-agent-card-window' + (held >= 90 ? ' is-high' : ''));
+                var ctxTop = el('div', 'ws-agent-card-row');
+                var ctxBar = el('div', 'ws-agent-card-bar');
+                var ctxFill = el('span', '');
+
+                ctxTop.appendChild(el('span', 'ws-agent-card-value pg-tabular', data.context.words));
+                ctxItem.appendChild(ctxTop);
+                ctxFill.style.width = held + '%';
+                ctxBar.appendChild(ctxFill);
+                ctxBar.setAttribute('role', 'meter');
+                ctxBar.setAttribute('aria-valuemin', '0');
+                ctxBar.setAttribute('aria-valuemax', '100');
+                ctxBar.setAttribute('aria-valuenow', String(held));
+                ctxBar.setAttribute('aria-label', data.context.words);
+                ctxItem.appendChild(ctxBar);
+                windows.appendChild(ctxItem);
+            }
+
+            (data.windows || []).forEach(function (window) {
                 var item = el('div', 'ws-agent-card-window' + (window.high ? ' is-high' : ''));
                 var top = el('div', 'ws-agent-card-row');
                 var label = el('span', 'ws-agent-card-value', window.label);
@@ -14053,55 +14075,30 @@
             return card;
         },
 
-        // A note shared in the channel: its name, its first words, who it
-        // belongs to and who changed it last; it opens as it is now.
+        // A note shared in the channel, drawn up to its fold, with its foot
+        // and its menu (workspace_channel_notes.js).
         noteCardNode: function (card) {
-            var box = el('div', 'ws-nb-msg-card');
-            var top = el('div', 'ws-nb-msg-card-head');
+            return window.PGWsChannelNotes.card(window.PGWsKit, card, this.noteHooks());
+        },
 
-            top.appendChild(icon('bi-journal-text'));
-            top.appendChild(el('span', 'ws-nb-msg-card-kind', t('notes_card')));
-            top.appendChild(el('b', 'ws-grow text-truncate', card.name));
-            box.appendChild(top);
+        // What the note card and the Write a note window borrow from the
+        // screen: the drawn text, the menu, the writing box, the reads.
+        noteHooks: function () {
+            var self = this;
 
-            if (card.html) {
-                var text = el('div', 'ws-nb-msg-card-text ws-nb-msg-card-html');
-                setHtml(text, card.html);
-                chipMenus(text);
-                box.appendChild(text);
-            } else if (card.excerpt) {
-                box.appendChild(el('div', 'ws-nb-msg-card-text', card.excerpt));
-            }
-
-            var foot = el('div', 'ws-nb-msg-card-foot');
-
-            if (card.owner) {
-                foot.appendChild(el('span', '', t('notes_owner', card.owner.name)));
-            }
-
-            if (card.updated_by) {
-                foot.appendChild(el('span', '', t('notes_last_change', card.updated_by.name, card.updated)));
-            }
-
-            var read = button('btn btn-sm btn-outline theme-secondary rounded-pill py-0 px-3 ms-auto', t('notes_card_open'), 'bi-eye');
-            read.addEventListener('click', function (event) {
-                event.stopPropagation();
-                openNoteView(card.id);
-            });
-            foot.appendChild(read);
-
-            if (noteCardEditable(card)) {
-                var edit = button('btn btn-sm btn-outline theme-secondary rounded-pill py-0 px-3', t('edit'), 'bi-pencil-square');
-                edit.addEventListener('click', function (event) {
-                    event.stopPropagation();
-                    openNoteEdit(card.id);
-                });
-                foot.appendChild(edit);
-            }
-
-            box.appendChild(foot);
-
-            return box;
+            return {
+                channelId: self.channel ? self.channel.id : 0,
+                setHtml: setHtml,
+                chipMenus: chipMenus,
+                richField: richField,
+                menu: function (opener, x, y, items) {
+                    ctxFollow(opener);
+                    ctxMenu(x, y, items);
+                },
+                read: openNoteView,
+                notes: openNoteEdit,
+                sync: function () { self.sync(); }
+            };
         },
 
         // The line under a message that mentions people who are not in the
@@ -18365,17 +18362,19 @@
             // marks and steps, then Send (or the microphone in its place).
             var parts = [];
 
-            // A file from this device, or one of the file manager's.
+            // A file from this device, or one of the file manager's; a note
+            // written here (workspace_channel_notes.js) for who may post.
             var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
+            var noteHere = !!CFG.notes && !!window.PGWsChannelNotes && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
 
-            if (CFG.library) {
+            if (CFG.library || noteHere) {
                 menuButton(attach);
             }
 
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
-                if (!CFG.library) {
+                if (!CFG.library && !noteHere) {
                     self.attach();
                     return;
                 }
@@ -18383,8 +18382,11 @@
                 event.stopPropagation();
                 ctxFollow(attach);
                 ctxMenu(box.left, box.top - 6, [
-                    { icon: 'bi-laptop', label: t('lib_from_device'), action: function () { self.attach(); } },
-                    { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } }
+                    { icon: 'bi-laptop', label: t(CFG.library ? 'lib_from_device' : 'attach'), action: function () { self.attach(); } },
+                    CFG.library ? { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } } : null,
+                    noteHere ? { icon: 'bi-journal-plus', label: t('cn_write'), action: function () {
+                        window.PGWsChannelNotes.write(window.PGWsKit, self.noteHooks());
+                    } } : null
                 ], true);
             });
             parts.push(attach);

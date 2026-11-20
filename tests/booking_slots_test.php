@@ -297,6 +297,89 @@ function test_booking_overlaps()
 	pg_assert_false(pg_booking_overlaps(10000, $service, array(array(8000, 9400))), 'ends where the buffer starts');
 }
 
+// Buffers do not add up between two bookings: the gap is the larger of the
+// earlier one's buffer after and the later one's buffer before, whichever was
+// booked first (#10805).
+function test_booking_overlaps_larger_buffer_of_two_bookings()
+{
+	$now = 1000000;
+	$nine = 2000000;
+	$a = booking_slots_test_service(60, 0, 30);
+	$b = booking_slots_test_service(30);
+
+	// A at 09:00 booked first, then B looked for.
+	$a_booked = pg_booking_busy_from_rows(array(
+		array('start_at' => $nine, 'end_at' => $nine + 3600, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 0, 'buffer_after' => 30),
+	), $now);
+	pg_assert_same(array(array($nine, $nine + 3600, 0, 1800)), $a_booked, 'a booked row carries its buffers in seconds');
+	pg_assert_true(pg_booking_overlaps($nine + 3600, $b, $a_booked), 'A booked first: B at 10:00 is within its buffer after');
+	pg_assert_false(pg_booking_overlaps($nine + 5400, $b, $a_booked), 'A booked first: B at 10:30 is free');
+
+	// B at 10:00 booked first, then A looked for: the same answer.
+	$b_booked = pg_booking_busy_from_rows(array(
+		array('start_at' => $nine + 3600, 'end_at' => $nine + 5400, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => '0', 'buffer_after' => '0'),
+	), $now);
+	pg_assert_true(pg_booking_overlaps($nine, $a, $b_booked), 'B booked first: A at 09:00 is refused');
+	$b_later = pg_booking_busy_from_rows(array(
+		array('start_at' => $nine + 5400, 'end_at' => $nine + 7200, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 0, 'buffer_after' => 0),
+	), $now);
+	pg_assert_false(pg_booking_overlaps($nine, $a, $b_later), 'B booked first at 10:30: A at 09:00 is free');
+
+	// The larger buffer counts, not the sum: A after 30, C before 20.
+	$c = booking_slots_test_service(30, 20, 0);
+	pg_assert_true(pg_booking_overlaps($nine + 3600 + 1200, $c, $a_booked), 'C at 10:20: within A\'s 30 minutes');
+	pg_assert_false(pg_booking_overlaps($nine + 5400, $c, $a_booked), 'C at 10:30: 30 minutes, not 50');
+	$c_booked = pg_booking_busy_from_rows(array(
+		array('start_at' => $nine + 5400, 'end_at' => $nine + 7200, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 20, 'buffer_after' => 0),
+	), $now);
+	pg_assert_false(pg_booking_overlaps($nine, $a, $c_booked), 'C booked first at 10:30: A at 09:00 is free');
+	$c_close = pg_booking_busy_from_rows(array(
+		array('start_at' => $nine + 4800, 'end_at' => $nine + 6600, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 40, 'buffer_after' => 0),
+	), $now);
+	pg_assert_true(pg_booking_overlaps($nine + 1800, $b, $c_close), 'a booked row\'s buffer before keeps the new slot away');
+	pg_assert_false(pg_booking_overlaps($nine + 6600, $b, $c_close), 'and after it, its buffer after of 0 counts');
+
+	// The day's slots give the same answer as the check.
+	$zone = 'Europe/Istanbul';
+	$staff = array('hours' => array('1' => array(array('09:00', '17:00'))));
+	$monday = (new DateTime('2026-11-02 09:00:00', new DateTimeZone($zone)))->getTimestamp();
+	$busy = pg_booking_busy_from_rows(array(
+		array('start_at' => $monday, 'end_at' => $monday + 3600, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 0, 'buffer_after' => 30),
+	), $now);
+	$times = booking_slots_test_times(pg_booking_slots($b, $staff, '2026-11-02', $busy, $now, array('zone' => $zone, 'step_minutes' => 30)), $zone);
+	pg_assert_false(in_array('10:00', $times, true), 'the widget does not offer B at 10:00');
+	pg_assert_true(in_array('10:30', $times, true), 'B at 10:30 is offered');
+}
+
+// Busy time that is not a booking (a Workspace event, a holiday) carries no
+// buffers: only the new service's buffers count (#10805).
+function test_booking_overlaps_non_booking_busy_keeps_the_new_buffers()
+{
+	$service = booking_slots_test_service(60, 0, 15);
+
+	pg_assert_false(pg_booking_overlaps(10000, booking_slots_test_service(60), array(array(13600, 15000))), 'an event right after the slot');
+	pg_assert_true(pg_booking_overlaps(10000, $service, array(array(14000, 15000))), 'within the new service\'s buffer after');
+	pg_assert_false(pg_booking_overlaps(10000, $service, array(array(14500, 15000))), 'past it');
+	pg_assert_false(pg_booking_overlaps(10000, booking_slots_test_service(60), array(array(5000, 10000))), 'an event ending where the slot starts');
+}
+
+// The widget, the hold and the manage page's move read a booked row with its
+// service's buffers.
+function test_booking_paths_read_the_booked_buffers()
+{
+	$bookings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
+	pg_assert_contains('pg_booking_rows_near(', booking_slots_test_body($bookings, 'pg_booking_insert'));
+	pg_assert_contains('booking_services.buffer_after', booking_slots_test_body($bookings, 'pg_booking_rows_near'));
+	pg_assert_contains('GREATEST(', booking_slots_test_body($bookings, 'pg_booking_rows_near'), 'the window widens by the larger buffer');
+
+	$manage = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/booking_manage.php');
+	pg_assert_contains('pg_booking_rows_near(', booking_slots_test_body($manage, 'pg_booking_manage_move'));
+
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_booking.php');
+	pg_assert_contains('booking_services.buffer_after', booking_slots_test_body($widget, 'pg_booking_busy_between'));
+
+}
+
 function test_booking_manage_token()
 {
 	$key = 'k';

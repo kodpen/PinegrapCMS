@@ -1,6 +1,6 @@
 ---
 name: sales-watch-settings
-description: Sales watch settings (SW2, #10772): the sales_watch config_text row, its defaults, sensitivity levels, price drop share, the pause per channel or store, the form part and chat targets
+description: Sales watch settings (#10772): the sales_watch config_text row, its defaults, sensitivity levels, price drop share, the pause per channel or store, the form part and chat targets
 module: sales_watch
 ---
 
@@ -11,7 +11,7 @@ module: sales_watch
 ## What are the defaults and limits?
 - Every alert on (`orders_stopped`, `payment_broken`, `price_error`, `return_spike`) while operations alerts are on; sensitivity `normal`; no product taken off sale; price drop share 50%.
 - Levels (`pg_sales_watch_levels()`): low 0.001, normal 0.01, high 0.05. `settings['sensitivity']` is the float; `settings['level']` the name.
-- Price drop share held to 10-90% (`settings['price_drop']` is the share, 0.5); read by the price error shield (SW3).
+- Price drop share held to 10-90% (`settings['price_drop']` is the share, 0.5); read by the price error shield (`sales-watch-price.md`).
 
 ## How does the pause work?
 - "Pause the watch until" a date, for the whole store or one channel (the site, each active marketplace account that pulls orders, `pg_sales_watch_channel_list()`). The day is paused through its end: the pause ends at the next midnight of the site's time zone (`pg_sales_watch_pause_end()`).

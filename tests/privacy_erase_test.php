@@ -52,6 +52,8 @@ function privacy_erase_test_scope()
 		'revision_form_ids' => array(40, 96),
 		'wtable_row_ids'   => array(97),
 		'wtable_bin_ids'   => array(98),
+		'application_entry_ids' => array(99),
+		'request_ids'      => array(100),
 	);
 }
 
@@ -76,9 +78,11 @@ function test_privacy_erase_tables_are_pinned()
 			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
 			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'ad_conversion_events' => 'delete', 'gift_cards' => 'anonymise', 'store_credit' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
-			'comments' => 'anonymise', 'prototype_comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'ws_personal_plans' => 'anonymise', 'cart_quotes' => 'anonymise',
+			'comments' => 'anonymise', 'prototype_comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'ws_personal_plans' => 'anonymise', 'cart_quotes' => 'anonymise', 'privacy_requests' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
-			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
+			'form_data' => 'delete', 'form_signatures' => 'delete',
+			'application_reviews' => 'delete', 'application_entries' => 'delete', 'application_reviewers' => 'anonymise',
+			'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'bookings' => 'anonymise',
 			'course_progress' => 'delete',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'mail_bounces' => 'delete', 'sms_outbox' => 'delete', 'whatsapp_outbox' => 'delete', 'whatsapp_inbox' => 'delete',
@@ -135,11 +139,13 @@ function test_privacy_erase_tables_are_pinned()
 			'ws_events' => array('contact_id' => 0),
 			'ws_personal_plans' => array('contact_id' => 0),
 			'cart_quotes' => array('contact_id' => 0),
+			'privacy_requests' => array('name' => '{name}', 'email' => '{token}', 'message' => '', 'answer' => '', 'contact_id' => 0, 'user_id' => 0),
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
 			'ws_wtable_bin_cells' => array('cells' => ''),
 			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
+			'application_reviewers' => array('name' => '', 'email' => '{token}'),
 	);
 
 	ksort($expected);
@@ -180,12 +186,16 @@ function test_privacy_erase_find_columns_are_pinned()
 			'ws_events' => array('contact_id' => 'contact_ids'),
 			'ws_personal_plans' => array('contact_id' => 'contact_ids'),
 			'cart_quotes' => array('contact_id' => 'contact_ids'),
+			'privacy_requests' => array('id' => 'request_ids', 'contact_id' => 'contact_ids', 'user_id' => 'user_ids', 'email' => 'emails'),
 			'audit_log' => array('id' => 'audit_ids'),
 			'record_revisions' => array('form_id' => 'revision_form_ids'),
 			'files' => array('id' => 'file_ids'),
 			'form_data_cells' => array('id' => 'cell_ids'),
 			'form_data' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'),
 			'form_signatures' => array('form_id' => 'form_ids'),
+			'application_reviews' => array('entry_id' => 'application_entry_ids'),
+			'application_entries' => array('form_id' => 'form_ids'),
+			'application_reviewers' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'forms' => array('id' => 'form_ids'),
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
@@ -377,6 +387,7 @@ function test_privacy_erase_audit_fields_are_pinned()
 			'order_return' => $tables['order_returns']['fields'],
 			'contact'      => pg_privacy_erase_audit_fields()['contact'],
 			'person'       => array(),
+			'application_entry' => array(),
 		),
 		pg_privacy_erase_audit_fields(),
 		'audit fields'

@@ -52,6 +52,9 @@
 //   create_listings($account, $items)     open listings, answers a task handle
 //   listing_status($account, $barcodes)   where those listings stand (approved,
 //                                         pending, rejected), by barcode
+//   buybox($account, $barcodes)           where the store stands in each
+//                                         listing's buybox, by barcode: rank,
+//                                         the buybox price, other sellers
 //   remote_products($account, $page)     one page of the products the store
 //                                         sells there, for matching; answers
 //                                         products, page, pages, total, last
@@ -758,8 +761,9 @@ function mp_max_attempts() {
 //   the tax the shop adds at the checkout and a marketplace counts inside its
 //   sale price - is the kind of mistake that sells stock at cost. The drivers
 //   send it as both the sale and the list price: a rule's price carries no
-//   struck-through price. site_price keeps the checkout's figure, and
-//   price_rule says whether a rule set price.
+//   struck-through price. site_price keeps the checkout's figure,
+//   price_rule says whether a rule set price and price_own whether it is the
+//   price typed on the listing, which wins over the rules.
 //
 //   quantity is zero for a product that does not track stock. A marketplace has
 //   no concept of "not tracked", and the alternative - sending nothing - leaves
@@ -813,6 +817,7 @@ function mp_product_row($account, $map) {
 		'price_major' => mp_price_major($price),
 		'site_price'  => $site_price,
 		'price_rule'  => $channel['rule'],
+		'price_own'   => !empty($channel['own']),
 		'quantity'    => $quantity,
 		'tracked'     => $tracked,
 		'taxable'     => !empty($product['taxable']),

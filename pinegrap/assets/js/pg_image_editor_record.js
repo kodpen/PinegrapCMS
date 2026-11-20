@@ -9,7 +9,9 @@
  * keys of the recorded span, one undo step. A corner handle records the
  * size, a second finger the turn; a recording past the end lengthens the
  * document. On a phone the sheet folds and a pill over the stage holds
- * Stop, the clock and the speed.
+ * Stop, the clock and the speed. With a group picked the take is the
+ * group's own keys (M.groupRecordApply()): one motion for all its members,
+ * whose own keys stay as they are.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -49,11 +51,51 @@
         return m + ':' + ((s < 10) ? '0' : '') + s.toFixed(1).replace('.', sep);
     }
 
-    // The one selected layer that may move, or null.
-    Editor.prototype.recLayer = function () {
-        var l = (this.sel.length === 1) ? this.layer(this.sel[0]) : null;
+    // The group an id of keyTarget() names ('group:<gid>'); '' for a layer.
+    function groupOfKey(id) {
+        return (String(id).indexOf('group:') === 0) ? String(id).slice(6) : '';
+    }
 
-        return (l && !l.hidden && !l.locked && (STILL.indexOf(l.type) < 0)) ? l : null;
+    function movable(l) {
+        return !!l && !l.hidden && !l.locked && (STILL.indexOf(l.type) < 0);
+    }
+
+    // What Record arms: the one selected layer that may move, or a picked
+    // group whose members all may (keyTarget(): id 'group:<gid>', its box
+    // at rest, its own keys); null otherwise.
+    Editor.prototype.recLayer = function () {
+        var picked = this.selected(), g;
+
+        if (picked.length > 1) {
+            g = this.keyTarget(picked);
+
+            return (g && groupOfKey(g.id) && picked.every(movable)) ? g : null;
+        }
+
+        return ((picked.length === 1) && movable(picked[0])) ? picked[0] : null;
+    };
+
+    // keys as the recorded layer's or group's own, in place (the undo step
+    // is taken on release); false when the layer is gone.
+    Editor.prototype.recPut = function (id, keys) {
+        var gid = groupOfKey(id), l = gid ? null : this.layer(id);
+
+        if (gid) {
+            this.doc.layers = M.groupFxSet(this.doc.layers, gid, { keys: keys });
+            return true;
+        }
+
+        if (!l) {
+            return false;
+        }
+
+        l.anim = Object.assign({}, l.anim || {}, { keys: keys });
+
+        if (!keys.length) {
+            delete l.anim.keys;
+        }
+
+        return true;
     };
 
     // ---- arming ----
@@ -107,10 +149,10 @@
 
     // ---- recording ----
 
-    // A press on the armed layer where it shows at the playhead starts the
-    // clock; true when it did.
+    // A press on the armed layer (a member of the armed group) where it
+    // shows at the playhead starts the clock; true when it did.
     Editor.prototype.recDown = function (e) {
-        var l = this.recLayer(), h = e.target.getAttribute && e.target.getAttribute('data-h'), p, now, hit, base, st, corner;
+        var l = this.recLayer(), h = e.target.getAttribute && e.target.getAttribute('data-h'), p, now, hit, base, st, corner, gid;
 
         if (!this.recArmed || !l || (e.button > 0) || (h === 'rot')) {
             return false;
@@ -123,10 +165,12 @@
         }
 
         p = this.toDoc(e.clientX, e.clientY);
-        corner = (CORNERS.indexOf(h) >= 0) && !(e.target.closest && e.target.closest('.pgie-selmoved'));
+        gid = groupOfKey(l.id);
+        // A group's size is not recorded: its corners are its own handles.
+        corner = !gid && (CORNERS.indexOf(h) >= 0) && !(e.target.closest && e.target.closest('.pgie-selmoved'));
         hit = corner ? l : this.keyHit(p, h ? 10 : 4);
 
-        if (!hit || (hit.id !== l.id)) {
+        if (!hit || (gid ? (M.groupPath(hit).indexOf(gid) < 0) : (hit.id !== l.id))) {
             return false;
         }
 
@@ -231,13 +275,9 @@
 
             return { t: s.t, x: s.x, y: s.y, scale: (s.scale !== undefined) ? s.scale : was.scale, rot: (s.rot !== undefined) ? s.rot : was.rot, opacity: was.opacity, ease: 'linear' };
         }));
-        var l = this.layer(r.id);
-
-        if (!l) {
+        if (!this.recPut(r.id, live)) {
             return;
         }
-
-        l.anim = Object.assign({}, l.anim || {}, { keys: live });
 
         if (end !== this.motionEnd()) {
             this.doc.motion = Object.assign(M.docMotion(this.doc), { duration: end });
@@ -270,7 +310,7 @@
     // Letting go: the thinned keys, one undo step; the playhead stays where
     // the recording ended.
     Editor.prototype.recFinish = function () {
-        var r = this.recording, res, l;
+        var r = this.recording, gid = r ? groupOfKey(r.id) : '', px, res, l;
 
         if (!r) {
             return;
@@ -282,8 +322,17 @@
         this.root.classList.remove('pgie-recording');
         // About a screen pixel: at 30 % a document pixel is far finer than
         // a pointer can be put.
-        res = M.recordApply(r.start, r.samples, r.end, Math.max(1, 1 / this.view.k));
-        l = this.layer(r.id);
+        px = Math.max(1, 1 / this.view.k);
+
+        if (gid) {
+            // The group's keys from the document before the take.
+            res = M.groupRecordApply(M.clone(r.before.layers), gid, r.samples, r.end, px);
+            this.doc.layers = res.layers;
+        } else {
+            res = M.recordApply(r.start, r.samples, r.end, px);
+        }
+
+        l = gid ? null : this.layer(r.id);
 
         if (l) {
             l.anim = Object.assign({}, r.start.anim || {}, { keys: res.keys });
@@ -441,7 +490,7 @@
     Editor.prototype.recPanel = function (body, layers) {
         var self = this, rates = el('div', { class: 'pgie-seg pgie-recrates', role: 'radiogroup', 'aria-label': t('recRate') });
 
-        if (layers.length !== 1) {
+        if (!this.keyTarget(layers)) {
             return;
         }
 

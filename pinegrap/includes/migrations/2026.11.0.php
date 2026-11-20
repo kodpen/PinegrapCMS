@@ -247,6 +247,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
+	upgrade_2026_11_0_application_review();      // 11.0.258
+	upgrade_2026_11_0_shipment_problems();       // 11.0.259
+	upgrade_2026_11_0_privacy_requests();        // 11.0.260
+	upgrade_2026_11_0_marketplace_step_unit();   // 11.0.261
 
 }
 
@@ -8394,6 +8398,18 @@ function upgrade_2026_11_0_marketplace_pricing() {
 
 }
 
+// The unit of a marketplace account's repricing step (2026.11.0, 11.0.261;
+// includes/fn/marketplace_pricing.php): 0 the step is an amount in minor
+// units, 1 hundredths of a percent of the price it moves from. Read on the
+// account's row only; every row stored so far is an amount.
+function upgrade_2026_11_0_marketplace_step_unit() {
+
+	install_add_column('marketplace_price_rules', 'step_unit', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Marketplaces: the repricing step can be an amount or a percent.');
+
+}
+
 // The application that changed a Workspace note (2026.11.0, 11.0.257;
 // includes/workspace/notes.php).
 //
@@ -8408,5 +8424,185 @@ function upgrade_2026_11_0_ws_note_app() {
 	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
+
+}
+
+// The application review desk (2026.11.0, 11.0.258; includes/fn/application_review.php).
+//
+// A form becomes an application programme: application_programs holds the
+// period, the rounds with their criteria and weights, the eligibility rules,
+// the blind fields and the decision texts (JSON in TEXT). Reviewers belong
+// to a programme (application_reviewers): a panel user by user_id, an
+// outside juror by name and e-mail with only the hash of their link. Each
+// submission in a programme is one application_entries row with its
+// eligibility, combined score, decision and the hash of its correction link;
+// application_reviews holds one reviewer's scores of one entry in one round.
+// Scores are stored times 100. No column is added to forms or user.
+function upgrade_2026_11_0_application_review() {
+
+	install_create_table('application_programs', "CREATE TABLE application_programs (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		name                 VARCHAR(150) NOT NULL DEFAULT '',
+		status               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		opens_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		closes_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		category_field_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewers_per_entry  TINYINT UNSIGNED NOT NULL DEFAULT 2,
+		round                TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		blind                TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		waitlist_auto        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		rounds               TEXT NULL,
+		eligibility          TEXT NULL,
+		blind_fields         TEXT NULL,
+		texts                TEXT NULL,
+		created_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page_status (page_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviewers', "CREATE TABLE application_reviewers (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		name          VARCHAR(150) NOT NULL DEFAULT '',
+		email         VARCHAR(190) NOT NULL DEFAULT '',
+		token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		categories    TEXT NULL,
+		revoked_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_program_person (program_id, user_id, email),
+		UNIQUE KEY uniq_token_hash (token_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_entries', "CREATE TABLE application_entries (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		form_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		category          VARCHAR(100) NOT NULL DEFAULT '',
+		round             TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		eligible          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		eligibility_note  TEXT NULL,
+		score_raw         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		score_adjusted    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		spread            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		consensus         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		shortlisted       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decision          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		mailed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		fix_token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		fix_fields        TEXT NULL,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_form (form_id),
+		UNIQUE KEY uniq_fix_token_hash (fix_token_hash),
+		KEY idx_program_round_category (program_id, round, category),
+		KEY idx_program_decision (program_id, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviews', "CREATE TABLE application_reviews (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		entry_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewer_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		round            TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		status           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scores           TEXT NULL,
+		total            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		conflict_reason  VARCHAR(500) NOT NULL DEFAULT '',
+		assigned_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		submitted_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_entry_reviewer_round (entry_id, reviewer_id, round),
+		KEY idx_reviewer_status (reviewer_id, status),
+		KEY idx_program_round_status (program_id, round, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
+
+}
+
+// The problems found on a parcel (2026.11.0, 11.0.259; includes/fn/
+// delivery_tower_passes.php): one row per problem a parcel shows over time,
+// read by the delivery problem desk. kind: 1 stuck, 2 not handed over,
+// 3 delivery problem, 4 returned. closed_at is 0 while the problem is open;
+// the unique (shipment_id, kind, closed_at) key refuses a second open row of
+// one kind on a parcel, so the hourly pass writes with INSERT IGNORE and can
+// run again. close_reason: 0 open, 1 settled by a later status, 2 sent again,
+// 3 refunded, 4 found, 5 other; closed_by is the user, 0 when a status closed
+// it. No name or address: the desk reads them from the order, and deleting
+// the order removes its rows. No column is added to shipping_tracking_numbers.
+function upgrade_2026_11_0_shipment_problems() {
+
+	install_create_table('shipment_problems', "CREATE TABLE shipment_problems (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		shipment_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		found_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		assigned_to   INT UNSIGNED NOT NULL DEFAULT 0,
+		note          VARCHAR(500) NOT NULL DEFAULT '',
+		closed_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		close_reason  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_shipment_kind_closed (shipment_id, kind, closed_at),
+		KEY idx_closed_kind (closed_at, kind),
+		KEY idx_order (order_id),
+		KEY idx_found (found_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Shipping: parcels long in transit, never handed to the carrier, with a delivery problem or returned are found every hour and kept as delivery problems.');
+
+}
+
+// The Privacy centre's request box (2026.11.0, 11.0.260;
+// includes/fn/privacy_requests.php).
+//
+// privacy_requests: one row per request a person makes about their personal
+// data (information, correction, erasure, objection, other), from My
+// Account, the public form or typed in by staff. The 30 days run from
+// received_at, the moment the address is proven; a row never proven is not
+// in the box and is swept after 7 days. A request's steps are audit_log
+// lines (entity_type = 'privacy_request'), not columns.
+function upgrade_2026_11_0_privacy_requests() {
+
+	install_create_table('privacy_requests', "CREATE TABLE privacy_requests (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind              VARCHAR(16) NOT NULL DEFAULT '',
+		status            VARCHAR(16) NOT NULL DEFAULT '',
+		source            VARCHAR(16) NOT NULL DEFAULT '',
+		result            VARCHAR(16) NOT NULL DEFAULT '',
+		contact_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		assigned_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		email             VARCHAR(100) NOT NULL DEFAULT '',
+		name              VARCHAR(100) NOT NULL DEFAULT '',
+		message           TEXT NULL,
+		answer            MEDIUMTEXT NULL,
+		verified_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		due_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_due (status, due_at),
+		KEY idx_contact (contact_id),
+		KEY idx_email (email)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Privacy centre: requests about personal data are kept with their 30 days and their answer.');
 
 }
