@@ -145,6 +145,18 @@ function pg_ops_alert_codes()
             'url'   => 'view_returns.php',
             'group' => 'sales',
         ),
+        // The marketplace repricer (includes/fn/marketplace_repricer.php),
+        // told once a day per account.
+        'repricer_losing' => array(
+            'label' => lang('Most products set to Win lost the buybox'),
+            'type'  => 'warning',
+            'url'   => 'marketplace_products.php',
+        ),
+        'buybox_failing' => array(
+            'label' => lang('The buybox of a marketplace could not be read'),
+            'type'  => 'warning',
+            'url'   => 'marketplace_settings.php',
+        ),
     );
 }
 

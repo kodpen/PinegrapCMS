@@ -25,10 +25,10 @@ module: marketplace_pricing
 
 ## What does the price history get?
 - After a batch is handed over, a row per product whose channel price changed: channel `marketplace:<account id>`, source `rule`, or `panel` for an own price (`mp_sync_record_channel_prices()` in `sync.php`, `mp_pricing_history_record()`). Only for an account with `push_price` and at least one rule or own price; refused or deferred products are left out.
-- Source `repricer` is reserved for the robot's prices (RP4).
+- Source `repricer`: the robot's price (`marketplace-repricer-robot.md`).
 
 ## Where is the buybox read?
-- `commerce/marketplace-buybox-read.md`: the connector ability, the hourly pass, `buybox_price`, `buybox_ours` (rank and other sellers), `buybox_at`.
+- `commerce/marketplace-buybox-read.md`: the connector ability, the hourly pass and the stored read.
 
 ## Which tables are there?
 - `marketplace_price_rules` (unique `account_id, scope, scope_id, scope_key`; `robot`, `step` default 100, `min_margin` default 1000, `grow_cap` default 1000 read on the account row), `marketplace_price_state` (primary `account_id, product_id`, the listing; key `account_id, buybox_at`), `marketplace_price_log` (keys `account_id, product_id, at`; `account_id, at`; `at`). All NOT NULL with defaults; money minor units.

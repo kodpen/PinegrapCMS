@@ -762,8 +762,9 @@ function mp_max_attempts() {
 //   sale price - is the kind of mistake that sells stock at cost. The drivers
 //   send it as both the sale and the list price: a rule's price carries no
 //   struck-through price. site_price keeps the checkout's figure,
-//   price_rule says whether a rule set price and price_own whether it is the
-//   price typed on the listing, which wins over the rules.
+//   price_rule says whether a rule set price, price_own whether it is the
+//   price typed on the listing, which wins over the rules, and price_robot
+//   whether the repricer's robot set it (marketplace_repricer.php).
 //
 //   quantity is zero for a product that does not track stock. A marketplace has
 //   no concept of "not tracked", and the alternative - sending nothing - leaves
@@ -818,6 +819,7 @@ function mp_product_row($account, $map) {
 		'site_price'  => $site_price,
 		'price_rule'  => $channel['rule'],
 		'price_own'   => !empty($channel['own']),
+		'price_robot' => !empty($channel['robot']),
 		'quantity'    => $quantity,
 		'tracked'     => $tracked,
 		'taxable'     => !empty($product['taxable']),

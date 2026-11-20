@@ -20,7 +20,8 @@ description: The hourly buybox read (2026.11.0): the Trendyol connector ability 
 - A listing asked about but not answered (or refused) gets `buybox_at` = now with price and rank 0, so it waits an hour instead of being asked on every pass.
 
 ## What reads the state next?
-- The robot pass (RP4) works from `buybox_price` and the rank. Its step: architect (2026-11-20, channel message 11005): `marketplace_price_rules.step_unit` (added by RP2) on the account's row, 0 = `step` in minor units, 1 = hundredths of a percent of the price it moves from (the buybox price for Win, the own price for Grow while winning), `round()`, never under 1 minor unit; the function working out a step takes the unit too.
+- The robot pass (`mp_repricer_run()`, `marketplace-repricer-robot.md`) runs on each batch right after it is stored; a failed call counts toward the `buybox_failing` alert.
+- Its step: architect (2026-11-20, channel message 11005): `marketplace_price_rules.step_unit` (added by RP2) on the account's row, 0 = `step` in minor units, 1 = hundredths of a percent of the price it moves from (the buybox price for Win, the own price for Grow while winning), `round()`, never under 1 minor unit; the function working out a step takes the unit too.
 
 ## What is tested?
 - `tests/marketplace_buybox_test.php` with `tests/fixtures/trendyol/buybox-information.json` (the documented shape): body, header, stage address, the 10-barcode limit, refused barcodes, a 429, the packing, the stored state, the due query.

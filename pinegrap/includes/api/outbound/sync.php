@@ -36,12 +36,13 @@ if (!defined('PG_INIT_LOADED')) {
 require_once(dirname(__FILE__) . '/connectors/base.php');
 require_once(dirname(__FILE__) . '/orders.php');
 require_once(dirname(__FILE__) . '/listings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_repricer.php');
 
 // One pass. Answers what it did, for the cron's output and the panel.
 function mp_sync_run($seconds = 25) {
 
 	$summary = array('pushed' => 0, 'batches' => 0, 'done' => 0, 'failed' => 0, 'waiting' => 0,
-		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0, 'buybox_read' => 0);
+		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0, 'buybox_read' => 0, 'repriced' => 0);
 
 	if (!defined('DB_CONNECTED')) {
 
@@ -370,7 +371,7 @@ function mp_sync_send_batch($account, &$summary) {
 
 // The channel prices a batch handed to the marketplace go into the price
 // history on the account's channel (marketplace:<account id>), source 'rule',
-// or 'panel' for a price typed on the listing, so what the account sold at
+// 'panel' for a price typed on the listing or 'repricer' for the robot's, so what the account sold at
 // is kept beside the shop's own price. Only for an account that sends prices
 // and has price rules or typed prices: otherwise the channel price is the
 // shop's, already kept on the web channel. A product the connector refused
@@ -386,7 +387,7 @@ function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) 
 
 	}
 
-	$prices = array('rule' => array(), 'panel' => array());
+	$prices = array('rule' => array(), 'panel' => array(), 'repricer' => array());
 
 	foreach ((array)$payload as $product) {
 
@@ -398,12 +399,15 @@ function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) 
 
 		}
 
-		$prices[empty($product['price_own']) ? 'rule' : 'panel'][$product_id] = (int) $product['price'];
+		$source = !empty($product['price_own']) ? 'panel' : (!empty($product['price_robot']) ? 'repricer' : 'rule');
+
+		$prices[$source][$product_id] = (int) $product['price'];
 
 	}
 
 	return mp_pricing_history_record($account_id, $prices['rule'])
-		+ mp_pricing_history_record($account_id, $prices['panel'], 'panel');
+		+ mp_pricing_history_record($account_id, $prices['panel'], 'panel')
+		+ mp_pricing_history_record($account_id, $prices['repricer'], 'repricer');
 
 }
 
@@ -2072,6 +2076,14 @@ function mp_sync_sweep() {
 	db("DELETE FROM marketplace_sync_queue
 		WHERE (status = 'failed') AND (updated_timestamp < '" . (time() - 604800) . "') LIMIT 5000");
 
+	// The repricer's log is kept 90 days.
+	if (pg_schema_has('marketplace_price_log', 'at')) {
+
+		db("DELETE FROM marketplace_price_log
+			WHERE at < '" . (time() - MP_REPRICER_LOG_DAYS * 86400) . "' LIMIT 5000");
+
+	}
+
 }
 
 /* ---------------------------------------------------------------- buybox */
@@ -2258,11 +2270,17 @@ function mp_sync_buybox_account($account, $deadline, &$summary) {
 
 	$rows = (array) db_items(mp_sync_buybox_due_sql($account_id, $now, $chunk * mp_sync_buybox_calls()));
 
+	// The robot's figures over the whole pass, for its alert; $ok stays null
+	// when no call was made, which neither counts nor clears a failure.
+	$robot = array('changed' => 0, 'win' => 0, 'win_lost' => 0);
+
+	$ok = null;
+
 	foreach (array_chunk($rows, $chunk) as $batch) {
 
 		if (microtime(true) >= $deadline) {
 
-			return;
+			break;
 
 		}
 
@@ -2273,18 +2291,35 @@ function mp_sync_buybox_account($account, $deadline, &$summary) {
 			// Read again on a later pass; the listings keep their last read.
 			mp_account_outcome($account_id, false, $result['error']);
 
-			return;
+			$ok = false;
+
+			break;
 
 		}
 
-		$sql = mp_sync_buybox_state_sql($account_id, mp_sync_buybox_values($batch, $result['data'], time()), time());
+		$ok = true;
+
+		$values = mp_sync_buybox_values($batch, $result['data'], time());
+
+		$sql = mp_sync_buybox_state_sql($account_id, $values, time());
 
 		if ($sql !== '' && db($sql) !== false) {
 
 			$summary['buybox_read'] += count($batch);
 
+			// The robot works right after the read, on what it just read.
+			foreach (mp_repricer_run($account, $values, time()) as $key => $count) {
+
+				$robot[$key] += $count;
+
+			}
+
 		}
 
 	}
+
+	$summary['repriced'] += $robot['changed'];
+
+	mp_repricer_alerts($account, $ok, $robot);
 
 }
