@@ -73,15 +73,27 @@ function erp_order_profit_pass_sources()
 /**
  * An order's revenue: erp_profit_report()'s rule for an order (total plus the
  * gift card part, less tax; erp_profit_uninvoiced_orders()), less what was
- * refunded.
+ * refunded without its tax.
+ *
+ * refunded_amount is money paid back, tax included, while the revenue is
+ * without tax: the refund is taken off at the order's own share without tax
+ * (revenue / gross), so an order refunded in full comes to 0, not to its tax
+ * below zero.
  *
  * @param array $order  orders row
  * @return int
  */
 function erp_order_profit_revenue($order)
 {
-    return (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0)
-        - (int) ($order['tax'] ?? 0) - (int) ($order['refunded_amount'] ?? 0);
+    $gross = (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0);
+    $revenue = $gross - (int) ($order['tax'] ?? 0);
+    $refunded = (int) ($order['refunded_amount'] ?? 0);
+
+    if (($refunded > 0) && ($gross > 0) && ($revenue !== $gross)) {
+        $refunded = (int) round(min($refunded, $gross) * $revenue / $gross);
+    }
+
+    return $revenue - $refunded;
 }
 
 /**
