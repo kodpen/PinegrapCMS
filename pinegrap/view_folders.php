@@ -14936,9 +14936,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         office_view: <?php echo encode_json(pg_office_view_includes()); ?>
     };
 
-    // A Word or Excel file is read on the server (includes/fn/office.php)
-    // and drawn here by assets/js/pg_office_view.js, fetched on first use.
-    var OFFICE_TYPES = ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm'];
+    // A Word or Excel file, or an OpenDocument spreadsheet (.ods, only looked
+    // at), is read on the server (includes/fn/office.php) and drawn here by
+    // assets/js/pg_office_view.js, fetched on first use.
+    var OFFICE_TYPES = ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm', 'ods'];
     // A .csv or .tsv is drawn as a sheet in Quick Look, only looked at; the
     // file window keeps opening it in the text editor, where it is changed.
     var OFFICE_SHEET_TYPES = ['csv', 'tsv'];
