@@ -9062,6 +9062,8 @@ function get_tables() {
 		'experiment_variants',
 		'experiments',
 		'express_order_pages',
+		'feedback_responses',
+		'feedback_surveys',
 		'file_translation',
 		'file_versions',
 		'files',
