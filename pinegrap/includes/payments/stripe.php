@@ -592,7 +592,8 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
             'order_id'       => $order_id,
             'reference_code' => pg_payment_stripe_order_value($order, 'reference_code'),
         ),
-        'expand'               => array('payment_method'),
+        // The charge's balance transaction carries the fee Stripe kept.
+        'expand'               => array('payment_method', 'latest_charge.balance_transaction'),
     );
 
     // The billing e-mail as the description, as the classic Stripe code sends.
@@ -657,7 +658,7 @@ function pg_payment_stripe_complete_with($order, $amount, $return, $state, $sett
         return array('success' => false, 'error' => lang('The payment could not be verified. Please try again.'), 'state' => $state);
     }
 
-    $call = pg_payment_stripe_call($http, $settings, 'GET', '/v1/payment_intents/' . $intent_id, array('expand' => array('payment_method')));
+    $call = pg_payment_stripe_call($http, $settings, 'GET', '/v1/payment_intents/' . $intent_id, array('expand' => array('payment_method', 'latest_charge.balance_transaction')));
 
     if (!$call['ok']) {
         return pg_payment_stripe_refused($order, lang('The payment could not be verified. Please try again.'), $call['message'], $call['code'], $state);
@@ -733,7 +734,7 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
 
     switch ($status) {
         case 'succeeded':
-            return array_merge($paid, array('status' => 'paid'));
+            return array_merge($paid, array('status' => 'paid'), pg_payment_stripe_fee($intent, $amount, $settings));
 
         case 'requires_capture':
             return array_merge($paid, array('status' => 'authorized'));
@@ -786,6 +787,39 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
     }
 
     return pg_payment_stripe_refused($order, lang('The payment was not accepted.'), 'PaymentIntent ' . $intent_id . ' is ' . ($status !== '' ? $status : '(no status)'), '');
+}
+
+/**
+ * The fee Stripe kept of a taken payment, from the balance transaction of the
+ * intent's charge (latest_charge.balance_transaction, expanded). It is in the
+ * account's settlement currency, which may not be the store's: then the rate
+ * is the one the payment itself was converted at.
+ *
+ * @param array $intent   the PaymentIntent
+ * @param int   $amount   hundredths of the store's currency the intent was for
+ * @param array $settings
+ * @return array pg_payment_fee(); empty when Stripe gave none (not expanded,
+ *               not settled yet)
+ */
+function pg_payment_stripe_fee($intent, $amount, $settings)
+{
+    $balance = (isset($intent['latest_charge']['balance_transaction']) && is_array($intent['latest_charge']['balance_transaction']))
+        ? $intent['latest_charge']['balance_transaction']
+        : array();
+    $currency = (isset($balance['currency']) && is_string($balance['currency'])) ? strtolower($balance['currency']) : '';
+
+    if ((preg_match('/^[a-z]{3}$/', $currency) !== 1) || !isset($balance['fee'], $balance['amount'])) {
+        return array();
+    }
+
+    $fee = pg_payment_stripe_hundredths($balance['fee'], $currency);
+    $paid = pg_payment_stripe_hundredths($balance['amount'], $currency);
+
+    if (($fee === null) || ($paid === null)) {
+        return array();
+    }
+
+    return pg_payment_fee($fee, $currency, $settings['currency'], (int) $amount, $paid);
 }
 
 /**

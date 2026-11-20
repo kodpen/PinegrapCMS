@@ -138,6 +138,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Leave it out to follow the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool',   'description' => 'On by default.'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -187,6 +188,7 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Send an empty value to clear it, which puts the product back on the rate of the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'gives_tickets',     'in' => 'body', 'type' => 'bool',   'description' => 'Each unit ordered gives an event ticket with a QR code once the order is completed and Tickets is on in Site Settings. 503 service_unavailable before the database update that adds it.'),
 				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
@@ -3163,6 +3165,25 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.event_tickets',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/tickets',
+			'scope'   => 'orders:read',
+			'handler' => 'api_calendar_event_tickets',
+			'returns' => array('list' => 'EventTicket', 'counts' => 'EventTicketCounts'),
+			'summary' => 'The tickets of an event',
+			'description' => 'One ticket per place of a placed order that reserved the event, oldest first, cursor paged, made when the order is completed while Tickets is on in Site Settings. state is valid, used (checked in at the door: checked_in_at and checked_in_by, the user who scanned it) or void (its order was cancelled). guest_name is the name the product form asked for that place, else the buyer\'s. counts gives sold (valid and used), checked_in and void for the event, or for the repeat asked, whatever the state filter. A ticket\'s code is never answered. An event on none of the calendars the owner may open is answered 404; 503 service_unavailable before the database update that adds tickets. The ticket.checked_in webhook announces each check-in.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the tickets of this repeat.'),
+				array('name' => 'state',             'in' => 'query', 'type' => 'enum', 'values' => array('valid', 'used', 'void'), 'description' => 'Only the tickets in this state.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -3781,7 +3802,7 @@ function api_schema() {
 			'handler' => 'api_reports_customer_value',
 			'returns' => 'CustomerValueReport',
 			'summary' => 'Repeat purchase, value per customer, cohorts and customer groups',
-			'description' => 'The figures of the Customers report, read from the summary the scheduled jobs work out again once a day, never summed at the call: as_of says when. Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address, else the contact of its order; not_placed counts the orders with neither. Amounts are minor units of currency, the base currency; marketplace orders kept in another currency are left out and counted in apart. periods holds the last 1, 3, 6, 12 and 24 whole months and all: customers who ordered in them, those with two orders or more, orders, value and the average days between orders. months is the last 36 months, the last one not whole yet. cohorts is the last 24 months of first orders with, for each of the 12 months after, the customers who ordered again. groups is every customer of all time by the age of their last order and their number of orders, each cell with its group (new, returning, loyal, at_risk, lost). top lists 20 customers by value of all time and of the last 12 months, kept by the number of their last order; name is read from that order and given only when the key also holds customers:read (names_shown), else null. Before the first rebuild has finished, ready is false, the lists are empty and progress says how many orders of how many the rebuild under way has read.',
+			'description' => 'The figures of the Customers report, read from the summary the scheduled jobs work out again once a day, never summed at the call: as_of says when. Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address, else the contact of its order; not_placed counts the orders with neither. Amounts are minor units of currency, the base currency; marketplace orders kept in another currency are left out and counted in apart. periods holds the last 1, 3, 6, 12 and 24 whole months and all: customers who ordered in them, those with two orders or more, orders, value and the average days between orders. months is the last 36 months, the last one not whole yet. cohorts is the last 24 months of first orders with, for each of the 12 months after that has begun, the customers who ordered again (a younger cohort has fewer entries). groups is every customer of all time by the age of their last order and their number of orders, each cell with its group (new, returning, loyal, at_risk, lost). top lists 20 customers by value of all time and of the last 12 months, kept by the number of their last order; name is read from that order and given only when the key also holds customers:read (names_shown), else null. Before the first rebuild has finished, ready is false, the lists are empty and progress says how many orders of how many the rebuild under way has read.',
 			'params'  => array()
 		),
 

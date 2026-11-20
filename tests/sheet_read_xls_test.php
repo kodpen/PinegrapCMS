@@ -326,3 +326,39 @@ function test_sheet_read_xls_memory_stays_near_the_cells()
 	pg_assert_same(array('t' => 'n', 'v' => '7500.75'), $last[2], 'a number');
 	pg_assert_true($used < 40 * 1024 * 1024, 'read within 40 MB (used ' . round($used / 1048576, 1) . ' MB)');
 }
+
+// -- number formats that show leading zeros ----------------------------------
+
+// A whole number under a custom format of zeros (FORMAT 164, its cell style
+// the 19th XF) reads as the sheet shows it; general, date and decimal
+// values as before.
+function test_sheet_read_xls_keeps_a_formats_leading_zeros()
+{
+	$code = '00000000000';
+	$globals = sheet_read_xls_test_record(0x41E, pack('vvC', 164, strlen($code), 0) . $code)
+		. sheet_read_xls_test_record(0xE0, pack('vvvCCCCVVv', 0, 164, 0x0001, 0x20, 0, 0, 0, 0, 0, 0x20C0));
+	$number = function ($row, $xf, $value) {
+		return sheet_read_xls_test_record(0x203, pack('vvv', $row, 0, $xf) . pack('d', $value));
+	};
+	$cells = array($number(0, 18, 5321234567), $number(1, 16, 6100), $number(2, 17, 46343), $number(3, 18, 12.5), $number(4, 18, 12345678901));
+	$path = tempnam(sys_get_temp_dir(), 'pg_sheet_xls') . '.xls';
+	file_put_contents($path, sheet_read_xls_test_ole(sheet_read_xls_test_book($globals, $cells)));
+
+	$error = 'not run';
+	$read = array();
+
+	foreach (pg_sheet_rows($path, 'xls', $error) as $row_number => $row) {
+		$read[$row_number] = array($row[0]['t'], $row[0]['v']);
+	}
+
+	unlink($path);
+
+	pg_assert_same('', $error, 'the file is read');
+	pg_assert_same(array(
+		1 => array('s', '05321234567'),
+		2 => array('n', '6100'),
+		3 => array('d', '46343'),
+		4 => array('n', '12.5'),
+		5 => array('n', '12345678901'),
+	), $read);
+}

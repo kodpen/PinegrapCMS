@@ -4778,6 +4778,7 @@ function ws_change_write_erp_account($viewer, $action, $record, $values)
             'status'       => (string) $record['status'],
             'notes'        => (string) $record['notes'],
             'payment_days' => (int) ($record['payment_days'] ?? 0),
+            'lead_days'    => (int) ($record['lead_days'] ?? 0),
         );
 
         if (array_key_exists('overdue_notify_days', $record)) {

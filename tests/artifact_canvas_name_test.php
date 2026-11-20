@@ -72,3 +72,50 @@ function test_artifact_canvas_name_retires_the_old_keys_of_these_screens()
 		pg_assert_true(!isset($map[$old]), $old . ' is removed');
 	}
 }
+
+/**
+ * The image editor, the designer and the page script: their texts name the
+ * Artifact Canvas. Only the lang() / _sdT() literals are read, so a comment
+ * left for the close-out does not count.
+ *
+ * @return array
+ */
+function artifact_canvas_name_script_files()
+{
+	return array(
+		'includes/fn/image_editor.php',
+		'assets/js/style_designer.src.js',
+		'get_page_content.php',
+		'frontend.src.js',
+		'frontend.min.js',
+	);
+}
+
+function test_artifact_canvas_name_replaces_design_canvas_in_the_texts_of_the_editor_and_the_page_script()
+{
+	foreach (artifact_canvas_name_script_files() as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_true(preg_match('/(?:lang|_sdT)\(\s*(?:array\(\s*\'string\'\s*=>\s*)?([\'"])[^\'"]*Design Canvas/', $source) === 0, $file . ' has no text that says Design Canvas');
+		pg_assert_true(preg_match('/(?:lang|_sdT)\(\s*(?:array\(\s*\'string\'\s*=>\s*)?([\'"])[^\'"]*Artifact Canvas/', $source) === 1, $file . ' has a text that says Artifact Canvas');
+	}
+
+	// The page script asks for its texts by their English: the dictionary
+	// get_page_content.php prints holds the keys both twins ask for.
+	$page = file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_true(strpos($page, '"Artifact Canvas":"\' . lang(\'Artifact Canvas\')') !== false, 'the page dictionary has the name');
+	pg_assert_true(strpos($page, '"Edit the image in the Artifact Canvas":"\' . lang(\'Edit the image in the Artifact Canvas\')') !== false, 'the page dictionary has the button title');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js'), 'Software Image Editor') === false, 'the built twin uses the source\'s alt text');
+}
+
+function test_artifact_canvas_name_retires_every_design_canvas_key()
+{
+	$map = pg_test_language_map('tr');
+
+	foreach ($map as $english => $turkish) {
+		pg_assert_true(strpos($english, 'Design Canvas') === false, $english . ' is removed');
+		pg_assert_true(strpos($turkish, 'Tasarım Tuvali') === false, $english . ' keeps no old Turkish name');
+	}
+
+	pg_assert_same('Yapıt Tuvali\'nde kaydedildi', $map['Saved in the Artifact Canvas'] ?? null, 'a version saved in the canvas');
+	pg_assert_same('Bu dosya Yapıt Tuvali\'nde açılamıyor.', $map['This file cannot be opened in the Artifact Canvas.'] ?? null, 'the canvas\'s refusal');
+}

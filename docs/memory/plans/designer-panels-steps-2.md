@@ -18,7 +18,7 @@ description: Plan designer-panels, steps DP6 to DP10 of the Options chain: layou
 - DP7b (S) after DP7: corners on the same drawing. Done in #10633.
   - Features: D18.
 
-- DP8 (M) after DP5: the search that also adds.
+- DP8 (M) after DP5: the search that also adds. Done in #10658.
   - New: a part; the index of rows (label, section, tab, CSS property, class prefix) and a pure fold-and-match function with its test. It builds on the no-match line of PR #10055 and keeps its wording.
   - Tests: Turkish letters folded both ways; "margin" finding the outer spacing rows; Enter's target (tab, section, control) for a row in a closed section of another tab; no result offering the class.
   - Pictures: the four cases of `options-3-search-review.jpg`.

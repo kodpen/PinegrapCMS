@@ -534,3 +534,144 @@ function test_sheet_read_xls_damaged_files_are_refused()
 	unlink($path);
 	pg_assert_true(microtime(true) - $started < 10, 'refused without hanging');
 }
+
+// -- number formats that show leading zeros ----------------------------------
+
+/**
+ * A .xlsx of one sheet whose styles.xml holds the given custom number
+ * formats (id => code) and cell styles (each a numFmtId).
+ */
+function sheet_read_test_xlsx_styled($sheet_data, $formats, $xfs)
+{
+	$path = sheet_read_test_xlsx($sheet_data, array('text'));
+	$format_xml = '';
+	$xf_xml = '';
+
+	foreach ($formats as $id => $code) {
+		$format_xml .= '<numFmt numFmtId="' . (int) $id . '" formatCode="' . htmlspecialchars($code, ENT_XML1 | ENT_COMPAT) . '"/>';
+	}
+
+	foreach ($xfs as $id) {
+		$xf_xml .= '<xf numFmtId="' . (int) $id . '" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>';
+	}
+
+	$zip = new ZipArchive();
+	$zip->open($path);
+	$zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+		. '<numFmts count="' . count($formats) . '">' . $format_xml . '</numFmts><cellXfs count="' . count($xfs) . '">' . $xf_xml . '</cellXfs></styleSheet>');
+	$zip->close();
+
+	return $path;
+}
+
+function test_sheet_read_zero_format_digits()
+{
+	pg_assert_same(5, pg_sheet_zero_digits('00000'));
+	pg_assert_same(11, pg_sheet_zero_digits('00000000000'));
+	pg_assert_same(4, pg_sheet_zero_digits('"TR"0000'));
+	pg_assert_same(4, pg_sheet_zero_digits('\T\R0000'));
+	pg_assert_same(9, pg_sheet_zero_digits('00000-0000'));
+	pg_assert_same(9, pg_sheet_zero_digits('000\-00\-0000'));
+
+	foreach (array('', 'General', '0', '0.00', '#,##0', '000.0', '00000;-00000', '[Red]0000', 'dd.mm.yyyy', '@', '0%', '00E+00', '# ?/?') as $code) {
+		pg_assert_same(0, pg_sheet_zero_digits($code), $code);
+	}
+
+	pg_assert_same(array('t' => 's', 'v' => '06100'), pg_sheet_zero_pad(array('t' => 'n', 'v' => '6100'), 5));
+	pg_assert_same(array('t' => 's', 'v' => '-0042'), pg_sheet_zero_pad(array('t' => 'n', 'v' => '-42'), 4));
+	pg_assert_same(array('t' => 'n', 'v' => '61000'), pg_sheet_zero_pad(array('t' => 'n', 'v' => '61000'), 5), 'no zero to add');
+	pg_assert_same(array('t' => 'n', 'v' => '12.5'), pg_sheet_zero_pad(array('t' => 'n', 'v' => '12.5'), 5), 'not a whole number');
+	pg_assert_same(array('t' => 'd', 'v' => '46343'), pg_sheet_zero_pad(array('t' => 'd', 'v' => '46343'), 11), 'a date');
+	pg_assert_same(null, pg_sheet_zero_pad(null, 5));
+}
+
+// A phone, post code or tax ID typed as a number under a format of zeros is
+// read as the sheet shows it; every other format reads as before.
+function test_sheet_read_xlsx_keeps_a_formats_leading_zeros()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$cells = array(
+		'<c r="A1" s="1"><v>5321234567</v></c>',
+		'<c r="B1" s="2"><v>123</v></c>',
+		'<c r="C1" s="1"><v>12345678901</v></c>',
+		'<c r="D1" s="0"><v>6100</v></c>',
+		'<c r="E1" s="3"><v>5</v></c>',
+		'<c r="F1" s="4"><v>46343</v></c>',
+		'<c r="G1" s="1"><v>12.5</v></c>',
+		'<c r="H1" s="5"><v>7</v></c>',
+		'<c r="I1" s="1" t="s"><v>0</v></c>',
+		'<c r="J1" s="6"><v>6100</v></c>',
+	);
+	$path = sheet_read_test_xlsx_styled('<row r="1">' . implode('', $cells) . '</row>',
+		array(164 => '00000000000', 165 => '"TR"0000', 166 => '0.00', 167 => 'dd.mm.yyyy', 168 => '00000;[Red]-00000'),
+		array(0, 164, 165, 166, 167, 1, 168));
+	list($rows, $error) = sheet_read_test_all($path, 'xlsx');
+	unlink($path);
+
+	pg_assert_same('', $error);
+	pg_assert_same(array(
+		array('s', '05321234567'),
+		array('s', '0123'),
+		array('n', '12345678901'),
+		array('n', '6100'),
+		array('n', '5'),
+		array('d', '46343'),
+		array('n', '12.5'),
+		array('n', '7'),
+		array('s', 'text'),
+		array('n', '6100'),
+	), sheet_read_test_pairs($rows[1]));
+}
+
+function test_sheet_read_ods_keeps_min_integer_digits()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$styles = '<office:automatic-styles>'
+		. '<number:number-style style:name="N1"><number:number number:decimal-places="0" number:min-decimal-places="0" number:min-integer-digits="11"/></number:number-style>'
+		. '<number:number-style style:name="N2"><number:text>TR</number:text><number:number number:decimal-places="0" number:min-integer-digits="4"/></number:number-style>'
+		. '<number:number-style style:name="N3"><number:number number:decimal-places="2" number:min-integer-digits="3"/></number:number-style>'
+		. '<number:number-style style:name="N4"><number:number number:decimal-places="0" number:min-integer-digits="5" number:grouping="true"/></number:number-style>'
+		. '<number:number-style style:name="N5"><number:number number:decimal-places="0" number:min-integer-digits="5"/></number:number-style>'
+		. '<style:style style:name="ce1" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="N1"/>'
+		. '<style:style style:name="ce2" style:family="table-cell" style:data-style-name="N2"/>'
+		. '<style:style style:name="ce3" style:family="table-cell" style:data-style-name="N3"/>'
+		. '<style:style style:name="ce4" style:family="table-cell" style:data-style-name="N4"/>'
+		. '<style:style style:name="ce5" style:family="table-cell" style:data-style-name="N5"/>'
+		. '<style:style style:name="ce6" style:family="table-cell"/>'
+		. '</office:automatic-styles>';
+	// Column F takes N5 from its column; a row's own default comes before it.
+	$columns = '<table:table-column table:number-columns-repeated="5" table:default-cell-style-name="Default"/>'
+		. '<table:table-column table:default-cell-style-name="ce5"/>';
+	$float = function ($value, $style = '') {
+		return '<table:table-cell' . (($style !== '') ? ' table:style-name="' . $style . '"' : '') . ' office:value-type="float" office:value="' . $value . '"><text:p>x</text:p></table:table-cell>';
+	};
+	$rows = '<table:table-row>' . $float('5321234567', 'ce1') . $float('123', 'ce2') . $float('5', 'ce3') . $float('61', 'ce4') . $float('6100') . $float('6100') . '</table:table-row>'
+		. '<table:table-row>' . $float('12.5', 'ce1') . '<table:table-cell table:style-name="ce1" office:value-type="date" office:date-value="2026-11-17"><text:p>x</text:p></table:table-cell>'
+		. '<table:table-cell table:style-name="ce1" office:value-type="percentage" office:value="5"><text:p>x</text:p></table:table-cell>'
+		. $float('9', 'ce6') . '<table:table-cell table:number-columns-repeated="1"/>' . $float('42', 'ce6') . '</table:table-row>'
+		. '<table:table-row table:default-cell-style-name="ce2"><table:table-cell table:number-columns-repeated="5"/>' . $float('42') . '</table:table-row>';
+	$path = sheet_read_test_zip(array(
+		'mimetype' => 'application/vnd.oasis.opendocument.spreadsheet',
+		'content.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-content'
+			. ' xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
+			. ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"'
+			. ' xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"'
+			. ' xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"'
+			. ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2">'
+			. $styles . '<office:body><office:spreadsheet><table:table table:name="One">' . $columns . $rows . '</table:table>'
+			. '</office:spreadsheet></office:body></office:document-content>',
+	), 'ods');
+	list($read, $error) = sheet_read_test_all($path, 'ods');
+	unlink($path);
+
+	pg_assert_same('', $error);
+	pg_assert_same(array(array('s', '05321234567'), array('s', '0123'), array('n', '5'), array('n', '61'), array('n', '6100'), array('s', '06100')), sheet_read_test_pairs($read[1]), 'by the cell, by the column');
+	pg_assert_same(array(array('n', '12.5'), array('d', '46343'), array('n', '5'), array('n', '9'), null, array('n', '42')), sheet_read_test_pairs($read[2]), 'other values and styles as before');
+	pg_assert_same(array(null, null, null, null, null, array('s', '0042')), sheet_read_test_pairs($read[3]), 'the row default before the column');
+}

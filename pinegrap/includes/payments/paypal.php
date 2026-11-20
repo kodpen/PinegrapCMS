@@ -677,7 +677,36 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
         'log'            => ($status === 'PENDING')
             ? array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} is PENDING on PayPal (capture {var:2}, reason {var:3}). Check it on PayPal before shipping: PayPal may still deny it. The order waits as awaiting payment until Payment Received records it.', 'vars' => array($order_id, $capture_id, $reason))))
             : array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} was taken (capture {var:2}).', 'vars' => array($order_id, $capture_id)))),
-    );
+    ) + (($status === 'COMPLETED') ? pg_payment_paypal_fee($capture, $amount, $settings) : array());
+}
+
+/**
+ * The fee PayPal kept of a completed capture (seller_receivable_breakdown's
+ * paypal_fee). It is in the capture's currency, the store's own (complete()
+ * checks the amount); a fee in another currency than the breakdown's gross
+ * is given with no rate, so the caller converts it at the day's rate.
+ *
+ * @param array $capture  the capture
+ * @param int   $amount   hundredths of the store's currency the capture was for
+ * @param array $settings
+ * @return array pg_payment_fee(); empty when PayPal gave none
+ */
+function pg_payment_paypal_fee($capture, $amount, $settings)
+{
+    $breakdown = (isset($capture['seller_receivable_breakdown']) && is_array($capture['seller_receivable_breakdown'])) ? $capture['seller_receivable_breakdown'] : array();
+    $fee = (isset($breakdown['paypal_fee']) && is_array($breakdown['paypal_fee'])) ? $breakdown['paypal_fee'] : array();
+    $currency = (isset($fee['currency_code']) && is_string($fee['currency_code'])) ? strtoupper($fee['currency_code']) : '';
+    $hundredths = (isset($fee['value']) && is_string($fee['value'])) ? pg_payment_hundredths($fee['value']) : null;
+
+    if (($hundredths === null) || (preg_match('/^[A-Z]{3}$/', $currency) !== 1)) {
+        return array();
+    }
+
+    $gross = (isset($breakdown['gross_amount']) && is_array($breakdown['gross_amount'])) ? $breakdown['gross_amount'] : array();
+    $gross_currency = (isset($gross['currency_code']) && is_string($gross['currency_code'])) ? strtoupper($gross['currency_code']) : '';
+    $paid = (($gross_currency === $currency) && isset($gross['value']) && is_string($gross['value'])) ? pg_payment_hundredths($gross['value']) : null;
+
+    return pg_payment_fee($hundredths, $currency, $settings['currency'], (int) $amount, ($paid !== null) ? $paid : 0);
 }
 
 /**

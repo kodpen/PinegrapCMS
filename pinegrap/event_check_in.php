@@ -111,6 +111,12 @@ if ($request !== '') {
         $result = pg_check_in_run($find, $pick, $user, $event_access);
         $ticket = $result['ticket'];
 
+        // "valid" only when this request's UPDATE marked the ticket used, so
+        // two phones scanning one ticket announce it once.
+        if (($result['answer'] === 'valid') && is_array($ticket)) {
+            pg_announce('ticket.checked_in', pg_check_in_ticket_event($ticket));
+        }
+
         event_check_in_json(array(
             'ok'     => true,
             'answer' => $result['answer'],

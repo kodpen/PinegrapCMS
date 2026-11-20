@@ -354,7 +354,7 @@ function test_payment_stripe_authorize_creates_and_confirms_the_intent()
 		'payment_method_types' => array('card'),
 		'capture_method'       => 'automatic',
 		'metadata'             => array('order_id' => '438', 'reference_code' => 'AB12CD34EF'),
-		'expand'               => array('payment_method'),
+		'expand'               => array('payment_method', 'latest_charge.balance_transaction'),
 		'description'          => 'ayse@example.com',
 		'return_url'           => 'https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023',
 	), $calls[0]['params']);
@@ -482,7 +482,7 @@ function test_payment_stripe_complete_reads_the_intent_again()
 	pg_assert_same(1, count($calls));
 	pg_assert_same('GET', $calls[0]['method']);
 	pg_assert_same('/v1/payment_intents/pi_3Abc', $calls[0]['path'], 'the intent this checkout started, not the one the address names');
-	pg_assert_same(array('expand' => array('payment_method')), $calls[0]['params']);
+	pg_assert_same(array('expand' => array('payment_method', 'latest_charge.balance_transaction')), $calls[0]['params']);
 	pg_assert_same('paid', $answer['status']);
 	pg_assert_same('4242', $answer['card_last4']);
 	pg_assert_same(array(), $answer['state'], 'the wait is over');
@@ -1002,4 +1002,49 @@ function test_payment_stripe_subscription_cancel_detaches_the_cards()
 	))));
 	pg_assert_false($refused['success']);
 	pg_assert_same('No such PaymentMethod', $refused['raw']['message']);
+}
+
+/* ---------------------------------------------------------------------------
+   The fee Stripe kept
+   --------------------------------------------------------------------------- */
+
+// A taken payment answers the fee of its charge's balance transaction; in
+// the store's currency as it is, in another settlement currency with the
+// rate the payment was converted at. A held or unsettled payment has none.
+function test_payment_stripe_fee_from_the_balance_transaction()
+{
+	$charge = function ($balance) {
+		return array('id' => 'ch_1', 'object' => 'charge', 'balance_transaction' => $balance);
+	};
+
+	$answer = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array(
+		'latest_charge' => $charge(array('id' => 'txn_1', 'object' => 'balance_transaction', 'amount' => 4714, 'currency' => 'try', 'fee' => 162, 'net' => 4552)))))));
+
+	pg_assert_true($answer['success']);
+	pg_assert_same(162, $answer['fee']);
+	pg_assert_same('', $answer['fee_currency'], 'the store\'s own currency');
+	pg_assert_same(0.0, $answer['fee_rate']);
+
+	$usd = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array(
+		'latest_charge' => $charge(array('id' => 'txn_2', 'object' => 'balance_transaction', 'amount' => 145, 'currency' => 'usd', 'fee' => 34, 'exchange_rate' => 0.0307)))))));
+
+	pg_assert_same(34, $usd['fee']);
+	pg_assert_same('USD', $usd['fee_currency']);
+	pg_assert_same(4714 / 145, $usd['fee_rate'], 'the rate the payment itself was converted at');
+
+	$jpy = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array(
+		'latest_charge' => $charge(array('amount' => 21, 'currency' => 'jpy', 'fee' => 3)))))));
+	pg_assert_same(300, $jpy['fee'], 'a zero-decimal currency in hundredths');
+
+	$unexpanded = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array('latest_charge' => 'ch_1')))));
+	pg_assert_same(null, $unexpanded['fee']);
+
+	$unsettled = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array('latest_charge' => $charge(null))))));
+	pg_assert_same(null, $unsettled['fee']);
+
+	$held = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array(
+		'status' => 'requires_capture',
+		'latest_charge' => $charge(array('amount' => 4714, 'currency' => 'try', 'fee' => 162)))))));
+	pg_assert_same('authorized', $held['status']);
+	pg_assert_same(null, $held['fee'], 'a held payment has no fee yet');
 }

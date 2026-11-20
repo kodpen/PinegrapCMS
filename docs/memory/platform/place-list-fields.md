@@ -6,7 +6,7 @@ module: place_list
 
 ## Which fields does an answer carry?
 - Never a field the request names (architect, message 7423, for every later step too): the fields come from the saved page. The module reads no request value; `tests/place_list_test.php` checks it.
-- First the block's own choice (MP3b): a part the block chose takes that field when the list's collection has a field of that exact name, it fits and it is not office-use-only (`pg_place_list_field_roles($fields, $choice)`). Fits: a coordinate a number field; name, address, hours and phone a text box or text area (`pg_place_list_field_fits()`). A chosen address is the address alone, not joined with others.
+- First the block's own choice: a part the block chose takes that field when the list's collection has a field of that exact name, it fits and it is not office-use-only (`pg_place_list_field_roles($fields, $choice)`). Fits: a coordinate a number field; name, address, hours and phone a text box or text area (`pg_place_list_field_fits()`). A chosen address is the address alone, not joined with others.
 - Every part not chosen, or chosen but refused, is found by the name rule: the coordinates and address of `platform/place-coordinates.md`, the record's name (`name`, `title`, `branch`, `sube`…), hours (`hours`, `opening_hours`, `calisma_saatleri`…) and phone (`phone`, `tel`, `telefon`…) (`pg_place_list_names()`).
 - An office-use-only field is never taken. A latitude or longitude out of range gives no point (`lat`/`lng` null).
 

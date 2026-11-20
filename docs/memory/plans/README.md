@@ -20,7 +20,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `channel-commands-*`: 6 files; start at `channel-commands.md`.
 - `designer-panels-*`: 22 files; start at `designer-panels.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
-- `place-map-*`: 6 files; start at `place-map.md`.
 - `storefront-api-*`: 9 files.
 
 ## Files

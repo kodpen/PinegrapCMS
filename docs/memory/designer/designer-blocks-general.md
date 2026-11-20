@@ -22,7 +22,7 @@ description: General sections the sector templates share: the existing block tha
 - `style_designer_blocks_hours.js` → `hours-seasons`: a `table` in `table-responsive` (named region), a column head per season (icon, name, months, `scope="col"`), a row head per day (`scope="row"`), a closed day in a word; three note cards (last entry, closures, groups) that rise on view. Rule `pg-hours-table` (tabular figures).
 - `style_designer_blocks_locations.js` → `locations-spaces`: a card per space (picture `pg-ratio-16x9`, name `h3`, guests, floor area, layout, amenity pills, "From" + price + `/day` as separate nodes, "Ask for a date"); the row rises on view (stagger 120). Rule `pg-space-facts`; it also needs the core `pg-ratio-16x9`.
 - `style_designer_blocks_locations.js` → `locations-floors` (added in step `coworking-1`): an `ol` of floors from the roof down, each a level square (`pg-floor-level`, a figure or a word), name `h3`, a line, what is on it as pills, who may go up (key icon and words); the list rises on view (stagger 100). For a coworking house, a hotel, a museum, an arcade.
-- `style_designer_blocks_locations.js` → `locations-map` (place-map MP3): a form list's places as searchable cards with a still map picture; filled on the page by `pg_map.js` (`platform/place-list.md`).
+- `style_designer_blocks_locations.js` → `locations-map` (#10062): a form list's places as searchable cards with a still map picture; filled on the page by `pg_map.js` (`platform/place-list.md`).
 - `style_designer_blocks_booking.js` → `booking-week`, `booking-windows` (Services & Booking): [[designer-blocks-general-booking]].
 - "Area" translates as "Bölge" (a region) in the shared keys, so the fact is named "Floor Area".
 

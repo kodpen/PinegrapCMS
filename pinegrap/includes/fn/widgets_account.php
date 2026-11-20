@@ -1889,7 +1889,8 @@ function _pg_acct_staff_url($staff_page_id)
 // ^^__my_account_wishlist_url^^ (shop sites: the first page carrying a
 // Favourites widget, which has no legacy page type),
 // ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
-// the staff page's folder lets in). Sections: order_history (the member's
+// the staff page's folder lets in), ^^__referral_url^^ (shop sites: the
+// customer's referral link while they can refer). Sections: order_history (the member's
 // orders, newest first, each linking to the order view page), subscriptions
 // (the member's subscriptions with their actions,
 // pg_subscription_customer_section_html()), bookings (the member's upcoming
@@ -1902,7 +1903,11 @@ function _pg_acct_staff_url($staff_page_id)
 // has_subscriptions, has_tickets; section store_credit_convert: the points
 // conversion form alone; section tickets (shop sites: the orders holding
 // event tickets, each linking to its tickets page,
-// pg_event_tickets_account_html()), 'tickets' its rows. 'bookings': the booking lists' rows
+// pg_event_tickets_account_html()), 'tickets' its rows; section referral
+// (shop sites with the referral programme on: the link, its share links,
+// the referrals and the credit they earned, or why the customer cannot
+// refer yet, pg_referral_account_html()) with flags has_referral and
+// can_refer. 'bookings': the booking lists' rows
 // (pg_booking_customer_view_rows()); 'subscriptions'
 // (pg_subscription_customer_view_rows()) and 'store_credit'
 // (pg_credit_account_view(): balance_info, cards) likewise.
@@ -1917,14 +1922,16 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         '__my_account_wishlist_url' => '',
         '__logout_url'              => '',
         '__staff_url'               => '',
+        '__referral_url'            => '',
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
     $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => '',
-                                                        'store_credit_convert' => '', 'tickets' => ''),
+                                                        'store_credit_convert' => '', 'tickets' => '', 'referral' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
                                   'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false,
-                                  'has_store_credit_cards' => false, 'has_subscriptions' => false, 'has_tickets' => false),
+                                  'has_store_credit_cards' => false, 'has_subscriptions' => false, 'has_tickets' => false,
+                                  'has_referral' => false, 'can_refer' => false),
                  'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()),
                  'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()), 'tickets' => array());
     if (!$logged_in) return $out;
@@ -1995,6 +2002,13 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         $out['tickets'] = $tickets['view'];
         $out['sections']['tickets'] = $tickets['section'];
         $out['flags']['has_tickets'] = $tickets['has'];
+        // The referral part: the link while the customer can refer, else why not.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_referral.php');
+        $referral = pg_referral_account((int)USER_ID, defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0);
+        $out['sections']['referral'] = $referral['section'];
+        $out['flags']['has_referral'] = $referral['has'];
+        $out['flags']['can_refer'] = $referral['can'];
+        $out['links']['__referral_url'] = $referral['link'];
     }
     return $out;
 }

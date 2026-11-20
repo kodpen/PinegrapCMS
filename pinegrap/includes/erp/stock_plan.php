@@ -18,9 +18,10 @@
  *      once and never rewritten,
  *   2. the 14 days before today counted again (a late marketplace order, a
  *      later cancel): only the units change,
- *   3. once, on the first runs, the sold units of the 365 days before the
+ *   3. once, on the first runs, the sold units of the 420 days before the
  *      record began, stock unknown, in slices so a tick can stop and resume,
- *   4. rows older than 400 days deleted.
+ *   4. rows older than 430 days deleted,
+ *   5. the forecast (erp_stock_plan) rebuilt for every tracked product.
  * Its bookkeeping (the day the record began, the fill's place, the last day
  * recorded) is kept as marks in cron_runs, a day written as YYYYMMDD.
  *
@@ -38,12 +39,13 @@ if (!defined('PG_ERP_ENTRY')) {
 
 // Days counted again every night, before today.
 define('ERP_STOCK_PLAN_RECOUNT_DAYS', 14);
-// Days of sales filled in once, before the record began.
-define('ERP_STOCK_PLAN_FILL_DAYS', 365);
+// Days of sales filled in once, before the record began: last year's 56
+// days ahead and the 56 before them (the season), from the first night.
+define('ERP_STOCK_PLAN_FILL_DAYS', 420);
 // Days a fill slice reads at once.
 define('ERP_STOCK_PLAN_FILL_SLICE', 30);
-// Rows older than this many days are deleted.
-define('ERP_STOCK_PLAN_KEEP_DAYS', 400);
+// Rows older than this many days are deleted; the season reads back 420.
+define('ERP_STOCK_PLAN_KEEP_DAYS', 430);
 // Rows written by one INSERT.
 define('ERP_STOCK_PLAN_WRITE_BATCH', 200);
 // The marks in cron_runs.
@@ -319,7 +321,7 @@ function erp_stock_plan_recount_range($today)
 }
 
 /**
- * The days the fill covers: the 365 before the record began. Pure.
+ * The days the fill covers: the 420 before the record began. Pure.
  *
  * @param string $began
  * @return array{from:string,to:string}
@@ -331,7 +333,7 @@ function erp_stock_plan_fill_range($began)
 
 /**
  * The fill's next slice, going back from the day before the record began;
- * null when the 365 days are done. Pure.
+ * null when the 420 days are done. Pure.
  *
  * @param string $began
  * @param string $cursor The earliest day filled so far, '' before the first.
@@ -439,12 +441,12 @@ function erp_stock_plan_select($sql)
 /**
  * The record's marks.
  *
- * @return array{began:string,fill:string,filled:bool,day:string}|false
+ * @return array{began:string,fill:string,filled:bool,day:string,planned:string}|false
  */
 function erp_stock_plan_marks()
 {
     $rows = erp_stock_plan_select("SELECT job_name, last_run_at FROM cron_runs WHERE job_name IN ('"
-        . ERP_STOCK_PLAN_MARK_BEGAN . "', '" . ERP_STOCK_PLAN_MARK_FILL . "', '" . ERP_STOCK_PLAN_MARK_FILLED . "', '" . ERP_STOCK_PLAN_MARK_DAY . "')");
+        . ERP_STOCK_PLAN_MARK_BEGAN . "', '" . ERP_STOCK_PLAN_MARK_FILL . "', '" . ERP_STOCK_PLAN_MARK_FILLED . "', '" . ERP_STOCK_PLAN_MARK_DAY . "', '" . ERP_STOCK_PLAN_MARK_PLANNED . "')");
 
     if ($rows === false) {
         return false;
@@ -461,6 +463,7 @@ function erp_stock_plan_marks()
         'fill'   => erp_stock_plan_mark_day($values[ERP_STOCK_PLAN_MARK_FILL] ?? 0),
         'filled' => !empty($values[ERP_STOCK_PLAN_MARK_FILLED]),
         'day'    => erp_stock_plan_mark_day($values[ERP_STOCK_PLAN_MARK_DAY] ?? 0),
+        'planned' => erp_stock_plan_mark_day($values[ERP_STOCK_PLAN_MARK_PLANNED] ?? 0),
     );
 }
 
@@ -882,9 +885,11 @@ function erp_stock_plan_run($erp_on = null, $time_left = null, $now = null)
             || !erp_stock_plan_mark_set(ERP_STOCK_PLAN_MARK_DAY, erp_stock_plan_day_mark($yesterday))) {
             return array('ran' => false, 'reason' => 'error', 'rows_day' => '');
         }
+
+        $marks['day'] = $yesterday;
     }
 
-    // The 365 days before the record, a slice at a time.
+    // The 420 days before the record, a slice at a time.
     while (erp_stock_plan_fill_due($marks)) {
 
         if ($time_left() <= 5) {
@@ -911,5 +916,714 @@ function erp_stock_plan_run($erp_on = null, $time_left = null, $now = null)
         $marks['fill'] = $slice['from'];
     }
 
+    // The forecast, once the night's row and the fill are in.
+    if (erp_stock_plan_rebuild_due($marks, $yesterday, erp_stock_plan_cache_ready())) {
+
+        $rebuilt = erp_stock_plan_rebuild($marks, $today, $time_left);
+
+        if ($rebuilt !== 'done') {
+            return array('ran' => ($rebuilt === 'more'), 'reason' => $rebuilt, 'rows_day' => ($rebuilt === 'more') ? $yesterday : '');
+        }
+    }
+
     return array('ran' => true, 'reason' => 'done', 'rows_day' => $yesterday);
+}
+
+/* ---------------------------------------------------------------------------
+ * The forecast (erp_stock_plan): one row per tracked product, rebuilt every
+ * night after the day's row. Pure functions first, then the reads and the
+ * rebuild.
+ * ------------------------------------------------------------------------- */
+
+// Days the sales speed is read over, ending yesterday.
+define('ERP_STOCK_PLAN_SPEED_DAYS', 56);
+// Fewer in-stock days than this in the speed window: not enough history.
+define('ERP_STOCK_PLAN_MIN_DAYS', 14);
+// Last year's weeks: the season looks this many days back (52 weeks, so a
+// weekday falls on the same weekday).
+define('ERP_STOCK_PLAN_YEAR_DAYS', 364);
+// Each season window must have sold at least this many units.
+define('ERP_STOCK_PLAN_SEASON_MIN_UNITS', 10);
+define('ERP_STOCK_PLAN_SEASON_MIN', 0.5);
+define('ERP_STOCK_PLAN_SEASON_MAX', 2.0);
+// The supplier's last orders with an invoice the lead time is measured on.
+define('ERP_STOCK_PLAN_LEAD_ORDERS', 5);
+// An order-by day within this many days is Soon.
+define('ERP_STOCK_PLAN_SOON_DAYS', 14);
+// Products rebuilt per batch.
+define('ERP_STOCK_PLAN_BATCH', 500);
+// Purchase orders read for the supplier of a product never invoiced.
+define('ERP_STOCK_PLAN_ORDER_SCAN', 5000);
+define('ERP_STOCK_PLAN_MARK_PLANNED', 'erp_stock_plan_planned');
+define('ERP_STOCK_PLAN_MARK_CURSOR', 'erp_stock_plan_cursor');
+
+/**
+ * Safety, cover and dead-stock days. Defaults until the settings card
+ * defines its constants: safety 7, cover 30, dead stock 90. Pure.
+ *
+ * @return array{safety:int,cover:int,dead:int}
+ */
+function erp_stock_plan_settings()
+{
+    return array(
+        'safety' => defined('ERP_STOCK_PLAN_SAFETY_DAYS') ? max(0, (int) ERP_STOCK_PLAN_SAFETY_DAYS) : 7,
+        'cover'  => defined('ERP_STOCK_PLAN_COVER_DAYS') ? max(0, (int) ERP_STOCK_PLAN_COVER_DAYS) : 30,
+        'dead'   => defined('ERP_STOCK_PLAN_DEAD_DAYS') ? max(1, (int) ERP_STOCK_PLAN_DEAD_DAYS) : 90,
+    );
+}
+
+/**
+ * Whole days from one day to another (negative when $to is earlier). Pure.
+ *
+ * @param string $from Y-m-d
+ * @param string $to Y-m-d
+ * @return int
+ */
+function erp_stock_plan_days_between($from, $to)
+{
+    $a = new DateTime((string) $from . ' 12:00:00', new DateTimeZone('UTC'));
+    $b = new DateTime((string) $to . ' 12:00:00', new DateTimeZone('UTC'));
+
+    return (int) round(($b->getTimestamp() - $a->getTimestamp()) / 86400);
+}
+
+/**
+ * (P3) Units a day: the units of the 56 days before today on which the
+ * product was in stock, over those days. A day with stock 0 is out of stock
+ * and left out, its units too; a day with no row was in stock and sold
+ * nothing; a day before the record began (stock unknown) counts as in stock.
+ * Days before $history_from are not known at all and are not counted. Under
+ * 14 in-stock days, or no sale on them: null, not enough history. Pure.
+ *
+ * @param array<string,array{sold:int,stock:int|null}> $days day => row
+ * @param string $today Y-m-d
+ * @param string $history_from The first day the record holds.
+ * @return float|null
+ */
+function erp_stock_plan_speed(array $days, $today, $history_from)
+{
+    $in_stock = 0;
+    $units = 0;
+
+    for ($back = 1; $back <= ERP_STOCK_PLAN_SPEED_DAYS; $back++) {
+
+        $day = erp_stock_plan_shift_day($today, -$back);
+
+        if (($history_from !== '') && ($day < $history_from)) {
+            break;
+        }
+
+        $row = $days[$day] ?? null;
+
+        if (($row !== null) && ($row['stock'] !== null) && ((int) $row['stock'] === 0)) {
+            continue;
+        }
+
+        $in_stock++;
+        $units += ($row === null) ? 0 : max(0, (int) $row['sold']);
+    }
+
+    if (($in_stock < ERP_STOCK_PLAN_MIN_DAYS) || ($units <= 0)) {
+        return null;
+    }
+
+    return (float) $units / $in_stock;
+}
+
+/**
+ * (P4) Season: last year's units in the coming 56 days over last year's
+ * units in the 56 days before them, between 0.5 and 2. 1 when either window
+ * sold under 10 units or reaches back before the record. Pure.
+ *
+ * @param array<string,array{sold:int,stock:int|null}> $days
+ * @param string $today
+ * @param string $history_from
+ * @return float
+ */
+function erp_stock_plan_season(array $days, $today, $history_from)
+{
+    $year_ago = erp_stock_plan_shift_day($today, -ERP_STOCK_PLAN_YEAR_DAYS);
+    $before_from = erp_stock_plan_shift_day($year_ago, -ERP_STOCK_PLAN_SPEED_DAYS);
+
+    if (($history_from === '') || ($before_from < $history_from)) {
+        return 1.0;
+    }
+
+    $ahead = 0;
+    $before = 0;
+
+    for ($i = 0; $i < ERP_STOCK_PLAN_SPEED_DAYS; $i++) {
+        $ahead += max(0, (int) ($days[erp_stock_plan_shift_day($year_ago, $i)]['sold'] ?? 0));
+        $before += max(0, (int) ($days[erp_stock_plan_shift_day($before_from, $i)]['sold'] ?? 0));
+    }
+
+    if (($ahead < ERP_STOCK_PLAN_SEASON_MIN_UNITS) || ($before < ERP_STOCK_PLAN_SEASON_MIN_UNITS)) {
+        return 1.0;
+    }
+
+    return round(min(ERP_STOCK_PLAN_SEASON_MAX, max(ERP_STOCK_PLAN_SEASON_MIN, $ahead / $before)), 2);
+}
+
+/**
+ * (P5) Each product's supplier: the account of its latest purchase
+ * invoice, else of its latest purchase order. Pure.
+ *
+ * @param array $invoice_lines product_id, account_id, issue_date, id
+ * @param array $orders account_id, issue_date, id, lines (each product_id)
+ * @return array<int,array{account_id:int,source:string}> product id => supplier
+ */
+function erp_stock_plan_suppliers(array $invoice_lines, array $orders)
+{
+    $newer = function ($row, $than) {
+        return ($than === null)
+            || ((string) $row['issue_date'] > (string) $than['issue_date'])
+            || (((string) $row['issue_date'] === (string) $than['issue_date']) && ((int) $row['id'] > (int) $than['id']));
+    };
+
+    $from_invoice = array();
+
+    foreach ($invoice_lines as $row) {
+        $id = (int) $row['product_id'];
+        if (($id > 0) && ((int) $row['account_id'] > 0) && $newer($row, $from_invoice[$id] ?? null)) {
+            $from_invoice[$id] = $row;
+        }
+    }
+
+    $from_order = array();
+
+    foreach ($orders as $order) {
+        if ((int) $order['account_id'] <= 0) {
+            continue;
+        }
+
+        foreach ((array) ($order['lines'] ?? array()) as $line) {
+            $id = (int) ($line['product_id'] ?? 0);
+            if (($id > 0) && $newer($order, $from_order[$id] ?? null)) {
+                $from_order[$id] = $order;
+            }
+        }
+    }
+
+    $suppliers = array();
+
+    foreach ($from_order as $id => $order) {
+        $suppliers[$id] = array('account_id' => (int) $order['account_id'], 'source' => 'order');
+    }
+
+    foreach ($from_invoice as $id => $row) {
+        $suppliers[$id] = array('account_id' => (int) $row['account_id'], 'source' => 'invoice');
+    }
+
+    ksort($suppliers);
+
+    return $suppliers;
+}
+
+/**
+ * (P6) Measured lead times: per supplier, the median of the days from a
+ * purchase order's date to its first purchase invoice, over its last five
+ * orders that have one. Pure.
+ *
+ * @param array $orders account_id, id, issue_date, invoice_date (first invoice)
+ * @return array<int,int> account id => days
+ */
+function erp_stock_plan_lead_measured(array $orders)
+{
+    usort($orders, function ($a, $b) {
+        $by_date = strcmp((string) $b['issue_date'], (string) $a['issue_date']);
+        return ($by_date !== 0) ? $by_date : ((int) $b['id'] - (int) $a['id']);
+    });
+
+    $spans = array();
+
+    foreach ($orders as $order) {
+        $account = (int) $order['account_id'];
+
+        if (($account <= 0) || (count($spans[$account] ?? array()) >= ERP_STOCK_PLAN_LEAD_ORDERS)) {
+            continue;
+        }
+
+        $spans[$account][] = max(0, erp_stock_plan_days_between($order['issue_date'], $order['invoice_date']));
+    }
+
+    $lead = array();
+
+    foreach ($spans as $account => $days) {
+        sort($days);
+        $count = count($days);
+        $middle = intdiv($count, 2);
+        $lead[$account] = ($count % 2 === 1) ? $days[$middle] : (int) round(($days[$middle - 1] + $days[$middle]) / 2);
+    }
+
+    ksort($lead);
+
+    return $lead;
+}
+
+/**
+ * (P6) A supplier's lead time and where it came from: measured, else the
+ * days typed on the account card (0 = not typed), else unknown. Pure.
+ *
+ * @param int|null $measured
+ * @param int $typed
+ * @return array{days:int|null,source:string} source measured|typed|none
+ */
+function erp_stock_plan_lead($measured, $typed)
+{
+    if ($measured !== null) {
+        return array('days' => max(0, (int) $measured), 'source' => 'measured');
+    }
+
+    if ((int) $typed > 0) {
+        return array('days' => (int) $typed, 'source' => 'typed');
+    }
+
+    return array('days' => null, 'source' => 'none');
+}
+
+/**
+ * Open quantities per product: what purchase orders still wait for.
+ * Pure.
+ *
+ * @param array $progress_lists erp_purchase_order_progress() of each open order
+ * @return array<int,float> product id => units
+ */
+function erp_stock_plan_open_quantities(array $progress_lists)
+{
+    $open = array();
+
+    foreach ($progress_lists as $progress) {
+        foreach ((array) $progress as $row) {
+            $id = (int) ($row['product_id'] ?? 0);
+            if (($id > 0) && ((float) $row['open'] > 0)) {
+                $open[$id] = round(($open[$id] ?? 0) + (float) $row['open'], 4);
+            }
+        }
+    }
+
+    ksort($open);
+
+    return $open;
+}
+
+/**
+ * (P7, P8, P9) A product's plan. Days left are the stock over units a day
+ * with the season; the run-out day is today plus them; the order-by day is
+ * the run-out day less lead time and safety days, none while the lead time
+ * is unknown. The quantity covers lead time, safety and cover days, less the
+ * stock and the open quantity on purchase orders, rounded up, never below 0;
+ * an unknown lead time counts as 0 days for the quantity and the state.
+ * Pure.
+ *
+ * @param array $in speed (float|null), season, stock, open, lead (int|null), today
+ * @param array $settings erp_stock_plan_settings()
+ * @return array{days_left:int|null,runout_day:string|null,order_by_day:string|null,quantity:int,state:string}
+ */
+function erp_stock_plan_forecast(array $in, array $settings)
+{
+    $speed = $in['speed'];
+    $today = (string) $in['today'];
+
+    if (($speed === null) || ($speed <= 0)) {
+        return array('days_left' => null, 'runout_day' => null, 'order_by_day' => null, 'quantity' => 0, 'state' => 'no_history');
+    }
+
+    $daily = $speed * (float) $in['season'];
+    $stock = max(0, (int) $in['stock']);
+    $lead = ($in['lead'] === null) ? null : max(0, (int) $in['lead']);
+    $lead_days = ($lead === null) ? 0 : $lead;
+
+    $days_left = (int) floor(round($stock / $daily, 6));
+    $runout = erp_stock_plan_shift_day($today, $days_left);
+    $order_by = erp_stock_plan_shift_day($runout, -($lead_days + (int) $settings['safety']));
+
+    $need = $daily * ($lead_days + (int) $settings['safety'] + (int) $settings['cover']) - $stock - (float) $in['open'];
+    $quantity = max(0, (int) ceil(round($need, 6)));
+
+    if (($lead !== null) && ($days_left < $lead)) {
+        $state = 'runs_out';
+    } elseif ($order_by <= $today) {
+        $state = 'order_now';
+    } elseif ($order_by <= erp_stock_plan_shift_day($today, ERP_STOCK_PLAN_SOON_DAYS)) {
+        $state = 'soon';
+    } else {
+        $state = 'fine';
+    }
+
+    return array(
+        'days_left'    => $days_left,
+        'runout_day'   => $runout,
+        'order_by_day' => ($lead === null) ? null : $order_by,
+        'quantity'     => $quantity,
+        'state'        => $state,
+    );
+}
+
+/**
+ * (P10) Dead stock: in stock and no sale for the dead-stock days (counted
+ * from the last sale, or from the first day the record holds when it never
+ * sold). Its value is units times the average cost, in minor units; null
+ * when no cost is known. Pure.
+ *
+ * @param int $stock
+ * @param string|null $last_sale Y-m-d
+ * @param string $history_from
+ * @param string $today
+ * @param int $dead_days
+ * @param int|null $avg_cost Minor units; null or 0 = not known.
+ * @return array{dead:bool,value:int|null}
+ */
+function erp_stock_plan_dead($stock, $last_sale, $history_from, $today, $dead_days, $avg_cost)
+{
+    $since = (($last_sale !== null) && ($last_sale !== '')) ? (string) $last_sale : (string) $history_from;
+    $stock = (int) $stock;
+
+    if (($stock <= 0) || ($since === '') || (erp_stock_plan_days_between($since, $today) <= (int) $dead_days)) {
+        return array('dead' => false, 'value' => null);
+    }
+
+    $known = ($avg_cost !== null) && ((int) $avg_cost > 0);
+
+    return array('dead' => true, 'value' => $known ? (int) round($stock * (int) $avg_cost) : null);
+}
+
+/**
+ * The INSERT of a batch of plan rows. The notice stamp is the bell's and
+ * survives the rebuild. Pure.
+ *
+ * @param array $rows
+ * @return string
+ */
+function erp_stock_plan_cache_sql(array $rows)
+{
+    $sql_day = function ($day) {
+        return ($day === null) ? 'NULL' : "'" . erp_stock_plan_shift_day($day, 0) . "'";
+    };
+
+    $values = array();
+
+    foreach ($rows as $row) {
+        $values[] = '(' . (int) $row['product_id'] . ', '
+            . number_format((float) $row['units_day'], 3, '.', '') . ', '
+            . number_format((float) $row['season'], 2, '.', '') . ', '
+            . (int) $row['supplier_id'] . ', '
+            . (($row['lead_days'] === null) ? 'NULL' : min(65535, max(0, (int) $row['lead_days']))) . ", '"
+            . (in_array($row['lead_source'], array('measured', 'typed'), true) ? $row['lead_source'] : 'none') . "', "
+            . (($row['days_left'] === null) ? 'NULL' : max(0, (int) $row['days_left'])) . ', '
+            . $sql_day($row['runout_day']) . ', '
+            . $sql_day($row['order_by_day']) . ', '
+            . max(0, (int) $row['quantity']) . ", '"
+            . (in_array($row['state'], array('runs_out', 'order_now', 'soon', 'fine'), true) ? $row['state'] : 'no_history') . "', "
+            . $sql_day($row['last_sale']) . ')';
+    }
+
+    return "INSERT INTO erp_stock_plan (product_id, units_day, season, supplier_id, lead_days, lead_source, days_left,
+        runout_day, order_by_day, quantity, state, last_sale) VALUES " . implode(', ', $values) . "
+        ON DUPLICATE KEY UPDATE units_day = VALUES(units_day), season = VALUES(season), supplier_id = VALUES(supplier_id),
+        lead_days = VALUES(lead_days), lead_source = VALUES(lead_source), days_left = VALUES(days_left),
+        runout_day = VALUES(runout_day), order_by_day = VALUES(order_by_day), quantity = VALUES(quantity),
+        state = VALUES(state), last_sale = VALUES(last_sale)";
+}
+
+/**
+ * One product's cache row from what the night read. Pure.
+ *
+ * @param int $product_id
+ * @param array $ctx days, stock, today, history_from, supplier, lead, open, last_sale
+ * @param array $settings
+ * @return array
+ */
+function erp_stock_plan_product_row($product_id, array $ctx, array $settings)
+{
+    $speed = erp_stock_plan_speed($ctx['days'], $ctx['today'], $ctx['history_from']);
+    $season = ($speed === null) ? 1.0 : erp_stock_plan_season($ctx['days'], $ctx['today'], $ctx['history_from']);
+    $lead = $ctx['lead'];
+
+    $plan = erp_stock_plan_forecast(array(
+        'speed'  => $speed,
+        'season' => $season,
+        'stock'  => $ctx['stock'],
+        'open'   => $ctx['open'],
+        'lead'   => $lead['days'],
+        'today'  => $ctx['today'],
+    ), $settings);
+
+    return array(
+        'product_id'   => (int) $product_id,
+        'units_day'    => ($speed === null) ? 0.0 : round($speed, 3),
+        'season'       => $season,
+        'supplier_id'  => (int) $ctx['supplier'],
+        'lead_days'    => $lead['days'],
+        'lead_source'  => $lead['source'],
+        'days_left'    => $plan['days_left'],
+        'runout_day'   => $plan['runout_day'],
+        'order_by_day' => $plan['order_by_day'],
+        'quantity'     => $plan['quantity'],
+        'state'        => $plan['state'],
+        'last_sale'    => $ctx['last_sale'],
+    );
+}
+
+/**
+ * Whether tonight's plan is still to be built: after the night's row and
+ * the fill, once a night. Pure.
+ *
+ * @param array $marks erp_stock_plan_marks()
+ * @param string $yesterday
+ * @param bool $ready The table is in place.
+ * @return bool
+ */
+function erp_stock_plan_rebuild_due(array $marks, $yesterday, $ready)
+{
+    return $ready && ($marks['began'] !== '') && !empty($marks['filled'])
+        && ($marks['day'] >= $yesterday) && (($marks['planned'] ?? '') < $yesterday);
+}
+
+/**
+ * Whether erp_stock_plan is in place (2026.11.0, 11.0.251).
+ *
+ * @return bool
+ */
+function erp_stock_plan_cache_ready()
+{
+    return pg_schema_has('erp_stock_plan');
+}
+
+/**
+ * The first day the record holds: the fill's start, or the day the record
+ * began while the fill has not run, never before the pruning edge.
+ *
+ * @param array $marks erp_stock_plan_marks()
+ * @param string $today
+ * @return string
+ */
+function erp_stock_plan_history_from(array $marks, $today)
+{
+    if ($marks['began'] === '') {
+        return '';
+    }
+
+    $from = $marks['filled'] ? erp_stock_plan_fill_range($marks['began'])['from'] : (($marks['fill'] !== '') ? $marks['fill'] : $marks['began']);
+
+    return max($from, erp_stock_plan_shift_day($today, -ERP_STOCK_PLAN_KEEP_DAYS));
+}
+
+/**
+ * What every batch of the rebuild shares: suppliers' lead times, the typed
+ * lead days, the open quantities and the purchase orders scanned for a
+ * supplier.
+ *
+ * @return array|false
+ */
+function erp_stock_plan_shared()
+{
+    $shared = array('measured' => array(), 'typed' => array(), 'open' => array(), 'orders' => array());
+
+    if (!function_exists('erp_purchase_orders_ready') || !erp_purchase_orders_ready()) {
+        return $shared;
+    }
+
+    $orders = erp_stock_plan_select("SELECT o.id, o.account_id, o.issue_date, MIN(i.issue_date) AS invoice_date
+        FROM erp_purchase_orders o
+        JOIN erp_invoices i ON i.purchase_order_id = o.id
+            AND i.direction = 'purchase' AND i.doc_type = 'invoice' AND i.status NOT IN ('draft', 'cancelled')
+        WHERE o.status <> 'cancelled' AND o.account_id > 0
+        GROUP BY o.id, o.account_id, o.issue_date");
+
+    if ($orders === false) {
+        return false;
+    }
+
+    $shared['measured'] = erp_stock_plan_lead_measured($orders);
+
+    if (pg_schema_has('erp_accounts', 'lead_days')) {
+
+        $rows = erp_stock_plan_select("SELECT id, lead_days FROM erp_accounts WHERE lead_days > 0");
+
+        if ($rows === false) {
+            return false;
+        }
+
+        foreach ($rows as $row) {
+            $shared['typed'][(int) $row['id']] = (int) $row['lead_days'];
+        }
+    }
+
+    $rows = erp_stock_plan_select("SELECT id, account_id, issue_date, status, line_data FROM erp_purchase_orders
+        WHERE status <> 'cancelled'
+        ORDER BY issue_date DESC, id DESC
+        LIMIT " . ERP_STOCK_PLAN_ORDER_SCAN);
+
+    if ($rows === false) {
+        return false;
+    }
+
+    $progress = array();
+
+    foreach ($rows as $row) {
+
+        $lines = erp_purchase_order_lines($row);
+        $shared['orders'][] = array('id' => (int) $row['id'], 'account_id' => (int) $row['account_id'], 'issue_date' => (string) $row['issue_date'], 'lines' => $lines);
+
+        if (in_array((string) $row['status'], array('open', 'sent', 'partial'), true)) {
+            $quantities = erp_purchase_order_quantities((int) $row['id']);
+            $progress[] = erp_purchase_order_progress($lines, $quantities['received'], $quantities['drafted']);
+        }
+    }
+
+    $shared['open'] = erp_stock_plan_open_quantities($progress);
+
+    return $shared;
+}
+
+/**
+ * Rebuild the plan rows of one batch of tracked products after $cursor.
+ *
+ * @param int $cursor
+ * @param array $shared erp_stock_plan_shared()
+ * @param string $today
+ * @param string $history_from
+ * @param array $settings
+ * @return int|false The last product id done, 0 when no product is left.
+ */
+function erp_stock_plan_rebuild_batch($cursor, array $shared, $today, $history_from, array $settings)
+{
+    $products = erp_stock_plan_select("SELECT id, inventory_quantity FROM products
+        WHERE inventory = 1" . (pg_bundles_ready() ? ' AND bundle = 0' : '') . " AND id > " . (int) $cursor . "
+        ORDER BY id ASC LIMIT " . ERP_STOCK_PLAN_BATCH);
+
+    if ($products === false) {
+        return false;
+    }
+
+    if (empty($products)) {
+        return (db_q("DELETE FROM erp_stock_plan WHERE product_id > ?", array((int) $cursor)) === false) ? false : 0;
+    }
+
+    $stock = array();
+
+    foreach ($products as $row) {
+        $stock[(int) $row['id']] = (int) $row['inventory_quantity'];
+    }
+
+    $ids = implode(',', array_keys($stock));
+    $last_id = max(array_keys($stock));
+
+    // The speed window and last year's two season windows.
+    $speed_from = erp_stock_plan_shift_day($today, -ERP_STOCK_PLAN_SPEED_DAYS);
+    $season_from = erp_stock_plan_shift_day($today, -(ERP_STOCK_PLAN_YEAR_DAYS + ERP_STOCK_PLAN_SPEED_DAYS));
+    $season_to = erp_stock_plan_shift_day($today, -ERP_STOCK_PLAN_YEAR_DAYS + ERP_STOCK_PLAN_SPEED_DAYS - 1);
+
+    $rows = erp_stock_plan_select("SELECT product_id, day, sold, stock FROM erp_stock_days
+        WHERE product_id IN (" . $ids . ")
+        AND ((day >= '" . $speed_from . "' AND day < '" . erp_stock_plan_shift_day($today, 0) . "')
+            OR (day >= '" . $season_from . "' AND day <= '" . $season_to . "'))");
+    $sales = erp_stock_plan_select("SELECT product_id, MAX(day) AS last_sale FROM erp_stock_days
+        WHERE product_id IN (" . $ids . ") AND sold > 0 GROUP BY product_id");
+    $invoice_lines = erp_stock_plan_select("SELECT ii.product_id, i.account_id, i.issue_date, i.id
+        FROM erp_invoices i
+        JOIN erp_invoice_items ii ON ii.invoice_id = i.id
+        WHERE i.direction = 'purchase' AND i.doc_type = 'invoice' AND i.status NOT IN ('draft', 'cancelled')
+        AND ii.product_id IN (" . $ids . ")");
+
+    if (($rows === false) || ($sales === false) || ($invoice_lines === false)) {
+        return false;
+    }
+
+    $days = array();
+
+    foreach ($rows as $row) {
+        $days[(int) $row['product_id']][(string) $row['day']] = array(
+            'sold'  => (int) $row['sold'],
+            'stock' => ($row['stock'] === null) ? null : (int) $row['stock'],
+        );
+    }
+
+    $last_sale = array();
+
+    foreach ($sales as $row) {
+        $last_sale[(int) $row['product_id']] = (string) $row['last_sale'];
+    }
+
+    $suppliers = erp_stock_plan_suppliers($invoice_lines, $shared['orders']);
+    $write = array();
+
+    foreach ($stock as $id => $level) {
+
+        $supplier = (int) ($suppliers[$id]['account_id'] ?? 0);
+        $lead = ($supplier > 0)
+            ? erp_stock_plan_lead($shared['measured'][$supplier] ?? null, (int) ($shared['typed'][$supplier] ?? 0))
+            : array('days' => null, 'source' => 'none');
+
+        $write[] = erp_stock_plan_product_row($id, array(
+            'days'         => $days[$id] ?? array(),
+            'stock'        => $level,
+            'today'        => $today,
+            'history_from' => $history_from,
+            'supplier'     => $supplier,
+            'lead'         => $lead,
+            'open'         => (float) ($shared['open'][$id] ?? 0),
+            'last_sale'    => $last_sale[$id] ?? null,
+        ), $settings);
+    }
+
+    // A product no longer tracked (or deleted, or now a bundle) loses its row.
+    if ((db_q(erp_stock_plan_cache_sql($write)) === false)
+        || (db_q("DELETE FROM erp_stock_plan WHERE product_id > ? AND product_id <= ? AND product_id NOT IN (" . $ids . ")",
+            array((int) $cursor, (int) $last_id)) === false)) {
+        return false;
+    }
+
+    return (int) $last_id;
+}
+
+/**
+ * The night's rebuild of the plan, in batches; resumes from the cursor mark.
+ *
+ * @param array $marks
+ * @param string $today
+ * @param callable $time_left
+ * @return string done|more|error
+ */
+function erp_stock_plan_rebuild(array $marks, $today, $time_left)
+{
+    $shared = erp_stock_plan_shared();
+
+    if ($shared === false) {
+        return 'error';
+    }
+
+    $settings = erp_stock_plan_settings();
+    $history_from = erp_stock_plan_history_from($marks, $today);
+    $cursor = (int) db_value("SELECT last_run_at FROM cron_runs WHERE job_name = '" . ERP_STOCK_PLAN_MARK_CURSOR . "' LIMIT 1");
+
+    while (true) {
+
+        if ($time_left() <= 5) {
+            return 'more';
+        }
+
+        $done = erp_stock_plan_rebuild_batch($cursor, $shared, $today, $history_from, $settings);
+
+        if ($done === false) {
+            return 'error';
+        }
+
+        if ($done === 0) {
+            break;
+        }
+
+        $cursor = $done;
+
+        if (!erp_stock_plan_mark_set(ERP_STOCK_PLAN_MARK_CURSOR, $cursor)) {
+            return 'error';
+        }
+    }
+
+    if (!erp_stock_plan_mark_set(ERP_STOCK_PLAN_MARK_CURSOR, 0)
+        || !erp_stock_plan_mark_set(ERP_STOCK_PLAN_MARK_PLANNED, erp_stock_plan_day_mark(erp_stock_plan_shift_day($today, -1)))) {
+        return 'error';
+    }
+
+    return 'done';
 }

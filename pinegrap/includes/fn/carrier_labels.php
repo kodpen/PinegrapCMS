@@ -70,6 +70,12 @@
  *                            amount (minor units, VAT included, int >= 0),
  *                            currency (ISO 4217); a quote missing any of
  *                            them is dropped
+ *   price            array   create(): what the service charged for the
+ *                            label, value (a plain decimal as the service
+ *                            wrote it, before VAT where the service says
+ *                            so) and currency (ISO 4217); empty when the
+ *                            service gave none or the label cost nothing
+ *                            (a test label)
  *   log              array   sentences for the activity log, in order
  *   raw              array   the service's answer, for the log only
  *
@@ -449,6 +455,31 @@ function pg_label_quote_normalize($quote)
 }
 
 /**
+ * The price a service charged for a label, checked: a plain decimal of 0
+ * or more as the service wrote it (a point before the decimals, at most
+ * six), and a currency code. Anything else is no price, never repaired: the
+ * order's shipping cost then stays the rate typed for its method.
+ *
+ * @param mixed $price array with value (string or int) and currency
+ * @return array value (string), currency; empty when there is no price
+ */
+function pg_label_price_normalize($price)
+{
+    if (!is_array($price) || !isset($price['value'], $price['currency'])) {
+        return array();
+    }
+
+    $value = is_int($price['value']) ? (string) $price['value'] : (is_string($price['value']) ? trim($price['value']) : '');
+    $currency = is_string($price['currency']) ? strtoupper(trim($price['currency'])) : '';
+
+    if ((preg_match('/^\d{1,12}(\.\d{1,6})?$/', $value) !== 1) || (preg_match('/^[A-Z]{3}$/', $currency) !== 1)) {
+        return array();
+    }
+
+    return array('value' => $value, 'currency' => $currency);
+}
+
+/**
  * A driver's info.
  *
  * @param string $key
@@ -627,6 +658,7 @@ function pg_label_answer($operation, $answer)
         'barcode'         => '',
         'account'         => '',
         'quotes'          => array(),
+        'price'           => array(),
         'log'             => array(),
         'raw'             => array(),
     );
@@ -679,6 +711,12 @@ function pg_label_answer($operation, $answer)
 
     if (isset($answer['tracking_url'])) {
         $shape['tracking_url'] = pg_shipment_tracking_url_clean($answer['tracking_url']);
+    }
+
+    // What the service charged for the label, as it wrote it: the Accounting
+    // module turns it into minor units of the order's currency.
+    if (isset($answer['price'])) {
+        $shape['price'] = pg_label_price_normalize($answer['price']);
     }
 
     if (!in_array($shape['status'], pg_shipment_statuses(), true)) {

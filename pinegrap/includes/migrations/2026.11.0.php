@@ -236,10 +236,12 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
+	upgrade_2026_11_0_ws_app_answers();          // 11.0.252
 	upgrade_2026_11_0_event_tickets();           // 11.0.247
 	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
 	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
+	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 
 }
 
@@ -7907,6 +7909,33 @@ function upgrade_2026_11_0_ws_app_command_args() {
 
 }
 
+// An application's answer to a / command, shown to the command's writer alone
+// (2026.11.0, 11.0.252; includes/workspace/app_answers.php). The application
+// answers with the signed answer_token workspace.app.command carried, at most
+// three times; the row is read by ws_sync for the open channel only, deleted
+// with its channel, application or account and swept after 24 hours. token
+// holds the token's 32-character signature, which counts the answers.
+function upgrade_2026_11_0_ws_app_answers() {
+
+	install_create_table('ws_app_answers', "CREATE TABLE ws_app_answers (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		app_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		command     VARCHAR(20) NOT NULL DEFAULT '',
+		token       CHAR(32) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body        TEXT NULL,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user_channel (user_id, channel_id, id),
+		KEY idx_created (created_at),
+		KEY idx_token (token)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an application can answer a / command so that only the person who typed it sees the answer.');
+
+}
+
 // Event tickets (11.0.247, includes/fn/event_tickets.php): one event_tickets
 // row per unit of a completed order line that gives tickets (a calendar
 // event's reservation, or a product marked "Gives tickets"), and that mark
@@ -8098,5 +8127,40 @@ function upgrade_2026_11_0_erp_order_profit() {
 	}
 
 	install_note('Accounting: each finished order gets its costs and net profit, computed by the general job after the upgrade.');
+
+}
+
+// The stock plan (2026.11.0, 11.0.251; includes/erp/stock_plan.php). One row
+// per tracked product, a cache the night pass rebuilds after the day's row:
+// units a day over the last 56 in-stock days, last year's season factor, the
+// supplier (latest purchase invoice, else order), the lead time and where it
+// came from (measured, typed, none), days left, run-out and order-by days,
+// the quantity to order, the state, the last sale and the bell's notice
+// stamp, which the rebuild leaves alone. erp_accounts.lead_days is the lead
+// time typed on a supplier's card, 0 when none is typed.
+function upgrade_2026_11_0_erp_stock_plan() {
+
+	install_create_table('erp_stock_plan', "CREATE TABLE erp_stock_plan (
+		product_id    INT UNSIGNED NOT NULL,
+		units_day     DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+		season        DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+		supplier_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		lead_days     SMALLINT UNSIGNED NULL,
+		lead_source   ENUM('measured','typed','none') NOT NULL DEFAULT 'none',
+		days_left     INT UNSIGNED NULL,
+		runout_day    DATE NULL,
+		order_by_day  DATE NULL,
+		quantity      INT UNSIGNED NOT NULL DEFAULT 0,
+		state         ENUM('runs_out','order_now','soon','fine','no_history') NOT NULL DEFAULT 'no_history',
+		last_sale     DATE NULL,
+		notice_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id),
+		KEY idx_state (state),
+		KEY idx_supplier (supplier_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_accounts', 'lead_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Accounting: a stock plan per product is worked out every night from the daily record, and a supplier card can hold a lead time.');
 
 }

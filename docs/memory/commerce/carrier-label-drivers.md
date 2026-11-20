@@ -10,8 +10,8 @@ module: carrier_labels
 - The account is the last argument of every operation (`pg_label_account()`: stored values, secrets unsealed, defaults). A driver never reads the database, request or session and never writes orders or parcels.
 
 ## What does a caller get back?
-- Always `pg_label_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (an `\Error` a plain failure, an exception `unclear`), then masks every secret value of the account (4+ characters) as `****` in `error`, `log` and `raw`, so a service echoing the request cannot put a key into a notice or the log.
-- `pg_label_answer()` keeps only its keys (reference, tracking_number, carrier, tracking_url, status, status_at, label, label_format, barcode, account, quotes, log, raw, unclear): a service's own fields (a fee) are dropped.
+- Always `pg_label_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (an `\Error` a plain failure, an exception `unclear`), then masks every secret value of the account (4+ characters) as `****` in `error`, `log` and `raw`, so a service echoing the request leaks no key.
+- `pg_label_answer()` keeps only its keys (reference, tracking_number, carrier, tracking_url, status, status_at, label, label_format, barcode, account, quotes, price (`erp/erp-order-profit-label-price.md`), log, raw, unclear); other fields are dropped.
 - A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`, SVG passes `pg_label_svg_valid()`), track() no `pg_shipment_statuses()` value.
 
 ## What reaches the shipment row?

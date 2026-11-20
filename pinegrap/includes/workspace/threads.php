@@ -1716,6 +1716,11 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_channel_memory WHERE channel_id = '" . $thread_id . "'");
         }
 
+        // Applications' answers to commands typed in it (app_answers.php).
+        if (function_exists('ws_app_answers_delete_for')) {
+            ws_app_answers_delete_for('channel_id', $thread_id);
+        }
+
         if (function_exists('ws_link_preview_channel_purged')) {
             ws_link_preview_channel_purged($thread_id);
         }

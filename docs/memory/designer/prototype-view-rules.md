@@ -21,6 +21,9 @@ description: What a later change to the designer's Prototype view must keep (K1 
 - New core classes are `pgc-` and read only `--pgc-*` tokens; the view themes them under `.sd-proto` for light and dark. Texts: `_sdT()` in the designer, a `pgc_*` key in `pg_graph_canvas_js_strings()` for the core.
 - No schema change and no new endpoint was needed; a need for either is a question to the architect.
 
+## What did the plan prototype-next add (PX1 to PX6)?
+- Zoom to a frame (designer/prototype-zoom.md), a links panel row dragged onto a frame (prototype-row-drag.md), the amber count as a button (prototype-badge-list.md), Ctrl+F (prototype-search.md), the shortest click path (prototype-shortest-path.md), the viewer's missed click and Play's start (prototype-viewer-missed-click.md). Each kept K1 to K9; none needed a schema change or an endpoint.
+
 ## What was left out?
 - Flows using the new core parts (Tidy up, the checks, routing): only on a later yes of the owner.
 - A stored screenshot of a page: a picture is the real page (`workflow/decisions-made-product-35.md`).

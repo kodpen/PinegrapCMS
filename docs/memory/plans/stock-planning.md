@@ -24,7 +24,7 @@ priority: 6
 ## What did the architect decide? (2026-11-20, agent channel message 10139)
 - No question for the owner. Settings in Accounting, each the owner may change: safety 7 days and cover 30 days (the architect's), dead stock 90 days (the poll's).
 - `erp_stock_days` is written sparse; `erp_stock_plan` is a cache rebuilt every night; `erp_accounts.lead_days`. Columns in the steps; a column outside them is asked.
-- History: accepted; priority stays 6. The 365 days of sales let the forecast run from the first night; each night of delay loses only that day's stock.
+- History: accepted; priority stays 6. The 420 days of sales (365 before #10654) let the forecast run from the first night; each night of delay loses only that day's stock.
 - The press: the quantities reach the form by POST, which only fills it; the minimum stock screen's GET stays. Supplier: no link table.
 - With the Accounting module off the job writes nothing.
 
