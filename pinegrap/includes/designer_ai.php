@@ -2226,21 +2226,24 @@ function pg_design_ai_op_names()
  *
  * @param array $tree pg_design_ai_tree()
  * @param array $ops
- * @return array ok, tree, error, op (index of the failing operation), lines
+ * @return array ok, tree, error, code (the API's error code of a refusal),
+ *               op (index of the failing operation), lines
  *               (what each operation did, in words), dropped, removed
  *               (islands the operations took away)
  */
 function pg_design_ai_apply_ops($tree, $ops)
 {
-    $out = array('ok' => false, 'tree' => $tree, 'error' => '', 'op' => -1, 'lines' => array(), 'dropped' => array(), 'removed' => array());
+    $out = array('ok' => false, 'tree' => $tree, 'error' => '', 'code' => '', 'op' => -1, 'lines' => array(), 'dropped' => array(), 'removed' => array());
 
     if (!is_array($ops) || empty($ops)) {
         $out['error'] = 'ops is empty: give at least one operation.';
+        $out['code'] = 'validation_failed';
         return $out;
     }
 
     if (count($ops) > PG_DESIGN_AI_MAX_OPS) {
         $out['error'] = 'At most ' . PG_DESIGN_AI_MAX_OPS . ' operations in one proposal.';
+        $out['code'] = 'validation_failed';
         return $out;
     }
 
@@ -2256,6 +2259,7 @@ function pg_design_ai_apply_ops($tree, $ops)
     foreach (array_values($ops) as $i => $op) {
         if (!is_array($op)) {
             $out['error'] = 'Each operation is an object with "op".';
+            $out['code'] = 'design_op_invalid';
             $out['op'] = $i;
             return $out;
         }
@@ -2264,6 +2268,7 @@ function pg_design_ai_apply_ops($tree, $ops)
 
         if (!$step['ok']) {
             $out['error'] = $step['error'];
+            $out['code'] = $step['code'];
             $out['op'] = $i;
             return $out;
         }
@@ -2292,6 +2297,7 @@ function pg_design_ai_apply_ops($tree, $ops)
 
     if (!$check['ok']) {
         $out['error'] = 'The result is not a valid page: ' . $check['error'];
+        $out['code'] = 'design_page_invalid';
         return $out;
     }
 
@@ -2319,34 +2325,34 @@ function _pg_dai_position($tree, $index, $op)
             $sibling = (string) $op[$key];
 
             if (!isset($index[$sibling]) || empty($index[$sibling])) {
-                return array('ok' => false, 'error' => $key . ': no node ' . $sibling . ' on the page.');
+                return array('ok' => false, 'error' => $key . ': no node ' . $sibling . ' on the page.', 'code' => 'design_node_unknown');
             }
 
             $path = $index[$sibling];
             $at = array_pop($path);
 
-            return array('ok' => true, 'error' => '', 'path' => $path, 'at' => ($key === 'after') ? $at + 1 : $at);
+            return array('ok' => true, 'error' => '', 'code' => '', 'path' => $path, 'at' => ($key === 'after') ? $at + 1 : $at);
         }
     }
 
     $parent = isset($op['parent']) ? (string) $op['parent'] : '';
 
     if ($parent === '') {
-        return array('ok' => false, 'error' => 'Say where: parent (with index), before or after.');
+        return array('ok' => false, 'error' => 'Say where: parent (with index), before or after.', 'code' => 'design_op_invalid');
     }
 
     if (!isset($index[$parent])) {
-        return array('ok' => false, 'error' => 'parent: no node ' . $parent . ' on the page.');
+        return array('ok' => false, 'error' => 'parent: no node ' . $parent . ' on the page.', 'code' => 'design_node_unknown');
     }
 
     $node = _pg_dai_at($tree, $index[$parent]);
 
     if (pg_design_ai_island_kind($node) !== '') {
-        return array('ok' => false, 'error' => 'parent: ' . $parent . ' is an island; nothing goes inside it.');
+        return array('ok' => false, 'error' => 'parent: ' . $parent . ' is an island; nothing goes inside it.', 'code' => 'design_keep_inside');
     }
 
     if (($node['type'] === 'content') || in_array(_pg_dai_tag($node), array('img', 'hr', 'br', 'input'), true)) {
-        return array('ok' => false, 'error' => 'parent: ' . $parent . ' cannot hold other elements.');
+        return array('ok' => false, 'error' => 'parent: ' . $parent . ' cannot hold other elements.', 'code' => 'design_op_invalid');
     }
 
     $count = count((array) $node['children']);
@@ -2356,7 +2362,7 @@ function _pg_dai_position($tree, $index, $op)
         $at = $count;
     }
 
-    return array('ok' => true, 'error' => '', 'path' => $index[$parent], 'at' => $at);
+    return array('ok' => true, 'error' => '', 'code' => '', 'path' => $index[$parent], 'at' => $at);
 }
 
 /**
@@ -2503,12 +2509,15 @@ function pg_design_ai_op_fields($op)
  *
  * @param array $tree
  * @param array $op
- * @return array ok, error, tree, line, dropped
+ * @return array ok, error, code, tree, line, dropped
  */
 function _pg_dai_op($tree, $op)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'tree' => null, 'line' => '', 'dropped' => array());
+    // code: design_node_unknown (an id the page lacks), design_keep_inside
+    // (the inside of a <pg-keep> part or bound data written), else
+    // design_op_invalid; api_fail() answers each with its own hint.
+    $fail = function ($error, $code = 'design_op_invalid') {
+        return array('ok' => false, 'error' => $error, 'code' => $code, 'tree' => null, 'line' => '', 'dropped' => array());
     };
 
     $read = pg_design_ai_op_fields($op);
@@ -2520,7 +2529,7 @@ function _pg_dai_op($tree, $op)
     $op = $read['op'];
     $name = isset($op['op']) ? strtolower((string) $op['op']) : '';
     $done = function ($tree, $line, $dropped = array()) {
-        return array('ok' => true, 'error' => '', 'tree' => $tree, 'line' => $line, 'dropped' => $dropped);
+        return array('ok' => true, 'error' => '', 'code' => '', 'tree' => $tree, 'line' => $line, 'dropped' => $dropped);
     };
 
     if (!in_array($name, pg_design_ai_op_names(), true)) {
@@ -2533,7 +2542,7 @@ function _pg_dai_op($tree, $op)
 
     if (in_array($name, array('update', 'set_props', 'replace', 'remove', 'move'), true)) {
         if (($id === '') || !isset($index[$id])) {
-            return $fail('node: no node ' . ($id !== '' ? $id : '(empty)') . ' on the page.');
+            return $fail('node: no node ' . ($id !== '' ? $id : '(empty)') . ' on the page.', 'design_node_unknown');
         }
     }
 
@@ -2643,11 +2652,11 @@ function _pg_dai_op($tree, $op)
 
             if (array_key_exists('text', $op)) {
                 if ($kind !== '') {
-                    return $fail('text: ' . $id . ' is an island (' . pg_design_ai_island_label($node) . '); change its words with set_props.');
+                    return $fail('text: ' . $id . ' is an island (' . pg_design_ai_island_label($node) . '); change its words with set_props.', 'design_keep_inside');
                 }
 
                 if (!empty($node['props']['_bindings']['text'])) {
-                    return $fail('text: the words of ' . $id . ' come from the data (bound); they cannot be written.');
+                    return $fail('text: the words of ' . $id . ' come from the data (bound); they cannot be written.', 'design_keep_inside');
                 }
 
                 if ($node['type'] === 'content') {
@@ -2679,7 +2688,7 @@ function _pg_dai_op($tree, $op)
                     }
 
                     if (!empty($node['props']['_bindings'][$attr])) {
-                        return $fail('attrs: the ' . $attr . ' of ' . $id . ' comes from the data (bound).');
+                        return $fail('attrs: the ' . $attr . ' of ' . $id . ' comes from the data (bound).', 'design_keep_inside');
                     }
 
                     if (_pg_dai_owns_attr($node, $attr)) {
@@ -2789,7 +2798,7 @@ function _pg_dai_op($tree, $op)
             $where = _pg_dai_position($tree, $index, $op);
 
             if (!$where['ok']) {
-                return $fail($where['error']);
+                return $fail($where['error'], $where['code']);
             }
 
             $used = array();
@@ -2849,7 +2858,7 @@ function _pg_dai_op($tree, $op)
             $where = _pg_dai_position($tree, $index, $op);
 
             if (!$where['ok']) {
-                return $fail($where['error']);
+                return $fail($where['error'], $where['code']);
             }
 
             $parent = &_pg_dai_at($tree, $where['path']);
@@ -3369,13 +3378,13 @@ function pg_design_ai_proposal($id)
  * @param array $args page_id, ops, summary, node_id, request (ws_ai_requests
  *                    row or null), agent, app_id, requested_by, channel_id,
  *                    message_id, dry_run
- * @return array ok, error, op (index of the failing operation), id,
+ * @return array ok, error, code, op (index of the failing operation), id,
  *               proposal (presented), result (pg_design_ai_apply_ops())
  */
 function pg_design_ai_proposal_create($args)
 {
-    $fail = function ($error, $op = -1) {
-        return array('ok' => false, 'error' => $error, 'op' => $op, 'id' => 0, 'proposal' => null, 'result' => null);
+    $fail = function ($error, $op = -1, $code = '') {
+        return array('ok' => false, 'error' => $error, 'code' => $code, 'op' => $op, 'id' => 0, 'proposal' => null, 'result' => null);
     };
 
     if (!pg_design_ai_ready()) {
@@ -3405,11 +3414,11 @@ function pg_design_ai_proposal_create($args)
     $result = pg_design_ai_apply_ops($base, $ops);
 
     if (!$result['ok']) {
-        return $fail($result['error'], $result['op']);
+        return $fail($result['error'], $result['op'], $result['code']);
     }
 
     if (!empty($args['dry_run'])) {
-        return array('ok' => true, 'error' => '', 'op' => -1, 'id' => 0, 'proposal' => null, 'result' => $result);
+        return array('ok' => true, 'error' => '', 'code' => '', 'op' => -1, 'id' => 0, 'proposal' => null, 'result' => $result);
     }
 
     $summary = trim(preg_replace('/\s+/u', ' ', (string) ($args['summary'] ?? '')));
@@ -3438,7 +3447,7 @@ function pg_design_ai_proposal_create($args)
 
     $id = (int) mysqli_insert_id(db::$con);
 
-    return array('ok' => true, 'error' => '', 'op' => -1, 'id' => $id, 'proposal' => pg_design_ai_proposal_present(pg_design_ai_proposal($id)), 'result' => $result);
+    return array('ok' => true, 'error' => '', 'code' => '', 'op' => -1, 'id' => $id, 'proposal' => pg_design_ai_proposal_present(pg_design_ai_proposal($id)), 'result' => $result);
 }
 
 /**

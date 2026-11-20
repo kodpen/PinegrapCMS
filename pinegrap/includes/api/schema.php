@@ -5577,13 +5577,14 @@ function api_schema() {
 			'returns' => 'DesignProposal',
 			'status'  => 201,
 			'summary' => 'Propose a change of a page',
-			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]). Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
+			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]), code design_node_unknown (an id the page lacks), design_keep_inside (the inside of a <pg-keep> part or bound data written), design_op_invalid or design_page_invalid. With hash (from GET /design/pages/{id}) a page changed since that read is refused with 409 design_page_changed. Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'ops',        'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string'), 'max_items' => 40, 'required' => true, 'description' => 'The operations, as objects with "op".'),
 				array('name' => 'summary',    'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'description' => 'One or two sentences on what the change does, for the person who applies it.'),
 				array('name' => 'node',       'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The element the change is about, when there is one.'),
-				array('name' => 'request_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The workspace request this proposal answers.')
+				array('name' => 'request_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The workspace request this proposal answers.'),
+				array('name' => 'hash',       'in' => 'body', 'type' => 'string', 'max_length' => 64, 'description' => 'The hash GET /design/pages/{id} gave; when the page has changed since, nothing is kept.')
 			)
 		),
 
@@ -6512,6 +6513,10 @@ function api_error_catalogue() {
 		'limit_message_mine'       => array(422, 'The person already keeps 10 highlights on this message. Remove one first.'),
 		'limit_message'            => array(422, 'The message already carries 30 highlights, as many as it can.'),
 		'limit_person'             => array(422, 'The person keeps 2,000 highlights, as many as they can. Remove some first.'),
+		'design_node_unknown'      => array(422, 'A design operation names a data-pg id the page does not have. Read the page again and use an id it shows.'),
+		'design_keep_inside'       => array(422, 'A design operation writes the inside of a <pg-keep> part or data the page binds. Change its settings with set_props, or move or remove it.'),
+		'design_op_invalid'        => array(422, 'A design operation is missing a field or holds a wrong one; field names it as ops[N].'),
+		'design_page_invalid'      => array(422, 'The design operations together make a page that is not valid.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

@@ -1385,6 +1385,8 @@ function api_openapi_responses($route) {
 					'message'    => array('type' => 'string'),
 					'field'      => array('type' => 'string'),
 					'request_id' => array('type' => 'string'),
+					'hint'       => array('type' => 'string', 'description' => 'On some codes: what to do next, one sentence in English.'),
+					'guide'      => array('type' => 'string', 'description' => 'With hint: the section of GET /guide that explains it, as topic#section.'),
 					'errors'     => array(
 						'type'  => 'array',
 						'items' => array(

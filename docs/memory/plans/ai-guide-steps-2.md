@@ -10,10 +10,10 @@ description: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the
 - AG11 (S) after AG9 and AG4: the ERP's diet (25 descriptions).
 - AG12 (M) after AG9, AG2 and AG3: the diet of the rest (design 10, store 2, the others 77; 6 tools over 4 KB).
   - In each diet step: nothing a right call needs is dropped; the worker takes each tool off the test's list as it fits; the PR body gives the tool list's bytes before and after.
-- AG13 (M) after AG2: hints, then the report.
+- AG13 (M) after AG2: hints, then the report. AG13a done: #10766.
   - Hints: new `includes/fn/agent_guide_hints.php` (the registry by error code, each naming a section that exists: a test), `includes/api/response.php` (`api_fail()` reads it), the designer's refusal codes made distinct where two cases share one.
   - The report: `api_settings.php` and a reader for `GET /reports/api-refusals`, one indexed read of `api_request_log`. Features: G18, G19. Cut in two PRs (hints, then the report) if it passes the size limit.
-  - AG13a (hints) in work; AG13b (the report) follows.
+  - AG13b (the report) follows in its own PR.
 - AG14 (S) close-out, after all: every G number checked against the code with its PR; `api/agent-guide-overview.md` and its files written; `api/api-mcp-server.md`, `api/api-oauth-consent-presets.md`, `api/api-plugin-scopes.md` (the money mark is now read at run time) and `plans/claude-plugin-bundle-steps.md` (CB3 names `guide_read`) updated; the plan's files deleted; the changelog `[NEW]` line named in its PR; the tool list measured again and written into the overview.
 
 ## Which steps run side by side?
