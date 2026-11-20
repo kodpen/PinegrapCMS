@@ -319,6 +319,7 @@ function erp_order_profit_break_even($group, $target = null)
  *   components       order_item_id => list of product_id, quantity (per bundle), unit_cost
  *   rates            kind (payment, shipping, marketplace) => key => ['percent', 'fixed']
  *   shipping_methods the shipping method ids of the order's recipients
+ *   shipping_costs   shipping method id => its recipients' shipping_cost added up
  *   marketplace      null, or account_id and commission (product_id => percent or null)
  *   recorded         cost rows written by others: kind, source, ref, amount
  * @return array ['costs' => rows the pass writes, 'profit' => the erp_order_profit figures]
@@ -354,17 +355,37 @@ function erp_order_profit_compute($input)
         }
     }
 
-    // Shipping: each recipient's method that has a rate, on the order's
-    // shipping charge, added up.
+    // Shipping: each recipient's method that has a rate, on the part of the
+    // order's shipping charge its recipients were charged, added up. One
+    // method takes the whole charge; several split it by their recipients'
+    // shipping costs (erp_allocate()), so no percent is taken twice.
     if (empty($real['shipping'])) {
         $amount = 0;
         $found = false;
+        $methods = array_values(array_unique(array_map('intval', (array) ($input['shipping_methods'] ?? array()))));
+        $charge = (int) ($order['shipping'] ?? 0);
+        $parts = array_fill_keys($methods, $charge);
 
-        foreach (array_unique(array_map('intval', (array) ($input['shipping_methods'] ?? array()))) as $method_id) {
+        if (count($methods) > 1) {
+            $weights = array();
+
+            foreach ($methods as $method_id) {
+                $weights[$method_id] = max(0, (int) ($input['shipping_costs'][$method_id] ?? 0));
+            }
+
+            // Without the recipients' costs the methods share evenly.
+            if (array_sum($weights) <= 0) {
+                $weights = array_fill_keys($methods, 1);
+            }
+
+            $parts = erp_allocate($charge, $weights);
+        }
+
+        foreach ($methods as $method_id) {
             $key = (string) $method_id;
 
             if (isset($rates['shipping'][$key])) {
-                $amount += erp_order_profit_rate_amount((int) ($order['shipping'] ?? 0), $rates['shipping'][$key]);
+                $amount += erp_order_profit_rate_amount((int) $parts[$method_id], $rates['shipping'][$key]);
                 $found = true;
             }
         }
@@ -548,8 +569,15 @@ function erp_order_profit_input($order, $rates)
         }
     }
 
-    $shipping_methods = array_map('intval', (array) db_values("SELECT DISTINCT shipping_method_id FROM ship_tos
-        WHERE order_id = '" . $order_id . "' AND shipping_method_id > 0"));
+    $shipping_methods = array();
+    $shipping_costs = array();
+
+    foreach ((array) db_items("SELECT shipping_method_id, SUM(shipping_cost) AS shipping_cost FROM ship_tos
+        WHERE order_id = '" . $order_id . "' AND shipping_method_id > 0
+        GROUP BY shipping_method_id ORDER BY shipping_method_id") as $row) {
+        $shipping_methods[] = (int) $row['shipping_method_id'];
+        $shipping_costs[(int) $row['shipping_method_id']] = (int) $row['shipping_cost'];
+    }
 
     $marketplace = null;
     $account_id = pg_schema_has('marketplace_order_map')
@@ -578,6 +606,7 @@ function erp_order_profit_input($order, $rates)
         'components' => $components,
         'rates' => $rates,
         'shipping_methods' => $shipping_methods,
+        'shipping_costs' => $shipping_costs,
         'marketplace' => $marketplace,
         'recorded' => $recorded,
     );
