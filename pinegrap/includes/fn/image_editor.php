@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
 }
 
 /**
@@ -5202,6 +5202,26 @@ function pg_image_editor_icon_urls()
     return array(
         'font' => $base . 'fonts/bootstrap-icons.woff2?v=' . (int) @filemtime($dir . 'fonts/bootstrap-icons.woff2'),
         'map'  => $base . 'bootstrap-icons.json?v=' . (int) @filemtime($dir . 'bootstrap-icons.json'),
+    );
+}
+
+// -- Data layer (pg_image_editor_data.js) --
+
+/**
+ * The data layer: its name and the words its drawing writes (%d is a
+ * count of rows).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_data()
+{
+    return array(
+        'layer_data'  => lang('Data'),
+        'dataEmpty'   => lang('No rows to show.'),
+        'dataRefused' => lang('You cannot read this table.'),
+        'dataMore'    => lang('%d more rows'),
+        'dataCount'   => lang('Count'),
+        'dataOther'   => lang('Other'),
     );
 }
 

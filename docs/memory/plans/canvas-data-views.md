@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-20): a Data table as a chart or table layer of 
 
 ## What is built?
 - DV1, the layer in the model and its drawing: the description's check, the kinds (bar, stacked bar, line, area, donut, plain table) with the chart guide's look (`workspace/agent-canvas-chart.md`), drawn alike by the browser and by the server's draw of a document (`platform/image-server-draw.md`); rows through one read function with the reader's rights and the 5000-row bound.
-- DV1a: the model, the browser's drawing. DV1b: the server's draw, the row read.
+- DV1a (done, #10752): the model, the browser's drawing. DV1b: the server's draw, the row read.
 - DV2, the Data menu in the Design Canvas: pick a table the person may read, then "Table" or a chart kind from samples drawn with its first rows (only kinds its columns fit); the layer lands on the stage. Its panel changes columns, grouping, title, legend, colours (the guide's palette, the channel's tone, chosen ones) and type; it moves, sizes, groups and animates as any layer.
 - DV3, the Data screen: a table's head gets "Show on a canvas" with "As a chart" and "As a table": a new canvas in the table's channel holding that one layer, the table bound read-only.
 - DV4, following in the channel. The step's first commit is a census choosing how a card with data layers shows the current rows without a model call and without a version per change: the server's draw made again when a bound table's change stamp is newer than the picture, or the layers drawn in the card. A changed description is a version; changed rows are not.
