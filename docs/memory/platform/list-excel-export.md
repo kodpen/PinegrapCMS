@@ -26,4 +26,5 @@ module: list_excel
 
 ## Which writer parts did OS1 add?
 - `array('money' => 12.5)`: cell style 4, built-in number format 4 (`#,##0.00`). `pg_xlsx_date_serial()` takes `Y-m-d H:i:s`; a date without seconds gives the same serial as before.
-- Tests: `tests/list_excel_test.php`.
+- Tests: `tests/list_excel_test.php`, `tests/list_excel_size_test.php`.
+- Too big for memory or a sheet, text Excel refuses: `list-excel-export-limits.md`.
