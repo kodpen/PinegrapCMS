@@ -31,3 +31,4 @@ description: PHPExcel's .ods reader makes cells of repeated rows/columns and mer
 
 ## And without PHPExcel?
 - The importers' own reader keeps both ceilings and the 8 MB part limit for an .ods (`sheet-reader.md`).
+- The .ods preview reads through it too, with the same ceilings on the rows it shows (`office-ods-preview.md`).

@@ -22,3 +22,6 @@ module: sheet_read
 
 ## Where are its fixes, differences and tests?
 - `sheet-reader-differences.md`: what the .xls subclasses fix in the library, where it reads otherwise than PHPExcel on purpose, the tests.
+
+## Who else reads through it?
+- The .ods preview of Quick Look, the file window and a channel (`office-ods-preview.md`): every sheet by its index, the walk left once the preview has its rows.
