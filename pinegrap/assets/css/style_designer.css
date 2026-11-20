@@ -2542,7 +2542,33 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-review-reset:hover { color: var(--sd-accent); background: color-mix(in srgb, var(--sd-text) 7%, transparent); }
 .sd-review-reset:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); color: var(--sd-accent); }
 .sd-review-reset:disabled { opacity: .4; cursor: default; }
-.sd-review-ft { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; }
+.sd-review-ft { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; }
+/* Under 300 px the brush is not drawn: "Copy style" and "Paste style" lead
+   the three-dot menu. */
+.sd-rcol-narrow .sd-id-brush { display: none; }
+/* The quick strip on Content (52): three cards of Style rows, each its
+   row's name over its value; a click opens the row in Style. Under 300 px
+   a card is as wide as its value, the last takes the rest, the name is the
+   tip. */
+.sd-quick { display: flex; gap: 6px; margin: 8px 12px 2px; min-height: 52px; }
+.sd-quick-card {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+    padding: 7px 9px; border: 1px solid var(--sd-panel-border); border-radius: 10px;
+    background: var(--sd-raised-bg); color: var(--sd-text-muted); font: inherit; font-size: 11px;
+    text-align: left; cursor: pointer;
+}
+.sd-quick-card:hover { background: var(--sd-raised-bg-2); }
+.sd-quick-card:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); }
+.sd-quick-cap { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-quick-v {
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+    color: var(--sd-text); font-size: 12px; font-weight: 600;
+}
+.sd-quick-v.sd-mixed { color: var(--sd-text-muted); font-style: italic; font-weight: 400; }
+.sd-quick-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-rcol-narrow .sd-quick-card { flex: 0 1 auto; min-width: 36px; padding: 8px 9px; }
+.sd-rcol-narrow .sd-quick-card:last-child { flex: 1 1 0; }
+.sd-rcol-narrow .sd-quick-cap { display: none; }
 .sd-review-empty { margin: 0; padding: 1.5rem .75rem; font-size: 12px; color: var(--sd-text-muted); text-align: center; }
 .sd-props-results[hidden] { display: none; }
 .sd-props-results {

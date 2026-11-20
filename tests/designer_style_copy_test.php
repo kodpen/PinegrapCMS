@@ -328,7 +328,7 @@ function test_style_copy_core_hooks()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdT('Copy style')", $core, 'Copy style');
 	pg_assert_contains("_sdT('Paste style')", $core, 'Paste style');
-	pg_assert_contains('id="sd-id-brush"', $core, 'the brush on the identity row');
+	pg_assert_contains("b.id = 'sd-id-brush'", $core, 'the brush on the identity row');
 	pg_assert_contains("sd-tb-brush-btn", $core, 'the brush on the canvas toolbar');
 	pg_assert_contains('_sdMcCommit(nodes, function (n) { _sdStyleWrite(n, fit.rows, _sdMcWrite); });', $core, 'the paste is one undo step on every selected element');
 	pg_assert_contains("'sd_style_copy'", $core, 'the copy is kept in the browser');
