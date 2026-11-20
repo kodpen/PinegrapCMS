@@ -112,3 +112,20 @@ function test_api_manners_basic_challenge()
 	pg_assert_false(api_basic_challenge_wanted('XMLHttpRequest'), 'script-made');
 	pg_assert_false(api_basic_challenge_wanted(' xmlhttprequest '), 'any case and spaces');
 }
+
+// A 401 to a request that carried a Bearer token names the scheme it failed
+// under (RFC 6750 3), also while OAuth is off and no resource metadata
+// challenge is made: a team device's expired or revoked token was answered
+// with no WWW-Authenticate at all. Another credential gets none from here.
+function test_api_manners_bearer_challenge_fallback()
+{
+	pg_assert_same('Bearer realm="Pinegrap API", error="invalid_token"', api_bearer_challenge_fallback('Bearer abc.def'), 'bearer');
+	pg_assert_same('Bearer realm="Pinegrap API", error="invalid_token"', api_bearer_challenge_fallback(' bearer abc'), 'any case');
+	pg_assert_same('', api_bearer_challenge_fallback('Basic dXNlcjpwYXNz'), 'basic');
+	pg_assert_same('', api_bearer_challenge_fallback(''), 'nothing sent');
+
+	// api_fail() adds it to a 401 that has no challenge yet.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/response.php');
+
+	pg_assert_contains("api_bearer_challenge_fallback(api_header('Authorization'))", $source);
+}
