@@ -5833,6 +5833,7 @@
     "The path from the home page to the current page, as linked steps.": "Ana sayfadan bulunulan sayfaya bağlantılı adımlar halinde giden yol.",
     "The path from the home page to the current page.": "Ana sayfadan bulunulan sayfaya giden yol.",
     "The path from the home page to this page, filled in by the site.": "Ana sayfadan bu sayfaya giden yol; site tarafından doldurulur.",
+    "The path is cleared.": "Yol temizlendi.",
     "The path to the current page with an icon before each step.": "Her adımın önünde simge olan, bulunulan sayfaya giden yol.",
     "The payment cannot be dated after today.": "Ödeme bugünden sonraki bir tarihle girilemez.",
     "The payment cannot be dated before the expense.": "Ödeme, giderin tarihinden önceye tarihlenemez.",

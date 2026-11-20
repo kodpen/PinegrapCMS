@@ -1562,6 +1562,10 @@
     //    the field every arrow is drawn as before;
     //  - focusChanged(id) (optional): told the id in focus (null for none)
     //    each time it changes, by focus() or by a press;
+    //    with a focus, trail(ids) draws a set of arrows (their ids), <edge>-trail,
+    //    in place of the focus's own: the others hidden or faint, the boxes
+    //    and targets at neither end of one (but the box in focus) dimmed;
+    //    trail(null) ends it;
     //  - label(item) (optional): a box's name in what the focus announces
     //    (else its aria-label, else its id);
     //  - groups() (optional): the headings groups() draws behind the boxes,
@@ -1604,6 +1608,7 @@
         faint: 'pgc-edge-faint',
         dashed: 'pgc-edge-dashed',
         dim: 'pgc-dim',
+        trail: 'pgc-edge-trail',
         group: 'pgc-group'
     };
 
@@ -1636,6 +1641,8 @@
         var focusing = !!adapter.focus;
         var focusId = null;
         var faint = false;
+        // The arrows of trail() (id => true), null when none.
+        var trailIds = null;
         // Right-angle arrows (adapter.route 'elbow'): the boxes they keep
         // clear of, and whether a settle() is on its way.
         var elbow = adapter.route === 'elbow';
@@ -1922,7 +1929,7 @@
         // options: { port, slot, slots } (spread()), dashed (a proposed
         // arrow, drawn dashed). Its path and middle are returned.
         function edge(id, source, target, options) {
-            var one = { from: source, to: target, options: options || {}, points: null };
+            var one = { id: String(id), from: source, to: target, options: options || {}, points: null };
             var line = pathOf(one);
             var group = svgEl('g', classes.edge);
             var stroke = svgEl('path', classes.edge + '-line');
@@ -1947,7 +1954,7 @@
                 show(one, stateOf(one));
 
                 // A faint arrow goes under those of the box in focus.
-                var over = (one.state === 'faint') ? ui.svg.querySelector('.' + classes.edgeOut + ', .' + classes.edgeIn) : null;
+                var over = (one.state === 'faint') ? ui.svg.querySelector('.' + classes.edgeOut + ', .' + classes.edgeIn + ', .' + classes.trail) : null;
 
                 if (over) {
                     ui.svg.insertBefore(group, over);
@@ -1955,7 +1962,7 @@
                     ui.svg.appendChild(group);
                 }
 
-                if ((one.state === 'out') || (one.state === 'in')) {
+                if (lit(one)) {
                     undim(one);
                 }
             } else {
@@ -1999,6 +2006,10 @@
         // What an arrow is with the focus as it is: 'out' or 'in' of the box
         // in focus, 'faint' while every arrow is drawn, else 'hidden'.
         function stateOf(one) {
+            if (trailIds !== null) {
+                return trailIds[one.id] ? 'trail' : (faint ? 'faint' : 'hidden');
+            }
+
             if (focusId === null) {
                 return 'hidden';
             }
@@ -2027,7 +2038,8 @@
             list.remove(classes.edgeIn);
             list.remove(classes.faint);
             list.remove(classes.hidden);
-            list.add({ out: classes.edgeOut, 'in': classes.edgeIn, faint: classes.faint, hidden: classes.hidden }[state]);
+            list.remove(classes.trail);
+            list.add({ out: classes.edgeOut, 'in': classes.edgeIn, faint: classes.faint, hidden: classes.hidden, trail: classes.trail }[state]);
             one.state = state;
 
             return true;
@@ -2040,18 +2052,26 @@
             });
         }
 
-        // The ids at an end of an arrow of the box in focus, the box itself
-        // among them.
+        // An arrow drawn in full: one of the box in focus, or of the trail.
+        function lit(one) {
+            return (one.state === 'out') || (one.state === 'in') || (one.state === 'trail');
+        }
+
+        // The ids at an end of an arrow of the box in focus, or of the trail
+        // while there is one; the box in focus among them.
         function ends() {
             var out = {};
 
-            if (focusId === null) {
+            if ((focusId === null) && (trailIds === null)) {
                 return out;
             }
 
-            out[focusId] = true;
+            if (focusId !== null) {
+                out[focusId] = true;
+            }
+
             live().forEach(function (one) {
-                if ((one.state === 'out') || (one.state === 'in')) {
+                if (lit(one)) {
                     out[String(one.from.id)] = true;
                     out[String(one.to.id)] = true;
                 }
@@ -2085,7 +2105,7 @@
             Array.prototype.forEach.call(elementsOf(), function (element) {
                 var id = idOf(element);
 
-                if ((focusId !== null) && (id !== null) && !near[id]) {
+                if (((focusId !== null) || (trailIds !== null)) && (id !== null) && !near[id]) {
                     element.classList.add(classes.dim);
                 } else {
                     element.classList.remove(classes.dim);
@@ -2104,10 +2124,11 @@
             });
         }
 
-        // The arrows of the box in focus put last, over the faint ones.
+        // The arrows of the box in focus (or of the trail) put last, over
+        // the faint ones.
         function lift() {
             live().forEach(function (one) {
-                if ((one.state === 'out') || (one.state === 'in')) {
+                if (lit(one)) {
                     ui.svg.appendChild(one.group);
                 }
             });
@@ -2177,6 +2198,25 @@
             if (focusing) {
                 refocus();
             }
+        }
+
+        // A set of arrows (their ids) drawn in place of those of the box in
+        // focus, the others hidden (faint with allEdges(true)) and the boxes
+        // and targets at neither end of one dimmed, but the box in focus;
+        // null or an empty list ends it. The focus stays where it is.
+        function trail(ids) {
+            if (!focusing) {
+                return;
+            }
+
+            var next = null;
+
+            (Array.isArray(ids) ? ids : []).forEach(function (id) {
+                next = next || {};
+                next[String(id)] = true;
+            });
+            trailIds = next;
+            refocus();
         }
 
         // The headings of adapter.groups() drawn behind the boxes: a label
@@ -2631,6 +2671,7 @@
             focus: focus,
             focused: function () { return focusId; },
             allEdges: allEdges,
+            trail: trail,
             groups: groups,
             bind: bind,
             destroy: destroy,

@@ -7695,6 +7695,25 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { marker-end: url(#sd-proto-arrow-broken); }
 .sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
 .sd-proto-arrowhead-in { fill: var(--pgc-in); }
+/* The shortest click path (_sdProtoPathShow()): its arrows (the core's
+   trail) and frames in green, the page no path reaches ringed in amber;
+   the pages in words at the canvas's foot. */
+.sd-proto { --sd-proto-path: #3ccf91; --pgc-trail: var(--sd-proto-path); --pgc-marker-trail: url(#sd-proto-arrow-path); }
+.sd-proto-arrowhead-path { fill: var(--sd-proto-path); }
+.sd-proto .pgc-edge.pgc-edge-trail .pgc-edge-line { stroke: var(--sd-proto-path); stroke-dasharray: none; marker-end: url(#sd-proto-arrow-path); }
+.sd-proto .pgc-edge.pgc-edge-trail.sd-proto-from-shared { display: inline; }
+.sd-proto .pgc-node.sd-proto-path-on { box-shadow: 0 0 0 3px var(--sd-proto-path), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto .pgc-node.sd-proto-path-none { opacity: 1; box-shadow: 0 0 0 3px var(--pgc-in), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto-pathbar {
+    position: absolute; left: 8px; bottom: 8px; z-index: 3; max-width: calc(100% - 16px);
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 2px 2px 12px; border-radius: 14px; border: 1px solid var(--sd-proto-path);
+    background: #2a2f36; color: var(--sd-text); font-size: .75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-proto-pathbar[hidden] { display: none; }
+.sd-proto-pathbar.sd-proto-pathbar-none { border-color: var(--pgc-in); }
+.sd-proto-pathbar-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-proto-arrowhead-broken { fill: #ff6b6b; }
 /* What to check (F26 to F29), in amber: "N to check" in the bar, its
    groups in the list, a frame's count of links without a target, the
