@@ -125,9 +125,6 @@
 - place-map-features.md: Plan place-map, features X1 to X16: the map block and its list, coordinates as two fields of the record, the places endpoint, consent before tiles, near me and a typed address, the library, headers
 - place-map-steps.md: Plan place-map, steps MP1 to MP6: the census of providers and consent, "Find from the address" on a record, the endpoint and the block, the map and the switch, near me and a typed address, close-out
 - place-map.md: Plan (owner 2026-11-16, agent channel poll 82): the places of a collection on a map with a list, "near me" and search by distance, tiles only after the visitor allowed them; steps MP1 to MP6
-- post-digest-features.md: Plan post-digest, features D1 to D13: the flow box that reads a list's records, the window of a run, the e-mail box's contact group as a campaign, the body, the ready flow, safety and rights
-- post-digest-steps.md: Plan post-digest, steps DG1 to DG5: the records box on the server, the contact group as a campaign, the canvas, the ready flow, close-out
-- post-digest.md: Plan (owner 2026-11-16, agent channel poll 82): new posts of a list sent by themselves as an e-mail to a contact group, from a general flow box and the campaign path, no table; steps DG1 to DG5
 - prototype-next.md: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to a frame, drag a row onto a frame, a badge's target-less links, Ctrl+F, shortest click path, Play's misses; PX1-PX6
 - publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
 - publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
