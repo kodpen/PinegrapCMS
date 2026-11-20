@@ -1,6 +1,6 @@
 ---
 name: office-sheet-format-controls
-description: The sheet editor's format bar (OE3b) for the selected cells, one format change a save, and how the preview draws each cell's look and number format
+description: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format
 module: office
 ---
 
@@ -18,8 +18,11 @@ module: office
 - Not offered on a protected sheet, even one whose protection allows formatting.
 - Money takes the site's base currency (the server's default).
 
-## What is not there yet?
-- Text colour and fill: the Design examples screen has no colour field, so they wait for the architect (PR #10871's decision question). The server takes them already (`office-sheet-format.md`).
+## How are text colour and fill chosen?
+- Architect (2026-11-20, agent channel message 11221): a `pg-icon-button` each ("Text color", "Fill color"), the glyph over a 3 px bar in the selected cell's colour, opening the editor's own menu: "None" first, then a grid of preset swatches (aria-label the colour's name, the chosen one ringed). No native colour input and no free colour.
+- Text: 000000, 6B7280, DC2626, EA580C, CA8A04, 16A34A, 0D9488, 2563EB, 7C3AED, DB2777. Fill: FFFF00, F3F4F6, FEE2E2, FFEDD5, FEF9C3, DCFCE7, CCFBF1, DBEAFE, EDE9FE, FCE7F3 (`TEXT_COLOURS`, `FILL_COLOURS`). File content, the same in both themes.
+- A cell's colour from outside the list is kept and shown on the bar. The swatch rules sit in the editor's block of backend.src.css (`.office-swatches`, `.office-swatch`), not a look A recipe.
+- Alignment as icon-only `pg-seg-item`s with aria-label and title, bold and italic as `pg-icon-button` with aria-pressed: the architect's answer, same message.
 
 ## What was checked?
-- `tests/office_cell_looks_test.php`: looks from a styles part (built-in and own number formats, theme colours left out), the shown numbers, a format save read back with `s`, `show` and `looks`. The bar was tried headless on a made-up workbook; not in a browser on a site.
+- `tests/office_cell_looks_test.php`: looks from a styles part (built-in and own number formats, theme colours left out), the shown numbers, a format save read back with `s`, `show` and `looks`. On the sandbox at 1440 and 390 px (PR #10871): every control applied, saved and read back; not opened in Excel or LibreOffice.

@@ -77,6 +77,13 @@
     // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
     var FORMAT_CELLS = 5000;
 
+    // The colours the format bar offers, by the word that names each. They
+    // are written into the file, so they are the same in either theme.
+    var TEXT_COLOURS = [['000000', 'black'], ['6B7280', 'grey'], ['DC2626', 'red'], ['EA580C', 'orange'], ['CA8A04', 'yellow'],
+        ['16A34A', 'green'], ['0D9488', 'teal'], ['2563EB', 'blue'], ['7C3AED', 'violet'], ['DB2777', 'pink']];
+    var FILL_COLOURS = [['FFFF00', 'bright_yellow'], ['F3F4F6', 'light_grey'], ['FEE2E2', 'light_red'], ['FFEDD5', 'light_orange'], ['FEF9C3', 'light_yellow'],
+        ['DCFCE7', 'light_green'], ['CCFBF1', 'light_teal'], ['DBEAFE', 'light_blue'], ['EDE9FE', 'light_violet'], ['FCE7F3', 'light_pink']];
+
     // 0 is A, 25 is Z, 26 is AA.
     function columnName(index) {
         var name = '';
@@ -872,6 +879,29 @@
             bar.appendChild(controls.bold);
             bar.appendChild(controls.italic);
 
+            // Text colour and fill: the glyph over a bar in the cell's
+            // colour, opening the colours on offer ("None" first).
+            [['color', 'bi-fonts', 'c', TEXT_COLOURS], ['fill', 'bi-paint-bucket', 'bg', FILL_COLOURS]].forEach(function (item) {
+                var button = barButton('pg-icon-button pg-icon-button-sm office-colour-button', item[1], strings['format_' + item[0]] || '');
+                var stripe = el('span', 'office-colour-bar');
+
+                stripe.setAttribute('aria-hidden', 'true');
+                button.removeAttribute('aria-pressed');
+                button.setAttribute('aria-haspopup', 'menu');
+                button.appendChild(stripe);
+                button.addEventListener('click', function () {
+                    var chosen = currentLook()[item[2]] || '';
+
+                    openMenu(button, [{ label: strings.format_none || '', run: function () { setFormat(item[0], ''); } }], strings['format_' + item[0]] || '', {
+                        colours: item[3],
+                        chosen: chosen,
+                        pick: function (colour) { setFormat(item[0], colour); }
+                    });
+                });
+                controls[item[0]] = { button: button, stripe: stripe };
+                bar.appendChild(button);
+            });
+
             // Choosing the alignment already chosen gives the cell back its
             // general alignment.
             var align = el('span', 'pg-seg');
@@ -951,6 +981,10 @@
 
             press(controls.bold, !!look.b);
             press(controls.italic, !!look.i);
+
+            // A colour from outside the list shows on the bar as it is.
+            controls.color.stripe.style.backgroundColor = look.c ? '#' + look.c : '';
+            controls.fill.stripe.style.backgroundColor = look.bg ? '#' + look.bg : '';
 
             Object.keys(controls.align).forEach(function (key) {
                 press(controls.align[key], look.a === key);
@@ -1207,7 +1241,9 @@
             return items;
         }
 
-        function openMenu(anchor, items, label) {
+        // `swatches` (optional): {colours: [[RRGGBB, word]], chosen, pick}
+        // drawn as a grid of colour buttons after the items.
+        function openMenu(anchor, items, label, swatches) {
             closeMenu(false);
 
             var node = el('div', 'menu show office-head-menu');
@@ -1248,6 +1284,32 @@
                 node.appendChild(button);
             });
 
+            if (swatches) {
+                var grid = el('div', 'office-swatches');
+
+                swatches.colours.forEach(function (colour) {
+                    var swatch = el('button', 'office-swatch');
+                    var name = strings['colour_' + colour[1]] || colour[1];
+
+                    swatch.type = 'button';
+                    swatch.setAttribute('role', 'menuitemradio');
+                    swatch.setAttribute('aria-checked', (swatches.chosen === colour[0]) ? 'true' : 'false');
+                    swatch.setAttribute('aria-label', name);
+                    swatch.title = name;
+                    swatch.tabIndex = -1;
+                    swatch.style.backgroundColor = '#' + colour[0];
+                    swatch.classList.toggle('is-chosen', swatches.chosen === colour[0]);
+                    swatch.addEventListener('click', function () {
+                        closeMenu(false);
+                        swatches.pick(colour[0]);
+                    });
+                    buttons.push(swatch);
+                    grid.appendChild(swatch);
+                });
+
+                node.appendChild(grid);
+            }
+
             node.addEventListener('keydown', function (event) {
                 event.stopPropagation();
 
@@ -1256,9 +1318,9 @@
                 if (event.key === 'Escape' || event.key === 'Tab') {
                     event.preventDefault();
                     closeMenu(true);
-                } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && buttons.length) {
+                } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp' || (swatches && (event.key === 'ArrowRight' || event.key === 'ArrowLeft'))) && buttons.length) {
                     event.preventDefault();
-                    buttons[(at + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+                    buttons[(at + ((event.key === 'ArrowDown' || event.key === 'ArrowRight') ? 1 : -1) + buttons.length) % buttons.length].focus();
                 }
             });
 
