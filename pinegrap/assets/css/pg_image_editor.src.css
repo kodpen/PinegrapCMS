@@ -4951,7 +4951,7 @@ button.pgie-sndfile:hover {
 
 /* The picker: the Import box's frame; the tables as rows (name, then its
    channel and row count), the views as the New image dialog's cards with a
-   sample over the kind's name. */
+   sample over the kind's name; their words take that dialog's .pgie-ptext. */
 .pgie-databox .pgie-importhead h2 {
   flex: 1 1 auto;
   min-width: 0;
@@ -4983,16 +4983,6 @@ button.pgie-sndfile:hover {
   background: var(--pgie-hover);
 }
 
-.pgie-datatable b {
-  font-size: 13.5px;
-}
-
-.pgie-datatable span {
-  color: var(--pgie-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
 .pgie-databox .pgie-datacards {
   min-height: 0;
   overflow-y: auto;
@@ -5011,11 +5001,6 @@ button.pgie-sndfile:hover {
   width: 100%;
   height: auto;
   border-radius: 6px;
-}
-
-.pgie-datacard span {
-  font-size: 12.5px;
-  font-weight: 600;
 }
 
 /* The panel: the kinds two a row, the value columns one under another, the

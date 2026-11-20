@@ -10,6 +10,7 @@ module: image_editor
 
 ## What does the description hold?
 - `M.dataCheck(d)` fills the defaults or refuses with a code: `table` (id, `data_table`), `show` chart | table, `kind` bar, stacked_bar, line, area, donut (a plain table's kind is `table`), `label` (a column id), `values` (up to 5 column ids; none for count; a donut one), `group` none | sum | count | average, `sort` none | label | value with `dir`, `format` en | tr, `title` (120 letters, one line), `colours` (up to 5 `#rrggbb`), `theme` light | dark, `font` (`g:Inter` by default), `legend`.
+- DV2 added (#PR): `legendAt` top | bottom, `limit` (0: the kind's own cap, else that many labels or rows, 50 at most), `size` s | m | l (the words at 0.85, 1, 1.2 of the guide's; DV2, #PR).
 
 ## How are the rows shown?
 - `M.dataSeries(d, columns, rows, words)`: 5000 rows at most; grouping gathers one label's rows in the order they first come; average is over the cells that are numbers; a cell that is no number counts 0 in a chart and its words in a plain table.
@@ -21,8 +22,8 @@ module: image_editor
 - A plain table's numbers are written in full; a chart's by `ws_canvas_chart_number()`'s rule (12.3K / 12,3 B).
 - Browser: `pg_image_editor_data.js` draws the marks as SVG on the stage and on the save's canvas; `editor.dataRead(table, read)` hands it the rows (`{columns, rows}` or `{state: 'refused'}`). Labels in `pg_image_editor_strings_data()`.
 
-## What is not built yet?
-- The server's draw and the row read are built (DV1b, `platform/image-server-draw-data.md`); no caller hands it rows yet. The Data menu and panel are DV2, following in a channel DV4.
+## What is built around it?
+- The server's draw and the row read: DV1b (`platform/image-server-draw-data.md`). The Data menu, its picker and the layer's panel: DV2 (`image-editor-data-menu.md`). Following in a channel is DV4.
 
 ## How is it checked?
 - `tests/image_editor_data_test.php` under Node; `tests/fixtures/canvas_data/layers.json` holds descriptions, rows and the marks every kind must give, for the model and the server's port alike.

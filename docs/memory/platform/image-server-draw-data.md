@@ -20,4 +20,4 @@ module: image_draw_data
 
 ## How are the rows read?
 - `ws_canvas_data_rows($viewer, $table_id)` in `includes/workspace/canvas_tables.php`: `ws_wtable_for(…, 'view')`, else `{state: 'refused'}` (the layer then says "You cannot read this table."); the rows with formulas, lookups and rollups worked out for the reader (`ws_wtable_joined_fill()`), 5000 at most; shaped by the pure `ws_canvas_data_rows_shape()` as `{columns: {id: {name}}, rows: [{cells}]}`, what `editor.dataRead()` and the server's reader take. It writes nothing.
-- Whether a canvas may name the table (its `ws_canvas_tables` binding) is the caller's check. No caller yet: DV2 (the Data menu) hands the rows to the editor, DV4 to the server's draw.
+- Whether a canvas may name the table (its `ws_canvas_tables` binding) is the caller's check. The editor's action `data_rows` hands the rows to the editor (`ui/image-editor-data-menu.md`); DV4 hands them to the server's draw.

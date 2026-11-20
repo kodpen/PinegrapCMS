@@ -309,8 +309,10 @@
 
         shown.forEach(function (x) {
             list.appendChild(el('button', { type: 'button', class: 'pgie-datatable', role: 'listitem', onclick: function () { self.dataPickViews(x); } }, [
-                el('b', { text: String(x.name) }),
-                el('span', { text: (x.channel ? '#' + x.channel : t('dataNoChannel')) + ' · ' + String(t('dataRowsCount')).replace('%d', String(x.rows || 0)) })
+                el('span', { class: 'pgie-ptext' }, [
+                    el('b', { text: String(x.name) }),
+                    el('span', { text: (x.channel ? '#' + x.channel : t('dataNoChannel')) + ' · ' + String(t('dataRowsCount')).replace('%d', String(x.rows || 0)) })
+                ])
             ]));
         });
     };
@@ -383,7 +385,7 @@
         } }, l));
 
         return el('button', { type: 'button', class: 'pgie-preset pgie-datacard' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : null, onclick: pick }, [
-            svg, el('span', { text: t(KIND_LABELS[kind]) })
+            svg, el('span', { class: 'pgie-ptext' }, [el('b', { text: t(KIND_LABELS[kind]) })])
         ]);
     };
 
