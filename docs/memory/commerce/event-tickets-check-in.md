@@ -6,7 +6,7 @@ module: event_check_in
 
 ## Where is it?
 - Root screen `event_check_in.php`, functions in `includes/fn/event_check_in.php` (loaded by the screen only), script `assets/js/event_check_in.js` (served as written, no twin, no bundle). Every action is a POST to the same file answered in JSON (`request` = counts, search, scan, check_in, undo), with the session token compared by `hash_equals()`.
-- No menu entry yet: the address is `event_check_in.php`, `?pick=` keeps the choice.
+- No menu entry yet: the address is `event_check_in.php`, `?pick=` keeps the choice. Help opens `calendars#ticket-check-in` (`get_help_url.php`), a section still to write.
 
 ## Who may use it?
 - No new right (architect, message 6554). An event's ticket: role < 3, or `manage_calendars` and `validate_calendar_event_access()` on its event. A product's ticket: role < 3 or `manage_ecommerce` (`pg_check_in_allowed()`). The pick list holds only what the user may check in.
