@@ -650,13 +650,37 @@ function pg_booking_agenda_free_slots($service, $staff, $day, $now)
     $window_from = $from - 86400;
     $window_until = $from + (2 * 86400);
 
-    $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
-        WHERE staff_id = '" . (int) $staff['id'] . "'
-            AND start_at < '" . $window_until . "' AND end_at > '" . $window_from . "'
-            AND status <> 'cancelled'");
+    // Each booking keeps its service's buffers, as the save checks them.
+    $rows = (array) db_items(
+        "SELECT bookings.start_at, bookings.end_at, bookings.status, bookings.hold_until,
+            COALESCE(booking_services.buffer_before, 0) AS buffer_before,
+            COALESCE(booking_services.buffer_after, 0) AS buffer_after
+        FROM bookings
+        LEFT JOIN booking_services ON booking_services.id = bookings.service_id
+        WHERE bookings.staff_id = '" . (int) $staff['id'] . "'
+            AND bookings.start_at < '" . $window_until . "' AND bookings.end_at > '" . $window_from . "'
+            AND bookings.status <> 'cancelled'");
 
-    $busy = array_merge(pg_booking_busy_from_rows($rows, $now), pg_booking_agenda_ws_busy($staff['user_id'], $window_from, $window_until));
+    return pg_booking_agenda_free_from_rows($service, $staff, $day, $rows, pg_booking_agenda_ws_busy($staff['user_id'], $window_from, $window_until), $now, $zone);
+}
+
+/**
+ * The free starts of a day from the staff member's booking rows (each with
+ * its service's buffer_before / buffer_after in minutes) and their other
+ * busy ranges, which carry no buffers. Pure.
+ *
+ * @param array  $service a booking_services row
+ * @param array  $staff   pg_booking_agenda_staff()'s row
+ * @param string $day     'YYYY-MM-DD'
+ * @param array  $rows    bookings rows
+ * @param array  $busy    [start, end] ranges
+ * @param int    $now
+ * @param string $zone
+ * @return int[]
+ */
+function pg_booking_agenda_free_from_rows($service, $staff, $day, $rows, $busy, $now, $zone)
+{
+    $busy = array_merge(pg_booking_busy_from_rows((array) $rows, $now), (array) $busy);
 
     return pg_booking_slots($service, $staff, $day, $busy, $now, array('zone' => $zone));
 }
