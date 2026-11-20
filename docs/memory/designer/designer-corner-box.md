@@ -1,6 +1,6 @@
 ---
 name: designer-corner-box
-description: Style › Border and corner's corners as one drawing (DP7b, #PRNUM): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
+description: Style › Border and corner's corners as one drawing (DP7b, #10633): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
 ---
 
 ## What does Style › Border and corner show?
