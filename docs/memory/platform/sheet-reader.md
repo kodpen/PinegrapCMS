@@ -5,7 +5,7 @@ module: sheet_read
 ---
 
 ## What is it for?
-- Plan `phpexcel-own-code` XL1: the importers read workbooks through it instead of PHPExcel. The bank statement import does since #XL3PR (every format, .xlsx too); the product import moves in XL2.
+- Plan `phpexcel-own-code` XL1: the importers read workbooks through it instead of PHPExcel. The bank statement import does since #10503 (every format, .xlsx too); the product import moves in XL2.
 - `pg_sheet_rows($path, $kind, &$error, $sheet = 0)` is a generator: key the row number, value the row's cells from column A, gaps null; rows without cells are not given. `$kind` from `pg_sheet_kind($file_name)`: xlsx (also .xlsm), ods, xls.
 - `$error` is set when the walk ends: `read`, `large` (an .ods ceiling) or `sheet` (no such sheet). Rows given before an error must be dropped by the caller. The callers map them to their existing texts; the reader has none.
 

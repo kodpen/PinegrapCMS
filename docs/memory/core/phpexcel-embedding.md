@@ -5,7 +5,7 @@ description: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintaine
 
 ## Which code loads includes/phpexcel?
 - The Parasut export of Orders (`edit_orders.php`) and the ERP export (`includes/erp/export.php`): a template from `includes/phpexcel/templates/` filled and written as .xlsx.
-- The product import (`import_products_f.php`): .xlsx, .xls and .ods read cell by cell (Excel2007, Excel5, OOCalc readers). The bank statement import reads through the sheet reader since #XL3PR (`platform/sheet-reader.md`).
+- The product import (`import_products_f.php`): .xlsx, .xls and .ods read cell by cell (Excel2007, Excel5, OOCalc readers). The bank statement import reads through the sheet reader since #10503 (`platform/sheet-reader.md`).
 - The CSV reader and writer, the Excel5 writer, charts and the PDF and HTML writers are not used by the product.
 
 ## Why a local patch instead of a newer release?
