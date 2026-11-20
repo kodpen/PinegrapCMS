@@ -21,6 +21,7 @@ module: booking_manage
 
 ## What does the account show?
 - my_account section `bookings` (designer section option, starter heading bound to flag `has_bookings`): `pg_booking_customer_rows(USER_ID)` (`bookings.user_id`, latest 50, holds out), `pg_booking_customer_split()` upcoming (requested/confirmed not ended, soonest first) and past (latest first), `pg_booking_customer_section_html()` (Bootstrap 5.3.8). An upcoming one links to its manage page and its .ics; the staff name is the contact's only. Not tied to the shop.
+- Holds given back are left out too, in the query and in the split: a cancelled row with `hold_until` > 0 is Back at the deposit's payment or a lapsed hold taken by another visitor, never a booking; it used to show as a cancelled booking (#10799).
 
 Test: `tests/booking_manage_test.php`. Not run on a dev database or in a browser.
 
