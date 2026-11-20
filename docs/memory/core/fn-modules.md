@@ -272,7 +272,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_label_auto`: [[shipment-label-auto]]
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
-- `shipment_tracking`: [[shipment-tracking]]
+- `shipment_tracking`: [[shipment-tracking]], [[shipment-tracking-hunt]]
 - `shipping`: [[address-form-places]], [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
 - `shipping_import`: [[shipping-import-file-reading]]
 - `shipping_label_rates`: [[shipping-label-checkout-rate]]
