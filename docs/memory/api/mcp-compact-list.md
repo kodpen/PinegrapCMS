@@ -26,4 +26,4 @@ description: The MCP server's compact list (mcp_compact.php, AG7): guide_read, t
 - `pg_mcp_instructions_tools(true)` swaps the "Each tool is an endpoint" sentence for how the four tools are used: 3,042 bytes in the test setup, limit 3,072.
 
 ## Where does a person find it?
-- Application Access, the OAuth connection guide: "Compact address for AI assistants" under "Short address", the software folder's file.
+- Not yet on a panel screen: the OAuth connection guide on Application Access gets it with step AA3 of plan app-access-redraw. Architect (2026-11-20): AG7 does not enter `api_settings.php`, so the screen has one PR at a time.
