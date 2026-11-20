@@ -2578,6 +2578,12 @@ function pg_pb_delete_product($product_id)
     // deleted product's barcode from ever being assigned again.
     db("DELETE FROM product_barcodes WHERE product_id = '$product_id'");
 
+    // The product's shelf addresses (pick and pack), at every stock location.
+    // Guarded: a product can be deleted before the upgrade that adds the table.
+    if (pg_schema_has('product_bins')) {
+        db("DELETE FROM product_bins WHERE product_id = '$product_id'");
+    }
+
     // MySQL 5.7 may give the id to a new product after a restart, which must
     // not inherit this one's prices, its place in visitors' favourites, nor
     // the requests to be told when it is back in stock.

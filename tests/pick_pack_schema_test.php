@@ -167,7 +167,7 @@ function test_pick_pack_schema_order_packs_columns_and_keys()
 		'units'      => 'INT UNSIGNED NOT NULL DEFAULT 0',
 		'scanned'    => 'INT UNSIGNED NOT NULL DEFAULT 0',
 		'refused'    => 'INT UNSIGNED NOT NULL DEFAULT 0',
-		'lines'      => 'TEXT NULL',
+		'scan_lines' => 'TEXT NULL',
 		'missing'    => 'TEXT NULL',
 	), $t['columns'], 'order_packs columns');
 
@@ -180,8 +180,8 @@ function test_pick_pack_schema_order_packs_columns_and_keys()
 		'KEY idx_wave (wave_id)',
 	), $t['keys'], 'order_packs keys');
 
-	// LINES is a reserved word: the column is created quoted.
-	pg_assert_true(strpos(pick_pack_schema_test_step(), "\t\t`lines`      TEXT NULL,") !== false, 'lines is quoted');
+	// LINES is a reserved word in MySQL and MariaDB: no column carries it.
+	pg_assert_true(strpos(pick_pack_schema_test_step(), '`lines`') === false, 'no column named lines');
 }
 
 function test_pick_pack_schema_step_adds_the_packing_right()
@@ -389,4 +389,14 @@ function test_pick_pack_order_deletion_removes_its_wave_and_pack_rows()
 
 	pg_assert_true(strpos($source, "db(\"DELETE FROM pick_wave_orders WHERE order_id = '\" . e(\$order['id']) . \"'\");") !== false, 'its wave rows');
 	pg_assert_true(strpos($source, "db(\"DELETE FROM order_packs WHERE order_id = '\" . e(\$order['id']) . \"'\");") !== false, 'its pack rows');
+}
+
+function test_pick_pack_product_deletion_removes_its_shelf_addresses()
+{
+	$source = pick_pack_schema_test_source('product_builder.php');
+
+	preg_match('/function pg_pb_delete_product\(\$product_id\)\n\{(.*?)\n\}\n/s', $source, $m);
+
+	pg_assert_true(isset($m[1]) && (strpos($m[1], "db(\"DELETE FROM product_bins WHERE product_id = '\$product_id'\");") !== false), 'pg_pb_delete_product() removes the product_bins rows');
+	pg_assert_true(isset($m[1]) && (strpos($m[1], "pg_schema_has('product_bins')") !== false), 'only when the table exists');
 }

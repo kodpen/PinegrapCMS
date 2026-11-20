@@ -8612,7 +8612,8 @@ function upgrade_2026_11_0_privacy_requests() {
 // product and stock location, pick waves and the addresses in each, and one
 // pack row per address (orders' ship_to_id) with its scan counts. None of the
 // four holds customer data; an order's deletion removes its wave and pack
-// rows (delete_order()). The "Packing only" right is a column of its own,
+// rows (delete_order()), a product's deletion its shelf addresses
+// (pg_pb_delete_product()). The "Packing only" right is a column of its own,
 // read for role 3 only (roles 0-2 and the orders right hold the screens).
 function upgrade_2026_11_0_pick_pack() {
 
@@ -8651,8 +8652,6 @@ function upgrade_2026_11_0_pick_pack() {
 		KEY idx_order (order_id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-	// `lines` is a reserved word in MySQL and MariaDB: every query names it
-	// in backticks.
 	install_create_table('order_packs', "CREATE TABLE order_packs (
 		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
 		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
@@ -8666,7 +8665,7 @@ function upgrade_2026_11_0_pick_pack() {
 		units        INT UNSIGNED NOT NULL DEFAULT 0,
 		scanned      INT UNSIGNED NOT NULL DEFAULT 0,
 		refused      INT UNSIGNED NOT NULL DEFAULT 0,
-		`lines`      TEXT NULL,
+		scan_lines   TEXT NULL,
 		missing      TEXT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY uniq_ship_to (ship_to_id),
