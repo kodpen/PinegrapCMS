@@ -4,10 +4,7 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
 ---
 
 ## Which steps are there?
-- AC1 (S) The drawing. Done: #10516.
-  - Existing files: `includes/fn/output.php` (`pg_menu_icon()`, case `design_canvas`: the paths of `plans/artifact-canvas-rename.md`), `tests/design_canvas_icon_test.php` (red first: two sheets and a wave, no crop marks, no anchors, both forms).
-  - Nothing else: the main menu, the canvas's top bar, the File Manager's menu and file tools and Workspace's two New canvas entries draw it through `pg_design_canvas_icon()` and its one-colour twin.
-  - Memory: `ui/design-canvas-icon.md`.
+- AC1 (S) The drawing. Done: #10516 (`pg_menu_icon()`, `tests/design_canvas_icon_test.php`, `ui/design-canvas-icon.md`).
 
 - AC2 (M) The name; may run beside AC1. Cut in two: AC2a (done, #10517) and AC2b.
   - AC2a, done (#10517): the panel files of the list below but the held ones, their unused old keys removed; `tests/artifact_canvas_name_test.php`.
@@ -15,13 +12,15 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
   - Every text with "Design Canvas" (`grep -rn 'Design Canvas' pinegrap tests`): `lang()`, `_sdT()`, the `lang(array('string' => …))` forms, the plain strings of `includes/fn/system_status.php`. Turkish with `php tools/tr_add.php` (`core/lang-files.md`).
   - Files: `view_folders.php` (File Manager), `includes/workspace/file_edits.php` (channels), `assets/js/style_designer.src.js`, `includes/fn/image_editor.php`, `includes/fn/content.php`, `translations.php`, `includes/settings/features.php`, `edit_file.php`, `edit_design_file.php`, `includes/fn/design_file_list_edit.php`, `includes/dashboard/widgets/widget_18.php`.
   - `get_page_content.php` and `frontend.src.js` with its hand-edited twin change together (the script asks for a text by its English) and are held whole while another PR changes the twin (`workflow/held-file-bundled-sources.md`): a part b then.
-  - Comments in the touched files and the tests that name the text follow.
   - Memory: `designer/editor-turkish-terms.md`.
 
 - AC3 (S) after AC2, docs only: memory's label.
   - Each memory file that names the screen says Artifact Canvas (`grep -rl 'Design Canvas' docs/memory`, about 130 files). File names and code names stay, the owner's quoted words stay, a running plan's files are left to its own close-out.
 
 - AC4 (M) after AC1 and AC2: the canvas's own icon, in its one-colour form (owner 2026-11-13, #9250), on the buttons that open it with another icon today.
+  - Cut in two by held files: AC4a (done, #PRNUM) and AC4b.
+  - AC4a, done (#PRNUM): the canvas card's head, a guest's waiting canvas, `edit_design_file.php`, `edit_file.php`, `design_file_list_edit.php`, widget 18; pinned in `tests/design_canvas_icon_test.php`.
+  - AC4b, left: `view_folders.php` (held by #10519), `translations.php` (held by #10523), `assets/js/workspace.js` (held by #10522), `assets/js/style_designer.src.js` (held by #10507 and #10504).
   - File Manager (`view_folders.php`): "New image" in the New menu and the context menu (`bi-easel`).
   - Channels: the canvas card's head (`workspace_page_card.js`, `bi-easel2`), a guest's waiting canvas (`workspace_guest.js`, `bi-easel`), "Edit the picture" on a note's picture (`workspace.js`, `bi-pencil`).
   - Page Design Studio (`style_designer.src.js`): the three `bi-brush` buttons (a content operator's Image row, the image address field, the background image field) and the two "Edit Image" menu entries; their titles say "Edit the image in the Artifact Canvas". The markup comes from the canvas's config, beside `brandIcon`.
