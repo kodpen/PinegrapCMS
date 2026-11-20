@@ -127,10 +127,9 @@ function test_settings_whole_numbers_limits_are_refused_before_the_write()
 	pg_assert_same(0, pg_whole_number_in_range('0', 0, 10000), 'a typed 0 still turns the limit off');
 
 	$seo = settings_whole_numbers_test_source('includes/settings/seo.save.php');
-	$indexnow_file = strpos($seo, 'If old key exists and changed');
+	$seo_write = strpos($seo, 'db("UPDATE config');
 	foreach (array('merchant_country', 'merchant_return_days', 'merchant_transit_days_min', 'merchant_transit_days_max') as $name) {
 		$at = strpos($seo, "mark_error('" . $name . "'");
-		pg_assert_true(($at !== false) && ($at < $indexnow_file), $name . ' refused before the IndexNow file is written');
+		pg_assert_true(($at !== false) && ($at < $seo_write), $name . ' refused before the config row is written');
 	}
-	pg_assert_contains("indexnow_key = '\" . escape(\$new_indexnow_key) . \"'", $seo, 'the trimmed IndexNow key is stored');
 }

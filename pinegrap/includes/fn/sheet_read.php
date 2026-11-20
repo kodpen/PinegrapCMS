@@ -9,7 +9,7 @@
  * a large .xlsx or .ods is never held whole. A .xlsx is walked with the
  * preview's node-by-node helpers (includes/fn/office.php) but without its
  * row, column and string limits; an .ods has its content.xml streamed the
- * same way and keeps the cell ceilings PHPExcel's reader was given; an .xls
+ * same way and keeps the importers' long-standing cell ceilings; an .xls
  * is a binary record stream, read whole by excel_reader2.php through the
  * guarded reader in includes/sheet_read_xls.php.
  *
@@ -32,8 +32,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The most an .ods file's content.xml may declare it unpacks to, in bytes:
- * the size PHPExcel's reader was allowed to hold whole, so a file the
- * importers took before is still taken.
+ * the size the importers' earlier reader was allowed to hold whole, so a
+ * file the importers took before is still taken.
  */
 define('PG_SHEET_ODS_MAX_PART', 8 * 1024 * 1024);
 
@@ -53,7 +53,7 @@ define('PG_SHEET_ODS_MAX_CELLS', PG_SHEET_ODS_MAX_PART / 64);
 define('PG_SHEET_ODS_MAX_RANGE', 1024 * 1024);
 
 /**
- * The last column a cell reference may name (ZZZ), as PHPExcel took them: a
+ * The last column a cell reference may name (ZZZ, past Excel's XFD): a
  * reference past it is a damaged file, not a row to pad out to millions of
  * cells.
  */
@@ -221,7 +221,7 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
     $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook_xml);
-    $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+    $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
     $zip->close();
     unset($workbook_xml);
 
@@ -248,8 +248,6 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     }
 
     $part = $sheets[$sheet]['part'];
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -326,6 +324,35 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     if (pg_zip_entry_overran()) {
         $error = 'read';
     }
+}
+
+/**
+ * A workbook-level part of a .xlsx (its shared strings, its styles) where
+ * the workbook's relationships name it, as Excel and PHPExcel find it; the
+ * usual name when they name none that is in the package; '' when there is
+ * neither. Writers other than Excel and LibreOffice name these parts
+ * otherwise (xl/SharedStrings.xml, xl/strings/Shared.xml).
+ *
+ * @param ZipArchive $zip
+ * @param string     $type    the relationship type's last segment, in lower case (sharedstrings, styles)
+ * @param string     $default the usual part name (xl/sharedStrings.xml)
+ * @return string
+ */
+function pg_sheet_xlsx_part($zip, $type, $default)
+{
+    foreach (pg_office_rels($zip, 'xl/_rels/workbook.xml.rels') as $relationship) {
+        if (($relationship['type'] !== $type) || $relationship['external']) {
+            continue;
+        }
+
+        $part = pg_office_part_name('xl/', $relationship['target']);
+
+        if ($zip->locateName($part) !== false) {
+            return $part;
+        }
+    }
+
+    return ($zip->locateName($default) !== false) ? $default : '';
 }
 
 /**
@@ -457,8 +484,6 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
         $error = 'large';
         return;
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -774,9 +799,9 @@ function pg_sheet_ods_time_serial($text)
  * excel_reader2.php reads the file, through Pg_Sheet_Xls_Reader
  * (includes/sheet_read_xls.php), which reads only the sheet asked for,
  * refuses a damaged stream before the library walks it, and gives each cell
- * its exact type: a number as PHPExcel gave it ((string) of the float), a
- * date by its cell's number format, a boolean, an error, text decoded from
- * the workbook's code page. The library holds the sheet whole: a BIFF8 sheet
+ * its exact type: a number as the importers always took it ((string) of
+ * the float), a date by its cell's number format, a boolean, an error, text
+ * decoded from the workbook's code page. The library holds the sheet whole: a BIFF8 sheet
  * stops at 65,536 rows and 256 columns.
  *
  * @param string $path
@@ -786,25 +811,24 @@ function pg_sheet_ods_time_serial($text)
  */
 function pg_sheet_xls_rows($path, $sheet, &$error)
 {
-    $book = pg_sheet_xls_load($path, $sheet);
+    $reader = pg_sheet_xls_load($path, $sheet);
 
-    if (!is_array($book)) {
-        $error = ($book === 'sheet') ? 'sheet' : 'read';
+    if (!is_object($reader)) {
+        $error = ($reader === 'sheet') ? 'sheet' : 'read';
         return;
     }
 
-    foreach ($book as $number => $row) {
-        yield $number => $row;
-    }
+    yield from $reader->pg_each_row();
 }
 
 /**
- * The cells of one .xls sheet, row number => row (pg_sheet_rows()), or
- * 'read' when the file could not be read, 'sheet' when it has no such sheet.
+ * One .xls sheet read, its cells held compactly by the reader
+ * (Pg_Sheet_Xls_Reader::pg_each_row() gives the rows), or 'read' when the
+ * file could not be read, 'sheet' when it has no such sheet.
  *
  * @param string $path
  * @param int    $sheet
- * @return array|string
+ * @return Pg_Sheet_Xls_Reader|string
  */
 function pg_sheet_xls_load($path, $sheet)
 {
@@ -828,5 +852,8 @@ function pg_sheet_xls_load($path, $sheet)
         return 'read';
     }
 
-    return $reader->pg_rows();
+    $error = $reader->pg_error();
+    $reader->pg_release();
+
+    return ($error === '') ? $reader : $error;
 }

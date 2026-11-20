@@ -26,6 +26,9 @@ module: connections_screen
 ## Which cards does an AI provider's page have? (CX9a)
 - Status, "Connection details" (the provider's key), Where it is used (its model assistants, own key or the connection's); gates and rows in `api/ai-connections.md`. `pg_connections_screen_page_cards()` adds details with `$can['ai']`.
 
+## Which cards does IndexNow's page have? (CX11a)
+- Status with its key file, "Connection details" (the key, under the SEO gate), Where it is used: `connections-indexnow-page.md`.
+
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.
 

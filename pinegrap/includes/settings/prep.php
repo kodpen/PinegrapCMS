@@ -67,14 +67,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
-    $oauth_google_client_id = $row['oauth_google_client_id'];
-    // Shown in the field like the other API secrets on this screen (site
-    // convention - the operator preferred seeing it over a keep-blank rule);
-    // stored encrypted at rest either way.
-    $oauth_google_client_secret_value = '';
-    if (($row['oauth_google_client_secret'] ?? '') !== '') {
-        $oauth_google_client_secret_value = (string) decode_ssl_keys($row['oauth_google_client_secret'], ($row['oauth_google_secret_iv'] ?? ''));
-    }
     // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
     // applications they use (connect_apps; Microsoft's is set up on Connected
     // accounts, Apple's on its card here). Empty until the upgrade has run.
@@ -375,6 +367,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
     $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
     $credit_refund_bonus = pg_credit_points_rate_for_input(pg_config_text('credit_refund_bonus'));
+
+    // Referral programme: config_text rows, read through the rules' own reader.
+    $referral_settings = pg_referral_settings_for_input();
+    $referral_ready = pg_referral_ready();
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];

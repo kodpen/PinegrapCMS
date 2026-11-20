@@ -153,7 +153,6 @@
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
 - php-warning-causes-report-screens.md: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit Form List View and workspace rights: which cause is fixed where; the missing collection B row
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
-- phpexcel-embedding.md: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintained): which screens load it, and the local patch that keeps it quiet on PHP 8.5
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
 - picture-text-auto-draw.md: Translated Design Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out [decision: decisions-made-product-75.md]
 - picture-text-auto-panel.md: Pictures drawn by an open panel page in the background (picture_auto.js): the footer's tag, the lock, the order, the stop, a failed row, the draw after a Save, the shared drawing

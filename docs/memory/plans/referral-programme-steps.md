@@ -12,7 +12,7 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
   - Tests, red first: every refusal of E7; the month's room under two orders at once; cancel, restore and refund; spent credit noted; an affiliate's order still making a commission and no reward; an affiliate's code winning over a referral code; nothing with the card off.
   - Features: E2 to E9, E11, E14 (the rule), E15.
 
-- RF2 (S) after RF1: the settings card and the mail.
+- RF2 (S) after RF1: the settings card and the mail. Done (#10560): `commerce/referral-settings-card.md`.
   - Existing files: `includes/settings/registry.php` (the card's row).
   - New: the card and its save, kept as settings texts; the mail's text with its Turkish.
   - Features: E1, E3, E10.

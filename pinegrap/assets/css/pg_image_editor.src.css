@@ -611,6 +611,20 @@
   background: var(--pgie-pw);
 }
 
+/* A row inside a group sits in by its depth; a group's chevron points
+   down while it is open. */
+.pgie-lrow {
+  padding-inline-start: calc(4px + var(--pgie-depth, 0) * 16px);
+}
+
+.pgie-gtoggle .pgie-ic {
+  transform: rotate(-90deg);
+}
+
+.pgie-grow.open .pgie-gtoggle .pgie-ic {
+  transform: none;
+}
+
 .pgie-lrow.off .pgie-lname {
   opacity: 0.5;
 }

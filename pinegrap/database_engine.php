@@ -895,6 +895,10 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
 // -- Tables on MyISAM ---------------------------------------------------------
 
+// A table stands straight in the card (.pg-card-table); an alert keeps the
+// card's padded body.
+$engine_list_body = 'card-body';
+
 if (count($engine_pending) == 0) {
 
     $engine_list = '
@@ -958,9 +962,11 @@ if (count($engine_pending) == 0) {
                             </tr>';
     }
 
+    $engine_list_body = 'card-body p-0';
+
     $engine_list = '
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 pg-card-table">
                             <thead>
                                 <tr>
                                     <th>' . h(lang('Table')) . '</th>
@@ -986,6 +992,8 @@ $health_when = ($engine_health['checked_at'] > 0)
 $health_header_note = ($health_when !== '')
     ? lang(array('string' => 'checked {var:1}', 'vars' => array($health_when)))
     : lang('not checked yet');
+
+$health_list_body = 'card-body';
 
 if (count($engine_health['issues']) == 0) {
 
@@ -1059,9 +1067,11 @@ if (count($engine_health['issues']) == 0) {
                             </tr>';
     }
 
+    $health_list_body = 'card-body p-0';
+
     $health_list = '
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 pg-card-table">
                             <thead>
                                 <tr>
                                     <th>' . h(lang('Table')) . '</th>
@@ -1225,38 +1235,34 @@ echo '
             <div class="row g-5 mb-12">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                     <div class="card mb-12">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Findings')) . '</span>
-                        </div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Findings')) . '</h2>
                         <div class="card-body">' . $findings_list . '
                         </div>
                     </div>
                     <div class="card mb-12" id="visitor-records">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Visitor records')) . '</span>
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <h2 class="pg-title-section mb-0">' . h(lang('Visitor records')) . '</h2>
                             <code class="small">visitors</code>
                         </div>
                         <div class="card-body">' . $visitor_card . '
                         </div>
                     </div>
                     <div class="card mb-12">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
-                        </div>
-                        <div class="card-body">' . $engine_list . '
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Tables on MyISAM')) . '</h2>
+                        <div class="' . $engine_list_body . '">' . $engine_list . '
                         </div>
                     </div>
                     <div class="card mb-12">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Table health')) . '</span>
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <h2 class="pg-title-section mb-0">' . h(lang('Table health')) . '</h2>
                             <span class="small fg-secondary">' . h($health_header_note) . '</span>
                         </div>
-                        <div class="card-body">' . $health_list . '
+                        <div class="' . $health_list_body . '">' . $health_list . '
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('All tables')) . '</span>
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <h2 class="pg-title-section mb-0">' . h(lang('All tables')) . '</h2>
                             ' . pg_list_table_search_box('database_engine') . '
                         </div>
                         <div class="card-body p-0">
@@ -1281,9 +1287,7 @@ echo '
                             </div>
                         </div>
                         <div class="card mb-5">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Server')) . '</span>
-                            </div>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Server')) . '</h2>
                             <div class="card-body">
                                 <dl class="row small mb-0">' . $fact_list . '
                                 </dl>

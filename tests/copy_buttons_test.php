@@ -98,8 +98,8 @@ function test_copy_buttons_api_settings_names()
 	pg_assert_true(strpos($source, 'button.innerHTML') === false, 'the API copy button keeps its label');
 	pg_assert_true(preg_match_all('/class="[^"]*api-copy"/', $source) === 1, 'API copy buttons come from one helper');
 	pg_assert_contains('aria-labelledby="\' . $id . \'_copy \' . $caption_id . \'"', $source);
-	pg_assert_contains('<label class="form-label small" id="d_key_label">', $source);
-	pg_assert_contains('<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">', $source);
+	pg_assert_contains('<label class="form-label pg-field-label" id="d_key_label">', $source);
+	pg_assert_contains('<label class="form-label pg-field-label" id="nc_secret_label">', $source);
 	pg_assert_contains('<summary id="\' . $id_prefix . \'_c_\' . $key . \'_label">', $source);
 
 	// A modal drawer or an open sheet makes the rest of the page inert, so

@@ -568,6 +568,15 @@ if ($translations_form_action === 'glossary_save') {
 // ── the import: a posted file, written as reviewed translations, then back
 // to the screen with the counts ──
 
+// A workbook comes in as the CSV file of its chosen sheet, written with the
+// semicolon the export writes.
+$sheet_refusal = pg_sheet_import_upload('csv', lang('Translations'), array('separator' => ';', 'back' => $back));
+
+if ($sheet_refusal !== '') {
+    $liveform->mark_error('', h($sheet_refusal));
+    go($back);
+}
+
 $upload_limits = pg_upload_limits();
 $upload_refusal = pg_upload_file_refusal($_FILES['csv'] ?? null, $upload_limits['file_max']);
 
@@ -576,7 +585,7 @@ if ($upload_refusal !== '') {
     go($back);
 }
 
-if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
+if (empty($_FILES['csv']) || !pg_sheet_import_file($_FILES['csv'])) {
     $liveform->mark_error('', lang('Please choose a CSV file.'));
     go($back);
 }

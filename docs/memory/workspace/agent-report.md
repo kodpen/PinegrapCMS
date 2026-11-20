@@ -12,6 +12,8 @@ description: An application agent's report of its model and plan usage (POST /wo
 - Names: five_hour, daily, weekly, weekly_model, monthly (`ws_agent_report_window_list()`), each once; percent a JSON whole number 0-100; resets_at ISO-8601 or unix seconds (`ws_api_agent_report_times()`, then `ws_agent_report_check()`).
 - Anything else (a name off the list, a field more or less, 10.5, "10", a time that does not read) refuses the whole report with 422; nothing is written.
 
+- The model with an answer and the brief's hourly ask: `agent-report-hourly.md`.
+
 ## What is stored?
 - The caller's own row only: `ws_agents.report_model`, `report_usage` (the windows as JSON in the list's order), `report_at`. The last report replaces the one before; no history (`workflow/decisions-made-schema-17.md`).
 - `ws_agent_report_windows()` reads the stored JSON back through the same check: a value that does not read gives no windows.
@@ -19,7 +21,7 @@ description: An application agent's report of its model and plan usage (POST /wo
 ## What does the Agents card show?
 - Under an application agent's line (`ws_agents_settings_line_html()`, both the dialog and the old screen): the model, each window as "Weekly 61%, resets 14.11 09:00", and "reported 12 min ago" (`ws_agent_report_words()`, `ws_seen_ago_words()`), escaped, with the tip "As the agent reported it; the site cannot check it."
 - Older than a day (`WS_AGENT_REPORT_STALE_AFTER`) it is drawn muted (`opacity-50`). Nothing for a model assistant, Claude, or before a first report.
-- The same report in a channel: the agent card's bars, the 90% mark in the @ menu (`agent-card-look.md`, `agent-state-marks.md`), and the API's channel-agent rows (`agent-card-facts.md`). Not in the brief.
+- The same report in a channel: the agent card's bars, the 90% mark in the @ menu (`agent-card-look.md`, `agent-state-marks.md`), and the API's channel-agent rows (`agent-card-facts.md`). The brief carries only the line that asks for a stale model, never the report.
 
 ## How does a session send it?
 - `php tools/ws_profile.php --model=NAME --windows=NAME:PERCENT:RESETS[,…]` with the `PG_WS_*` settings (no channel needed); exit 0 reported, 1 refused, 2 usage. It only sends what it is given: how a session reads its plan's limits is its own. When: `workflow/agent-channel-wake.md`.

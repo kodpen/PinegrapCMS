@@ -108,7 +108,7 @@ function test_ai_prompt_rules_profiles()
 function test_ai_prompt_rules_every_prompt_takes_them()
 {
 	$builders = ai_prompt_rules_test_builders();
-	$skip = array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/phpexcel', 'includes/boxpacker', 'includes/dompdf', 'assets/lib', 'data');
+	$skip = array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/boxpacker', 'includes/dompdf', 'assets/lib', 'data');
 	$root = rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/') . '/';
 	$found = array();
 	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));

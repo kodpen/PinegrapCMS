@@ -117,6 +117,34 @@ function connections_ai_may_manage($user) {
 
 }
 
+// May the user change the Sign in with Google application? It came from
+// the Accounts and sign-in card, so it keeps that category's gate.
+function connections_signin_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('security', $user);
+
+}
+
+// May the user change the IndexNow key? It came from Site Settings › SEO,
+// so it keeps that category's gate.
+function connections_seo_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('seo', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -225,6 +253,76 @@ if ($_POST) {
 			}
 
 		}
+
+	}
+
+	// The IndexNow key, saved, generated or removed on IndexNow's page under
+	// the gate of the SEO card it came from; the write returns to the page.
+	if (in_array($action, array('indexnow_save', 'indexnow_remove'), true) && connections_seo_may_manage($user)) {
+
+		if ($action === 'indexnow_remove') {
+
+			pg_indexnow_key_save('');
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'IndexNow')));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'IndexNow')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$indexnow_key = !empty($_POST['submit_generate'])
+				? pg_indexnow_key_new()
+				: ((isset($_POST['indexnow_key']) && is_string($_POST['indexnow_key'])) ? trim($_POST['indexnow_key']) : '');
+
+			if ($indexnow_key === '') {
+				$liveform->add_error(lang('Type a key, or generate one.'));
+			} elseif (!pg_indexnow_key_save($indexnow_key)) {
+				$liveform->add_error(lang('The IndexNow key must be 8 to 128 characters long and may only contain letters, digits and dashes.'));
+			} else {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} key was saved.', 'vars' => 'IndexNow')));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'IndexNow')), $_SESSION['sessionusername']);
+
+				// Save and try: the key file search engines read is checked
+				// where the site serves its files.
+				if (!empty($_POST['submit_try'])) {
+
+					if (pg_indexnow_key_file_ok($indexnow_key)) {
+						$liveform->add_notice(lang('The key file search engines check is in place.'));
+					} else {
+						$liveform->add_error(lang('The key was saved, but its key file could not be written to the files directory.'));
+					}
+
+				}
+			}
+
+		}
+
+	}
+
+	// The Sign in with Google application, saved on Google's page under the
+	// gate of the sign-in settings it came from. The switch that shows the
+	// button stays there.
+	if ($action === 'signin_google_save') {
+
+		if (connections_signin_may_manage($user)) {
+
+			$signin_client_id = (isset($_POST['oauth_google_client_id']) && is_string($_POST['oauth_google_client_id'])) ? trim($_POST['oauth_google_client_id']) : '';
+			$signin_client_secret = (isset($_POST['oauth_google_client_secret']) && is_string($_POST['oauth_google_client_secret'])) ? trim($_POST['oauth_google_client_secret']) : '';
+
+			if (mb_strlen($signin_client_id) > 255) {
+				$liveform->add_error(lang('The client ID is too long.'));
+			} elseif (mb_strlen($signin_client_secret) > 160) {
+				$liveform->add_error(lang('The client secret is too long.'));
+			} elseif (pg_signin_google_app_save($signin_client_id, $signin_client_secret)) {
+				$liveform->add_notice(lang('The Sign in with Google application was saved.'));
+				log_activity(lang('changed the Sign in with Google application'), $_SESSION['sessionusername']);
+			} else {
+				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the secret.'));
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		exit();
 
 	}
 
@@ -559,6 +657,12 @@ foreach ($registry as $id => $service) {
 		continue;
 	}
 
+	// A service whose settings moved onto its page here keeps the gate of
+	// the Site Settings card they came from ('found_at').
+	if (isset($service['found_at']) && !pg_connections_screen_may_see($service['found_at'], $open_categories, $tool_labels, $is_manager)) {
+		continue;
+	}
+
 	// An AI provider's connection keeps the gate of the assistants' card its
 	// key came from.
 	if (isset($ai_services[$id]) && empty($open_categories[pg_ai_connection_category()])) {
@@ -780,6 +884,76 @@ function connections_ai_page($page, $id, $name, $provider, $may_manage, $can_sea
 
 }
 
+/* IndexNow's page: "Connection details" holds the key (typed, or
+   generated here) for who may open Site Settings › SEO, Status says whether
+   the key file is in place and has Disconnect, and "Where it is used" leads
+   to the SEO card that shows the connection. */
+
+function connections_indexnow_page($page, $may_manage) {
+
+	$key = defined('INDEXNOW_KEY') ? trim((string) INDEXNOW_KEY) : '';
+	$seo_url = pg_settings_link('seo', 'pgset-seo');
+
+	if ($key !== '') {
+		$file_ok = pg_indexnow_key_file_ok($key);
+		$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Key file')) . '</div>
+				' . ($file_ok
+					? '<div class="pg-text-2"><a href="' . h(PATH . $key . '.txt') . '" target="_blank" rel="noopener">' . h($key . '.txt') . '</a></div>'
+					: '<div class="alert theme-warning small py-3 mb-0">' . h(lang('The key is set but its key file is missing: save the key again.')) . '</div>') . '
+			</div>';
+	}
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The key search engines that support IndexNow check before they take a change. It is written to a file of the site\'s own, so it is no secret.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="indexnow_save">
+				<input type="hidden" name="connections_return" value="indexnow">
+				<div>
+					<label class="pg-field-label" for="indexnow_key">' . h(lang('IndexNow Key')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="indexnow_key" name="indexnow_key" value="' . h($key) . '" maxlength="128" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h(lang('8 to 128 letters, digits and dashes. Generate makes a new one and saves it.')) . '
+						<a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank" rel="noopener">' . h(lang('Learn more about IndexNow')) . '</a></div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet">' . h(lang('Save and try')) . '</button>
+					<button type="submit" name="submit_generate" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Generate')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if ($key !== '') {
+			$page['status_extra'] .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="indexnow_remove" data-id="0"
+					data-confirm="' . h(lang('The IndexNow key and its key file are removed: search engines are no longer told when the site map changes.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h($seo_url) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Tells search engines a page changed')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › SEO › ' . h(lang('Search Engine Optimization')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($key !== '') ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* Why a provider's application cannot connect yet; '' when it can. */
 
 function connections_app_hint($app) {
@@ -918,7 +1092,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 				<label class="pg-text-2" for="' . $field_id('enabled') . '">' . h(lang('Connections through this application are allowed')) . '</label>
 			</div>
 			' . ((is_array($app) && ($app['source'] === 'signin'))
-				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
+				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('Google features use the Sign in with Google application now, as no application of their own is saved. Add both redirect addresses to it in Google Cloud, or save an application of their own here.')) . '</div>'
 				: '') . '
 			' . ($ready
 				? '<details><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="pg-text-2 ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
@@ -945,7 +1119,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
 				' . ($can_fall_back
 					? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action" data-action="remove_app" data-id="0"
-						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application of the Security settings again. Connected accounts stay.')) . '">
+						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application above again. Connected accounts stay.')) . '">
 						<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Use the Sign in with Google application')) . '</button>'
 					: '') . '
 			</div>
@@ -1311,6 +1485,56 @@ function connections_provider_page($provider_key, $provider, $row, $app, $accoun
 
 }
 
+/* The Sign in with Google application on Google's page: its client ID and
+   secret (config.oauth_google_*, the columns it always had), saved by
+   signin_google_save. The secret is shown back in the field as it was on
+   the sign-in settings, and an empty field clears it; the return address
+   is google_auth.php, listed among the redirect addresses below. */
+
+function connections_signin_google_part() {
+
+	$app = pg_signin_google_app();
+	$client_id = is_array($app) ? $app['client_id'] : '';
+	$client_secret = is_array($app) ? $app['client_secret'] : '';
+	$ready = is_array($app) && ($client_secret !== '');
+
+	if ($ready) {
+		$pill = '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>';
+	} else {
+		$pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>';
+	}
+
+	return '
+			<div id="connections-signin">
+				<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+					<h3 class="pg-group-label mb-0">' . h(lang('Sign in with Google application')) . '</h3>
+					' . $pill . '
+				</div>
+				<p class="pg-field-help mt-0">' . h(lang('Visitors and staff sign in with this application. Whether the button is shown is switched in Site Settings › Accounts and sign-in. Google features use it too until an application of their own is saved below.')) . '</p>
+				<form method="post" action="connections.php" class="connections-app-form">
+					' . get_token_field() . '
+					<input type="hidden" name="connections_action" value="signin_google_save">
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_id">' . h(lang('Client ID')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_id" name="oauth_google_client_id"
+							value="' . h($client_id) . '" maxlength="255" autocomplete="off">
+					</div>
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_secret">' . h(lang('Client secret')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_secret" name="oauth_google_client_secret"
+							value="' . h($client_secret) . '" maxlength="160" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
+						<div class="pg-field-help">' . h(lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.')) . '</div>
+					</div>
+					<div class="d-flex flex-wrap align-items-center gap-3">
+						<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+						<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+							' . h(lang('Accounts and sign-in')) . ' ›</a>
+					</div>
+				</form>
+			</div>';
+
+}
+
 /* Google's parts of "Connection details": the APIs each Google feature
    calls, read from the registry, with the page that turns each on, and
    Google's verification warning. */
@@ -1603,19 +1827,39 @@ if ($provider_page !== '') {
 	));
 
 	$details = '';
+	$page_cards = pg_connections_screen_page_cards($page_id, array(
+		'manager' => $is_manager,
+		'signin'  => ($provider_page === 'google') && connections_signin_may_manage($user),
+	));
 
-	if (in_array('details', pg_connections_screen_page_cards($page_id, array('manager' => $is_manager)), true)) {
+	// Google's two applications are shown together: the connected accounts'
+	// one falls back to the Sign in with Google application.
+	$signin_part = in_array('signin', $page_cards, true) ? connections_signin_google_part() : '';
+
+	if (in_array('details', $page_cards, true)) {
 
 		$hint = connections_app_hint($provider_apps[$provider_page]);
 
 		$details = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			<p class="pg-card-sub mb-4">' . h(($signin_part !== '')
+				? lang('The Google applications the site signs people in and connects its accounts through.')
+				: lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			' . $signin_part . '
+			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(lang('Connected accounts application')) . '</h3>' : '') . '
 			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
 			' . connections_app_form($provider_page, $provider, $provider_apps[$provider_page],
 				(is_array($draft) && ($draft['provider'] === $provider_page)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
 			' . (($provider_page === 'google') ? connections_google_cloud_parts($registry, $rows) : '') . '
+		</section>';
+
+	} elseif ($signin_part !== '') {
+
+		$details = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-4" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			' . $signin_part . '
 		</section>';
 
 	}
@@ -1659,14 +1903,20 @@ if ($provider_page !== '') {
 			'manager'      => $is_manager,
 			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
 			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
+			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]),
+		'here'         => isset($ai_services[$page_id]) || ($page_id === 'indexnow'),
 	);
+
+	// IndexNow's page: its key and the SEO card that shows it.
+	if ($page_id === 'indexnow') {
+		$page = connections_indexnow_page($page, connections_seo_may_manage($user));
+	}
 
 	// An AI provider's page: its key, and the assistants that use it.
 	if (isset($ai_services[$page_id])) {

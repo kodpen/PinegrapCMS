@@ -981,6 +981,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Voice messages: the recording row and the player (voice.php,
     // assets/js/workspace_voice.js).
     $strings = array_merge($strings, ws_voice_js_strings());
+    // Calls: the button, the ringing card, the call window (calls.php,
+    // assets/js/workspace_calls.js).
+    $strings = array_merge($strings, ws_call_js_strings());
     // Status updates and check-ins (status.php, assets/js/workspace_status.js).
     $strings = array_merge($strings, ws_status_js_strings());
     // The open items line over the conversation (open_items.php,
@@ -1013,6 +1016,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // A visit can name its customer (ws_events.contact_id).
         'event_contacts' => ws_event_contacts_ready(),
         'poll'         => array('active' => 4),
+        // Calls from the channel's head (workspace_calls.js): the public
+        // route the browsers ask for, null while the database has no calls.
+        'calls'        => ws_calls_ready() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING) : null,
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,

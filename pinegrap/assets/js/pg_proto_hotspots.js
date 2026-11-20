@@ -2049,6 +2049,16 @@
         return { control: !!r.drawable, state: state };
     }
 
+    // One frame's links without a target, in its rows' order, from
+    // problemsOf()'s answer: what its amber count lists when pressed.
+    function emptyOf(problems, frameId) {
+        var list = (problems && problems.empty && Array.isArray(problems.empty.list)) ? problems.empty.list : [];
+
+        return list.filter(function (one) {
+            return one.frame === String(frameId);
+        });
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -2207,6 +2217,87 @@
             menus: [],
             regions: []
         };
+    }
+
+    // The editor's key back to the Prototype view: P alone (Shift and Caps
+    // Lock allowed). Nothing else uses a bare P in the editor; the palette's
+    // Ctrl+Shift+P and the preview's Ctrl+Alt+P carry modifiers.
+    var BACK_KEY = 'p';
+
+    // Where the key is typed or kept by what holds the focus: a dialog, a
+    // menu or list (whose letters jump to an item), a note being written,
+    // the code editor, the Prototype view itself (its own keys).
+    var BACK_SKIP = 'dialog, [role="dialog"], [role="menu"], [role="listbox"], .sd-note-overlay, .cm-editor, #sd-proto';
+
+    // Whether a keydown is the key back: P with no Ctrl, Alt or Meta, not
+    // held down, not part of an IME composition, not taken by an earlier
+    // listener, and not where it is typed (a field, a text written in) or
+    // kept (BACK_SKIP).
+    function backKey(event) {
+        if (!isObject(event) || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing || event.defaultPrevented) {
+            return false;
+        }
+
+        if (str(event.key).toLowerCase() !== BACK_KEY) {
+            return false;
+        }
+
+        var target = event.target;
+
+        if (!isObject(target)) {
+            return false;
+        }
+
+        var tag = str(target.tagName).toUpperCase();
+
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+            return false;
+        }
+
+        return !(typeof target.closest === 'function' && target.closest(BACK_SKIP));
+    }
+
+    // The spot of a row of the view, kept while the editor is open: { frame,
+    // nodeId, index (a text's link by its place in the text, -1 for any
+    // other source), nth (the row's place among its node's rows, which
+    // tells a menu's items apart) }; null when the frame or row is gone.
+    function linkSpot(laid, frameId, port) {
+        var frame = (laid && Array.isArray(laid.frames)) ? laid.frames.filter(function (f) { return f.id === frameId; })[0] : null;
+        var row = frame ? frame.rows.filter(function (r) { return r.port === port; })[0] : null;
+
+        if (!row) {
+            return null;
+        }
+
+        var same = frame.rows.filter(function (r) { return r.nodeId === row.nodeId; });
+
+        return { frame: frame.id, nodeId: row.nodeId, index: row.source === 'text' ? row.index : -1, nth: same.indexOf(row) };
+    }
+
+    // Where the key back takes the view for a spot (linkSpot() or the
+    // editor's selection): { frame, port } of the node's row, a text's
+    // link found by its index, a menu's item by its place, else the node's
+    // first row; port null for a node with no row (its frame alone); null
+    // for a frame the view does not draw.
+    function backTo(laid, spot) {
+        if (!isObject(spot) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var frame = laid.frames.filter(function (f) { return f.id === spot.frame; })[0];
+
+        if (!frame) {
+            return null;
+        }
+
+        var rows = frame.rows.filter(function (r) { return r.nodeId === spot.nodeId; });
+        var index = isFinite(spot.index) ? Number(spot.index) : -1;
+        var nth = isFinite(spot.nth) ? Number(spot.nth) : -1;
+        var row = (index >= 0 ? rows.filter(function (r) { return r.source === 'text' && r.index === index; })[0] : null)
+            || (nth >= 0 ? rows[nth] : null)
+            || rows[0];
+
+        return { frame: frame.id, port: row ? row.port : null };
     }
 
     // Where Fit starts when a design does not fit at the smallest zoom: the
@@ -2380,6 +2471,78 @@
     function foldWord(text) {
         return String(text).replace(/İ/g, 'i').toLowerCase().replace(/ı/g, 'i')
             .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    // The view's search (Ctrl+F): the frames whose name holds the query and
+    // the links whose text holds it, folded as foldWord() folds (case,
+    // marks, the Turkish dotted and dotless i). `label(item)`, optional,
+    // is the name a frame or chip shows (the view's "Untitled page"), else
+    // a frame's stored name and a chip's address (none for a hidden page).
+    // Frames in reading order (top to bottom, then left to right), each
+    // one's name before its links in their rows' order; then the chips.
+    // { query (folded), hits: [{ kind: 'frame' | 'link' | 'chip', frame
+    // (the frame's or chip's id), port ('' but for a link), text (as
+    // shown) }], frames: { id: true } for each frame or chip with a hit }.
+    function searchOf(laid, query, label) {
+        var q = foldWord(str(query)).replace(/\s+/g, ' ').trim();
+        var found = { query: q, hits: [], frames: {} };
+        var shown = (typeof label === 'function') ? label : function (item) {
+            return (item.kind === 'chip') ? (item.mark === 'hidden' ? '' : str(item.href)) : str(item.name);
+        };
+        var reading = function (a, b) { return ((Number(a.y) || 0) - (Number(b.y) || 0)) || ((Number(a.x) || 0) - (Number(b.x) || 0)); };
+        var hit = function (kind, item, port, text) {
+            if (foldWord(text).indexOf(q) < 0) {
+                return;
+            }
+
+            found.hits.push({ kind: kind, frame: String(item.id), port: port, text: text });
+            found.frames[String(item.id)] = true;
+        };
+
+        if (q === '' || !isObject(laid)) {
+            return found;
+        }
+
+        (Array.isArray(laid.frames) ? laid.frames : []).filter(isObject).slice().sort(reading).forEach(function (frame) {
+            hit('frame', frame, '', str(shown(frame)));
+            (Array.isArray(frame.rows) ? frame.rows : []).forEach(function (row) {
+                hit('link', frame, str(row.port), str(rowLabel(row)));
+            });
+        });
+        (Array.isArray(laid.chips) ? laid.chips : []).filter(isObject).slice().sort(reading).forEach(function (chip) {
+            hit('chip', chip, '', str(shown(chip)));
+        });
+
+        return found;
+    }
+
+    // A key in the search box: 1 for the next match (Enter, ArrowDown), -1
+    // for the one before (Shift+Enter, ArrowUp), 0 for anything else or
+    // with Ctrl, Alt or Cmd held.
+    function searchKey(event) {
+        if (!event || event.ctrlKey || event.altKey || event.metaKey) {
+            return 0;
+        }
+
+        if (event.key === 'Enter') {
+            return event.shiftKey ? -1 : 1;
+        }
+
+        return (event.key === 'ArrowDown') ? 1 : ((event.key === 'ArrowUp') ? -1 : 0);
+    }
+
+    // The match after `at` (dir 1) or before it (dir -1) of `total`, round
+    // at either end; the first (or last) when `at` is outside; -1 for none.
+    function searchStep(total, at, dir) {
+        if (!(total > 0)) {
+            return -1;
+        }
+
+        if (!(at >= 0 && at < total)) {
+            return (dir < 0) ? total - 1 : 0;
+        }
+
+        return (at + (dir < 0 ? -1 : 1) + total) % total;
     }
 
     function foldWords(text) {
@@ -2632,13 +2795,21 @@
         rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        emptyOf: emptyOf,
         canvasMarks: canvasMarks,
         canvasRequest: canvasRequest,
+        BACK_KEY: BACK_KEY,
+        backKey: backKey,
+        linkSpot: linkSpot,
+        backTo: backTo,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,
         SUGGEST_FILLER: SUGGEST_FILLER,
         foldWords: foldWords,
+        searchOf: searchOf,
+        searchStep: searchStep,
+        searchKey: searchKey,
         suggest: suggest,
         headingOf: headingOf,
         suggestRows: suggestRows,

@@ -7,8 +7,11 @@
  * moment (includes/fn/page_bundles.php for the rules, page_bundles_screen.php
  * for what this screen reads). Without an id it lists the bundles and makes
  * a new one; with one it shows a bundle's pages, adds a copy of a live page
- * or a draft, removes a page, sets the name and the publish time, and
- * deletes the bundle. Designers and administrators.
+ * or a draft, removes a page, sets the name and the publish time,
+ * deletes the bundle, publishes it (or the rest of a partly published one)
+ * and takes it back through the module's dialogs and locked runners, and
+ * shares its preview by a prototype link
+ * (includes/fn/prototype_links.php). Designers and administrators.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,6 +25,10 @@ validate_area_access($user, 'designer');
 
 include_once('liveform.class.php');
 $liveform = new liveform('page_bundles');
+
+// The preview's drafts and its share links.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
 
 $bundle_id = isset($_REQUEST['id']) && is_scalar($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
 $list_url = PATH . SOFTWARE_DIRECTORY . '/page_bundles.php';
@@ -92,6 +99,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$bundle) {
         $liveform->add_error(lang('The bundle was not found.'));
         go($list_url);
+    }
+
+    // The share links of the preview write their own Site Log lines.
+    if (($action === 'share_create') || ($action === 'share_revoke')) {
+        $shared = pg_proto_link_bundle_share($bundle, $action, array(
+            'audience' => $posted('audience'),
+            'duration' => $posted('duration'),
+            'password' => $posted('password'),
+            'link_id' => $posted('link_id'),
+        ), $user);
+
+        if (!$shared['ok']) {
+            $liveform->add_error($shared['error']);
+        } elseif ($action === 'share_create') {
+            // Shown once above the bundle: without the site's key the
+            // address cannot be read back later.
+            $_SESSION['software']['page_bundle_share_made'][(int) $bundle['id']] = $shared['url'];
+            $liveform->add_notice(lang('The link was made. Copy its address and send it to the people who should look at the bundle.'));
+        } else {
+            $liveform->add_notice(lang('The link was revoked: it no longer opens the preview.'));
+        }
+
+        go($self);
+    }
+
+    // Publish (or publish the rest) and Take back run under the bundle's
+    // lock and write their own Site Log lines; the dialogs post what the
+    // person chose and which pages they saw stay as they are.
+    if ($action === 'publish') {
+        $outcome = pg_page_bundle_screen_outcome('publish',
+            pg_page_bundle_publish($bundle, $user, pg_page_bundle_screen_choices(isset($_POST['choice']) ? $_POST['choice'] : array())));
+        if ($outcome['ok']) {
+            $liveform->add_notice($outcome['text']);
+        } else {
+            $liveform->add_error($outcome['text']);
+        }
+
+        go($self);
+    }
+
+    if ($action === 'take_back') {
+        // A page a take-back writes would be put back by the next save of
+        // an editor tab that has it open.
+        require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+        $check = pg_page_bundle_take_back_check($bundle);
+        $open = '';
+
+        foreach ($check['plan']['can'] as $id) {
+            $item = $check['items'][$id];
+            $replacement = (int) $item['live_page_id'] > 0;
+
+            if (!pg_collab_may_edit_page('', $replacement ? (int) $item['live_page_id'] : (int) $item['draft_page_id'])) {
+                $open = $replacement ? (string) $item['live_name'] : (string) $item['draft_name'];
+                break;
+            }
+        }
+
+        if ($open !== '') {
+            $liveform->add_error(lang(array('string' => 'Somebody has {var:1} open in the Page Design Studio. Take the bundle back when they are done.', 'vars' => array($open))));
+            go($self);
+        }
+
+        $outcome = pg_page_bundle_screen_outcome('take_back',
+            pg_page_bundle_take_back($bundle, $user, pg_page_bundle_screen_kept(isset($_POST['kept']) ? $_POST['kept'] : array())));
+        if ($outcome['ok']) {
+            $liveform->add_notice($outcome['text']);
+        } else {
+            $liveform->add_error($outcome['text']);
+        }
+
+        go($self);
     }
 
     $done = array('ok' => false, 'error' => lang('The bundle cannot make that change now.'));
@@ -337,6 +416,97 @@ if ($waiting && pg_page_bundle_holds($bundle['status'])) {
         <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/prototype.php?bundle=' . (int) $bundle['id']) . '" target="_blank" rel="noopener" title="' . h(lang('Look at the drafts of the bundle together: a link to a page it replaces opens the replacement, other links open the site.')) . '"><i class="bi bi-play-circle" aria-hidden="true"></i>' . h(lang('Preview the bundle')) . '</a>';
 }
 
+// The preview shared by a prototype link: for anyone who has it or for the
+// team, with an expiry and a password; it opens while drafts wait in the
+// bundle and answers as a revoked link once the bundle is published, taken
+// back or deleted.
+$output_share_made = '';
+
+if (isset($_SESSION['software']['page_bundle_share_made'][(int) $bundle['id']])) {
+    $made_url = (string) $_SESSION['software']['page_bundle_share_made'][(int) $bundle['id']];
+    unset($_SESSION['software']['page_bundle_share_made'][(int) $bundle['id']]);
+
+    $output_share_made = '
+    <div class="alert theme-success my-3" role="status">
+        <label for="page_bundle_share_made" class="form-label">' . h(lang('Address')) . '</label>
+        <input type="text" id="page_bundle_share_made" class="form-control" readonly value="' . h($made_url) . '" onfocus="this.select();">
+    </div>';
+}
+
+if ($output_preview !== '' && pg_proto_link_bundles_ready()) {
+    $share_now = time();
+    $share_rows = '';
+
+    foreach (pg_proto_link_bundle_rows(pg_proto_links_of_bundle($bundle['id']), $share_now) as $link) {
+        $facts = array(
+            ($link['expires_at'] > 0)
+                ? (($link['state'] === 'expired') ? lang('Expired') . ': ' . $time_text($link['expires_at']) : lang('Expires') . ': ' . $time_text($link['expires_at']))
+                : lang('Expires: never'),
+            lang(array('string' => 'Opened {var:1} times', 'vars' => array((int) $link['uses']))),
+        );
+
+        if ($link['created_by_name'] !== '') {
+            $facts[] = lang(array('string' => 'Made by {var:1}', 'vars' => array($link['created_by_name'])));
+        }
+
+        $address = ($link['url'] !== '')
+            ? '<input type="text" class="form-control form-control-sm mt-3" readonly value="' . h($link['url']) . '" aria-label="' . h(lang('Address')) . '" onfocus="this.select();">'
+            : '<div class="form-text">' . h(lang('This address cannot be shown again. Revoke the link and make a new one.')) . '</div>';
+
+        $share_rows .= '
+            <li class="list-group-item px-3 py-3">
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="me-auto">
+                        <span class="badge ' . (($link['audience'] === 'anyone') ? 'theme-warning' : 'theme-info') . ' me-1">' . h(($link['audience'] === 'anyone') ? lang('Anyone who has it') : lang('Team')) . '</span>'
+                        . ($link['password'] ? '<span class="badge theme-secondary me-1"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Password')) . '</span>' : '')
+                        . ($link['locked'] ? '<span class="badge theme-danger me-1">' . h(lang('Password locked')) . '</span>' : '') . '
+                        <code class="fg-secondary">' . h($link['hint']) . '…</code>
+                    </div>
+                    <button type="submit" form="page_bundle_share_revoke" name="link_id" value="' . (int) $link['id'] . '" class="pg-button pg-button-danger pg-button-sm" onclick="return confirm(' . h(json_encode(lang('Revoke this link? Whoever has it can no longer open the preview.'))) . ');"><i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Revoke')) . '</button>
+                </div>
+                <div class="small fg-secondary mt-1">' . h(implode(' · ', $facts)) . '</div>
+                ' . $address . '
+            </li>';
+    }
+
+    $share_durations = '<option value="0">' . h(lang('Never')) . '</option>';
+
+    foreach (pg_proto_link_durations() as $seconds => $label) {
+        $share_durations .= '<option value="' . (int) $seconds . '"' . (((int) $seconds === 604800) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    $output_dialogs .= $dialog('page_bundle_share', 'share', lang('Share the preview'), 'share_create', '
+            <p class="fg-secondary">' . h(lang('A link opens the drafts waiting in this bundle as its preview, always as they were saved last. It stops working when the bundle is published, taken back or deleted.')) . '</p>
+            ' . (($share_rows !== '') ? '<ul class="list-group mb-5">' . $share_rows . '</ul>' : '<p class="fg-secondary">' . h(lang('No links yet. Make one below.')) . '</p>') . '
+            <h3 class="h6 mb-3">' . h(lang('New link')) . '</h3>
+            <div class="form-field mb-3">
+                <label for="page_bundle_share_audience" class="form-label">' . h(lang('Who can open it')) . '</label>
+                <select id="page_bundle_share_audience" name="audience" class="form-control" required>
+                    <option value="anyone">' . h(lang('Anyone who has the link')) . '</option>
+                    <option value="team">' . h(lang('The team: signed-in administrators, designers and managers')) . '</option>
+                </select>
+            </div>
+            <div class="form-field mb-3">
+                <label for="page_bundle_share_duration" class="form-label">' . h(lang('Expires')) . '</label>
+                <select id="page_bundle_share_duration" name="duration" class="form-control" aria-describedby="page_bundle_share_duration_help">' . $share_durations . '</select>
+                <div id="page_bundle_share_duration_help" class="form-text">' . h(lang('A link for anyone who has it must run out within 90 days. Choose one of the offered times.')) . '</div>
+            </div>
+            <div class="form-field">
+                <label for="page_bundle_share_password" class="form-label">' . h(lang('Password (optional)')) . '</label>
+                <input type="password" id="page_bundle_share_password" name="password" maxlength="128" autocomplete="new-password" class="form-control" aria-describedby="page_bundle_share_password_help">
+                <div id="page_bundle_share_password_help" class="form-text">' . h(lang('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) . '</div>
+            </div>',
+        '<button type="submit" class="pg-button pg-button-fill"><i class="bi bi-link-45deg" aria-hidden="true"></i>' . h(lang('Create link')) . '</button>');
+
+    // The Revoke buttons reach this form through their form attribute: no
+    // form sits inside the dialog's own.
+    $output_dialogs .= '
+<form method="post" id="page_bundle_share_revoke" class="d-none">' . get_token_field() . '<input type="hidden" name="action" value="share_revoke"></form>';
+
+    $output_preview .= '
+        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#page_bundle_share"><i class="bi bi-share" aria-hidden="true"></i>' . h(lang('Share the preview')) . '</button>';
+}
+
 if ($may_change) {
     list($copy_body, $copy_ok) = $page_select('page_bundle_live_page', 'live_page_id', lang('Page on the site'),
         lang('A copy is made in Drafts and stands for this page: publishing the bundle puts the copy\'s design, title and description on the page. A page with an open experiment cannot be added.'),
@@ -370,7 +540,40 @@ if ($may_change) {
         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#page_bundle_settings"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Bundle settings')) . '</button>';
 }
 
-$output_buttons .= $output_preview;
+// Publish while the bundle holds drafts ("Publish the rest" once partly
+// published) and Take back once something of it is on the site, each
+// through its dialog built by the module and opened through pgUI.
+$actions = pg_page_bundle_screen_actions($bundle['status']);
+$output_actions = '';
+
+if ($actions['publish'] !== '') {
+    $publish_check = pg_page_bundle_publish_check($bundle, $user);
+
+    if ($publish_check['plan']['pages']) {
+        $output_dialogs .= pg_page_bundle_publish_dialog($bundle, $publish_check, $self);
+        $output_actions .= '
+        <button type="button" class="pg-button pg-button-fill pg-button-sm" data-pg-bundle-dialog="page_bundle_publish_dialog"><i class="bi bi-send" aria-hidden="true"></i>' . h($actions['publish']) . '</button>';
+    }
+}
+
+if ($actions['take_back']) {
+    $output_dialogs .= pg_page_bundle_take_back_dialog($bundle, pg_page_bundle_take_back_check($bundle), $self);
+    $output_actions .= '
+        <button type="button" class="pg-button pg-button-sm" data-pg-bundle-dialog="page_bundle_take_back_dialog"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Take it back')) . '</button>';
+}
+
+if ($output_actions !== '') {
+    $output_dialogs .= '
+<script>
+document.addEventListener("click", function (event) {
+    var button = event.target.closest ? event.target.closest("[data-pg-bundle-dialog]") : null;
+    var dialog = button ? document.getElementById(button.getAttribute("data-pg-bundle-dialog")) : null;
+    if (dialog) pgUI.dialog.show(dialog);
+});
+</script>';
+}
+
+$output_buttons = $output_actions . $output_buttons . $output_preview;
 
 if (pg_page_bundle_may_delete($bundle['status'])) {
     $output_buttons .= '
@@ -412,7 +615,7 @@ $hint = $count_changed
 echo $shell() . '
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
-    ' . $liveform->output_notices() . '
+    ' . $liveform->output_notices() . $output_share_made . '
     <div class="row">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
