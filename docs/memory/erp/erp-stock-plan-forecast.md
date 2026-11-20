@@ -5,7 +5,7 @@ description: Stock plan forecast (erp_stock_plan, 11.0.251, #10654): units a day
 
 ## What does `erp_stock_plan` hold? (SP2 of plan stock-planning, PR #10654)
 - One row per tracked product (`inventory = 1`, not a bundle), a cache rebuilt every night by `erp_stock_plan_run()` after the day's row and once the first fill is done. Columns and types: PR #10654 body; step 11.0.251 `upgrade_2026_11_0_erp_stock_plan()`.
-- `notice_at` belongs to the bell (SP4): the rebuild's upsert never names it.
+- `notice_at` is the bell's stamp (erp-stock-plan-bell-api.md): the rebuild's upsert never names it.
 - Dead stock and its value have no column: `erp_stock_plan_dead()` works them out when read, from `last_sale`, the stock and `erp_product_costs.avg_cost`.
 
 ## How is the speed read? (P3, `erp_stock_plan_speed()`)
@@ -36,7 +36,7 @@ description: Stock plan forecast (erp_stock_plan, 11.0.251, #10654): units a day
 ## How is `erp_accounts.lead_days` saved?
 - `erp_account_save()` writes it on every save (clamped 0 to 365), like `payment_days`; every full-row builder passes the stored value (API PATCH, e-document sync, CSV merge, Workspace change). The account card's Lead time field changes it from the panel.
 
-- Not verified on a database when written: no double run of the step, no rebuild on real data.
+- Not verified on a database: no double run of the step, no rebuild on real data.
 
 Tests: `tests/erp_stock_plan_forecast_test.php`.
 

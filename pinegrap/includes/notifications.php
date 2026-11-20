@@ -489,6 +489,39 @@ function pg_notification_ladder_columns()
 	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
 }
 
+/**
+ * The stock plan's low stock sentence: the most urgent product's days left
+ * and the day to order by, and how many more need ordering.
+ *
+ * @param int    $count  Products in the notice
+ * @param string $name   The first product's name, '' when it is gone
+ * @param int    $days   Its days left
+ * @param string $day    Its order-by day (Y-m-d), '' when its lead time is unknown
+ * @return string
+ */
+function pg_notification_stock_plan_sentence($count, $name, $days, $day)
+{
+	if ($name === '') {
+		return lang(array('string' => '{var:1} product(s) should be ordered before they run out.', 'vars' => array((int) $count)));
+	}
+
+	$when = '';
+
+	if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
+		$when = function_exists('prepare_form_data_for_output') ? (string) prepare_form_data_for_output($day, 'date', false) : $day;
+	}
+
+	$sentence = ($when !== '')
+		? lang(array('string' => '{var:1} runs out in {var:2} day(s), order by {var:3}.', 'vars' => array(h($name), (int) $days, h($when))))
+		: lang(array('string' => '{var:1} runs out in {var:2} day(s).', 'vars' => array(h($name), (int) $days)));
+
+	if ($count > 1) {
+		$sentence .= ' ' . lang(array('string' => '{var:1} more product(s) should be ordered too.', 'vars' => array((int) $count - 1)));
+	}
+
+	return $sentence;
+}
+
 // What a notification says and where it points.
 //
 // The wording is not a property of the row - the row carries an order number or
@@ -759,21 +792,32 @@ function pg_notification_display($notification, $reader_role = null)
 
 	} elseif ($action == 'erp_low_stock') {
 
-		// title is the number of products newly at or below their minimum;
-		// product_id the first of them, named when it is the only one.
+		// title is the number of products; product_id the first of them. The
+		// minimum notice names it when it is the only one. The stock plan's
+		// notice carries the first one's days left and order-by day in
+		// order_total as "days|Y-m-d" (includes/erp/alerts.php).
 		$count = (int) $notification['title'];
+		$plan  = (string) ($notification['order_total'] ?? '');
+		$plan  = (strpos($plan, '|') !== false) ? explode('|', $plan, 2) : null;
 		$name  = '';
 
-		if (($count === 1) && ((int) ($notification['product_id'] ?? 0) > 0)) {
+		if ((($count === 1) || ($plan !== null)) && ((int) ($notification['product_id'] ?? 0) > 0)) {
 			$product = db_item("SELECT name, short_description FROM products WHERE id = '" . (int) $notification['product_id'] . "' LIMIT 1");
 			$name = is_array($product) ? ((trim((string) $product['short_description']) !== '') ? (string) $product['short_description'] : (string) $product['name']) : '';
 		}
 
-		$display['title']       = lang('Stock running low');
-		$display['description'] = ($name !== '')
-			? lang(array('string' => '{var:1} is at or below its minimum stock.', 'vars' => array(h($name))))
-			: lang(array('string' => '{var:1} product(s) dropped to or below their minimum stock.', 'vars' => array($count)));
-		$display['url']         = 'erp_stock_minimums.php?show=low';
+		$display['title'] = lang('Stock running low');
+
+		if ($plan !== null) {
+			$display['description'] = pg_notification_stock_plan_sentence($count, $name, (int) $plan[0], (string) $plan[1]);
+			$display['url']         = 'erp_stock_plan.php';
+		} else {
+			$display['description'] = ($name !== '')
+				? lang(array('string' => '{var:1} is at or below its minimum stock.', 'vars' => array(h($name))))
+				: lang(array('string' => '{var:1} product(s) dropped to or below their minimum stock.', 'vars' => array($count)));
+			$display['url']         = 'erp_stock_minimums.php?show=low';
+		}
+
 		$display['icon']        = 'assets/images/notification-order.png';
 		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;

@@ -16,7 +16,7 @@ description: Plan stock-planning, steps SP1 to SP5: the daily record first (its 
   - New `erp_stock_plan.php` (`validate_erp_access()`, `pg_screen_toolbar()`), its Accounting menu entry and settings card; the account card's Lead time field.
   - `add_erp_purchase_order.php` and `erp_purchase_order_rows_for_products()` take a quantity per product by POST, which only fills the form; the minimum stock screen keeps its GET `products[]`.
   - No pictures (`workflow/look-pictures-none.md`). Features: P11, P12.
-- SP4 (S) after SP2: the bell and the API.
+- SP4 (S) after SP2: the bell and the API. Done: #10687.
   - `includes/erp/alerts.php` (`erp_alert_low_stock()`), `includes/erp/api.php` (route, `erp_openapi_objects()`), an `includes/erp/api_*.php` reader; `php tools/check_api_schema.php`. Features: P13, P14.
 - SP5 (S) close-out: every P number checked against the code with its PR; `erp/stock-planning.md` written; `erp/erp-alerts.md` updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
