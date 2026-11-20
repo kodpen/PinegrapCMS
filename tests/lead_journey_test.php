@@ -331,6 +331,7 @@ function test_lead_journey_each_tie_path_names_its_act()
 
 	pg_assert_contains("pg_lead_tie('campaign_click', (int) \$contact_id, (int) \$email_campaign_id)", lead_journey_test_source('view_email_campaign.php'), 'the web version opened by its recipient\'s code');
 	pg_assert_contains("pg_lead_tie('order', (int) \$contact_id", lead_journey_test_source('submit_order.php'), 'a placed order');
+	pg_assert_contains("pg_lead_tie('form', (int) \$contact_id, (int) \$form_id);", lead_journey_test_source('custom_form.php'), 'a form sent');
 
 	foreach (array('newsletter', 'sign_in', 'form', 'campaign_click', 'order') as $act) {
 		pg_assert_true(in_array($act, pg_lead_tie_acts(), true), $act . ' is an act');
