@@ -153,6 +153,23 @@ function free_work_steps($text)
 			continue;
 		}
 
+		// A lettered ID followed by a lowercase word ("CX9 done in two: …",
+		// "P9 keeps …", "P9 tests: …", "OS1 census: …", "AG13b (the report)
+		// follows …") is a note on a step, not one: a step goes on with its
+		// size "(M)" or a capitalised title. The note is more of the step
+		// with its ID above it, so "CX9 done in two" marks CX9 done.
+		if (!$numbered && preg_match('/^\(?[a-z]/', $rest)) {
+			for ($at = count($steps) - 1; $at >= 0; $at--) {
+				if ($steps[$at][0] === $id) {
+					$steps[$at][1] .= ' ' . trim($rest);
+
+					break;
+				}
+			}
+
+			continue;
+		}
+
 		if ($nested && ($last >= 0) && ($steps[$last][0] === $id)) {
 			$steps[$last][1] .= ' ' . trim($rest);
 
@@ -258,12 +275,13 @@ function free_work_own_looks($text)
 
 // Whether a step line says the step is done: "`done` (#n)", "Done in #n",
 // "Done (#n)", "done in PR #n", ": PR #n" or ": PRs #a, #b", "merged",
-// "… are done", "<ID> done", or a capitalised "Done" anywhere.
+// "… are done", "<ID> done", "done in two" (or three, several, <n>), or a
+// capitalised "Done" anywhere.
 function free_work_step_done($line)
 {
 	$line = (string) $line;
 
-	return (bool) (preg_match('/`done`|\bdone\b\W{0,3}(?:in\s+)?(?:PRs?\s+)?#\d+|:\s*PRs?\s+#\d+|\bmerged\b|\bare done\b/i', $line)
+	return (bool) (preg_match('/`done`|\bdone\b\W{0,3}(?:in\s+)?(?:PRs?\s+)?#\d+|:\s*PRs?\s+#\d+|\bmerged\b|\bare done\b|\bdone in (?:two|three|four|several|\d+)\b/i', $line)
 		|| preg_match('/\b[A-Z]{1,3}\d+[a-z]?\s+done\b/', $line)
 		|| preg_match('/\bDone\b/', $line));
 }
@@ -274,20 +292,20 @@ function free_work_step_done($line)
 // $titles is number => title. Returns the number or 0.
 function free_work_holder($plan, $id, array $titles)
 {
-	$tag = '[plan:' . $plan . ']';
+	// "[plan:x]", "[plan:x-steps]" and "[plan:x-steps-2]" all name plan x.
+	$base = preg_replace('/-steps(-\d+)?$/', '', (string) $plan);
+	$tag = '/\[plan:' . preg_quote($base, '/') . '(?:-steps(?:-\d+)?)?\]/';
 	$pattern = '/(?<![A-Za-z0-9.])' . preg_quote((string) $id, '/') . '(?![A-Za-z0-9])/';
 
 	foreach ($titles as $number => $title) {
-		$at = strpos((string) $title, $tag);
-
-		if ($at === false) {
+		if (!preg_match($tag, (string) $title, $found, PREG_OFFSET_CAPTURE)) {
 			continue;
 		}
 
 		$named = (string) $title;
 
 		if (ctype_digit(substr((string) $id, 0, 1))) {
-			$named = substr($named, $at + strlen($tag));
+			$named = substr($named, $found[0][1] + strlen($found[0][0]));
 			$named = preg_split('/\s+(?:\x{2014}|--?)\s+/u', $named, 2)[0];
 		}
 
@@ -297,6 +315,23 @@ function free_work_holder($plan, $id, array $titles)
 	}
 
 	return 0;
+}
+
+// The landed PRs of the plans, as free_work_holder() reads them: the
+// subjects "[plan:x] <steps> — <topic> (#n)" of development's log, as
+// number => subject without the "(#n)". A step that several PRs share
+// ("D5 part 3") is not looked for here: its plan line says which part is next.
+function free_work_landed(array $subjects)
+{
+	$landed = array();
+
+	foreach ($subjects as $subject) {
+		if (preg_match('/^(\[plan:[a-z0-9-]+\].*?)\s*\(#(\d+)\)\s*$/', (string) $subject, $match)) {
+			$landed[(int) $match[2]] = $match[1];
+		}
+	}
+
+	return $landed;
 }
 
 // The number of a plan file's `priority: <n>` frontmatter line, or null
@@ -456,6 +491,10 @@ function free_work_gh_lines($path, $jq)
 
 free_work_run('git fetch -q origin development');
 
+// The plan PRs landed in the last 60 days: a step one of them names is done
+// even when its plan line does not say so yet.
+$landed = free_work_landed(free_work_run('git log --since=60.days --format=%s origin/development'));
+
 $titles = array();
 $queue = 0;
 $drafts = 0;
@@ -575,6 +614,10 @@ foreach ($files as $file => $plan) {
 			continue;
 		}
 
+		if ((strpos($id, ' ') === false) && free_work_holder($name, $id, $landed)) {
+			continue;
+		}
+
 		// "D5 part 4" is held by a PR on D5.
 		$holder = free_work_holder($name, strtok($id, ' '), $titles);
 
@@ -642,7 +685,7 @@ foreach (free_work_gh_lines('issues?state=open&labels=architect&per_page=100', '
 }
 
 echo "Queue: $queue of " . FREE_WORK_QUEUE_LIMIT . " open PRs (drafts and merge trains not counted); $drafts drafts.\n";
-echo "Free plan steps, highest priority first, [n] the plan's priority (not done, no open PR; read the step's \"After\" before giving it out):\n";
+echo "Free plan steps, highest priority first, [n] the plan's priority (not done, not landed, no open PR; read the step's \"After\" before giving it out):\n";
 echo ($free ? implode("\n", $free) : '  none') . "\n";
 if (FREE_WORK_LOW_PRIORITY_PAUSED) {
 	echo "Low priority (design templates): paused; give none out and start no new template.\n";
