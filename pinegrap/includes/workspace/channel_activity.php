@@ -536,3 +536,43 @@ function ws_channel_activity($viewer, $channel, $now)
         'repository' => function_exists('ws_channel_activity_repo') ? ws_channel_activity_repo($viewer, $channel, $now) : null,
     );
 }
+
+/**
+ * The words of the Activity tab (assets/js/workspace_channel_activity.js).
+ *
+ * @return array key => text
+ */
+function ws_channel_activity_js_strings()
+{
+    return array(
+        'act_tab_info'        => lang('Info'),
+        'act_tab_activity'    => lang('Activity'),
+        'act_project'         => ws_js_template('Project: {var:1}', 1),
+        'act_agents'          => lang('Agents'),
+        'act_asked_by'        => ws_js_template('Asked by {var:1}', 1),
+        'act_context'         => ws_js_template('{var:1} of {var:2} tokens', 2),
+        'act_requests'        => lang('Requests'),
+        'act_req_waiting'     => lang('Waiting'),
+        'act_oldest'          => ws_js_template('oldest {var:1}', 1),
+        'act_req_working'     => lang('In work'),
+        'act_req_answered'    => lang('Answered today'),
+        'act_req_failed'      => lang('Failed today'),
+        'act_waiting'         => lang('Waiting for a person'),
+        'act_waiting_none'    => lang('Nothing is waiting for a person.'),
+        'act_kind_poll'       => lang('Poll'),
+        'act_kind_question'   => lang('Question'),
+        'act_kind_approval'   => lang('Approval'),
+        'act_more'            => ws_js_template('{var:1} more', 1),
+        'act_decisions'       => lang('Decisions today'),
+        'act_decisions_none'  => lang('No decision today.'),
+        'act_all_decisions'   => lang('All decisions'),
+        'act_repository'      => lang('Repository'),
+        'act_pr_opened'       => lang('Pull requests opened'),
+        'act_pr_merged'       => lang('Merged'),
+        'act_pr_closed'       => lang('Closed'),
+        'act_checks'          => lang('Checks'),
+        'act_checks_value'    => ws_js_template('{var:1} red · {var:2} green', 2),
+        'act_usage'           => lang('Plan usage'),
+        'act_failed'          => lang('The activity could not be read.'),
+    );
+}

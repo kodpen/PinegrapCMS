@@ -59,6 +59,7 @@
     "Failed to decode image data.": "Görsel verisi çözümlenemedi.",
     "Failed to update exchange rate for currency {var:1}": "{var:1} para biriminin döviz kuru güncellenemedi",
     "Failed to update exchange rate for currency {var:1}.": "{var:1} para biriminin döviz kuru güncellenemedi.",
+    "Failed today": "Bugün başarısız olan",
     "Failed: {var:1} being retried, {var:2} left where they are after three attempts (named in the Site Log).": "Başarısız: {var:1} yeniden deneniyor, {var:2} üç denemeden sonra olduğu yerde bırakıldı (Site Günlüğünde adları var).",
     "Failing": "Sorunlu",
     "Fails when fewer days are left than": "Kalan gün şundan azsa başarısız olur",
