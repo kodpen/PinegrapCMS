@@ -21,8 +21,7 @@ description: Folded rows of a Site Settings pane (Assistants and agents, AT1): p
 - Claude: "Ready · last run 14:05" (the date too when not today), "no run yet", the first missing sentence (pill Not ready, attention), or "Switched off" (pill Off). Pinegrap AI and Voice: the same three states with their own ready and off lines.
 - Workspace agents: "3 agents · 1 not seen yet", pill "N waiting" (no attention: a waiting request is work, not a fault). MCP servers: "2 servers · 1 asks for a sign-in", pill Sign-in needed or Cannot be reached (attention), Ready when all are. Canvas templates: how many. Bulk changes: whether bulk deletes may be proposed.
 
-## What does Claude's opened row hold? (AT2, #10860)
-- The switch with one line of help, the application, the routine's address and token, the daily summary, then Try the connection beside one quiet button that opens the drawer "Set up on claude.ai" (`#pgset-ws-claude-setup`); it reads "Finish the set-up" while `ws_claude_missing()` is not empty (`ws_claude_setup_button()`).
-- The drawer (`ws_settings_claude_setup_drawer()`, added to `$pg_settings_modals` by `workspace_assistants.php`) holds the steps of `ws_claude_setup_guide()` as Bootstrap's `.stepper.pg-stepper-cards` (`ui/step-rail.md`), then a note on what a run costs and who may ask. Before, the guide was an open `<details>` "How to connect it" in the pane. Test: `tests/settings_claude_setup_drawer_test.php`.
+## Where is Claude's opened row described?
+- `ui/settings-claude-row.md`: its one column, the fold "Application and key" and its two drawers.
 
 Related: docs/memory/ui/settings-modal-overview.md, docs/memory/ui/settings-modal-save-place.md, docs/memory/plans/assistants-settings-tidy.md

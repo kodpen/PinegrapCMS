@@ -839,10 +839,6 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
                             <div class="form-field mb-5">
                                 <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_enabled" value="1" id="ws_voice_enabled" data-ws-voice-lock="' . ($locked ? '1' : '0') . '"' . ($config['enabled'] ? ' checked' : '') . (($disabled !== '') ? $disabled : ($locked ? ' disabled' : '')) . '></div>
                                 <label class="" for="ws_voice_enabled">' . h(lang('Write voice messages out as text')) . '</label>
-                                <div class="form-text">' . h(lang(array(
-                                    'string' => 'The sound of a voice message is sent to {var:1} with the key below, and the text written from it is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:2} minutes are not sent.',
-                                    'vars'   => array($config['provider'], (int) (WS_VOICE_MAX_SECONDS / 60)),
-                                ))) . '</div>
                             </div>
                             <div class="mb-5">
                                 <label class="pg-field-label" for="ws_voice_service">' . h(lang('Provider')) . '</label>
@@ -888,6 +884,7 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
                 ' . $state . '
             </div>
             <div class="card-body">
+                ' . ws_assistants_help_html('ws-voice') . '
                 <div class="row g-7">
                     <div class="lg:col-7">
                         <div class="ws-voice-connection">' . $fields . ($admin ? '' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '</div>

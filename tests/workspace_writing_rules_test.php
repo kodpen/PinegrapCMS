@@ -6,7 +6,8 @@
  * every example the lines give draws through the renderer as the lines say,
  * the lines keep their length, the agent instructions carry them (so their
  * version changes) and the guide's workspace topic lists them as its
- * writing section within the topic's size.
+ * writing section within the topic's size, and the assistants' prompts take
+ * the short form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -112,4 +113,23 @@ function test_workspace_writing_rules_guide_section()
 
 	pg_assert_true(strlen($text) <= $sizes['topic'], 'the topic holds ' . strlen($text) . ' bytes');
 	pg_assert_true(is_string(pg_agent_guide_topic_text($registry, 'workspace', array('workspace'), 'writing')), 'the section reads alone');
+}
+
+// The assistants' prompts (Pinegrap AI, its MCP answers, Claude's routine)
+// say how a message is written with the short form, not a sentence of their own.
+function test_workspace_writing_rules_assistant_prompts()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php');
+
+	foreach (array('ws_ai_system_prompt', 'ws_mcp_ask_system_prompt', 'ws_claude_routine_text') as $function) {
+		$reflection = new ReflectionFunction($function);
+		$lines = file($reflection->getFileName());
+		$source = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+		pg_assert_contains('ws_writing_rules_short()', $source, $function . ' takes the short form');
+		pg_assert_false(strpos($source, 'Markdown is shown') !== false, $function . ' keeps no sentence of its own');
+	}
+
+	pg_assert_contains(ws_writing_rules_short(), ws_claude_routine_text('https://example.com', ''), 'the routine carries the short form');
 }

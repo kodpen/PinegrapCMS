@@ -75,6 +75,7 @@ function pg_contact_holders()
         'privacy_requests'             => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'whatsapp_outbox'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'whatsapp_inbox'               => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        'feedback_responses'           => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
 

@@ -3561,6 +3561,8 @@ function ws_ai_variant_attributes_guide()
  */
 function ws_ai_system_prompt($row, $asker, $readable)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
+
     $note = ((int) ($row['note_id'] ?? 0) > 0);
     $task = ((int) ($row['task_id'] ?? 0) > 0);
     $name = ws_person_name($asker['id']);
@@ -3576,7 +3578,7 @@ function ws_ai_system_prompt($row, $asker, $readable)
         '- Records of these kinds can be looked up with search_records and read with read_record: '
             . (empty($readable) ? 'none' : implode(', ', array_keys($readable))) . '. Tasks are read with read_task.',
         '- Finish with one call of answer, or of fail when you cannot do the request.',
-        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings, do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
+        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. ' . ws_writing_rules_short() . ' Do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
         '- Mention people as <@user:ID> and records as tags such as <#order:ID>, <#product:ID> or <#task:ID>. A tag is shown with its name, so do not write the name again next to it. Use only IDs you have read; never make one up.',
         '- ' . ws_message_ref_agent_rule() . ' A message\'s id is the first number of its line in the context.',
         '- When the answer holds figures that follow from other figures (totals, sums, differences, shares, percentages), do not work them out yourself: the site does. In a Markdown table a cell that starts with = is a formula: columns are letters, rows are numbers, the header is row 1 (=B2*C2, =SUM(D2:D5)). Or use a ```hesap block: one value a line, "Name = expression"; a later line may use an earlier name (Total = Rent + Dues). Both know + - * / ^, brackets, percentages (18%), SUM, AVERAGE, MIN, MAX, COUNT, ROUND(x; places) and ABS; arguments are separated by ;. Write the figures you were given as they are.',
@@ -5186,7 +5188,6 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
     $admin = ((int) $viewer['role'] === 0);
     $app = ws_ai_app();
     $missing = ws_ai_missing();
-    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $disabled = $admin ? '' : ' disabled';
     $claude_app = (int) ws_claude_config()['app_id'];
     $dialog = ($form !== null);
@@ -5274,35 +5275,6 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         $recent = '<li class="pg-card-inner-row pg-text-meta">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
     }
 
-    $steps = array(
-        array(
-            lang('An application for Pinegrap AI'),
-            lang('Press Create Pinegrap AI\'s key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude\'s, and choose it under Use another application.'),
-            '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
-        ),
-        array(
-            lang('The licence key'),
-            lang('Enter the subscription key of your Pinegrap Premium licence under Site Settings › General › Software. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear" aria-hidden="true"></i>' . h(lang('Site Settings › General › Software')) . '</a>',
-        ),
-        array(
-            lang('Try it'),
-            lang('Try the connection here, then write @ai in a channel. The eye on the request means Pinegrap AI has taken it; the answer comes under the request, usually within a minute.'),
-            '',
-        ),
-    );
-
-    $guide = '';
-
-    foreach ($steps as $step) {
-        $guide .= '
-            <li class="ws-claude-step">
-                <div class="pg-field-label">' . h($step[0]) . '</div>
-                <div class="pg-text-2 fg-secondary mb-3">' . h($step[1]) . '</div>
-                ' . $step[2] . '
-            </li>';
-    }
-
     // Pinegrap AI's key, for an administrator only: made here while no
     // application row is linked, otherwise named, with whether it can sign
     // in. A key made here has no secret, so there is nothing to show once.
@@ -5347,6 +5319,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
 
     return $head . '
             <div class="card-body">
+                ' . ws_assistants_help_html('ws-ai') . '
                 <div class="row g-7">
                     <div class="lg:col-7">
                         ' . $key_block . '
@@ -5356,7 +5329,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
                             <div class="d-flex align-items-start gap-3">
                                 <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled" aria-describedby="ws_ai_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
                                 <div><label class="pg-text-2" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
-                                <div class="pg-field-help" id="ws_ai_enabled-help">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div></div>
+                                <div class="pg-field-help" id="ws_ai_enabled-help">' . h(lang('What is written in a channel where Pinegrap AI is asked is sent to the model at ai.pinegrap.com. Public channels are open to it, private ones only when their manager allows it.')) . '</div></div>
                             </div>
                             <details class="ws-agset-section ws-agset-advanced">
                                 <summary class="pg-group-label">' . h(lang('Use another application')) . '</summary>
@@ -5369,16 +5342,8 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
                                 </div>
                             </details>
-                            <div class="ws-agset-section">
-                                <div class="pg-field-label">' . h(lang('Licence')) . '</div>
-                                <div class="pg-field-help mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Site Settings › General › Software')) . '</a></div>
-                            </div>
                             ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         ' . ($dialog ? '</div>' : '</form>') . '
-                        <details class="ws-agset-section ws-agset-advanced ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
-                            <summary class="pg-group-label">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-4">' . $guide . '</ol>
-                        </details>
                     </div>
                     <div class="lg:col-5">
                         <div class="ws-claude-status">

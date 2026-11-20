@@ -251,6 +251,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_problems();       // 11.0.259
 	upgrade_2026_11_0_privacy_requests();        // 11.0.260
 	upgrade_2026_11_0_marketplace_step_unit();   // 11.0.261
+	upgrade_2026_11_0_feedback_surveys();        // 11.0.263
 
 }
 
@@ -8604,5 +8605,85 @@ function upgrade_2026_11_0_privacy_requests() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Privacy centre: requests about personal data are kept with their 30 days and their answer.');
+
+}
+
+// Satisfaction surveys (2026.11.0, 11.0.263; includes/fn/feedback.php).
+//
+// feedback_surveys holds a survey's settings: its kind (1 NPS, 2 CSAT,
+// 3 effort), the touchpoint key that sends it, the filter, delay, channel and
+// texts as JSON, the people who follow a low score up; a new survey is off
+// (enabled 0) and one with answers is archived, never deleted.
+// feedback_responses is one row per sent survey: whom it went to (contact,
+// the SHA-1 of the folded address or number, the recipient), the record and
+// staff member it is about, its state and times, the hash of its answer
+// link, the score with its band, the comment and extra answers, "Don't ask
+// me again" (stopped) and the follow-up. token_hash is NULL until the link
+// is made (the token signs the row id, so it is written after the insert)
+// and is unique. No column is added to an existing table.
+function upgrade_2026_11_0_feedback_surveys() {
+
+	install_create_table('feedback_surveys', "CREATE TABLE feedback_surveys (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name                VARCHAR(150) NOT NULL DEFAULT '',
+		kind                TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		touchpoint          VARCHAR(30) NOT NULL DEFAULT '',
+		filter              TEXT NULL,
+		delay_minutes       INT UNSIGNED NOT NULL DEFAULT 0,
+		channel             VARCHAR(10) NOT NULL DEFAULT '',
+		purpose             TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fallback_user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		escalation_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		ws_channel_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		review_invite       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		texts               TEXT NULL,
+		enabled             TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		archived_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		last_periodic_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_enabled_touchpoint (enabled, touchpoint)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('feedback_responses', "CREATE TABLE feedback_responses (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		survey_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		person_hash    CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		recipient      VARCHAR(190) NOT NULL DEFAULT '',
+		record_type    VARCHAR(20) NOT NULL DEFAULT '',
+		record_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		subject_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		staff_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		channel        VARCHAR(10) NOT NULL DEFAULT '',
+		status         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		due_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		answered_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		token_hash     CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		score          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		band           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		comment        TEXT NULL,
+		answers        TEXT NULL,
+		stopped        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		owner_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		task_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		escalated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		outcome        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_token_hash (token_hash),
+		KEY idx_person_created (person_hash, created_at),
+		KEY idx_status_due (status, due_at),
+		KEY idx_survey_answered (survey_id, answered_at),
+		KEY idx_record (record_type, record_id),
+		KEY idx_contact (contact_id),
+		KEY idx_staff_answered (staff_user_id, answered_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Communication: the tables of satisfaction surveys (surveys and their answers) were added; nothing is sent until a survey is made and switched on.');
 
 }

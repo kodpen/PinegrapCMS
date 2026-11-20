@@ -1411,6 +1411,7 @@
     "Open Workspace settings": "Workspace ayarlarını aç",
     "Open a Till": "Kasa Aç",
     "Open a Workspace follow-up for each quote announced": "Bildirilen her teklif için Çalışma Alanında takip aç",
+    "Open a canvas from Files in the image editor and choose Save as template in the save menu.": "Dosyalar'dan bir tuvali görsel düzenleyicide açın ve kaydet menüsünde Şablon olarak kaydet'i seçin.",
     "Open a card at {var:1} for each ticked account?": "İşaretli her cari için {var:1} tarafında bir kart açılsın mı?",
     "Open a card for this account at {var:1}?": "Bu cari için {var:1} tarafında bir kart açılsın mı?",
     "Open a category or a maker's shop, or search, sort and filter everything at once.": "Bir kategoriyi ya da bir üreticinin dükkânını açın veya her şeyi tek seferde arayın, sıralayın ve süzün.",

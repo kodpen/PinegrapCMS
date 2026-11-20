@@ -77,10 +77,9 @@ function ws_canvas_templates_settings_card($viewer)
                     </div>';
     }
 
-    $body = '
-                    <p class="small fg-secondary">' . h(lang('Canvases marked with Save as template in the image editor. An agent lists them and makes a canvas from one, giving the words and pictures of its named layers. Untick one and save to take it off the list.')) . '</p>'
+    $body = ws_assistants_help_html('ws-canvas-templates')
         . (($items !== '') ? $items : '
-                    <p class="small fg-secondary mb-0">' . h(lang('No templates yet: open a canvas from Files in the image editor and choose Save as template in the save menu.')) . '</p>');
+                    <p class="small fg-secondary mb-0">' . h(lang('No templates yet.')) . '</p>');
 
     return '
     <div id="pgset-ws-canvas-templates" class="pg-set-card">

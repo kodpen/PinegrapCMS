@@ -6,7 +6,8 @@ description: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of
 ## Which steps are there?
 - AT1 (M) done #10807: the folded rows (`ui/settings-fold-rows.md`), features T1, T2, T5, T6.
 - AT2 (M) done #10860: Claude's row and its set-up drawer (`includes/workspace/claude.php`'s card). Feature: T3.
-- AT3 (S) after AT1, beside AT2: the help lines of Pinegrap AI, Agents, MCP servers, Voice and Canvas templates; texts with `php tools/tr_add.php`. Features: T4, T7.
+- AT2b (M) done #10898: Claude's opened row part by part (one column, the fold Application and key, the drawer The latest requests; `ui/settings-claude-row.md`). Feature: T3.
+- AT3 (S) done #10864: the help lines of Pinegrap AI, Agents, MCP servers, Voice and Canvas templates; texts with `php tools/tr_add.php`. Features: T4, T7.
 - AT4 (S) close-out: the T numbers checked against the code with their PRs; the four Workspace settings files corrected; this plan deleted.
 
 ## Which steps run side by side?

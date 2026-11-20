@@ -807,7 +807,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     $now = time();
     // The dialog's rows tell each agent's state as the channels do (PF2).
     $requests = ($form !== null) ? ws_agent_request_counts($agents, $now) : array();
-    $intro = h(lang('Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.'));
+    $intro = ws_assistants_help_html('ws-agents');
 
     foreach ($agents as $agent) {
         $door_error = ws_agent_door_error_shown($agent);
@@ -828,7 +828,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     }
 
     if ($list === '') {
-        $list = '<p class="small fg-secondary mb-0">' . h(lang('No agent yet. An agent is called by its handle in the channels it is added to.')) . '</p>';
+        $list = '<p class="small fg-secondary mb-0">' . h(lang('No agent yet')) . '</p>';
     }
 
     // A key of its own: "Agents" is the real-estate template's estate agents,
@@ -842,7 +842,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
                 ' . ($admin ? '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-agent-0" aria-controls="pgset-ws-agent-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add an agent')) . '</button>' : '') . '
             </div>
             <div class="card-body">
-                <p class="small fg-secondary">' . $intro . '</p>
+                ' . $intro . '
                 ' . (empty($agents) ? $list : '<div class="pg-card-inner ws-agset-list">' . $list . '</div>') . '
             </div>
         </div>
@@ -853,7 +853,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
         <div class="card mt-7" id="ws-agents">
             <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Workspace agents')) . '</h2></div>
             <div class="card-body">
-                <p class="small fg-secondary">' . $intro . '</p>
+                ' . $intro . '
                 ' . $list . '
                 ' . ($admin ? '<details class="mt-5"><summary class="small fw-semibold">' . h(lang('Add an agent')) . '</summary>' . ws_agents_settings_form($self_url, null, $apps, $admin) . '</details>' : '') . '
             </div>
@@ -880,7 +880,11 @@ function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_di
     $foot = ws_agents_settings_buttons($agent, $admin, $form);
 
     if (!$agent) {
-        return pg_settings_drawer('pgset-ws-agent-0', h(lang('Add an agent')), ws_agents_settings_form('', null, $apps, $admin, $form), $in_dialog, $foot);
+        // Application Access makes the agent's application; its agent starting
+        // point makes the agent with it.
+        $start = '<div class="ws-agset-section mt-0"><a class="pg-button pg-button-quiet pg-button-sm" href="api_settings.php"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Start from an application')) . '</a></div>';
+
+        return pg_settings_drawer('pgset-ws-agent-0', h(lang('Add an agent')), $start . ws_agents_settings_form('', null, $apps, $admin, $form), $in_dialog, $foot);
     }
 
     $now = time();

@@ -548,6 +548,8 @@ function ws_mcp_ask_state($server, $asker, $parts, $request_text, $on_task)
  */
 function ws_mcp_ask_system_prompt($server, $asker, $on_task = false)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
+
     $label = ($server['name'] !== '') ? '"' . $server['name'] . '" (' . ws_mcp_host($server['url']) . ')' : ws_mcp_host($server['url']);
     $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
 
@@ -565,7 +567,7 @@ function ws_mcp_ask_system_prompt($server, $asker, $on_task = false)
         '- A tool marked [needs approval] changes something on the service. Calling it does not run it: the call waits under your answer until the person who asked approves it, and then runs with their own account. Call one only when the request asks for that change, at most ' . WS_MCP_ASK_MAX_PROPOSED . ' of them. Never write that you changed, created or deleted anything on the service: say what waits for their approval.',
         '- The other tools only read.',
         '- Finish with one call of answer, or of fail when the tools cannot answer the request.',
-        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings and do not repeat the request. Give the links the service answered with where they help.',
+        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. ' . ws_writing_rules_short() . ' Do not repeat the request. Give the links the service answered with where they help.',
     );
 
     $instructions = trim((string) $server['instructions']);

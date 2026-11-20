@@ -61,6 +61,7 @@
 - customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
 - dashboard-assistant-agents.md: Plan (owner 2026-11-21): the dashboard's Assistant card with Claude off: a notice at the top, the agent chat, questions and proposals kept, a short note when no agent is connected; one step, DA1
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
+- delivery-tower-screens-label.md: Plan delivery-tower, step DT4b: the Create Label chooser on the order screen for an address whose method names no carrier; its parts, the carriers' order, the label path's one argument
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 - delivery-tower.md: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
@@ -91,6 +92,11 @@
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
 - kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
+- launch-journey-features.md: Plan launch-journey, features L1 to L8: purpose, the step catalogue and its sources, one click, the go-live check, the first week, a team member's path and hints, the agency summary, API and MCP
+- launch-journey-screens-later.md: Plan launch-journey, how its later screens are put together (SJ4, SJ5): the First week and Start here cards, the hint line, the agency summary drawer and the customer's page
+- launch-journey-screens.md: Plan launch-journey, how its first screens are put together (SJ2, SJ3): the set-up card on the dashboard, the purpose choice as radio cards, the go-live check
+- launch-journey-steps.md: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the store, the set-up card and purpose, the go-live check, the first week and team paths, the agency summary, API, close-out
+- launch-journey.md: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; SJ1a to SJ7
 - lead-journey-features.md: Plan lead-journey, features J1 to J15: the browser key and the tie, the journey, the interest and fit scores, interests, hot and returning alerts, lead sources, KVKK, API
 - lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
@@ -121,6 +127,10 @@
 - privacy-centre-screens.md: Plan privacy-centre, how the request box's screens are put together (KV4): the Requests view of the Privacy centre, a request's drawer with tabs, "Prepare the answer" as numbered steps
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
+- prototype-approval-features.md: Plan prototype-approval, features A1 to A8: the link asking approval, the sealed verdict, older version, round two, publish rule, mails, the designer's side, events and API
+- prototype-approval-screens.md: Plan prototype-approval, how its parts sit: the Share prototype dialog's approval fields, the viewer's Review box and round two, the designer's Comments list and the Publish sheet's held row
+- prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
+- prototype-approval.md: Plan (owner 2026-11-20, poll 205): what prototype sharing lacks for a customer's sign-off: Approve or Request changes per page sealed to the draft, round two, publish rule, mails, events; PA1a to PA7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
@@ -139,6 +149,16 @@
 - supplier-feed-steps.md: Plan supplier-feed, steps SF1 to SF7: tables and readers, the feed screen and mapping, the sync, drafts and variants, several suppliers and rates, cost link and API, close-out
 - supplier-feed.md: Plan (owner 2026-11-20, poll 168): the store pulls its suppliers' XML, CSV or JSON lists and keeps price and stock in step hourly; price rules, drafts, several suppliers, cost link; SF1 to SF7
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
+- volunteer-shifts-features.md: Plan volunteer-shifts, features G1 to G16: programmes, profiles from the form, documents, shifts and roles, sign-up, waitlist, swaps, the unfilled call, check-in, hours, certificate, report
+- volunteer-shifts-screens-own.md: Plan volunteer-shifts, the volunteer's own pages (VS4, VS6, VS7) in the site's look and the scan page on a phone; the words the screens use
+- volunteer-shifts-screens.md: Plan volunteer-shifts, how its panel screens are put together (VS2, VS3, VS6): programmes, a programme in tabs with Set-up as folded rows, applications, volunteers, the shift board, hours
+- volunteer-shifts-steps.md: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, programmes, shifts and board, sign-up, calls, check-in and hours, certificate and report, API, close-out
+- volunteer-shifts.md: Plan (owner 2026-11-20, poll 202): volunteer programmes: profiles, dated documents, shifts with roles, sign-up and waitlist, the unfilled call, QR check-in, hours, certificate; VS1a to VS9
+- walk-in-queue-features.md: Plan walk-in-queue, features W1 to W14: places and desks, taking a number, remote join, the person's page, notices, calling, the order rule, the estimate, the lobby screen, report
+- walk-in-queue-screens-public.md: Plan walk-in-queue, the screens outside the panel menu (WQ3, WQ5, WQ6): the number page and the person's page in the site's look, the lobby board and the kiosk on the menu-less shell
+- walk-in-queue-screens.md: Plan walk-in-queue, how its panel screens are put together (WQ2, WQ4, WQ7): the places list, a place in tabs with Set-up as folded rows, desks, the desk's now-calling block
+- walk-in-queue-steps.md: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, places and the poster, the public page and notices, the desk, priority and bookings, lobby and kiosk, report, API, close-out
+- walk-in-queue.md: Plan (owner 2026-11-20, poll 201): a walk-in queue: places and desks, a number by QR, site or kiosk, the person's page, SMS and WhatsApp, Call next, priority, bookings, the estimate; WQ1a to WQ9
 - website-features-rules.md: The rules every step of the nine website-side plans keeps (plans/website-features.md): fewest existing files, schema, switches, numbered features in a step's PR body, looks, texts, tests
 - website-features-shared-files.md: The existing files that steps of more than one website-side plan touch (plans/website-features.md), each with its steps; two steps on the same file are never open together
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in

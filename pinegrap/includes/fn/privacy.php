@@ -1011,6 +1011,16 @@ function pg_privacy_erase_tables()
             'manage_token' => '',
             'user_id'      => 0,
         )),
+        // A satisfaction survey's answer keeps its score, band and dates for
+        // the report; whom it went to and what they wrote go. A send still
+        // queued is cancelled first (_pg_privacy_erase_apply_feedback_responses()).
+        'feedback_responses' => array('find' => array('contact_id' => 'contact_ids', 'person_hash' => 'feedback_hashes'), 'action' => 'anonymise', 'fields' => array(
+            'contact_id'  => 0,
+            'person_hash' => '',
+            'recipient'   => '',
+            'comment'     => null,
+            'answers'     => null,
+        )),
         // A member's course progress (lessons done, first open, completion)
         // goes whole; the course and its lessons stay.
         'course_progress'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1137,6 +1147,7 @@ function pg_privacy_erase_labels()
         'wishlist_items'               => lang('Favourites'),
         'stock_notify'                 => lang('Back-in-stock requests'),
         'bookings'                     => lang('Appointment bookings'),
+        'feedback_responses'           => lang('Satisfaction survey answers'),
         'course_progress'              => lang('Course progress'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
@@ -1221,7 +1232,11 @@ function pg_privacy_erase_set(array $fields, $name, $token)
             $value = (string) $token;
         }
 
-        $set[] = '`' . $column . '` = ' . (is_int($value) ? (string) $value : "'" . e((string) $value) . "'");
+        if ($value === null) {
+            $set[] = '`' . $column . '` = NULL';
+        } else {
+            $set[] = '`' . $column . '` = ' . (is_int($value) ? (string) $value : "'" . e((string) $value) . "'");
+        }
     }
 
     return implode(', ', $set);
@@ -1238,7 +1253,8 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
- *                wtable_row_ids, wtable_bin_ids, application_entry_ids
+ *                wtable_row_ids, wtable_bin_ids, application_entry_ids,
+ *                feedback_hashes
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -1264,6 +1280,7 @@ function pg_privacy_erase_scope(array $found)
         'wtable_bin_ids'   => array(),
         'application_entry_ids' => array(),
         'request_ids'      => array(),
+        'feedback_hashes'  => array(),
     );
 
     // A counter sale keeps the cashier in user_id and its buyer in contact_id,
@@ -1376,6 +1393,10 @@ function pg_privacy_erase_scope(array $found)
     }
 
     $scope['phones'] = pg_privacy_export_phones($rows);
+
+    // Satisfaction survey answers are found by the hash of the address or
+    // number they went to, as well as by the contact.
+    $scope['feedback_hashes'] = pg_feedback_person_hashes(array_merge($scope['emails'], $scope['phones']));
 
     if ($scope['order_ids'] && pg_schema_has('order_returns', 'order_id')) {
         $scope['return_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM order_returns WHERE " . _pg_privacy_export_in('order_id', $scope['order_ids'])));
@@ -1936,6 +1957,19 @@ function _pg_privacy_erase_apply_application_reviewers($where, array $fields, ar
     db("UPDATE application_reviewers SET token_hash = NULL, revoked_at = IF(revoked_at = 0, '" . time() . "', revoked_at) WHERE " . $where);
 
     _pg_privacy_erase_write('application_reviewers', $where, $fields, $name);
+}
+
+/**
+ * A satisfaction survey still queued for the person is cancelled (status 3)
+ * while the person hash still finds it, so the job never sends it to an
+ * empty recipient; then the person and what they wrote go, the score, band
+ * and dates stay.
+ */
+function _pg_privacy_erase_apply_feedback_responses($where, array $fields, array $scope, $name)
+{
+    db("UPDATE feedback_responses SET status = 3 WHERE (status = 0) AND (" . $where . ")");
+
+    _pg_privacy_erase_write('feedback_responses', $where, $fields, $name);
 }
 
 /**

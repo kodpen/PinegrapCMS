@@ -268,3 +268,49 @@ function test_free_work_plan_order_by_priority_then_date()
 	pg_assert_same('2026-10-19', free_work_first_date('Plan (approved 2026-10-19; started 2026-11-15)'));
 	pg_assert_same('', free_work_first_date('Census'));
 }
+
+function test_free_work_holder_matches_a_steps_file_tag()
+{
+	$titles = array(
+		10860 => '[plan:assistants-settings-tidy-steps] AT2 — Claude\'s row and its set-up drawer',
+		10822 => '[plan:ai-guide-steps-2] AG9 — the budget',
+		10863 => '[plan:channel-documents-steps] KD2 — the card and its windows',
+	);
+
+	pg_assert_same(10860, free_work_holder('assistants-settings-tidy', 'AT2', $titles));
+	pg_assert_same(10860, free_work_holder('assistants-settings-tidy-steps', 'AT2', $titles));
+	pg_assert_same(10822, free_work_holder('ai-guide', 'AG9', $titles));
+	pg_assert_same(10863, free_work_holder('channel-documents', 'KD2', $titles));
+	pg_assert_same(0, free_work_holder('assistants-settings', 'AT2', $titles));
+	pg_assert_same(0, free_work_holder('channel-documents', 'KD3', $titles));
+}
+
+function test_free_work_landed_steps_from_the_log()
+{
+	$landed = free_work_landed(array(
+		'[plan:channel-documents-steps] KD3 — the agent\'s name (#10797)',
+		'[iş] Counter sale: the stock limit counts the sale\'s location (#10848)',
+		'Merge train 20261120-2105',
+		'[plan:ad-conversions] SC2 — Meta Conversions API (#10812)',
+	));
+
+	pg_assert_same(array(10797 => '[plan:channel-documents-steps] KD3 — the agent\'s name', 10812 => '[plan:ad-conversions] SC2 — Meta Conversions API'), $landed);
+	pg_assert_same(10797, free_work_holder('channel-documents', 'KD3', $landed));
+	pg_assert_same(0, free_work_holder('channel-documents', 'KD3b', $landed));
+	pg_assert_same(10812, free_work_holder('ad-conversions', 'SC2', $landed));
+}
+
+function test_free_work_steps_skip_notes_on_a_step()
+{
+	$text = "## Which steps are there?\n- CX9 AI providers, after CX2 has landed.\n- CX9 done in two: CX9a #10470, CX9b #10493.\n"
+		. "- P9 (M, the next open version, #3205) Remove the api2 client.\n- P9 keeps the switch line.\n- P9 tests: `output_test.php`.\n"
+		. "- OS1 census: `plans/office-own-code-os1-census.md`.\n- AG13 (M) The report.\n  - AG13b (the report) follows in its own PR.\n"
+		. "- 4 (done, #7501): `tours.php`.\n";
+
+	$steps = free_work_steps($text);
+
+	pg_assert_same(array('CX9', 'P9', 'AG13', '4'), array_column($steps, 0));
+	pg_assert_true(free_work_step_done($steps[0][1]));
+	pg_assert_false(free_work_step_done($steps[1][1]));
+	pg_assert_false(free_work_step_done($steps[2][1]));
+}

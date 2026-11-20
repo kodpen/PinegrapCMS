@@ -304,6 +304,58 @@ function pg_feedback_person_hash($person)
 }
 
 /**
+ * The person hashes of a list of addresses and numbers, each once and in
+ * the order first met; an empty or unreadable one is left out. The
+ * personal data export and erasure find a person's answers by them. Pure.
+ *
+ * @param array $people e-mail addresses and phone numbers
+ * @return array
+ */
+function pg_feedback_person_hashes(array $people)
+{
+    $hashes = array();
+
+    foreach ($people as $person) {
+        $hash = pg_feedback_person_hash($person);
+
+        if (($hash !== '') && !in_array($hash, $hashes, true)) {
+            $hashes[] = $hash;
+        }
+    }
+
+    return $hashes;
+}
+
+/**
+ * One feedback_responses row as the personal data export gives it: the
+ * score only once the survey was answered (0 is an NPS answer, so an
+ * unanswered row's 0 is not one), the extra answers decoded from JSON
+ * (null when unreadable) and the ids and times as numbers. Pure.
+ *
+ * @param array $row selected columns of feedback_responses
+ * @return array
+ */
+function pg_feedback_export_row(array $row)
+{
+    foreach (array('id', 'record_id', 'status', 'sent_at', 'answered_at', 'band', 'stopped', 'outcome', 'created_at', 'kind') as $column) {
+        if (isset($row[$column])) {
+            $row[$column] = (int) $row[$column];
+        }
+    }
+
+    if (array_key_exists('score', $row)) {
+        $row['score'] = empty($row['answered_at']) ? null : (int) $row['score'];
+    }
+
+    if (array_key_exists('answers', $row)) {
+        $answers = is_string($row['answers']) ? json_decode($row['answers'], true) : null;
+        $row['answers'] = is_array($answers) ? $answers : null;
+    }
+
+    return $row;
+}
+
+/**
  * Why a person is not asked now, '' when they may be. In order: 'none' (no
  * address or number), 'staff' (a staff account's address), 'test' (a listed
  * test address), 'stopped' ("Don't ask me again" was said once, for good),

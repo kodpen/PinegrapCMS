@@ -17,7 +17,7 @@ priority: 6
 ## What binds it?
 - A visit is tied only with a yes to the cookie notice's marketing category; refused, unanswered or notice off: nothing is tied, the totals stay as today.
 - A new cookie gets its catalogue row (`platform/cookie-consent-new-cookies.md`); no cookie before the yes.
-- Ties start from the person's own act: a form sent, a newsletter yes, a sign-in, a click through a campaign e-mail's tracking code. Never from an IP or a guess.
+- Ties start from the person's own act: a form sent, a newsletter yes, a sign-in, an order, a campaign e-mail's web version opened by its own code. Never from an IP or a guess.
 - `visitors` writes and its monthly split are not slowed: the journey is its own store, written after the response where possible.
 - The person's export and erase cover the journey; staff are never scored.
 - Events carry the contact id, score and reason, never the pages seen.
@@ -26,7 +26,9 @@ priority: 6
 - Schema: four new tables, `lead_browsers` (a consenting browser and its contact), `lead_visits` (that browser's visits), `contact_journey` and `contact_scores`; no column on `visitors` (partitioned) or `contacts`. Asked of the owner in poll 194 (message 10747); LJ1b waits for the yes, and the architect writes the columns into the schema decisions list.
 - Consent: the marketing category (poll 194 asks it so); the key is written only with the yes and deleted when it is taken back (J1).
 - Topics: the page's folder, on a product page the product's category; no new field (J9).
-- E-mail clicks: only the existing tracking code; no new signed link (J2).
+- E-mail clicks (2026-11-21, channel message 11218): the tie is the web version opened by its per-recipient code (`view_email_campaign.php?r=`). The `?t=` code is the same for every recipient: it names the visit's campaign and ties nobody. No per-recipient click code is added.
+- Orders tie in `submit_order.php` after `pg_order_complete()`. A booking makes no tie: it writes no contact and nothing is matched by e-mail.
+- Erase, export and the inventory rows come with LJ2, started first when LJ1b lands.
 - The keep period, 13 months as a setting, and tying back only visits after the consent: poll 194 (J4).
 
 ## What is built?

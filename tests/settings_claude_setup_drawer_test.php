@@ -50,13 +50,18 @@ function test_settings_claude_setup_drawer_button()
 
 function test_settings_claude_setup_drawer_steps()
 {
-	$body = ws_claude_setup_drawer_html('<li class="stepper-item active">x</li>');
+	$body = ws_claude_setup_drawer_html('<li class="stepper-item active">x</li>', array('The routine\'s address is missing.'), ws_claude_how_it_works(array('Orders')));
 	pg_assert_contains('<ol class="stepper pg-stepper-cards ws-claude-setup-steps">', $body, 'numbered steps, Bootstrap\'s stepper');
 	pg_assert_contains('<li class="stepper-item active">x</li>', $body, 'the steps inside');
 	pg_assert_contains(h(lang('Each run counts against the routine owner\'s daily allowance on claude.ai.')), $body, 'the cost moved here from the switch');
+	pg_assert_contains(h(lang('How does this work?')), $body, 'what the row says in one line is said in full here');
+	pg_assert_contains('<ul class="pg-text-2 mb-5 ws-claude-missing"><li>' . h('The routine\'s address is missing.') . '</li></ul>', $body, 'the whole list of what is missing stands at the top');
+	pg_assert_true(strpos($body, 'ws-claude-missing') < strpos($body, 'ws-claude-setup-steps'), 'before the steps');
+	pg_assert_false(strpos(ws_claude_setup_drawer_html('x'), 'ws-claude-missing') !== false, 'nothing missing, no list');
 
 	$guide = settings_claude_setup_drawer_test_function('includes/workspace/claude_setup.php', 'ws_claude_setup_guide');
 	pg_assert_contains('<li class="stepper-item active ws-claude-step">', $guide, 'each step a stepper item; the number is the counter');
+	pg_assert_true((bool) preg_match('/<li class="stepper-item active ws-claude-step">\s*<div class="ws-claude-step-body">/', $guide), 'one child an item, or the grid puts the text into the number\'s column');
 
 	$drawer = settings_claude_setup_drawer_test_function('includes/workspace/claude.php', 'ws_settings_claude_setup_drawer');
 	pg_assert_contains("pg_settings_drawer('pgset-ws-claude-setup', h(lang('Set up on claude.ai'))", $drawer, 'the drawer and its title');
@@ -64,7 +69,8 @@ function test_settings_claude_setup_drawer_steps()
 
 function test_settings_claude_setup_drawer_row()
 {
-	$card = settings_claude_setup_drawer_test_function('includes/workspace/claude.php', 'ws_claude_settings_card');
+	$card = settings_claude_setup_drawer_test_function('includes/workspace/claude.php', 'ws_claude_settings_card')
+		. settings_claude_setup_drawer_test_function('includes/workspace/claude.php', 'ws_claude_row_html');
 	pg_assert_false(strpos($card, 'ws-claude-guide') !== false, 'the guide left the row');
 	pg_assert_false(strpos($card, 'ws_claude_setup_guide(') !== false, 'the row draws no step');
 	pg_assert_contains('ws_claude_setup_button($missing)', $card, 'the one button that opens it');
