@@ -65,7 +65,8 @@ function pg_order_lines_sql()
             order_items.recurring_start_date,
             order_items.recurrence_number,
             order_items.add_watcher,
-            products.id,
+            products.id," . (pg_schema_has('products', 'gives_tickets') ? "
+            products.gives_tickets," : "") . "
             products.enabled,
             products.short_description,
             products.price AS product_price,
@@ -1024,6 +1025,10 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
 
     $contact_groups = $collected['contact_groups'];
 
+    // The tickets the lines made go out in a mail of their own, after the
+    // order's confirmation: one signed link to the tickets page.
+    pg_event_tickets_order_mail($order_id, $order_number, $billing_email_address, $order['billing_first_name'], $collected['tickets']);
+
     // Private access for ever to the store's private folder.
     pg_order_complete_private_access($user_id);
 
@@ -1071,7 +1076,8 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
 
 /**
  * Runs each line's stage functions of a completed order, in line order:
- * stock and event spots, membership, folder access, gift cards, the
+ * stock and event spots, membership, folder access, gift cards, event
+ * tickets, the
  * submitted forms the product creates or updates and their watcher, comments,
  * the e-mailed page and the product_ordered campaigns.
  *
@@ -1083,7 +1089,8 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
  *                     actor; stock_source (default checkout) names the sale
  *                     on the stock moves, local_sale for a counter sale
  * @return array reward_points (summed over the lines), contact_groups (each
- *               line's product group and the membership group, once each)
+ *               line's product group and the membership group, once each),
+ *               tickets (the event tickets the lines made)
  */
 function pg_order_complete_lines($order_id, array $lines, array $order)
 {
@@ -1097,6 +1104,9 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
 
     // intialize variable to keep track of the total reward points that products should give for this order
     $reward_points = 0;
+
+    // The event tickets the lines made, for the tickets mail.
+    $tickets = 0;
 
     // The stock each product was left with by the rows above, so a product
     // that comes twice (two recipients) announces its second row from what
@@ -1139,6 +1149,9 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
 
         // Gift cards and their e-mails.
         pg_order_complete_line_gift_cards($product, $order_id, $order['created_user_id'], $actor);
+
+        // The line's event tickets, one per unit, when the switch is on.
+        $tickets += pg_event_tickets_complete_line($product, $order_id);
 
         // If this product creates/updates a submitted a form, adds a comment,
         // or emails a page, then prepare variable fields where variables can
@@ -1239,7 +1252,7 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
         pg_order_complete_line_campaigns($product, $contact_id);
     }
 
-    return array('reward_points' => $reward_points, 'contact_groups' => $contact_groups);
+    return array('reward_points' => $reward_points, 'contact_groups' => $contact_groups, 'tickets' => $tickets);
 }
 
 /**

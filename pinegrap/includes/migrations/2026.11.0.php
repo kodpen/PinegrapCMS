@@ -234,6 +234,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
+	upgrade_2026_11_0_event_tickets();           // 11.0.246
 
 }
 
@@ -7856,5 +7857,50 @@ function upgrade_2026_11_0_ws_calls() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
+
+}
+
+// Event tickets (11.0.246, includes/fn/event_tickets.php): one event_ticket
+// row per unit of a completed order line that gives tickets (a calendar
+// event's reservation, or a product marked "Gives tickets"), and that mark
+// on the product. A ticket keeps its order line and unit (unique, so a line
+// is never ticketed twice), the product, the event and its date, the salt
+// its code is drawn from under the site's key and only the code's hash
+// (unique, the door's lookup), and its state: valid, used (when, by whom)
+// or void (when). products.gives_tickets is added in place where the server
+// allows it, so a large catalogue is not copied. No backfill: orders
+// completed before the switch is on have no tickets.
+function upgrade_2026_11_0_event_tickets() {
+
+	install_create_table('event_ticket', "CREATE TABLE event_ticket (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		unit              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		product_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		calendar_event_id INT UNSIGNED NOT NULL DEFAULT 0,
+		recurrence_number INT UNSIGNED NOT NULL DEFAULT 0,
+		code_salt         CHAR(32) CHARACTER SET ascii NOT NULL DEFAULT '',
+		code_hash         CHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
+		state             ENUM('valid','used','void') NOT NULL DEFAULT 'valid',
+		used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		used_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		voided_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_line_unit (order_item_id, unit),
+		UNIQUE KEY idx_code (code_hash),
+		KEY idx_order (order_id),
+		KEY idx_event (calendar_event_id, recurrence_number, state),
+		KEY idx_product (product_id, state)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (!install_add_columns_instant('products', array('gives_tickets' => "TINYINT UNSIGNED NOT NULL DEFAULT 0"))) {
+
+		install_add_column('products', 'gives_tickets', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	}
+
+	install_note('Event tickets: the table for tickets with a QR code is ready; nothing changes on the site until Tickets is switched on in Site Settings, Features.');
 
 }
