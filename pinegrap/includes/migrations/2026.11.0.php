@@ -243,6 +243,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
+	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 
 }
 
@@ -8190,5 +8191,84 @@ function upgrade_2026_11_0_stock_holds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
+
+}
+
+// The marketplace repricer's tables (2026.11.0, 11.0.256;
+// includes/fn/marketplace_pricing.php). A listing is the pair (account_id,
+// product_id), the unique key of marketplace_product_map, so a product
+// mapped again keeps its state. Money is integer minor units, 0 for none;
+// percents are hundredths of a percent; times are Unix seconds.
+//
+// marketplace_price_rules: one row per account and scope (0 the account,
+// 1 a category by product_groups.id in scope_id, 2 a brand by products.brand
+// in scope_key, which has no id). robot, step, min_margin and grow_cap are
+// read on the account's row only. No row sends the shop's price as before.
+//
+// marketplace_price_state: one row per listing: the strategy, a price and a
+// floor typed for it, the last buybox read, the robot's last price and when
+// a buybox was lost.
+//
+// marketplace_price_log: one row per price the robot or a rule set, sent or
+// only logged (try first); kept 90 days.
+function upgrade_2026_11_0_marketplace_pricing() {
+
+	install_create_table('marketplace_price_rules', "CREATE TABLE marketplace_price_rules (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		scope       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scope_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope_key   VARCHAR(100) NOT NULL DEFAULT '',
+		percent     INT NOT NULL DEFAULT 0,
+		fixed       INT NOT NULL DEFAULT 0,
+		rounding    VARCHAR(10) NOT NULL DEFAULT 'none',
+		robot       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		step        INT UNSIGNED NOT NULL DEFAULT 100,
+		min_margin  INT UNSIGNED NOT NULL DEFAULT 1000,
+		grow_cap    INT UNSIGNED NOT NULL DEFAULT 1000,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_account_scope (account_id, scope, scope_id, scope_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_state', "CREATE TABLE marketplace_price_state (
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		strategy      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		own_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		own_floor     INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_ours   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		robot_price   INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_price    INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		state         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, product_id),
+		KEY idx_account_buybox (account_id, buybox_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_log', "CREATE TABLE marketplace_price_log (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		old_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		new_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		floor         INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		currency      VARCHAR(3) NOT NULL DEFAULT '',
+		reason        VARCHAR(20) NOT NULL DEFAULT '',
+		sent          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		at            INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_listing_at (account_id, product_id, at),
+		KEY idx_account_at (account_id, at),
+		KEY idx_at (at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Marketplaces: an account can sell at its own prices by rules, never under a profit floor.');
 
 }

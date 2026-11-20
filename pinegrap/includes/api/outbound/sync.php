@@ -279,13 +279,16 @@ function mp_sync_send_batch($account, &$summary) {
 
 	}
 
+	$deferred = (isset($result['data']['deferred']) && is_array($result['data']['deferred']))
+		? array_map('intval', $result['data']['deferred']) : array();
+
+	mp_sync_record_channel_prices($account, $payload, $refused, $deferred);
+
 	// A connector that sends product by product (Merchant Center) answers at
 	// once instead of with a task: data['deferred'] names the products it did
 	// not get to (a rate limit, its time budget), which wait again without an
 	// attempt counted; data['pushed'] the ones that went through, whose
 	// mapping records the push.
-	$deferred = (isset($result['data']['deferred']) && is_array($result['data']['deferred']))
-		? array_map('intval', $result['data']['deferred']) : array();
 
 	if ($deferred) {
 
@@ -358,6 +361,41 @@ function mp_sync_send_batch($account, &$summary) {
 	mp_account_outcome($account_id, true);
 
 	return true;
+
+}
+
+// The channel prices a batch handed to the marketplace go into the price
+// history on the account's channel (marketplace:<account id>, source 'rule'),
+// so what the account sold at is kept beside the shop's own price. Only for
+// an account that sends prices and has price rules: without rules the
+// channel price is the shop's, already kept on the web channel. A product
+// the connector refused or did not get to is left out; it is recorded when
+// it goes.
+function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) {
+
+	if (empty($account['push_price']) || !mp_pricing_account_rules((int)$account['id'])) {
+
+		return 0;
+
+	}
+
+	$prices = array();
+
+	foreach ((array)$payload as $product) {
+
+		$product_id = (int) $product['product_id'];
+
+		if (isset($refused[$product_id]) || in_array($product_id, $deferred, true)) {
+
+			continue;
+
+		}
+
+		$prices[$product_id] = (int) $product['price'];
+
+	}
+
+	return mp_pricing_history_record((int)$account['id'], $prices);
 
 }
 
