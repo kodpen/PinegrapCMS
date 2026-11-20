@@ -14081,7 +14081,7 @@ const StyleDesigner = (function () {
             { __option_label: _sdT('Cream'), __option_value: 'cream', __option_id: 'thread-cream', __option_checked: '' }
         ],
         'order.return_delivery_lines': [
-            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
+            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1', __return_item_gift_card: '',
               __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
         ],
         // The rest of a week after the card's Monday: a month grid draws its
@@ -16973,7 +16973,7 @@ const StyleDesigner = (function () {
             __return_line_name: _sdT('Linen Shirt'), __return_line_qty: '1',
             __return_delivery_id: '1', __return_delivery_label: _sdT('Delivery 1'), __return_delivery_several: '',
             __return_delivery_deadline: day, __return_item_id: '1', __return_item_name: _sdT('Linen Shirt'),
-            __return_item_ordered: '2', __return_item_left: '2',
+            __return_item_ordered: '2', __return_item_left: '2', __return_item_gift_card: '',
             __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Linen Shirt'))
         };
         _sdOrderSampleMap = out;
@@ -48640,10 +48640,15 @@ const StyleDesigner = (function () {
     function _sdPartOrderReturnQtyCell() {
         var box = _sdPartWhen('__return_item_left', 'gt', '0');
         box._bindings.value = 'return_qty';
+        var gift = _sdPartWhen('__return_item_gift_card', 'not_empty');
+        gift.text = _sdT('Gift cards cannot be returned');
         var done = _sdPartWhen('__return_item_left', 'eq', '0');
         done.text = _sdT('Already in a return');
+        done._bindings.show_if_2 = '__return_item_gift_card';
+        done._bindParams.show_if_2 = { op: 'empty' };
         return _sdPartEl('td', 'text-end', _sdT('To return'), {}, [
             _sdPartEl('input', 'form-control form-control-sm text-end', _sdT('Quantity'), box),
+            _sdPartEl('span', 'small text-muted', _sdT('Gift card'), gift),
             _sdPartEl('span', 'small text-muted', _sdT('Already in a return'), done)
         ]);
     }
@@ -66276,6 +66281,7 @@ const StyleDesigner = (function () {
                 ['__return_item_name',      _sdT('Product name')],
                 ['__return_item_ordered',   _sdT('Ordered')],
                 ['__return_item_left',      _sdT('How many may go back')],
+                ['__return_item_gift_card', _sdT('Gift card (1 or empty)')],
                 ['__return_item_qty_label', _sdT('Label of the quantity box')]
             ]
         },
@@ -78101,17 +78107,31 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdProtoPlayUrl() {
+    // The tab Play opens the viewer at: the selected page when it has an
+    // address, else the first tab that has one; null when none has.
+    function _sdProtoPlayStart() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
         var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;
-        var url = page ? _pgPrototypeUrl(page) : '';
-        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
-        return url;
+        if (page && _pgPrototypeUrl(page)) return page;
+        for (var i = 0; i < _pages.length; i++) if (_pgPrototypeUrl(_pages[i])) return _pages[i];
+        return null;
     }
 
+    function _sdProtoPlayUrl() {
+        return _pgPrototypeUrl(_sdProtoPlayStart());
+    }
+
+    // Play names the page it starts from, so a selected page that has no
+    // address yet (unsaved, or not a draft) does not hide that it starts
+    // elsewhere.
     function _sdProtoPlayState() {
-        if (_sdProto.ui) _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        if (!_sdProto.ui) return;
+        var start = _sdProtoPlayStart();
+        _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+        var label = start ? _sdT('Play the prototype from {var}', start.page_name || _sdT('New Page')) : _sdT('Play the prototype from the selected page');
+        _sdProto.ui.play.title = label;
+        _sdProto.ui.play.setAttribute('aria-label', label);
     }
 
     function _sdProtoDraw(marked) {

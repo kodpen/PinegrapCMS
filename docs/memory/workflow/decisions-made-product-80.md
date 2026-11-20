@@ -1,12 +1,12 @@
 ---
 name: decisions-made-product-80
-description: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
+description: Decisions list, product part 80 (2026-11-20 on): Artifact Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 ---
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. The part before: `decisions-made-product-79.md`.
 
-## Does the Design Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
+## Does the Artifact Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - "tasarım tuvalinde gruplama gelecekti o özellik atlanmış."
 - "yerleşmiş bir vektör, nesne veya resim takip edilir olsun. yani bir vektör diğerini takip edebilsin (bir nesne yol olarak kaydırıldığında. videodakinden farklı olarak gruplandırılmış mantığı manuel olabilir nesne takibinde)".
 - Of Follow on a video: "takip yapılamıyor diye defalarca uyarı aldım küçük bir gemiyi takip edemedi."
@@ -27,6 +27,6 @@ description: Decisions list, product part 80 (2026-11-20 on): Design Canvas grou
 
 ## Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
 - Asked: a nightly plan per product from the sales of every channel without the out-of-stock days, the season from last year, the supplier's measured lead time; days left, run-out day, the quantity to order net of open purchase orders, dead stock after 90 days at average cost; a press per supplier opening a purchase order a person checks and sends; the bell; API and MCP.
-- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `plans/stock-planning.md`.
+- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `erp/erp-stock-planning.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/image-editor-overview.md, docs/memory/workspace/workspace-channel-composer.md, docs/memory/commerce/cart-product-form-file-field.md

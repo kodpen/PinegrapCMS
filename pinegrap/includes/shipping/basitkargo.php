@@ -715,6 +715,11 @@ function pg_label_basitkargo_track($reference, $account)
         return pg_label_basitkargo_failure($read, false);
     }
 
+    // An order without a status has not been scanned by its carrier yet.
+    if (pg_label_basitkargo_text($read['data'], 'status') === '') {
+        return pg_label_track_not_scanned($id);
+    }
+
     return pg_label_basitkargo_track_answer($read['data'], $id, $read['raw']);
 }
 

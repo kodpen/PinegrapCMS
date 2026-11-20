@@ -471,12 +471,14 @@ function test_carrier_label_kargonomi_track_reads_the_shipment()
 		'shipment_started.json',
 		'shipment_creating.json',
 		array(200, str_replace('webservice_shipment_started', 'some_new_status', carrier_label_kargonomi_test_fixture('shipment_started.json'))),
+		array(200, str_replace('"webservice_shipment_started"', '""', carrier_label_kargonomi_test_fixture('shipment_started.json'))),
 	)));
 	$account = carrier_label_kargonomi_test_account();
 	$delivered = pg_label_call('kargonomi', 'track', array('8', $account));
 	$moving = pg_label_call('kargonomi', 'track', array('8', $account));
 	$creating = pg_label_call('kargonomi', 'track', array('8', $account));
 	$unknown = pg_label_call('kargonomi', 'track', array('8', $account));
+	$none = pg_label_call('kargonomi', 'track', array('8', $account));
 	carrier_label_kargonomi_test_done();
 
 	pg_assert_true($delivered['success'], $delivered['error']);
@@ -495,6 +497,13 @@ function test_carrier_label_kargonomi_track_reads_the_shipment()
 	pg_assert_false($unknown['success']);
 	pg_assert_false($unknown['unclear']);
 	pg_assert_contains('no status for this shipment yet', $unknown['error']);
+
+	// A shipment the carrier has not scanned yet is created, not a failure.
+	pg_assert_true($none['success'], $none['error']);
+	pg_assert_same('created', $none['status']);
+	pg_assert_same(0, $none['status_at']);
+	pg_assert_same('8', $none['reference']);
+	pg_assert_false(pg_label_kargonomi_track_answer(array('id' => 8, 'status' => ''), array())['success'], 'a webhook message without a status moves nothing');
 }
 
 function test_carrier_label_kargonomi_pure_helpers()

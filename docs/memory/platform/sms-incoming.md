@@ -14,12 +14,12 @@ module: sms_inbox
 - From `@netgsm/sms` 1.1.11 and İleti Merkezi's page (2026-11-14). Sandbox: live Netgsm answered 30 to fake credentials.
 
 ## How does Twilio's message arrive?
-- `sms_webhook.php?provider=twilio` (root, no session), set as the number's "A message comes in" webhook (HTTP POST). Shown read-only under "Address for customers' messages" in the SMS settings (`pg_sms_webhook_url()`).
+- `sms_webhook.php?provider=twilio` (root, no session), set as the number's "A message comes in" webhook (HTTP POST). Shown read-only under "Address for customers' messages" on Twilio's page of Connections (`pg_sms_webhook_url()`).
 - `X-Twilio-Signature` checked with the auth token over the configured address and the sorted fields (`pg_sms_twilio_signature()`); the configured address is used, not the request's, so a proxy's scheme does not break it. Wrong: 401 and a WAF offence. 120 posts a minute an address (`sms_webhook` counter). Answered with an empty TwiML `<Response>`, so Twilio sends nothing back.
 - In the WAF's machine endpoints (`waf_is_api_request()`, `waf_country_api_scripts()`).
 
 ## Where does it go?
-- The SMS box: a `ws_mail_boxes` row with transport `sms` (step 11.0.199), written by the SMS settings' Channel field (`sms_channel`, saved after the provider: `pg_sms_channel_check()` / `_save()`); name `SMS <number>` from the provider's sender, settings `{"app":"sms","provider":…}`. No channel: kept, switched off.
+- The SMS box: a `ws_mail_boxes` row with transport `sms` (step 11.0.199), written by the SMS card's Channel field (`sms_channel`, saved after the provider: `pg_sms_channel_check()` / `_save()`); name `SMS <number>` from the provider's sender, settings `{"app":"sms","provider":…}`. No channel: kept, switched off.
 - `ws_mail_phone_ingest()` as WhatsApp's (`workspace/mail-phone-conversations.md`): the hash is SHA-256 of `sms:<MessageSid>`, the contact the first one whose mobile is the number, the card's badge "SMS" (`bi-chat-dots`), the customer line "An SMS from …". Nothing is kept with the Workspace off, without a channel, or on a demo site: the SMS lives only as a conversation's item (owner, #9286).
 
 ## What does a stop word do?

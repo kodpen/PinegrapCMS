@@ -682,6 +682,7 @@ function pg_subscription_renewal_order_write($row, $first, $answer, $now)
         'contact_id'     => (int) $order['contact_id'],
         'reference_code' => $columns['reference_code'],
         'receipt'        => $settings['receipt'],
+        'renewal'        => true,
     ));
 
     if ($order_number === null) {

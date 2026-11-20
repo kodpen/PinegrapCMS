@@ -544,9 +544,10 @@ function test_carrier_label_aras_track_statuses()
 	pg_assert_same(0, $out['status_at'], 'the row dates no departure: the job takes the moment it learnt of it');
 	pg_assert_same('returned', $back['status']);
 	pg_assert_same(0, $back['status_at']);
-	pg_assert_false($nothing['success']);
-	pg_assert_false($nothing['unclear']);
-	pg_assert_contains('no status for this shipment yet', $nothing['error']);
+	pg_assert_true($nothing['success'], 'not taken in by Aras yet: created, not a failure');
+	pg_assert_same('created', $nothing['status']);
+	pg_assert_same(0, $nothing['status_at']);
+	pg_assert_same('10042483920', $nothing['reference']);
 	pg_assert_false($no_code['success']);
 	pg_assert_contains('customer code', $no_code['error']);
 	pg_assert_same($count, $after, 'without the customer code Aras is not asked');

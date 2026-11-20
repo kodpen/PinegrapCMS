@@ -420,15 +420,26 @@ function test_carrier_label_shippo_cancel_asks_for_a_refund()
 
 function test_carrier_label_shippo_track_reads_the_transaction_status()
 {
-	carrier_label_shippo_test_stub(array('GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction_transit.json', 'transaction.json')));
+	carrier_label_shippo_test_stub(array('GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array(
+		'transaction_transit.json',
+		'transaction.json',
+		array(200, str_replace('"UNKNOWN"', '"SOMETHING_NEW"', carrier_label_shippo_test_fixture('transaction.json'))),
+	)));
 	$transit = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
 	$unknown = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
+	$new = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
 	carrier_label_shippo_test_done();
 
 	pg_assert_true($transit['success'], $transit['error']);
 	pg_assert_same('in_transit', $transit['status']);
 	pg_assert_same('01234567890123', $transit['tracking_number']);
-	pg_assert_false($unknown['success'], 'UNKNOWN is no status');
+	pg_assert_true($unknown['success'], 'UNKNOWN is a label not scanned yet: created, not a failure');
+	pg_assert_same('created', $unknown['status']);
+	pg_assert_same(0, $unknown['status_at']);
+	pg_assert_same('915d94940ea54c3a80cbfa328722f5a1', $unknown['reference']);
+	pg_assert_false($new['success'], 'a code Shippo added later is not read as created');
+	pg_assert_false($new['unclear']);
+	pg_assert_false(pg_label_shippo_track_answer(array('tracking_status' => 'UNKNOWN'), array())['success'], 'a webhook message without a status moves nothing');
 
 	pg_assert_same('created', pg_label_shippo_status('PRE_TRANSIT'));
 	pg_assert_same('delivered', pg_label_shippo_status(array('status' => 'DELIVERED')));

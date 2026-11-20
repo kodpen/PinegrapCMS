@@ -572,6 +572,22 @@ function api_webhook_event_payloads_site() {
 			'sample' => array('id' => 77, 'recurrence_number' => 0, 'quantity' => 2, 'order_item_id' => 5521, 'order_id' => 1042, 'order_number' => 100318, 'contact_id' => 884, 'start_at' => '2026-11-22T17:00:00Z')
 		),
 
+		'ticket.checked_in' => array(
+			'fields' => array(
+				'id'                => array('integer', 'The ticket (GET /calendars/events/{id}/tickets lists an event\'s).'),
+				'order_id'          => array('integer', 'The order the ticket was bought in.'),
+				'order_number'      => array('integer', 'The order\'s number.'),
+				'order_item_id'     => array('integer', 'The order line that gave the ticket.'),
+				'unit'              => array('integer', 'Which place of the line it is, from 1.'),
+				'product_id'        => array('integer?', 'The product sold, null for none.'),
+				'calendar_event_id' => array('integer', 'The calendar event, 0 for a product\'s ticket.'),
+				'recurrence_number' => array('integer', 'The repeat, 0 for the event as a whole or a product\'s ticket.'),
+				'checked_in_at'     => array('string?', 'When it was checked in (UTC).'),
+				'checked_in_by'     => array('integer', 'The user who checked it in.')
+			),
+			'sample' => array('id' => 3012, 'order_id' => 1042, 'order_number' => 100318, 'order_item_id' => 5521, 'unit' => 2, 'product_id' => 88, 'calendar_event_id' => 77, 'recurrence_number' => 0, 'checked_in_at' => '2026-11-22T16:48:05Z', 'checked_in_by' => 4)
+		),
+
 		'campaign.sent' => array(
 			'fields' => array(
 				'id'      => array('integer', 'The campaign (GET /campaigns/{id}).'),

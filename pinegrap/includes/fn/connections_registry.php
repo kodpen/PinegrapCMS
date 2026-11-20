@@ -475,13 +475,13 @@ function pg_connections_registry()
             'state' => array('kind' => 'config', 'names' => array('MAILCHIMP'))),
 
         // SMS, consent and messaging.
-        'netgsm' => array('name' => 'Netgsm', 'group' => 'messaging', 'place' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
+        'netgsm' => array('name' => 'Netgsm', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
             'state' => array('kind' => 'app', 'key' => 'sms_netgsm'),
             'covers' => array('sms' => array('netgsm'))),
-        'iletimerkezi' => array('name' => 'İleti Merkezi', 'group' => 'messaging', 'place' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
+        'iletimerkezi' => array('name' => 'İleti Merkezi', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
             'state' => array('kind' => 'app', 'key' => 'sms_iletimerkezi'),
             'covers' => array('sms' => array('iletimerkezi'))),
-        'twilio' => array('name' => 'Twilio', 'group' => 'messaging', 'place' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
+        'twilio' => array('name' => 'Twilio', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-sms', 'uses' => 'SMS messages and codes',
             'state' => array('kind' => 'app', 'key' => 'sms_twilio'),
             'covers' => array('sms' => array('twilio'))),
         'iys' => array('name' => 'İYS', 'group' => 'messaging', 'place' => 'connections.php', 'found_at' => '#settings/contact/pgset-iys', 'uses' => 'Marketing consent records',
