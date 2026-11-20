@@ -1,6 +1,6 @@
 ---
 name: order-profit-steps
-description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, payment fees, label prices, Trendyol deductions, the screens, break-even with bell and API, close-out
+description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, payment fees, label prices, Trendyol deductions, the screens (NP5a, NP5b), break-even with bell and API, close-out
 ---
 
 ## Which steps are there?
@@ -15,12 +15,14 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
   - `includes/fn/carrier_labels.php` (`pg_label_answer()`'s price), the Kargonomi, Shippo and Sendcloud drivers; the cost row when a label is made, removed when it is cancelled. Feature: N5.
 - NP4 (M) after NP1: Trendyol deductions.
   - `includes/api/outbound/connectors/trendyol.php` (a paged finance read; endpoints from Trendyol's document, written into `commerce/trendyol-api-facts.md`), its pass; tests on recorded answers. Feature: N4.
-- NP5 (M) after NP1: the screens.
-  - `view_order.php` (the Profit card in `pg_order_view_card_column()`), `view_orders.php` and `includes/fn/commerce_list.php` (column, filter), new `erp_profitability.php` with its menu entry, settings card and workbook.
-  - No pictures (`workflow/look-pictures-none.md`). Features: N9, N10, N11.
-- NP6 (S) after NP5: break-even, bell, API.
+- NP5a (S) after NP1: the order's Profit card and the list.
+  - `view_order.php` (the Profit card in `pg_order_view_card_column()`), `view_orders.php` and `includes/fn/commerce_list.php` (profit column, "Sold at a loss" filter), new `includes/erp/order_profit_view.php`. Features: N9, N10.
+- NP5b (M) after NP5a: Accounting › Profitability.
+  - New `erp_profitability.php` with its menu entry, settings card (typed rates, target margin) and workbook. Feature: N11.
+  - No pictures (`workflow/look-pictures-none.md`) for NP5a or NP5b.
+- NP6 (S) after NP5b: break-even, bell, API.
   - `includes/erp/order_profit.php`, `includes/erp/alerts.php`, `includes/erp/api.php` and a reader; `php tools/check_api_schema.php`. Features: N12, N13, N14.
 - NP7 (S) close-out: every N number checked against the code with its PR; `erp/order-profit.md` written; `erp/erp-profit-report.md` updated; `erp/erp-not-built-on-purpose.md`'s settlement line made exact (no reconciliation; an order's deductions are read for its cost); this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- After NP1: NP2, NP3, NP4 and NP5 side by side. `view_order.php` and `view_orders.php` are entered by `plans/product-form-uploads.md` FU4a and FU4b too: never open together.
+- After NP1: NP2, NP3, NP4 and NP5a side by side; NP5b after NP5a. `view_order.php` and `view_orders.php` are entered by `plans/product-form-uploads.md` FU4a and FU4b too: never open together.
