@@ -183,7 +183,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!$owns) continue;
 
         // Resolve field type for proper storage of date / datetime / time.
-        $f_meta = db_item("SELECT type, label, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
+        $f_meta = db_item("SELECT id, name, type, label, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
         $f_type = is_array($f_meta) ? (string)$f_meta['type'] : 'text box';
 
         // Collect raw value(s) from POST. Multi-select / checkbox arrays
@@ -235,13 +235,16 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             WHERE order_item_id = '" . (int)$iid . "'
               AND quantity_number = '" . (int)$qn . "'
               AND form_field_id = '" . (int)$fid . "'");
-        db("INSERT INTO form_data
+        // The row carries the field's name, as the classic cart writes it:
+        // View Order, the CSV export and order completion read the label there.
+        $_pg_row = pg_product_form_answer_row(
+            is_array($f_meta) ? $f_meta : array('id' => $fid),
+            $oid, $iid, $qn, $store_val, $store_type
+        );
+        db_q("INSERT INTO form_data
                 (form_id, form_field_id, data, file_id, order_id, order_item_id,
                  quantity_number, name, type, ship_to_id)
-            VALUES
-                ('0', '" . (int)$fid . "', '" . e($store_val) . "', '0',
-                 '" . (int)$oid . "', '" . (int)$iid . "',
-                 '" . (int)$qn . "', '', '" . e($store_type) . "', '0')");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", array_values($_pg_row));
         $_pg_form_saved++;
     }
 

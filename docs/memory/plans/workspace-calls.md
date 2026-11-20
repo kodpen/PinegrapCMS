@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls i
 
 ## What is built?
 - CL1, server (done, #10499; `workspace/calls-server.md`). The three tables by a migration step; start, join, leave, end; a signal sent to one member and read by it only; a call left by everyone, or silent for 2 minutes, ends; signals deleted then. Who may: a channel's members, in a direct conversation both people, a guest in its own room only. Limits on calls started and signals sent a minute. API and MCP: read only (a call's state), nothing starts a call for a person.
-- CL2, two people. A call button (voice, video) in the channel's head; the other side rings where a mention rings today, with Accept and Decline; in the call: mute, camera, device choice, hang up, a small window that stays while the person moves between channels. `Permissions-Policy` lets the camera and microphone through on the Workspace and the guest page only (`waf/waf-security-headers-hsts.md`).
+- CL2, two people (done, #10522; `workspace/calls-screen.md`): the head's call buttons, the ring with Accept and Decline, mute, camera, devices, hang up, a window kept across channels; `Permissions-Policy` (`waf/waf-security-headers-hsts.md`).
 - CL3, a group. Up to four in one call, a grid; a fifth sees "This call is full"; who speaks is marked.
 - CL4, screen sharing: one share at a time in a call, shown large.
 - CL5, guests. The guest page shows a room's running call with "Join": no install, no account; the guest's name as the room knows it. A guest never starts a call.

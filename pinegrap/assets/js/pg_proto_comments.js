@@ -18,7 +18,7 @@
  * - A pin whose node the frame does not find on the drawn page is listed
  *   under "Not on the page any more".
  *
- * place(), pinId(), missing() and threads() are pure (tests/
+ * place(), pinId(), missing(), threads() and unsent() are pure (tests/
  * prototype_comment_mode_test.php); init() runs the mode in a browser.
  * Served minified as assets/js/pg_proto_comments.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -90,6 +90,12 @@
             }
         });
         return list;
+    }
+
+    // Whether a box's field holds text the guest typed and did not send: the
+    // box is then not replaced by another click.
+    function unsent(value) {
+        return typeof value === 'string' && value.trim() !== '';
     }
 
     /* ---------------------------------------------------------------------
@@ -414,6 +420,22 @@
             send();
         }
 
+        // A click elsewhere while the open box holds unsent text keeps the
+        // box: the text field takes the focus and says to send or close it
+        // first (the close button and Escape still drop it).
+        function holding() {
+            var t = box ? box.querySelector('textarea') : null;
+            if (!t || !unsent(t.value)) return false;
+            var alert = box.querySelector('.pg-proto-form [role="alert"]');
+            if (alert) {
+                alert.textContent = S.held;
+                alert.classList.remove('d-none');
+                if (open) position(open.vx, open.vy);
+            }
+            t.focus();
+            return true;
+        }
+
         window.addEventListener('message', function (e) {
             if (e.source !== frame.contentWindow || !e.data) return;
             var kind = e.data.pgPrototype;
@@ -421,10 +443,10 @@
             if (!on) return;
             if (kind === 'place') {
                 var spot = place(e.data);
-                if (spot) showNew(spot);
+                if (spot && !holding()) showNew(spot);
             } else if (kind === 'pin') {
                 var id = pinId(e.data, known);
-                if (id) showThread(id, pixel(e.data.vx), pixel(e.data.vy));
+                if (id && !(open && open.thread === id) && !holding()) showThread(id, pixel(e.data.vx), pixel(e.data.vy));
             } else if (kind === 'missing') {
                 gone = missing(e.data, known);
                 paintBar();
@@ -446,19 +468,33 @@
 
         bar.addEventListener('click', function (e) {
             var b = e.target.closest ? e.target.closest('[data-pc-thread]') : null;
-            if (b) showThread(parseInt(b.getAttribute('data-pc-thread'), 10), 0, 0);
+            if (b && !holding()) showThread(parseInt(b.getAttribute('data-pc-thread'), 10), 0, 0);
         });
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && box) close();
         });
 
+        // The door reads the session this viewer was opened in, which the
+        // server drops when it is left idle: a guest reading a page or
+        // writing a long comment makes no request, so the viewer pings.
+        if (cfg.ping > 0 && window.fetch && window.FormData) {
+            window.setInterval(function () {
+                var body = new FormData();
+                body.append('l', String(cfg.link));
+                body.append('page_id', String(cfg.page));
+                body.append('token', String(cfg.token));
+                body.append('ping', '1');
+                fetch(cfg.door, { method: 'POST', body: body, credentials: 'same-origin' }).catch(function () {});
+            }, cfg.ping * 1000);
+        }
+
         frame.addEventListener('load', send);
         rebuild();
         paint();
     }
 
-    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, init: init };
+    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, init: init };
 
     // The viewer prints its settings as JSON beside the script.
     if (typeof document !== 'undefined') {

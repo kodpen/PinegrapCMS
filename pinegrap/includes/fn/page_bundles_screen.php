@@ -5,7 +5,8 @@
  * The Bundles screen's read side (page_bundles.php): the labels and themes
  * of a bundle's status, the pages a bundle may take (live pages for "Add a
  * copy of a page", drafts for "Add a draft"), a bundle's pages as the screen
- * lists them with "changed since", and the publish time read from the form.
+ * lists them with "changed since", the publish time read from the form, and
+ * the Publish and Take back buttons with what their dialogs post back.
  * The rules and the writes are in page_bundles.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -230,4 +231,85 @@ function pg_page_bundle_time_from_form($text)
     $time = strtotime($iso);
 
     return ($time === false) ? -1 : (int) $time;
+}
+
+/**
+ * The Publish and Take back buttons a bundle shows in a status: Publish
+ * while it holds its drafts ("Publish the rest" once partly published),
+ * Take back once anything of it is on the site. Pure.
+ *
+ * @param string $status
+ * @return array publish (the button's label, '' for none), take_back (bool)
+ */
+function pg_page_bundle_screen_actions($status)
+{
+    $status = (string) $status;
+    $publish = '';
+
+    if (pg_page_bundle_holds($status)) {
+        $publish = ($status === 'partial') ? lang('Publish the rest') : lang('Publish');
+    }
+
+    return array('publish' => $publish, 'take_back' => pg_page_bundle_may_move($status, 'reverted'));
+}
+
+/**
+ * The publish dialog's posted choice[item id]: "replace" or "leave" for a
+ * positive item id, anything else dropped. Pure.
+ *
+ * @param mixed $posted
+ * @return array item id => 'replace' or 'leave'
+ */
+function pg_page_bundle_screen_choices($posted)
+{
+    $choices = array();
+
+    foreach (is_array($posted) ? $posted : array() as $id => $choice) {
+        if (is_string($choice) && in_array($choice, array('replace', 'leave'), true) && ctype_digit((string) $id) && ((int) $id > 0)) {
+            $choices[(int) $id] = $choice;
+        }
+    }
+
+    return $choices;
+}
+
+/**
+ * The take-back dialog's posted kept[]: the positive item ids, once each.
+ * Pure.
+ *
+ * @param mixed $posted
+ * @return int[]
+ */
+function pg_page_bundle_screen_kept($posted)
+{
+    $kept = array();
+
+    foreach (is_array($posted) ? $posted : array() as $id) {
+        if (is_scalar($id) && ctype_digit((string) $id) && ((int) $id > 0) && !in_array((int) $id, $kept, true)) {
+            $kept[] = (int) $id;
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * The notice a publish or take-back leaves on the screen. A run that wrote
+ * but could not move the bundle reports that error. Pure.
+ *
+ * @param string $action 'publish' or 'take_back'
+ * @param array  $done   pg_page_bundle_publish() or pg_page_bundle_take_back()
+ * @return array ok (a notice, else an error), text
+ */
+function pg_page_bundle_screen_outcome($action, $done)
+{
+    $error = isset($done['error']) ? (string) $done['error'] : '';
+
+    if (!empty($done['ok']) && ($error === '')) {
+        return array('ok' => true, 'text' => ($action === 'take_back')
+            ? lang('The bundle was taken back.')
+            : lang('The bundle was published: its pages are on the site.'));
+    }
+
+    return array('ok' => false, 'text' => ($error !== '') ? $error : lang('The bundle cannot make that change now.'));
 }

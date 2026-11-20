@@ -388,6 +388,22 @@ function pg_commission_list_edit_cells($url, $name)
 }
 
 /**
+ * The "Referral" mark of a referral's row (pg_referral_commission_kind()),
+ * '' for an affiliate's.
+ *
+ * @param mixed $code commissions.affiliate_code
+ * @return string escaped
+ */
+function pg_commission_list_referral_badge($code)
+{
+    if (pg_referral_commission_kind($code) !== 'referral') {
+        return '';
+    }
+
+    return ' <span class="badge badge-subtle theme-info border fw-light">' . h(lang('Referral')) . '</span>';
+}
+
+/**
  * One row of the commissions list.
  *
  * @param array $commission
@@ -406,7 +422,7 @@ function pg_commission_list_row($commission)
         . (((string) $commission['product_short_description'] !== '') ? ' - ' . $commission['product_short_description'] : '');
 
     return array('id' => (int) $commission['id'], 'class' => '', 'cells' => pg_commission_list_edit_cells('edit_commission.php?id=' . (int) $commission['id'], $commission['affiliate_name']) + array(
-        'affiliate_code' => pg_list_cell(h($commission['affiliate_code'])),
+        'affiliate_code' => pg_list_cell(h($commission['affiliate_code']) . pg_commission_list_referral_badge($commission['affiliate_code'])),
         'reference_code' => pg_list_cell(h($commission['reference_code'])),
         'status' => pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
         'amount' => pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
@@ -652,7 +668,7 @@ function pg_commission_status_event($row, $status)
  * @param int    $user_id the person or the application's owner
  * @return string|false the status before the save; false when the status
  *                      is not a stored one, the commission does not exist
- *                      or the query failed
+ *                      or is a referral's, or the query failed
  */
 function pg_commission_status_save($id, $status, $user_id)
 {
@@ -664,7 +680,9 @@ function pg_commission_status_save($id, $status, $user_id)
 
     $row = db_item("SELECT id, reference_code, affiliate_code, order_id, amount, status FROM commissions WHERE id = '" . (int) $id . "'");
 
-    if (!$row) {
+    // A referral's row follows its order (includes/fn/referral.php): its
+    // status is never set by hand.
+    if (!$row || (pg_referral_commission_kind((string) $row['affiliate_code']) === 'referral')) {
         return false;
     }
 

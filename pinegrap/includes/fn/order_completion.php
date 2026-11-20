@@ -993,6 +993,12 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
 
     pg_order_complete_commission($order_id, $values['affiliate_code'], $context['affiliate_rate'], $values['commission'], $context['recurring_products'], $user_id);
 
+    // A customer's referral code earns its reward instead, when the order
+    // earned no affiliate commission (an approved affiliate's code wins).
+    if ($context['affiliate_rate'] === null) {
+        pg_referral_order_completed($order_id, $values['affiliate_code']);
+    }
+
     // The receipt, when the checkout page sends one.
     pg_order_complete_receipt($order_id, $order_number, $context['receipt'], $billing_email_address, is_array($context['new_account']) ? $context['new_account'] : array());
 

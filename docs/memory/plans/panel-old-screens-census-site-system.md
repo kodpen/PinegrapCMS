@@ -19,6 +19,7 @@ description: Census LM1b against look A: visitors and logs (S4: Site Log, Audit 
 - Database engine `database_engine.php` 1,415 / 34 / 0 / 8 / 14 → 78: six `text-uppercase h5 fg-primary fw-bold` card headers, two own tables.
 - Find and Replace `find_and_replace.php` 1,017 → 49; Mass Edit `mass_edit.php` 811 → 45; Repair Software `software_repair.php` 440 → 30 (no measure class); Backups `backups.php` 451 → 29 (not on the driver, #9230); Experiments `experiments.php` 297 → 25 (three own tables); Import `import.php` 762 → 23.
 - Small: `migration.php` → 17, `api_docs.php` → 13, `clean_up.php` → 8, `developer_lock.php` → 5, `software_update.php` → 5 (opens in the settings dialog); `system_tools.php` clean.
+- S6c done in #10547 (`ui/look-translations-screen.md`): Translations. `clean_up.php` is left to the plan's close-out: open PR #10528 changes it.
 
 ## Which settings pages outside the dialog, and what is old? (380; 5,900 lines, in S6)
 - API `api_settings.php` 2,653 / 92 / 6 / 11 / 8 → 130: 18 Bootstrap buttons, `small text-uppercase` labels, a 116-line `<style>` with 24 font or colour literals.

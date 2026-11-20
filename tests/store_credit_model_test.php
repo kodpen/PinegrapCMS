@@ -115,11 +115,11 @@ function test_store_credit_issue_check()
 
 function test_store_credit_kinds_match_the_column()
 {
-	pg_assert_same(array('gift', 'points', 'refund', 'manual'), array_keys(pg_credit_kinds()), 'the ENUM values in order');
+	pg_assert_same(array('gift', 'points', 'refund', 'manual', 'referral'), array_keys(pg_credit_kinds()), 'the ENUM values in order');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 
-	pg_assert_true(strpos($source, "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'") !== false, 'the step adds the same kinds');
+	pg_assert_true(strpos($source, "ENUM('gift','points','refund','manual','referral') NOT NULL DEFAULT 'gift'") !== false, 'the step adds the same kinds');
 }
 
 function test_store_credit_audit_label_hides_the_code()

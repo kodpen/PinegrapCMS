@@ -19,26 +19,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
- 
+// The IndexNow key is saved on IndexNow's page of Connections
+// (pg_indexnow_key_save()); this card no longer sends it.
 
-  
-    $current_indexnow_key = db("SELECT indexnow_key FROM config");
-    // Trimmed like the new key: a key once stored with spaces around it is
-    // then recognised, and its file removed, when the key changes.
-    $current_indexnow_key = ($current_indexnow_key !== null) ? trim($current_indexnow_key) : '';
-    $new_indexnow_key     = isset($_POST['indexnow_key']) ? trim($_POST['indexnow_key']) : '';
-
-    // The key becomes a file name under the public files directory
-    // (<key>.txt) and, when it changes, the name of the file that is deleted,
-    // so it has to be a plain token before it reaches the file system. This
-    // is IndexNow's own format: 8 to 128 letters, digits and dashes.
-    $indexnow_key_pattern = '/^[A-Za-z0-9-]{8,128}$/';
-
-    if ($new_indexnow_key !== '' && !preg_match($indexnow_key_pattern, $new_indexnow_key)) {
-        $liveform->mark_error('indexnow_key', lang('The IndexNow key must be 8 to 128 characters long and may only contain letters, digits and dashes.'));
-        return;
-    }
-    
     // The site icon names a PNG or SVG of the Files screen; anything else is
     // refused before a column of this screen is written.
     $site_icon_save_ready = pg_schema_has('config_text') && array_key_exists('site_icon', $_POST);
@@ -128,108 +111,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if ($liveform->check_form_errors()) {
             return;
         }
-    }
-
-    // If old key exists and changed, delete old file and its DB record. A
-    // stored key that does not fit the format is left alone rather than used
-    // as a path.
-    if ($current_indexnow_key !== '' && $current_indexnow_key !== $new_indexnow_key && preg_match($indexnow_key_pattern, $current_indexnow_key)) {
-        $old_file_name = $current_indexnow_key . '.txt';
-        $old_file_path = FILE_DIRECTORY_PATH . '/' . $old_file_name;
-    
-        // Delete physical file if present
-        if (file_exists($old_file_path)) {
-            // Suppress warnings to avoid noisy outputs in production
-            @unlink($old_file_path);
-        }
-    
-        // Delete DB record for old file name
-        db("DELETE FROM files WHERE name = '" . escape($old_file_name) . "'");
-    }
-    
-    // If new key is provided, ensure file and DB record are in sync
-    if ($new_indexnow_key !== '') {
-        $new_file_name = $new_indexnow_key . '.txt';
-        $new_file_path = FILE_DIRECTORY_PATH . '/' . $new_file_name;
-    
-        // Write the key into the file (overwrite if exists)
-        $handle = @fopen($new_file_path, 'w');
-        if ($handle) {
-            fwrite($handle, $new_indexnow_key);
-            fclose($handle);
-        }
-    
-        // Determine file size safely
-        $file_size = file_exists($new_file_path) ? (int)filesize($new_file_path) : 0;
-    
-        // Resolve target folder ID
-        $folder_id = getPublicRootFolderId();
-    
-        // Fetch existing DB record by name (normalize different db() return shapes)
-        $existing = db("SELECT name, folder, description, type, size, design, user
-                        FROM files
-                        WHERE name = '" . escape($new_file_name) . "'
-                        LIMIT 1");
-    
-        // Normalize result to an associative array or null
-        if (is_array($existing) && isset($existing[0]) && is_array($existing[0])) {
-            $existing = $existing[0];
-        } elseif (!is_array($existing) || (is_array($existing) && !isset($existing['name']))) {
-            $existing = null;
-        }
-    
-        // Prepare target values
-        $target = [
-            'folder'      => (int)$folder_id,
-            'description' => 'IndexNow verification key',
-            'type'        => 'txt',
-            'size'        => (int)$file_size,
-            'design'      => 1,
-            'user'        => (int)USER_ID
-        ];
-    
-        if ($existing) {
-            // Compare field-by-field; update only if any value differs
-            $needsUpdate =
-                ((int)$existing['folder']      !== $target['folder'])      ||
-                ((string)$existing['description'] !== $target['description']) ||
-                ((string)$existing['type']        !== $target['type'])        ||
-                ((int)$existing['size']        !== $target['size'])        ||
-                ((int)$existing['design']      !== $target['design'])      ||
-                ((int)$existing['user']        !== $target['user']);
-        
-            if ($needsUpdate) {
-                db("UPDATE files SET
-                        folder = '" . escape($target['folder']) . "',
-                        description = '" . escape($target['description']) . "',
-                        type = '" . escape($target['type']) . "',
-                        size = '" . escape($target['size']) . "',
-                        design = '" . escape($target['design']) . "',
-                        user = '" . escape($target['user']) . "',
-                        timestamp = UNIX_TIMESTAMP()
-                    WHERE name = '" . escape($new_file_name) . "'");
-            }
-        } else {
-            // Insert new record only if it does not exist
-            db("INSERT INTO files (
-                    name, folder, description, type, size, design, user, timestamp
-                ) VALUES (
-                    '" . escape($new_file_name) . "',
-                    '" . escape($target['folder']) . "',
-                    '" . escape($target['description']) . "',
-                    '" . escape($target['type']) . "',
-                    '" . escape($target['size']) . "',
-                    '" . escape($target['design']) . "',
-                    '" . escape($target['user']) . "',
-                    UNIX_TIMESTAMP()
-                )");
-        }
-    
-        // Log activity once per operation (create or update); message reflects the file name
-        log_activity(
-            lang(['string' => 'IndexNow file ({var:1}) was synchronized', 'vars' => $new_file_name]),
-            $_SESSION['sessionusername']
-        );
     }
 
     $sql_seo_jsonld_fields = "";
@@ -322,7 +203,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_ai_crawler_fields
             $sql_seo_switch_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
-            indexnow_key = '" . escape($new_indexnow_key) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
