@@ -226,6 +226,12 @@ function pg_page_clicks_fold_url($url, $site_host = '')
             return $messaging['schemes'][$scheme];
         }
 
+        // A kind the script already folded to ("telegram:") stays itself:
+        // the server folds the script's address a second time.
+        if (in_array($scheme . ':', $messaging['schemes'], true) || in_array($scheme . ':', $messaging['hosts'], true)) {
+            return $scheme . ':';
+        }
+
         if (($scheme !== 'http') && ($scheme !== 'https')) {
             return '';
         }

@@ -285,3 +285,28 @@ function test_page_clicks_nothing_counted_while_the_switch_is_off()
 	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
 	pg_assert_contains('pg_page_clicks_switch_on()', $body, 'the beacon\'s gate reads the one reader of the switch');
 }
+
+// The script sends its folded address and the server folds it again: a kind
+// the script wrote ("telegram:") must come out of the second fold as it went
+// in, or the Telegram, Signal, Messenger and Teams links lose their address.
+function test_page_clicks_fold_keeps_a_folded_kind()
+{
+	$kinds = array_unique(array_merge(array_values(pg_page_clicks_messaging()['schemes']), array_values(pg_page_clicks_messaging()['hosts'])));
+
+	foreach ($kinds as $kind) {
+		pg_assert_same($kind, pg_page_clicks_fold_url($kind, 'www.example.com'), 'a kind folded again: ' . $kind);
+	}
+
+	foreach (array('https://t.me/someone', 'tg://resolve?domain=x', 'https://m.me/page', 'sgnl://signal.me/#p/+90555', 'msteams:/l/chat/0/0?users=a', 'https://wa.me/90555') as $url) {
+		$once = pg_page_clicks_fold_url($url, 'www.example.com');
+		pg_assert_same($once, pg_page_clicks_fold_url($once, 'www.example.com'), 'folded twice as once: ' . $url);
+	}
+
+	pg_assert_same('telegram:', pg_page_clicks_fold_url('telegram:'), 'the Telegram kind as the script sends it');
+	pg_assert_same('teams:', pg_page_clicks_fold_url('TEAMS:'), 'the Teams kind, any case');
+	pg_assert_same('signal:', pg_page_clicks_fold_url('signal:+905551234567'), 'whatever follows a kind is dropped');
+	pg_assert_same('', pg_page_clicks_fold_url('chrome:settings'), 'a scheme that is no kind is still no address');
+
+	$beacon = pg_page_clicks_parse(page_clicks_test_beacon(array('d' => 'mobile', 'e' => array(array('footer', 'link', 'telegram:', '')))), 'www.example.com');
+	pg_assert_same(array(array('footer', 'link', 'telegram:', '')), $beacon['elements'], 'a Telegram icon link without a label is counted, not dropped');
+}
