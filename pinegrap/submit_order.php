@@ -1935,6 +1935,11 @@ function submit_order($type) {
 
         // The bank's 3-D Secure page, or the service's own payment page.
         if ($payment_answer['status'] === 'redirect') {
+            // The ad services' purchase rows with the buyer's ids, while the
+            // visitor's own request is still here; the service's message that
+            // completes the order later carries no visitor.
+            pg_ad_conversion_payment_step((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
             // The order keeps the payment the service now finishes, so the
             // service's own message about it finds the order even when the
             // visitor never returns.
@@ -3468,6 +3473,10 @@ function submit_order($type) {
     // paid_at: a gateway-confirmed payment lands when the order is placed; an
     // offline payment has no confirmed moment here, so it stays 0, and so does
     // a payment its service left pending (pg_order_checkout_paid_at()).
+    // The ad services' purchase rows with the buyer's ids (consent read
+    // here, in the visitor's request); completion below queues them.
+    pg_ad_conversion_payment_step((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
     $order_number = pg_order_complete(
         (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
         array('payment_method' => $liveform->get_field_value('payment_method'))

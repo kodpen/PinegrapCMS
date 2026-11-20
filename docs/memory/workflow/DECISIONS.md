@@ -478,6 +478,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-9.md: May a customer without an account accept a sales quote by link? (#3671)
 - decisions-made-product-9.md: Sales quote templates and the expiry follow-up switch (#3672)
 - decisions-made-product-9.md: Does the Workspace get a density switch and a rounded display font? (#3673)
+- decisions-made-product-90.md: Where are the rules and the earlier parts?
+- decisions-made-product-90.md: Should the store learn each customer's own rhythm and each product's reorder time, and hand due, late and slipping customers to flows and campaigns? (owner, 2026-11-20, agent channel poll 176, channel message 10524)
+- decisions-made-product-90.md: Should the store measure each carrier's real delivery time per province and find stuck, not handed over and problem parcels before the customer asks? (owner, 2026-11-20, agent channel poll 178, channel message 10566)
+- decisions-made-product-90.md: Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
+- decisions-made-product-90.md: Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -585,6 +590,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-38.md: Which columns does supplier_feed_items have? (architect, 2026-11-20)
 - decisions-made-schema-38.md: Which columns does supplier_feed_runs have? (architect, 2026-11-20)
 - decisions-made-schema-38.md: What else holds?
+- decisions-made-schema-39.md: Where are the rules and the earlier parts?
+- decisions-made-schema-39.md: Does the marketplace repricer get tables? (owner, 2026-11-20, agent channel poll 186, channel message 10696)
+- decisions-made-schema-39.md: Which columns does marketplace_price_rules have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: Which columns does marketplace_price_state have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: Which columns does marketplace_price_log have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -822,6 +833,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open
 - api/api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
+- api/api-erp-order-profit-routes.md: GET /erp/orders/{id}/profit and GET /erp/profitability (#10736): erp:read, what each answers, the period, channel and product filters, the break-even on a product row, the MCP tools
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Design, Content, Store, Accounting, All; #1716, #10709): what each ticks, why record writes are ticked by hand
@@ -838,9 +850,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
 - api/connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (78 + 12 MCP connectors), the difference from the census's 79, adding a service
+- api/mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes
 - api/oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - commerce/back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
+- commerce/back-in-stock-withdraw.md: Taking a back-in-stock or waiting list request back (#10713): withdraw=1 on stock_notify.php, which row goes, one answer with or without a row, the "Stop waiting" button
 - commerce/booking-deposit-late-payment.md: A booking deposit paid after its hold ran out (#10378): booked again under the staff lock while free, else an open request, deposit awaiting refund, honest widget text
 - commerce/booking-meeting-link.md: Start file of the meeting link: a staff member's "Book a time with <name>" page book_with.php and Workspace screen My meeting link; decisions, PRs, files, left out
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
@@ -953,11 +967,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
 - designer/designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6)
 - designer/designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers
+- designer/designer-chrome-measures.md: The Page Design Studio chrome's sizes beside its colour tokens: type, heights, gaps, corners, shadows, focus ring, changed dot, the Options panel's parts in order and each control's states
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
 - designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
+- designer/designer-page-strip.md: The Page Design Studio's page strip: the design's menu (Settings, Delete), how the strip makes room on a narrow screen in six steps, what never goes, the "+N" lists, which file holds the rest
 - designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
+- designer/designer-panels-differences.md: Differences between the Page Design Studio as built and its accepted designer-panels drawings: one list for the owner, fixes cut from it later
+- designer/designer-panels-overview.md: Start file of the Page Design Studio's redrawn chrome (plan designer-panels, ended #10760): Options panel, Overview tree, page strip, canvas bar; what binds them, which file holds what
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
 - designer/designer-prototype-comments-list.md: The designer's side of prototype comments: pins on the canvas, the list's threads and actions, numbers as the customer sees them, the presence stamp, the endpoints, the bell line
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
@@ -1028,6 +1047,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-isbasi-invoice-payload.md: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes.
 - erp/erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
 - erp/erp-order-overview.md: Start file for the erp-order-* files: an order's ERP documents (invoice, cancel, refund), its charges and VAT, and its cost rows and net profit, which file holds each part
+- erp/erp-order-profit-break-even-bell.md: Break-even price per product and channel and the "Sold at a loss" bell (#10736): the formula, the 90 and 30 days, once per product and channel, the state in config_text, where each is shown
 - erp/erp-order-profit-deductions.md: Marketplace deductions on an order's profit (#10657): Trendyol settlements, one cost row per record (settlement:<id>), currency, the resumable read, what is skipped
 - erp/erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes
 - erp/erp-order-profit-screens.md: Where an order's profit is seen (#10664): the Profit card of view_order.php, the order list's Profit column and "Sold at a loss" filter, the gate, includes/erp/order_profit_view.php
@@ -1198,6 +1218,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
+- workflow/bug-hunt-event-tickets.md: Bug hunt of event tickets, a ticket's lifetime and the door (architect 2026-11-20, agent channel message 10668, #10754): what was read, the five faults fixed, the two issues, what was found clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest

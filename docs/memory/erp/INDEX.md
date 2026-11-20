@@ -96,6 +96,7 @@
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
 - erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
 - erp-order-overview.md: Start file for the erp-order-* files: an order's ERP documents (invoice, cancel, refund), its charges and VAT, and its cost rows and net profit, which file holds each part [decision: here]
+- erp-order-profit-break-even-bell.md: Break-even price per product and channel and the "Sold at a loss" bell (#10736): the formula, the 90 and 30 days, once per product and channel, the state in config_text, where each is shown [decision: here]
 - erp-order-profit-deductions.md: Marketplace deductions on an order's profit (#10657): Trendyol settlements, one cost row per record (settlement:<id>), currency, the resumable read, what is skipped [decision: here]
 - erp-order-profit-label-price.md: A carrier label's price as the order's shipping cost row (NP3): which drivers give it, how it is read and converted, its source_ref, cancel, Accounting off
 - erp-order-profit-payment-fee.md: The fee a payment service kept (#10655): pg_payment_answer()'s fee keys from iyzico, Stripe and PayPal, the conversion, the gateway cost row written by submit_order.php

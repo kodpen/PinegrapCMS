@@ -806,7 +806,7 @@ function bs6_site_functions()
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
 		'includes/fn/site_push_order.php' => array('pg_site_push_order_button_html'),
 		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),
-		'includes/fn/stock_notify.php' => array('pg_stock_notify_event_form_html'),
+		'includes/fn/stock_notify.php' => array('pg_stock_notify_event_form_html', 'pg_stock_notify_withdraw_button_html'),
 	);
 }
 
@@ -1229,7 +1229,7 @@ function bs6_scope_kind($path)
 			'retrieve_order.php', 'remove_gift_card_from_order.php', 'remove_item_from_cart.php',
 			'remove_recipient.php', 'reserve_calendar_event.php', 'check_for_products_in_cart.php',
 			'catalog_detail.php', 'legal_document.php', 'short_link_gone.php', 'index.php', 'init.php',
-			'functions.php', 'feed.php', 'manifest.php', 'manifest_icon.php', 'waf.php', 'api.php', 'mcp.php',
+			'functions.php', 'feed.php', 'manifest.php', 'manifest_icon.php', 'waf.php', 'api.php', 'mcp.php', 'mcp_compact.php',
 			'oauth.php', 'health.php', 'get_page.php', 'get_page_content.php', 'myself_upsell.php', 'kiosk.php',
 			'cancel_order.php', 'signature_receipt.php', 'account_security.php', 'excel_reader2.php',
 			'pclzip.lib.php', 'url_to_absolute.php', 'mysqldump.php', 'csp_report.php',

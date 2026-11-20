@@ -15,10 +15,13 @@
  *     days the store chose, from the same job (8.58).
  *   - An order that was due its automatic invoice and did not get one, with
  *     the reason (erp_auto_invoice_for_order()).
+ *   - A product sold at a loss on a channel over the last 30 days, once per
+ *     product and channel until it turns profitable, from the order profit
+ *     job once a day (erp_alert_profit_loss()).
  *
  * The first two are off until switched on in the ERP settings (4.91); the
  * quote notice is on until switched off; the invoice notice comes with the
- * automatic invoice itself. Nothing here
+ * automatic invoice itself, the loss notice with the order profit. Nothing here
  * delivers anything itself: the bell row goes through create_notification()
  * and the device banner through the push queue that row feeds, the channels
  * the overdue reminders use (includes/erp/notify.php). The person whose own
@@ -575,4 +578,155 @@ function erp_alert_auto_invoice_refused($order_id, $order_number, $reason)
     }
 
     return $id;
+}
+
+/** The config_text row that keeps the loss notice's day and the products and channels it told about. */
+const ERP_ALERT_PROFIT_LOSS = 'erp_profit_loss_alert';
+
+/** The most product and channel pairs the loss notice remembers (config_text holds 64 KB). */
+const ERP_ALERT_PROFIT_LOSS_KEEP = 2000;
+
+/**
+ * The loss notice's kept state. Pure.
+ *
+ * @param string $text  The config_text value
+ * @return array ['day' => Y-m-d of the last run or '', 'keys' => erp_profitability_key() list]
+ */
+function erp_alert_profit_loss_state($text)
+{
+    $data = json_decode((string) $text, true);
+    $state = array('day' => '', 'keys' => array());
+
+    if (!is_array($data)) {
+        return $state;
+    }
+
+    $day = (string) ($data['day'] ?? '');
+    $state['day'] = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) === 1) ? $day : '';
+
+    foreach ((array) ($data['keys'] ?? array()) as $key) {
+        if (is_string($key) && ($key !== '')) {
+            $state['keys'][] = $key;
+        }
+    }
+
+    return $state;
+}
+
+/**
+ * The loss notice's state as it is kept. Pure.
+ *
+ * @param string   $day   Y-m-d
+ * @param string[] $keys
+ * @return string
+ */
+function erp_alert_profit_loss_state_text($day, $keys)
+{
+    return (string) json_encode(array('day' => (string) $day, 'keys' => array_values(array_slice((array) $keys, 0, ERP_ALERT_PROFIT_LOSS_KEEP))));
+}
+
+/**
+ * Which products to announce as sold at a loss, and what to remember. Pure.
+ *
+ * A product and channel whose net profit over the period is below zero is
+ * announced once and remembered; it is forgotten when its net profit is zero
+ * or more, so a later loss is announced again. One with no sales in the
+ * period stays remembered: it has not turned profitable. Lines without a
+ * product are left out.
+ *
+ * @param array    $groups    erp_profitability_group() rows: product_id, channel, net
+ * @param string[] $notified  The keys remembered so far
+ * @return array ['announce' => groups, the biggest loss first, 'notified' => sorted keys]
+ */
+function erp_alert_profit_loss_plan($groups, $notified)
+{
+    $keep = array_fill_keys((array) $notified, true);
+    $announce = array();
+
+    foreach ((array) $groups as $group) {
+        if ((int) $group['product_id'] <= 0) {
+            continue;
+        }
+
+        $key = erp_profitability_key($group['product_id'], $group['channel']);
+
+        if ((int) $group['net'] >= 0) {
+            unset($keep[$key]);
+        } elseif (!isset($keep[$key])) {
+            $keep[$key] = true;
+            $announce[] = $group;
+        }
+    }
+
+    usort($announce, function ($a, $b) {
+        if ((int) $a['net'] !== (int) $b['net']) {
+            return ((int) $a['net'] < (int) $b['net']) ? -1 : 1;
+        }
+
+        return strcmp(erp_profitability_key($a['product_id'], $a['channel']), erp_profitability_key($b['product_id'], $b['channel']));
+    });
+
+    $keys = array_map('strval', array_keys($keep));
+    sort($keys, SORT_STRING);
+
+    return array('announce' => $announce, 'notified' => $keys);
+}
+
+/**
+ * The loss notice: the products sold at a loss on a channel over the last 30
+ * days that were not announced yet, in one bell row. Runs once a day, from
+ * the order profit job after its pass has caught up; with the Accounting
+ * module off, or before the order profit tables, it reads and writes nothing.
+ *
+ * @param string|null $today  Y-m-d; today when null
+ * @return array ['ran' => bool, 'count' => int, 'notification_id' => int]
+ */
+function erp_alert_profit_loss($today = null)
+{
+    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0);
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
+        return $result;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/profitability.php');
+
+    if (!erp_order_profit_ready()) {
+        return $result;
+    }
+
+    $state = erp_alert_profit_loss_state(pg_config_text(ERP_ALERT_PROFIT_LOSS));
+
+    if ($state['day'] === $today) {
+        return $result;
+    }
+
+    $result['ran'] = true;
+    $report = erp_profitability_report(date('Y-m-d', strtotime($today . ' -29 days')), $today);
+    $plan = erp_alert_profit_loss_plan($report['groups'], $state['keys']);
+
+    if (!pg_config_text_save(ERP_ALERT_PROFIT_LOSS, erp_alert_profit_loss_state_text($today, $plan['notified']))) {
+        return $result;
+    }
+
+    if (empty($plan['announce'])) {
+        return $result;
+    }
+
+    // title is the number of products and channels, product_id the first
+    // (the biggest loss), named when it is the only one, and order_total its
+    // channel's name (includes/notifications.php builds the sentence).
+    $first = $plan['announce'][0];
+    $result['count'] = count($plan['announce']);
+    $result['notification_id'] = erp_alert_create(array(
+        'action' => 'erp_profit_loss',
+        'type' => 'warning',
+        'title' => (string) count($plan['announce']),
+        'product_id' => (int) $first['product_id'],
+        'order_total' => mb_substr(erp_profitability_channel_label($first['channel'], erp_profitability_accounts()), 0, 100),
+        'user' => 'system',
+    ), false);
+
+    return $result;
 }

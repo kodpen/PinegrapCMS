@@ -18,6 +18,7 @@
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks [decision: decisions-made-schema-30.md]
 - back-in-stock-send-retry-shared-dates.md: Back-in-stock and waiting list senders (PR #10712): a mail failed in the request waits again; a series sharing its places is read on its last date and named without a date
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise [decision: decisions-made-messages.md]
+- back-in-stock-withdraw.md: Taking a back-in-stock or waiting list request back (#10713): withdraw=1 on stock_notify.php, which row goes, one answer with or without a row, the "Stop waiting" button [decision: here]
 - barcode-label-print-escaping.md: The barcode label print page (LabelEditor buildPrintHTML() in backend.src.js): barcode and template values read as numbers, CSS values or escaped text before they reach the print window
 - barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447) [decision: decisions-made-product-20.md]
@@ -116,7 +117,7 @@
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets [decision: here]
-- event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the six answers, rights, name search, counts, undo
+- event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the answers, rights, name search, counts, undo
 - event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets [decision: here]
 - event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch [decision: here]
 - event-tickets-page.md: Event tickets (TK2): the holder's page tickets.php behind the signed link, each ticket's QR and code, void ones without a QR, print, .ics; the my account tickets section, flag and account.tickets list
@@ -363,7 +364,7 @@
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
-- stock-holds-record.md: The stock_holds table (11.0.253) and includes/fn/stock_holds.php: units free, units an order needs, placing under a per-product lock, release, the daily sweep (SH1, PR #10711)
+- stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a per-product lock, release, the daily sweep (SH1 #10711, SH2)
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]
