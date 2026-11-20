@@ -580,6 +580,8 @@ function pg_audit_view_labels($kind)
             'order_return' => lang('Return request'),
             'store_credit' => lang('Store credit'),
             'booking'      => lang('Booking'),
+            'application_program' => lang('Application programme'),
+            'application_entry'   => lang('Application'),
             'file'         => lang('File'),
             'offer'        => lang('Offer'),
             'contact'      => lang('Contact'),
