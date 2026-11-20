@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-referral-money
-description: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues, what read clean
+description: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
 ---
 
 ## Which area was hunted?
@@ -13,9 +13,7 @@ description: Bug hunt of the referral programme's rules and money (referral.php,
 - The self check read only the referrer's account e-mail; a guest order with their contact e-mail was rewarded. Both addresses are matched.
 
 ## Which issues were opened?
-- #10629 friend check: an account holder's guest orders and folded e-mail variants (E7 wording, needs a decision).
-- #10630 no address match in the self check (new rule).
-- #10631 a reward lost when the referrer's lock is busy (needs a retry place, touches order completion).
+- #10629 friend check by account and folded e-mail together, #10630 no address match (a known limit), #10631 a busy lock's reward retried: all three closed by #10674 (`commerce/referral-checks.md`, `commerce/referral-rules.md`).
 
 ## What read clean?
 - Signature (HMAC, `hash_equals`), the lock around check and write, the `done` guard against two rewards for one order, the guarded paid→ineligible take-back, part refunds per message 7257, restore's smallest check and the cap counting taken-back rows.
