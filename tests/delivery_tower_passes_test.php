@@ -78,8 +78,8 @@ function test_delivery_tower_summary_across_ticks()
 	$tz = 'Europe/Istanbul';
 	$state = pg_delivery_tower_summary_state_new(_dt_passes_test_at('2026-11-20 02:00'));
 	$rows = array_merge(
-		_dt_passes_test_delivered('yurtici', 'İstanbul', 15, 2, '2026-11-03'),
-		_dt_passes_test_delivered('yurtici', 'ISTANBUL', 10, 3, '2026-11-05'),
+		_dt_passes_test_delivered('yurtici', 'İstanbul', 15, 2, '2026-11-04'),
+		_dt_passes_test_delivered('yurtici', 'ISTANBUL', 10, 3, '2026-11-04'),
 		_dt_passes_test_delivered('aras', 'Ankara', 5, 1)
 	);
 	// Ids as one id-ordered walk read them.
@@ -94,7 +94,7 @@ function test_delivery_tower_summary_across_ticks()
 	pg_assert_same(null, pg_delivery_tower_summary_state_decode(pg_delivery_tower_summary_state_encode($state), $state['started'] + 1), 'another walk\'s state is not taken');
 	pg_delivery_tower_summary_add($state, array_slice($rows, 12), $tz);
 
-	$summary = pg_delivery_tower_summary_finish($state, PG_DELIVERY_TOWER_MIN_PARCELS, $tz);
+	$summary = pg_delivery_tower_summary_finish($state, PG_DELIVERY_TOWER_MIN_PARCELS);
 	pg_assert_same(30, $summary['parcels'], 'every delivered parcel counted');
 	$figure = $summary['figures']['yurtici']['provinces']['istanbul'];
 	pg_assert_same(25, $figure['count'], 'one province whatever the spelling');

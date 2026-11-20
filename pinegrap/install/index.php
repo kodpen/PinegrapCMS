@@ -9376,6 +9376,7 @@ function get_tables() {
 		'page_revisions',
 		'record_revisions',
 		'shipment_labels',
+		'shipment_problems',
 		'prototype_links',
 		'prototype_comments',
 	);
