@@ -3266,7 +3266,7 @@ function get_system_status_checks()
     // 🎨 Canvas drawing (includes/fn/image_draw.php)
     //
     // Reported, not scored: a canvas an agent writes is drawn by a member's
-    // browser, and the languages of a translated Design Canvas picture by an
+    // browser, and the languages of a translated Artifact Canvas picture by an
     // open panel, wherever the server cannot draw them, so nothing is broken
     // without it. Shown where either one happens: the Workspace is on, or the
     // site has a target language (includes/fn/picture_server_draw.php). The
@@ -3293,18 +3293,18 @@ function get_system_status_checks()
         $draw_texts = array(
             'paused' => array(
                 'agents'   => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
-                'pictures' => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. An open panel draws the languages of translated Design Canvas pictures until then.',
-                'both'     => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Until then members\' browsers draw the canvases agents write, and an open panel the languages of translated Design Canvas pictures.',
+                'pictures' => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. An open panel draws the languages of translated Artifact Canvas pictures until then.',
+                'both'     => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Until then members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
             ),
             'off' => array(
                 'agents'   => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
-                'pictures' => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. An open panel draws the languages of translated Design Canvas pictures.',
-                'both'     => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write, and an open panel the languages of translated Design Canvas pictures.',
+                'pictures' => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. An open panel draws the languages of translated Artifact Canvas pictures.',
+                'both'     => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
             ),
             'on' => array(
                 'agents'   => 'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
-                'pictures' => 'With nobody in the panel, this server draws the languages of translated Design Canvas pictures wherever it draws every part of one faithfully. An open panel draws the others.',
-                'both'     => 'This server draws the canvases agents write at once, and the languages of translated Design Canvas pictures with nobody in the panel, wherever it draws every part of one faithfully. Browsers draw the others, and a member\'s browser draws an agent\'s canvas again with the image editor.',
+                'pictures' => 'With nobody in the panel, this server draws the languages of translated Artifact Canvas pictures wherever it draws every part of one faithfully. An open panel draws the others.',
+                'both'     => 'This server draws the canvases agents write at once, and the languages of translated Artifact Canvas pictures with nobody in the panel, wherever it draws every part of one faithfully. Browsers draw the others, and a member\'s browser draws an agent\'s canvas again with the image editor.',
             ),
         );
 

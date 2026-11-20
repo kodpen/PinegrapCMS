@@ -1,11 +1,11 @@
 ---
 name: editor-turkish-terms
-description: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
+description: The names Page Design Studio, Artifact Canvas (was Design Canvas), Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
 ---
 
 ## What are the editors and the designs called?
 - Owner (2026-11-12, #8849, `workflow/decisions-made-panel-6.md`): the visual page editor (code `designer`) is named Page Design Studio ("Sayfa Tasarım Stüdyosu", "Stüdyo" once named), the image editor (code `image_editor`) Design Canvas ("Tasarım Tuvali"), designs Designs ("Tasarımlar"). Not "Visual Page Editor", "Görsel Sayfa Editörü", "Image Editor", "Görsel Düzenleyici" or "Visual Designs" (#8894).
-- The image editor's name becomes Artifact Canvas ("Yapıt Tuvali") (owner, 2026-11-20, `workflow/decisions-made-panel-10.md`): step AC2 of `plans/artifact-canvas-rename.md` changes the texts and this line.
+- The image editor's name is Artifact Canvas ("Yapıt Tuvali", "Yapıt Tuvali'nde") (owner, 2026-11-20, `workflow/decisions-made-panel-10.md`). The panel screens say it since #PRNUM (step AC2a); the Page Design Studio, the canvas itself and the site's edit button still say Design Canvas until AC2b (`plans/artifact-canvas-rename-steps.md`). The short word "canvas" stays. Test: `tests/artifact_canvas_name_test.php`.
 - Only texts changed: files, addresses, API names, settings and code names keep `image_editor`, `designer`, `visual_designer`.
 - A sentence is rewritten around the name, not patched ("Edit in the Page Design Studio", "Tasarım Tuvali'nde kaydedildi"). Third-party names stay ("Pintura Image Editor").
 - A new text uses these names, as a new key with `php tools/tr_add.php`.
