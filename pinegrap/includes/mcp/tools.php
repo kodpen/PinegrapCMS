@@ -259,6 +259,39 @@ function pg_mcp_tool_from_route($route) {
 
 }
 
+// The size budget of one tool on tools/list: its description in characters
+// and the whole tool as JSON in bytes. A route's 'details' key is never read
+// here: reference detail goes there and only the OpenAPI document shows it.
+function pg_mcp_tool_budgets() {
+
+	return array('description' => 600, 'tool' => 4096);
+
+}
+
+// Which budgets of pg_mcp_tool_budgets() a tool from pg_mcp_tool_from_route()
+// passes: an empty list, or 'description' and/or 'tool'.
+function pg_mcp_tool_over_budget($tool) {
+
+	$budgets = pg_mcp_tool_budgets();
+
+	$over = array();
+
+	if (mb_strlen(isset($tool['description']) ? (string)$tool['description'] : '') > $budgets['description']) {
+
+		$over[] = 'description';
+
+	}
+
+	if (strlen((string)pg_mcp_json_encode($tool)) > $budgets['tool']) {
+
+		$over[] = 'tool';
+
+	}
+
+	return $over;
+
+}
+
 // The arguments of a call, sorted into what the route reads from its path and
 // what it reads from the query and the body. Answers array('path' => name =>
 // value, 'input' => name => value, 'body_keys' => list, 'dry_run' => true,

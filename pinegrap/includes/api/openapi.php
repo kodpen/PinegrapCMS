@@ -37,6 +37,31 @@ function api_openapi_base_url() {
 
 }
 
+// An operation's description: the route's description and the scope it
+// requires, then its 'details' as a paragraph of their own: reference detail
+// a caller looks up rather than needs for a right call, which the MCP tool
+// list never reads, so a tool stays within its budget (pg_mcp_tool_budgets()).
+// '' when there is none.
+function api_openapi_operation_description($route) {
+
+	$description = isset($route['description']) ? (string)$route['description'] : '';
+
+	if ($route['scope'] !== '') {
+
+		$description .= (($description !== '') ? ' ' : '') . 'Requires the ' . $route['scope'] . ' scope.';
+
+	}
+
+	if (isset($route['details']) && ($route['details'] !== '')) {
+
+		$description .= (($description !== '') ? "\n\n" : '') . $route['details'];
+
+	}
+
+	return $description;
+
+}
+
 function api_openapi_build() {
 
 	$paths = array();
@@ -71,16 +96,11 @@ function api_openapi_build() {
 			'responses'   => api_openapi_responses($route)
 		);
 
-		if (isset($route['description'])) {
+		$description = api_openapi_operation_description($route);
 
-			$operation['description'] = $route['description'];
+		if ($description !== '') {
 
-		}
-
-		if ($route['scope'] !== '') {
-
-			$operation['description'] = (isset($operation['description']) ? $operation['description'] . ' ' : '')
-				. 'Requires the ' . $route['scope'] . ' scope.';
+			$operation['description'] = $description;
 
 		}
 

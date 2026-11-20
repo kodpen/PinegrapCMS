@@ -2694,6 +2694,7 @@
     "Sheet {var:1}": "Sayfa {var:1}",
     "Sheet {var:1} cannot be changed here.": "{var:1} sayfası burada değiştirilemez.",
     "Sheet {var:1} has pictures, charts, comments, a table or other parts, so it is deleted in a spreadsheet program.": "{var:1} sayfasında resim, grafik, açıklama, tablo veya başka parçalar var; bu yüzden bir hesap tablosu programında silinir.",
+    "Sheet {var:1} is protected and does not allow formatting cells.": "{var:1} sayfası korumalı ve hücre biçimlendirmeye izin vermiyor.",
     "Sheet {var:1} is the last visible sheet, and a workbook keeps at least one.": "{var:1} son görünür sayfa; bir çalışma kitabında en az bir tane kalır.",
     "Sheet {var:1} is too large to change here.": "{var:1} sayfası burada değiştirilemeyecek kadar büyük.",
     "Sheet {var:2} has a filter, so its rows and columns are not inserted or deleted here.": "{var:2} sayfasında bir filtre var; bu yüzden satırları ve sütunları burada eklenip silinmez.",
