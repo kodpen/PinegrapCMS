@@ -8728,6 +8728,7 @@
     "audit, accounts, annual report": "denetim, hesaplar, yıllık rapor",
     "audit, audit trail, changes, history, retention, kvkk, gdpr, who changed": "denetim, denetim izi, değişiklikler, geçmiş, saklama süresi, kvkk, gdpr, kim değiştirdi, audit, audit trail, changes, history, retention, who changed",
     "author account, submit a story, review": "yazar hesabı, yazı gönderme, inceleme",
+    "auto": "oto",
     "auto campaign for profile ({var:1}) was created because of an action ({var:2})": "profil için otomatik kampanya ({var:1}) bir işlem nedeniyle oluşturuldu ({var:2})",
     "auto campaign for profile ({var:1}) was not created, because the page it sends has been deleted": "profil ({var:1}) için otomatik kampanya oluşturulmadı, çünkü göndereceği sayfa silindi",
     "auto campaign sent": "otomatik kampanya gönderildi",

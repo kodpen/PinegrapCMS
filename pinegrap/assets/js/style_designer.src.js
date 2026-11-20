@@ -27816,6 +27816,9 @@ const StyleDesigner = (function () {
         if (ctrl.classList.contains('sd-seg-src')) {
             ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
         }
+        // The spacing rows are hidden behind the spacing box: it stands in.
+        var _spRows = ctrl.closest('.sd-sp-rows');
+        if (_spRows) ctrl = _spRows.parentNode.querySelector('.sd-spb-host') || _spRows.parentNode;
         var _hidden = ctrl.closest('.sd-sect-body');
         if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
         _sdRcolShow('options');
@@ -33967,6 +33970,7 @@ const StyleDesigner = (function () {
             counts[t] = _sdMcMark(tpl.content, nodes, false);
         });
         bindMultiPropEvents(nodes);
+        _sdSpBoxBind(nodes);
         _sdMcHead(nodes, alike, shown, counts);
         // Content level: the panel edits only when every element may be edited.
         _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
@@ -34121,14 +34125,6 @@ const StyleDesigner = (function () {
             if (dot.kind) { lbl.dataset.mcReset = '1'; lbl.dataset.mcTip = _sdMcDotTip(dot); }
             if (mixed) row.setAttribute('data-sd-mixed', '1');
         });
-        root.querySelectorAll('.sd-bm-v').forEach(function (cell) {
-            var pre = cell.getAttribute('data-bm');
-            if (_sdMcVals(nodes.map(function (n) { return _sdMcValOf(n.props, { prefix: pre }); })).mixed) {
-                cell.textContent = '~';
-                cell.classList.add('sd-bm-mixed');
-            }
-        });
-        root.querySelectorAll('.sd-bm-center').forEach(function (core) { core.textContent = _sdT('{var} elements', nodes.length); });
         if (live) {
             _sdNarrowStack(root);
             _sdSegSync(root);
@@ -34271,19 +34267,6 @@ const StyleDesigner = (function () {
                 if (!sel) return;
                 sel.value = _sdSegNext(sel.value, btn.getAttribute('data-cls') || '', true);
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-        });
-
-        // ── The spacing box: a click steps a side's value for every element ──
-        panel.querySelectorAll('.sd-bm-v').forEach(function (cell) {
-            cell.addEventListener('click', function () {
-                var pre = cell.getAttribute('data-bm');
-                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
-                var cycle = pre.charAt(0) === 'm' ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
-                var next = cycle[(cycle.indexOf(cell.textContent) + 1) % cycle.length];
-                _sdMcCommit(nodes, function (n) {
-                    n.props.cssClass = _sdMcClassWrite(n.props.cssClass, { prefix: pre }, next === '-' ? '' : pre + next);
-                });
             });
         });
     }
@@ -35944,6 +35927,7 @@ const StyleDesigner = (function () {
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdFxBind(selectedNode);
+        _sdSpBoxBind([selectedNode]);
         markModifiedProps();
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
@@ -55461,31 +55445,63 @@ const StyleDesigner = (function () {
         h += '</div>';
         return h;
     }
-    function boxModel(n) {
-        var cls = n.props.cssClass || '';
-        function valOf(prefix) { 
-            var c = cls.split(' ').find(function(cl) { return cl.startsWith(prefix); });
-            return c ? c.replace(prefix, '') : '-';
+    // ── The spacing box (Style › Spacing)
+    // The section's body holds the box's place (data-sd-spbox) and today's
+    // ten rows, hidden: they still count, reset and search as before. The
+    // box and the size chooser in the section's head are the part
+    // 'spacing' (style_designer_spacing.js), run the first time the section
+    // is shown; what it writes is the rows' classes (pg_spacing_box.js).
+    // The chosen screen size, for every element, until the editor closes.
+    var _sdSpSize = 'xs';
+
+    // What the part reads and writes: the elements' classes, the chosen
+    // size and the commit of a change (`fn` maps a class list to the new
+    // one) as one undo step.
+    function _sdSpBoxHost(el, nodes) {
+        return {
+            el: el,
+            size: _sdSpSize,
+            classes: nodes.map(function (n) { return (n.props && n.props.cssClass) || ''; }),
+            locked: !!_sdPanelLockReason(nodes),
+            setSize: function (s) { _sdSpSize = s; },
+            commit: function (fn) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason(nodes)) return;
+                var todo = nodes.filter(function (n) { return n.props && fn(n.props.cssClass || '') !== (n.props.cssClass || ''); });
+                if (!todo.length) { renderProperties(); return; }
+                if (nodes.length > 1) {
+                    _sdMcCommit(todo, function (n) { n.props.cssClass = fn(n.props.cssClass || ''); });
+                    return;
+                }
+                saveState();
+                todo[0].props.cssClass = fn(todo[0].props.cssClass || '');
+                _sdRenderNode(todo[0], render);
+            }
+        };
+    }
+
+    // Draws the box once the panel is drawn. While its section is closed
+    // (search mode builds closed bodies) the part waits for the head to
+    // open it before it is loaded for the first time.
+    function _sdSpBoxBind(nodes) {
+        var panel = document.getElementById('sd-properties');
+        var el = panel ? panel.querySelector('[data-sd-spbox]') : null;
+        if (!el || !nodes.length || !nodes[0]) return;
+        var draw = function () {
+            if (!el.isConnected) return;
+            var host = _sdSpBoxHost(el, nodes);
+            _sdPartCall('spacing', 'draw', [host]).catch(_sdPartFailed);
+        };
+        var sectBody = el.closest('.sd-sect-body');
+        var hdr = sectBody ? sectBody.previousElementSibling : null;
+        if (!_sdPartLoaded('spacing') && sectBody && sectBody.style.display === 'none' && hdr) {
+            hdr.addEventListener('click', function first() {
+                hdr.removeEventListener('click', first);
+                draw();
+            });
+            return;
         }
-        var h = '<div class="sd-bm-wrap">';
-        h += '<div class="sd-bm-margin">';
-        h += '<div class="sd-bm-lbl">margin</div>';
-        h += '<div class="sd-bm-v mt" data-bm="mt-" title="' + esc(_sdT('Margin Top')) + '">' + valOf('mt-') + '</div>';
-        h += '<div class="sd-bm-v mr" data-bm="me-" title="' + esc(_sdT('Margin Right')) + '">' + valOf('me-') + '</div>';
-        h += '<div class="sd-bm-v mb" data-bm="mb-" title="' + esc(_sdT('Margin Bottom')) + '">' + valOf('mb-') + '</div>';
-        h += '<div class="sd-bm-v ml" data-bm="ms-" title="' + esc(_sdT('Margin Left')) + '">' + valOf('ms-') + '</div>';
-        
-        h += '<div class="sd-bm-padding">';
-        h += '<div class="sd-bm-lbl">padding</div>';
-        h += '<div class="sd-bm-v pt" data-bm="pt-" title="' + esc(_sdT('Padding Top')) + '">' + valOf('pt-') + '</div>';
-        h += '<div class="sd-bm-v pr" data-bm="pe-" title="' + esc(_sdT('Padding Right')) + '">' + valOf('pe-') + '</div>';
-        h += '<div class="sd-bm-v pb" data-bm="pb-" title="' + esc(_sdT('Padding Bottom')) + '">' + valOf('pb-') + '</div>';
-        h += '<div class="sd-bm-v pl" data-bm="ps-" title="' + esc(_sdT('Padding Left')) + '">' + valOf('ps-') + '</div>';
-        h += '<div class="sd-bm-center">-</div>';
-        h += '</div>';
-        
-        h += '</div></div>';
-        return h;
+        draw();
     }
 
     function rowCss(n) { 
@@ -55899,7 +55915,7 @@ const StyleDesigner = (function () {
             if (!def) { _spContent += '<div class="sd-sp-divider"></div>'; return; }
             _spContent += mkSpRow(def);
         });
-        var spacingHtml = as(_sdT('Spacing'), boxModel(n) + '<div class="sd-sp-section">' + _spContent + '</div>');
+        var spacingHtml = as(_sdT('Spacing'), '<div class="sd-spb-host sd-bm-wrap" data-sd-spbox></div><div class="sd-sp-section sd-sp-rows" hidden>' + _spContent + '</div>');
 
         // Border options
         var borderSides = ['', 'border', 'border-0', 'border-top', 'border-bottom', 'border-start', 'border-end'];
@@ -56701,31 +56717,6 @@ const StyleDesigner = (function () {
                 body.style.display = isOpen ? '' : 'none';
                 if (isOpen) _sdNarrowStack(body);
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
-            });
-        });
-
-        // Visual Box Model inputs
-        document.querySelectorAll('#sd-properties .sd-bm-v').forEach(function(el) {
-            el.addEventListener('click', function() {
-                if (!selectedNode) return;
-                saveState();
-                var prefix = this.dataset.bm;
-                var current = this.innerText;
-                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
-                var cycle = (prefix.startsWith('m')) ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
-                var nextIndex = cycle.indexOf(current) + 1;
-                if (nextIndex >= cycle.length) nextIndex = 0;
-                var nextVal = cycle[nextIndex];
-
-                var clsArray = (selectedNode.props.cssClass || '').split(' ').filter(function(c) {
-                    return c.trim() !== '' && !c.startsWith(prefix);
-                });
-                if (nextVal !== '-') clsArray.push(prefix + nextVal);
-                selectedNode.props.cssClass = clsArray.join(' ').trim();
-                renderProperties();
-                renderCanvas();
-                renderAttrsPanel();
-                renderHtmlTree();
             });
         });
 

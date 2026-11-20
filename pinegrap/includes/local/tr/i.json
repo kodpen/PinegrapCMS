@@ -1772,6 +1772,8 @@
     "index {var:1} is already gone": "{var:1} indeksi zaten yok",
     "information": "bilgilendirme",
     "inherit": "devral",
+    "inherited from {var}": "{var} boyutundan gelir",
+    "inner": "iç",
     "innodb_file_per_table is off: OPTIMIZE TABLE rewrites an InnoDB table but the shared tablespace does not shrink": "innodb_file_per_table kapalı: OPTIMIZE TABLE bir InnoDB tablosunu baştan yazar ama ortak tablo alanı küçülmez",
     "innodb_strict_mode is off: a table whose row is too wide is created with a warning and fails later, on write": "innodb_strict_mode kapalı: satırı fazla geniş bir tablo yalnız bir uyarıyla oluşturulur ve sonra, yazma sırasında hata verir",
     "inseam, leg length, measure, test ride": "iç bacak boyu, bacak uzunluğu, ölçüm, deneme sürüşü",
