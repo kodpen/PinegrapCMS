@@ -112,6 +112,9 @@
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
 - referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield and taking a product off sale, the return spike, delivery, settings, API
+- sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
+- sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
 - stock-planning-features.md: Plan stock-planning, features P1 to P14: the daily record, sales speed, season, lead time, supplier, order quantity, states, dead stock, the screen, the supplier order, bell and API
 - stock-planning-steps.md: Plan stock-planning, steps SP1 to SP5: the daily record first (its history starts when it lands), the forecast, the screen and supplier order, the bell and API, close-out
 - stock-planning.md: Plan (owner 2026-11-20, agent channel poll 163): a nightly stock plan per product (days left, run-out day, order quantity, dead stock), its screen, supplier orders, bell and API; SP1 to SP5

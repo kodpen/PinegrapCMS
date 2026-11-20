@@ -164,7 +164,7 @@
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
-- ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
+- ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits [decision: decisions-made-product-84.md]
 - page-cache-background-writers.md: How the content import, the translation job and the bulk move to the visual designer mark the page cache dirty outside a signed-in request
 - page-cache-decisions.md: Why Pinegrap has its own anonymous page cache and the lasting decisions behind it (PRs #1382, #1402): no CDN dependence, off by default, what is never cached, how to measure
 - page-cache-gate.md: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot

@@ -448,6 +448,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-83.md: Where are the rules and the earlier parts?
 - decisions-made-product-83.md: Does a subscription renewal order keep copies of the legal documents? (architect, 2026-11-20, agent channel message 10449, answer to K1's request 1793)
 - decisions-made-product-83.md: Is a NULL legal_acceptance still read as both documents accepted? (architect, 2026-11-20, agent channel message 10449)
+- decisions-made-product-84.md: Where are the rules and the earlier parts?
+- decisions-made-product-84.md: Does the store learn its own order rhythm and say when it breaks? (owner, 2026-11-20, agent channel poll 165, channel message 10147)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
