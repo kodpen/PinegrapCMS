@@ -2112,6 +2112,19 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-tree-ctx-item:hover { background: rgba(var(--sd-accent-rgb), .1); }
 .sd-tree-ctx-item .bi { font-size: .78rem; opacity: .8; }
+/* The Artifact Canvas's own icon in one colour (pgImageEditorConfig.canvasIcon)
+   on the buttons that open it: this screen has no backend.css, so it sizes it
+   and drops the tint here; its lines take the text colour, as the .bi glyphs
+   beside it. */
+.pg-mi.pg-dc-mono {
+    flex: none;
+    width: 1.15em; height: 1.15em;
+    overflow: visible;
+    vertical-align: -0.2em;
+}
+.pg-mi.pg-dc-mono .pg-mi-2,
+.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }
+.sd-tree-ctx-item .pg-dc-mono { font-size: .78rem; opacity: .8; }
 .sd-tree-ctx-danger:hover { background: color-mix(in srgb, var(--sd-danger) 13%, transparent) !important; color: var(--sd-danger); }
 .sd-tree-ctx-sep { border-top: 1px solid var(--sd-panel-border); margin: 3px 0; }
 .sd-tree-ctx-label-wrap { padding: 5px 12px 9px; }

@@ -5283,7 +5283,8 @@
         // listeners: it is made again.
         // A card's owner may also give it one action (options.media.action(),
         // a Promise of { icon, label, run } or null): a button beside the
-        // remove one, e.g. Edit the picture on a canvas.
+        // remove one, e.g. Edit the picture on a canvas. Its icon is a
+        // Bootstrap icon's name or a drawn element (the canvas's own icon).
         drawMedia: function () {
             var self = this;
             var media = self.mediaOf ? self.options.media : null;
@@ -5313,7 +5314,13 @@
                             return;
                         }
 
-                        var go = button('ws-rich-block-action', '', offered.icon || 'bi-pencil', offered.label || '');
+                        var drawn = offered.icon && (typeof offered.icon === 'object');
+                        var go = button('ws-rich-block-action', '', drawn ? '' : (offered.icon || 'bi-pencil'), offered.label || '');
+
+                        if (drawn) {
+                            go.appendChild(offered.icon);
+                        }
+
                         go.setAttribute('data-ws-media-action', '1');
                         go.tabIndex = -1;
                         go.wsRun = offered.run;
