@@ -18,6 +18,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/auto_dialogs.php');
+
 // One method of the software object, `name: function(…) {…}` in the source
 // or `name:function(…){…}` in the bundle, read up to its closing brace;
 // strings and comments are stepped over. '' when it is not found.
@@ -198,4 +200,22 @@ JS;
 		pg_assert_same(array('shown', 'closed'), $out['counted'], $script . ': and counted');
 		pg_assert_same(1, $out['preview'], $script . ': a preview opens but is neither remembered nor counted');
 	}
+}
+
+function test_the_rows_printed_into_the_inline_script_hold_no_markup()
+{
+	// An address may hold "<!--<script>" (no space, so the URL field takes
+	// it): printed raw into the page's inline script, the HTML parser then
+	// reads past the script's closing tag and the rest of every page is
+	// swallowed as script.
+	$rows = array(array('id' => 2, 'url' => 'https://example.com/a<!--<script>b</script>&c', 'content' => 'url'));
+	$json = pg_auto_dialogs_script_json($rows);
+
+	pg_assert_false(strpos($json, '<') !== false || strpos($json, '>') !== false, 'no angle bracket reaches the script: ' . $json);
+	pg_assert_same($rows, json_decode($json, true), 'the script still reads the same rows');
+	pg_assert_same('[{"id":1,"url":"\\/çiçek"}]', pg_auto_dialogs_script_json(array(array('id' => 1, 'url' => '/çiçek'))), 'letters stay as they are');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_same(2, substr_count($page, "auto_dialogs: ' . pg_auto_dialogs_script_json("), 'the page and the preview print the rows through it');
+	pg_assert_same(0, substr_count($page, "auto_dialogs: ' . encode_json("), 'never through encode_json()');
 }
