@@ -100,7 +100,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 				</div>' : '';
 
 	$done_foot = $done ? '
-			<span class="form-field me-auto" id="n_done_ack_field">' . ($connect['ack'] ? '
+			<span class="d-flex align-items-center gap-2 order-first me-auto" id="n_done_ack_field">' . ($connect['ack'] ? '
 				<input class="pg-checkbox" type="checkbox" id="n_done_ack">
 				<label class="small" for="n_done_ack">' . lang('I have copied the secret') . '</label>' : '') . '
 			</span>
@@ -184,7 +184,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 ' . ($done ? $connect['html'] : '') . '
 		</div>
 
-		<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">' . $done_foot . '
+		<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">
 			<button type="button" class="pg-button pg-button-ghost" id="n_back" hidden><i class="bi bi-arrow-left" aria-hidden="true"></i>' . lang('Back') . '</button>
 			<span class="small fg-2" id="n_hint_1"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('The choice is only a start; the permissions can be changed in the next step.') . '</span>
 			<span class="flex-grow-1"></span>
@@ -192,7 +192,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 			<button type="button" class="pg-button pg-button-ghost" id="n_cancel" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
 			<button type="button" class="pg-button pg-button-fill" id="n_next"
 				data-next="' . h(lang('Continue')) . '" data-open="' . h(lang('Open it')) . '"><span class="pg-btn-label">' . lang('Continue') . '</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
-			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden>' . lang('Create') . '</button>
+			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden>' . lang('Create') . '</button>' . $done_foot . '
 		</div>
 	</form>
 </dialog>';

@@ -20,7 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_panel_stored_names_are_escaped()
 {
 	$lines = array(
-		array('api_settings.php', '" <b>" + esc(app.owner) + "</b> &middot; " + esc(app.created);', 1),
+		array('api_settings.php', 'esc(ACTS_LABEL) + " <b>" + esc(face.acts) + "</b>";', 1),
+		array('api_settings.php', 'document.getElementById("d_fact_owner").textContent = app.owner;', 1),
 		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" selected="selected">\' . h($currency[\'code\']) . \' - \' . h(pg_currency_label($currency[\'name\'])) . \'</option>\'', 1),
 		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" >\' . h($currency[\'code\']) . \' - \' . h(pg_currency_label($currency[\'name\'])) . \'</option>\'', 1),
 	);

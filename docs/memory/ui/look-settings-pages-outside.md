@@ -10,7 +10,7 @@ description: Settings pages outside the Site Settings dialog in look A (S6b): Ap
 ## What changed on Application Access?
 - Card titles are `h2.card-header.bg-reset.border-0.pg-title-section`, no icon; a card's side note `pg-text-2`.
 - Summary is `dl.pg-kv` (`look-kv-list.md`); Errors in 24 hours keeps `fg-danger` on its `dd`.
-- Row and drawer buttons are `pg-button pg-button-quiet pg-button-sm`; Remove, Delete this application, Yes, delete and a device's revoke `pg-button-danger pg-button-sm`. The drawer's Save, New Application's Create and the one-time sheet's Close are the view's one `pg-button-fill`, its Cancel `pg-button-quiet`.
+- Row and drawer buttons are `pg-button pg-button-quiet pg-button-sm`; Remove, Delete, Yes, delete and a device's revoke `pg-button-danger pg-button-sm`. The drawer's Save, New Application's Create and step 3's Close are the view's one `pg-button-fill`, its Cancel `pg-button-quiet`.
 - `api_settings_copy_button()` takes the whole class list; its Bootstrap fallback went.
 - The drawer's tabs are `div.pg-seg.pg-list-seg[role=tablist]` > `button.pg-seg-item` with Bootstrap's `data-bs-toggle="tab"`, which moves `aria-selected` (the thumb). The script hides Devices / Webhook events on the buttons (`d_devices_label`, `d_hooks_label`); on a phone the row scrolls sideways.
 - Labels are `form-label pg-field-label` (the sheets' upper-case labels too). The sheet's backdrop is `var(--pg-scrim)`.
@@ -29,7 +29,7 @@ description: Settings pages outside the Site Settings dialog in look A (S6b): Ap
 - Pair a device: Show a pairing code and New code fill, Cancel quiet; the second lines `pg-text-2`.
 
 ## What stayed?
-- The status columns' `top:3.3rem` sticky offset, the drawer's `min(520px,100%)` width, the pairing card's 520 px cap and the QR code's white box: no token names them.
+- The status columns' `top:3.3rem` sticky offset, the drawer's `min(760px,100%)` width, the pairing card's 520 px cap and the QR code's white box: no token names them.
 - The permission rows' Read / Write control (`.api-seg`, Bootstrap `btn-check` with the `implied` state) and the New Application kind cards' labels: only their sizes moved to tokens.
 - The plug glyph's size on a connection card (an icon outside a tile, `look-sheet-silent.md`).
 

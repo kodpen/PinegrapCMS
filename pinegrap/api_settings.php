@@ -1854,8 +1854,10 @@ echo pg_page_shell(array(
 body.api-drawer-open .pg-chat-launcher { display: none !important; }
 /* On a phone the drawer is a sheet from the bottom, not the full height. */
 #api_drawer.drawer-bottom { --pg-drawer-height: 88vh; }
-/* Step 3's one-time values: the name column of each row. */
+/* The one-time values of step 3: the name column of each row. */
 .api-cred-name { flex: 0 0 9.5rem; min-width: 0; }
+/* Row titles in the drawers at their recipe size, not the drawer body size. */
+#api_drawer .pg-list-row-title, #api_new .pg-list-row-title { font-size: var(--pg-text-base); }
 /* A guide that does not suit the application: its name in the secondary
    ink and its tile grey, still readable; the reason is the first line inside. */
 .api-guide-off .pg-set-fold-name { color: var(--pg-fg-2); }

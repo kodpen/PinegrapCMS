@@ -258,8 +258,8 @@ function api_app_drawer_view($parts) {
 		</div>
 
 		<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">
-			<a class="pg-text-meta" href="connections.php" id="d_foot_connections"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('For the services the site reaches: Connections') . '</a>
-			<a class="pg-text-meta" href="api_docs.php" id="d_foot_docs" hidden><i class="bi bi-book me-1" aria-hidden="true"></i>' . lang('API Documentation') . '</a>
+			<a class="pg-text-meta fg-2 text-decoration-none" href="connections.php" id="d_foot_connections"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('For the services the site reaches: Connections') . '</a>
+			<a class="pg-text-meta fg-2 text-decoration-none" href="api_docs.php" id="d_foot_docs" hidden><i class="bi bi-book me-1" aria-hidden="true"></i>' . lang('API Documentation') . '</a>
 			<span class="flex-grow-1"></span>
 			<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer" id="d_close" hidden>' . lang('Close') . '</button>
 			<button type="submit" class="pg-button pg-button-fill" id="d_save">' . lang('Save') . '</button>
@@ -275,7 +275,7 @@ function api_app_drawer_view($parts) {
 function api_app_drawer_overview_html($fields_script) {
 
 	$fact = function ($id, $label) {
-		return '<div class="pg-fact"><small>' . h($label) . '</small><b id="' . $id . '"></b></div>';
+		return '<div class="pg-facts-item"><small>' . h($label) . '</small><b id="' . $id . '"></b></div>';
 	};
 
 	return '
@@ -317,7 +317,7 @@ function api_app_drawer_overview_html($fields_script) {
 					<div class="pg-card-inner-row" id="d_key_row">
 						<div class="flex-grow-1 min-width-0">
 							<div class="pg-list-row-title" id="d_key_label">' . lang('Key') . '</div>
-							<code class="pg-text-meta" id="d_key"></code>
+							<code class="pg-text-meta text-break" id="d_key"></code>
 						</div>
 						' . api_settings_copy_button('d_key', 'd_key_label', 'pg-button pg-button-quiet pg-button-sm') . '
 					</div>

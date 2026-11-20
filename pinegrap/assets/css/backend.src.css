@@ -29268,19 +29268,19 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
-.pg-fact {
+.pg-facts-item {
   min-width: 0;
   padding: 9px 12px;
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-lg);
   background: var(--pg-surface-1);
 }
-.pg-fact > small {
+.pg-facts-item > small {
   display: block;
   color: var(--pg-fg-2);
   font-size: var(--pg-text-meta);
 }
-.pg-fact > b {
+.pg-facts-item > b {
   display: block;
   overflow: hidden;
   font-size: var(--pg-text-base);
