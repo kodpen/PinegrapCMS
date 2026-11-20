@@ -210,6 +210,7 @@
 - decisions-made-schema-43.md: Decisions list, schema part 43 (2026-11-20 on): a repeating event with shared places gives a series ticket checked in once per date; the event_ticket_checkins table (poll 195, bug #10755)
 - decisions-made-schema-44.md: Decisions list, schema part 44 (2026-11-20 on): the application review desk's four tables and their columns, no reviewer right column (poll 199)
 - decisions-made-schema-45.md: Decisions list, schema part 45 (2026-11-20 on): the satisfaction loop's two tables, feedback_surveys (a survey's settings) and feedback_responses (one row per sent survey), their columns (poll 197)
+- decisions-made-schema-46.md: Decisions list, schema part 46 (2026-11-21 on): the tables of the walk-in queue, volunteer shifts, the set-up journey and prototype approval, five columns on prototype_links (poll 206)
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace

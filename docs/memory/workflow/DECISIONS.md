@@ -663,6 +663,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-45.md: Which columns does feedback_surveys have? (architect, 2026-11-20)
 - decisions-made-schema-45.md: Which columns does feedback_responses have? (architect, 2026-11-20)
 - decisions-made-schema-45.md: What else holds?
+- decisions-made-schema-46.md: Where are the rules and the earlier parts?
+- decisions-made-schema-46.md: Do the plans of polls 201, 202, 204 and 205 get their tables? (owner, 2026-11-21, agent channel poll 206, channel message 11148)
+- decisions-made-schema-46.md: Which tables does the walk-in queue get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: Which tables do volunteer shifts get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: Who sets the columns?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
