@@ -23,7 +23,7 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 ## When may nobody start a task?
 - While more than 25 PRs are open, drafts and `merge-train/*` PRs not counted (command: `CLAUDE.md`, Working mode 8). Checked before the claiming draft PR; finished work is still marked ready.
 - Only work the merging session can take holds a place: a PR waiting on a decision goes back to draft until it comes (`session-lifecycle.md`, `architect.md`).
-- Each account's coordinator runs its workers (`coordinator.md`), and its workers hold at most 8 of the 25 places, so one account does not fill the queue. Two sessions never hold the same plan or the same files.
+- Each account's coordinator keeps 8 workers working (`coordinator-workers.md`); a ready PR is not one of them, and the queue limit of 25 holds for everyone. Two sessions never hold the same plan or the same files.
 
 ## What about changelog.txt?
 - A PR does not edit it. The Changelog section of its body names the `[NEW]` line, the `[SCHEME]` item or "none"; the merging session writes it when it lands the PR (`merge-train.md`).

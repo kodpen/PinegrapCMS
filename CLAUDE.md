@@ -130,11 +130,11 @@ queue (`workflow/agent-channel-wake.md`); a worker never waits on one.
    `.min.css` bundles: never in a PR. A new `includes/fn/` module is named in its memory file's `module:`.
 8. **Queue limit.** While more than 25 PRs are open (drafts and
    `merge-train/*` not counted) nobody starts a new task; finished work is
-   still marked ready. A PR waiting on a decision goes back to draft. Each
-   coordinator's workers hold at most 8 of the 25.
+   still marked ready. A PR waiting on a decision goes back to draft.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One per account keeps 8 cloud workers on plan steps
-   (design templates paused); it writes no code, merges nothing, and gives
+9. **Coordinators.** One per account keeps 8 cloud workers working on plan
+   steps (design templates paused); a ready PR is not a worker, its place is
+   free; it writes no code, merges nothing, and gives
    out a bug hunt only in an area the architect named
    (`workflow/bug-hunt.md`), which fixes what it finds in its own PR. Open
    `bug` issues are work for every coordinator: one
