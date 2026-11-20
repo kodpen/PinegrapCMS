@@ -10,7 +10,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Tests, red first: the allow-list on top of the blocklist; the size cap; who opens the file (cart owner, buyer, order staff, a stranger); a removed line taking its file.
   - Features: U1, U2, U8, U14.
 
-- FU2 (M) after FU1: the designer cart and express order widgets.
+- FU2 (M) after FU1: the designer cart and express order widgets. Done in #10641 (the express order widget's form posts multipart; its save is `express_order.php`, FU3).
   - Existing files: `widgets_cart.php` (multipart on both forms), `widgets_catalog.php` (`_pg_render_cart_item_form_html()`), `cart_action.php` (the upload, the kept file, `pg_post_body_discarded()`). `cart_action.php` is held by RF1 and TK1: never open beside them.
   - Features: U3 to U7 for these widgets.
 
