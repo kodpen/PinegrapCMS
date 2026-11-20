@@ -18,6 +18,8 @@
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
+- bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
+- bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
@@ -242,7 +244,7 @@
 - sandbox-on-windows.md: A throwaway Pinegrap install on the owner's Windows machine without touching dev: a private mysqld on its own port, a git archive export, php -S, the installer by curl, CLI scripts, the API over HTTP [decision: decisions-made-workspace-31.md]
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
 - session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft [decision: here]
-- static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro, libxml_disable_entity_loader): phpcs:ignore marker or baseline entry; the brace-less foreach false positive [decision: decisions-made-product-3.md]
+- static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro): phpcs:ignore marker or baseline entry; libxml_disable_entity_loader gone; the brace-less foreach false positive [decision: decisions-made-product-3.md]
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which coordinators give to workers like plan steps; the merging session closes a fixed one
 - trial-merge-check.md: Checking whether a branch or an open PR still merges into development without touching a checkout: git merge-tree --write-tree lists the conflicts; the merged tree's memory index from an export
