@@ -326,7 +326,7 @@ function test_place_list_request_names_no_field()
 	pg_assert_same(0, preg_match('/\$_(GET|POST|REQUEST|COOKIE)\b/', $fn), 'the module reads no request value');
 	pg_assert_contains("pg_place_list_for_page((int) (\$_GET['page'] ?? 0))", $endpoint, 'the endpoint passes the page id alone');
 	pg_assert_contains('$tree = (string) pg_page_tree_json((int) $page_id);', $fn, 'the choice comes from the saved page');
-	pg_assert_contains('pg_place_list_saved_choice(json_decode($tree, true))', $fn);
+	pg_assert_contains('pg_place_list_saved_choice(json_decode($gate[\'tree\'], true))', $fn);
 }
 
 // The block's panel keeps the choice on the block, under the server's name,
@@ -389,7 +389,9 @@ function test_place_list_page_must_hold_the_block()
 	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
 	$start = strpos($fn, 'function pg_place_list_for_page(');
 	$body = substr($fn, $start, strpos($fn, "\n}\n", $start) - $start);
-	pg_assert_true(strpos($body, 'pg_place_list_tree_holds_block(') !== false && strpos($body, 'pg_place_list_tree_holds_block(') < strpos($body, 'db_items(pg_place_list_records_sql('), 'the answer asks before any record is read');
+	pg_assert_true(strpos($body, 'pg_place_list_page_open(') !== false && strpos($body, 'pg_place_list_page_open(') < strpos($body, 'db_items(pg_place_list_records_sql('), 'the answer asks before any record is read');
+	$start = strpos($fn, 'function pg_place_list_page_open(');
+	pg_assert_contains("pg_place_list_tree_holds_block(\$tree, 'pg_place_list_shared_trees')", substr($fn, $start, strpos($fn, "\n}\n", $start) - $start), 'the page\'s gate asks for the block');
 	pg_assert_contains('Map of places block', pg_place_list_reason_text('block'));
 }
 
