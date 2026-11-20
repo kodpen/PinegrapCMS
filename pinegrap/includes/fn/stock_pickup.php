@@ -178,33 +178,89 @@ function pg_stock_pickup_location($method_id)
 }
 
 /**
- * The units a cart needs from one location: its active lines of tracked
- * products that cannot be backordered, summed per product over every
- * recipient.
+ * The units a cart's lines need from one location, product id =>
+ * array('quantity' => units, 'total' => products.inventory_quantity). A
+ * plain line needs its product; a bundle line needs each component for its
+ * quantity per bundle times the line's quantity, never the bundle itself
+ * (completion takes the components, pg_bundle_take_stock()), added to the
+ * same product bought alone. A product that does not track stock or takes
+ * back orders needs nothing. Pure.
+ *
+ * @param array $lines rows with product_id, quantity, inventory, backorder,
+ *                     inventory_quantity and, for a bundle, components: rows
+ *                     with the same keys, quantity per bundle
+ * @return array
+ */
+function pg_stock_pickup_line_needs(array $lines)
+{
+    $needs = array();
+
+    $add = function (array $product, $units) use (&$needs) {
+        $product_id = (int) $product['product_id'];
+
+        if (($product_id <= 0) || ($units <= 0)
+            || ((string) $product['inventory'] !== '1') || ((string) $product['backorder'] === '1')) {
+            return;
+        }
+
+        if (!isset($needs[$product_id])) {
+            $needs[$product_id] = array('quantity' => 0, 'total' => (int) $product['inventory_quantity']);
+        }
+
+        $needs[$product_id]['quantity'] += $units;
+    };
+
+    foreach ($lines as $line) {
+        $quantity = (int) $line['quantity'];
+
+        if (isset($line['components']) && is_array($line['components'])) {
+            foreach ($line['components'] as $component) {
+                $add($component, (int) $component['quantity'] * $quantity);
+            }
+
+            continue;
+        }
+
+        $add($line, $quantity);
+    }
+
+    return $needs;
+}
+
+/**
+ * The units a cart needs from one location: its active lines over every
+ * recipient, read for pg_stock_pickup_line_needs(), a bundle line with its
+ * components.
  *
  * @param int $order_id
  * @return array product id => array('quantity' => int, 'total' => int)
  */
 function pg_stock_pickup_cart_needs($order_id)
 {
-    $needs = array();
-
-    foreach (db_items(
-        "SELECT order_items.product_id, SUM(order_items.quantity) AS quantity, products.inventory_quantity
+    $lines = db_items(
+        "SELECT order_items.product_id, order_items.quantity, products.inventory, products.backorder, products.inventory_quantity
         FROM order_items
-        LEFT JOIN products ON order_items.product_id = products.id
-        WHERE
-            (order_items.order_id = '" . (int) $order_id . "')
-            AND (products.inventory = '1')
-            AND (products.backorder = '0')" . pg_order_item_active_sql() . "
-        GROUP BY order_items.product_id, products.inventory_quantity") as $row) {
-        $needs[(int) $row['product_id']] = array(
-            'quantity' => (int) $row['quantity'],
-            'total' => (int) $row['inventory_quantity'],
-        );
+        INNER JOIN products ON order_items.product_id = products.id
+        WHERE (order_items.order_id = '" . (int) $order_id . "')" . pg_order_item_active_sql());
+
+    $bundle_ids = (function_exists('pg_bundle_ids_among') && $lines)
+        ? pg_bundle_ids_among(array_column($lines, 'product_id'))
+        : array();
+    $contents = array();
+
+    foreach ($lines as $key => $line) {
+        $product_id = (int) $line['product_id'];
+
+        if (isset($bundle_ids[$product_id])) {
+            if (!isset($contents[$product_id])) {
+                $contents[$product_id] = pg_bundle_items($product_id);
+            }
+
+            $lines[$key]['components'] = $contents[$product_id];
+        }
     }
 
-    return $needs;
+    return pg_stock_pickup_line_needs($lines);
 }
 
 /**

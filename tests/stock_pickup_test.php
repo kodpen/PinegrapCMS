@@ -48,6 +48,29 @@ function test_stock_pickup_covers()
 	pg_assert_true(pg_stock_pickup_covers(array(), $rows, 3, 7), 'a cart with nothing tracked fits anywhere');
 }
 
+function test_stock_pickup_line_needs_count_a_bundle_by_its_components()
+{
+	$lines = array(
+		array('product_id' => 10, 'quantity' => 2, 'inventory' => '1', 'backorder' => '0', 'inventory_quantity' => 9),
+		array('product_id' => 40, 'quantity' => 3, 'inventory' => '1', 'backorder' => '0', 'inventory_quantity' => 4, 'components' => array(
+			array('product_id' => 10, 'quantity' => 1, 'inventory' => '1', 'backorder' => '0', 'inventory_quantity' => 9),
+			array('product_id' => 11, 'quantity' => 2, 'inventory' => '1', 'backorder' => '0', 'inventory_quantity' => 8),
+			array('product_id' => 12, 'quantity' => 1, 'inventory' => '0', 'backorder' => '0', 'inventory_quantity' => 0),
+			array('product_id' => 13, 'quantity' => 1, 'inventory' => '1', 'backorder' => '1', 'inventory_quantity' => 0),
+		)),
+		array('product_id' => 20, 'quantity' => 1, 'inventory' => '0', 'backorder' => '0', 'inventory_quantity' => 0),
+		array('product_id' => 21, 'quantity' => 1, 'inventory' => '1', 'backorder' => '1', 'inventory_quantity' => 0),
+	);
+
+	pg_assert_same(array(
+		10 => array('quantity' => 5, 'total' => 9),
+		11 => array('quantity' => 6, 'total' => 8),
+	), pg_stock_pickup_line_needs($lines), 'a bundle needs its tracked components, added to the same product bought alone; never the bundle itself');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/stock_pickup.php');
+	pg_assert_true(strpos($source, 'pg_bundle_items($product_id)') !== false, 'the cart read takes a bundle line\'s contents');
+}
+
 function test_stock_pickup_place_and_description()
 {
 	$locations = stock_pickup_test_locations();

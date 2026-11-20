@@ -60,7 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->add_notice(lang(array('string' => '{var:1} units of {var:2} were moved.', 'vars' => array((int) $_POST['transfer_quantity'], $stock_product['name']))));
         } else {
             $stock_fields = array('quantity' => 'transfer_quantity', 'same' => 'transfer_to', 'to' => 'transfer_to', 'to_disabled' => 'transfer_to',
-                'from' => 'transfer_from', 'not_enough' => 'transfer_from', 'untracked' => 'transfer_product');
+                'from' => 'transfer_from', 'not_enough' => 'transfer_from', 'untracked' => 'transfer_product',
+                'bundle' => 'transfer_product');
             $liveform->mark_error(isset($stock_fields[$stock_done['error']]) ? $stock_fields[$stock_done['error']] : 'transfer_quantity', pg_stock_transfer_error_text($stock_done['error']));
         }
     }
