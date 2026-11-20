@@ -2524,6 +2524,7 @@
     "Settings apply to the saved file; the original stays in versions.": "Ayarlar kaydedilen dosyaya uygulanır; orijinal sürümlerde saklanır.",
     "Settings are split into sections these days, and they open over whatever screen you are on.": "Ayarlar artık bölümlere ayrıldı; bulunduğun ekranın üstünde açılıyor.",
     "Settings of what is selected": "Seçilenin ayarları",
+    "Settings pane": "Ayar bölmesi",
     "Settings were modified by a custom app: Name: {var:1}, API Key: ({var:2}), Secret Key User: {var:3}": "Ayarlar özel bir uygulama tarafından değiştirildi: Ad: {var:1}, API Anahtarı: ({var:2}), Gizli Anahtar Kullanıcısı: {var:3}",
     "Settings › General": "Ayarlar › Genel",
     "Settled by": "Karar kuralı",
