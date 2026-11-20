@@ -27,6 +27,7 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(__DIR__ . '/helpers/language_map.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 function test_workspace_agent_report_check_takes_a_report()
 {
@@ -170,4 +171,68 @@ function test_workspace_agent_report_profile_tool()
 	pg_assert_same(null, ws_profile_body(array('windows' => 'weekly:101:1795000000'))['body'], 'a percent over 100');
 	pg_assert_same(null, ws_profile_body(array('windows' => 'weekly:6.5:1795000000'))['body'], 'a percent that is not whole');
 	pg_assert_same(null, ws_profile_body(array('windows' => implode(',', array_fill(0, 5, 'weekly:1:1795000000'))))['body'], 'five windows');
+}
+
+// In an agent channel the brief asks for the model when the last report is
+// missing or older than an hour; never when it is fresh.
+function test_workspace_agent_report_brief_line()
+{
+	$now = 1800000000;
+	$agent = array('id' => 2, 'kind' => 'app', 'report_at' => 0);
+
+	pg_assert_contains('"model": "<the model you run on>"', ws_agent_report_brief_line($agent, true, $now), 'no report yet');
+	pg_assert_contains('POST /workspace/agent-report', ws_agent_report_brief_line($agent, true, $now));
+	pg_assert_contains('"model"', ws_agent_report_brief_line(array('report_at' => $now - WS_AGENT_REPORT_ASK_AFTER) + $agent, true, $now), 'an hour old');
+	pg_assert_same('', ws_agent_report_brief_line(array('report_at' => $now - 600) + $agent, true, $now), 'fresh: no line');
+	pg_assert_same('', ws_agent_report_brief_line($agent, false, $now), 'outside an agent channel');
+	pg_assert_same('', ws_agent_report_brief_line(array('kind' => 'model') + $agent, true, $now), 'a model assistant');
+
+	pg_assert_same(3600, WS_AGENT_REPORT_ASK_AFTER);
+	pg_assert_contains('ws_agent_report_brief_line(', pg_test_function_source('ws_agent_brief'), 'the brief carries it');
+	pg_assert_contains('ws_agent_channel_is(', pg_test_function_source('ws_agent_brief'));
+}
+
+// The answer route takes an optional model: the report's rule, and it
+// updates the model and its time, keeping the usage windows.
+function test_workspace_agent_report_with_the_answer()
+{
+	$route = null;
+
+	foreach (ws_agent_request_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.agent_requests.answer') {
+			$route = $candidate;
+		}
+	}
+
+	pg_assert_true($route !== null, 'the answer route is there');
+	$model = null;
+
+	foreach ($route['params'] as $param) {
+		if ($param['name'] === 'model') {
+			$model = $param;
+		}
+	}
+
+	pg_assert_true($model !== null, 'the answer takes a model');
+	pg_assert_same(array('body', 'string', 80), array($model['in'], $model['type'], $model['max_length']));
+	pg_assert_true(empty($model['required']), 'optional');
+
+	pg_assert_same(array('ok' => true, 'error' => '', 'model' => 'model-x'), ws_agent_report_model_check(' model-x '));
+	pg_assert_false(ws_agent_report_model_check(str_repeat('m', 81))['ok'], 'over 80 characters');
+	pg_assert_false(ws_agent_report_model_check("a\nb")['ok'], 'two lines');
+	pg_assert_false(ws_agent_report_model_check('')['ok'], 'empty');
+	pg_assert_false(ws_agent_report_model_check(5)['ok'], 'not a string');
+
+	$save = pg_test_function_source('ws_agent_report_model_save');
+	pg_assert_contains('report_model', $save);
+	pg_assert_contains('report_at', $save);
+	pg_assert_false(strpos($save, 'report_usage') !== false, 'the usage windows are kept');
+
+	$answer = pg_test_function_source('ws_api_agent_request_answer');
+	pg_assert_contains('ws_api_agent_answer_model($params)', $answer);
+	pg_assert_true(strpos($answer, 'ws_api_agent_answer_model($params)') < strpos($answer, 'api_dry_run_stop'), 'checked before the dry run stops');
+	pg_assert_contains('ws_agent_report_model_save(', $answer);
+	pg_assert_contains('ws_agent_report_model_save(', pg_test_function_source('ws_api_agent_task_answer'), 'a task run\'s answer too');
+
+	pg_assert_contains('"model": "<the model you run on>"', implode("\n", ws_agent_instructions_request_lines()), 'the instructions say it');
 }

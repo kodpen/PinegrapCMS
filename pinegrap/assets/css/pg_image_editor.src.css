@@ -4751,6 +4751,17 @@ button.pgie-sndfile:hover {
   cursor: default;
 }
 
+/* The nudge arrows: icons only, a 44 px target; a held finger moves the
+   layer, so it neither selects the label nor opens the browser's menu. */
+.pgie .pgie-act.pgie-actnudge {
+  min-width: 44px;
+  padding: 4px;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 @media (max-width: 767.98px), (max-height: 499.98px) {
   .pgie-actwrap.on {
     display: flex;

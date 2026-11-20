@@ -487,28 +487,6 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
 }
 
 /**
- * The built-in zip:// stream, which XMLReader walks a sheet through. PHPExcel
- * (the .xls and .ods importers) replaces that wrapper with its own for the
- * rest of the request and switches libxml's loader off, and XMLReader cannot
- * open a part through either; both are put back once, when first needed.
- * Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
- * LIBXML_NONET), so the loader being on changes nothing else.
- */
-function pg_office_zip_stream()
-{
-    static $restored = false;
-
-    if (!$restored) {
-        $restored = true;
-        @stream_wrapper_restore('zip');
-
-        if (function_exists('libxml_disable_entity_loader')) {
-            @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
-        }
-    }
-}
-
-/**
  * The text of the element the reader is on, as XMLReader::readString()
  * gives it (every text and CDATA node inside it, whitespace included), read
  * node by node. readString(), readOuterXml() and expand() first build the
@@ -580,8 +558,6 @@ function pg_office_xlsx_strings($path, $part, $limited = true)
     if ($size < 0) {
         return $strings;
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -927,8 +903,6 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 {
     $rows = array();
     $truncated = false;
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -2254,8 +2228,6 @@ function pg_office_ods_sheets($path, &$refused = null)
 
         return array();
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 

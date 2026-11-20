@@ -231,6 +231,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 	upgrade_2026_11_0_ai_connections();          // 11.0.240
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
+	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
+	upgrade_2026_11_0_ws_calls();                // 11.0.243
+	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
+	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
 
 }
 
@@ -2057,6 +2061,8 @@ function upgrade_2026_11_0_workspace_note_sources() {
 // holds, even when both register at once. Deleting the application deletes
 // its commands; renaming it keeps them. usage_text, since USAGE is a
 // reserved word.
+// args, the arguments' definition, is added by 11.0.246 on a database that
+// ran this step before it; a new install creates it here.
 function upgrade_2026_11_0_workspace_app_commands() {
 
 	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
@@ -2067,6 +2073,7 @@ function upgrade_2026_11_0_workspace_app_commands() {
 		usage_text VARCHAR(200) NOT NULL DEFAULT '',
 		created_at INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		args TEXT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY idx_name (name),
 		KEY idx_app (app_id)
@@ -2636,7 +2643,10 @@ function upgrade_2026_11_0_comment_record_counts_progress_save() {
 // sign-in throttle, whose address bucket would lock sign-in. expires_at is 0
 // for a team link that runs for good; created_*, revoked_* (0: not revoked),
 // uses and last_used_at are unix times and counters like the other token
-// links. style_id has a key: the editor lists a design's links.
+// links. style_id has a key: the editor lists a design's links. bundle_id
+// is 0 for a design's link and the release bundle (page_bundle) whose preview
+// the link shares otherwise, with style_id 0 (11.0.244 adds it where this
+// step already ran).
 function upgrade_2026_11_0_prototype_links() {
 
 	install_create_table('prototype_links', "CREATE TABLE prototype_links (
@@ -2657,9 +2667,11 @@ function upgrade_2026_11_0_prototype_links() {
 		revoked_by             INT UNSIGNED NOT NULL DEFAULT 0,
 		uses                   INT UNSIGNED NOT NULL DEFAULT 0,
 		last_used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		bundle_id              INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uk_token (token_hash),
-		KEY idx_style (style_id)
+		KEY idx_style (style_id),
+		KEY idx_bundle (bundle_id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
@@ -7279,6 +7291,29 @@ function upgrade_2026_11_0_auto_dialog_open() {
 
 }
 
+// What an auto dialog shows (11.0.242, includes/fn/auto_dialogs.php):
+// content url (its address in an iframe) or component (a shared component
+// designed in the visual designer), and component_id, that component's id
+// (0 none). The default reads as an auto dialog always was: an address. A
+// row keeps its address while it shows a component, so it can switch back.
+// No index (a handful of rows), no foreign key, no backfill.
+function upgrade_2026_11_0_auto_dialog_content() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'content', "VARCHAR(10) NOT NULL DEFAULT 'url' AFTER place");
+	install_add_column('auto_dialogs', 'component_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER content");
+
+	install_note('Auto dialogs: a dialog can show a pop-up designed in the visual designer instead of a web address.');
+
+}
+
 // A reader's highlights on a message (11.0.222, includes/workspace/
 // highlights.php): one row per marked place, kept by its text (quote) and
 // which occurrence of it in the message's plain text it is. scope is 'me'
@@ -7735,5 +7770,100 @@ function upgrade_2026_11_0_ws_task_app() {
 	install_add_index('ws_tasks', 'idx_app', "INDEX idx_app (app_id, status)");
 
 	install_note('Workspace: a task an application creates from now on says "Made by" that application, and My Tasks can show or leave out the tasks agents made. Earlier tasks read as made by a person.');
+
+}
+
+// Voice and video calls in the Workspace (11.0.243, includes/workspace/
+// calls.php). Sound and picture go from browser to browser; these tables
+// hold only who is in a call and the browsers' connection messages.
+// ws_calls: one call of a channel, who started it, voice or video, live or
+// ended, start and end time; idx_channel_state finds a channel's live call,
+// idx_state the live calls the clean-up looks at, idx_started_by the starts
+// of the last minute. ws_call_members: one row per join, a person (user_id)
+// or a guest (guest_id), with its join and leave time (0 while in the
+// call). ws_call_signals: a connection message from one member to another
+// (offer, answer, candidate) or a keep-alive (ping, to nobody), deleted when
+// the call ends and after two minutes; idx_to is the addressee's read,
+// idx_from the sender's count of the last minute. Tables approved by the
+// owner; no backfill, as no call existed before this step.
+function upgrade_2026_11_0_ws_calls() {
+
+	install_create_table('ws_calls', "CREATE TABLE ws_calls (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('voice','video') NOT NULL DEFAULT 'voice',
+		state       ENUM('live','ended') NOT NULL DEFAULT 'live',
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel_state (channel_id, state),
+		KEY idx_state (state),
+		KEY idx_started_by (started_by, started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_members', "CREATE TABLE ws_call_members (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		guest_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		joined_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		left_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_call (call_id, left_at),
+		KEY idx_user (user_id),
+		KEY idx_guest (guest_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_signals', "CREATE TABLE ws_call_signals (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		from_member_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		to_member_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body            TEXT NULL,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_to (to_member_id, id),
+		KEY idx_from (from_member_id, created_at),
+		KEY idx_call (call_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
+
+}
+
+// A release bundle's preview shared by a prototype link (2026.11.0,
+// 11.0.244; includes/fn/prototype_links.php, the Bundles screen's Share the
+// preview). prototype_links.bundle_id is the bundle (page_bundle.id), 0 for
+// a design's link, which stays as it was; idx_bundle gives a bundle's links
+// on the Bundles screen and their revoke when the bundle is deleted. The
+// table's own step (11.0.35) creates both on a database that has not run it.
+function upgrade_2026_11_0_prototype_link_bundles() {
+
+	if (!install_table_exists('prototype_links')) {
+
+		return;
+
+	}
+
+	install_add_column('prototype_links', 'bundle_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('prototype_links', 'idx_bundle', "INDEX idx_bundle (bundle_id)");
+
+}
+
+// An application command's arguments (2026.11.0, 11.0.246;
+// includes/workspace/app_commands.php). ws_app_commands.args keeps the
+// definition the application registered, as a JSON list in the shape of the
+// built-in commands' arguments (at most eight), so the composer offers values
+// for them and workspace.app.command carries them by name. NULL is a command
+// without a definition, which takes free text as before; existing rows stay
+// NULL. A new install has the column from 11.0.87.
+function upgrade_2026_11_0_ws_app_command_args() {
+
+	install_add_column('ws_app_commands', 'args', "TEXT NULL");
+
+	install_note('Workspace: an application\'s / command can name its arguments, offered in the channels like a built-in command\'s.');
 
 }

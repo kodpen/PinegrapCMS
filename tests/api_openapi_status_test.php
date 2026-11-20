@@ -392,7 +392,7 @@ function api_openapi_status_test_inserts()
 	$tables = implode('|', array_keys(api_openapi_status_test_written_columns()));
 
 	// Bundled libraries never write the site's tables.
-	$skip = '#^(assets/lib|data|includes/(dompdf|phpexcel|phpmailer|stripe|iyzipay-php|boxpacker|qrcode))/#';
+	$skip = '#^(assets/lib|data|includes/(dompdf|phpmailer|stripe|iyzipay-php|boxpacker|qrcode))/#';
 
 	$out = array();
 

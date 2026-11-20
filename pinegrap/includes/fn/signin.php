@@ -9,8 +9,9 @@
  * (includes/fn/connect.php, connect_apps); no token is kept, because signing
  * in only needs to know once who the person is. Google is the exception on
  * two counts, both kept so a site that had Google sign-in before needs no
- * change in Google Cloud Console: its application is the one of the security
- * settings (config.oauth_google_*) and its return address is google_auth.php.
+ * change in Google Cloud Console: its application is its own
+ * (config.oauth_google_*, typed on Google's page of Connections) and its
+ * return address is google_auth.php.
  *
  * The flow (signin.php): the button sends the browser here with the provider
  * and what the screen allows (sign in only, open an account, or hand over to
@@ -666,8 +667,8 @@ function pg_signin_switched_on()
 }
 
 /**
- * The application a provider signs people in with: Google's is the one of
- * the security settings, every other provider's the connected accounts' one.
+ * The application a provider signs people in with: Google's is the Sign in
+ * with Google application, every other provider's the connected accounts' one.
  *
  * @param string $key
  * @return array|null in the shape of pg_connect_app()
@@ -678,9 +679,9 @@ function pg_signin_app($key)
 }
 
 /**
- * The "Sign in with Google" application of the security settings, or null
- * when it has no client ID. The secret is kept encrypted in config and read
- * only when asked for.
+ * The "Sign in with Google" application (typed on Google's page of
+ * Connections), or null when it has no client ID. The secret is kept
+ * encrypted in config and read only when asked for.
  *
  * @return array|null
  */
@@ -704,6 +705,72 @@ function pg_signin_google_app()
         'enabled'       => true,
         'source'        => 'signin',
     );
+}
+
+/**
+ * What a save of the Sign in with Google application does to the stored
+ * secret. The field carries the current value, so whatever is in it is the
+ * truth: an unchanged value is kept as it is (each encryption takes a new
+ * IV, so sealing it again would log "changed" on every save), another value
+ * is sealed, an empty field clears what is stored, also a value that no
+ * longer decrypts. Pure.
+ *
+ * @param string $typed  the secret in the field, trimmed
+ * @param string $stored the stored secret decrypted, '' when none or unreadable
+ * @param bool   $empty  whether both stored columns are empty
+ * @return string 'keep', 'seal' or 'clear'
+ */
+function pg_signin_google_secret_write($typed, $stored, $empty)
+{
+    $typed = (string) $typed;
+
+    if ($typed === (string) $stored) {
+        return (($typed === '') && !$empty) ? 'clear' : 'keep';
+    }
+
+    return ($typed !== '') ? 'seal' : 'clear';
+}
+
+/**
+ * Saves the Sign in with Google application: the client ID, and the secret
+ * as pg_signin_google_secret_write() says. The switch that shows the button
+ * stays with the sign-in settings. False when the secret could not be
+ * sealed; nothing is written then.
+ *
+ * @param string $client_id
+ * @param string $client_secret
+ * @return bool
+ */
+function pg_signin_google_app_save($client_id, $client_secret)
+{
+    $client_secret = trim((string) $client_secret);
+
+    $stored = db_item("SELECT oauth_google_client_secret, oauth_google_secret_iv FROM config LIMIT 1");
+    $was = (is_array($stored) && ((string) $stored['oauth_google_client_secret'] !== ''))
+        ? (string) decode_ssl_keys($stored['oauth_google_client_secret'], $stored['oauth_google_secret_iv'])
+        : '';
+    $empty = !is_array($stored)
+        || (((string) $stored['oauth_google_client_secret'] === '') && ((string) $stored['oauth_google_secret_iv'] === ''));
+
+    $mode = pg_signin_google_secret_write($client_secret, $was, $empty);
+
+    if ($mode === 'seal') {
+
+        list($sealed, $iv) = encrypt_string_with_iv($client_secret);
+
+        if ((string) $sealed === '') {
+            return false;
+        }
+
+        db_q("UPDATE config SET oauth_google_client_secret = ?, oauth_google_secret_iv = ?", array((string) $sealed, (string) $iv));
+
+    } elseif ($mode === 'clear') {
+        db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
+    }
+
+    db_q("UPDATE config SET oauth_google_client_id = ?", array(trim((string) $client_id)));
+
+    return true;
 }
 
 /**

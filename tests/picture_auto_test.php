@@ -9,7 +9,7 @@
  * not tried again in the page view, and the model's plan of a waiting row;
  * in PHP, the footer's tag, printed only while the mark is set and the
  * user's queue is not empty; and the queue's drawing shared by the queue
- * view, the background draw and the Design Canvas after a Save.
+ * view, the background draw and the Artifact Canvas after a Save.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -351,7 +351,7 @@ JS
 
 // The footer's tag: no query while the mark is clear, nothing while the
 // user's queue is empty, else the script with the rows (picture and language
-// only) after the Design Canvas's loader.
+// only) after the Artifact Canvas's loader.
 function test_picture_auto_footer_tag()
 {
 	$asked = 0;
@@ -373,7 +373,7 @@ function test_picture_auto_footer_tag()
 	$tag = pg_picture_tr_auto_tag_with(function () { return true; }, $queue, $render);
 
 	pg_assert_same(1, $asked, 'the queue read once');
-	pg_assert_same(0, strpos($tag, 'LOADER'), 'the Design Canvas\'s loader first');
+	pg_assert_same(0, strpos($tag, 'LOADER'), 'the Artifact Canvas\'s loader first');
 	pg_assert_contains('<script src="/pinegrap/assets/js/picture_auto.js?v=7" id="pg_picture_auto" data-rows="', $tag, 'the script\'s tag');
 	pg_assert_contains(' defer></script>', $tag, 'run after the page');
 	pg_assert_contains(h(json_encode(array(array('file_id' => 4, 'language' => 'de'), array('file_id' => 9, 'language' => 'fr')))), $tag, 'the rows: picture and language');
@@ -387,12 +387,12 @@ function test_picture_auto_footer_tag()
 	pg_assert_contains('pg_picture_tr_auto_tag()', substr($footer, 0, strpos($footer, "\nfunction ", 2)), 'the panel\'s footer prints the tag');
 	pg_assert_contains('USER_LOGGED_IN', $gate, 'never for a visitor');
 	pg_assert_contains("'pg_picture_tr_marked', 'pg_picture_tr_queue'", $gate, 'the mark first, then the user\'s queue');
-	pg_assert_contains('pg_image_editor_includes()', $gate, 'with the Design Canvas\'s loader');
+	pg_assert_contains('pg_image_editor_includes()', $gate, 'with the Artifact Canvas\'s loader');
 	pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), 'pg_picture_tr_auto_tag()', strpos($output, "\nfunction output_footer_secure(")) !== false, 'not in the secure footer of the site\'s pages');
 }
 
-// The queue's drawing is one part of the Design Canvas's bundle, loaded by
-// the queue view, the background draw and the Design Canvas itself: no copy
+// The queue's drawing is one part of the Artifact Canvas's bundle, loaded by
+// the queue view, the background draw and the Artifact Canvas itself: no copy
 // in either script.
 function test_picture_auto_shared_draw()
 {
@@ -401,7 +401,7 @@ function test_picture_auto_shared_draw()
 	$artboard = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_artboard.js');
 
 	pg_assert_contains('X.drawWaiting = function (fileId, code, cache)', $artboard, 'the queue\'s drawing in the bundle');
-	pg_assert_contains('X.drawPicture = function (fileId)', $artboard, 'a picture\'s waiting rows, for the Design Canvas after a Save');
+	pg_assert_contains('X.drawPicture = function (fileId)', $artboard, 'a picture\'s waiting rows, for the Artifact Canvas after a Save');
 	pg_assert_contains('X.drawPicture(fileId)', $artboard, 'drawn once the save closes the editor');
 	pg_assert_contains('parts.drawWaiting(', $queue, 'the queue view draws with it');
 	pg_assert_contains('parts.drawWaiting(', $auto, 'the background draw too');
@@ -432,9 +432,9 @@ function test_picture_auto_screen_words()
 	$editor = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
 	$map = pg_test_language_map('tr');
 	$words = array(
-		'group note' => array($screen, 'The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.'),
-		'empty group' => array($screen, 'No picture yet. A picture made in the Design Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.'),
-		'queue lead' => array($screen, 'The pictures made in the Design Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.'),
+		'group note' => array($screen, 'The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.'),
+		'empty group' => array($screen, 'No picture yet. A picture made in the Artifact Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.'),
+		'queue lead' => array($screen, 'The pictures made in the Artifact Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.'),
 		'languages note' => array($editor, 'Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
 	);
 

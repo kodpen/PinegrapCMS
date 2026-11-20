@@ -103,9 +103,9 @@ if (!$_POST) {
                             <div class="card-body pt-0">
                                 <div class="my-3">
                                     <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                    <input name="file" id="file" type="file" class="form-control" accept=".csv,.txt,text/csv" aria-describedby="file_help" required />
+                                    <input name="file" id="file" type="file" class="form-control" accept=".csv,.txt,text/csv,' . PG_SHEET_IMPORT_ACCEPT . '" aria-describedby="file_help" required />
                                     <div id="file_help" class="form-text">' . h(lang('The first row of the file names the columns. A file exported from the contacts list can be imported as it is.')) . ' ' . h(lang('Recognised headings include First Name, Last Name, Email, Company, Job Title, Mobile Phone, Business Phone, Address, City, Zip Code, Country, Description and the column names of the export.')) . '</div>
-                                    ' . pg_upload_limit_hint() . '
+                                    ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                                 </div>
                                 <div class="my-5" role="radiogroup" aria-labelledby="import_mode_label">
                                     <div class="form-label" id="import_mode_label">' . lang('Import Mode') . '</div>
@@ -192,7 +192,14 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Contacts'));
+
+    if ($sheet_refusal !== '') {
+        output_error(h($sheet_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // if no file was uploaded
     if (!$_FILES['file']['name']) {
         output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');

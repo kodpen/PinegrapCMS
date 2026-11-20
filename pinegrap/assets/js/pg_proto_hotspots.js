@@ -2049,6 +2049,16 @@
         return { control: !!r.drawable, state: state };
     }
 
+    // One frame's links without a target, in its rows' order, from
+    // problemsOf()'s answer: what its amber count lists when pressed.
+    function emptyOf(problems, frameId) {
+        var list = (problems && problems.empty && Array.isArray(problems.empty.list)) ? problems.empty.list : [];
+
+        return list.filter(function (one) {
+            return one.frame === String(frameId);
+        });
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -2164,6 +2174,132 @@
         return out;
     }
 
+    // The links the designer's canvas marks, from a design marked by mark():
+    // each drawable link (drawable(): a link of a tree, never a classic
+    // menu's or a region's) that is broken or has no target ('' or '#'),
+    // the page frames' first, then the shared components', in document
+    // order. Each: { nodeId, sharedId (0 on a page), source, index (the
+    // nth link of a text), mark ('broken' or 'empty'), label, href, why
+    // (brokenWhy(), '' for an empty link) }. `known` false: the map read
+    // has not answered, so no link is called broken and only the empty
+    // ones are listed.
+    function canvasMarks(marked, known) {
+        var out = [];
+
+        function frame(item, sharedId) {
+            rowsOf(item).forEach(function (row) {
+                var broken = (row.mark === 'broken' && known !== false);
+
+                if (!drawable(row) || !(broken || row.mark === 'empty')) {
+                    return;
+                }
+
+                out.push({ nodeId: row.nodeId, sharedId: sharedId, source: row.source, index: row.index, mark: row.mark, label: row.label, href: row.href, why: broken ? brokenWhy(row) : '' });
+            });
+        }
+
+        ((marked && Array.isArray(marked.pages)) ? marked.pages : []).forEach(function (page) { frame(page, 0); });
+        ((marked && Array.isArray(marked.shared)) ? marked.shared : []).forEach(function (one) { frame(one, parseInt(one.id, 10) || 0); });
+
+        return out;
+    }
+
+    // What the map read is asked for the canvas marks: the design's
+    // addresses but the empty ones (mark() calls those empty without the
+    // read) and the pages its links are kept by; no menu or region, whose
+    // links get no mark (canvasMarks()).
+    function canvasRequest(designed) {
+        var request = (designed && isObject(designed.request)) ? designed.request : {};
+
+        return {
+            hrefs: (Array.isArray(request.hrefs) ? request.hrefs : []).filter(function (href) { return !emptyHref(href); }),
+            page_ids: Array.isArray(request.page_ids) ? request.page_ids.slice() : [],
+            menus: [],
+            regions: []
+        };
+    }
+
+    // The editor's key back to the Prototype view: P alone (Shift and Caps
+    // Lock allowed). Nothing else uses a bare P in the editor; the palette's
+    // Ctrl+Shift+P and the preview's Ctrl+Alt+P carry modifiers.
+    var BACK_KEY = 'p';
+
+    // Where the key is typed or kept by what holds the focus: a dialog, a
+    // menu or list (whose letters jump to an item), a note being written,
+    // the code editor, the Prototype view itself (its own keys).
+    var BACK_SKIP = 'dialog, [role="dialog"], [role="menu"], [role="listbox"], .sd-note-overlay, .cm-editor, #sd-proto';
+
+    // Whether a keydown is the key back: P with no Ctrl, Alt or Meta, not
+    // held down, not part of an IME composition, not taken by an earlier
+    // listener, and not where it is typed (a field, a text written in) or
+    // kept (BACK_SKIP).
+    function backKey(event) {
+        if (!isObject(event) || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing || event.defaultPrevented) {
+            return false;
+        }
+
+        if (str(event.key).toLowerCase() !== BACK_KEY) {
+            return false;
+        }
+
+        var target = event.target;
+
+        if (!isObject(target)) {
+            return false;
+        }
+
+        var tag = str(target.tagName).toUpperCase();
+
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+            return false;
+        }
+
+        return !(typeof target.closest === 'function' && target.closest(BACK_SKIP));
+    }
+
+    // The spot of a row of the view, kept while the editor is open: { frame,
+    // nodeId, index (a text's link by its place in the text, -1 for any
+    // other source), nth (the row's place among its node's rows, which
+    // tells a menu's items apart) }; null when the frame or row is gone.
+    function linkSpot(laid, frameId, port) {
+        var frame = (laid && Array.isArray(laid.frames)) ? laid.frames.filter(function (f) { return f.id === frameId; })[0] : null;
+        var row = frame ? frame.rows.filter(function (r) { return r.port === port; })[0] : null;
+
+        if (!row) {
+            return null;
+        }
+
+        var same = frame.rows.filter(function (r) { return r.nodeId === row.nodeId; });
+
+        return { frame: frame.id, nodeId: row.nodeId, index: row.source === 'text' ? row.index : -1, nth: same.indexOf(row) };
+    }
+
+    // Where the key back takes the view for a spot (linkSpot() or the
+    // editor's selection): { frame, port } of the node's row, a text's
+    // link found by its index, a menu's item by its place, else the node's
+    // first row; port null for a node with no row (its frame alone); null
+    // for a frame the view does not draw.
+    function backTo(laid, spot) {
+        if (!isObject(spot) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var frame = laid.frames.filter(function (f) { return f.id === spot.frame; })[0];
+
+        if (!frame) {
+            return null;
+        }
+
+        var rows = frame.rows.filter(function (r) { return r.nodeId === spot.nodeId; });
+        var index = isFinite(spot.index) ? Number(spot.index) : -1;
+        var nth = isFinite(spot.nth) ? Number(spot.nth) : -1;
+        var row = (index >= 0 ? rows.filter(function (r) { return r.source === 'text' && r.index === index; })[0] : null)
+            || (nth >= 0 ? rows[nth] : null)
+            || rows[0];
+
+        return { frame: frame.id, port: row ? row.port : null };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -2201,6 +2337,53 @@
         }
 
         return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
+    }
+
+    // ── A links panel row dropped on the canvas ──
+
+    // The item of `items` (frames and chips, { id, x, y, w, h } in canvas
+    // units) whose box holds the point `at` ({ x, y }), edges included; of
+    // two that overlap the later one, drawn on top; null over none.
+    function itemAt(items, at) {
+        if (!Array.isArray(items) || !isObject(at)) {
+            return null;
+        }
+
+        var x = Number(at.x);
+        var y = Number(at.y);
+
+        if (!isFinite(x) || !isFinite(y)) {
+            return null;
+        }
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+            var left = isObject(item) ? Number(item.x) : NaN;
+            var top = isObject(item) ? Number(item.y) : NaN;
+
+            if (x >= left && y >= top && x <= left + (Number(item.w) || 0) && y <= top + (Number(item.h) || 0)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    // Where a links panel row dropped at `at` (canvas units) points its
+    // link: { item, href }, the frame or chip under the point (itemAt())
+    // and the href an arrow ending there writes (hrefTo()). null for a row
+    // no arrow is drawn from (drawable()), over nothing, or over what takes
+    // no arrow (a shared part's frame, an anchor's, a hidden or a broken
+    // chip).
+    function rowDrop(row, items, at, env) {
+        if (!drawable(row)) {
+            return null;
+        }
+
+        var item = itemAt(items, at);
+        var href = item ? hrefTo(item, env) : null;
+
+        return (href === null) ? null : { item: item, href: href };
     }
 
     // What the selected frame (its id, null for none) shows of a layout:
@@ -2530,6 +2713,8 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
+        itemAt: itemAt,
+        rowDrop: rowDrop,
         focusOf: focusOf,
         fitStart: fitStart,
         ZOOM_TAP: ZOOM_TAP,
@@ -2538,6 +2723,13 @@
         rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        emptyOf: emptyOf,
+        canvasMarks: canvasMarks,
+        canvasRequest: canvasRequest,
+        BACK_KEY: BACK_KEY,
+        backKey: backKey,
+        linkSpot: linkSpot,
+        backTo: backTo,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,

@@ -64,7 +64,7 @@ if (!$_POST) {
       
         $form_column = '
             <div class="card mb-7">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     <label for="page_options" class="mb-0">' . lang(array('string'=>'Select one or more {var:1}','vars'=>lang('Page Area') )) . '</label>
                 </h2>
                 <div class="card-body pt-0">
@@ -208,7 +208,7 @@ if (!$_POST) {
 
             $summary_card = '
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Summary') . '</h2>
                         <div class="card-body pt-0">
                             <p class="fw-semibold mb-3">' . lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>$count_result,'suffix'=>(($count_result == 1) ? '' : 's'))) . '</p>
                             ' . (($number_of_screens > 1) ? '<p class="small fg-secondary mb-3">' . lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($screen, $number_of_screens))) . '</p>' : '') . '
@@ -224,10 +224,9 @@ if (!$_POST) {
                 $form_column .= '
                     <div class="col-12 2xl:col-6">
                         <div class="card mb-7">
-                            <div class="card-header no-popover" style="display: flex; align-items: center; min-width: 0;" title="' . h($row['page_name']) . '">
-                                <span class="bi bi-window-fullscreen me-3 flex-shrink-0" aria-hidden="true"></span>
-                                <span class="text-truncate" style="min-width: 0;">' . h($row['page_name']) . '</span>
-                            </div>
+                            <h2 class="card-header bg-reset border-0 pg-title-section no-popover d-flex align-items-center min-w-0" title="' . h($row['page_name']) . '">
+                                <span class="text-truncate min-w-0">' . h($row['page_name']) . '</span>
+                            </h2>
                             <div class="card-body"> 
                                 <div class="row g-7">';
 
@@ -308,13 +307,13 @@ if (!$_POST) {
     $fr_defaults = $liveform->prefill() ? array('checked' => 'checked') : array();
     $output_find_replace = '
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Find & Replace') . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Find & Replace') . '</h2>
                         <div class="card-body pt-0">
                             <form method="post" action="' . h($_SERVER['PHP_SELF']) . '" class="disable_shortcut">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="action" value="find_replace">
                                 <fieldset class="mb-5">
-                                    <legend class="form-label fw-semibold fs-md mb-3">' . lang('Apply to Fields') . '</legend>
+                                    <legend class="form-label pg-field-label mb-3">' . lang('Apply to Fields') . '</legend>
                                     <div class="form-field">
                                         ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_name', 'value'=>'page_name', 'class'=>'check')) . '
                                         <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
@@ -340,7 +339,7 @@ if (!$_POST) {
                                     <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'use_regex', 'id'=>'use_regex', 'value'=>'1', 'class'=>'no-bs')) . '</div>
                                     <label class="" for="use_regex">
                                         ' . lang('Regex') . '
-                                        <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
+                                        <small class="pg-text-meta d-block">/pattern/flags</small>
                                     </label>
                                 </div>
                                 <button type="submit" class="btn btn-sm btn-solid theme-warning w-100"

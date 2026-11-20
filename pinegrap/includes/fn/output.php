@@ -3864,19 +3864,14 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
             break;
 
         case 'design_canvas':
-            // An artboard with crop marks; the pen curve and its two anchors
-            // are the second colour.
+            // Two sheets: the back one, tinted, ends where the front one
+            // covers it; a wave on the front sheet is the second colour.
+            $back = 'M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7';
             $body =
-                '<rect' . $d . ' x="5" y="5" width="14" height="14" rx="1.2"/>' .
-                '<rect x="5" y="5" width="14" height="14" rx="1.2"/>' .
-                '<path d="M2.5 5H3.6M5 2.5v1.1M20.4 5h1.1M19 2.5v1.1M2.5 19h1.1M5 20.4v1.1M20.4 19h1.1M19 20.4v1.1" stroke-width="1.5"/>' .
-                '<g class="pg-mi-a pg-mi-pen">' .
-                '<path d="M8.3 15.7C9 11 15 13 15.7 8.3" stroke-width="1.6"/>' .
-                '<rect' . $a . ' x="7.3" y="14.7" width="2" height="2" rx=".4"/>' .
-                '<rect x="7.3" y="14.7" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
-                '<rect' . $a . ' x="14.7" y="7.3" width="2" height="2" rx=".4"/>' .
-                '<rect x="14.7" y="7.3" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
-                '</g>';
+                '<path' . $d . ' d="' . $back . 'v-6.4A3.6 3.6 0 0 1 10.6 7z"/>' .
+                '<path d="' . $back . '"/>' .
+                '<rect x="7" y="7" width="14.5" height="14.5" rx="3.6"/>' .
+                '<g class="pg-mi-a pg-mi-wave"><path d="M9.9 18.7C10.8 15.2 11.8 13 13.2 13C14.6 13 14.4 14.9 15.8 14.9C17.3 14.9 18 12.4 18.7 9.8"/></g>';
             break;
 
         case 'pages':

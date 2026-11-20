@@ -85,6 +85,7 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
 - connections-service-page.md: A service's own page on Connections (connections.php?service=<key>, CX7): Status and Where it is used from the registry, the Connections row in Site Settings
@@ -157,7 +158,7 @@
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts. [decision: decisions-made-product-5.md]
 - datetime-control-history.md: The one date-and-time control across panel and sites (#2693): which change landed where (P1-P11, F1, S1-S4b), the rules kept from its plan, the risks still open [decision: decisions-made-panel.md]
 - deleted-picture-fallback.md: A contact or product picture whose file was deleted in the File Manager falls back to the letters or icon (pg_contact_picture_name(), is_file() on product thumbs)
-- design-canvas-icon.md: The Design Canvas's own icon (drawing B, #8903): pg_design_canvas_icon() in two colours, pg_design_canvas_icon_one_colour() (#9250), and where each form is shown [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
+- design-canvas-icon.md: The canvas's own icon (two sheets and a wave, owner 2026-11-20): pg_design_canvas_icon() in two colours, pg_design_canvas_icon_one_colour() (#9250), and where each form is shown [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - design-file-missing-on-disk.md: What the theme, file, design file, comment and quote signature screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - design-files-modify-dialog.md: Design files list Modify Selected is an in-page pgUI dialog (no popup); its fields belong to the list form, edit_files.php only takes the post
@@ -283,7 +284,7 @@
 - image-editor-encode.md: The Design Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Design Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
-- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker in a worker; the method's numbers, its limits and how it was checked [decision: decisions-made-product-63.md, decisions-made-product-69.md]
+- image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
@@ -319,7 +320,7 @@
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The Design Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The Design Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
-- image-editor-touch.md: The Design Canvas on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
+- image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()) for points and a selected layer, the phone's nudge arrows, a typed text Animate did not pick [decision: here]
 - image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
 - image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features [decision: here]
 - image-editor-upload.md: Large files in the Design Canvas (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
@@ -437,9 +438,11 @@
 - look-settings-mailboxes.md: Site Settings › Mailboxes in look A (S5d, #10431): purpose line and link to E-mail sending, box rows as list rows, button ranks, the box form's fields and switches
 - look-settings-maintenance-security.md: Site Settings Maintenance, Firewall, Security and Features in look A (S5b of panel-old-screens): quiet small buttons, group labels, the auto-bans table, what stayed
 - look-settings-other-categories.md: Site Settings Privacy to General and the settings page toolbar in look A (S5c of panel-old-screens): buttons, pills, tables, the date format segments, what stayed
+- look-settings-pages-outside.md: Settings pages outside the Site Settings dialog in look A (S6b): Application Access, Cloudflare Tools, Connected applications, Pair a device; what moved, what stayed
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why [decision: here]
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533): section titles, card tables, field spans, measure, what stayed and what was held
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]

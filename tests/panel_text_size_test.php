@@ -189,13 +189,15 @@ function test_panel_text_size_api_settings_in_rem()
 
 	// The permission row's resource icon is a glyph, not text: the only px size kept.
 	pg_assert_contains('.api-perm > i { font-size: 15px;', $style);
-	panel_text_size_test_no_px_font_size(str_replace('.api-perm > i { font-size: 15px;', '', $style), 'api_settings.php');
-	pg_assert_contains('--bs-btn-font-size: 0.6875rem;', $style);
-	pg_assert_contains('.api-head { padding: 0 16px 8px; font-size: 0.65625rem;', $style);
+	// Text sizes are the look's type tokens (rem underneath), never px.
+	pg_assert_same(0, preg_match_all('/font-size:\s*[0-9.]+px/', str_replace('.api-perm > i { font-size: 15px;', '', $style)), 'api_settings.php has no px font-size');
+	pg_assert_true(preg_match_all('/font-size:\s*var\(--pg-text-/', $style) > 0, 'api_settings.php sizes its text with the type tokens');
+	pg_assert_contains('--bs-btn-font-size: var(--pg-text-count);', $style);
+	pg_assert_contains('.api-head { padding: 0 16px 8px; font-size: var(--pg-text-meta);', $style);
 	// The method badge column and the empty segment hold text and grow with it;
 	// the row's scroll threshold grows too, the chevron column stays px.
 	pg_assert_contains('grid-template-columns: 2.875rem 1fr auto auto auto;', $style);
-	pg_assert_contains('.api-log .m { font-size: 0.59375rem;', $style);
+	pg_assert_contains('.api-log .m { font-size: var(--pg-text-count);', $style);
 	pg_assert_contains('min-width: 2.125rem;', $style);
 	pg_assert_contains('min-width: 45rem;', $style);
 	pg_assert_contains('.9fr 34px;', $style);

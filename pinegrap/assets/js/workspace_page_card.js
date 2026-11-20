@@ -848,7 +848,9 @@
         var pageMessage = { id: message.id, file: { name: joinedCard.name + '.html', url: '', page: page } };
 
         root.dataset.pageMessage = message.id;
-        head.appendChild(h.icon('bi-easel2'));
+        // The canvas's own drawing in one colour (CFG.canvas_icon); the
+        // easel glyph where the screen's config has none.
+        head.appendChild(h.icon('pg-design-canvas'));
         // The name keeps the icon's row and at least 8rem of it: in a
         // narrow column (a discussion panel) the chips take the next line
         // instead of pushing the name under the icon. Cut, it keeps its

@@ -102,3 +102,25 @@ function test_api_store_feeds_route()
 	pg_assert_same(array('list' => 'StoreFeed'), $route['returns']);
 	pg_assert_true(function_exists($route['handler']), 'handler exists');
 }
+
+// The route's description names every format the feeds are built in, in the
+// order the list answers with.
+function test_api_store_feeds_description_names_every_format()
+{
+	$description = '';
+
+	foreach (api_schema() as $candidate) {
+		if ($candidate['id'] === 'store.feeds') {
+			$description = $candidate['description'];
+		}
+	}
+
+	$last = -1;
+
+	foreach (array_keys(pg_product_feed_formats()) as $format) {
+		$at = strpos($description, $format);
+		pg_assert_true($at !== false, $format . ' named');
+		pg_assert_true($at > $last, $format . ' in list order');
+		$last = $at;
+	}
+}

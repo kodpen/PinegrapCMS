@@ -579,15 +579,15 @@ if (!empty($audit_logs)) {
 
         $timestamp = isset($log['timestamp']) ? (string)$log['timestamp'] : '-';
 
-        $badge_class = 'bg-secondary';
-        if (stripos($action, 'delete') !== false) $badge_class = 'bg-danger';
-        elseif (stripos($action, 'create') !== false) $badge_class = 'bg-success';
-        elseif (stripos($action, 'update') !== false || stripos($action, 'change') !== false) $badge_class = 'bg-warning fg-black';
-        elseif (stripos($action, 'login') !== false) $badge_class = 'bg-info';
+        $badge_class = '';
+        if (stripos($action, 'delete') !== false) $badge_class = 'pg-tone-rose';
+        elseif (stripos($action, 'create') !== false) $badge_class = 'pg-tone-teal';
+        elseif (stripos($action, 'update') !== false || stripos($action, 'change') !== false) $badge_class = 'pg-tone-amber';
+        elseif (stripos($action, 'login') !== false) $badge_class = 'pg-tone-blue';
 
         $audit_rows .= '<tr>
             <td><small>'.htmlspecialchars($timestamp, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
-            <td><span class="badge '.$badge_class.'">'.htmlspecialchars($action, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</span></td>
+            <td><span class="pg-pill '.$badge_class.'">'.htmlspecialchars($action, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</span></td>
             <td>'.htmlspecialchars($actor, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</td>
             <td><small>'.htmlspecialchars($resource, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
             <td><small>'.htmlspecialchars($zone_name, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
@@ -612,17 +612,16 @@ if (!empty($firewall_events)) {
         $fw_count  = isset($event['sum']['requests']) ? (int)$event['sum']['requests'] : 0;
         $fw_time   = isset($event['max']['occurred_at']) ? htmlspecialchars((string)$event['max']['occurred_at'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : '-';
 
-        $fw_badge = 'bg-secondary';
-        if ($fw_action === 'block') $fw_badge = 'bg-danger';
-        elseif ($fw_action === 'challenge') $fw_badge = 'bg-warning fg-black';
-        elseif ($fw_action === 'jschallenge') $fw_badge = 'bg-warning fg-black';
-        elseif ($fw_action === 'managed_challenge') $fw_badge = 'bg-info';
-        elseif ($fw_action === 'allow') $fw_badge = 'bg-success';
-        elseif ($fw_action === 'log') $fw_badge = 'bg-secondary';
+        $fw_badge = '';
+        if ($fw_action === 'block') $fw_badge = 'pg-tone-rose';
+        elseif ($fw_action === 'challenge') $fw_badge = 'pg-tone-amber';
+        elseif ($fw_action === 'jschallenge') $fw_badge = 'pg-tone-amber';
+        elseif ($fw_action === 'managed_challenge') $fw_badge = 'pg-tone-blue';
+        elseif ($fw_action === 'allow') $fw_badge = 'pg-tone-teal';
 
         $fw_rows .= '<tr>
             <td><small>'.$fw_time.'</small></td>
-            <td><span class="badge '.$fw_badge.'">'.$fw_action.'</span></td>
+            <td><span class="pg-pill '.$fw_badge.'">'.$fw_action.'</span></td>
             <td>'.$fw_ip.'</td>
             <td>'.$fw_count.'</td>
             <td><small>'.$fw_ray.'</small></td>
@@ -781,13 +780,13 @@ if (pg_image_delivery_ready()) {
     $image_same_address = pg_image_delivery()['same_address'];
 
     if ($image_vary_plan['do'] === 'none') {
-        $image_vary_state = '<span class="badge theme-success">' . lang('In place') . '</span>';
+        $image_vary_state = '<span class="pg-pill pg-tone-teal">' . lang('In place') . '</span>';
     } elseif ($image_vary_plan['do'] === 'update') {
-        $image_vary_state = '<span class="badge theme-warning">' . lang('Changed on Cloudflare') . '</span>';
+        $image_vary_state = '<span class="pg-pill pg-tone-amber">' . lang('Changed on Cloudflare') . '</span>';
     } elseif ($image_vary_plan['do'] === 'failed') {
-        $image_vary_state = '<span class="badge theme-secondary">' . lang('Could not be read') . '</span> <span class="small fg-danger">' . h(pg_cloudflare_answer_reason($resp_cache_rules)) . '</span>';
+        $image_vary_state = '<span class="pg-pill">' . lang('Could not be read') . '</span> <span class="pg-text-meta fg-danger">' . h(pg_cloudflare_answer_reason($resp_cache_rules)) . '</span>';
     } else {
-        $image_vary_state = '<span class="badge theme-warning">' . lang('Not written') . '</span>';
+        $image_vary_state = '<span class="pg-pill pg-tone-amber">' . lang('Not written') . '</span>';
     }
 
     $image_vary_steps_open = ($image_vary_plan['do'] === 'failed') ? ' open' : '';
@@ -796,27 +795,25 @@ if (pg_image_delivery_ready()) {
     $image_vary_card = '
     <!-- WebP at the picture\'s own address -->
     <div class="card my-7">
-      <div class="card-header bg-transparent border-0 fw-bold">
-        <i class="bi bi-images"></i> ' . lang('WebP at the picture\'s own address') . '
-      </div>
+      <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('WebP at the picture\'s own address') . '</h2>
       <div class="card-body">
-        <p class="small">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here sees it do so, pictures go out through Cloudflare marked private, so it keeps no copy of them.') . '</p>
+        <p class="pg-text-2">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here sees it do so, pictures go out through Cloudflare marked private, so it keeps no copy of them.') . '</p>
         <dl class="row small">
           <dt class="md:col-4">' . lang('Cache rule') . '</dt>
           <dd class="md:col-8">' . $image_vary_state . '</dd>
           <dt class="md:col-4">' . lang('Send WebP at the picture\'s own address') . '</dt>
-          <dd class="md:col-8">' . (!empty($image_same_address['on']) ? '<span class="badge theme-success">' . lang('On') . '</span>' : '<span class="badge theme-secondary">' . lang('Off') . '</span>') . '</dd>
+          <dd class="md:col-8">' . (!empty($image_same_address['on']) ? '<span class="pg-pill pg-tone-teal">' . lang('On') . '</span>' : '<span class="pg-pill">' . lang('Off') . '</span>') . '</dd>
           <dt class="md:col-4">' . lang('The CDN keeps a copy per format') . '</dt>
-          <dd class="md:col-8">' . (!empty($image_same_address['cdn']) ? '<span class="badge theme-success">' . lang('Confirmed') . '</span>' : '<span class="badge theme-secondary">' . lang('Not confirmed') . '</span>') . '</dd>
+          <dd class="md:col-8">' . (!empty($image_same_address['cdn']) ? '<span class="pg-pill pg-tone-teal">' . lang('Confirmed') . '</span>' : '<span class="pg-pill">' . lang('Not confirmed') . '</span>') . '</dd>
         </dl>
         <div class="d-flex flex-wrap gap-3">
           ' . (($image_vary_plan['do'] !== 'none') ? '<form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
             <input type="hidden" name="action" value="image_vary_rule">
-            <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-cloud-upload"></i> ' . lang('Write the cache rule') . '</button>
+            <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-cloud-upload" aria-hidden="true"></i>' . lang('Write the cache rule') . '</button>
           </form>' : '') . '
           <form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
             <input type="hidden" name="action" value="image_vary_check">
-            <button type="submit" class="btn btn-outline theme-primary"' . (empty($image_same_address['on']) ? ' disabled aria-describedby="image_vary_check_off"' : '') . '><i class="bi bi-check2-circle"></i> ' . lang('Check through Cloudflare') . '</button>
+            <button type="submit" class="pg-button pg-button-quiet"' . (empty($image_same_address['on']) ? ' disabled aria-describedby="image_vary_check_off"' : '') . '><i class="bi bi-check2-circle" aria-hidden="true"></i>' . lang('Check through Cloudflare') . '</button>
           </form>
         </div>
         ' . (empty($image_same_address['on']) ? '<div id="image_vary_check_off" class="form-text">' . lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.') . '</div>' : '') . '
@@ -903,12 +900,12 @@ foreach ($records as $r) {
         'id' => (string) $r['id'],
         'cells' => array(
             'name' => pg_list_cell(h(truncate($r['name'], 50)), 'align-middle', array('data-pg-sort-value' => (string) $r['name'])),
-            'type' => pg_list_cell('<span class="badge theme-info">' . h((string) $r['type']) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) $r['type'])),
+            'type' => pg_list_cell('<span class="pg-pill pg-tone-blue">' . h((string) $r['type']) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) $r['type'])),
             'content' => pg_list_cell(h(truncate($data_content, 50)), 'align-middle', array('data-pg-sort-value' => (string) $data_content)),
             'ttl' => pg_list_cell(($r['ttl'] == 1) ? lang('Auto') : (string) (int) $r['ttl'], 'align-middle', array('data-pg-sort-value' => (int) $r['ttl'])),
-            'proxied' => pg_list_cell(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>', 'align-middle', array('data-pg-sort-value' => !empty($r['proxied']) ? 1 : 0)),
-            'actions' => pg_list_cell('<button type="button" class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" ' . $attrs . '><i class="bi bi-pencil-square" aria-hidden="true"></i></button>'
-                . ' <button type="button" class="btn btn-sm btn-outline theme-danger pg-cf-delete" data-id="' . h((string) $r['id']) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>', 'align-middle text-nowrap'),
+            'proxied' => pg_list_cell(!empty($r['proxied']) ? '<span class="pg-pill pg-tone-teal">' . lang('Yes') . '</span>' : '<span class="pg-pill">' . lang('No') . '</span>', 'align-middle', array('data-pg-sort-value' => !empty($r['proxied']) ? 1 : 0)),
+            'actions' => pg_list_cell('<button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" ' . $attrs . '><i class="bi bi-pencil-square" aria-hidden="true"></i></button>'
+                . ' <button type="button" class="pg-icon-button pg-icon-button-sm pg-cf-delete" data-id="' . h((string) $r['id']) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>', 'align-middle text-nowrap'),
         ),
     );
 }
@@ -921,11 +918,11 @@ $dns_list = pg_list_table_printed(array(
 ));
 
 // -------------------- TABS ACTIVE --------------------
-$active_24h = ($period === '24h') ? 'active" aria-current="page' : '';
-$active_7d  = ($period === '7d')  ? 'active" aria-current="page' : '';
-$active_30d = ($period === '30d') ? 'active" aria-current="page' : '';
-$active_all = ($period === 'all') ? 'active" aria-current="page' : '';
-$active_cus = ($period === 'custom') ? 'active" aria-current="page' : '';
+$active_24h = ($period === '24h') ? 'is-active" aria-current="page' : '';
+$active_7d  = ($period === '7d')  ? 'is-active" aria-current="page' : '';
+$active_30d = ($period === '30d') ? 'is-active" aria-current="page' : '';
+$active_all = ($period === 'all') ? 'is-active" aria-current="page' : '';
+$active_cus = ($period === 'custom') ? 'is-active" aria-current="page' : '';
 
 
 // -------------------- PRINT --------------------
@@ -947,24 +944,14 @@ print pg_page_shell([
   </div>
   <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
-    <!-- Period Tabs -->
-    <ul class="nav nav-tabs mb-5">
-      <li class="nav-item">
-        <a class="nav-link '.$active_24h.'" href="?period=24h">' . lang('24 Hours') . '</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link '.$active_7d.'" href="?period=7d">' . lang('7 Days') . '</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link '.$active_30d.'" href="?period=30d">' . lang('30 Days') . '</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link '.$active_all.'" href="?period=all">' . lang('All Time') . '</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link '.$active_cus.'" href="?period=custom">' . lang('Custom') . '</a>
-      </li>
-    </ul>
+    <!-- Period -->
+    <nav class="pg-seg pg-list-seg mb-5">
+      <a class="pg-seg-item '.$active_24h.'" href="?period=24h">' . lang('24 Hours') . '</a>
+      <a class="pg-seg-item '.$active_7d.'" href="?period=7d">' . lang('7 Days') . '</a>
+      <a class="pg-seg-item '.$active_30d.'" href="?period=30d">' . lang('30 Days') . '</a>
+      <a class="pg-seg-item '.$active_all.'" href="?period=all">' . lang('All Time') . '</a>
+      <a class="pg-seg-item '.$active_cus.'" href="?period=custom">' . lang('Custom') . '</a>
+    </nav>
 
     '.(($period === 'custom') ? '
     <!-- Custom Date Range -->
@@ -987,7 +974,7 @@ print pg_page_shell([
             </div>
           </div>
           <div class="col-12 md:col-2">
-            <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Apply') . '</button>
+            <button type="submit" class="pg-button pg-button-quiet w-100">' . lang('Apply') . '</button>
           </div>
         </div>
       </div>
@@ -995,27 +982,27 @@ print pg_page_shell([
     ' : '').'
 
     <!-- Analytics -->
-    <div class="row g-5 mb-5">
-      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
-        <div class="small fg-secondary">' . lang('Requests') . '</div>
-        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'requests').'</div>
-      </div></div></div>
-      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
-        <div class="small fg-secondary">' . lang('Unique Visitors') . '</div>
-        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'uniques').'</div>
-      </div></div></div>
-      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
-        <div class="small fg-secondary">' . lang('Bandwidth') . '</div>
-        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</div>
-      </div></div></div>
-      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
-        <div class="small fg-secondary">' . lang('Percent Cached') . '</div>
-        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</div>
-      </div></div></div>
-      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
-        <div class="small fg-secondary">' . lang('Cached Data') . '</div>
-        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</div>
-      </div></div></div>
+    <div class="pg-figures mb-5" style="--pg-figures: 5;">
+      <div class="pg-card pg-figure">
+        <div class="pg-figure-label">' . lang('Requests') . '</div>
+        <div class="pg-figure-value">'.pg_cloudflare_analytics_card($analytics, 'requests').'</div>
+      </div>
+      <div class="pg-card pg-figure">
+        <div class="pg-figure-label">' . lang('Unique Visitors') . '</div>
+        <div class="pg-figure-value">'.pg_cloudflare_analytics_card($analytics, 'uniques').'</div>
+      </div>
+      <div class="pg-card pg-figure">
+        <div class="pg-figure-label">' . lang('Bandwidth') . '</div>
+        <div class="pg-figure-value">'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</div>
+      </div>
+      <div class="pg-card pg-figure">
+        <div class="pg-figure-label">' . lang('Percent Cached') . '</div>
+        <div class="pg-figure-value">'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</div>
+      </div>
+      <div class="pg-card pg-figure">
+        <div class="pg-figure-label">' . lang('Cached Data') . '</div>
+        <div class="pg-figure-value">'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</div>
+      </div>
     </div>
     '.$analytics_note.'
 
@@ -1024,7 +1011,7 @@ print pg_page_shell([
     <!-- DNS Records -->
     <section class="card my-7" aria-labelledby="cf_dns_title">
       <div class="card-header bg-reset border-0 d-flex flex-wrap gap-3 justify-content-between align-items-center">
-        <h2 id="cf_dns_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('DNS Records') . '</h2>
+        <h2 id="cf_dns_title" class="pg-title-section mb-0">' . lang('DNS Records') . '</h2>
         <div class="ms-auto d-flex flex-wrap justify-content-end gap-3 align-items-center">
           ' . pg_list_table_search_box('cloudflare_dns') . '
           <button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Add Record') . '</span></button>
@@ -1044,7 +1031,7 @@ print pg_page_shell([
          analytics period, whose dates are not kept in the session. -->
     <section class="card my-7" aria-labelledby="cf_logs_title">
       <div class="card-header bg-reset border-0">
-        <h2 id="cf_logs_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Zone Logs') . '</h2>
+        <h2 id="cf_logs_title" class="pg-title-section mb-0">' . lang('Zone Logs') . '</h2>
       </div>
       <div class="card-body">
 
@@ -1063,22 +1050,22 @@ print pg_page_shell([
               </div>
             </div>
             <div class="col-12 md:col-2">
-              <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Refresh Logs') . '</span></button>
+              <button type="submit" class="pg-button pg-button-quiet w-100"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Refresh Logs') . '</span></button>
             </div>
           </div>
         </form>
 
-        <h3 class="h6 mb-5"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . lang('Audit Logs') . ' <small class="fg-secondary">(' . lang('Account Activity') . ')</small></h3>
+        <h3 class="pg-group-label mb-5">' . lang('Audit Logs') . ' <small class="pg-text-meta">(' . lang('Account Activity') . ')</small></h3>
         <div class="table-responsive mb-7">
-          <table class="table table-sm table-striped w-100">
+          <table class="table table-hover mb-0 pg-embedded-table">
             <thead><tr><th scope="col">' . lang('Timestamp') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Actor') . '</th><th scope="col">' . lang('Resource') . '</th><th scope="col">' . lang('Zone') . '</th></tr></thead>
             <tbody>'.$audit_rows.'</tbody>
           </table>
         </div>
 
-        <h3 class="h6 mb-5"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> ' . lang('Firewall Events') . ' <small class="fg-secondary">(' . lang('Security Events') . ')</small></h3>
+        <h3 class="pg-group-label mb-5">' . lang('Firewall Events') . ' <small class="pg-text-meta">(' . lang('Security Events') . ')</small></h3>
         <div class="table-responsive">
-          <table class="table table-sm table-striped w-100">
+          <table class="table table-hover mb-0 pg-embedded-table">
             <thead><tr><th scope="col">' . lang('Time') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Client IP') . '</th><th scope="col">' . lang('Requests') . '</th><th scope="col">' . lang('Ray ID') . '</th></tr></thead>
             <tbody>'.$fw_rows.'</tbody>
           </table>
@@ -1092,7 +1079,7 @@ print pg_page_shell([
     <div class="position-sticky my-7" style="top:3.3rem;">
       <!-- Settings -->
       <div class="card">
-      <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Settings') . '</div>
+      <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Settings') . '</h2>
         <div class="card-body">
           <!-- Development Mode -->
           <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
@@ -1147,7 +1134,7 @@ print pg_page_shell([
           <!-- Clear Cache -->
           <form method="post" class="disable_shortcut">'.get_token_field().$period_fields.'
             <input type="hidden" name="action" value="clear_cache">
-            <button type="submit" class="btn btn-solid theme-danger w-100"><i class="bi bi-trash" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Clear Cache') . '</span></button>
+            <button type="submit" class="pg-button pg-button-danger w-100"><i class="bi bi-trash" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Clear Cache') . '</span></button>
           </form>
         </div>
       </div>
@@ -1263,7 +1250,7 @@ print pg_page_shell([
           </div>
         </div>
       </div>
-      <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-primary">' . lang('Add') . '</button></div>
+      <div class="dialog-footer"><button type="submit" class="pg-button pg-button-fill">' . lang('Add') . '</button></div>
     </form>
 </dialog>
 
@@ -1376,7 +1363,7 @@ print pg_page_shell([
           </div>
         </div>
       </div>
-      <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-warning">' . lang('Save') . '</button></div>
+      <div class="dialog-footer"><button type="submit" class="pg-button pg-button-fill">' . lang('Save') . '</button></div>
     </form>
 </dialog>
 

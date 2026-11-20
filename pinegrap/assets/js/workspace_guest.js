@@ -93,7 +93,19 @@
     }
 
     function icon(name) {
-        var node = el('i', 'bi ' + name);
+        // The canvas's own drawing in one colour (CONF.canvas_icon, server
+        // markup); the easel glyph when the config has none.
+        if ((name === 'pg-design-canvas') && CONF.canvas_icon) {
+            var holder = document.createElement('span');
+
+            holder.innerHTML = CONF.canvas_icon;
+
+            if (holder.firstElementChild) {
+                return holder.firstElementChild;
+            }
+        }
+
+        var node = el('i', 'bi ' + (name === 'pg-design-canvas' ? 'bi-easel' : name));
         node.setAttribute('aria-hidden', 'true');
         return node;
     }
@@ -425,7 +437,7 @@
         // picture waits to be drawn, a line says so instead of a blank.
         if (file.canvas && file.pending) {
             var waiting = el('div', 'pg-guest-canvas-wait');
-            waiting.appendChild(icon('bi-easel'));
+            waiting.appendChild(icon('pg-design-canvas'));
             var words = el('div', 'pg-guest-canvas-wait-text');
             words.appendChild(el('b', '', file.name));
             words.appendChild(el('span', '', t('preview_not_ready')));

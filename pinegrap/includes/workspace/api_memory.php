@@ -496,7 +496,7 @@ function ws_api_memory_delete($params)
 
     api_dry_run_stop('deleted', 'workspace_memory_entry', array('id' => (int) $found['row']['id'], 'channel_id' => (int) $found['channel']['id']));
 
-    $result = ws_memory_delete($viewer, $found['row']);
+    $result = ws_memory_delete($viewer, $found['row'], ws_api_memory_writer($viewer));
 
     if (!$result['ok']) {
         api_fail(403, 'forbidden', $result['error']);

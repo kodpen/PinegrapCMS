@@ -101,6 +101,10 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/tasks.php::ws_tasks_agent_channels'            => array('kinds'),
 		// The agent channels whose posters keep the general memory.
 		'includes/workspace/channel_memory.php::ws_memory_general_can'     => array('kinds'),
+		// The memory note: the entry's channel's last message by id, and the
+		// agent channels the general memory's note goes to.
+		'includes/workspace/channel_memory.php::ws_memory_note'            => array('id'),
+		'includes/workspace/channel_memory.php::ws_memory_note_channels'   => array('kinds'),
 		// A discussion and the channel it is in: nothing is posted in a
 		// room, so none starts there.
 		'includes/workspace/threads.php::ws_threads_for'                   => array('kinds', 'kinds'),
@@ -127,7 +131,7 @@ function workspace_mail_room_hidden_test_found()
 {
 	$root = PG_FUNCTIONS_DIR;
 	$skip = array('includes/local/', 'includes/migrations/', 'install/', 'includes/phpmailer/', 'includes/stripe/', 'includes/iyzipay-php/',
-		'includes/phpexcel/', 'includes/boxpacker/', 'includes/dompdf/', 'assets/', 'data/', 'files/');
+		'includes/boxpacker/', 'includes/dompdf/', 'assets/', 'data/', 'files/');
 	$found = array();
 
 	foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)) as $file) {

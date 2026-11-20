@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code
 - Scope, poll 156 (message 9752): "Tam kapsam". Record: `workflow/decisions-made-product-79.md`.
 
 ## What are the parts?
-- The move off PHPExcel: `plans/phpexcel-own-code.md`, XL1 to XL5. It comes first and stands alone.
+- The move off PHPExcel is done (#10466 to #10528): the importers read through the sheet reader (`platform/sheet-reader.md`), the Parasut exports are written by the shared xlsx writer (`erp/parasut-import-sheets.md`).
 - The growth, in `plans/office-own-code-steps.md`: previews OP1 to OP4, sheet editing OE1 to OE5, document editing OD1 to OD3, software-wide OS1 and OS2.
 
 ## In which order?

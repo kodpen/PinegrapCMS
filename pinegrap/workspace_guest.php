@@ -63,6 +63,8 @@ $config = array(
     'max'      => WS_GUEST_MESSAGE_MAX,
     'site'     => (string) ORGANIZATION_NAME,
     'strings'  => ws_guest_page_strings(),
+    // A waiting canvas shows the canvas's own drawing in one colour.
+    'canvas_icon' => pg_design_canvas_icon_one_colour(),
 );
 
 $title = h(lang('Conversation') . (((string) ORGANIZATION_NAME !== '') ? ' · ' . ORGANIZATION_NAME : ''));

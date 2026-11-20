@@ -7,10 +7,12 @@
  * id (pg_place_list_inject()), and the script asks places.php for the records
  * the page's form list shows a visitor (pg_place_list_for_page()).
  *
- * The request carries the page id only. The fields come from the server's
- * name rule (pg_place_list_field_roles()), never from the request: the
- * coordinates and the address of place_map.php, the record's name, and
- * hours and phone by name; an office-use-only field never leaves.
+ * The request carries the page id only. The fields come from the saved
+ * page, never from the request: the ones the block's panel chose
+ * (data-pg-map-fields, pg_place_list_saved_choice()), each part not chosen
+ * by the server's name rule (pg_place_list_field_roles()): the coordinates
+ * and the address of place_map.php, the record's name, and hours and phone
+ * by name; an office-use-only field never leaves.
  *
  * Loaded on demand, by get_page_content.php for a page holding the block
  * and by places.php. (includes/fn/places.php is another module: the
@@ -123,15 +125,115 @@ function pg_place_list_names()
 }
 
 /**
- * Which fields an answer carries: the place fields of place_map.php and the
- * name, hours and phone by name. Office-use-only fields are never taken.
- * Pure.
+ * The attribute of the block (data-pg-map) that keeps the fields its panel
+ * chose: a JSON object, part => field name.
+ *
+ * @return string
+ */
+function pg_place_list_choice_attr()
+{
+    return 'data-pg-map-fields';
+}
+
+/**
+ * The parts a block may choose a field for.
+ *
+ * @return array
+ */
+function pg_place_list_parts()
+{
+    return array('name', 'address', 'hours', 'phone', 'lat', 'lng');
+}
+
+/**
+ * The fields the first "Map of places" block of a saved page tree chose,
+ * part => field name; an empty array for none, a broken value or no block.
+ * Read from the page's own tree only: a block inside a shared component
+ * keeps the name rule. Pure.
+ *
+ * @param mixed $tree the decoded page tree
+ * @return array
+ */
+function pg_place_list_saved_choice($tree)
+{
+    $found = null;
+    $walk = function ($node) use (&$walk, &$found) {
+        if (($found !== null) || !is_array($node)) {
+            return;
+        }
+
+        $attrs = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+        $block = false;
+        $value = '';
+
+        foreach ($attrs as $attr) {
+            $name = (is_array($attr) && isset($attr['name'])) ? (string) $attr['name'] : '';
+
+            if ($name === 'data-pg-map') {
+                $block = true;
+            } elseif ($name === pg_place_list_choice_attr()) {
+                $value = isset($attr['value']) ? (string) $attr['value'] : '';
+            }
+        }
+
+        if ($block) {
+            $found = $value;
+            return;
+        }
+
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $child) {
+                $walk($child);
+            }
+        }
+    };
+    $walk($tree);
+
+    $saved = ($found !== null && $found !== '') ? json_decode($found, true) : null;
+    $choice = array();
+
+    foreach (pg_place_list_parts() as $part) {
+        if (is_array($saved) && isset($saved[$part]) && is_string($saved[$part]) && (trim($saved[$part]) !== '')) {
+            $choice[$part] = trim($saved[$part]);
+        }
+    }
+
+    return $choice;
+}
+
+/**
+ * Whether a field may hold a part: a coordinate a number field, the others
+ * a plain text box or text area (or a number). Pure.
+ *
+ * @param array  $field id, name, type, kind
+ * @param string $part
+ * @return bool
+ */
+function pg_place_list_field_fits($field, $part)
+{
+    $kind = isset($field['kind']) ? (string) $field['kind'] : '';
+    $type = isset($field['type']) ? (string) $field['type'] : '';
+
+    if (in_array($part, array('lat', 'lng'), true)) {
+        return $kind === 'number';
+    }
+
+    return in_array($kind, array('', 'number'), true) && in_array($type, array('text box', 'text area'), true);
+}
+
+/**
+ * Which fields an answer carries. A part the block chose ($choice, from the
+ * saved page) takes that field when the collection has it, it fits the part
+ * and it is not office-use-only; every other part is found by the server's
+ * name rule: the place fields of place_map.php and the name, hours and
+ * phone by name. Office-use-only fields are never taken. Pure.
  *
  * @param array $fields rows in form order: id, name, type, kind, office
+ * @param array $choice pg_place_list_saved_choice(): part => field name
  * @return array|null lat, lng, address (ids), name, hours, phone (id or 0);
  *                    null without the two coordinates and an address
  */
-function pg_place_list_field_roles($fields)
+function pg_place_list_field_roles($fields, $choice = array())
 {
     $public = array();
 
@@ -141,14 +243,47 @@ function pg_place_list_field_roles($fields)
         }
     }
 
-    $roles = pg_place_map_field_roles($public);
+    $chosen = array();
 
-    if ($roles === null) {
+    foreach ((array) $choice as $part => $wanted) {
+        if (!in_array($part, pg_place_list_parts(), true) || !is_string($wanted)) {
+            continue;
+        }
+
+        foreach ($public as $field) {
+            $id = isset($field['id']) ? (int) $field['id'] : 0;
+
+            if (($id > 0) && isset($field['name']) && ((string) $field['name'] === $wanted) && pg_place_list_field_fits($field, $part)) {
+                $chosen[$part] = $id;
+                break;
+            }
+        }
+    }
+
+    $roles = pg_place_map_field_roles_found($public);
+
+    foreach (array('lat', 'lng') as $part) {
+        if (isset($chosen[$part])) {
+            $roles[$part] = $chosen[$part];
+        }
+    }
+
+    if (isset($chosen['address'])) {
+        $roles['address'] = array($chosen['address']);
+    }
+
+    if (($roles['lat'] <= 0) || ($roles['lng'] <= 0) || !$roles['address']) {
         return null;
     }
 
     $names = pg_place_list_names();
     $roles += array('name' => 0, 'hours' => 0, 'phone' => 0);
+
+    foreach (array('name', 'hours', 'phone') as $part) {
+        if (isset($chosen[$part])) {
+            $roles[$part] = $chosen[$part];
+        }
+    }
 
     foreach ($public as $field) {
         $name = pg_place_map_name(isset($field['name']) ? $field['name'] : '');
@@ -324,7 +459,7 @@ function pg_place_list_for_page($page_id)
         }
     }
 
-    $roles = pg_place_list_field_roles($fields);
+    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode((string) pg_page_tree_json((int) $page_id), true)));
 
     if ($roles === null) {
         return array('reason' => 'fields') + $empty;

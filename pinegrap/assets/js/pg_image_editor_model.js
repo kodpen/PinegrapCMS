@@ -853,9 +853,13 @@
     // its box.
     // A warped or pinned layer is tested on its drawn extent (see
     // drawnExtent()), so a press on a part bent out of the box still hits.
-    function hitLayer(doc, x, y, slack, test) {
+    // picked { ids, reach }: a selected layer (its id in ids) is taken as far
+    // as reach instead of slack, so a finger keeps the layer it picked
+    // (touchReach()) over a layer under it; a layer above still takes the
+    // press where it lies.
+    function hitLayer(doc, x, y, slack, test, picked) {
         for (var i = doc.layers.length - 1; i >= 0; i--) {
-            var l = doc.layers[i], p, e;
+            var l = doc.layers[i], p, e, s;
 
             if (l.hidden || l.locked) {
                 continue;
@@ -863,9 +867,10 @@
 
             p = local(l, x, y);
             e = drawnExtent(l);
+            s = (picked && picked.ids && (picked.ids.indexOf(l.id) >= 0)) ? Math.max(slack, Number(picked.reach) || 0) : slack;
 
-            if ((p[0] >= e[0] - slack) && (p[1] >= e[1] - slack) && (p[0] <= e[2] + slack) && (p[1] <= e[3] + slack)
-                    && (!test || test(l, p, slack))) {
+            if ((p[0] >= e[0] - s) && (p[1] >= e[1] - s) && (p[0] <= e[2] + s) && (p[1] <= e[3] + s)
+                    && (!test || test(l, p, s))) {
                 return l;
             }
         }
@@ -3855,6 +3860,26 @@
         return { scale: 1, x: 0, y: 0 };
     }
 
+    // The point of layer l at rest that the stage shows at x, y while the
+    // layer stands at st (motionAt()): its group moves by st.x, st.y, turns
+    // by st.rot and scales by st.scale round the layer's centre
+    // (motionGroup() in pg_image_editor_motion.js), so a press is taken
+    // back through that. Null while the layer is scaled to nothing.
+    function restPoint(l, st, x, y) {
+        var cx = (Number(l.x) || 0) + (Number(l.w) || 0) / 2, cy = (Number(l.y) || 0) + (Number(l.h) || 0) / 2;
+        var k = (st && (st.scale !== undefined)) ? Number(st.scale) : 1, a = -((st && Number(st.rot)) || 0) * Math.PI / 180;
+        var dx, dy;
+
+        if (!(k > 0)) {
+            return null;
+        }
+
+        dx = (x - cx - ((st && Number(st.x)) || 0)) / k;
+        dy = (y - cy - ((st && Number(st.y)) || 0)) / k;
+
+        return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)];
+    }
+
     // Whether any layer moves.
     function hasMotion(doc) {
         return ((doc && doc.layers) || []).some(function (l) {
@@ -3867,7 +3892,7 @@
     var MOTION = {
         MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
         MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt, layerUntil: layerUntil,
-        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
+        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion, restPoint: restPoint
     };
 
     // -- keyframes (pg_image_editor_keyframes.js) --
@@ -4207,8 +4232,9 @@
     // are not counted).
 
     // The most frames a second read, the longer side they are read at, the
-    // shortest span (ms) and the smallest box side on the screen (px).
-    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12;
+    // shortest span (ms), the smallest box side on the screen (px) and the
+    // shorter box side (px) a small thing is read at least at.
+    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12, FOLLOW_SIDE = 24;
 
     // The topmost visible video layer showing at document time t whose box
     // holds document point p, or null.
@@ -4263,12 +4289,49 @@
         return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
     }
 
-    // The size frames are read at: FOLLOW_EDGE on the longer side, never
-    // enlarged; k is that size over the source's.
-    function followSize(width, height) {
-        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k = Math.min(1, FOLLOW_EDGE / Math.max(w, h));
+    // The size frames are read at: FOLLOW_EDGE on the longer side, or larger
+    // where the box's shorter side (side, source px) would be under
+    // FOLLOW_SIDE there, but never above the source's own pixels; k is that
+    // size over the source's. region: frames are read as the region round
+    // the last place only (the tracker's want), not whole; small: the box is
+    // under FOLLOW_SIDE even at the source's pixels.
+    function followSize(width, height, side) {
+        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k0 = Math.min(1, FOLLOW_EDGE / Math.max(w, h)), k = k0;
 
-        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k };
+        side = Number(side) || 0;
+
+        if (side > 0) {
+            k = Math.min(1, Math.max(k0, FOLLOW_SIDE / side));
+        }
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k, region: k > k0, small: (side > 0) && (side * k < FOLLOW_SIDE) };
+    }
+
+    // The region [x0, y0, x1, y1] the first frame is read in: box (frame
+    // pixels at size) in whole pixels with a pixel round it, inside the frame.
+    function followRegion(box, size) {
+        return [
+            Math.max(0, Math.floor(Math.min(box[0], box[2])) - 1), Math.max(0, Math.floor(Math.min(box[1], box[3])) - 1),
+            Math.min(size.w, Math.ceil(Math.max(box[0], box[2])) + 1), Math.min(size.h, Math.ceil(Math.max(box[1], box[3])) + 1)
+        ];
+    }
+
+    // The lost message's label key: why it was lost ('edge': it left the
+    // picture; otherwise it no longer matched, small for a thing a few
+    // pixels across), said in full the first time only; told holds the
+    // keys said before and is added to. Leaving the picture is no fault.
+    function followLostText(why, small, told) {
+        var key = (why === 'edge') ? 'followLostEdge' : (small ? 'followLostSmall' : 'followLostMatch');
+
+        if ((key === 'followLostEdge') || !told || !told[key]) {
+            if (told) {
+                told[key] = true;
+            }
+
+            return key;
+        }
+
+        return 'followLost';
     }
 
     // What Follow covers from document time now: to the first of the clip's
@@ -4326,7 +4389,7 @@
 
     var FOLLOW = {
         followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
-        followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
+        followSize: followSize, followRegion: followRegion, followLostText: followLostText, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
     // -- tracks (pg_image_editor_tracks.js) --
@@ -5071,6 +5134,12 @@
 
             add('duplicate');
             add('remove', !s.free);
+
+            // s.move: how many of them move (neither locked nor fixed). A
+            // phone has no arrow keys: four arrows nudge them (nudgeStep()).
+            if (s.move) {
+                ['nudgeLeft', 'nudgeUp', 'nudgeDown', 'nudgeRight'].forEach(function (name) { add(name); });
+            }
         } else if (s.picture) {
             add('lockPicture');
 
@@ -5173,7 +5242,18 @@
         return { x: Math.round(x), y: Math.round(y), below: below };
     }
 
-    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace };
+    // A nudge of the selected layers in document px: dir left, right, up
+    // or down; 1 px, big (Shift with an arrow key, a held arrow on the bar)
+    // 10 px. [dx, dy], or null for another dir.
+    var NUDGE_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+
+    function nudgeStep(dir, big) {
+        var d = Object.prototype.hasOwnProperty.call(NUDGE_DIRS, dir) ? NUDGE_DIRS[dir] : null, n = big ? 10 : 1;
+
+        return d ? [d[0] * n, d[1] * n] : null;
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace, nudgeStep: nudgeStep };
 
     // -- The context menu (pg_image_editor_menu.js) --
 

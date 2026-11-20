@@ -19,7 +19,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The checks a save runs: name and URL required, the text fields no longer
+ * The checks a save runs: name required, the URL too with the address kind
+ * (a designed pop-up asks for its shared component instead,
+ * pg_auto_dialog_form_content_problems()), the text fields no longer
  * than their columns, the URL a web address or a path on this site
  * (pg_auto_dialog_url_problem()), the four number fields blank or a whole
  * number inside their limit, and a name not used by another auto dialog. The
@@ -32,7 +34,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_auto_dialog_form_validate($liveform, $id)
 {
     $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required.','vars'=>lang('Name'))));
-    $liveform->validate_required_field('url', lang(array('string'=>'{var:1} is required.','vars'=>lang('URL'))));
+
+    // A designed pop-up needs no address: one typed is still checked and
+    // kept, so the row can switch back without retyping it.
+    $asked = pg_auto_dialog_form_content_asked();
+    $content_problems = $asked ? pg_auto_dialog_form_content_problems(pg_auto_dialog_form_content_sent($liveform)) : array();
+
+    if (pg_auto_dialog_form_url_required($asked ? $liveform->get_field_value('content') : null)) {
+        $liveform->validate_required_field('url', lang(array('string'=>'{var:1} is required.','vars'=>lang('URL'))));
+    }
+
+    foreach ($content_problems as $field => $problem) {
+        $liveform->mark_error($field, $problem);
+    }
 
     // The column lengths: a longer value would be cut silently on save.
     foreach (array('name' => array('Name', 100), 'url' => array('URL', 255), 'page' => array('Only on Page', 100)) as $field => $rule) {
@@ -42,7 +56,7 @@ function pg_auto_dialog_form_validate($liveform, $id)
         }
     }
 
-    if (!$liveform->check_field_error('url')) {
+    if (!$liveform->check_field_error('url') && (trim((string) $liveform->get_field_value('url')) !== '')) {
         $problem = pg_auto_dialog_url_problem($liveform->get_field_value('url'));
 
         if ($problem !== '') {
@@ -285,3 +299,169 @@ function pg_auto_dialog_form_open_values($liveform)
 
     return pg_auto_dialog_open_settings($sent);
 }
+
+/**
+ * What is wrong with what a pop-up shows, field => message: a content value
+ * that is not offered (url, component); for a designed pop-up, a component
+ * that is not given, missing or a system widget. A blank content is the
+ * address. The component is looked up through $found (its rows => the ids
+ * that exist; pg_auto_dialog_components_found() by default).
+ *
+ * @param array         $sent   content, component_id
+ * @param callable|null $found
+ * @return array
+ */
+function pg_auto_dialog_form_content_problems($sent, $found = null)
+{
+    $raw = $sent['content'] ?? '';
+    $value = is_scalar($raw) && !is_bool($raw) ? strtolower(trim((string) $raw)) : null;
+
+    if (($value === null) || (($value !== '') && !in_array($value, pg_auto_dialog_content_choices(), true))) {
+        return array('content' => lang(array('string'=>'{var:1} must be one of: {var:2}','vars'=>array(lang('Content'), implode(', ', pg_auto_dialog_content_choices())))));
+    }
+
+    if ($value !== 'component') {
+        return array();
+    }
+
+    $content = pg_auto_dialog_content($sent);
+    $ids = ($content['component_id'] > 0) ? call_user_func(($found === null) ? 'pg_auto_dialog_components_found' : $found, array($content)) : array();
+
+    if (!in_array($content['component_id'], array_map('intval', (array) $ids), true)) {
+        return array('component_id' => lang('Choose a shared component for the designed pop-up.'));
+    }
+
+    return array();
+}
+
+/**
+ * Whether the create and edit screens ask "What does it show?": the content
+ * columns are on auto_dialogs and the site has a visual design to design a
+ * pop-up in. A site with no visual design keeps the address kind and saves
+ * the row without touching the two columns. Pure.
+ *
+ * @param bool  $columns_ready  pg_auto_dialog_content_ready()
+ * @param array $design_ids     the visual designs' style ids
+ * @return bool
+ */
+function pg_auto_dialog_form_asks_content($columns_ready, $design_ids)
+{
+    return $columns_ready && (count(array_filter(array_map('intval', (array) $design_ids))) > 0);
+}
+
+/**
+ * pg_auto_dialog_form_asks_content() for this site. The designs are read
+ * only once the columns are there.
+ *
+ * @return bool
+ */
+function pg_auto_dialog_form_content_asked()
+{
+    return pg_auto_dialog_content_ready() && pg_auto_dialog_form_asks_content(true, array_keys(pg_visual_design_style_ids()));
+}
+
+/**
+ * The kinds "What does it show?" offers (label => value), the address first.
+ *
+ * @return array
+ */
+function pg_auto_dialog_form_content_kinds()
+{
+    return array(
+        lang('An address') => 'url',
+        lang('A designed pop-up') => 'component',
+    );
+}
+
+/**
+ * Whether the URL is required: always with the address kind, never with a
+ * designed pop-up. $content is the kind sent, null when the screen does not
+ * ask (the address kind). Pure.
+ *
+ * @param mixed $content
+ * @return bool
+ */
+function pg_auto_dialog_form_url_required($content)
+{
+    return !(is_scalar($content) && (strtolower(trim((string) $content)) === 'component'));
+}
+
+/**
+ * The kind and the shared component sent, for
+ * pg_auto_dialog_form_content_problems() (unread, as sent).
+ *
+ * @param array|liveform $source
+ * @return array  content, component_id
+ */
+function pg_auto_dialog_form_content_sent($source)
+{
+    $sent = array();
+
+    foreach (array('content', 'component_id') as $field) {
+        $sent[$field] = is_array($source) ? ($source[$field] ?? '') : $source->get_field_value($field);
+    }
+
+    return $sent;
+}
+
+/**
+ * What a save writes to the content columns (pg_auto_dialog_save()'s
+ * $content): null when the screen does not ask, so the columns stay as
+ * stored; otherwise the kind and the component read by
+ * pg_auto_dialog_content(). The component chosen is kept with the address
+ * kind too, so a switch back finds it.
+ *
+ * @param array|liveform $source
+ * @param bool           $asked  pg_auto_dialog_form_asks_content()
+ * @return array|null
+ */
+function pg_auto_dialog_form_content_values($source, $asked)
+{
+    return $asked ? pg_auto_dialog_content(pg_auto_dialog_form_content_sent($source)) : null;
+}
+
+/**
+ * The shared component select's options: a blank prompt, then each
+ * component by name (escaped: the form prints labels as they are). Pure but
+ * for lang().
+ *
+ * @param array $rows  id, name (pg_auto_dialog_component_rows())
+ * @return array  label => value, or array('label', 'value') for a name used twice
+ */
+function pg_auto_dialog_form_component_options($rows)
+{
+    $options = array(lang('Choose a shared component') => '');
+
+    foreach ((array) $rows as $row) {
+        $id = (int) ($row['id'] ?? 0);
+
+        if ($id > 0) {
+            $options['c' . $id] = array('label' => h((string) ($row['name'] ?? '')), 'value' => (string) $id);
+        }
+    }
+
+    return $options;
+}
+
+/**
+ * The designer links beside the shared component select: open, the
+ * component opened alone (edit_system_style.php?component=, '' with none
+ * chosen; the script follows the select), and new, the first visual design
+ * to design a new pop-up in, only for those who may open it in full. Pure.
+ *
+ * @param int   $component_id
+ * @param array $design_ids
+ * @param bool  $may_design   pg_designer_is_full()
+ * @return array  open, new (paths under the software directory)
+ */
+function pg_auto_dialog_form_designer_links($component_id, $design_ids, $may_design)
+{
+    $designs = array_values(array_filter(array_map('intval', (array) $design_ids)));
+    sort($designs);
+
+    return array(
+        'open' => ((int) $component_id > 0) ? 'edit_system_style.php?component=' . (int) $component_id : '',
+        'new' => ($may_design && $designs) ? 'edit_system_style.php?id=' . $designs[0] : '',
+    );
+}
+

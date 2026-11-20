@@ -62,7 +62,7 @@ if (!$_POST) {
                                 <div class="my-3">
                                     <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                     <input type="file" id="file" name="file" class="form-control" required />
-                                    ' . pg_upload_limit_hint() . '
+                                    ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                                 </div>
                             </div>
                         </div>
@@ -124,7 +124,14 @@ if (!$_POST) {
     
 } else {
     validate_token_field();
-    
+
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Key Codes'));
+
+    if ($sheet_refusal !== '') {
+        output_error(h($sheet_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // if no file was uploaded
     if (empty($_FILES['file']['name'])) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
