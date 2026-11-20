@@ -296,6 +296,31 @@ function test_erp_order_profit_basis()
 	pg_assert_same($basis, erp_order_profit_basis($order));
 }
 
+// Two recipients on two shipping methods: each method's percent is taken on
+// its own recipients' part of the shipping charge, not on the whole of it.
+function test_erp_order_profit_shipping_rate_on_each_methods_part()
+{
+	$rates = array('shipping' => array('3' => array('percent' => 10, 'fixed' => 0), '4' => array('percent' => 10, 'fixed' => 100)));
+
+	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'shipping_methods' => array(3, 4),
+		'shipping_costs' => array(3 => 300, 4 => 200),
+		'rates' => $rates,
+	)));
+
+	// 10% of 3.00 plus 10% of 2.00 and 1.00 fixed: 0.30 + 1.20.
+	pg_assert_same(array('' => array('rate', 150)), erp_order_profit_test_rows($result, 'shipping'));
+
+	// One method: its rate on the order's whole shipping charge, as before.
+	$one = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'shipping_methods' => array(3),
+		'shipping_costs' => array(3 => 500),
+		'rates' => $rates,
+	)));
+
+	pg_assert_same(array('' => array('rate', 50)), erp_order_profit_test_rows($one, 'shipping'));
+}
+
 // A rate or estimate is one row per kind with an empty reference: two
 // shipping methods with rates add up into one row, and no two rows of an
 // order share kind and reference (the table's unique key).
