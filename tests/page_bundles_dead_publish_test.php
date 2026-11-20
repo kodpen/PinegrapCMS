@@ -230,4 +230,7 @@ function test_page_bundle_with_lock_gone_is_not_busy()
 
 	$gone = substr($lock, $start, strpos($lock, '}', $start) - $start);
 	pg_assert_contains("'busy' => false", $gone, 'not as busy');
+	pg_assert_contains("'gone' => true", $gone, 'but as gone');
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/design_bundles.php');
+	pg_assert_contains("\$done['gone']", pg_test_function_source('api_design_bundle_run'), 'which the API answers as 404');
 }
