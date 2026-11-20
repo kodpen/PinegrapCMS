@@ -4,7 +4,7 @@ description: The Pop-ups blocks (popup- prefix, group Pop-ups): offer code with 
 ---
 
 ## Where do they live?
-- `assets/js/style_designer_blocks_popup.js`, a family file of its own ([[designer-block-family-files]]): prefix `popup-`, group "Pop-ups" (`bi-window-stack`). Step PU7 of the auto dialog pop-ups plan, PR #10570.
+- `assets/js/style_designer_blocks_popup.js`, a family file of its own ([[designer-block-family-files]]): prefix `popup-`, group "Pop-ups" (`bi-window-stack`). PR #10570; the feature as a whole: `platform/auto-dialog-pop-ups.md`.
 - They are made to be the content of a designed auto dialog: a shared component designed alone, chosen under "What does it show?" on the Edit Auto Dialog screen (`platform/auto-dialog-content.md`). Nothing stops their use on a page; there the marks do nothing.
 
 ## What does each block draw?
@@ -25,4 +25,4 @@ description: The Pop-ups blocks (popup- prefix, group Pop-ups): offer code with 
 ## Tested?
 - `tests/auto_dialog_popup_blocks_test.php`: group and entries under Node, the marks per block, the offer's code and Copy, the printed markup (`_render_tree_node()`), the rules, the script in `frontend.src.js` and `frontend.min.js`. `tests/designer_blocks_test.php` checks the file like every family.
 - An `id` in `_attrs` is never printed on the site (`_render_extra_attrs()`): the email box's id is its node's `id` prop, so its label points at it.
-- Not seen in a browser: the blocks inside a real dialog, the copy on a phone. The plan's pictures to the owner were waived (agent channel message 9546).
+- Not seen in a browser: the blocks inside a real dialog, the copy on a phone. Pictures to the owner were waived (agent channel message 9546).

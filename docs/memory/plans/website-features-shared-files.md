@@ -21,8 +21,7 @@ description: The existing files that steps of more than one website-side plan to
 - `includes/fn/custom_form.php`: RW1, RW5.
 - `includes/fn/output.php`: CM2 (`pg_js_bundles()`), CH2 (`output_menu()`), VP4 (`output_menu()`'s active row 9 for `messages_notifications.php`).
 - `page_view.php` and `assets/js/pg_vitals.src.js`: CM1 and CM2 only (the clicks travel with the speed beacon); a step of another plan that sends a beacon is listed here first.
-- PU8 of `plans/auto-dialog-popups.md` (#9877) adds a branch to `page_view.php`, a sweep to `job.php` and a table to the migration file: CM1 opens once it has landed. CM2's script asks the function PU8 adds whether a statistics beacon may be sent (`workflow/decisions-made-product-60.md`).
-- PU9 of `plans/auto-dialog-popups.md` (#9926) adds a call (no beacon) in PU8's pop-up branch of `page_view.php`: CM2 does not open while PU9 is open.
+- `page_view.php` and `job.php` also hold the pop-up counts' branch and sweep (#9877, `visitors/auto-dialog-counts.md`) and the recovered-carts call in that branch (#9926, `commerce/cart-recovery-whatsapp-page.md`); a step that changes that branch is listed here first.
 - `includes/fn/consent.php` and `includes/fn/auto_dialog_counts.php`: CM1 (#9902) added the one check of the anonymous counts and moved the pop-up counts onto it (architect, agent channel message 6043); CM2 (#9946) moved `frontend.src.js`'s browser check onto the same rule (`software.statistics_not_refused()`).
 
 ## How is the list kept?
