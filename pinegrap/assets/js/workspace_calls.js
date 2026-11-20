@@ -143,6 +143,10 @@
         return h().t.apply(null, arguments);
     }
 
+    function makeButton(className, label, iconName, title) {
+        return hooks.helpers.button(className, label, iconName, title);
+    }
+
     // Two short tones every two seconds while a card rings, when the
     // person's sound switch is on (the mention's switch).
     function ringStart() {
@@ -228,8 +232,8 @@
         card.appendChild(text);
 
         var tools = el('div', 'ws-call-ring-tools');
-        var decline = h().button('pg-button pg-button-danger pg-button-sm', t('call_decline'), 'bi-telephone-x');
-        var accept = h().button('pg-button pg-button-fill pg-button-sm', t('call_accept'), 'bi-telephone');
+        var decline = makeButton('pg-button pg-button-danger pg-button-sm', t('call_decline'), 'bi-telephone-x');
+        var accept = makeButton('pg-button pg-button-fill pg-button-sm', t('call_accept'), 'bi-telephone');
 
         decline.addEventListener('click', function () {
             answered[ring.call_id] = true;
@@ -286,7 +290,7 @@
         var group = h().el('span', 'ws-call-head ws-head-wide');
 
         [['voice', 'bi-telephone', 'call_voice'], ['video', 'bi-camera-video', 'call_video']].forEach(function (one) {
-            var node = h().button('pg-icon-button', '', one[1], t(one[2]));
+            var node = makeButton('pg-icon-button', '', one[1], t(one[2]));
 
             node.setAttribute('aria-label', t(one[2]));
             node.addEventListener('click', function () {
@@ -541,7 +545,7 @@
         win.appendChild(stage);
 
         var bar = el('div', 'ws-call-bar');
-        var name = h().button('ws-call-name', mine.name, '', t('call_open'));
+        var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
 
         name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
         bar.appendChild(name);
@@ -551,17 +555,17 @@
 
         var tools = el('div', 'ws-call-tools');
 
-        mine.muteButton = h().button('pg-icon-button', '', 'bi-mic', t('call_mute'));
+        mine.muteButton = makeButton('pg-icon-button', '', 'bi-mic', t('call_mute'));
         mine.muteButton.addEventListener('click', function () { mute(!mine.muted); });
         tools.appendChild(mine.muteButton);
 
         if (mine.kind === 'video') {
-            mine.cameraButton = h().button('pg-icon-button', '', 'bi-camera-video', t('call_camera_off'));
+            mine.cameraButton = makeButton('pg-icon-button', '', 'bi-camera-video', t('call_camera_off'));
             mine.cameraButton.addEventListener('click', function () { camera(!mine.cameraOff); });
             tools.appendChild(mine.cameraButton);
         }
 
-        var devices = h().button('pg-icon-button', '', 'bi-gear', t('call_devices'));
+        var devices = makeButton('pg-icon-button', '', 'bi-gear', t('call_devices'));
         var panel = el('div', 'ws-call-devices');
 
         panel.hidden = true;
@@ -576,7 +580,7 @@
         });
         tools.appendChild(devices);
 
-        var hang = h().button('pg-button pg-button-danger pg-button-sm', t('call_hang_up'), 'bi-telephone-x');
+        var hang = makeButton('pg-button pg-button-danger pg-button-sm', t('call_hang_up'), 'bi-telephone-x');
 
         hang.addEventListener('click', function () { hangUp(''); });
         tools.appendChild(hang);
