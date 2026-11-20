@@ -5,7 +5,8 @@
  * Event tickets (2026.11.0): a completed order's line that gives tickets
  * (a calendar event's reservation, or a product marked "Gives tickets")
  * gets one event_tickets row per unit, 100 a line at most, as gift cards
- * are issued. A ticket keeps its order line and unit, the product, the
+ * are issued. A refunded return voids the tickets of the units it took and
+ * gives their event places back. A ticket keeps its order line and unit, the product, the
  * event and its date when the line has one, and its state: valid, used or
  * void. Its code is drawn again from the row's salt under the tickets' own
  * key (pg_event_ticket_code(), pg_event_tickets_key(): 32 random bytes in
@@ -453,7 +454,8 @@ function pg_event_tickets_order_cancelled($order_id, $query = null)
 
 /**
  * A restored order's void tickets come back: used when they had been
- * checked in before the cancel, valid otherwise. One conditional UPDATE.
+ * checked in before the cancel, valid otherwise, by one conditional UPDATE;
+ * then the units refunded returns took are voided again.
  *
  * @param int           $order_id
  * @param callable|null $query pg_event_tickets_query() by default
@@ -471,7 +473,13 @@ function pg_event_tickets_order_restored($order_id, $query = null)
         WHERE (order_id = ?) AND (state = 'void')",
         array((int) $order_id));
 
-    return ($changed === false) ? 0 : (int) $changed;
+    // A unit a refunded return took back stays void: the cancel voided it
+    // along with the rest, and the restore must not give it back.
+    if ($query === null) {
+        $changed = ($changed === false) ? false : ((int) $changed - pg_event_tickets_returns_reapply($order_id));
+    }
+
+    return ($changed === false) ? 0 : max(0, (int) $changed);
 }
 
 /**
@@ -497,17 +505,18 @@ function pg_event_tickets_delete_for_order($order_id, $query = null)
 }
 
 /**
- * The state a ticket is left in by a cancel or a restore, as the two
- * UPDATEs above write it. Pure.
+ * The state a ticket is left in by a cancel, a restore or a refunded
+ * return, as the UPDATEs here write it. Any other move of a return (a
+ * reopened one among them) leaves it as it is. Pure.
  *
- * @param string $action  cancel or restore
+ * @param string $action  cancel, restore or return
  * @param string $state   valid, used or void
  * @param int    $used_at
  * @return string
  */
 function pg_event_ticket_state_after($action, $state, $used_at)
 {
-    if ($action === 'cancel') {
+    if (($action === 'cancel') || ($action === 'return')) {
         return 'void';
     }
 
@@ -516,6 +525,304 @@ function pg_event_ticket_state_after($action, $state, $used_at)
     }
 
     return (string) $state;
+}
+
+/**
+ * Whether a return's move to this status voids the tickets of its units:
+ * only the refund does. Approval, the parcel and the goods received back
+ * leave them, and no move of a return gives a voided ticket back. Pure.
+ *
+ * @param string $status the status the return moves to
+ * @return bool
+ */
+function pg_event_tickets_return_voids($status)
+{
+    return ((string) $status === 'refunded');
+}
+
+/**
+ * Which tickets of a returned line become void: as many as the return took,
+ * from those not void yet; first the ones not checked in, highest unit
+ * first, and a checked-in one only when no other is left. Pure.
+ *
+ * @param array $tickets  the line's rows: id, unit, state
+ * @param int   $quantity the units the return took of the line
+ * @return array ticket ids, in the order picked
+ */
+function pg_event_tickets_return_pick(array $tickets, $quantity)
+{
+    $quantity = (int) $quantity;
+
+    if ($quantity <= 0) {
+        return array();
+    }
+
+    $valid = array();
+    $used = array();
+
+    foreach ($tickets as $ticket) {
+        $state = (string) ($ticket['state'] ?? '');
+
+        if ($state === 'valid') {
+            $valid[] = $ticket;
+        } elseif ($state === 'used') {
+            $used[] = $ticket;
+        }
+    }
+
+    $by_unit = function ($a, $b) {
+        return (int) $b['unit'] - (int) $a['unit'];
+    };
+
+    usort($valid, $by_unit);
+    usort($used, $by_unit);
+
+    $ids = array();
+
+    foreach (array_merge($valid, $used) as $ticket) {
+        if (count($ids) >= $quantity) {
+            break;
+        }
+
+        $ids[] = (int) $ticket['id'];
+    }
+
+    return $ids;
+}
+
+/**
+ * The tickets of one order line, for the pick of a refunded return.
+ *
+ * @param int $order_id
+ * @param int $order_item_id
+ * @return array rows: id, unit, state
+ */
+function pg_event_tickets_line_read($order_id, $order_item_id)
+{
+    return (array) db_items(
+        "SELECT id, unit, state, used_at FROM event_tickets
+        WHERE (order_id = '" . (int) $order_id . "') AND (order_item_id = '" . (int) $order_item_id . "')
+        ORDER BY unit ASC");
+}
+
+/**
+ * Voids the tickets of the units a refunded return took back, line by line
+ * (pg_event_tickets_return_pick()). Runs whatever the switch says, as the
+ * cancel does, so a refunded place never stays valid at the door.
+ *
+ * @param int           $order_id
+ * @param array         $quantities order item id => units returned
+ * @param callable|null $query      pg_event_tickets_query() by default
+ * @param callable|null $read       pg_event_tickets_line_read() by default
+ * @return int the tickets voided
+ */
+function pg_event_tickets_lines_refunded($order_id, array $quantities, $query = null, $read = null)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || (($query === null) && !pg_event_tickets_ready())) {
+        return 0;
+    }
+
+    $query = ($query === null) ? 'pg_event_tickets_query' : $query;
+    $read = ($read === null) ? 'pg_event_tickets_line_read' : $read;
+    $voided = 0;
+
+    foreach ($quantities as $order_item_id => $quantity) {
+        if (((int) $order_item_id <= 0) || ((int) $quantity <= 0)) {
+            continue;
+        }
+
+        $ids = pg_event_tickets_return_pick((array) call_user_func($read, $order_id, (int) $order_item_id), (int) $quantity);
+
+        if (!$ids) {
+            continue;
+        }
+
+        $changed = call_user_func($query,
+            "UPDATE event_tickets
+            SET state = 'void', voided_at = UNIX_TIMESTAMP()
+            WHERE (order_id = ?) AND (id IN (" . implode(', ', array_fill(0, count($ids), '?')) . ")) AND (state <> 'void')",
+            array_merge(array($order_id), $ids));
+
+        $voided += ($changed === false) ? 0 : (int) $changed;
+    }
+
+    return $voided;
+}
+
+/**
+ * The reservation lines a refunded return gives places back for: each
+ * returned line with its quantity set to the units returned, never more
+ * than the line holds. Pure.
+ *
+ * @param array $lines      rows as pg_order_event_places() reads them, with
+ *                          order_item_id
+ * @param array $quantities order item id => units returned
+ * @return array the returned lines
+ */
+function pg_event_tickets_return_place_lines(array $lines, array $quantities)
+{
+    $returned = array();
+
+    foreach ($lines as $line) {
+        $units = (int) ($quantities[(int) ($line['order_item_id'] ?? 0)] ?? 0);
+
+        if ($units <= 0) {
+            continue;
+        }
+
+        $line['quantity'] = min($units, (int) ($line['quantity'] ?? 0));
+        $returned[] = $line;
+    }
+
+    return $returned;
+}
+
+/**
+ * Gives back the event places of a refunded return's units, as a cancel
+ * does (pg_order_event_places_cancelled()): only with tickets on and the
+ * calendars on, for an event that takes reservations and limits its places;
+ * those waiting for a date that got places are mailed.
+ *
+ * @param int   $order_id
+ * @param array $quantities order item id => units returned
+ * @return int the dates given places
+ */
+function pg_event_tickets_return_places($order_id, array $quantities)
+{
+    $order_id = (int) $order_id;
+    $ids = array();
+
+    foreach ($quantities as $order_item_id => $quantity) {
+        if (((int) $order_item_id > 0) && ((int) $quantity > 0)) {
+            $ids[] = (int) $order_item_id;
+        }
+    }
+
+    if (($order_id <= 0) || !$ids || !pg_event_tickets_on() || !defined('CALENDARS') || !CALENDARS
+        || !function_exists('pg_order_event_places')) {
+        return 0;
+    }
+
+    $lines = db_items(
+        "SELECT
+            order_items.id AS order_item_id,
+            order_items.calendar_event_id,
+            order_items.recurrence_number,
+            order_items.quantity,
+            calendar_events.reservations,
+            calendar_events.limit_reservations,
+            calendar_events.recurrence,
+            calendar_events.separate_reservations
+        FROM order_items
+        INNER JOIN calendar_events ON calendar_events.id = order_items.calendar_event_id
+        WHERE (order_items.order_id = '" . $order_id . "') AND (order_items.calendar_event_id > 0)
+            AND (order_items.id IN (" . implode(', ', $ids) . "))");
+
+    $freed = array();
+
+    foreach (pg_order_event_places(pg_event_tickets_return_place_lines((array) $lines, $quantities), true) as $place) {
+        db(pg_order_event_places_sql('give', $place[0], $place[1], $place[2]));
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            $freed[] = array($place[0], $place[1]);
+        }
+    }
+
+    if ($freed && function_exists('pg_stock_notify_event_freed')) {
+        pg_stock_notify_event_freed($freed);
+    }
+
+    return count($freed);
+}
+
+/**
+ * A refunded return's tickets and places: the returned units' tickets
+ * become void and their places come back. Called once per refund, by the
+ * request that moved the return to refunded (pg_return_refund()).
+ *
+ * @param int   $order_id
+ * @param array $quantities order item id => units returned
+ * @return int the tickets voided
+ */
+function pg_event_tickets_return_refunded($order_id, array $quantities)
+{
+    if (!pg_event_tickets_return_voids('refunded')) {
+        return 0;
+    }
+
+    $voided = pg_event_tickets_lines_refunded($order_id, $quantities);
+
+    pg_event_tickets_return_places($order_id, $quantities);
+
+    return $voided;
+}
+
+/**
+ * The units each line of an order gave back through refunded returns: a
+ * return counts once its money went back (refunded_at > 0, closed after it
+ * too).
+ *
+ * @param int $order_id
+ * @return array order item id => units
+ */
+function pg_event_tickets_refunded_units($order_id)
+{
+    if (!function_exists('pg_returns_ready') || !pg_returns_ready()) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT order_return_items.order_item_id, SUM(order_return_items.quantity) AS quantity
+        FROM order_return_items
+        JOIN order_returns ON order_returns.id = order_return_items.return_id
+        WHERE (order_returns.order_id = '" . (int) $order_id . "') AND (order_returns.refunded_at > 0)
+        GROUP BY order_return_items.order_item_id");
+
+    $units = array();
+
+    foreach ((array) $rows as $row) {
+        $units[(int) $row['order_item_id']] = (int) $row['quantity'];
+    }
+
+    return $units;
+}
+
+/**
+ * An order's reservation lines less the units its refunded returns took:
+ * those places came back with the refund, so a later cancel gives back, and
+ * a restore takes again, only the rest. Never below 0. Pure.
+ *
+ * @param array $lines    rows with order_item_id and quantity
+ * @param array $refunded order item id => units (pg_event_tickets_refunded_units())
+ * @return array the lines with what is left of each quantity
+ */
+function pg_event_tickets_places_left(array $lines, array $refunded)
+{
+    foreach ($lines as $index => $line) {
+        $units = (int) ($refunded[(int) ($line['order_item_id'] ?? 0)] ?? 0);
+
+        if ($units > 0) {
+            $lines[$index]['quantity'] = max(0, (int) ($line['quantity'] ?? 0) - $units);
+        }
+    }
+
+    return $lines;
+}
+
+/**
+ * After a restore gave every void ticket back, the units refunded returns
+ * took stay void: as many per line as those returns took, by the same pick.
+ *
+ * @param int $order_id
+ * @return int the tickets voided again
+ */
+function pg_event_tickets_returns_reapply($order_id)
+{
+    $units = pg_event_tickets_refunded_units($order_id);
+
+    return $units ? pg_event_tickets_lines_refunded($order_id, $units) : 0;
 }
 
 /**
