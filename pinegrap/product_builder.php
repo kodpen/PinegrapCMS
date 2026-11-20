@@ -7275,7 +7275,15 @@ function pg_pb_validate_product_post($user, $product_id = 0)
     // component would otherwise leave the bundle switched on and empty.
     if (pg_pb_bundle_posted($product_id) && !empty($_POST['bundle'])) {
 
-        $problem = pg_bundle_items_problem($product_id, pg_bundle_items_normalize(pg_pb_bundle_items_posted(), $product_id));
+        // Switched on with no contents yet, a product inside another bundle
+        // would still become a bundle in a bundle.
+        $problem = pg_bundle_switch_on_problem(
+            (string) db_value("SELECT bundle FROM products WHERE id = '" . (int) $product_id . "'") === '1',
+            pg_bundle_is_component($product_id));
+
+        if ($problem === '') {
+            $problem = pg_bundle_items_problem($product_id, pg_bundle_items_normalize(pg_pb_bundle_items_posted(), $product_id));
+        }
 
         if ($problem !== '') {
             output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');

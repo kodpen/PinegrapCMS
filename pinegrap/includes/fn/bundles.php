@@ -341,6 +341,22 @@ function pg_bundle_items_problem($bundle_id, $items)
 }
 
 /**
+ * Why a product cannot be switched into a bundle, '' when it can: a product
+ * inside another bundle cannot become one, with contents or without, or the
+ * bundle holding it would hold a bundle and take the cached stock of this
+ * one as a component's. A product that already is a bundle is not asked
+ * again; its contents are checked by pg_bundle_items_problem().
+ *
+ * @param bool $was_bundle   the stored products.bundle
+ * @param bool $is_component pg_bundle_is_component()
+ * @return string the reason, in English for lang()
+ */
+function pg_bundle_switch_on_problem($was_bundle, $is_component)
+{
+    return (!$was_bundle && $is_component) ? 'A product that is part of a bundle cannot be a bundle itself.' : '';
+}
+
+/**
  * Replace a bundle's contents. Nothing is written when a component is
  * refused.
  *

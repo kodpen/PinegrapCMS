@@ -322,3 +322,13 @@ function test_bundle_cart_allowance_bundle_without_backorder()
 		array('id' => 1, 'product_id' => 50, 'quantity' => 4, 'backorder' => true, 'components' => $bundle),
 	), $stock), 'a bundle that takes back orders is not limited');
 }
+
+// A product inside a bundle cannot be switched into a bundle, even with no
+// contents yet: the bundle holding it would hold a bundle. A bundle that
+// already was one, or a product in no bundle, may be saved.
+function test_bundle_switch_on_problem()
+{
+	pg_assert_same('A product that is part of a bundle cannot be a bundle itself.', pg_bundle_switch_on_problem(false, true));
+	pg_assert_same('', pg_bundle_switch_on_problem(false, false));
+	pg_assert_same('', pg_bundle_switch_on_problem(true, true), 'a bundle already: its contents are checked on their own');
+}
