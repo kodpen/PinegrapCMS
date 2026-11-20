@@ -85,7 +85,7 @@ description: Generated from the module field of the memory files: each includes/
 - `country_list_edit`: [[list-table-quick-edit-countries]]
 - `course_blocks`: [[course-blocks]]
 - `course_certificate`: [[course-certificate]]
-- `courses`: [[course-gate]], [[course-tables]]
+- `courses`: [[course-gate]], [[course-progress]], [[course-tables]]
 - `courses_admin`: [[course-screen]]
 - `cron`: [[job-script-claims]], [[scheduled-job-resume]]
 - `currency_list_edit`: [[list-table-quick-edit-currencies]]

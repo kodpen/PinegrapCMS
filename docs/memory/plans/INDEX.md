@@ -43,9 +43,6 @@
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
 - connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
-- course-progress-features.md: Plan course-progress, features Z1 to Z17: a course and its ordered lessons, when a lesson is open, marking done and quiz lessons, the learner's blocks, the certificate, the staff's learners list
-- course-progress-steps.md: Plan course-progress, steps CO1 to CO6: the tables and the rule of an open lesson, the Courses screen, the gate in the page's access path, the blocks and their script, the certificate, close-out
-- course-progress.md: Plan (owner 2026-11-16, agent channel poll 82): courses on the folder and pages that exist: ordered and timed lessons, progress, quiz lessons, a certificate, "My courses"; steps CO1 to CO6
 - design-canvas-groups.md: Plan (owner 2026-11-20): Design Canvas layer groups, a layer attached to another layer, Follow holding a small thing, and picking and moving an animated text on a phone; GC1-GC4
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
