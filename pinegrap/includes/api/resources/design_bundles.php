@@ -283,6 +283,13 @@ function api_design_bundle_run($user, $action) {
 
 	$done = pg_page_bundle_as_person($user, $action);
 
+	// Deleted on the Bundles screen while this request waited.
+	if (!empty($done['gone'])) {
+
+		api_fail_not_found(lang('Release bundle'));
+
+	}
+
 	if (!empty($done['busy'])) {
 
 		api_fail(409, 'bundle_busy', $done['error']);

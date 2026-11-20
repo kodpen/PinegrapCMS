@@ -2018,7 +2018,7 @@ function pg_page_bundle_with_lock($bundle, $user, $busy, $action)
         $fresh = pg_page_bundle_finish_dead($bundle, $user);
 
         if (!$fresh) {
-            return array('ok' => false, 'error' => lang('The bundle was not found.')) + $busy;
+            return array('ok' => false, 'error' => lang('The bundle was not found.'), 'busy' => false, 'gone' => true) + $busy;
         }
 
         return $action($fresh);
