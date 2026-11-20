@@ -5,7 +5,7 @@ module: product_form_uploads
 ---
 
 ## When are a cart's uploaded files deleted?
-- 30 days after the cart's last touch (`PG_PFU_SWEEP_DAYS`). Owner (2026-11-20): 30 days after the last touch, an order's files never (poll 162, channel message 10010). Built in FU5 (#10638).
+- 30 days after the cart's last touch (`PG_PFU_SWEEP_DAYS`). Owner (2026-11-20): 30 days after the last touch, an order's files never (poll 162, channel message 10010). Built in #10638.
 - Only a cart still `incomplete`; an order (`complete`, `exported`, `cancelled`) is never swept. An answer whose order row is gone is not swept either.
 
 ## What is the cart's last touch?
@@ -22,4 +22,4 @@ module: product_form_uploads
 ## What was not verified?
 - Not run on a database: the statements are pinned by the unit tests only.
 
-Related: commerce/product-form-upload-field.md, commerce/product-price-history-retention.md
+Related: commerce/product-form-uploads.md, commerce/product-form-upload-field.md, commerce/product-price-history-retention.md

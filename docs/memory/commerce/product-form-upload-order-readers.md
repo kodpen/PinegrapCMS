@@ -20,4 +20,4 @@ module: product_form_uploads
 - `pg_pfu_order_file_mode($audience, $interface)` and `pg_pfu_order_file_html($file_name, $base_path, $mode)`, pure; `pg_pfu_order_answer_html($file_name, $interface)` reads the audience and `PATH`.
 - Pinned by `tests/product_form_uploads_order_test.php`.
 
-Related: commerce/product-form-upload-api-csv-completion.md, commerce/product-form-upload-field.md, plans/product-form-uploads.md
+Related: commerce/product-form-upload-api-csv-completion.md, commerce/product-form-upload-field.md, commerce/product-form-uploads.md
