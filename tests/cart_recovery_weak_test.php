@@ -43,6 +43,29 @@ function test_cart_recovery_weak_unreachable()
 	pg_assert_same(null, pg_cart_recovery_weak_unreachable(20, $untouched), '5 of 20 is not above 30 %');
 }
 
+function test_cart_recovery_weak_unreachable_leaves_out_a_deleted_order()
+{
+	// The no-touch row of a completed order that was deleted since: nothing
+	// is known of its address, so it is not "no e-mail address".
+	$gone = pg_cart_recovery_weak_untouched_fact(null, true);
+	pg_assert_same(null, $gone['address'], 'a deleted order: address unknown');
+	pg_assert_same(false, $gone['stock_out'], 'and no line out of stock');
+
+	$kept = pg_cart_recovery_weak_untouched_fact(array('open' => true, 'address' => true, 'opt_in' => false, 'stock_out' => true), true);
+	pg_assert_same(true, $kept['address'], 'an order still there keeps its address');
+	pg_assert_same(false, $kept['consent'], 'no opt-in where the mail needs it');
+	pg_assert_same(true, $kept['stock_out'], 'an open cart out of stock');
+	pg_assert_same(true, pg_cart_recovery_weak_untouched_fact(array('open' => true, 'address' => true, 'opt_in' => false, 'stock_out' => false), false)['consent'], 'no opt-in needed');
+
+	$untouched = array_merge(
+		cart_recovery_weak_test_many(3, array('address' => false, 'consent' => false)),
+		cart_recovery_weak_test_many(4, array('address' => null, 'consent' => false)),
+		cart_recovery_weak_test_many(5, array('address' => true, 'consent' => true))
+	);
+
+	pg_assert_same(null, pg_cart_recovery_weak_unreachable(12, $untouched), '3 of 12 is not above 30 %: the deleted orders are not counted');
+}
+
 function test_cart_recovery_weak_messages()
 {
 	$messages = array(

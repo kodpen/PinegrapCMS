@@ -105,7 +105,8 @@ function pg_cart_recovery_weak_step(array $order)
  * needs it. Pure.
  *
  * @param int   $left      the period's left carts
- * @param array $untouched facts of the untouched carts: address, consent (bool)
+ * @param array $untouched facts of the untouched carts: address (bool, null
+ *                         for an order deleted since), consent (bool)
  * @return array|null array('rule' => 'unreachable', 'carts', 'left',
  *                    'no_address', 'no_consent', 'percent')
  */
@@ -121,6 +122,11 @@ function pg_cart_recovery_weak_unreachable($left, array $untouched)
     $no_consent = 0;
 
     foreach ($untouched as $cart) {
+        // An order deleted since: nothing is known of its address.
+        if (array_key_exists('address', $cart) && ($cart['address'] === null)) {
+            continue;
+        }
+
         if (empty($cart['address'])) {
             $no_address++;
         } elseif (empty($cart['consent'])) {
@@ -598,17 +604,34 @@ function pg_cart_recovery_weak_facts($from, $to, $now)
     $untouched = array();
 
     foreach ($untouched_ids as $id) {
-        $order = isset($orders[$id]) ? $orders[$id] : array('open' => false, 'address' => false, 'opt_in' => false, 'stock_out' => false);
-
-        $untouched[] = array(
-            'address'   => $order['address'],
-            'consent'   => !$consent_needed || $order['opt_in'],
-            'recovered' => false,
-            'stock_out' => $order['open'] && $order['stock_out'],
-        );
+        $untouched[] = pg_cart_recovery_weak_untouched_fact(isset($orders[$id]) ? $orders[$id] : null, $consent_needed);
     }
 
     return array('touched' => $touched, 'untouched' => $untouched);
+}
+
+/**
+ * The facts of one untouched left cart for the rules, pure. A no-touch row
+ * outlives its order (a deleted order keeps its touches): for it the
+ * address is null, unknown, so the unreachable rule does not count it as a
+ * cart with no address.
+ *
+ * @param array|null $order          pg_cart_recovery_weak_orders() row, null when the order is gone
+ * @param bool       $consent_needed pg_cart_recovery_weak_consent_needed()
+ * @return array address (bool|null), consent, recovered, stock_out
+ */
+function pg_cart_recovery_weak_untouched_fact($order, $consent_needed)
+{
+    if (!is_array($order)) {
+        return array('address' => null, 'consent' => false, 'recovered' => false, 'stock_out' => false);
+    }
+
+    return array(
+        'address'   => !empty($order['address']),
+        'consent'   => !$consent_needed || !empty($order['opt_in']),
+        'recovered' => false,
+        'stock_out' => !empty($order['open']) && !empty($order['stock_out']),
+    );
 }
 
 /**
