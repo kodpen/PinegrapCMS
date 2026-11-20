@@ -19,6 +19,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The list table driver is not loaded with every screen.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
 $requests_labels = pg_privacy_request_labels();
 $requests_operator = array('role' => (int) $user['role'], 'id' => (int) $user['id']);
 $requests_now = time();
@@ -42,11 +45,26 @@ if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
             $requests_back .= '&request=' . $requests_added['id'];
         }
     } elseif ($requests_request !== null) {
-        $requests_back .= '&request=' . (int) $requests_request['id'];
+        $requests_back .= '&request=' . (int) $requests_request['id'] . ((($_POST['tab'] ?? '') === 'answer') ? '&tab=answer' : '');
 
         if ($requests_action === 'save') {
             pg_privacy_request_save($requests_request, array('assigned_user_id' => (int) ($_POST['assigned_user_id'] ?? 0), 'verified' => !empty($_POST['verified'])));
             $liveform->add_notice(lang('The request was saved.'));
+        } elseif ($requests_action === 'send') {
+            $requests_sent = pg_privacy_request_send($requests_request, is_string($_POST['answer'] ?? null) ? $_POST['answer'] : '', $requests_operator);
+            $requests_errors = array(
+                'open'       => lang('This request is already closed.'),
+                'empty'      => lang('Write the answer.'),
+                'unverified' => lang('Check who asks first.'),
+                'mail'       => lang('The e-mail could not be sent. Nothing was erased; try again.'),
+                'refused'    => lang('Your role may not see this person\'s data: someone with a higher role answers this request.'),
+            );
+
+            if ($requests_sent === 'ok') {
+                $liveform->add_notice(($requests_request['kind'] === 'erasure') ? lang('The answer was sent and the person\'s data erased.') : lang('The answer was sent.'));
+            } else {
+                $liveform->add_error($requests_errors[$requests_sent] ?? lang('The request could not be saved.'));
+            }
         } elseif ($requests_action === 'refuse') {
             $requests_sent = pg_privacy_request_send($requests_request, is_string($_POST['reason'] ?? null) ? $_POST['reason'] : '', $requests_operator, true);
             $requests_errors = array(
@@ -102,7 +120,11 @@ $requests_drawers = pg_privacy_request_add_drawer(isset($_GET['add']));
 $requests_open = $requests_ready ? pg_privacy_request_get((int) ($_GET['request'] ?? 0)) : null;
 
 if ($requests_open !== null) {
-    $requests_drawers .= pg_privacy_request_drawer($requests_open, $requests_labels, $requests_now);
+    // The gather step runs once who asks has been checked: the export's
+    // counts or the erase dry run, nothing written.
+    $requests_gathered = (($requests_open['status'] === 'open') && ((int) $requests_open['verified_at'] > 0)) ? pg_privacy_request_gather($requests_open, $requests_operator) : null;
+    $requests_tab = is_string($_GET['tab'] ?? null) ? $_GET['tab'] : 'request';
+    $requests_drawers .= pg_privacy_request_drawer($requests_open, $requests_labels, $requests_now, $requests_tab, $requests_gathered);
 }
 
 echo
@@ -146,6 +168,14 @@ pg_page_shell(array(
             item.tabIndex = on ? 0 : -1;
             document.getElementById(item.getAttribute("aria-controls")).hidden = !on;
         });
+        // The foot follows the tab: Send on Answer, Save
+        // and Refuse elsewhere; the tab comes back after a save.
+        var drawer = tab.closest("dialog");
+        var answer = (tab.getAttribute("aria-controls") === "privacy_request_pane_answer");
+        drawer.querySelectorAll("[data-privacy-foot]").forEach(function (button) {
+            button.hidden = ((button.getAttribute("data-privacy-foot") === "answer") !== answer);
+        });
+        drawer.querySelector("input[name=tab]").value = answer ? "answer" : "request";
         tab.focus();
     };
 
@@ -167,7 +197,11 @@ pg_page_shell(array(
         event.preventDefault();
     });
 
-    document.querySelectorAll("dialog[data-open]").forEach(open);
+    // Bootstrap 6 is a module that runs after this script: the drawer that
+    // opens with the screen waits for it.
+    if (window.pgUI) {
+        pgUI.ready(function () { document.querySelectorAll("dialog[data-open]").forEach(open); });
+    }
 })();
 </script>
 ' .
