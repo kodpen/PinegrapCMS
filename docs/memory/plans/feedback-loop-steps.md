@@ -10,7 +10,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 
 - FD2 (M) after FD1b: the survey settings screen in the place the architect names, the survey list, a new survey off by default, the test send to oneself. Features: Q2.
 
-- FD3 (M) after FD2: the missing announcements (`pg_booking_status_event()` for `done`, `ws_mail_conversation_set()` on close, the check-in in `pg_event_workspace_events()`); the listener that queues a send; the general job's pass with the delay, the hours, the reminder and the cancels; the periodic NPS. Features: Q3, Q4, Q5.
+- FD3 (M) after FD2: the missing announcements (`pg_booking_status_event()` for a finished booking, `ws_mail_conversation_set()` on close, the check-in in `pg_event_workspace_events()`); the listener that queues a send; the general job's pass with the delay, the hours, the reminder and the cancels; the periodic NPS. Features: Q3, Q4, Q5.
 
 - FD4 (M) after FD3: the e-mail with its buttons, the SMS and WhatsApp link (`pg_sms_enqueue()`, `pg_whatsapp_enqueue()`), the public answer page (new root `feedback.php`, its rate limit in `waf.php`), the page-side write, the review invitation, "Don't ask me again". Features: Q7, Q8, Q9.
 
