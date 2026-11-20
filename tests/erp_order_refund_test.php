@@ -231,6 +231,7 @@ function test_erp_order_refund_lines_note_round_trip()
 		'note about the outlines:9=9',
 	)));
 	pg_assert_same(array(), erp_order_refund_lines_noted(array()));
+	pg_assert_same(array(), erp_order_refund_lines_noted(array('Reward points taken back: 40 points-lines:101=2,102=1')), 'the reward points marker of an invoiced order is no refund line');
 	pg_assert_same(40, pg_credit_points_marked(array('Reward points taken back: 40 lines:101=1')));
 }
 

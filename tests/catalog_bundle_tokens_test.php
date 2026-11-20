@@ -72,3 +72,15 @@ function test_catalog_bundle_card_states()
 	pg_assert_contains('<p>Stars</p>', $none);
 	pg_assert_false(strpos($none, 'You save') !== false, 'no saving element without a saving');
 }
+
+// A component the visitor gets cheaper on its own lowers the saving shown.
+function test_catalog_bundle_values_component_offer()
+{
+	$contents = array(array('product_id' => 3, 'price' => 1000, 'quantity' => 2), array('product_id' => 4, 'price' => 500, 'quantity' => 1));
+
+	$bundle = _pg_catalog_bundle_values(true, $contents, 2000, '$', array(3 => 900));
+	pg_assert_same(pg_visitor_money(3, '$'), $bundle['__bundle_saving_formatted'], 'two of 3 at 900, 4 at 500, less 2000');
+
+	$none = _pg_catalog_bundle_values(true, $contents, 2000, '$', array(3 => 750));
+	pg_assert_same('', $none['__bundle_saving_formatted'], 'cheaper bought one by one');
+}

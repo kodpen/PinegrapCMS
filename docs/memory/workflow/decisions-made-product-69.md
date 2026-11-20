@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-69
-description: Decisions list, product part 69 (2026-11-17 on): campaign Create stores it paused; integration packages at priority 4; the Options panel in a 240 px column; the Design Canvas's Follow
+description: Decisions list, product part 69 (2026-11-17 on): campaign Create stores it paused; integration packages at priority 4; the Options panel in a 240 px column; the Artifact Canvas's Follow
 ---
 
 ## Where are the rules and the earlier parts?
@@ -25,6 +25,6 @@ description: Decisions list, product part 69 (2026-11-17 on): campaign Create st
 - The drawing joins `plans/designer-panels/` by the R&D agent's PR; a step that draws the panel accounts for it as for the other drawings (`plans/designer-panels-rules.md`).
 
 ## Can a text or a vector move with an area chosen on a video? (owner, 2026-11-16, agent channel poll 110, message 7306)
-- He asked: "bir yazı veya vektör koyup takip et dediğimizde takip için seçtiğimiz alan ile hareket edebilir mi?" Yes: Follow in the Design Canvas's Animate tool (`ui/image-editor-follow.md`).
+- He asked: "bir yazı veya vektör koyup takip et dediğimizde takip için seçtiğimiz alan ile hareket edebilir mi?" Yes: Follow in the Artifact Canvas's Animate tool (`ui/image-editor-follow.md`).
 - He chose "Evet, böyle çıksın" for the command as shown (#9997): the box drawn by hand, forward from the playhead, the layer keeping its place at the playhead, plain keys, the pill over the stage.
 - The architect's bounds, not his words: own code with no library or model, no new document field, the size and turn of the followed thing left out of the first version.

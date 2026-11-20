@@ -6,7 +6,7 @@ description: Decisions list, product part 70 (2026-11-17): nine looks accepted i
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. The part before: `decisions-made-product-69.md`.
 
-## Is the Translations screen's group for Design Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
+## Is the Translations screen's group for Artifact Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
 - He chose "Evet; grubun adı "Görseller" olsun": the group under "Other texts" as shown (PT3 #10102), called "Görseller" in Turkish, so `lang('Images')`. `lang('Pictures')` keeps its Turkish "Resimler" on the other screens.
 - Not chosen: "Evet; grubun adı "Resimler" kalsın".
 

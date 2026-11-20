@@ -448,6 +448,7 @@ function get_help_url($properties = array())
         // ERP, continued
         'erp_stock'              => 'erp-cont#stock',
         'erp_stock_minimums'     => 'erp-cont#stock-minimums',
+        'erp_stock_plan'         => 'erp-cont#stock',
         'erp_stock_counts'       => 'erp-cont#stock-counts',
         'erp_stock_count'        => 'erp-cont#stock-count',
         'erp_expenses'           => 'erp-cont#expenses',

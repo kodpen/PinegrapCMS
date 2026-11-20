@@ -167,7 +167,7 @@ function erp_request_values_single_value_calls($source)
 // handed over.
 function test_erp_request_values_post_fields_dropped_before_first_read()
 {
-	$lists = array('token', 'lines', 'choice', 'invoice_ids', 'map', 'categories', 'allocate', 'counted');
+	$lists = array('token', 'lines', 'choice', 'invoice_ids', 'map', 'categories', 'allocate', 'counted', 'quantities');
 	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
 	$checked = 0;
 
