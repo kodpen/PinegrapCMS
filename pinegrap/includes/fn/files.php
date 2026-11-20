@@ -492,7 +492,8 @@ function pg_clean_up_list_row($icon, $name)
 
 /**
  * The Summary card of the Cleanup tool's status column (clean_up.php, the
- * product_builder layout of ui/edit-screen-wide-layout.md): how many folders,
+ * product_builder layout of ui/edit-screen-wide-layout.md), a .pg-kv label
+ * and value list (ui/look-kv-list.md): how many folders,
  * files and expired payment records the delete removes, and that it cannot
  * be undone. $records is null when e-commerce is off, so the row is left out.
  *
@@ -513,26 +514,21 @@ function pg_clean_up_summary($folders, $files, $records = null)
     }
 
     $output = '';
-    $last = count($rows);
-    $number = 0;
     foreach ($rows as $label => $value) {
-        $number++;
         $output .= '
-                                            <div class="d-flex justify-content-between gap-3 py-2' . (($number < $last) ? ' border-bottom' : '') . '">
-                                                <dt class="fw-normal">' . h($label) . '</dt>
-                                                <dd class="mb-0 fw-bold text-end">' . pg_format_number($value, 0) . '</dd>
-                                            </div>';
+                                            <dt>' . h($label) . '</dt>
+                                            <dd>' . pg_format_number($value, 0) . '</dd>';
     }
 
     return '
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '
                                     </h2>
                                     <div class="card-body pt-0">
-                                        <dl class="mb-3">' . $output . '
+                                        <dl class="pg-kv mb-3">' . $output . '
                                         </dl>
-                                        <p class="small fg-danger mb-0"><span class="material-icons align-middle me-2" aria-hidden="true">warning</span>' . lang('Everything listed here is deleted permanently.') . '</p>
+                                        <p class="pg-text-meta fg-danger mb-0"><span class="material-icons align-middle me-2" aria-hidden="true">warning</span>' . lang('Everything listed here is deleted permanently.') . '</p>
                                     </div>
                                 </div>';
 }
