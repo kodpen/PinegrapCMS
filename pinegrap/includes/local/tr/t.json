@@ -7955,6 +7955,7 @@
     "The version of the app it applies to": "Geçerli olduğu uygulama sürümü",
     "The version of the backup ({var:1}) is not part of this package": "Yedeğin sürümü ({var:1}) bu paketin parçası değil",
     "The version of the rules its prompt ran with": "İsteminin çalıştığı kuralların sürümü",
+    "The version was put back.": "Sürüm geri getirildi.",
     "The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.": "Öncesindeki sürümler kaydedildi ve her adım yeniden çalıştırılabilir: yükseltmeyi bir kez daha başlatın, kaldığı yerden sürer. Aynı ifade yine başarısız olursa yukarıdaki mesaj veritabanının neye itiraz ettiğini söyler.",
     "The versions could not be loaded.": "Sürümler yüklenemedi.",
     "The versions that were applied are recorded. Sign in again and open this screen; the upgrade continues from the version that was recorded last.": "Uygulanan sürümler kaydedildi. Yeniden oturum açıp bu ekranı açın; yükseltme en son kaydedilen sürümden devam eder.",

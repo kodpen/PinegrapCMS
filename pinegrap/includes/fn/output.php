@@ -8080,6 +8080,7 @@ function pg_js_bundles()
             'assets/js/workspace_note_tabs.js',
             'assets/js/workspace_note_group_shares.js',
             'assets/js/workspace_note_lock.js',
+            'assets/js/workspace_channel_notes.js',
             'assets/js/workspace_memory.js',
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_channel_activity.js',
