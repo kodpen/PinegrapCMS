@@ -3015,6 +3015,7 @@ function output_header($properties = false)
         <meta name="application-name" content="Pinegrap CMS">
         <meta name="color-scheme" content="light dark">
         ' . $output_software_metanames . '
+        <link rel="help" type="text/markdown" href="' . h(pg_agent_guide_url(isset($properties['agent_guide']) ? (string) $properties['agent_guide'] : '')) . '">
         <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
         <link rel="icon" type="image/png" sizes="75x75" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/075/' . $output_fav_icon . '.png">
         <link rel="icon" type="image/png" sizes="100x100" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/100/' . $output_fav_icon . '.png">
@@ -3128,6 +3129,19 @@ function output_header($properties = false)
         ';
 
     return $output;
+}
+
+/**
+ * The address of the guide for AI agents through the panel's session
+ * (agent_guide.php): the topic list, or one topic. Printed as the panel
+ * head's rel="help" link and as the account menu's "AI agent guide" row.
+ *
+ * @param string $topic a guide topic id, or '' for the list
+ * @return string
+ */
+function pg_agent_guide_url($topic = '')
+{
+    return PATH . SOFTWARE_DIRECTORY . '/agent_guide.php' . (($topic !== '') ? '?topic=' . rawurlencode($topic) : '');
 }
 
 /**
@@ -3370,6 +3384,10 @@ function pg_account_menu($user, $options = array())
         $help .= '
                             <li id="tour_link"><a class="menu-item" href="#" role="button"><i class="bi bi-compass" aria-hidden="true"></i><span class="pg-um-text">' . lang('Interface tour') . '</span></a></li>';
     }
+
+    // The guide for an AI agent that works in this browser: Markdown about
+    // this site, read with the same session (agent_guide.php).
+    $help .= $row(pg_agent_guide_url(), 'bi-robot', lang('AI agent guide'), $new_tab, true);
 
     if (!$private_label) {
         // A plain link to the documentation of this screen, so a middle
@@ -4327,8 +4345,13 @@ function output_menu($properties = false)
         // users and orders too)
         if ($user['role'] < 3) {
             $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
-            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_erase.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-x bi-me-2\'>' . lang('Personal data erasure') . '</a>';
+            foreach (array(
+                'privacy_export.php' => array('bi-person-down', lang('Personal data export')),
+                'privacy_erase.php'  => array('bi-person-x', lang('Personal data erasure')),
+                'privacy_centre.php' => array('bi-shield-lock', lang('Privacy centre')),
+            ) as $privacy_screen => $privacy_link) {
+                $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $privacy_screen . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $privacy_link[0] . ' bi-me-2\'>' . $privacy_link[1] . '</a>';
+            }
         }
     }
 
@@ -5015,6 +5038,7 @@ function output_menu($properties = false)
         case 'organize_contacts.php':
         case 'privacy_export.php':
         case 'privacy_erase.php':
+        case 'privacy_centre.php':
             $active_menu = 7;
             break;
         case 'view_users.php':
@@ -8094,7 +8118,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_data.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.

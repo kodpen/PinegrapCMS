@@ -17,7 +17,7 @@ description: What ws_commands($viewer) gives the / picker, /help, palette and AP
 - Known: the / picker can open while a message is edited, where no command runs (`pickerCheck()` does not look at `editing`). A saved reply whose body is a command comes into the box as text and runs when sent; that stays (plan channel-commands).
 
 ## What happens to an unknown /word?
-- `ws_command_unknown()`: first token `^/\p{L}{1,20}` then space or end, no command, not claude/ai. `/var/www x`, `http://x`, `/ 5`, `/2026`, `//x` are text. `ws_command_run()` answers `ws_command_unknown_answer()`: ephemeral, `keep`, up to three `ws_command_closest()` names (prefix or Levenshtein ≤ 1/2, folded; Turkish wins ties; never /g, /t).
+- `ws_command_unknown()`: first token `^/\p{L}{1,20}` then space or end, no command, not claude/ai. `/var/www x`, `http://x`, `/ 5`, `/2026`, `//x` are text. `ws_command_run()` answers `ws_command_unknown_answer()`: ephemeral, `keep`, up to three `ws_command_closest()` names (prefix or Levenshtein ≤ 1/2, folded; Turkish wins ties; never /g, /t), only commands that run in the channel, never the word typed (#10769: "/help topic" in a discussion had answered "Did you mean: /topic").
 - "//word …" posts "/word …" (`ws_command_unescape()` in `ws_send`); "// TODO", "///x", "//claude" stay as typed. Scheduled messages and the API do not unescape.
 
 ## Tests?

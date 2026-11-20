@@ -33,6 +33,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-11.md: Where are the rules and the earlier parts?
 - decisions-made-panel-11.md: Is the Site Settings dialog bigger? (owner, 2026-11-20, in the architect's window)
 - decisions-made-panel-11.md: Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
+- decisions-made-panel-12.md: Where are the rules and the earlier parts?
+- decisions-made-panel-12.md: Is New application drawn in three steps? (owner, 2026-11-20, agent channel poll 188, channel message 10735)
+- decisions-made-panel-12.md: Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
+- decisions-made-panel-12.md: Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
+- decisions-made-panel-12.md: What do the three have in common?
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -472,6 +477,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-88.md: Is an agent given to a channel from the application's screen? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-89.md: Where are the rules and the earlier parts?
 - decisions-made-product-89.md: Should each marketplace account get its own price by rules and a repricer that watches the buybox, never under a profit floor? (owner, 2026-11-20, agent channel poll 173, channel message 10469)
+- decisions-made-product-89.md: Should the site ask for a score after a booking, ticket, course, form, delivery or mail conversation and follow up low scores? (owner, 2026-11-20, agent channel poll 187, channel message 10725)
+- decisions-made-product-89.md: Should a form become an application programme with reviewers, weighted criteria, combined scores, rounds and decisions? (owner, 2026-11-20, agent channel poll 196, channel message 10821)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -483,6 +490,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-90.md: Should the store measure each carrier's real delivery time per province and find stuck, not handed over and problem parcels before the customer asks? (owner, 2026-11-20, agent channel poll 178, channel message 10566)
 - decisions-made-product-90.md: Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
 - decisions-made-product-90.md: Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
+- decisions-made-product-91.md: Where are the rules and the earlier parts?
+- decisions-made-product-91.md: Under which consent does a satisfaction survey go? (owner, 2026-11-20, agent channel poll 198, channel message 10840)
+- decisions-made-product-91.md: What of a jury's evaluation goes into a person's export? (owner, 2026-11-20, agent channel poll 200, channel message 10842)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -598,6 +608,44 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-39.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
+- decisions-made-schema-40.md: Where are the rules and the earlier parts?
+- decisions-made-schema-40.md: Does customer rhythm get a table? (owner, 2026-11-20, agent channel poll 191, channel message 10744)
+- decisions-made-schema-40.md: Which columns does customer_rhythm have? (architect, 2026-11-20)
+- decisions-made-schema-40.md: Does the delivery tower get a table? (owner, 2026-11-20, agent channel poll 192, channel message 10745)
+- decisions-made-schema-40.md: Which columns does shipment_problems have? (architect, 2026-11-20)
+- decisions-made-schema-40.md: What else holds for both?
+- decisions-made-schema-41.md: Where are the rules and the earlier parts?
+- decisions-made-schema-41.md: Does pick and pack get tables and a right? (owner, 2026-11-20, agent channel poll 193, channel message 10746)
+- decisions-made-schema-41.md: Which columns does product_bins have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does pick_waves have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does pick_wave_orders have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: Which columns does order_packs have? (architect, 2026-11-20)
+- decisions-made-schema-41.md: What is the right's column? (architect, 2026-11-20)
+- decisions-made-schema-41.md: What else holds?
+- decisions-made-schema-42.md: Where are the rules and the earlier parts?
+- decisions-made-schema-42.md: Does the visitor journey get tables? (owner, 2026-11-20, agent channel poll 194, channel message 10747)
+- decisions-made-schema-42.md: Which columns does lead_browsers have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does lead_visits have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does contact_journey have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: Which columns does contact_scores have? (architect, 2026-11-20)
+- decisions-made-schema-42.md: What else holds?
+- decisions-made-schema-43.md: Where are the rules and the earlier parts?
+- decisions-made-schema-43.md: What does a ticket of a repeating event with shared places stand for? (owner, 2026-11-20, agent channel poll 195, channel message 10784)
+- decisions-made-schema-43.md: Which columns does event_ticket_checkins have? (architect, 2026-11-20)
+- decisions-made-schema-43.md: How does a series ticket behave? (architect, 2026-11-20, channel message 10806)
+- decisions-made-schema-43.md: Who builds it?
+- decisions-made-schema-44.md: Where are the rules and the earlier parts?
+- decisions-made-schema-44.md: Does the application review desk get tables? (owner, 2026-11-20, agent channel poll 199, channel message 10841)
+- decisions-made-schema-44.md: Which columns does application_programs have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_reviewers have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_entries have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: Which columns does application_reviews have? (architect, 2026-11-20)
+- decisions-made-schema-44.md: What else holds?
+- decisions-made-schema-45.md: Where are the rules and the earlier parts?
+- decisions-made-schema-45.md: Does the satisfaction loop get tables? (owner, 2026-11-20, agent channel poll 197, channel message 10839)
+- decisions-made-schema-45.md: Which columns does feedback_surveys have? (architect, 2026-11-20)
+- decisions-made-schema-45.md: Which columns does feedback_responses have? (architect, 2026-11-20)
+- decisions-made-schema-45.md: What else holds?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
@@ -1211,14 +1259,18 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
+- workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side (K2); files, what to look at, what is left alone
 - workflow/bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
+- workflow/bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
+- workflow/bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
 - workflow/bug-hunt-event-tickets.md: Bug hunt of event tickets, a ticket's lifetime and the door (architect 2026-11-20, agent channel message 10668, #10754): what was read, the five faults fixed, the two issues, what was found clean
+- workflow/bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
@@ -1426,3 +1478,4 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-voice-browser-route.md: Voice to assistants (#5390, VA1-VA6) and VA2: without a site key the sender's browser writes a recording out before the upload, kept as a done ws_voice row with provider browser; what is still open
 - workspace/workspace-voice-read-aloud.md: Assistants' and channel agents' answers read aloud (V5, GV3): the per-person browser switch, off by default, no schema; which answers are read, what is left out, when it stops
 - workspace/workspace-voice-spoken-answers.md: An assistant's answer to a recording is heard back (VA4, #5390): ws_voice_answer_spoken() on the three answer routes, the words read, the language, the browser fallback
+- workspace/workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide

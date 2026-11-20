@@ -226,6 +226,7 @@ function get_help_url($properties = array())
         'approve_affiliate'       => 'contacts#affiliates',
         'privacy_export'          => 'contacts#personal-data-export',
         'privacy_erase'           => 'contacts#personal-data-erasure',
+        'privacy_centre'          => 'contacts#privacy-centre',
 
         // Users
         'view_users' => array(

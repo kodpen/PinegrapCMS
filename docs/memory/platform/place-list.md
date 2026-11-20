@@ -7,6 +7,7 @@ module: place_list
 ## What does places.php answer?
 - `GET places.php?page=<id>`: the places of that page's first form list (`pg_sw_page_widget($page_id, 'form_list_view')`), as `{ok, places: [{name, address, hours, phone, lat, lng, url}], cut, note}`. The request carries the page id only (architect, 2026-11-16, agent channel message 7423); `tests/place_list_test.php` checks no other request value is read.
 - Gate (`pg_place_list_page_reason()`): the page exists, its folder is open to everyone (`get_access_control_type()` = `public`) and not in the bin, and the list is public (`pg_sw_form_widget_public()`). Otherwise no places.
+- The page must hold the block (#10770, `pg_place_list_tree_holds_block()`): in its tree or in a shared component it names, four levels deep. Before, any public page with a public list gave its records' addresses and phones.
 - Records: complete only, the list's and its detail view's filters (`pg_sw_list_record_filter_clause()`, no URL filters), in the list's order (`pg_place_list_order()`: id, date or a form field; a statistic order falls back to the date), at most `PG_PLACE_LIST_MAX` (500).
 - Architect (2026-11-16, message 6590): the bound and the cut stand; with a cut list "Near me" is not drawn and the designer is told both.
 - Same origin only (`pg_request_cross_site()`, 403), then 30 answers a minute per address (`pg_place_list_throttled()`, rule `rate-place-list`, 429), `Cache-Control: private, no-store`.

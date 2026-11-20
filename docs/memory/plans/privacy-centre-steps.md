@@ -6,7 +6,7 @@ description: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers,
 ## Which steps are there?
 - KV1 (M) first: the catalogue and transfers, no schema. Done (#10738).
   - New `includes/fn/privacy_inventory.php` (pure catalogue, live counts), country and data fields on `includes/fn/connections_registry.php`'s rows, `tests/privacy_inventory_test.php` red first (P5's two failures). Features: P1, P2, P3, P5.
-- KV2 (S) after KV1: Contacts › Privacy centre beside the erase screen, the link from Site Settings › Visitors and privacy, Excel through `includes/fn/xlsx_write.php` and PDF. Feature: P4.
+- KV2 (S) after KV1: Contacts › Privacy centre beside the erase screen, the link from Site Settings › Visitors and privacy, Excel through `includes/fn/xlsx_write.php` and PDF. Feature: P4. Done (#10789).
 - KV3 (M) after KV1: the retention rules.
   - `includes/fn/privacy_retention.php` gains the rules (settings in `config_text`), the dry run, the pass in slices through `pg_privacy_erase()`'s actions, the skips, the `privacy_rule` audit lines and their 3-year keep in `pg_privacy_retention_run()`; the Audit trail card's sentence. No schema.
   - Tests: each skip of P8, a passive contact with a booking ahead, staff, the cart's blanked field set, the 31-day floor, the 6-month bound, the 3-year keep. Features: P6, P6b, P7, P8, P9.

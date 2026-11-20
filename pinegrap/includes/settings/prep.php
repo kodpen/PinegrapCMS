@@ -2486,6 +2486,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
+    // Sales watch part of the Alerts card (includes/fn/sales_watch.php): one
+    // config_text row, drawn only with the shop on and the table there.
+    $sales_watch_ready = $ops_alerts_ready && defined('ECOMMERCE') && (ECOMMERCE === true)
+        && function_exists('pg_sales_watch_settings') && pg_schema_has('config_text');
+    $sales_watch = $sales_watch_ready ? pg_sales_watch_settings() : array();
+    $sales_watch_channels = $sales_watch_ready ? pg_sales_watch_channel_list() : array();
+
     // Chat notifications card: the Slack, Teams and Telegram targets, read
     // from their sealed entry. The address and the token are never drawn
     // back; the card shows where a target sends (scheme and host) only.
