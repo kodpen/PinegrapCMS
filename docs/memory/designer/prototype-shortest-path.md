@@ -1,11 +1,11 @@
 ---
 name: prototype-shortest-path
-description: The Prototype view's shortest click path (PX5): Shift+click, Shift+Enter or the bar's path button picks the page to go to; pathOf(), the core's trail(), "No path", Esc
+description: The Prototype view's shortest click path (PX5, #10644): Shift+click, Shift+Enter or the bar's path button picks the page to go to; pathOf(), the core's trail(), "No path", Esc
 ---
 
 ## What does it do?
 - Architect (2026-11-19, plans/prototype-next.md): "the shortest click path between two selected pages."
-- (PX5) From the selected page (the core's `focus`) to another page: its frames ringed in green (`.sd-proto-path-on`), its arrows drawn green in place of the selection's, the pages named at the canvas's foot (`div.sd-proto-pathbar`): "2 clicks: Home → Shop → Item". A step through a shared part placed on the page reads "Pay via Header" and its frame is ringed too.
+- (PX5 #10644) From the selected page (the core's `focus`) to another page: its frames ringed in green (`.sd-proto-path-on`), its arrows drawn green in place of the selection's, the pages named at the canvas's foot (`div.sd-proto-pathbar`): "2 clicks: Home → Shop → Item". A step through a shared part placed on the page reads "Pay via Header" and its frame is ringed too.
 - None: "No path from {page} to {page}: no link leads there.", the bar's edge and the page's ring amber (`-pathbar-none`, `.sd-proto-path-none`); the selection's own arrows stay.
 
 ## How is the second page chosen?
