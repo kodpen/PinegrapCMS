@@ -11187,6 +11187,7 @@
                 });
 
                 self.lastId = data.last_id;
+                self.answerAfter = 0;
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
                 self.tab = ((self.pendingTab === 'board') && !messageId && self.hasBoard(data.channel)) ? 'board' : 'messages';
@@ -19852,6 +19853,42 @@
             this.scrollToEnd();
         },
 
+        // An application's answer to the reader's own / command, seen by
+        // nobody else: a box under the conversation with the application's
+        // name. Its close hides it in this window only.
+        appAnswers: function (answers) {
+            var self = this;
+
+            self.answersClosed = self.answersClosed || {};
+
+            answers.forEach(function (answer) {
+                self.answerAfter = Math.max(self.answerAfter || 0, answer.id);
+
+                if (self.answersClosed[answer.id] || self.pane.querySelector('[data-ws-answer="' + answer.id + '"]')) {
+                    return;
+                }
+
+                var box = el('div', 'ws-ephemeral');
+                var body = el('div', 'ws-body');
+                var close = el('button', 'pg-button pg-button-ghost pg-button-sm float-end');
+
+                close.type = 'button';
+                close.setAttribute('aria-label', t('close'));
+                close.title = t('close');
+                close.appendChild(icon('bi-x-lg', ''));
+                box.setAttribute('data-ws-answer', answer.id);
+                close.addEventListener('click', function () {
+                    self.answersClosed[answer.id] = true;
+                    box.remove();
+                });
+                box.appendChild(close);
+                box.appendChild(el('div', 'ws-ephemeral-title', (answer.app || '') + ' · ' + answer.command + ' · ' + t('answer_only_you')));
+                setHtml(body, answer.html);
+                box.appendChild(body);
+                self.pane.appendChild(box);
+            });
+        },
+
         drawPreview: function (command) {
             var self = this;
             var box = clear(self.previewBox);
@@ -22512,7 +22549,8 @@
                 board: ((self.tab === 'board') && !self.isThread) ? 1 : 0,
                 panel: self.isThread ? 1 : 0,
                 sound: (!self.isThread && soundOn(CFG.api_url, CFG.me)) ? 1 : 0,
-                sound_after: ((self.soundMark === null) || (self.soundMark === undefined)) ? -1 : self.soundMark
+                sound_after: ((self.soundMark === null) || (self.soundMark === undefined)) ? -1 : self.soundMark,
+                answer_after: self.answerAfter || 0
             }).then(function (data) {
                 self.syncing = false;
 
@@ -22590,6 +22628,14 @@
                     self.replaceTaskCard(task.id, task.html);
                     grew = true;
                 });
+
+                // Applications' answers to the reader's own commands: drawn
+                // while the conversation is in front of them, else kept for
+                // the next look.
+                if (self.tab === 'messages' && (data.answers || []).length) {
+                    self.appAnswers(data.answers);
+                    grew = true;
+                }
 
                 self.sinceTs = data.now;
 
@@ -22940,6 +22986,7 @@
                 self.channel = data.channel;
                 self.messages = data.messages;
                 self.lastId = data.last_id;
+                self.answerAfter = 0;
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
                 main.root.classList.add('ws-thread-open');

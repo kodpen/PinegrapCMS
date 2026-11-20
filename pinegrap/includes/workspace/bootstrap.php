@@ -46,6 +46,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_channel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_tiers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/github_links.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/app_commands.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/app_answers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/saved_replies.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/note_media.php');
