@@ -1637,6 +1637,7 @@
     "Found {var:1} result{suffix:1} for: {var:2}": "{var:1} sonuç bulundu: {var:2}",
     "Found {var:1} result{suffix:1}.": "{var:1} sonuç bulundu.",
     "Found:": "Bulunan:",
+    "Found: {var:1}": "Bulundu: {var:1}",
     "Found: {var:1} can be followed.": "Bulundu: {var:1} takip edilebilir.",
     "Founded by railway workers on a borrowed field: the story of the club, its honours and the volunteers who run it.": "Demiryolu işçilerinin ödünç bir tarlada kurduğu kulübün hikâyesi, başarıları ve onu yöneten gönüllüler.",
     "Founder": "Kurucu",
