@@ -11,7 +11,7 @@ description: What binds every change to the Communication area (İletişim): the
 - Owner (2026-11-13, #9295): made anew means redrawn, never carried as it is: "kampanyalar ekranları olduğu gibi geçmiş ve yeni ekranlarda o sayfalar kadar eski olarak üretilmiş"; "ben modernleştirme turu da istemiştim birlikteliğinde".
 
 ## What does every change to the area keep?
-- A screen is built from the drawing (`messages-area-drawing/messages-area.html` with its light and dark pictures) in look A's recipes (`look-design-examples.md`); real screenshots go to the owner before the PR goes ready (`workflow/architect-asking.md`). The drawing's names are examples.
+- A screen is built from the drawing (`messages-area-drawing/messages-area.html` with its light and dark pictures) in look A's recipes (`look-design-examples.md`) and as its plan describes it; no screenshot goes to the owner for a yes (`workflow/screen-described-in-plan.md`). The drawing's names are examples.
 - Nothing a running site sends is lost: e-mail and SMS campaigns, their jobs and queues keep their tables and rules (`platform/sms-campaigns.md`, `platform/sms-outbox-queue.md`); the area re-dresses and joins screens, and an old address leads to its new place.
 - No table or column without the owner's yes, asked through the architect.
 - Rights stay per screen; a tab shows only to who may open its screen. Lists on the list table driver.

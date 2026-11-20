@@ -5,7 +5,7 @@ module: customer_rhythm_pass
 ---
 
 ## What is stored?
-- Table `customer_rhythm` (step 11.0.260), one row per Customers Report key (`pg_customer_value_key()`); columns as decided in `workflow/decisions-made-schema-40.md`. No name, e-mail or address; a buyer with only marketplace orders gets no row.
+- Table `customer_rhythm` (step 11.0.262), one row per Customers Report key (`pg_customer_value_key()`); columns as decided in `workflow/decisions-made-schema-40.md`. No name, e-mail or address; a buyer with only marketplace orders gets no row.
 - Stage codes: `pg_customer_rhythm_stage_codes()` (0 none, 1 Regular, 2 Due, 3 Late, 4 Slipping away, 5 Lost, 6 Won back). `interval_days` is whole days (0 = none), `chance` a per cent, amounts minor units of the base currency.
 - Product summary: config_text `customer_rhythm` (`pg_customer_rhythm_summary()`): `at`, `median`, `curve`, `customers`, `stages`, `products_all`, `products` (id => days per unit, pairs, customers, 1 when from its group). Over 60,000 bytes keeps the products with most pairs.
 

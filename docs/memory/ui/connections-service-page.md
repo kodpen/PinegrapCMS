@@ -14,9 +14,9 @@ module: connections_screen
 - A service set elsewhere has only those two cards; its step adds "Bağlantı bilgileri" (`plans/connections-merges-panel-rules.md`).
 
 ## Which cards does GitHub's page have? (CX8, #10418)
-- `pg_connections_screen_page_cards()` gives the order and gates: Status, "Connection details" ("Bağlantı bilgileri", manager), Where it is used, "Repository links" ("Depo bağlantıları", only with `ws_github_links_can_manage()`, the Workspace settings right). A card the viewer may not open is not drawn.
+- `pg_connections_screen_page_cards()` gives the order and gates: Status, "Connection details" ("Bağlantı bilgileri", manager), Where it is used, "Repository links" ("Depo bağlantıları", only with `ws_github_links_can_manage()`, the Workspace settings right). A card the viewer may not open is not shown.
 - Connection details: the GitHub application (`connections_app_form()`, shared with the drawers), "Save" the one filled button, "Save and try" quiet (saves, then `pg_connect_check()` on each of the site's GitHub accounts). Status has "Connect a GitHub account".
-- `pg_connections_screen_page_providers()` (github => github): its Account providers row opens the page, not a drawer; a write returns there.
+- `pg_connections_screen_page_providers()` (github => github): its Account providers row opens the page, not a drawer.
 - Repository links: `ws_github_links_page_card()`, its forms post `ws_action` to the page, `ws_github_links_settings_post()` writes. Under Where it is used a line names the GitHub MCP connector as a connection of its own, with its own token.
 - The Channels card `pgset-ws-github` keeps its address and anchors (`ws-github`, `pgset-ws-github`) and says how many repositories are linked, with "Manage in Connections".
 
@@ -28,7 +28,7 @@ module: connections_screen
 
 ## Which pages did CX11 give a key service? (Status, "Connection details" under the card's gate, Where it is used)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors and privacy gate, `connections-google-analytics-page.md`.
-- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers (CX11d2): `connections-sms-providers-page.md`. Meta Conversions API: `api/ad-conversions-meta.md`.
+- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions-meta.md`, `api/ad-conversions-tiktok.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

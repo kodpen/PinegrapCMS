@@ -247,7 +247,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
-	upgrade_2026_11_0_customer_rhythm();         // 11.0.260
+	upgrade_2026_11_0_application_review();      // 11.0.258
+	upgrade_2026_11_0_customer_rhythm();         // 11.0.262
 
 }
 
@@ -8412,7 +8413,111 @@ function upgrade_2026_11_0_ws_note_app() {
 
 }
 
-// Customer rhythm (2026.11.0, 11.0.260; includes/fn/customer_rhythm_pass.php).
+// The application review desk (2026.11.0, 11.0.258; includes/fn/application_review.php).
+//
+// A form becomes an application programme: application_programs holds the
+// period, the rounds with their criteria and weights, the eligibility rules,
+// the blind fields and the decision texts (JSON in TEXT). Reviewers belong
+// to a programme (application_reviewers): a panel user by user_id, an
+// outside juror by name and e-mail with only the hash of their link. Each
+// submission in a programme is one application_entries row with its
+// eligibility, combined score, decision and the hash of its correction link;
+// application_reviews holds one reviewer's scores of one entry in one round.
+// Scores are stored times 100. No column is added to forms or user.
+function upgrade_2026_11_0_application_review() {
+
+	install_create_table('application_programs', "CREATE TABLE application_programs (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		name                 VARCHAR(150) NOT NULL DEFAULT '',
+		status               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		opens_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		closes_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		category_field_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewers_per_entry  TINYINT UNSIGNED NOT NULL DEFAULT 2,
+		round                TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		blind                TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		waitlist_auto        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		rounds               TEXT NULL,
+		eligibility          TEXT NULL,
+		blind_fields         TEXT NULL,
+		texts                TEXT NULL,
+		created_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page_status (page_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviewers', "CREATE TABLE application_reviewers (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		name          VARCHAR(150) NOT NULL DEFAULT '',
+		email         VARCHAR(190) NOT NULL DEFAULT '',
+		token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		categories    TEXT NULL,
+		revoked_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_program_person (program_id, user_id, email),
+		UNIQUE KEY uniq_token_hash (token_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_entries', "CREATE TABLE application_entries (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		form_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		category          VARCHAR(100) NOT NULL DEFAULT '',
+		round             TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		eligible          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		eligibility_note  TEXT NULL,
+		score_raw         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		score_adjusted    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		spread            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		consensus         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		shortlisted       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decision          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		mailed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		fix_token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		fix_fields        TEXT NULL,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_form (form_id),
+		UNIQUE KEY uniq_fix_token_hash (fix_token_hash),
+		KEY idx_program_round_category (program_id, round, category),
+		KEY idx_program_decision (program_id, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviews', "CREATE TABLE application_reviews (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		entry_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewer_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		round            TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		status           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scores           TEXT NULL,
+		total            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		conflict_reason  VARCHAR(500) NOT NULL DEFAULT '',
+		assigned_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		submitted_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_entry_reviewer_round (entry_id, reviewer_id, round),
+		KEY idx_reviewer_status (reviewer_id, status),
+		KEY idx_program_round_status (program_id, round, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
+
+}
+
+// Customer rhythm (2026.11.0, 11.0.262; includes/fn/customer_rhythm_pass.php).
 //
 // One row per customer, keyed by the Customers Report's customer key
 // (pg_customer_value_key(): a hash of the billing e-mail, else c<contact>),

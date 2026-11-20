@@ -16,4 +16,4 @@ description: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store 
 - RY6 (S) close-out: every H number checked against the code with its PR; `commerce/customer-rhythm.md` written and `commerce/customer-value-report.md`'s left-out line updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- RY1a can start before the poll's answer. After RY1b: RY2 and RY4; RY3 after RY2. `includes/api/resources/reports.php` is also entered by `plans/sales-watch.md` SW5: check the open PRs before claiming.
+- RY1a can start before the poll's answer. After RY1b: RY2 and RY4; RY3 after RY2. `includes/api/resources/reports.php` is also entered by `commerce/sales-watch.md` SW5: check the open PRs before claiming.

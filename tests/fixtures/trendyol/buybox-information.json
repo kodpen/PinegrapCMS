@@ -1,0 +1,48 @@
+{
+  "buyboxInfo": [
+    {
+      "barcode": "8680000000011",
+      "buyboxOrder": 1,
+      "buyboxPrice": 600,
+      "hasMultipleSeller": false,
+      "secondBuyboxPrice": 2999,
+      "thirdBuyboxPrice": 3199
+    },
+    {
+      "barcode": "8680000000028",
+      "buyboxOrder": 3,
+      "buyboxPrice": 299.9,
+      "hasMultipleSeller": true,
+      "secondBuyboxPrice": 400,
+      "thirdBuyboxPrice": 500
+    },
+    {
+      "barcode": "ty-cap-1",
+      "buyboxOrder": 1,
+      "buyboxPrice": "149.99",
+      "hasMultipleSeller": true,
+      "secondBuyboxPrice": 155,
+      "thirdBuyboxPrice": 160
+    },
+    {
+      "barcode": "8680000000035",
+      "buyboxOrder": 470,
+      "buyboxPrice": 340,
+      "hasMultipleSeller": true,
+      "secondBuyboxPrice": 700,
+      "thirdBuyboxPrice": 800
+    },
+    {
+      "barcode": "8680000000099",
+      "buyboxOrder": 2,
+      "buyboxPrice": 100,
+      "hasMultipleSeller": true
+    },
+    {
+      "barcode": "8680000000042",
+      "buyboxOrder": "x",
+      "buyboxPrice": -5,
+      "hasMultipleSeller": true
+    }
+  ]
+}

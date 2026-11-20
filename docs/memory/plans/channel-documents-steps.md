@@ -21,7 +21,7 @@ description: Plan channel-documents, steps KD1 to KD5: the server (write in a ch
 
 ## Which steps run side by side?
 - After KD1: KD2 and KD4a; KD4b after #10774. KD3 enters `notes.php` after KD1 has landed and the card's script after KD2 has.
-- `workspace.js` and `backend.src.css` are entered by KD2 and by KA2 of `plans/channel-activity.md`: never at once. The Activity tab comes first (owner, poll 179): KD1 may start beside KA1, KD2 waits for KA2's merge.
+- `workspace.js` and `backend.src.css` are entered by KD2 and by KA2 of channel-activity (landed, #10813): never at once. The Activity tab comes first (owner, poll 179): KD1 may start beside KA1, KD2 waits for KA2's merge.
 
 ## What does each step's PR carry?
 - `Decision: channel message 10572`; a migration step in KD3 alone; what was seen on dev where a step draws.

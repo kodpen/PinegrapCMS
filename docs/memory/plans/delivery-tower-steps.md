@@ -15,4 +15,4 @@ description: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured ti
 - DT6 (S) close-out: every T number checked against the code with its PR; `commerce/delivery-tower.md` written, `commerce/shipment-tracking.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- DT1a can start before the poll's answer. After DT1b: DT2, DT3 and DT4. `includes/fn/ops_alerts.php` is also entered by `plans/sales-watch.md` SW1 and `includes/api/resources/reports.php` by SW5: check the open PRs before claiming.
+- DT1a can start before the poll's answer. After DT1b: DT2, DT3 and DT4. `includes/fn/ops_alerts.php` is also entered by `commerce/sales-watch.md` SW1 and `includes/api/resources/reports.php` by SW5: check the open PRs before claiming.
