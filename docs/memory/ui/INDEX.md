@@ -272,6 +272,7 @@
 - image-editor-area-pixels.md: What a Design Canvas selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The Design Canvas's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 - image-editor-artboard.md: The Design Canvas's board (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
+- image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
 - image-editor-builder.md: The Design Canvas's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 - image-editor-callers.md: Who opens the Design Canvas and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
