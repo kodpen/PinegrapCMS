@@ -188,6 +188,7 @@
 - decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
 - decisions-made-schema-37.md: Decisions list, schema part 37 (2026-11-20 on): the application that saved a note, kept on the note and on its versions
 - decisions-made-schema-38.md: Decisions list, schema part 38 (2026-11-20 on): the three tables of the supplier feed: supplier_feeds, supplier_feed_items, supplier_feed_runs; no column on products
+- decisions-made-schema-39.md: Decisions list, schema part 39 (2026-11-20 on): the three tables of the marketplace repricer: marketplace_price_rules, marketplace_price_state, marketplace_price_log
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates

@@ -590,6 +590,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-38.md: Which columns does supplier_feed_items have? (architect, 2026-11-20)
 - decisions-made-schema-38.md: Which columns does supplier_feed_runs have? (architect, 2026-11-20)
 - decisions-made-schema-38.md: What else holds?
+- decisions-made-schema-39.md: Where are the rules and the earlier parts?
+- decisions-made-schema-39.md: Does the marketplace repricer get tables? (owner, 2026-11-20, agent channel poll 186, channel message 10696)
+- decisions-made-schema-39.md: Which columns does marketplace_price_rules have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: Which columns does marketplace_price_state have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: Which columns does marketplace_price_log have? (architect, 2026-11-20)
+- decisions-made-schema-39.md: What else holds?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
