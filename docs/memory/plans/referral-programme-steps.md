@@ -17,9 +17,9 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
   - New: the card and its save, kept as settings texts; the mail's text with its Turkish.
   - Features: E1, E3, E10.
 
-- RF3 (M) after RF1: My Account's part.
-  - Existing files: `includes/fn/widgets_account.php` (`_pg_my_account_extras()`), the two account lists of `assets/js/style_designer.src.js` (held by other open PRs: the step names the clash).
-  - Pictures: the part with no referral yet, with some in each state, a customer who cannot refer yet, a phone. To the owner; not marked ready before his look.
+- RF3 (M) after RF1: My Account's part. Done (#10650): `commerce/referral-account-part.md`.
+  - Existing files: `includes/fn/widgets_account.php` (`_pg_my_account_extras()`), the two account lists of `assets/js/style_designer.src.js`; built on TK2 #10583, which changed the same places.
+  - Pictures: none (`workflow/look-pictures-none.md`).
   - Features: E12.
 
 - RF4 (S) after RF1: the report and the event. Done (#10571): `commerce/referral-report-and-event.md`.
