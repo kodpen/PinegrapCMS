@@ -24,6 +24,9 @@ description: Satisfaction survey tables feedback_surveys and feedback_responses 
 - Section `feedback` ("Satisfaction surveys"), after `bookings`: id, survey name, kind, recipient, record type and id, channel, status, sent and answered times, score, band, comment, extra answers, stopped, outcome, created. Found by contact or by the hashes of the person's addresses and of the numbers on their contacts and orders.
 - Never `token_hash`, `person_hash` or the staff columns (`staff_user_id`, `owner_user_id`, `task_id`). `pg_feedback_export_row()` gives the score only when `answered_at` is set (0 is an NPS answer) and decodes `answers`.
 
+## What happens on a contact merge?
+- `pg_contact_holders()` line `feedback_responses` (move, find): `merge_contacts()` moves the answers to the contact that stays.
+
 ## Inventory?
 - `pg_privacy_inventory()` line `feedback_responses`: contact and messages, customers, legitimate interest, until erased, person column `contact_id`.
 

@@ -169,6 +169,9 @@ function test_feedback_store_erase()
 	pg_assert_true(strpos($scope, "\$scope['phones'] = ") < strpos($scope, "\$scope['feedback_hashes'] = "), 'after the numbers are known');
 
 	pg_assert_true(isset(pg_privacy_inventory()['feedback_responses']), 'in the inventory');
+
+	$holders = pg_contact_holders();
+	pg_assert_same(array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'), $holders['feedback_responses'], 'a merge moves the answers to the contact that stays');
 }
 
 // NULL is written as NULL, so a TEXT column the erasure clears holds no
