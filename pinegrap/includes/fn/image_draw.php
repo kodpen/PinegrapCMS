@@ -635,7 +635,9 @@ function pg_image_draw_font_fits($path, $weight, $italic, $text)
  */
 function pg_image_draw_known($layer, $own)
 {
-    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity'), $own);
+    // grp names the layer's groups in the editor: a group has no look of
+    // its own, so it draws as the layers do ungrouped.
+    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'grp'), $own);
 
     foreach ($layer as $key => $value) {
         if (!in_array((string) $key, $known, true) && !empty($value)) {
