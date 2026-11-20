@@ -21,7 +21,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
 
 - WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.  Done: #10165.
 
-- WS6 (S) after WS3: the API. Done in #WS6PR (`erp/erp-shared-prices-api.md`). The API schema's row for the account's pointer and its resource file; `php tools/check_api_schema.php`. Features: J11.
+- WS6 (S) after WS3: the API. Done in #10599 (`erp/erp-shared-prices-api.md`). The API schema's row for the account's pointer and its resource file; `php tools/check_api_schema.php`. Features: J11.
 
 - WS7 (S) close-out: every J number checked against the code with its PR; `commerce/wholesale.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 

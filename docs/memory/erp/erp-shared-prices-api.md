@@ -12,4 +12,4 @@ description: An ERP account's "Uses the prices of" over the API (wholesale J11, 
 - The handler asks `erp_account_price_pointer_check()` (`includes/erp/price_lists.php`), the same check the panel's `erp_account_price_pointer_save()` asks: its own id, an unknown account, an account that points itself, and any pointer while others use this one's prices are refused with 422 and `field: price_account_id`, the panel's text.
 - A site whose column is missing (`erp_shared_prices_ready()` false) refuses the field with 422.
 - The check runs before `api_dry_run_stop()`; after it the card is saved only when a card field was sent, then the pointer is written through `erp_account_price_pointer_save()` (which logs the account event). Sending the pointer alone does not rewrite the card.
-- Tests: `tests/erp_shared_prices_api_test.php`. Added in PR #WS6PR.
+- Tests: `tests/erp_shared_prices_api_test.php`. Added in PR #10599.
