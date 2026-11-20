@@ -24,9 +24,7 @@ priority: 7
 
 ## Which steps are there?
 - AW1 (S) after AG4 of `plans/ai-guide-steps.md` has landed: W1 to W5.
-  - AW1 #10774: W1–W3, W5 done (`workspace/workspace-writing-rules.md`). AW1b: W4, after #10751 and #10742 have landed; it wires `WS_WRITING_RULES_POINTER` into the send, edit and answer routes of `includes/workspace/api.php`.
-  - Tests, red first: every example the lines give is passed through the renderer and draws as said (a list, a table, code, bold); the lines stay under their length; the instructions' version differs from the one before; the guide's section is listed and the topic keeps its size.
-  - Memory: `workspace/agent-instructions.md` and the guide's Workspace file corrected; a file for the rules.
+  - AW1 #10774: W1–W3, W5. AW1b: W4 (`WS_WRITING_RULES_POINTER`), after #10751 and #10742 have landed.
 - AW2 (S) after AW1: W6. The prompt rules' test still passes; this plan deleted in the same PR.
   - Seen on dev: an agent's answer written by the examples.
 
