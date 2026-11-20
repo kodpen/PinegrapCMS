@@ -69,6 +69,8 @@ if ($ws_card !== '') {
     $ws_parts['ws-claude'] = array('html' => $ws_card) + ws_assistants_fold_claude(ws_assistants_fold_facts_claude(), $ws_now);
     // The set-up on claude.ai, as numbered steps, opened from the row.
     $pg_settings_modals[] = ws_settings_claude_setup_drawer(!empty($pg_settings_in_dialog));
+    // The newest requests and the instructions' version, opened from the row.
+    $pg_settings_modals[] = ws_settings_claude_requests_drawer($ws_viewer, !empty($pg_settings_in_dialog));
 }
 
 // ── Workspace agents ──

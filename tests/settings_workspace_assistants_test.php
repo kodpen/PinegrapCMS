@@ -161,7 +161,8 @@ function test_settings_workspace_assistants_save_module()
 
 function test_settings_workspace_assistants_cards_have_no_form_in_the_dialog()
 {
-	$card = settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_settings_card');
+	$card = settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_settings_card')
+		. settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_row_html');
 
 	// Every <form> of the card is drawn on Workspace Settings only.
 	pg_assert_contains("\$dialog ? '<div class=\"ws-claude-connection\">' : '<form method=\"post\"", $card, 'the connection');
