@@ -193,12 +193,14 @@ function test_page_bundle_hold_four_refusals_ask_it()
 function test_page_bundle_add_refuses_experiments()
 {
 	$copy = pg_test_function_source('pg_page_bundle_add_copy');
-	pg_assert_contains('FROM experiments', $copy, 'the copy asks for an open experiment');
+	pg_assert_contains('pg_page_bundle_add_copy_check(', $copy, 'the copy runs its checks first');
+	pg_assert_contains('FROM experiments', pg_test_function_source('pg_page_bundle_add_copy_check'), 'the copy asks for an open experiment');
 	pg_assert_contains('duplicate_page(', $copy, 'copied as a variant is');
 	pg_assert_contains('page_drafts', $copy, 'and remembers the live page\'s folder');
 
 	$draft = pg_test_function_source('pg_page_bundle_add_draft');
-	pg_assert_contains('pg_experiment_variant_hold(', $draft, 'an open experiment\'s variant is refused');
+	pg_assert_contains('pg_page_bundle_add_draft_check(', $draft, 'the draft runs its checks first');
+	pg_assert_contains('pg_experiment_variant_hold(', pg_test_function_source('pg_page_bundle_add_draft_check'), 'an open experiment\'s variant is refused');
 	pg_assert_contains('publish_at = 0', $draft, 'a publish time of its own is cleared');
 }
 

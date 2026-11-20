@@ -5702,6 +5702,7 @@
     "The page you opened is not waiting in this bundle, so the preview starts at its first page.": "Açtığınız sayfa bu pakette beklemiyor; bu yüzden önizleme paketin ilk sayfasıyla başlıyor.",
     "The page {var:1} came back without its style {var:2}, which stays in the recycle bin until a designer restores it.": "{var:1} sayfası {var:2} stili olmadan geri geldi; stil, bir tasarımcı geri yükleyene kadar geri dönüşüm kutusunda kalır.",
     "The page {var:1} could not be saved.": "{var:1} sayfası kaydedilemedi.",
+    "The page {var:1} is both in replace and in leave; send it in one of them.": "{var:1} sayfası hem replace hem leave içinde; yalnızca birinde gönderin.",
     "The page {var:1} lost {var:2} % of its Google clicks: {var:3} against {var:4} in the period before.": "{var:1} sayfası Google tıklamalarının %{var:2} kadarını kaybetti: önceki dönemde {var:4}, şimdi {var:3}.",
     "The page's content is now part of the page; save the page to keep it.": "Sayfanın içeriği artık sayfanın bir parçası; kalıcı olması için sayfayı kaydedin.",
     "The page's record is the product, event or form record its address opens.": "Sayfanın kaydı, adresinin açtığı ürün, etkinlik ya da form kaydıdır.",

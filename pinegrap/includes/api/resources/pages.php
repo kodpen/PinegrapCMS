@@ -49,6 +49,15 @@ function api_page_sitemap_types() {
 
 }
 
+// The 409 code of a draft the delete refuses: experiment_variant_held for the
+// variant of an experiment that has not ended, release_bundle_held for a
+// draft waiting in an open release bundle. Pure.
+function api_page_hold_code($experiment_variant) {
+
+	return $experiment_variant ? 'experiment_variant_held' : 'release_bundle_held';
+
+}
+
 // Page types the storefront and the account area need in order to work. The
 // panel has no guard against deleting these - an operator who removes the
 // shopping cart page knows what they are doing - but an application acting on
@@ -781,12 +790,14 @@ function api_pages_delete($params) {
 	// The variant draft of an experiment that is set up, running or paused
 	// stays until the experiment ends, as the panel's recycle refuses it
 	// (pg_recycle_page()): binned or deleted, the experiment serves visitors
-	// a page that is no longer there. Asked for both paths, before the dry run.
+	// a page that is no longer there. A draft waiting in an open release
+	// bundle is held the same way, under a code of its own. Asked for both
+	// paths, before the dry run.
 	$held = pg_experiment_variant_hold_message($id, (string)$page['page_name']);
 
 	if ($held !== '') {
 
-		api_fail(409, 'experiment_variant_held', $held);
+		api_fail(409, api_page_hold_code(pg_experiment_variant_hold($id) !== null), $held);
 
 	}
 
