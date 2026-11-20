@@ -42,21 +42,11 @@
 - channel-activity-features.md: Plan channel-activity, features E1 to E13: the Activity tab of Channel info, what it shows of agents, requests, polls, decisions and the repository, the report's context, project and branch
 - channel-activity-steps.md: Plan channel-activity, steps KA1 to KA5: the activity read with its API route, the Activity tab's script, the report's context, project and branch, the repository numbers, close-out
 - channel-activity.md: Plan (owner 2026-11-20, agent channel poll 179): an Activity tab in Channel info that tells a channel's state: agents, requests, polls, decisions, repository numbers, reported context; KA1 to KA5
-- channel-commands-answer-census.md: K28 census (CC12 of channel-commands): an application command's answer today, what one person sees and where it is kept, a phone and a second window; the proposed shape
-- channel-commands-features-2.md: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek, /oluştur for a contact, row, ERP account and event, /kargo, application arguments, an agent's command
-- channel-commands-features.md: Plan channel-commands, features K1 to K14: the registry, the gate that knows the channel, grouped /help and / list, commands as a reply, /hatırlat, /özet, /onay, /güncelleme, /checkin, /akış
-- channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
-- channel-commands-steps.md: Plan channel-commands, steps CC1 to CC6: the registry with no change of behaviour, the gate and grouped /help, /hatırlat and /özet, /onay /güncelleme /checkin, flows in the / list, the channel's own
-- channel-commands.md: Plan (owner 2026-11-16): channel commands grown in steps CC1 to CC12: a registry entry per command, commands for what has a button, records, flows in the / list, application arguments, agents
 - channel-documents-features.md: Plan channel-documents, features N1 to N10: a note written in a channel from the composer or by an agent's route, the folded card, edits in place, versions, who may change it, the agent's name
 - channel-documents-steps.md: Plan channel-documents, steps KD1 to KD5: the server (write in a channel, the route, access by channel, the touch), the card and its windows, the agent's name, the session tool, close-out
 - channel-documents.md: Plan (owner 2026-11-20, agent channel poll 179): a document in a channel is a note written there, drawn as it reads and changed in place by people and agents, with versions; KD1 to KD5
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
-- click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
-- click-scroll-map-features.md: Plan click-scroll-map, features C1 to C15: what is counted, what is never kept, consent, the beacon, which pages carry it, how it is kept and bounded
-- click-scroll-map-steps.md: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the script and switch, the Visitors section and report route, the designer's layer, close-out
-- click-scroll-map.md: Plan (owner 2026-11-16, agent channel message 5667 and polls 67 and 75): clicks on a page's links and buttons and how far visitors scroll, in Visitors and as a layer in the designer; steps CM1 to CM5
 - connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
@@ -106,6 +96,9 @@
 - kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
+- marketplace-repricer-features.md: Plan marketplace-repricer, features R1 to R13: channel price rules, own channel price, the floor, buybox reads, the strategies, limits, try-first mode, the log, the report, the API
+- marketplace-repricer-steps.md: Plan marketplace-repricer, steps RP1 to RP6: tables, rules and floor, the account's Pricing part, the buybox read, the robot with try-first and log, API, close-out
+- marketplace-repricer.md: Plan (owner 2026-11-20, poll 173): a price per marketplace account by rules, a profit floor per product, Trendyol buybox reads and a repricer that never goes under the floor; RP1 to RP6
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - office-own-code-os1-census.md: OS1 census of plan office-own-code: the panel lists that export CSV today (screen, file, request, columns), most used first, those left out, the size
@@ -130,7 +123,6 @@
 - sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield and taking a product off sale, the return spike, delivery, settings, API
 - sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
 - sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
-- settings-dialog-size.md: Plan (owner 2026-11-20, urgent, in the architect's window): the Site Settings dialog wider and taller on a desktop, never full width; one step, SZ1
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
 - stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5
