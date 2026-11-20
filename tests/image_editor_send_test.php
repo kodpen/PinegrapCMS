@@ -261,3 +261,23 @@ function test_image_editor_send_files_saves_check_the_folder()
 
 	pg_assert_true(strpos($render, 'folder_id: this.filesFolder ? this.filesFolder.id :') !== false, 'a video goes to the folder chosen');
 }
+
+// A part that wraps send() hands its target on (another channel, a folder
+// of Files): dropping it posted a send into the canvas's own channel.
+function test_image_editor_send_wrappers_keep_the_target()
+{
+	foreach (glob(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor*.js') as $file) {
+		if (substr($file, -7) === '.min.js') {
+			continue;
+		}
+
+		$js = (string) file_get_contents($file);
+
+		if (preg_match_all('/var (\\w+) = Editor\\.prototype\\.send;/', $js, $m)) {
+			foreach ($m[1] as $name) {
+				pg_assert_true(strpos($js, $name . '.apply(this, arguments)') !== false, basename($file) . ' hands every argument of send() on');
+				pg_assert_true(strpos($js, $name . '.call(this, mode)') === false, basename($file) . ' does not drop the target');
+			}
+		}
+	}
+}
