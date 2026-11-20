@@ -78,6 +78,7 @@ function ws_js_strings()
         'cell_title'             => ws_js_template('{var:1} h planned of {var:2} h', 2),
         'channel_created'        => lang('The channel was created.'),
         'channel_gone'           => lang('This channel is no longer open to you.'),
+        'answer_only_you'        => lang('Only you can see this'),
         'channel_kind'           => lang('Who can see it'),
         'channel_list'           => ws_js_template('The list in #{var:1}, by {var:2}', 2),
         'channel_name'           => lang('Channel name'),
