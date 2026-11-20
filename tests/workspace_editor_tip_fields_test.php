@@ -7,7 +7,8 @@
  * under 16px takes the focus and leaves it zoomed; form-control-sm is 14px.
  * Run under Node: tipFieldClass() answers the full-size field on a touch
  * screen and the small one elsewhere. The rest holds the wiring: the link
- * tip's Text and address fields and the find tip's two fields ask it.
+ * tip's Text and address fields, the find tip's two fields and the fields of
+ * the insert menu's windows ask it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -32,6 +33,24 @@ function test_workspace_editor_tip_field_class()
 
 	pg_assert_same('form-control', $answer[0], 'A touch screen gets the full-size field');
 	pg_assert_same('form-control form-control-sm', $answer[1], 'A mouse gets the small field');
+}
+
+// The windows of the insert menu: the block's title, the table's formula
+// line, the code block's language, the calculation's decimals and unit.
+function test_workspace_editor_window_fields_ask_the_class()
+{
+	$checks = array(
+		'titled'     => "field = el('input', tipFieldClass(touchScreen()));",
+		'openTable'  => "el('input', tipFieldClass(touchScreen()) + ' ws-sheet-formula')",
+		'openCode'   => "el('input', tipFieldClass(touchScreen()) + ' ws-code-language')",
+		'openCalc'   => "el('select', tipFieldClass(touchScreen()))",
+	);
+
+	foreach ($checks as $name => $needle) {
+		$part = workspace_editor_lists_test_function($name);
+		pg_assert_true(strpos($part, $needle) !== false, $name . ' builds its field from tipFieldClass()');
+		pg_assert_same(false, strpos($part, "'form-control form-control-sm"), 'No small field is left in ' . $name);
+	}
 }
 
 // The link tip and the find tip build their fields from it.

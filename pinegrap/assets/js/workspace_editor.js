@@ -112,9 +112,9 @@
         return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     }
 
-    // A tip's field: full size (16px) on a touch screen, where iOS Safari
-    // zooms the page in on a smaller field taking the focus and leaves it
-    // zoomed; the small one under a mouse.
+    // A field of a tip or of a block's window: full size (16px) on a touch
+    // screen, where iOS Safari zooms the page in on a smaller field taking
+    // the focus and leaves it zoomed; the small one under a mouse.
     function tipFieldClass(touch) {
         return touch ? 'form-control' : 'form-control form-control-sm';
     }
@@ -387,7 +387,7 @@
                 var wrap = el('div', 'ws-block-title-field mb-3');
                 var label = el('label', 'form-label small mb-1', t('block_title'));
 
-                field = el('input', 'form-control form-control-sm');
+                field = el('input', tipFieldClass(touchScreen()));
                 field.maxLength = 160;
                 field.value = parts.title;
                 field.placeholder = t('block_title_help');
@@ -6502,7 +6502,7 @@
         var tools = el('div', 'ws-table-tools');
         var sheetBar = el('div', 'ws-sheet-bar');
         var refBox = el('span', 'ws-sheet-ref', 'A1');
-        var formulaInput = el('input', 'form-control form-control-sm ws-sheet-formula');
+        var formulaInput = el('input', tipFieldClass(touchScreen()) + ' ws-sheet-formula');
         var resultBox = el('span', 'ws-sheet-result');
         var wrap = el('div', 'ws-table-edit-wrap');
         var table = el('table', 'table table-sm ws-table ws-table-edit ws-table-sheet');
@@ -7304,7 +7304,7 @@
         titling.attach(win);
         var row = el('div', 'd-flex align-items-center gap-3 mb-3');
         var label = el('label', 'form-label mb-0 small', t('code_language'));
-        var input = el('input', 'form-control form-control-sm ws-code-language');
+        var input = el('input', tipFieldClass(touchScreen()) + ' ws-code-language');
         var listId = 'ws-code-languages-' + Date.now();
         var list = el('datalist');
 
@@ -7663,8 +7663,8 @@
 
         // How the values are shown.
         var settingsRow = el('div', 'ws-calc-settings');
-        var decimals = el('select', 'form-control form-control-sm');
-        var unit = el('input', 'form-control form-control-sm');
+        var decimals = el('select', tipFieldClass(touchScreen()));
+        var unit = el('input', tipFieldClass(touchScreen()));
         var decimalsId = 'ws-calc-decimals-' + Date.now();
 
         [['', t('calc_decimals_auto')], ['0', '0'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']].forEach(function (entry) {
