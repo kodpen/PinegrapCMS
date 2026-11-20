@@ -27,14 +27,14 @@ description: Stock plan forecast (erp_stock_plan, 11.0.251, #10654): units a day
 - States in order: `runs_out` (days left under a known lead), `order_now` (order-by today or past), `soon` (within 14 days), `fine`; `no_history` without a speed.
 
 ## Where are safety, cover and dead-stock days?
-- `erp_stock_plan_settings()`: the constants `ERP_STOCK_PLAN_SAFETY_DAYS`, `_COVER_DAYS`, `_DEAD_DAYS` when defined, else 7, 30, 90. SP3's settings card defines them.
+- `erp_stock_plan_settings()`: the Stock Planning settings card's config_text row `erp_stock_plan_settings` (JSON), else 7, 30, 90 (`erp-stock-plan-screen.md`).
 
 ## How does the rebuild run?
 - Batches of 500 products by id; the cursor is the `erp_stock_plan_cursor` mark in `cron_runs`, `erp_stock_plan_planned` the last night planned. Out of time: `'more'`, the job comes back in a minute. A batch deletes the rows of ids in its range that are no longer tracked; the last batch deletes those above.
 - With Accounting off nothing is read or written.
 
 ## How is `erp_accounts.lead_days` saved?
-- `erp_account_save()` writes it on every save (clamped 0 to 365), like `payment_days`; every full-row builder passes the stored value (API PATCH, e-document sync, CSV merge, Workspace change), and the edit screen keeps the stored one until SP3 adds the Lead time field.
+- `erp_account_save()` writes it on every save (clamped 0 to 365), like `payment_days`; every full-row builder passes the stored value (API PATCH, e-document sync, CSV merge, Workspace change). The account card's Lead time field changes it from the panel.
 
 - Not verified on a database when written: no double run of the step, no rebuild on real data.
 

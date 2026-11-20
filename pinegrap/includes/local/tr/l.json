@@ -410,6 +410,8 @@
     "Lead the design and technical drawings of a house or a workplace, and follow it on site.": "Bir evin ya da iş yerinin tasarımını ve uygulama çizimlerini yönetin, şantiyede takip edin.",
     "Lead the project team and the subcontractors": "Proje ekibine ve taşeronlara liderlik etmek",
     "Lead time": "Ön süre",
+    "Lead time (days)": "Tedarik süresi (gün)",
+    "Lead time must be a whole number of days, 0 to 365.": "Tedarik süresi 0 ile 365 arasında tam gün olmalıdır.",
     "Lead: {var:1}": "Lider: {var:1}",
     "Leader": "Kılavuz Çizgi",
     "Leader Body": "Lider Gövdesi",
