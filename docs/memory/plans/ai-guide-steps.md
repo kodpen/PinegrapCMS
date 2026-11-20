@@ -16,7 +16,7 @@ description: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine wit
 - AG4 (S) after AG1: `agent_guide_workspace.php`, `agent_guide_erp.php` (listed only with the module on).
 - AG5 (S) after AG1: `agent_guide_panel.php` from the search box's list, with the viewer's gates. Feature: G8.
 - AG6 (S) after AG5: the panel's door. New `agent_guide.php` and `llms.txt` answer in the software folder; the `rel="help"` link in the panel's head; "AI agent guide" in `pg_account_menu()`; the Visual Page Editor's link to `designer`. Texts with `php tools/tr_add.php`. Feature: G11.
-- AG7 (M) after AG1: the compact list.
+- AG7 (M) after AG1: the compact list. Done: #10744.
   - `includes/oauth/server.php` (the second address and its document), `includes/mcp/protocol.php` and `includes/mcp/tools.php` (the list, `tools_find`, `tools_describe`, `tools_read`, `tools_write`, the money rule), the panel's connection guide (both addresses, the compact one named for AI assistants).
   - Tests: the compact list's bytes (under 8 KB without money tools), a money route refused through `tools_write` and run by its own name, a GET refused through `tools_write` and a write through `tools_read`, scope and validation as the tool's. Tried with a real client on dev; the PR names which. Features: G13, G14.
 - The steps after these (presets, budgets and the diet, hints, the report, close-out) and the order of all: `ai-guide-steps-2.md`.
