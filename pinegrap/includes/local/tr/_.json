@@ -2069,6 +2069,7 @@
     "{var:1} was moved to the Recycle Bin on Claude's proposal. It held: {var:2}": "{var:1}, Claude'un önerisiyle Geri Dönüşüm Kutusuna taşındı. İçerdikleri: {var:2}",
     "{var:1} was not built: {var:2}": "{var:1} oluşturulmadı: {var:2}",
     "{var:1} was not imported: the design uses its own Bootstrap / jQuery.": "{var:1} içe aktarılmadı: tasarım kendi Bootstrap / jQuery'sini kullanıyor.",
+    "{var:1} was not saved: too many files were sent from your connection. Please try again later.": "{var:1} kaydedilmedi: bağlantınızdan çok fazla dosya gönderildi. Lütfen daha sonra yeniden deneyin.",
     "{var:1} was not told the answer to its question: it is not set up or not allowed in this channel.": "{var:1} sorusunun cevabını alamadı: kurulu değil ya da bu kanalda izinli değil.",
     "{var:1} was not written: the books are locked up to {var:2}.": "{var:1} yazılmadı: defterler {var:2} dahil kilitli.",
     "{var:1} was refunded to the card, and return invoices cover {var:2}. Choose the lines that came back.": "Karta {var:1} iade edildi, iade faturaları {var:2} tutarını karşılıyor. Geri gelen kalemleri seçin.",

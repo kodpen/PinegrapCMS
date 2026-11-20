@@ -987,6 +987,7 @@
     "Message is empty.": "Mesaj boş.",
     "Message is too long.": "Mesaj çok uzun.",
     "Message is too long. The limit is {var:1} characters.": "Mesaj çok uzun. Sınır {var:1} karakter.",
+    "Message of the last save": "Son kaydın iletisi",
     "Message seen": "Görüldü",
     "Message stream": "Mesaj akışı",
     "Message template": "Mesaj şablonu",
