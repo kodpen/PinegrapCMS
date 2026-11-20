@@ -6,6 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-20, agent channel poll 201, message 10980): "Evet, plana girsin": taking a number, remote join, the person's page, notices, desks and Call next, priority and bookings, the measured estimate, the lobby screen, report, events, API.
+- Recorded in `workflow/decisions-made-product-93.md`.
 
 ## What is there today?
 - Bookings (`commerce/bookings-model.md`): services, staff with hours, bookings; no place column and no arrived state. Staff set `done` or `no_show` (`pg_booking_agenda_status_write()`); `pg_booking_status_event()` announces only confirmed and cancelled. Gate: `pg_booking_agenda_scope()`.

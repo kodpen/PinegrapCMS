@@ -6,6 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-20, agent channel poll 202, message 11057): "Evet, plana girsin": profile and documents, the shift board, sign-up and swaps, the unfilled-shift call, check-in on the spot, hours and the certificate, report, events, API.
+- Recorded in `workflow/decisions-made-product-93.md`.
 
 ## What is there today?
 - The charity template keeps a volunteer offer as a form record (office status, comments, `submitter_only` views; `designer/design-template-charity.md`). No volunteer or shift code outside the templates.
