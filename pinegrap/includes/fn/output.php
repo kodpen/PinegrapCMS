@@ -3015,6 +3015,7 @@ function output_header($properties = false)
         <meta name="application-name" content="Pinegrap CMS">
         <meta name="color-scheme" content="light dark">
         ' . $output_software_metanames . '
+        <link rel="help" type="text/markdown" href="' . h(pg_agent_guide_url(isset($properties['agent_guide']) ? (string) $properties['agent_guide'] : '')) . '">
         <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
         <link rel="icon" type="image/png" sizes="75x75" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/075/' . $output_fav_icon . '.png">
         <link rel="icon" type="image/png" sizes="100x100" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/100/' . $output_fav_icon . '.png">
@@ -3128,6 +3129,19 @@ function output_header($properties = false)
         ';
 
     return $output;
+}
+
+/**
+ * The address of the guide for AI agents through the panel's session
+ * (agent_guide.php): the topic list, or one topic. Printed as the panel
+ * head's rel="help" link and as the account menu's "AI agent guide" row.
+ *
+ * @param string $topic a guide topic id, or '' for the list
+ * @return string
+ */
+function pg_agent_guide_url($topic = '')
+{
+    return PATH . SOFTWARE_DIRECTORY . '/agent_guide.php' . (($topic !== '') ? '?topic=' . rawurlencode($topic) : '');
 }
 
 /**
@@ -3370,6 +3384,10 @@ function pg_account_menu($user, $options = array())
         $help .= '
                             <li id="tour_link"><a class="menu-item" href="#" role="button"><i class="bi bi-compass" aria-hidden="true"></i><span class="pg-um-text">' . lang('Interface tour') . '</span></a></li>';
     }
+
+    // The guide for an AI agent that works in this browser: Markdown about
+    // this site, read with the same session (agent_guide.php).
+    $help .= $row(pg_agent_guide_url(), 'bi-robot', lang('AI agent guide'), $new_tab, true);
 
     if (!$private_label) {
         // A plain link to the documentation of this screen, so a middle

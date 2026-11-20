@@ -502,6 +502,8 @@ function pg_designer_screen_render($ctx)
             // the toolbar's first button (#sd-left-toggle): the designer
             // keeps its whole width.
             'menu_drawer'  => true,
+            // The head's rel="help" link names the guide's designer topic.
+            'agent_guide'  => 'designer',
             // The shared curtain hides itself when the document is ready.
             // Here the document being ready is the START of the work: panels
             // are built, the canvas iframe is written, the tree is laid out.
