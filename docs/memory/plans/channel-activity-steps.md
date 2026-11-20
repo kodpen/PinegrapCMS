@@ -8,7 +8,7 @@ description: Plan channel-activity, steps KA1 to KA5: the activity read with its
   - New `includes/workspace/channel_activity.php`: `ws_channel_activity($viewer, $channel, $now)` with pure parts (summary, row order, a request's age, plan windows joined by agents). The panel action `ws_channel_activity` beside `ws_agent_card` in `channel_agents_panel.php`; the route in `api_channel_reads.php` with its schema object; `php tools/check_api_schema.php`.
   - The answer has its whole shape from the start: `context`, `project`, `branch` and `repository` are null until KA3 and KA4 land (their readers are called when the function is there).
   - Tests, red first, in a new `tests/workspace_channel_activity_test.php`. Features: E2 to E7, E9, the read of E13.
-- KA2 (M) after KA1: the tab.
+- KA2 (M) after KA1: the tab. Done (#10813).
   - New `assets/js/workspace_channel_activity.js`, in the bundle list beside `workspace_channel_agents.js` (`pg_js_bundles()`); in `workspace.js` only the tab row and the hook in `drawInfo()`; style in `backend.src.css` by look A's recipes; texts with `php tools/tr_add.php`.
   - It draws every part of the answer and leaves a null part out; on the agent card also the context row (`data.context.words`, from KA3). Tests on the pure parts: when the tabs show, the remembered tab, a row's words, the 15 second brake.
   - Seen on dev in the agent channel, a wide screen and a phone; the PR says what was seen. Features: E1, E3 to E9, the screen's part of E13.
