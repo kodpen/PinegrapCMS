@@ -139,9 +139,6 @@
 - referral-programme-features.md: Plan referral-programme, features E1 to E15: settings, who can refer, the signed code on the affiliate link's rails, the checks at completion, the reward as a commission row and credit, its take-back
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
 - referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5
-- release-bundle-features.md: Plan release-bundle, features B1 to B18: a bundle and its pages, the hold, the checks before a publish, the write, take back, the time, the preview and its share link, the API, what stays as it is
-- release-bundle-steps.md: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
-- release-bundle.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings

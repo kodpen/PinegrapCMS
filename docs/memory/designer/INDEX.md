@@ -627,9 +627,10 @@
 - release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 - release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
-- release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle [decision: here]
+- release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle [decision: decisions-made-schema-29.md]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
 - release-bundle-time.md: A release bundle's publish time: the general job's pass, publishing once in the name of who set the time, a bundle held back to open with its reason, the bell line
+- release-bundle.md: Start file of release bundles (Bundles screen, page_bundles.php): decisions, parts, which file holds what, B1-B18 as built, the gaps [decision: decisions-made-product-67.md]
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff. [decision: decisions-made-product-39.md]
 - search-index-item-parts.md: Parts inside a search index item (page render, events, classic records, a host's records): budget after each part, pause and resume, the part marker, what a tick that died keeps

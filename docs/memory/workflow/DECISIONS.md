@@ -907,6 +907,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words
 - designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
 - designer/release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle
+- designer/release-bundle.md: Start file of release bundles (Bundles screen, page_bundles.php): decisions, parts, which file holds what, B1-B18 as built, the gaps
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
 - designer/shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - designer/shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links
