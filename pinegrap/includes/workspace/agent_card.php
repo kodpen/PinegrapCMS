@@ -357,6 +357,9 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
         'seen_state'   => $member['seen_state'],
         'model'        => $reported ? (string) ($agent['report_model'] ?? '') : '',
         'windows'      => ws_agent_card_windows($windows),
+        // The reported context: used, size, percent and its words; null
+        // when the last report names none.
+        'context'      => $reported ? ws_agent_report_context($agent) : null,
         'reported'     => $reported ? lang(array('string' => 'As the agent reported it {var:1}; the site cannot check it.', 'vars' => ws_seen_ago_words($report_at, $now))) : '',
         'stale'        => $reported && (((int) $now - $report_at) >= WS_AGENT_REPORT_STALE_AFTER),
         'today'        => array('answered' => (int) ($mine['answered'] ?? 0), 'failed' => (int) ($mine['failed'] ?? 0)),
