@@ -38,3 +38,16 @@ function test_mail_phone_box_row_buttons_wrap()
 
 	pg_assert_contains("<div class=\"pg-list-row-actions flex-wrap\">\n                        ' . (\$reads ? '<button type=\"submit\" name=\"ws_mail_test\"", $source, 'the box row\'s buttons wrap inside the card');
 }
+
+function test_mail_phone_sent_copy_beside_its_label()
+{
+	// The check box stood alone on a line and its label under it at the
+	// size of a heading, as `form-field` draws a label; the box form's other
+	// check boxes sit in a flex row beside theirs.
+	$html = ws_mail_box_form('workspace_settings.php', null, array());
+	$row = '<div class="d-flex align-items-center gap-3 mt-2">' . "\n"
+		. '                        <input class="pg-checkbox" type="checkbox" name="sent_copy"';
+
+	pg_assert_contains($row, $html, 'the sent copy check box beside its label');
+	pg_assert_contains('<div class="d-flex align-items-center gap-3">' . "\n" . '                        <input class="pg-checkbox" type="checkbox" name="read_sent"', $html, 'as Read the Sent folder is');
+}

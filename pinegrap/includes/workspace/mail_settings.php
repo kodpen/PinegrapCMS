@@ -1168,7 +1168,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
                     <input class="pg-input" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
                 </div>
                 <div class="md:col-8">
-                    <div class="form-field mt-2">
+                    <div class="d-flex align-items-center gap-3 mt-2">
                         <input class="pg-checkbox" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
                         <label for="' . $prefix . 'sent_copy">' . h(lang('Keep a copy of each answer in the mailbox\'s sent folder')) . '</label>
                     </div>
