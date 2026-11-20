@@ -186,6 +186,17 @@ function test_workspace_flow_mail_group_try()
 	pg_assert_contains('ws_flow_mail_group_try(', workspace_flow_mail_group_test_source('ws_flow_box_try'));
 }
 
+// Try says what the run would do with the group: a group nobody in it may
+// get the mail from made the run send nothing, while Try said it would make
+// a campaign to 0 people; a group that could not be read is said so.
+function test_workspace_flow_mail_group_try_said()
+{
+	pg_assert_same(lang(array('string' => 'The run would make a campaign to {var:1} people.', 'vars' => 3)), ws_flow_mail_group_try_said(array('recipients' => array('a@x.test', 'b@x.test', 'c@x.test'))));
+	pg_assert_same(lang('Nobody in the contact group may get this e-mail: the run would send none.'), ws_flow_mail_group_try_said(array('recipients' => array())));
+	pg_assert_same(lang('The contact group could not be read.'), ws_flow_mail_group_try_said(false));
+	pg_assert_contains('ws_flow_mail_group_try_said($picked)', workspace_flow_mail_group_test_source('ws_flow_mail_group_try'));
+}
+
 // The canvas: "A contact group" offered while the person may send to one
 // (or the box writes to one), its group, why, and the records box; a new
 // e-mail box starts with no group and no records box. A role-3 member is

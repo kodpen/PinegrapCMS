@@ -685,8 +685,7 @@ function ws_flow_mail_group_try($viewer, $owner, $action, $config, $values, $gra
     }
 
     $picked = pg_email_campaign_pick_recipients($owner, ws_flow_mail_group_purpose($config), array((int) $config['group_id'] => 'included'), '');
-    $count = is_array($picked) ? count($picked['recipients']) : 0;
-    $said = lang(array('string' => 'The run would make a campaign to {var:1} people.', 'vars' => $count));
+    $said = ws_flow_mail_group_try_said($picked);
     $to = trim((string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) ($viewer['id'] ?? 0) . "'"));
 
     if (($to === '') || !validate_email_address($to)) {
@@ -703,6 +702,27 @@ function ws_flow_mail_group_try($viewer, $owner, $action, $config, $values, $gra
     return array('outcome' => 'done', 'said' => $said . ' ' . (($sent['sent'] > 0)
         ? lang(array('string' => 'A test was mailed to you alone ({var:1}).', 'vars' => $to))
         : lang(array('string' => 'The test to {var:1} could not be sent.', 'vars' => $to))));
+}
+
+/**
+ * What Try says a run would do with the group, as ws_flow_mail_group_do()
+ * does it: a campaign to the people picked, none when nobody may get the
+ * e-mail, or that the group could not be read. Pure but for lang().
+ *
+ * @param array|false $picked pg_email_campaign_pick_recipients()
+ * @return string
+ */
+function ws_flow_mail_group_try_said($picked)
+{
+    if (!is_array($picked)) {
+        return lang('The contact group could not be read.');
+    }
+
+    $count = count((array) ($picked['recipients'] ?? array()));
+
+    return ($count > 0)
+        ? lang(array('string' => 'The run would make a campaign to {var:1} people.', 'vars' => $count))
+        : lang('Nobody in the contact group may get this e-mail: the run would send none.');
 }
 
 /**
