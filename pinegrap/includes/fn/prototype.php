@@ -1644,6 +1644,7 @@ function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
         'lang' => (string) $lang,
         'nameMax' => (int) $limits['name'],
         'textMax' => (int) $limits['text'],
+        'ping' => pg_proto_comment_ping_seconds(),
         'comments' => $rows,
         'strings' => array(
             'hint' => lang('Click a spot on the page to leave a comment.'),

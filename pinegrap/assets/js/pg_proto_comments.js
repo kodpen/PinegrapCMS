@@ -453,6 +453,20 @@
             if (e.key === 'Escape' && box) close();
         });
 
+        // The door reads the session this viewer was opened in, which the
+        // server drops when it is left idle: a guest reading a page or
+        // writing a long comment makes no request, so the viewer pings.
+        if (cfg.ping > 0 && window.fetch && window.FormData) {
+            window.setInterval(function () {
+                var body = new FormData();
+                body.append('l', String(cfg.link));
+                body.append('page_id', String(cfg.page));
+                body.append('token', String(cfg.token));
+                body.append('ping', '1');
+                fetch(cfg.door, { method: 'POST', body: body, credentials: 'same-origin' }).catch(function () {});
+            }, cfg.ping * 1000);
+        }
+
         frame.addEventListener('load', send);
         rebuild();
         paint();

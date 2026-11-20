@@ -57,6 +57,32 @@ function pg_proto_comment_limits()
 }
 
 /**
+ * How often, in seconds, an open viewer in comment mode pings the door: the
+ * door's gates read the session the link was opened in, and PHP drops a
+ * session left idle for session.gc_maxlifetime (1440 seconds by default),
+ * while a guest reads a page or writes a long comment without a request.
+ *
+ * @return int
+ */
+function pg_proto_comment_ping_seconds()
+{
+    return 600;
+}
+
+/**
+ * Whether a post to the door is the viewer's keep-alive ping
+ * (pg_proto_comment_ping_seconds()), answered once the door's gates pass,
+ * with nothing written or counted.
+ *
+ * @param array $post $_POST
+ * @return bool
+ */
+function pg_proto_comment_is_ping($post)
+{
+    return is_array($post) && isset($post['ping']) && ($post['ping'] === '1');
+}
+
+/**
  * A text as it is kept: a string of valid UTF-8 with its line breaks made
  * \n, every other control character taken out and the ends trimmed. It stays
  * plain text, written out escaped wherever it is shown: markup in it is kept

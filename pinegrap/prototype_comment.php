@@ -20,7 +20,8 @@
  *  - about a draft page of the link's design that the link shows,
  *  - within the burst per address (a burst counts a firewall offence) and the
  *    open comments a link may hold.
- * The answer is JSON: the comment written (201), or error and message.
+ * The answer is JSON: the comment written (201), or error and message. The
+ * open viewer's keep-alive (ping) gets 204 once the gates pass.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -104,6 +105,13 @@ $pg_pc_refusal = pg_proto_comment_door($pg_pc_facts);
 
 if ($pg_pc_refusal !== '') {
     pg_proto_comment_refuse($pg_pc_refusal);
+}
+
+// The open viewer's keep-alive: the request itself keeps the session the
+// gates read; nothing is written or counted.
+if (pg_proto_comment_is_ping($_POST)) {
+    http_response_code(204);
+    exit;
 }
 
 $pg_pc_input = array(
