@@ -22,7 +22,7 @@ priority: 6
 - No legal period is written into code as a fact: a suggested default the shop can change, empty meaning never.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10557)
-- `privacy_requests` table: the owner's, poll 177 (message 10555); KV4 waits for it; the proposed columns are in KV4.
+- Owner, poll 177 (message 10555): one `privacy_requests` table (`workflow/decisions-made-schema-36.md`); its columns in KV4.
 - No table for destruction records: one `audit_log` line per rule run (`entity_type = 'privacy_rule'`, counts in `after_json`, no person), beside the erase's `pg_audit('erase', 'person', …)`. `pg_privacy_retention_run()` keeps both kinds at least 3 years, whatever `audit_log_retention_years` says; the Audit trail card says so.
 - Request form: both. My Account and staff-typed requests always; the public `privacy_request.php` is off by default (404 until opened in the Privacy centre), so an update opens no new public endpoint on any site.
 - Incomplete carts: personal fields blanked, contact and user links too; the row stays (cart recovery counts open carts from `orders`). Through the `orders` entry's anonymise action, no second action; the period at least 31 days.
