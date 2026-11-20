@@ -7,7 +7,7 @@ module: image_editor
 ## What does it do?
 - In Animate, with one movable layer that is not a video selected while a video shows at the playhead: Follow (Path tab beside Record, and the bar over the object) arms; a drag draws a box (12 px a side at least); the clip's frames from the playhead are searched for that patch; the layer keeps its place at the playhead and moves as the patch moved. Plain linear keys in `anim.keys`, one undo step.
 - Owner (2026-11-16): asked for it; accepted the look in poll 110 (`workflow/decisions-made-product-69.md`).
-- Files: part `follow` (`pg_image_editor_follow.js`, after `record`, labels `pg_image_editor_strings_follow()`), the tracker `pg_image_editor_track.js` (own bundle, `config.track`), the model's `FOLLOW` section. Built in #9973 (tracker), #9997 (command), #10123 (bar, phone); a small thing #GC3PR.
+- Files: part `follow` (`pg_image_editor_follow.js`, after `record`, labels `pg_image_editor_strings_follow()`), the tracker `pg_image_editor_track.js` (own bundle, `config.track`), the model's `FOLLOW` section. Built in #9973 (tracker), #9997 (command), #10123 (bar, phone); a small thing #10538.
 
 ## How does the tracker work?
 - Zero-mean normalised cross-correlation of the first frame's patch, frames grey at 320 px on the longer side. Search round the last place plus the last move, radius max(16 px, half the box's longer side); sub-pixel peak by a parabola.
