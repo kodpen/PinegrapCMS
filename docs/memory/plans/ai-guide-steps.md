@@ -4,7 +4,7 @@ description: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine wit
 ---
 
 ## Which steps are there?
-- AG1 (M) first: the engine and the two doors.
+- AG1 (M) first: the engine and the two doors. Done: #10710.
   - New: `includes/fn/agent_guide.php` (registry, text, list, digest, sizes; all eight topic ids named, each listed only when its builder file is there), `includes/fn/agent_guide_start.php`, `includes/api/resources/guide.php` (`guide.read`, the 304).
   - `includes/api/schema.php` (the route), `includes/mcp/tools.php` (`guide.read` offered without a scope; "Guide: <topic>." in `pg_mcp_tool_guidance()`), `includes/mcp/resources.php`, `includes/mcp/protocol.php` (the two lines, the 3,072 byte test).
   - Tests, red first: sizes, every named tool is an offered route, digest changes with the text, a topic without its file is not listed. Features: G1 to G5, G9, G10 without the prompt, G17.

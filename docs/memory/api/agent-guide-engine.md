@@ -7,7 +7,7 @@ module: agent_guide, agent_guide_start
 ## What is the guide, and where does a topic live?
 - `pg_agent_guide_registry()` (`includes/fn/agent_guide.php`) names eight topics: start, designer, content, forms, store, workspace, erp, panel. Each: title, when (one sentence), module (`''`, store, workspace, erp), tools (route id prefixes), file.
 - A topic's text is built by its own file, `includes/fn/agent_guide_<id>.php`, declaring `pg_agent_guide_<id>_sections()`: a list of `id` (`[a-z_]`), `heading`, `lines`. A line is text, or `array('text', 'module')` kept only while that module is on. A topic whose file is not there is not listed: adding a topic is adding its file, the engine is not touched.
-- Built in #PR (plan ai-guide, AG1): only `agent_guide_start.php` exists; the other seven come with AG2 to AG5.
+- Built in #10710 (plan ai-guide, AG1): only `agent_guide_start.php` exists; the other seven come with AG2 to AG5.
 
 ## How does a line name a tool?
 - As `{tool:route.id}`; the engine writes the tool's name (dots as underscores). `tests/agent_guide_test.php` fails on a named route that is no route or no MCP tool, so a renamed route cannot leave the guide behind. Never type a tool name in a line by hand.
