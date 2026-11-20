@@ -3411,7 +3411,7 @@ function pg_office_view_includes()
 /**
  * The words the preview's drawing code needs, translated: the preview's own,
  * those of a workbook offered for editing (why a cell or a sheet is not
- * offered, the hint, the count of changes), those of a document (why a
+ * offered, the hint, the count of changes, the format bar), those of a document (why a
  * paragraph or the whole document is not offered, the hint, the count) and
  * the choice above a .csv's sheet.
  *
@@ -3470,6 +3470,25 @@ function pg_office_view_strings()
         'sheet_pending_rename' => lang('Sheet {1} is renamed {2} when you save.'),
         'sheet_pending_delete' => lang('Sheet {1} is deleted when you save.'),
         'sheet_pending_move'   => lang('Sheet {1} moves to place {2} when you save.'),
+        'format_bar'        => lang('Format of the selected cells'),
+        'format_bold'       => lang('Bold'),
+        'format_italic'     => lang('Italic'),
+        'format_align'      => lang('Alignment'),
+        'format_left'       => lang('Align left'),
+        'format_center'     => lang('Align center'),
+        'format_right'      => lang('Align right'),
+        'format_number'     => lang('Number format'),
+        'format_general_kind' => lang('General'),
+        'format_number_kind'  => lang('Number'),
+        'format_money_kind'   => lang('Money'),
+        'format_percent_kind' => lang('Percent'),
+        'format_date_kind'    => lang('Date'),
+        'format_undo'       => lang('Undo the format change'),
+        'format_hint'       => lang('Shift+click or Shift+arrow keys select more cells; the bar above the sheet changes their format.'),
+        'format_pending'    => lang('The format of {1} changes when you save.'),
+        'format_first'      => lang('Save the other changes first, then change the format.'),
+        'format_one'        => lang('One format change is saved at a time. Save or undo the waiting one first.'),
+        'format_many'       => lang('Select at most 5000 cells to change their format.'),
         'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
         'locked_formula_is' => lang('Worked out by a formula: {1}'),
         'locked_value'      => lang('A linked value or a picture in the cell. Change it in a spreadsheet program.'),

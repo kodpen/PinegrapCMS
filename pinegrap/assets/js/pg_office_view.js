@@ -39,7 +39,9 @@
  * row's or column's head menu; or the one sheet to add, rename, delete or
  * move, [{op: sheet_add, to}] / [{op: sheet_rename, sheet, name, to}] /
  * [{op: sheet_delete, sheet, name}] / [{op: sheet_move, sheet, name, to}],
- * chosen from the sheet tabs; [{p, text}] for a document), view.version, and
+ * chosen from the sheet tabs; or the one format change of the selected
+ * cells, [{op: format, sheet, name, range, set}], chosen from the bar above
+ * the grid; [{p, text}] for a document), view.version, and
  * view.reset() to drop every change. What is being typed counts already, so
  * a Save pressed before Enter sends it too. Nothing is saved from here; the
  * window that drew the view sends the edits.
@@ -71,6 +73,9 @@
     // PG_OFFICE_SHIFT_ROWS and PG_OFFICE_SHIFT_COLUMNS).
     var SHEET_ROWS = 1048576;
     var SHEET_COLUMNS = 16384;
+
+    // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
+    var FORMAT_CELLS = 5000;
 
     // 0 is A, 25 is Z, 26 is AA.
     function columnName(index) {
@@ -241,6 +246,55 @@
         return edit.protected ? (strings.sheet_protected || '') : '';
     }
 
+    // A cell format as the controls change it (bold, italic, color, fill,
+    // align, number), laid over a look of the file (pg_office_xlsx_style_looks()).
+    function lookWith(look, set) {
+        var out = {};
+        var keys = { bold: 'b', italic: 'i', color: 'c', fill: 'bg', align: 'a', number: 'n' };
+
+        Object.keys(look || {}).forEach(function (key) {
+            out[key] = look[key];
+        });
+
+        Object.keys(set || {}).forEach(function (key) {
+            var value = set[key];
+
+            if (!own(keys, key)) {
+                return;
+            }
+
+            if (value === false || value === '' || (key === 'number' && value === 'general')) {
+                delete out[keys[key]];
+            } else {
+                out[keys[key]] = (value === true) ? 1 : String(value).replace(/^#/, '');
+            }
+        });
+
+        return out;
+    }
+
+    // Draws a cell's look. A colour of the file is drawn on paper, as a
+    // spreadsheet draws it: a text colour with no fill on white, a fill with
+    // no text colour under black, so that neither is lost in the dark theme.
+    // A changed cell keeps the colours that mark it.
+    function paint(td, look) {
+        var style = td.style;
+        var paper = !!(look && (look.c || look.bg)) && !td.classList.contains('office-edited');
+
+        look = look || {};
+        style.fontWeight = look.b ? 'bold' : '';
+        style.fontStyle = look.i ? 'italic' : '';
+        style.textAlign = look.a || '';
+        style.color = paper ? (look.c ? '#' + look.c : 'black') : '';
+        style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : '';
+    }
+
+    // Whether a cell lies in a range [first row, first column, last row,
+    // last column].
+    function inRange(range, row, column) {
+        return !!range && row >= range[0] && row <= range[2] && column >= range[1] && column <= range[3];
+    }
+
     // The class a cell or head takes from the row or column waiting to be
     // inserted (a line drawn before or after the one chosen) or deleted
     // (struck through).
@@ -284,8 +338,11 @@
 
     // One sheet as a table. With `state` (a sheet offered for editing) the
     // cells carry what the keyboard and the mouse need: the row number on
-    // each row, and the column by the cell's place in it.
-    function sheetTable(sheet, strings, state) {
+    // each row, and the column by the cell's place in it. Each cell is drawn
+    // in its look (`looks`, by style number) and a number in its number
+    // format's text (row.show), with the format change waiting laid over
+    // its range (state.format).
+    function sheetTable(sheet, strings, state, looks) {
         var width = 0;
 
         sheet.rows.forEach(function (row) {
@@ -354,7 +411,19 @@
                     td.tabIndex = -1;
                 }
 
-                td.textContent = value;
+                var edited = td.classList.contains('office-edited');
+
+                td.textContent = (!edited && row.show && own(row.show, column)) ? row.show[column] : value;
+
+                var look = (looks && row.s && own(row.s, column)) ? looks[row.s[column]] : null;
+
+                if (state && state.format && inRange(state.format.range, row.n, column)) {
+                    look = lookWith(look, state.format.set);
+                }
+
+                if (look) {
+                    paint(td, look);
+                }
 
                 // Numbers sit to the right, as the sheet shows them.
                 if (isNumber(value)) {
@@ -421,6 +490,16 @@
         var strip = sheetsEditable ? el('div', 'office-tabs') : null;
         var addButton = null;
 
+        // The one format change waiting, a save of its own too ({sheet,
+        // range, set}; `range` is [first row, first column, last row, last
+        // column], `set` what the bar above the grid chose). The bar changes
+        // the cells selected: one, or the rectangle from shown.anchor to
+        // shown.cell picked with Shift.
+        var format = null;
+        var looks = office.looks || {};
+        var bar = editable ? el('div', 'office-format') : null;
+        var controls = {};
+
         // The changes as they stand, with the value of the cell being typed
         // in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -458,7 +537,7 @@
         }
 
         function count() {
-            return cellCount() + (pending ? 1 : 0) + (sheetPending ? 1 : 0);
+            return cellCount() + (pending ? 1 : 0) + (sheetPending ? 1 : 0) + (format ? 1 : 0);
         }
 
         function notify() {
@@ -472,7 +551,15 @@
         function sheetEditable(index) {
             var edit = office.sheets[index].edit;
 
-            return editable && !!edit && !!edit.ok && !pending && !sheetPending;
+            return editable && !!edit && !!edit.ok && !pending && !sheetPending && !format;
+        }
+
+        // The format bar serves a sheet whose cells may change, unless it is
+        // protected (the server refuses a sheet that does not allow it).
+        function sheetFormattable(index) {
+            var edit = (index >= 0) ? office.sheets[index].edit : null;
+
+            return editable && !!edit && !!edit.ok && !edit.protected;
         }
 
         // Rows and columns move on a sheet whose cells may change, unless it
@@ -517,9 +604,16 @@
                 if (sheetShiftable(shown.index)) {
                     parts.push(strings.shift_hint || '');
                 }
+
+                if (sheetFormattable(shown.index)) {
+                    parts.push(strings.format_hint || '');
+                }
             }
 
-            if (pending) {
+            if (format) {
+                parts.push(fill(strings.format_pending, rangeName(format.range))
+                    + ' ' + (strings.shift_sheet ? fill(strings.shift_sheet, office.sheets[format.sheet].name) : ''));
+            } else if (pending) {
                 var line = (pending.axis === 'row') ? pending.at : columnName(pending.at);
 
                 parts.push(fill(strings['shift_' + pending.axis + '_' + pending.place], line)
@@ -543,7 +637,7 @@
             var list = changesNow();
 
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index) || (!!sheetPending && sheetPending.sheet === index);
+                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index) || (!!sheetPending && sheetPending.sheet === index) || (!!format && format.sheet === index);
                 var mark = tab.querySelector('.office-tab-changed');
 
                 tab.classList.toggle('office-tab-edited', edited);
@@ -566,9 +660,15 @@
             pane.style.scrollPaddingLeft = corner ? corner.offsetWidth + 'px' : '';
         }
 
-        function select(td) {
+        // Selects a cell; with `extend` (Shift) the range runs from the
+        // cell first selected to this one.
+        function select(td, extend) {
             if (!td || td.tagName !== 'TD') {
                 return;
+            }
+
+            if (!extend || !shown.anchor || !shown.anchor.isConnected) {
+                shown.anchor = td;
             }
 
             if (shown.cell && shown.cell !== td) {
@@ -587,6 +687,280 @@
             if (td.scrollIntoView) {
                 td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             }
+
+            markRange();
+            drawBar();
+        }
+
+        // The cells selected, [first row, first column, last row, last
+        // column], or null with none.
+        function selectionRange() {
+            if (!shown.cell) {
+                return null;
+            }
+
+            var from = cellPosition(shown.anchor || shown.cell);
+            var to = cellPosition(shown.cell);
+
+            return [Math.min(from.row, to.row), Math.min(from.column, to.column), Math.max(from.row, to.row), Math.max(from.column, to.column)];
+        }
+
+        function rangeName(range) {
+            var first = columnName(range[1]) + range[0];
+            var last = columnName(range[3]) + range[2];
+
+            return (first === last) ? first : first + ':' + last;
+        }
+
+        // The drawn cells of a range, with their row and column.
+        function rangeCells(range, each) {
+            if (!shown.table || !range) {
+                return;
+            }
+
+            Array.prototype.forEach.call(shown.table.querySelectorAll('tbody tr'), function (tr) {
+                var row = parseInt(tr.getAttribute('data-row'), 10);
+
+                if (row < range[0] || row > range[2]) {
+                    return;
+                }
+
+                for (var column = range[1]; column <= range[3] && column + 1 < tr.cells.length; column++) {
+                    each(tr.cells[column + 1], row, column);
+                }
+            });
+        }
+
+        function markRange() {
+            if (!shown.table) {
+                return;
+            }
+
+            Array.prototype.forEach.call(shown.table.querySelectorAll('td.office-in-range'), function (td) {
+                td.classList.remove('office-in-range');
+            });
+
+            var range = selectionRange();
+
+            if (range && (range[0] !== range[2] || range[1] !== range[3])) {
+                rangeCells(range, function (td) {
+                    td.classList.add('office-in-range');
+                });
+            }
+        }
+
+        // The file's row entry with this number (rows come in order).
+        function rowOf(sheet, number) {
+            if (!sheet.byRow) {
+                sheet.byRow = {};
+                sheet.rows.forEach(function (row) {
+                    sheet.byRow[row.n] = row;
+                });
+            }
+
+            return own(sheet.byRow, number) ? sheet.byRow[number] : null;
+        }
+
+        // A cell's look as it stands: the file's, under the waiting change.
+        function lookAt(index, row, column) {
+            var entry = rowOf(office.sheets[index], row);
+            var look = (entry && entry.s && own(entry.s, column)) ? looks[entry.s[column]] : null;
+
+            if (format && format.sheet === index && inRange(format.range, row, column)) {
+                look = lookWith(look, format.set);
+            }
+
+            return look || {};
+        }
+
+        function repaint(range) {
+            rangeCells(range, function (td, row, column) {
+                paint(td, lookAt(shown.index, row, column));
+            });
+        }
+
+        function sameRange(one, two) {
+            return one.join(',') === two.join(',');
+        }
+
+        // Sets one part of the selected cells' format, as a change waiting
+        // for the save; one range a save, nothing beside other changes.
+        function setFormat(key, value) {
+            var range = selectionRange();
+
+            if (!range || !sheetFormattable(shown.index)) {
+                return;
+            }
+
+            closeEditor(true);
+
+            if (cellCount() > 0 || pending || sheetPending) {
+                shown.note = strings.format_first || '';
+            } else if (format && (format.sheet !== shown.index || !sameRange(format.range, range))) {
+                shown.note = strings.format_one || '';
+            } else if ((range[2] - range[0] + 1) * (range[3] - range[1] + 1) > FORMAT_CELLS) {
+                shown.note = strings.format_many || '';
+            } else {
+                format = format || { sheet: shown.index, range: range, set: {} };
+                format.set[key] = value;
+                shown.note = '';
+                repaint(range);
+                drawBar();
+                notify();
+
+                if (shown.cell) {
+                    shown.cell.focus({ preventScroll: true });
+                }
+                return;
+            }
+
+            drawStatus();
+        }
+
+        function cancelFormat() {
+            if (!format) {
+                return;
+            }
+
+            var range = format.range;
+            var index = format.sheet;
+
+            format = null;
+
+            if (index === shown.index) {
+                repaint(range);
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // A button of the bar: look A's icon button, or an item of its
+        // segmented control.
+        function barButton(className, icon, label, text) {
+            var button = el('button', className, text);
+
+            button.type = 'button';
+            button.setAttribute('aria-pressed', 'false');
+
+            if (icon) {
+                var glyph = el('span', 'bi ' + icon);
+
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+                button.setAttribute('aria-label', label);
+                button.title = label;
+            }
+
+            return button;
+        }
+
+        function buildBar() {
+            bar.setAttribute('role', 'toolbar');
+            bar.setAttribute('aria-label', strings.format_bar || '');
+
+            controls.bold = barButton('pg-icon-button pg-icon-button-sm', 'bi-type-bold', strings.format_bold || '');
+            controls.bold.addEventListener('click', function () {
+                setFormat('bold', !currentLook().b);
+            });
+
+            controls.italic = barButton('pg-icon-button pg-icon-button-sm', 'bi-type-italic', strings.format_italic || '');
+            controls.italic.addEventListener('click', function () {
+                setFormat('italic', !currentLook().i);
+            });
+
+            bar.appendChild(controls.bold);
+            bar.appendChild(controls.italic);
+
+            // Choosing the alignment already chosen gives the cell back its
+            // general alignment.
+            var align = el('span', 'pg-seg');
+
+            align.setAttribute('role', 'group');
+            align.setAttribute('aria-label', strings.format_align || '');
+            controls.align = {};
+
+            [['left', 'bi-text-left'], ['center', 'bi-text-center'], ['right', 'bi-text-right']].forEach(function (item) {
+                var button = barButton('pg-seg-item', item[1], strings['format_' + item[0]] || '');
+
+                button.addEventListener('click', function () {
+                    setFormat('align', (currentLook().a === item[0]) ? '' : item[0]);
+                });
+                controls.align[item[0]] = button;
+                align.appendChild(button);
+            });
+
+            bar.appendChild(align);
+
+            var number = el('span', 'pg-seg');
+
+            number.setAttribute('role', 'group');
+            number.setAttribute('aria-label', strings.format_number || '');
+            controls.number = {};
+
+            ['general', 'number', 'money', 'percent', 'date'].forEach(function (kind) {
+                var button = barButton('pg-seg-item', '', '', strings['format_' + kind + '_kind'] || kind);
+
+                button.addEventListener('click', function () {
+                    setFormat('number', kind);
+                });
+                controls.number[kind] = button;
+                number.appendChild(button);
+            });
+
+            bar.appendChild(number);
+
+            controls.undo = el('button', 'pg-button pg-button-quiet pg-button-sm', strings.format_undo || '');
+            controls.undo.type = 'button';
+            controls.undo.addEventListener('click', function () {
+                cancelFormat();
+
+                if (shown.cell) {
+                    shown.cell.focus({ preventScroll: true });
+                }
+            });
+            bar.appendChild(controls.undo);
+        }
+
+        // The look of the first selected cell, as the bar shows it.
+        function currentLook() {
+            var range = selectionRange();
+
+            return range ? lookAt(shown.index, range[0], range[1]) : {};
+        }
+
+        function press(button, on) {
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+            button.classList.toggle('is-active', on);
+        }
+
+        function drawBar() {
+            if (!bar) {
+                return;
+            }
+
+            var offered = !!shown.table && sheetFormattable(shown.index);
+
+            bar.classList.toggle('d-none', !offered);
+
+            if (!offered) {
+                return;
+            }
+
+            var look = currentLook();
+
+            press(controls.bold, !!look.b);
+            press(controls.italic, !!look.i);
+
+            Object.keys(controls.align).forEach(function (key) {
+                press(controls.align[key], look.a === key);
+            });
+
+            Object.keys(controls.number).forEach(function (kind) {
+                press(controls.number[kind], (look.n || 'general') === kind);
+            });
+
+            controls.undo.classList.toggle('d-none', !format);
         }
 
         // The cell beside a cell: one row or one column over, if there is one.
@@ -635,10 +1009,13 @@
                 changes[shown.index][address] = value;
             }
 
-            td.textContent = value;
+            var entry = rowOf(sheet, position.row);
+
+            td.textContent = (value === was && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
             td.classList.toggle('office-edited', own(changes[shown.index], address));
             td.classList.toggle('office-num', isNumber(value));
             td.classList.remove('office-calc');
+            paint(td, lookAt(shown.index, position.row, position.column));
 
             // A leading "=" stays text: no formula is worked out here.
             shown.note = (value.charAt(0) === '=') ? (strings.formula_text || '') : '';
@@ -659,8 +1036,9 @@
             if (save) {
                 keep(editor.td, editor.input.value);
             } else {
-                editor.td.textContent = editor.before;
-                notify();
+                // The value before the editor opened, kept again: drawn as it
+                // was, in its number format's text and its look.
+                keep(editor.td, editor.before);
             }
         }
 
@@ -800,6 +1178,10 @@
 
             if (pending) {
                 return [{ label: strings.shift_undo, run: cancelPending }];
+            }
+
+            if (format) {
+                return [{ label: strings.format_undo, run: cancelFormat }];
             }
 
             if (cellCount() > 0) {
@@ -1082,7 +1464,7 @@
                 return [{ label: strings.sheet_undo, run: function () { var at = sheetPending.sheet; cancelSheet(); return focusTab(at); } }];
             }
 
-            if (pending || cellCount() > 0) {
+            if (pending || format || cellCount() > 0) {
                 return [{ label: strings.sheet_first }];
             }
 
@@ -1145,7 +1527,13 @@
                 var td = event.target.closest('td');
 
                 if (td && !td.classList.contains('office-editing')) {
-                    select(td);
+                    // Shift+click widens the selection, not the page's text
+                    // selection.
+                    if (event.shiftKey) {
+                        event.preventDefault();
+                    }
+
+                    select(td, event.shiftKey);
                 }
             });
 
@@ -1179,7 +1567,18 @@
 
                 if (own(moves, key)) {
                     event.preventDefault();
-                    select(neighbour(td, moves[key][0], moves[key][1]) || td);
+                    select(neighbour(td, moves[key][0], moves[key][1]) || td, event.shiftKey);
+                    return;
+                }
+
+                // Ctrl+B and Ctrl+I, as a spreadsheet takes them.
+                if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'b' || key === 'B' || key === 'i' || key === 'I') && sheetFormattable(shown.index)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    var bold = (key === 'b' || key === 'B');
+
+                    setFormat(bold ? 'bold' : 'italic', !currentLook()[bold ? 'b' : 'i']);
                     return;
                 }
 
@@ -1190,12 +1589,14 @@
                     return;
                 }
 
-                if (key === 'Escape' && (pending || sheetPending)) {
+                if (key === 'Escape' && (pending || sheetPending || format)) {
                     event.preventDefault();
                     event.stopPropagation();
 
                     if (pending) {
                         cancelPending();
+                    } else if (format) {
+                        cancelFormat();
                     } else {
                         cancelSheet();
                     }
@@ -1244,6 +1645,7 @@
 
             shown.index = index;
             shown.cell = null;
+            shown.anchor = null;
             shown.note = '';
             pane.innerHTML = '';
 
@@ -1254,8 +1656,9 @@
                 shown.table = sheetTable(sheet, strings, offered ? {
                     changes: changes[index],
                     heads: sheetShiftable(index),
-                    pending: (pending && pending.sheet === index) ? pending : null
-                } : null);
+                    pending: (pending && pending.sheet === index) ? pending : null,
+                    format: (format && format.sheet === index) ? format : null
+                } : null, looks);
                 pane.appendChild(shown.table);
 
                 if (offered) {
@@ -1283,6 +1686,7 @@
             }
 
             padHeadings();
+            drawBar();
             drawStatus();
         }
 
@@ -1382,7 +1786,7 @@
                 return;
             }
 
-            if (sheetsEditable && event.key === 'F2' && !sheetPending && !pending && !cellCount()) {
+            if (sheetsEditable && event.key === 'F2' && !sheetPending && !pending && !format && !cellCount()) {
                 event.preventDefault();
                 askName(at);
                 return;
@@ -1422,7 +1826,7 @@
             addButton.appendChild(plus);
 
             addButton.addEventListener('click', function () {
-                if (sheetPending || pending || cellCount() > 0) {
+                if (sheetPending || pending || format || cellCount() > 0) {
                     shown.note = sheetPending ? (strings.sheet_one || '') : (strings.sheet_first || '');
                     drawStatus();
                     return;
@@ -1435,6 +1839,11 @@
             book.appendChild(strip);
         } else {
             book.appendChild(tabs);
+        }
+
+        if (bar) {
+            buildBar();
+            book.appendChild(bar);
         }
 
         book.appendChild(pane);
@@ -1459,6 +1868,16 @@
             count: count,
             edits: function () {
                 var list = [];
+
+                if (format) {
+                    var set = {};
+
+                    Object.keys(format.set).forEach(function (key) {
+                        set[key] = format.set[key];
+                    });
+
+                    return [{ op: 'format', sheet: format.sheet, name: office.sheets[format.sheet].name, range: rangeName(format.range), set: set }];
+                }
 
                 if (sheetPending) {
                     var sheetChange = { op: 'sheet_' + sheetPending.action };
@@ -1498,6 +1917,7 @@
                 shown.editor = null;
                 pending = null;
                 sheetPending = null;
+                format = null;
                 changes = office.sheets.map(function () { return {}; });
                 drawTabs();
 

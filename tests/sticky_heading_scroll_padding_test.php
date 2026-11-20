@@ -44,7 +44,7 @@ function test_sticky_heading_office_grid_pads_heading_and_row_numbers()
 	pg_assert_contains('pane.style.scrollPaddingTop', $source, 'the grid pane clears the column-letter row');
 	pg_assert_contains('pane.style.scrollPaddingLeft', $source, 'the grid pane clears the row-number column');
 
-	$select = strpos($source, 'function select(td)');
+	$select = strpos($source, 'function select(td');
 	$scroll = strpos($source, 'td.scrollIntoView', (int) $select);
 	$pad = strpos($source, 'padHeadings()', (int) $select);
 
