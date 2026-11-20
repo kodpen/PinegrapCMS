@@ -19,7 +19,7 @@ description: P in the visual editor opens the Prototype view with the selected e
 - Both listeners ask it: the editor's document (`initKeyboard()`) and the canvas frame (`_sdShortcutKeydown()`), right after the N note key and before the view-mode guard (opening the view changes nothing, so a view-only session may use it).
 
 ## Why P?
-- No editor shortcut used a bare P (2026-11-20): Ctrl+Shift+P is the command palette and Ctrl+Alt+P the preview, both with modifiers. The other bare letters are N (note) and O (outline, shown in the View menu); the Prototype view's own L (target menu) and 0 (Fit) work only inside the view. P for Prototype (designer-panels-rules K9).
+- No editor shortcut used a bare P (2026-11-20): Ctrl+Shift+P is the command palette and Ctrl+Alt+P the preview, both with modifiers. The other bare letters are N (note) and O (outline, shown in the View menu); the Prototype view's own L (target menu) and 0 (Fit) work only inside the view. P for Prototype (K9 of `designer-panels-keep.md`).
 
 ## Which tests cover it?
 - `tests/proto_hotspots_test.php`: `test_proto_hotspots_back_key` (where the key counts), `test_proto_hotspots_back_to_the_link` (rows found, every row found again from its spot), `test_proto_hotspots_view_back_from_the_editor` (the two listeners, the e-mail design, the wait for the draw, the sheet row).

@@ -22,7 +22,7 @@ description: Decisions list, product part 69 (2026-11-17 on): campaign Create st
 - He chose "Evet, böyle çıksın" for the R&D agent's drawing (discussion "Görsel Tasarımcı geliştirme", message 7583): on a 1024 px screen the right column is 240 px, and the panel keeps the parts and the order of the approved drawings; only what does not fit moves, as the drawing's ten notes say.
 - The one difference from the measure sheets, his by this answer: a button group that does not fit beside its label gets the label above it and stays on one line (note 4).
 - Not chosen: "Hayır, böyle çıkmasın".
-- The drawing joins `plans/designer-panels/` by the R&D agent's PR; a step that draws the panel accounts for it as for the other drawings (`plans/designer-panels-rules.md`).
+- The drawing joined the plan designer-panels' drawings by the R&D agent's PR; they are in git history since its close-out (`designer/designer-panels-overview.md`).
 
 ## Can a text or a vector move with an area chosen on a video? (owner, 2026-11-16, agent channel poll 110, message 7306)
 - He asked: "bir yazı veya vektör koyup takip et dediğimizde takip için seçtiğimiz alan ile hareket edebilir mi?" Yes: Follow in the Artifact Canvas's Animate tool (`ui/image-editor-follow.md`).

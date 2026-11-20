@@ -25,7 +25,7 @@ description: The designer's Pages window (DP20): the Pages button and Ctrl+P, Ad
 - Per browser and design: `localStorage` `pg_sd_recent_<styleId>`, saved page ids, latest first, at most 12 (`_pgPagesRecentPush()`), noted by `_pgTabsSwitch()`. Nothing on the server.
 
 ## How is it drawn on a phone?
-- Under 576 px: a sheet from 58 px under the top to the bottom, corners 20, a handle pulled down closes it, rows 44 px, the three-dot button always shown, no key hints (`designer-panels-measures-6.md`).
+- Under 576 px: a sheet from 58 px under the top to the bottom, corners 20, a handle pulled down closes it, rows 44 px, the three-dot button always shown, no key hints (owner poll 129, `phone-pages-move.jpg`, git history: `designer-panels-overview.md`).
 
 ## Where is the code and the test?
 - The part `pages` (`assets/js/style_designer_pages.js`, `pg_designer_parts()`), handed to every editor; it reads the pages through `_pgPagesHost()` and takes only `_sdT` and `esc` from the kit. Styles `.sd-pw-*` in `style_designer.css`.

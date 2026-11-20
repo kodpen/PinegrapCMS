@@ -5,7 +5,7 @@ description: The Page Design Studio chrome's --sd-* colour tokens in style_desig
 
 ## Where are the editor chrome's colours?
 - In the `:root` block at the top of `assets/css/style_designer.css`, as `--sd-*` tokens. The chrome is always dark; there is no light set.
-- The values are the measure sheet of the Options panel drawings (`plans/designer-panels-measures.md`, `measures-1-tokens.jpg`).
+- The values are the measure sheet of the Options panel drawings (`measures-1-tokens.jpg`, git history: `designer-panels-overview.md`); the sizes beside them: `designer-chrome-measures.md`.
 
 ## Which token is for what?
 - Grounds: `--sd-panel-bg` the panel; `--sd-raised-bg` an open section card; `--sd-raised-bg-2` the active tab and a badge's ground; `--sd-input-bg` a field, a button group, the tab holder.
