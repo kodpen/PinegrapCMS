@@ -175,7 +175,7 @@ if ($shared) {
                             ' . (!$followed ? '<div class="form-text">' . h(lang('Only the prices and the discount follow; payment terms and the credit limit stay this account\'s. Making the chosen account passive does not stop its prices.')) . '</div>' : '') . '
                         </div>
                         ' . ($users_html !== '' ? '<p class="pg-text-2 fg-secondary mt-5 mb-2">' . (($price_users['count'] === 1) ? h(lang('One account uses this account\'s prices, so it keeps its own:')) : h(lang(array('string' => '{var:1} accounts use this account\'s prices, so it keeps its own:', 'vars' => pg_format_number($price_users['count'], 0))))) . '</p><ul class="pg-text-2 mb-0">' . $users_html . '</ul>' . $users_more_html : '') . '
-                        ' . (!$locked ? '<button type="submit" class="btn btn-solid theme-success w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
+                        ' . (!$locked ? '<button type="submit" class="pg-button pg-button-fill w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
                     </div>
                 </form>';
 }
