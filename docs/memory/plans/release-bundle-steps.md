@@ -30,7 +30,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 
 - RB5 Done (#10296): the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
 
-- RB6 (S) after RB5: the share link. A bundle named on `prototype_links` (its place the architect's, in the PR). Features: B15.
+- RB6 Done (#10518): the share link. `prototype_links.bundle_id` (poll 159, channel message 9931), "Share the preview" on the Bundles screen (`designer/release-bundle-share-link.md`). Features: B15.
 
 - RB7 Done (#10482): the API, `/design/bundles` (`api/api-design-bundles.md`). The page delete answers a bundled draft with 409 `release_bundle_held`, the experiment's code stays (architect, message 6621). Features: B16.
 

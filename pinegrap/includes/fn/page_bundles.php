@@ -616,6 +616,11 @@ function pg_page_bundle_delete_locked($bundle)
 
     db("DELETE FROM page_bundle_item WHERE bundle_id = '$id'");
 
+    // The share links of its preview end with it, and never open a later
+    // bundle given the same id.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+    pg_proto_links_revoke_bundle($id);
+
     return array('ok' => true, 'error' => '');
 }
 
