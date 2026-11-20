@@ -4345,8 +4345,13 @@ function output_menu($properties = false)
         // users and orders too)
         if ($user['role'] < 3) {
             $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
-            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_erase.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-x bi-me-2\'>' . lang('Personal data erasure') . '</a>';
+            foreach (array(
+                'privacy_export.php' => array('bi-person-down', lang('Personal data export')),
+                'privacy_erase.php'  => array('bi-person-x', lang('Personal data erasure')),
+                'privacy_centre.php' => array('bi-shield-lock', lang('Privacy centre')),
+            ) as $privacy_screen => $privacy_link) {
+                $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $privacy_screen . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $privacy_link[0] . ' bi-me-2\'>' . $privacy_link[1] . '</a>';
+            }
         }
     }
 
@@ -5033,6 +5038,7 @@ function output_menu($properties = false)
         case 'organize_contacts.php':
         case 'privacy_export.php':
         case 'privacy_erase.php':
+        case 'privacy_centre.php':
             $active_menu = 7;
             break;
         case 'view_users.php':

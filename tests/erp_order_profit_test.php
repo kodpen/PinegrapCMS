@@ -179,15 +179,26 @@ function test_erp_order_profit_listing_estimate()
 	pg_assert_same('marketplace:5', $result['profit']['channel']);
 }
 
-// A refund lowers the revenue; costs stay.
+// A refund lowers the revenue by its part without tax (the refund is paid
+// tax included, the revenue is without tax); costs stay.
 function test_erp_order_profit_refund()
 {
 	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
 		'order' => array_merge(erp_order_profit_test_input()['order'], array('refunded_amount' => 2500)),
 	)));
 
-	pg_assert_same(7500, $result['profit']['revenue']);
-	pg_assert_same(3500, $result['profit']['net']);
+	// 25.00 of 120.00 paid with 20.00 tax: 25.00 x 100 / 120 = 20.83 without tax.
+	pg_assert_same(10000 - 2083, $result['profit']['revenue']);
+	pg_assert_same(10000 - 2083 - 4000, $result['profit']['net']);
+}
+
+// An order refunded in full has no revenue left, never the tax below zero.
+function test_erp_order_profit_full_refund_leaves_no_revenue()
+{
+	pg_assert_same(0, erp_order_profit_revenue(array('total' => 12000, 'gift_card_discount' => 0, 'tax' => 2000, 'refunded_amount' => 12000)));
+	pg_assert_same(0, erp_order_profit_revenue(array('total' => 5000, 'gift_card_discount' => 1500, 'tax' => 1083, 'refunded_amount' => 6500)));
+	pg_assert_same(8000, erp_order_profit_revenue(array('total' => 8000, 'gift_card_discount' => 0, 'tax' => 0, 'refunded_amount' => 0)));
+	pg_assert_same(5000, erp_order_profit_revenue(array('total' => 8000, 'gift_card_discount' => 0, 'tax' => 0, 'refunded_amount' => 3000)));
 }
 
 // Revenue is erp_profit_report()'s for an uninvoiced order: total plus the
@@ -283,6 +294,31 @@ function test_erp_order_profit_basis()
 	pg_assert_false($basis === erp_order_profit_basis(array_merge($order, array('refunded_amount' => 1))));
 	pg_assert_false($basis === erp_order_profit_basis(array_merge($order, array('erp_invoice_id' => 5))));
 	pg_assert_same($basis, erp_order_profit_basis($order));
+}
+
+// Two recipients on two shipping methods: each method's percent is taken on
+// its own recipients' part of the shipping charge, not on the whole of it.
+function test_erp_order_profit_shipping_rate_on_each_methods_part()
+{
+	$rates = array('shipping' => array('3' => array('percent' => 10, 'fixed' => 0), '4' => array('percent' => 10, 'fixed' => 100)));
+
+	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'shipping_methods' => array(3, 4),
+		'shipping_costs' => array(3 => 300, 4 => 200),
+		'rates' => $rates,
+	)));
+
+	// 10% of 3.00 plus 10% of 2.00 and 1.00 fixed: 0.30 + 1.20.
+	pg_assert_same(array('' => array('rate', 150)), erp_order_profit_test_rows($result, 'shipping'));
+
+	// One method: its rate on the order's whole shipping charge, as before.
+	$one = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'shipping_methods' => array(3),
+		'shipping_costs' => array(3 => 500),
+		'rates' => $rates,
+	)));
+
+	pg_assert_same(array('' => array('rate', 50)), erp_order_profit_test_rows($one, 'shipping'));
 }
 
 // A rate or estimate is one row per kind with an empty reference: two

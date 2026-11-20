@@ -884,7 +884,36 @@ function pg_shipment_label_create_locked($ship_to_id, $user_id, $return = false)
     $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return);
     $shipment['service'] = pg_shipment_label_method_service($ship_to, $driver);
 
-    return pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, $return) + array('code' => '');
+    $result = pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, $return) + array('code' => '');
+
+    // The service may have bought the label: the address keeps the failed
+    // row, so the automatic run never asks for it again; Create Label stays.
+    if (pg_shipment_label_unclear_mark_due($result, $return)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_label_auto.php');
+
+        $values = array();
+
+        foreach (pg_shipment_label_failed_row($order['id'], $ship_to['id'], $driver, time(), $user_id) as $column => $value) {
+            $values[] = "`" . $column . "` = '" . e((string) $value) . "'";
+        }
+
+        db("INSERT IGNORE INTO shipment_labels SET " . implode(', ', $values));
+    }
+
+    return $result;
+}
+
+/**
+ * Whether a create leaves the failed row on its address: an outbound label
+ * the service did not say it made. Pure.
+ *
+ * @param array $result pg_shipment_label_open()
+ * @param bool  $return
+ * @return bool
+ */
+function pg_shipment_label_unclear_mark_due($result, $return)
+{
+    return !$return && empty($result['ok']) && !empty($result['unclear']);
 }
 
 /**

@@ -177,7 +177,8 @@ function erp_order_profit_filter_sql($choice)
         return '';
     }
 
-    return "AND (orders.id IN (SELECT erp_order_profit.order_id FROM erp_order_profit WHERE erp_order_profit.net < 0))";
+    return "AND (orders.id IN (SELECT erp_order_profit.order_id FROM erp_order_profit " . erp_order_profit_counted_join()
+        . " WHERE erp_order_profit.net < 0))";
 }
 
 /**
@@ -192,8 +193,10 @@ function erp_order_profit_for_orders($order_ids)
     $profits = array();
 
     foreach (array_chunk($ids, 1000) as $chunk) {
-        foreach ((array) db_items("SELECT order_id, net, margin, state FROM erp_order_profit
-            WHERE order_id IN (" . implode(',', $chunk) . ")") as $row) {
+        foreach ((array) db_items("SELECT erp_order_profit.order_id, erp_order_profit.net, erp_order_profit.margin,
+                erp_order_profit.state
+            FROM erp_order_profit " . erp_order_profit_counted_join() . "
+            WHERE erp_order_profit.order_id IN (" . implode(',', $chunk) . ")") as $row) {
             $profits[(int) $row['order_id']] = $row;
         }
     }
@@ -246,15 +249,18 @@ function erp_order_profit_list_cell($profit)
 function erp_order_profit_card($order_id, $status)
 {
     $order_id = (int) $order_id;
+
+    // An order that is no finished sale has no profit, even while the row
+    // the pass computed before it was cancelled waits for the recheck.
+    if (!in_array((string) $status, erp_order_billable_statuses(), true)) {
+        return '';
+    }
+
     $profit = db_item("SELECT revenue, cost_product, cost_payment, cost_marketplace, cost_shipping, cost_other,
             net, margin, state, stale, computed_at
         FROM erp_order_profit WHERE order_id = '" . $order_id . "' LIMIT 1");
 
     if (!is_array($profit)) {
-        if (!in_array((string) $status, erp_order_billable_statuses(), true)) {
-            return '';
-        }
-
         $body = '<p class="fg-secondary mb-0">' . lang('Not computed yet: the general job works out each finished order\'s profit within the hour.') . '</p>';
 
         return erp_order_profit_card_frame($body, '');
