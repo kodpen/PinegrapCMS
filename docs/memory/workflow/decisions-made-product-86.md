@@ -16,4 +16,4 @@ description: Decisions list, product part 86 (2026-11-20 on): an order sold beyo
 - One bell line per order, kind `oversold`, to the people the `out_stock` bell reaches; several products are counted on the one line. No new column.
 - The order screen notes "taken from stock: a of b" on a line whose `stock_taken` is recorded and below its quantity; true on a back order line too.
 - Marketplace import and the counter sale raise the same warning. No money moves, nothing is cancelled or refunded by the software.
-- Built after the `stock_taken` fix of #10684 has landed, in one PR that closes #10682; the cure is the plan for holding units, written by the architect.
+- Built after the `stock_taken` fix of #10684 has landed, in one PR that closes #10682; the cure is the plan for holding units, `plans/stock-holds.md` (its table: `decisions-made-schema-34.md`).
