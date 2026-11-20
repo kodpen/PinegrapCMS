@@ -4,7 +4,7 @@ description: The Pop-ups blocks (popup- prefix, group Pop-ups): offer code with 
 ---
 
 ## Where do they live?
-- `assets/js/style_designer_blocks_popup.js`, a family file of its own ([[designer-block-family-files]]): prefix `popup-`, group "Pop-ups" (`bi-window-stack`). Step PU7 of the auto dialog pop-ups plan, PR #PR_NUMBER.
+- `assets/js/style_designer_blocks_popup.js`, a family file of its own ([[designer-block-family-files]]): prefix `popup-`, group "Pop-ups" (`bi-window-stack`). Step PU7 of the auto dialog pop-ups plan, PR #10570.
 - They are made to be the content of a designed auto dialog: a shared component designed alone, chosen under "What does it show?" on the Edit Auto Dialog screen (`platform/auto-dialog-content.md`). Nothing stops their use on a page; there the marks do nothing.
 
 ## What does each block draw?
