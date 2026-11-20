@@ -19632,7 +19632,8 @@ a.ws-chip-message:hover,
 .ws-call-notice[hidden] {
   display: none;
 }
-.ws-call-tile-name > .bi {
+.ws-call-tile-name > .bi,
+.ws-call-share-name > .bi {
   margin-inline-end: var(--ws-space-1);
 }
 .ws-call.is-showing .ws-call-stage[data-count] {

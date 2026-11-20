@@ -874,6 +874,10 @@
         }
 
         mine.shareName.textContent = held ? t('call_sharing', mine.names[mine.sharer] || '') : '';
+
+        if (held) {
+            mine.shareName.insertBefore(h().icon('bi-display'), mine.shareName.firstChild);
+        }
         iconSwap(mine.sizeButton, state.size.icon, t(state.size.label));
 
         if (mine.fullButton) {
