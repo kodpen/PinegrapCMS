@@ -1,10 +1,7 @@
 ---
 name: product-form-uploads-features
-description: Plan product-form-uploads, features U0 to U15: the designer cart's labels, the field and its rules, the shopper's upload, who opens the file, where the order shows it, its later life
+description: Plan product-form-uploads, features U1 to U16: the field and its rules, the shopper's upload, who opens the file, where the order shows it, its later life and the sweep of unordered carts
 ---
-
-## What is fixed first?
-- (U0) The designer cart writes each answer's field name into `form_data.name`, as the classic cart and express order do. Today `cart_action.php` writes `''`: the panel order view, print and CSV show those answers without a label, and completion's `^^variables^^` miss them (`name != ''`). Its ownership join is pinned to `form_type = 'product'`.
 
 ## What does the field editor offer?
 - (U1) File Upload in the type list of a product form, a product group form and the variant-set template; Signature stays custom-only.
@@ -30,3 +27,4 @@ description: Plan product-form-uploads, features U0 to U15: the designer cart's 
 ## What happens to the file later?
 - (U14) Removing a cart line, lowering its quantity, dropping saved lines and deleting an order delete the files with their answers, through one function every path calls.
 - (U15) The privacy erase and export keep their work: the erase already collects these files by order.
+- (U16) The general job deletes the uploaded files of a cart that never became an order, N days after the cart's last touch (N is the owner's answer to the architect's poll, message 10011); a cart that became an order is never swept.
