@@ -49,8 +49,9 @@
  * newest row at or before a moment is what such a visitor paid then.
  *
  * products.price is the shop's own price, so every row written here has the
- * channel 'web'. The column is there for a price kept per sales channel later
- * (a marketplace account may sell at prices set by hand on its side).
+ * channel 'web'. A marketplace account with price rules sells at its own
+ * price: its rows have the channel 'marketplace:<account id>', written by
+ * mp_pricing_history_record() (includes/fn/marketplace_pricing.php).
  *
  * The rows are read back, oldest first, through pg_price_history_list_sql():
  * the external API lists them under GET /products/{id}/price-history
@@ -117,13 +118,15 @@ function pg_price_history_ready()
  * panel: a screen of the panel, the Workspace included; import: a product
  * import file; api: the external API and the MCP tools; offer: the general
  * job's record of what the open offers made the price; erp is kept for a
- * writer that will need it.
+ * writer that will need it; rule: a marketplace account's channel price from
+ * its price rules or the shop's price (includes/fn/marketplace_pricing.php);
+ * repricer: the price the marketplace repricer set.
  *
  * @return string[]
  */
 function pg_price_history_sources()
 {
-    return array('initial', 'panel', 'import', 'api', 'offer', 'erp');
+    return array('initial', 'panel', 'import', 'api', 'offer', 'erp', 'rule', 'repricer');
 }
 
 /**

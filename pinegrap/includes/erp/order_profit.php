@@ -73,15 +73,27 @@ function erp_order_profit_pass_sources()
 /**
  * An order's revenue: erp_profit_report()'s rule for an order (total plus the
  * gift card part, less tax; erp_profit_uninvoiced_orders()), less what was
- * refunded.
+ * refunded without its tax.
+ *
+ * refunded_amount is money paid back, tax included, while the revenue is
+ * without tax: the refund is taken off at the order's own share without tax
+ * (revenue / gross), so an order refunded in full comes to 0, not to its tax
+ * below zero.
  *
  * @param array $order  orders row
  * @return int
  */
 function erp_order_profit_revenue($order)
 {
-    return (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0)
-        - (int) ($order['tax'] ?? 0) - (int) ($order['refunded_amount'] ?? 0);
+    $gross = (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0);
+    $revenue = $gross - (int) ($order['tax'] ?? 0);
+    $refunded = (int) ($order['refunded_amount'] ?? 0);
+
+    if (($refunded > 0) && ($gross > 0) && ($revenue !== $gross)) {
+        $refunded = (int) round(min($refunded, $gross) * $revenue / $gross);
+    }
+
+    return $revenue - $refunded;
 }
 
 /**
@@ -248,6 +260,53 @@ function erp_order_profit_margin($net, $revenue)
 }
 
 /**
+ * A product's break-even price on a channel: the lowest price, without tax,
+ * at which a unit made no loss on the figures of the period read (the last 90
+ * days), and the price that reaches the target margin when one is set. Shown
+ * only: no price is ever changed from it. Pure.
+ *
+ * Product cost, shipping and other costs are taken as a cost per unit; the
+ * payment fees and marketplace deductions as a share of the price, as a rate
+ * on the sale is. So price - share x price - unit cost = margin x price, and
+ * price = unit cost / (1 - share - margin). A share and margin that take the
+ * whole price leave no such price (null); no cost makes every price cover it
+ * (0).
+ *
+ * @param array|null $group   erp_profitability_group() row: units, revenue and the costs
+ * @param float|null $target  Target margin, a percent of revenue; null for none
+ * @return array ['price' => int|null, 'target_price' => int|null, 'average_price' => int|null]
+ */
+function erp_order_profit_break_even($group, $target = null)
+{
+    $none = array('price' => null, 'target_price' => null, 'average_price' => null);
+    $units = is_array($group) ? (float) ($group['units'] ?? 0) : 0.0;
+
+    if ($units <= 0) {
+        return $none;
+    }
+
+    $revenue = (int) ($group['revenue'] ?? 0);
+    $share = ($revenue > 0) ? ((int) ($group['cost_payment'] ?? 0) + (int) ($group['cost_marketplace'] ?? 0)) / $revenue : 0.0;
+    $unit_cost = ((int) ($group['cost_product'] ?? 0) + (int) ($group['cost_shipping'] ?? 0) + (int) ($group['cost_other'] ?? 0)) / $units;
+
+    $price = function ($margin) use ($share, $unit_cost) {
+        $left = 1 - $share - $margin;
+
+        if ($left <= 0) {
+            return null;
+        }
+
+        return ($unit_cost <= 0) ? 0 : erp_kurus_up($unit_cost / $left);
+    };
+
+    return array(
+        'price' => $price(0),
+        'target_price' => ($target === null) ? null : $price(((float) $target) / 100),
+        'average_price' => ($revenue > 0) ? (int) round($revenue / $units) : null,
+    );
+}
+
+/**
  * Compute an order's cost rows and its profit. Reads nothing.
  *
  * @param array $input
@@ -260,6 +319,7 @@ function erp_order_profit_margin($net, $revenue)
  *   components       order_item_id => list of product_id, quantity (per bundle), unit_cost
  *   rates            kind (payment, shipping, marketplace) => key => ['percent', 'fixed']
  *   shipping_methods the shipping method ids of the order's recipients
+ *   shipping_costs   shipping method id => its recipients' shipping_cost added up
  *   marketplace      null, or account_id and commission (product_id => percent or null)
  *   recorded         cost rows written by others: kind, source, ref, amount
  * @return array ['costs' => rows the pass writes, 'profit' => the erp_order_profit figures]
@@ -295,17 +355,37 @@ function erp_order_profit_compute($input)
         }
     }
 
-    // Shipping: each recipient's method that has a rate, on the order's
-    // shipping charge, added up.
+    // Shipping: each recipient's method that has a rate, on the part of the
+    // order's shipping charge its recipients were charged, added up. One
+    // method takes the whole charge; several split it by their recipients'
+    // shipping costs (erp_allocate()), so no percent is taken twice.
     if (empty($real['shipping'])) {
         $amount = 0;
         $found = false;
+        $methods = array_values(array_unique(array_map('intval', (array) ($input['shipping_methods'] ?? array()))));
+        $charge = (int) ($order['shipping'] ?? 0);
+        $parts = array_fill_keys($methods, $charge);
 
-        foreach (array_unique(array_map('intval', (array) ($input['shipping_methods'] ?? array()))) as $method_id) {
+        if (count($methods) > 1) {
+            $weights = array();
+
+            foreach ($methods as $method_id) {
+                $weights[$method_id] = max(0, (int) ($input['shipping_costs'][$method_id] ?? 0));
+            }
+
+            // Without the recipients' costs the methods share evenly.
+            if (array_sum($weights) <= 0) {
+                $weights = array_fill_keys($methods, 1);
+            }
+
+            $parts = erp_allocate($charge, $weights);
+        }
+
+        foreach ($methods as $method_id) {
             $key = (string) $method_id;
 
             if (isset($rates['shipping'][$key])) {
-                $amount += erp_order_profit_rate_amount((int) ($order['shipping'] ?? 0), $rates['shipping'][$key]);
+                $amount += erp_order_profit_rate_amount((int) $parts[$method_id], $rates['shipping'][$key]);
                 $found = true;
             }
         }
@@ -489,8 +569,15 @@ function erp_order_profit_input($order, $rates)
         }
     }
 
-    $shipping_methods = array_map('intval', (array) db_values("SELECT DISTINCT shipping_method_id FROM ship_tos
-        WHERE order_id = '" . $order_id . "' AND shipping_method_id > 0"));
+    $shipping_methods = array();
+    $shipping_costs = array();
+
+    foreach ((array) db_items("SELECT shipping_method_id, SUM(shipping_cost) AS shipping_cost FROM ship_tos
+        WHERE order_id = '" . $order_id . "' AND shipping_method_id > 0
+        GROUP BY shipping_method_id ORDER BY shipping_method_id") as $row) {
+        $shipping_methods[] = (int) $row['shipping_method_id'];
+        $shipping_costs[(int) $row['shipping_method_id']] = (int) $row['shipping_cost'];
+    }
 
     $marketplace = null;
     $account_id = pg_schema_has('marketplace_order_map')
@@ -519,6 +606,7 @@ function erp_order_profit_input($order, $rates)
         'components' => $components,
         'rates' => $rates,
         'shipping_methods' => $shipping_methods,
+        'shipping_costs' => $shipping_costs,
         'marketplace' => $marketplace,
         'recorded' => $recorded,
     );
@@ -611,6 +699,20 @@ function erp_order_profit_mark($order_id)
     }
 
     return db_q("UPDATE erp_order_profit SET stale = 1 WHERE order_id = ?", array((int) $order_id)) !== false;
+}
+
+/**
+ * The join that keeps a profit row only while its order is a finished sale
+ * (erp_order_billable_statuses()). The pass removes a cancelled order's rows
+ * when its recheck reaches the order; until then every screen that reads the
+ * rows leaves it out through this join. Pure.
+ *
+ * @return string  SQL, to follow FROM erp_order_profit
+ */
+function erp_order_profit_counted_join()
+{
+    return "INNER JOIN orders AS profit_order ON profit_order.id = erp_order_profit.order_id AND "
+        . erp_order_billable_sql('profit_order.status');
 }
 
 /**

@@ -73,3 +73,60 @@ function test_shipment_label_auto_failed_row_never_printed()
 	pg_assert_false($document['ok']);
 	pg_assert_true($document['error'] !== '');
 }
+
+function test_shipment_label_auto_walk_reads_past_refused_addresses()
+{
+	// 120 addresses the run passes over (a marketplace's parcels, a service
+	// with the switch off), oldest first, then one that is due.
+	$rows = array();
+
+	for ($i = 1; $i <= 121; $i++) {
+		$rows[] = array('ship_to_id' => $i, 'paid_at' => 1000 + $i);
+	}
+
+	$reads = array();
+	$read = function ($after, $limit) use ($rows, &$reads) {
+		$reads[] = $after;
+		$page = array();
+
+		foreach ($rows as $row) {
+			if (($after === null) || ($row['paid_at'] > $after['paid_at'])
+				|| (($row['paid_at'] === $after['paid_at']) && ($row['ship_to_id'] > $after['ship_to_id']))) {
+				$page[] = $row;
+			}
+
+			if (count($page) >= $limit) {
+				break;
+			}
+		}
+
+		return $page;
+	};
+
+	$tried = array();
+	$try = function ($row) use (&$tried) {
+		$tried[] = $row['ship_to_id'];
+
+		return ($row['ship_to_id'] === 121) ? 'created' : '';
+	};
+
+	$out = pg_shipment_label_auto_walk($read, $try, 10, 50, 500);
+
+	pg_assert_same(array('created' => 1, 'failed' => 0), $out);
+	pg_assert_same(121, count($tried), 'every address is looked at once');
+	pg_assert_same(array('paid_at' => 1050, 'ship_to_id' => 50), $reads[1], 'the next page starts after the last address read');
+
+	// The run stops at its label limit and at its bound of addresses read.
+	$tried = array();
+	$all = function ($row) use (&$tried) {
+		$tried[] = $row['ship_to_id'];
+
+		return 'failed';
+	};
+	pg_assert_same(array('created' => 0, 'failed' => 3), pg_shipment_label_auto_walk($read, $all, 3, 50, 500));
+	pg_assert_same(3, count($tried));
+
+	$tried = array();
+	pg_assert_same(array('created' => 0, 'failed' => 0), pg_shipment_label_auto_walk($read, $try, 10, 50, 100));
+	pg_assert_same(100, count($tried), 'no more addresses than the bound are read');
+}

@@ -96,8 +96,8 @@ function test_api_settings_drawer_security_fields_are_form_fields()
 
 function api_settings_new_dialog_source()
 {
-	$source = api_settings_layout_source();
-	$dialog = substr($source, (int) strpos($source, '<dialog class="dialog dialog-lg dialog-scrollable" id="api_new"'));
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
+	$dialog = substr($source, (int) strpos($source, '<dialog class="drawer drawer-end" id="api_new"'));
 
 	return substr($dialog, 0, (int) strpos($dialog, '</dialog>'));
 }
@@ -106,22 +106,21 @@ function test_api_settings_new_dialog_fields_are_form_fields()
 {
 	$dialog = api_settings_new_dialog_source();
 
-	pg_assert_contains('<div class="form-field mb-5">' . "\n\t\t\t\t\t" . '<label class="form-label pg-field-label" for="n_name">', $dialog, 'Name is a form field');
-	pg_assert_contains('<div class="form-field mb-5">' . "\n\t\t\t\t\t" . '<label class="form-label pg-field-label" for="n_description">', $dialog, 'Description is a form field');
+	pg_assert_contains('<div class="col-12 sm:col-6 form-field">' . "\n\t\t\t\t\t\t" . '<label class="form-label pg-field-label" for="n_name">', $dialog, 'Name is a form field');
+	pg_assert_contains('<div class="col-12 sm:col-6 form-field">' . "\n\t\t\t\t\t\t" . '<label class="form-label pg-field-label" for="n_description">', $dialog, 'Description is a form field');
 	pg_assert_true(strpos($dialog, '<div class="mb-5">') === false, 'no bare stacked block is left in the dialog');
 }
 
 function test_api_settings_new_dialog_kind_is_a_named_choice_group()
 {
 	$dialog = api_settings_new_dialog_source();
+	$view = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
 
-	pg_assert_contains('<legend class="form-label pg-field-label">\' . lang(\'Who connects\') . \'</legend>', $dialog, 'the three kinds are a fieldset named by its legend');
-	foreach (array('server', 'device', 'oauth') as $kind) {
-		pg_assert_contains('id="n_kind_' . $kind . '" aria-describedby="n_kind_' . $kind . '_help"', $dialog, $kind . ' is described by its help text');
-		pg_assert_contains('<div class="form-text mt-0" id="n_kind_' . $kind . '_help">', $dialog, $kind . ' help text is a form text');
-	}
-	pg_assert_true(substr_count($dialog, '<div class="form-field form-field-card">') === 5, 'each kind and each starting point is a choice card');
-	pg_assert_contains('<div role="group" aria-labelledby="n_scope_title">', $dialog, 'the permission rows are a group named by their title');
+	pg_assert_contains('<legend class="visually-hidden">\' . lang(\'What connects to this site?\') . \'</legend>', $dialog, 'the starting points are a fieldset named by its legend');
+	pg_assert_contains('<div class="form-field form-field-card api-start-card">', $view, 'each starting point is a choice card');
+	pg_assert_contains('aria-describedby="\' . $id . \'_help \' . $id . \'_acts"', $view, 'a card is described by its text and its acts-as lines');
+	pg_assert_contains('<div class="form-text mt-1" id="\' . $id . \'_help">', $view, 'its text is a form text');
+	pg_assert_contains('<div role="group" aria-labelledby="n_scope_title" class="mb-5">', $dialog, 'the permission rows are a group named by their title');
 	pg_assert_contains('id="n_scope_title"', $dialog);
 }
 

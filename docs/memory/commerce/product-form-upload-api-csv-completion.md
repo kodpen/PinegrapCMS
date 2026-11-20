@@ -25,4 +25,4 @@ module: product_form_uploads
 ## What about the privacy export and erase?
 - Unchanged: the export already lists each product answer's `data` (the file's name) and `file_id`; the erase collects the files by order (`pg_privacy_erase_scope()`).
 
-Related: commerce/product-form-upload-field.md, commerce/product-form-upload-order-readers.md, plans/product-form-uploads.md
+Related: commerce/product-form-upload-field.md, commerce/product-form-upload-order-readers.md, commerce/product-form-uploads.md

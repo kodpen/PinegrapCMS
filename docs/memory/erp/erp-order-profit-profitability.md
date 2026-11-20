@@ -9,12 +9,14 @@ description: Accounting › Profitability (#10698): product by channel by period
 
 ## What does it show?
 - Period picker of the profit and loss screen (`erp_profit_period()`, default this month) and a channel filter (all, Web store, each marketplace account; `erp_profitability_channel_in()`).
-- Only `erp_order_profit` rows whose `order_date` is in the period: finished orders the general job computed. Finished orders with no row yet are counted in a note.
+- Only `erp_order_profit` rows whose `order_date` is in the period and whose order is still a finished sale (`erp_profitability_profit_from()`, #10792): finished orders the general job computed. Finished orders with no row yet are counted in a note.
 - Cards: net sales, costs, net profit, margin (against the target). Tables: By channel, and By product and channel (units, net sales, product cost, payment fees, marketplace deductions, shipping cost, other costs, net profit, margin), most profitable first, 1,000 rows on screen.
 - A margin below the target margin is drawn amber (`erp_profitability_below_target()`). A group counts its orders in Estimate and Incomplete state under the product's name.
+- The table ends with a "Break-even price" column from the last 90 days (`erp-order-profit-break-even-bell.md`).
 - At most 20,000 orders a period (`ERP_PROFITABILITY_MAX_ORDERS`), then a note to choose a shorter period.
 
 ## How is an order split over products?
+- Lines: only those charged with the order (`erp_profitability_lines()` through `erp_order_charged_items()`), as the pass costs them; a recurring line that starts later takes no share (#10792).
 - `erp_profitability_split()`: revenue and every non-product cost by each line's gross (price × quantity + `tax_total`, `erp_order_profit_line_gross()`), with `erp_allocate()`, so lines add up to the order exactly.
 - Product cost: a line with its own `item:<order_item_id>` cost row keeps it; the rest of the order's product cost goes to the other lines by weight (an invoiced order's single `invoice:<id>` row is spread this way). Lines with no weight share evenly; an order without lines is one row "Lines without a product".
 - Margin of a group, a channel or the total: `erp_order_profit_margin()` on the sums, never an average of margins.

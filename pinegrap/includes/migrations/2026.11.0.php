@@ -244,6 +244,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
 	upgrade_2026_11_0_ad_conversion_events();    // 11.0.254
+	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
+	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
+	upgrade_2026_11_0_ws_note_app();             // 11.0.257
 
 }
 
@@ -8227,5 +8230,183 @@ function upgrade_2026_11_0_ad_conversion_events() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Ad conversions: purchases can be queued for the ad services the shop connects.');
+
+}
+
+// Supplier feeds: the store pulls a supplier's XML, CSV or JSON list and keeps
+// price and stock in step (includes/fn/supplier_feed.php). supplier_feeds holds
+// one feed: the host shown, one encrypted blob with the address and the
+// credentials, the mapping and price rules as JSON, and the running pull's
+// cursor in state. supplier_feed_items holds one row per feed and supplier
+// record with its buy price (minor units of its currency, net of VAT) and the
+// product it matched. supplier_feed_runs logs each pull. No products column.
+function upgrade_2026_11_0_supplier_feeds() {
+
+	install_create_table('supplier_feeds', "CREATE TABLE supplier_feeds (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(150) NOT NULL DEFAULT '',
+		host            VARCHAR(255) NOT NULL DEFAULT '',
+		secret          TEXT NULL,
+		allow_http      TINYINT(1) NOT NULL DEFAULT 0,
+		format          VARCHAR(10) NOT NULL DEFAULT '',
+		interval_hours  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		vat_included    TINYINT(1) NOT NULL DEFAULT 0,
+		erp_account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		mapping         TEXT NULL,
+		rules           TEXT NULL,
+		state           TEXT NULL,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		pause_reason    VARCHAR(500) NOT NULL DEFAULT '',
+		next_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_next_run (status, next_run_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_items', "CREATE TABLE supplier_feed_items (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		supplier_key    VARCHAR(100) NOT NULL DEFAULT '',
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		barcode         VARCHAR(50) NOT NULL DEFAULT '',
+		buy_price       INT UNSIGNED NOT NULL DEFAULT 0,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		held_price      INT UNSIGNED NOT NULL DEFAULT 0,
+		stock           INT NOT NULL DEFAULT 0,
+		follow_price    TINYINT(1) NOT NULL DEFAULT 1,
+		closed_by_feed  TINYINT(1) NOT NULL DEFAULT 0,
+		active          TINYINT(1) NOT NULL DEFAULT 0,
+		dismissed       TINYINT(1) NOT NULL DEFAULT 0,
+		seen_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_feed_supplier_key (feed_id, supplier_key),
+		KEY idx_product (product_id),
+		KEY idx_barcode (barcode),
+		KEY idx_feed_seen (feed_id, seen_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_runs', "CREATE TABLE supplier_feed_runs (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		records         INT UNSIGNED NOT NULL DEFAULT 0,
+		added           INT UNSIGNED NOT NULL DEFAULT 0,
+		changed         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed          INT UNSIGNED NOT NULL DEFAULT 0,
+		reopened        INT UNSIGNED NOT NULL DEFAULT 0,
+		held            INT UNSIGNED NOT NULL DEFAULT 0,
+		failed          INT UNSIGNED NOT NULL DEFAULT 0,
+		detail          MEDIUMTEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_feed_started (feed_id, started_at),
+		KEY idx_started (started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Products: supplier feeds can be kept, ready for price and stock to follow a supplier\'s list.');
+
+}
+
+// The marketplace repricer's tables (2026.11.0, 11.0.256;
+// includes/fn/marketplace_pricing.php). A listing is the pair (account_id,
+// product_id), the unique key of marketplace_product_map, so a product
+// mapped again keeps its state. Money is integer minor units, 0 for none;
+// percents are hundredths of a percent; times are Unix seconds.
+//
+// marketplace_price_rules: one row per account and scope (0 the account,
+// 1 a category by product_groups.id in scope_id, 2 a brand by products.brand
+// in scope_key, which has no id). robot, step, min_margin and grow_cap are
+// read on the account's row only. No row sends the shop's price as before.
+//
+// marketplace_price_state: one row per listing: the strategy, a price and a
+// floor typed for it, the last buybox read, the robot's last price and when
+// a buybox was lost.
+//
+// marketplace_price_log: one row per price the robot or a rule set, sent or
+// only logged (try first); kept 90 days.
+function upgrade_2026_11_0_marketplace_pricing() {
+
+	install_create_table('marketplace_price_rules', "CREATE TABLE marketplace_price_rules (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		scope       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scope_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope_key   VARCHAR(100) NOT NULL DEFAULT '',
+		percent     INT NOT NULL DEFAULT 0,
+		fixed       INT NOT NULL DEFAULT 0,
+		rounding    VARCHAR(10) NOT NULL DEFAULT 'none',
+		robot       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		step        INT UNSIGNED NOT NULL DEFAULT 100,
+		min_margin  INT UNSIGNED NOT NULL DEFAULT 1000,
+		grow_cap    INT UNSIGNED NOT NULL DEFAULT 1000,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_account_scope (account_id, scope, scope_id, scope_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_state', "CREATE TABLE marketplace_price_state (
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		strategy      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		own_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		own_floor     INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_ours   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		robot_price   INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_price    INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		state         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, product_id),
+		KEY idx_account_buybox (account_id, buybox_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_log', "CREATE TABLE marketplace_price_log (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		old_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		new_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		floor         INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		currency      VARCHAR(3) NOT NULL DEFAULT '',
+		reason        VARCHAR(20) NOT NULL DEFAULT '',
+		sent          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		at            INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_listing_at (account_id, product_id, at),
+		KEY idx_account_at (account_id, at),
+		KEY idx_at (at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Marketplaces: an account can sell at its own prices by rules, never under a profit floor.');
+
+}
+
+// The application that changed a Workspace note (2026.11.0, 11.0.257;
+// includes/workspace/notes.php).
+//
+// Every application key acts for a person, so updated_by alone named that
+// person for every agent that wrote in a note. ws_notes.updated_app_id keeps
+// the application whose key made the last save, ws_note_versions.app_id the
+// one that saved each kept state; 0 means a person saved, which is what every
+// existing row becomes.
+function upgrade_2026_11_0_ws_note_app() {
+
+	install_add_column('ws_notes', 'updated_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
 
 }

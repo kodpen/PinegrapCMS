@@ -89,6 +89,7 @@
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
+- connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
@@ -286,6 +287,7 @@
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
 - image-editor-crop.md: The Artifact Canvas's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
+- image-editor-data-layer.md: The Artifact Canvas's data layer (DV1a, #10752): a Workspace table as a chart or a plain table, the description it holds, its check, grouping, the marks the browser draws, the shared fixture
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 - image-editor-encode.md: The Artifact Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]

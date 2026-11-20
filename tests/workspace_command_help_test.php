@@ -112,6 +112,26 @@ function test_workspace_command_help_one_command()
 	pg_assert_contains(h(lang(array('string' => 'There is no {var:1} command.', 'vars' => '/agent-channel'))), $thread['html'], 'a command that does not run here is not shown');
 }
 
+// The closest names never repeat the word refused, nor offer a command
+// that does not run in this channel: "/help topic" in a discussion was
+// answered "There is no /topic command. Did you mean: /topic".
+function test_workspace_command_closest_leaves_out_the_word_and_other_places()
+{
+	$thread = workspace_command_help_test_channel('thread');
+	$answer = ws_command_run(null, $thread, '/help topic');
+
+	pg_assert_contains(h(lang(array('string' => 'There is no {var:1} command.', 'vars' => '/topic'))), $answer['html'], 'not here');
+	pg_assert_same(array(), array_values(array_intersect(array('/topic', '/konu'), $answer['closest'])), 'not offered back in a discussion');
+	pg_assert_true(strpos($answer['html'], '<code>/topic</code>') === false, 'no "Did you mean" of the word itself');
+
+	foreach (ws_command_closest('konu', null, 3, $thread) as $name) {
+		pg_assert_true(ws_command_fold(ltrim($name, '/')) !== 'konu', $name . ': not the word itself');
+	}
+
+	pg_assert_same(array(), array_values(array_intersect(array('/görev', '/gorev'), ws_command_closest('gorev'))), 'the word itself is no hint');
+	pg_assert_contains('/konu', ws_command_closest('konux', null, 3, workspace_command_help_test_channel('public')), 'in the channel itself it is');
+}
+
 // The palette's command rows carry their group and where they run.
 function test_workspace_command_palette_carries_the_group()
 {

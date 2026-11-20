@@ -114,6 +114,73 @@ function ws_note_revision_ready()
 }
 
 /**
+ * Does a note keep the application that changed it (2026.11.0, 11.0.257)?
+ * The columns are named only once the step has added them.
+ *
+ * @return bool
+ */
+function ws_note_app_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'updated_app_id')
+            && pg_schema_has('ws_note_versions', 'app_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The application a save is written as: the one whose key made it, 0 for a
+ * person (the panel, a person's own device). Pure.
+ *
+ * @param array $data what ws_note_save() takes; app_id from the API only
+ * @return int
+ */
+function ws_note_saver_app($data)
+{
+    return max(0, (int) ($data['app_id'] ?? 0));
+}
+
+/**
+ * Who changed a note or saved one of its versions, as the card, the versions
+ * and the API name them: the application when its key saved, else the
+ * person. Pure.
+ *
+ * @param array|null $person ws_people() entry
+ * @param array|null $app    ws_app_sender() entry, null when a person saved
+ * @return array|null
+ */
+function ws_note_changer($person, $app)
+{
+    if (is_array($app)) {
+        return $app;
+    }
+
+    return is_array($person) ? $person : null;
+}
+
+/**
+ * The words under a note card: "Changed by @handle", the application by its
+ * name. Empty when nobody is known. Pure.
+ *
+ * @param array|null $changer ws_note_changer()
+ * @return string
+ */
+function ws_note_changed_by_words($changer)
+{
+    if (!is_array($changer)) {
+        return '';
+    }
+
+    $handle = trim((string) ($changer['username'] ?? ''));
+    $name = ($handle !== '') ? '@' . $handle : trim((string) ($changer['name'] ?? ''));
+
+    return ($name !== '') ? lang(array('string' => 'Changed by {var:1}', 'vars' => $name)) : '';
+}
+
+/**
  * Are deleted notes remembered (2026.11.0, 11.0.85)?
  *
  * @return bool
@@ -425,7 +492,9 @@ function ws_note($note_id)
 
 /**
  * What the person may do with a note: it is theirs, they may change it, they
- * may read it, or nothing at all. Being staff gives nothing here.
+ * may read it, or nothing at all. Being staff gives nothing here. A channel
+ * share with can_edit lets whoever may post in that channel change it; one
+ * who may only read the channel reads it.
  *
  * @param array      $viewer
  * @param array      $note
@@ -443,23 +512,59 @@ function ws_note_access($viewer, $note, $shares = null)
         return 'owner';
     }
 
-    $access = '';
-
     if ($shares === null) {
         $shares = db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
     }
 
+    // Posting is asked only of a channel whose share lets its posters edit.
+    $reach = function ($channel_id, $need) use ($viewer) {
+        $channel = ws_channel($channel_id);
+
+        if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+            return '';
+        }
+
+        return (($need === 'post') && ws_can_post_channel($viewer, $channel)) ? 'post' : 'read';
+    };
+
+    return ws_note_access_of((int) $viewer['id'], $note, (array) $shares, $reach);
+}
+
+/**
+ * ws_note_access() on rows given: pure but for $reach.
+ *
+ * @param int      $viewer_id
+ * @param array    $note   user_id
+ * @param array[]  $shares ws_note_shares rows: user_id, channel_id, can_edit
+ * @param callable $reach  (channel_id, need: read | post) => '' | read | post,
+ *                         the person's reach in that channel
+ * @return string owner | edit | view | ''
+ */
+function ws_note_access_of($viewer_id, $note, $shares, $reach)
+{
+    if ((int) $note['user_id'] === (int) $viewer_id) {
+        return 'owner';
+    }
+
+    $access = '';
+
     foreach ((array) $shares as $share) {
-        if ((int) $share['user_id'] === (int) $viewer['id']) {
-            if (!empty($share['can_edit'])) {
+        $editable = !empty($share['can_edit']);
+
+        if ((int) ($share['user_id'] ?? 0) === (int) $viewer_id) {
+            if ($editable) {
                 return 'edit';
             }
 
             $access = 'view';
-        } elseif (((int) $share['channel_id'] > 0) && ($access === '')) {
-            $channel = ws_channel($share['channel_id']);
+        } elseif (((int) ($share['channel_id'] ?? 0) > 0) && ($editable || ($access === ''))) {
+            $got = (string) $reach((int) $share['channel_id'], $editable ? 'post' : 'read');
 
-            if ($channel && ws_can_read_channel($viewer, $channel)) {
+            if ($editable && ($got === 'post')) {
+                return 'edit';
+            }
+
+            if ($got !== '') {
                 $access = 'view';
             }
         }
@@ -675,6 +780,11 @@ function ws_notes_present($viewer, $rows, $full = false)
         }
 
         $made = $channels[(int) $row['channel_id']] ?? null;
+        $app_id = (int) ($row['updated_app_id'] ?? 0);
+        $changer = ws_note_changer(
+            ((int) ($row['updated_by'] ?? 0) > 0) ? ($people[(int) $row['updated_by']] ?? null) : null,
+            ($app_id > 0) ? ws_app_sender($app_id) : null
+        );
         $excerpt = ws_plain_text($viewer, $body, null, true);
 
         if (mb_strlen($excerpt) > 140) {
@@ -690,6 +800,10 @@ function ws_notes_present($viewer, $rows, $full = false)
             'pinned'     => $owner && !empty($row['pinned']),
             'owner'      => $people[(int) $row['user_id']] ?? null,
             'updated_by' => ((int) ($row['updated_by'] ?? 0) > 0) ? ($people[(int) $row['updated_by']] ?? null) : null,
+            // The application whose key made the last save (null: a person
+            // did), and the words the card writes under the note.
+            'updated_app' => ($app_id > 0) ? ws_app_sender($app_id) : null,
+            'changed_by' => ws_note_changed_by_words($changer),
             'updated'    => ws_time_label($row['updated_at']),
             'updated_at' => (int) $row['updated_at'],
             'created'    => ws_time_label($row['created_at'] ?? 0),
@@ -755,10 +869,11 @@ function ws_note_body_view($viewer, $body)
  *
  * @param array $viewer
  * @param array $note the row before the save
- * @param array $sets the fields the save writes
+ * @param array $sets   the fields the save writes
+ * @param int   $app_id the application this save is written as, 0 for a person
  * @return void
  */
-function ws_note_version_keep($viewer, $note, $sets)
+function ws_note_version_keep($viewer, $note, $sets, $app_id = 0)
 {
     if (!ws_note_versions_ready()) {
         return;
@@ -788,15 +903,20 @@ function ws_note_version_keep($viewer, $note, $sets)
     $keep = !is_array($last)
         || ((time() - (int) $last['created_at']) >= WS_NOTE_VERSION_GAP)
         || ((int) $note['updated_by'] !== (int) $viewer['id'])
+        || ((int) ($note['updated_app_id'] ?? 0) !== (int) $app_id)
         || ($body_changed && ($old_length >= 20) && ($new_length < $old_length * 0.6));
 
     if (!$keep) {
         return;
     }
 
-    db("INSERT INTO ws_note_versions (note_id, title, body, saved_by, saved_at, created_at)
+    // The state is kept with whoever saved it: the person, and the
+    // application when its key did.
+    $app = ws_note_app_ready();
+
+    db("INSERT INTO ws_note_versions (note_id, title, body, saved_by, " . ($app ? 'app_id, ' : '') . "saved_at, created_at)
         VALUES ('" . $note_id . "', '" . e($old_title) . "', '" . e($old_body) . "',
-            '" . (int) $note['updated_by'] . "', '" . (int) $note['updated_at'] . "', '" . time() . "')");
+            '" . (int) $note['updated_by'] . "', " . ($app ? "'" . (int) ($note['updated_app_id'] ?? 0) . "', " : '') . "'" . (int) $note['updated_at'] . "', '" . time() . "')");
 
     $old = db_values("SELECT id FROM ws_note_versions WHERE note_id = '" . $note_id . "'
         ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP . ", 1000");
@@ -812,7 +932,7 @@ function ws_note_version_keep($viewer, $note, $sets)
  *
  * @param array $viewer
  * @param array $note
- * @return array[] id, title, saved, saved_full, by (person|null), size
+ * @return array[] id, title, saved, saved_full, by (person|null), app (application|null), changed_by, size
  */
 function ws_note_versions($viewer, $note)
 {
@@ -820,19 +940,25 @@ function ws_note_versions($viewer, $note)
         return array();
     }
 
-    $rows = (array) db_items("SELECT id, title, saved_by, saved_at, CHAR_LENGTH(body) AS size FROM ws_note_versions
+    $rows = (array) db_items("SELECT id, title, saved_by, " . (ws_note_app_ready() ? 'app_id, ' : '') . "saved_at, CHAR_LENGTH(body) AS size FROM ws_note_versions
         WHERE note_id = '" . (int) $note['id'] . "' ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP);
 
     $people = ws_people(array_unique(array_filter(array_map(function ($row) { return (int) $row['saved_by']; }, $rows))));
     $out = array();
 
     foreach ($rows as $row) {
+        $app_id = (int) ($row['app_id'] ?? 0);
+        $app = ($app_id > 0) ? ws_app_sender($app_id) : null;
+
         $out[] = array(
             'id'         => (int) $row['id'],
             'title'      => (string) $row['title'],
             'saved'      => ws_time_label($row['saved_at']),
             'saved_full' => ((int) $row['saved_at'] > 0) ? date('d.m.Y H:i', (int) $row['saved_at']) : '',
             'by'         => $people[(int) $row['saved_by']] ?? null,
+            // The application whose key saved this state; null: the person.
+            'app'        => $app,
+            'changed_by' => ws_note_changed_by_words(ws_note_changer($people[(int) $row['saved_by']] ?? null, $app)),
             'size'       => (int) $row['size'],
         );
     }
@@ -892,7 +1018,8 @@ function ws_notes_list_columns()
 {
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
-        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '');
+        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '')
+        . (ws_note_app_ready() ? ', n.updated_app_id' : '');
 }
 
 /**
@@ -1302,11 +1429,14 @@ function ws_note_save($viewer, $data)
     $sets = $check['sets'];
     $pin = $check['pin'];
     $now = time();
+    // The application whose key saves, written beside the person it acts for.
+    $app_id = ws_note_saver_app($data);
+    $app_ready = ws_note_app_ready();
 
     if ($note === null) {
-        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, created_at, updated_at)
+        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, " . ($app_ready ? 'updated_app_id, ' : '') . "created_at, updated_at)
             VALUES ('" . (int) $viewer['id'] . "', '" . e($sets['title']) . "', '" . e($sets['body']) . "',
-                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
+                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', " . ($app_ready ? "'" . $app_id . "', " : '') . "'" . $now . "', '" . $now . "')");
 
         $note_id = (int) mysqli_insert_id(db::$con);
 
@@ -1324,7 +1454,7 @@ function ws_note_save($viewer, $data)
     }
 
     // The state before this save, when it is worth keeping.
-    ws_note_version_keep($viewer, $note, $sets);
+    ws_note_version_keep($viewer, $note, $sets, $app_id);
 
     $parts = array();
 
@@ -1335,6 +1465,10 @@ function ws_note_save($viewer, $data)
     if (!empty($parts)) {
         $parts[] = "updated_by = '" . (int) $viewer['id'] . "'";
         $parts[] = "updated_at = '" . $now . "'";
+
+        if ($app_ready) {
+            $parts[] = "updated_app_id = '" . $app_id . "'";
+        }
     }
 
     if ($pin !== null) {
@@ -1347,6 +1481,7 @@ function ws_note_save($viewer, $data)
 
     if (!empty($parts)) {
         db("UPDATE ws_notes SET " . implode(', ', $parts) . " WHERE id = '" . $note_id . "'");
+        ws_note_cards_touch($note_id);
     }
 
     if (isset($sets['body']) && function_exists('ws_blocks_index')) {
@@ -1783,9 +1918,12 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
  * @param array $viewer
  * @param array $note
  * @param array $channel
+ * @param array $options can_edit (the channel's posters may change it),
+ *                       app_id and via_client_id (who the card's message is
+ *                       written as, see ws_message_send())
  * @return array ok, error, message_id
  */
-function ws_note_share_channel($viewer, $note, $channel)
+function ws_note_share_channel($viewer, $note, $channel, $options = array())
 {
     $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
 
@@ -1805,14 +1943,14 @@ function ws_note_share_channel($viewer, $note, $channel)
 
     // The card's words, for wherever the card itself is not drawn (a device
     // banner, a search, the external API).
-    $sent = ws_message_send($viewer, $channel, lang(array('string' => 'Shared a note: {var:1}', 'vars' => ws_note_title($viewer, $note))));
+    $sent = ws_message_send($viewer, $channel, ws_note_card_words($viewer, $note), ws_note_card_send_options($options));
 
     if (!$sent['ok']) {
         return array('ok' => false, 'error' => $sent['error'], 'message_id' => 0);
     }
 
-    db("INSERT INTO ws_note_shares (note_id, channel_id, message_id, shared_by, created_at)
-        VALUES ('" . (int) $note['id'] . "', '" . (int) $channel['id'] . "', '" . (int) $sent['message_id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+    db("INSERT INTO ws_note_shares (note_id, channel_id, can_edit, message_id, shared_by, created_at)
+        VALUES ('" . (int) $note['id'] . "', '" . (int) $channel['id'] . "', '" . (empty($options['can_edit']) ? 0 : 1) . "', '" . (int) $sent['message_id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 
     ws_note_folder_sync($note);
 
@@ -1893,6 +2031,212 @@ function ws_note_card_retire($message_id)
 }
 
 /**
+ * The words of a note card's message, for wherever the card itself is not
+ * drawn.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return string
+ */
+function ws_note_card_words($viewer, $note)
+{
+    return lang(array('string' => 'Shared a note: {var:1}', 'vars' => ws_note_title($viewer, $note)));
+}
+
+/**
+ * The ws_message_send() options of a note card's message: who it is written
+ * as, nothing else. Pure.
+ *
+ * @param array $options app_id, via_client_id
+ * @return array
+ */
+function ws_note_card_send_options($options)
+{
+    $out = array();
+
+    foreach (array('app_id', 'via_client_id') as $key) {
+        if ((int) ($options[$key] ?? 0) > 0) {
+            $out[$key] = (int) $options[$key];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * After a note changed: each message carrying its card in a channel is
+ * touched, so an open conversation draws the card again and changed_since
+ * returns it. No message is written, nobody is woken or told.
+ *
+ * @param int $note_id
+ * @return int how many cards
+ */
+function ws_note_cards_touch($note_id)
+{
+    $message_ids = (array) db_values("SELECT DISTINCT message_id FROM ws_note_shares
+        WHERE note_id = '" . (int) $note_id . "' AND channel_id > 0 AND message_id > 0");
+
+    foreach ($message_ids as $message_id) {
+        ws_message_touch((int) $message_id);
+    }
+
+    return count($message_ids);
+}
+
+/**
+ * The note's owner lets the posters of a channel it is shared in change it,
+ * or takes that back: the card's switch. A share a shared group wrote is the
+ * group's, and a locked note is refused.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param int   $channel_id
+ * @param bool  $can_edit
+ * @return array ok, error, message_id
+ */
+function ws_note_channel_edit_set($viewer, $note, $channel_id, $can_edit)
+{
+    if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
+        return array('ok' => false, 'error' => lang('Only the one who wrote a note can share it.'), 'message_id' => 0);
+    }
+
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'message_id' => 0);
+    }
+
+    $share = db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND channel_id = '" . (int) $channel_id . "'"
+        . (ws_note_groups_ready() ? " AND via_group = 0" : '') . " LIMIT 1");
+
+    if (!is_array($share) || ((int) $channel_id <= 0)) {
+        return array('ok' => false, 'error' => lang('That share could not be found.'), 'message_id' => 0);
+    }
+
+    db("UPDATE ws_note_shares SET can_edit = '" . ($can_edit ? 1 : 0) . "' WHERE id = '" . (int) $share['id'] . "'");
+
+    if ((int) $share['message_id'] > 0) {
+        ws_message_touch((int) $share['message_id']);
+    }
+
+    return array('ok' => true, 'error' => '', 'message_id' => (int) $share['message_id']);
+}
+
+/**
+ * A body sent as Markdown, in the shape a note keeps (ws_note_import_convert():
+ * "####" and deeper become "###", an underlined line a heading). Pure.
+ *
+ * @param string $body
+ * @return string
+ */
+function ws_note_channel_body($body)
+{
+    return ws_note_import_convert(str_replace("\r\n", "\n", (string) $body));
+}
+
+/**
+ * Whether a note may be written in a channel and its card posted there: the
+ * checks of ws_note_channel_write(), shared by the panel's window and the
+ * API's route (and its dry run). A body over WS_NOTE_MAX is refused with the
+ * limit, never cut.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $data    title, body, channel_edit, markdown (convert the body
+ *                       from Markdown first: the API), app_id, via_client_id
+ * @return array ok, error, field, title, body (as it would be stored)
+ */
+function ws_note_channel_write_check($viewer, $channel, $data)
+{
+    $fail = function ($error, $field = '') {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'title' => '', 'body' => '');
+    };
+
+    if (!ws_notes_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    if (!is_array($channel) || !ws_can_post_channel($viewer, $channel)) {
+        return $fail(lang('You cannot post in that channel.'));
+    }
+
+    $body = (string) ($data['body'] ?? '');
+
+    if (!empty($data['markdown'])) {
+        $body = ws_note_channel_body($body);
+    }
+
+    $title = (string) ($data['title'] ?? '');
+
+    if ((trim($title) === '') && (trim($body) === '')) {
+        return $fail(lang('The note is empty.'), 'body');
+    }
+
+    $saved = ws_note_save_check($viewer, array('note_id' => 0, 'title' => $title, 'body' => $body));
+
+    if (!$saved['ok']) {
+        return $fail($saved['error'], (mb_strlen($body) > WS_NOTE_MAX) ? 'body' : '');
+    }
+
+    $words = ws_note_card_words($viewer, array('title' => $saved['sets']['title'], 'body' => $saved['sets']['body']));
+    $sendable = ws_message_send_check($viewer, $channel, $words, ws_note_card_send_options($data));
+
+    if (!$sendable['ok']) {
+        return $fail($sendable['error']);
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'title' => $saved['sets']['title'], 'body' => $saved['sets']['body']);
+}
+
+/**
+ * Writes a new note of the person's own and posts its card in the channel in
+ * one move. channel_edit on lets the channel's posters change it. The card's
+ * message is written as $data's app_id / via_client_id say.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $data see ws_note_channel_write_check()
+ * @return array ok, error, field, note_id, message_id, revision
+ */
+function ws_note_channel_write($viewer, $channel, $data)
+{
+    $check = ws_note_channel_write_check($viewer, $channel, $data);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
+    }
+
+    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => $check['title'], 'body' => $check['body'], 'app_id' => (int) ($data['app_id'] ?? 0)));
+
+    if (!$saved['ok']) {
+        return array('ok' => false, 'error' => $saved['error'], 'field' => '', 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
+    }
+
+    $note = ws_note($saved['note_id']);
+    $shared = ws_note_share_channel($viewer, $note, $channel, array(
+        'can_edit'      => !empty($data['channel_edit']),
+        'app_id'        => (int) ($data['app_id'] ?? 0),
+        'via_client_id' => (int) ($data['via_client_id'] ?? 0),
+    ));
+
+    // A card that could not be posted leaves no note behind.
+    if (!$shared['ok']) {
+        ws_note_delete($viewer, $note);
+
+        return array('ok' => false, 'error' => $shared['error'], 'field' => '', 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
+    }
+
+    return array(
+        'ok'         => true,
+        'error'      => '',
+        'field'      => '',
+        'note_id'    => (int) $note['id'],
+        'message_id' => (int) $shared['message_id'],
+        'revision'   => (int) ($note['revision'] ?? 0),
+    );
+}
+
+/**
  * The note cards of a set of messages: for each message that shares a note
  * in its channel, the note as it is now, or that it is no longer shared.
  *
@@ -1934,7 +2278,11 @@ function ws_note_cards_map($viewer, $message_ids)
             'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],
+            'updated_app' => $card['updated_app'],
+            'changed_by' => $card['changed_by'],
             'updated'    => $card['updated'],
+            'revision'   => (int) ($note['revision'] ?? 0),
+            'updated_at' => (int) $note['updated_at'],
         );
     }
 
@@ -2467,8 +2815,12 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     // so what the assistant wrote under the line can be undone.
     ws_note_version_keep($viewer, $note, $sets);
 
-    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'" . ws_note_revision_sql() . "
+    // The person's screen writes the answer in, so no application is named.
+    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'"
+        . (ws_note_app_ready() ? ", updated_app_id = 0" : '') . ws_note_revision_sql() . "
         WHERE id = '" . (int) $note['id'] . "'");
+
+    ws_note_cards_touch((int) $note['id']);
 
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('note', (int) $note['id'], $body, (int) $note['user_id']);

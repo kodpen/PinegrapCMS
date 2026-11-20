@@ -162,9 +162,10 @@
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
+- office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves one sheet of an .xlsx: where it opens, what it sends, one change a save
 - office-sheets.md: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one change a save
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
-- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
+- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, cells without r, times and durations (#1118), the styles part the relationships name (#10765)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits [decision: decisions-made-product-84.md]
 - page-cache-background-writers.md: How the content import, the translation job and the bulk move to the visual designer mark the page cache dirty outside a signed-in request
@@ -213,7 +214,7 @@
 - short-link-names.md: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md. [decision: here]
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
-- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: here]
+- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: decisions-made-product-91.md]
 - sms-campaign-limit-and-labels.md: SMS campaign text limit and no maxlength, status labels, xref rows on group delete, save after the job claim, cancel confirm, read-only times, cut list name
 - sms-campaigns-module-load.md: functions.php does not load fn/sms_campaigns.php: a reader of SMS campaigns loads it itself, or a function_exists() check drops them silently (Sends lost them)
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens [decision: decisions-made-customers.md, decisions-made-product-8.md, decisions-made-schema-7.md]

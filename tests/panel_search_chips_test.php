@@ -135,8 +135,16 @@ function test_search_chips_follow_module_switches()
 function test_search_chips_use_the_gates()
 {
 	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
-	pg_assert_contains('$gate = pg_panel_search_chip_gates(', $php, 'chips gated by the helper');
-	pg_assert_true((bool) preg_match('/if \(\$gate\[\'order_reports\'\]\) \{\s*\$actions\[\] = array\(\'label\' => lang\(\'Order Reports\'\)/', $php), 'order reports under their own right');
+	pg_assert_contains('$gate = pg_panel_search_chip_gates(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/panel_screens.php'), 'chips gated by the helper');
+	pg_assert_contains('$gate = pg_panel_search_viewer_gates($user);', $php, 'the search reads the viewer\'s gates');
+	$order_reports = null;
+	foreach (pg_panel_search_screens() as $screen) {
+		if ($screen['url'] === 'view_order_reports.php') {
+			$order_reports = $screen;
+		}
+	}
+	pg_assert_same('order_reports', $order_reports['gate'], 'order reports under their own right');
+	pg_assert_same('Order Reports', $order_reports['label']);
 	pg_assert_false((bool) preg_match('/if \(\$can_(manage|design|ecommerce|contacts)\) \{\s*\$actions\[\]/', $php), 'no chip under a hand-made gate');
 	pg_assert_false((bool) preg_match('/Sayfalar|Dosyalar|e-Ticaret/', $php), 'section comments in English');
 }

@@ -19,7 +19,7 @@ description: Decisions list, product part 80 (2026-11-20 on): Artifact Canvas gr
 ## Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
 - Asked of a personalised product (photo mug, printed shirt, invitation, logo print), where the file is asked for by e-mail after the order today.
 - His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız resim", "Hayır, gerek yok".
-- The field's settings choose the allowed types; cart, order, order e-mail and API show the file. `plans/product-form-uploads.md`.
+- The field's settings choose the allowed types; cart, order, order e-mail and API show the file. `commerce/product-form-uploads.md`.
 
 ## When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
 - His answer: "30 gün sonra": the general job deletes the uploaded files of a cart that never became an order 30 days after the cart's last touch; an order's files are never swept.

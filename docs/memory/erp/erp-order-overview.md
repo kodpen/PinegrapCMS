@@ -17,12 +17,14 @@ description: Start file for the erp-order-* files: an order's ERP documents (inv
 ## Where is each part?
 - The invoice header (amounts, charge lines, gift card, the checks before a number is spent): `erp-order-invoice-header.md`.
 - Shipping, surcharge and instalment charges and their VAT: `erp-order-charges-vat.md`.
-- Order profit (the order-profit plan, NP steps):
+- Order profit (2026.11.0; what each feature is and its PR: `order-profit.md`):
   - The cost tables, the calculation and the resumable pass: `erp-order-profit-record.md`.
   - The fee a payment service kept: `erp-order-profit-payment-fee.md`.
   - Marketplace (Trendyol) deductions: `erp-order-profit-deductions.md`.
   - Label prices as the shipping cost: `erp-order-profit-label-price.md`.
   - The order's Profit card and the orders list: `erp-order-profit-screens.md`.
+  - Accounting › Profitability: `erp-order-profit-profitability.md`.
+  - Break-even price and the "Sold at a loss" bell: `erp-order-profit-break-even-bell.md`; the API routes: `api/api-erp-order-profit-routes.md`.
 
 ## How is a part added?
-- One file per part with the `erp-order-` prefix, named here under the screen or part it belongs to; the order-profit plan's close-out step keeps this file current.
+- One file per part with the `erp-order-` prefix, named here under the screen or part it belongs to; the session that adds it keeps this file current.
