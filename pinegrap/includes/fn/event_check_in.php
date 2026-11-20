@@ -25,6 +25,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The guest's name follows the tickets page's rule
+// (pg_event_ticket_guest_name()), so the door names whom the ticket names.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets_page.php');
+
 /** The most rows a name search answers. */
 define('PG_CHECK_IN_SEARCH_LIMIT', 30);
 
@@ -202,15 +206,17 @@ function pg_check_in_undo($ticket_id, $query = null)
 
 /**
  * Checks a ticket in: finds it, answers it, and marks a valid one used.
- * When the UPDATE loses to a scan on another phone, the row is read again
- * and the answer is "used".
+ * When the UPDATE changes no row, the row is read again and answered as it
+ * is then: "used" after a scan on another phone, "void" after a cancel,
+ * "unknown" after a deletion, "failed" when the write itself failed.
  *
  * @param callable $find   function (): array|null, the ticket row
  * @param array    $pick   pg_check_in_pick_parse()
  * @param array    $user   id, role, manage_ecommerce, manage_calendars
  * @param callable $event_access function (int $event_id): bool
  * @param callable|null $query pg_event_tickets_query() by default
- * @return array answer, ticket (the row as read after the write, or null)
+ * @return array answer (pg_check_in_answer() or failed), ticket (the row as
+ *               read after the write, or null)
  */
 function pg_check_in_run($find, array $pick, array $user, $event_access, $query = null)
 {
@@ -219,11 +225,17 @@ function pg_check_in_run($find, array $pick, array $user, $event_access, $query 
     $answer = pg_check_in_answer($ticket, $pick, $allowed);
 
     if ($answer === 'valid') {
-        if (!pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query)) {
-            $answer = 'used';
-        }
-
+        $marked = pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query);
         $ticket = call_user_func($find);
+
+        // The write lost: the row changed after it was read (another phone
+        // checked it in, its order was cancelled or deleted), so the answer
+        // is the row's as read again. A row that still reads valid was not
+        // marked because the write failed: "failed", never "used".
+        if (!$marked) {
+            $answer = pg_check_in_answer($ticket, $pick, $allowed);
+            $answer = ($answer === 'valid') ? 'failed' : $answer;
+        }
     }
 
     if (($answer === 'unknown') || ($answer === 'denied')) {
@@ -385,26 +397,39 @@ function pg_check_in_with_names(array $tickets)
         $line_ids[(int) $ticket['order_item_id']] = true;
     }
 
-    $forms = array();
+    $rows = array();
 
     if ($line_ids) {
         $ids = array_keys($line_ids);
         $rows = pg_check_in_rows(
-            "SELECT form_data.order_item_id, form_data.quantity_number, form_fields.contact_field, form_data.data
+            "SELECT form_data.order_item_id, form_data.quantity_number, form_data.name, form_data.data, form_fields.contact_field
             FROM form_data
-            INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
-            WHERE
-                (form_data.order_item_id IN (" . implode(',', array_fill(0, count($ids), '?')) . "))
-                AND (form_fields.contact_field IN ('first_name', 'last_name'))",
+            LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
+            WHERE form_data.order_item_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ")
+            ORDER BY form_data.id",
             $ids);
-
-        foreach ($rows as $row) {
-            $forms[(int) $row['order_item_id'] . ':' . (int) $row['quantity_number']][(string) $row['contact_field']] = (string) $row['data'];
-        }
     }
 
+    return pg_check_in_names_from_forms($tickets, $rows);
+}
+
+/**
+ * Each ticket with its guest name: the one the tickets page shows
+ * (pg_event_ticket_guest_name() on the unit's product form), else the
+ * buyer's. Pure.
+ *
+ * @param array $tickets   rows with order_item_id, unit, billing_first_name,
+ *                         billing_last_name
+ * @param array $form_rows the lines' form_data rows with contact_field
+ * @return array the tickets with guest_name
+ */
+function pg_check_in_names_from_forms(array $tickets, array $form_rows)
+{
+    $guests = pg_event_tickets_guest_names_from_rows($form_rows);
+
     foreach ($tickets as $i => $ticket) {
-        $tickets[$i]['guest_name'] = pg_check_in_guest_name($forms[(int) $ticket['order_item_id'] . ':' . (int) $ticket['unit']] ?? array(), $ticket);
+        $guest = (string) ($guests[(int) $ticket['order_item_id']][(int) $ticket['unit']] ?? '');
+        $tickets[$i]['guest_name'] = ($guest !== '') ? $guest : pg_check_in_guest_name(array(), $ticket);
     }
 
     return $tickets;
@@ -441,11 +466,28 @@ function pg_check_in_search(array $pick, $text)
         return array();
     }
 
-    $like = '%' . escape_like(mb_substr($text, 0, 100)) . '%';
+    $search = pg_check_in_search_sql($pick, $text);
+
+    return pg_check_in_with_names(pg_check_in_rows($search['sql'], $search['params']));
+}
+
+/**
+ * The name search's statement and values: the buyer's name, the order
+ * number, or a name in the unit's product form, read by the tickets page's
+ * rule (the contact's name fields, or a field named for the guest,
+ * PG_EVENT_TICKET_GUEST_FIELD_PATTERN). Pure.
+ *
+ * @param array  $pick
+ * @param string $text the trimmed search text
+ * @return array sql, params
+ */
+function pg_check_in_search_sql(array $pick, $text = '')
+{
+    $like = '%' . escape_like(mb_substr((string) $text, 0, 100)) . '%';
     $where = pg_check_in_pick_where($pick);
 
-    return pg_check_in_with_names(pg_check_in_rows(
-        "SELECT " . PG_CHECK_IN_TICKET_COLUMNS . "
+    return array(
+        'sql'    => "SELECT " . PG_CHECK_IN_TICKET_COLUMNS . "
         FROM event_tickets AS t
         LEFT JOIN orders ON orders.id = t.order_id
         LEFT JOIN user ON user.user_id = t.used_by
@@ -457,15 +499,36 @@ function pg_check_in_search(array $pick, $text)
                 OR (orders.order_number = ?)
                 OR EXISTS (
                     SELECT 1 FROM form_data
-                    INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+                    LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
                     WHERE
                         (form_data.order_item_id = t.order_item_id)
                         AND (form_data.quantity_number = t.unit)
-                        AND (form_fields.contact_field IN ('first_name', 'last_name'))
+                        AND (
+                            (form_fields.contact_field IN ('first_name', 'last_name'))
+                            OR (LOWER(form_data.name) REGEXP ?))
                         AND (form_data.data LIKE ?)))
         ORDER BY orders.billing_last_name, orders.billing_first_name, t.order_item_id, t.unit
         LIMIT " . PG_CHECK_IN_SEARCH_LIMIT,
-        array_merge($where['params'], array($like, $text, $like))));
+        'params' => array_merge($where['params'], array($like, (string) $text, PG_EVENT_TICKET_GUEST_FIELD_PATTERN, $like)),
+    );
+}
+
+/**
+ * The query of the event dates that hold tickets, 500 at most. The dates
+ * whose tickets were sold last come first: the ended ones are dropped only
+ * after the cap, so without an order the oldest dates filled it and a new
+ * event never reached the pick list. Pure.
+ *
+ * @return string
+ */
+function pg_check_in_picks_groups_sql()
+{
+    return "SELECT calendar_event_id, recurrence_number
+        FROM event_tickets
+        WHERE (calendar_event_id > 0) AND (state <> 'void')
+        GROUP BY calendar_event_id, recurrence_number
+        ORDER BY MAX(id) DESC
+        LIMIT 500";
 }
 
 /**
@@ -482,12 +545,7 @@ function pg_check_in_picks(array $user, $event_access)
     $picks = array();
     $dated = array();
 
-    $groups = pg_check_in_rows(
-        "SELECT calendar_event_id, recurrence_number
-        FROM event_tickets
-        WHERE (calendar_event_id > 0) AND (state <> 'void')
-        GROUP BY calendar_event_id, recurrence_number
-        LIMIT 500", array());
+    $groups = pg_check_in_rows(pg_check_in_picks_groups_sql(), array());
 
     foreach ($groups as $group) {
         $event_id = (int) $group['calendar_event_id'];
@@ -532,7 +590,7 @@ function pg_check_in_picks(array $user, $event_access)
         foreach ($products as $row) {
             $picks[] = array(
                 'value'  => pg_check_in_pick_value(array('kind' => 'product', 'event_id' => 0, 'recurrence_number' => 0, 'product_id' => (int) $row['product_id'])),
-                'label'  => ((string) $row['short_description'] !== '') ? (string) $row['short_description'] : (string) $row['name'],
+                'label'  => pg_check_in_product_label($row),
                 'detail' => lang('Ticket product'),
             );
         }
@@ -579,6 +637,9 @@ function pg_check_in_answer_text($answer, $ticket, $for = '')
         case 'void':
             return array('pill' => lang('Voided'), 'title' => lang('Void ticket'), 'detail' => trim(lang('Its order was cancelled.') . ' ' . $order), 'tone' => 'rose');
 
+        case 'failed':
+            return array('pill' => lang('Not checked in'), 'title' => lang('The ticket could not be checked in'), 'detail' => lang('Scan it again.'), 'tone' => 'rose');
+
         case 'denied':
             return array('pill' => lang('Not allowed'), 'title' => lang('You may not check in this ticket'), 'detail' => lang('Its event or product is not one you manage.'), 'tone' => 'rose');
     }
@@ -621,7 +682,25 @@ function pg_check_in_ticket_for(array $ticket)
         return is_array($event) ? trim((string) $event['name'] . ', ' . pg_check_in_event_date($event), ', ') : '';
     }
 
-    return (string) db_value("SELECT short_description FROM products WHERE id = '" . (int) ($ticket['product_id'] ?? 0) . "'");
+    return pg_check_in_product_label(db_item("SELECT short_description, name FROM products WHERE id = '" . (int) ($ticket['product_id'] ?? 0) . "'"));
+}
+
+/**
+ * A ticket product as the screen names it: its short description, else its
+ * name. Pure.
+ *
+ * @param array|null $product short_description, name; null when it is gone
+ * @return string
+ */
+function pg_check_in_product_label($product)
+{
+    if (!is_array($product)) {
+        return '';
+    }
+
+    $label = trim((string) ($product['short_description'] ?? ''));
+
+    return ($label !== '') ? $label : trim((string) ($product['name'] ?? ''));
 }
 
 /**

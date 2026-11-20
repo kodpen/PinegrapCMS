@@ -25,7 +25,7 @@ description: Link marks on the editor canvas: red on a broken link, amber on one
 - Colours are tokens (`--sd-danger`, `--sd-warning`, focus `--sd-accent`); 18 px, the measures' badge size.
 
 ## Why in the core file, not a part?
-- The marks show on every page as it opens, and opening the editor loads no part (plans/designer-panels-rules.md K12); the decisions are in the pure module, tested in Node.
+- The marks show on every page as it opens, and opening the editor loads no part (K12 of `designer-panels-keep.md`); the decisions are in the pure module, tested in Node.
 
 ## Which tests cover it?
 - `tests/proto_hotspots_test.php` (`test_proto_hotspots_canvas_marks`): which links, why, the request. `tests/designer_canvas_link_marks_test.php`: the run, the place, the field order, the hooks and the CSS.

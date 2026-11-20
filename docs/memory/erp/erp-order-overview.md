@@ -23,6 +23,8 @@ description: Start file for the erp-order-* files: an order's ERP documents (inv
   - Marketplace (Trendyol) deductions: `erp-order-profit-deductions.md`.
   - Label prices as the shipping cost: `erp-order-profit-label-price.md`.
   - The order's Profit card and the orders list: `erp-order-profit-screens.md`.
+  - Accounting › Profitability: `erp-order-profit-profitability.md`.
+  - Break-even price and the "Sold at a loss" bell: `erp-order-profit-break-even-bell.md`; the API routes: `api/api-erp-order-profit-routes.md`.
 
 ## How is a part added?
 - One file per part with the `erp-order-` prefix, named here under the screen or part it belongs to; the order-profit plan's close-out step keeps this file current.

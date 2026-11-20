@@ -157,7 +157,8 @@ function pg_connections_not_services()
  * and 'found_at' (a card its name still finds in the settings search after
  * its settings moved to its page on Connections); a Google feature names
  * under 'apis' the Google Cloud APIs it calls (service name => product
- * name), listed on Google's page (pg_google_cloud_apis()).
+ * name), listed on Google's page (pg_google_cloud_apis()). Every row
+ * also carries 'country' and 'data' from pg_connections_transfer_fields().
  *
  * @param mixed $row
  * @return array list of key names
@@ -205,6 +206,27 @@ function pg_connections_row_problems($row)
 
     if (!$text('uses')) {
         $problems[] = 'uses';
+    }
+
+    if (!isset($row['country']) || !is_string($row['country']) || !preg_match('/^([A-Z]{2}|\*)$/', $row['country'])) {
+        $problems[] = 'country';
+    }
+
+    $data = isset($row['data']) ? $row['data'] : null;
+    $categories = pg_privacy_inventory_categories();
+    $data_whole = is_array($data) && $data && (($data === array('none')) || !in_array('none', $data, true));
+
+    if ($data_whole) {
+        foreach ($data as $key) {
+            if (($key !== 'none') && (!is_string($key) || !isset($categories[$key]))) {
+                $data_whole = false;
+                break;
+            }
+        }
+    }
+
+    if (!$data_whole) {
+        $problems[] = 'data';
     }
 
     if (isset($row['covers'])) {
@@ -355,6 +377,143 @@ function pg_connections_place_services($place)
     $keys = pg_connections_place_keys();
 
     return isset($keys[$place]) ? $keys[$place] : array();
+}
+
+/**
+ * Where each service sits and what personal data the site sends it, for the
+ * Privacy centre's transfers: id => array(country, data). Pure.
+ *
+ * country: the two-letter code of the country of the company the site
+ *          contracts with (its seat when this was written; the shop checks
+ *          it for its own notice), or '*' for a network with no one country.
+ * data:    keys of pg_privacy_inventory_categories(), or array('none') when
+ *          the service receives no personal data.
+ *
+ * A row of pg_connections_registry() missing here fails its test.
+ *
+ * @return array id => array(country, data)
+ */
+function pg_connections_transfer_fields()
+{
+    $card = array('identity', 'contact', 'address', 'order_payment', 'ip_cookie');
+    $label = array('identity', 'contact', 'address');
+    $order = array('identity', 'contact', 'address', 'order_payment');
+    $mail = array('identity', 'contact', 'messages');
+    $sms = array('contact', 'messages');
+    $alert = array('identity', 'contact', 'messages');
+    $backup = array('identity', 'contact', 'address', 'order_payment', 'ip_cookie', 'signature', 'uploads', 'messages');
+    $sign_in = array('identity', 'contact');
+    $calendar = array('identity', 'contact', 'messages');
+    $text = array('messages');
+    $none = array('none');
+
+    return array(
+        'iyzico' => array('TR', $card),
+        'stripe' => array('US', $card),
+        'paypal' => array('US', $card),
+        'paytr' => array('TR', $card),
+        'authorize_net' => array('US', $card),
+        'clearcommerce' => array('US', $card),
+        'first_data' => array('US', $card),
+        'sage' => array('US', $card),
+        'givex' => array('CA', array('order_payment')),
+
+        'geliver' => array('TR', $label),
+        'basitkargo' => array('TR', $label),
+        'kargonomi' => array('TR', $label),
+        'aras' => array('TR', $label),
+        'shippo' => array('US', $label),
+        'sendcloud' => array('NL', $label),
+        'ups' => array('US', array('address')),
+        'fedex' => array('US', array('address')),
+        'usps' => array('US', array('address')),
+        'shipworks' => array('US', $order),
+
+        'n11' => array('TR', $order),
+        'trendyol' => array('TR', $order),
+        'merchant_center' => array('US', $none),
+        'openai_feed' => array('US', $none),
+
+        'parasut' => array('TR', $order),
+        'isbasi' => array('TR', $order),
+        'vies' => array('BE', array('identity')),
+
+        'postmark' => array('US', $mail),
+        'mailgun' => array('US', $mail),
+        'brevo' => array('FR', $mail),
+        'resend' => array('US', $mail),
+        'ses' => array('US', $mail),
+        'gmail' => array('US', $mail),
+        'microsoft_mail' => array('US', $mail),
+        'mailchimp' => array('US', $sign_in),
+
+        'netgsm' => array('TR', $sms),
+        'iletimerkezi' => array('TR', $sms),
+        'twilio' => array('US', $sms),
+        'iys' => array('TR', array('contact')),
+        'whatsapp' => array('US', $alert),
+        'slack' => array('US', $alert),
+        'teams' => array('US', $alert),
+        'telegram' => array('AE', $alert),
+
+        'google_drive' => array('US', $backup),
+        'onedrive' => array('US', $backup),
+        'dropbox' => array('US', $backup),
+
+        'signin_google' => array('US', $sign_in),
+        'signin_microsoft' => array('US', $sign_in),
+        'signin_apple' => array('US', $sign_in),
+
+        'google_calendar' => array('US', $calendar),
+        'outlook_calendar' => array('US', $calendar),
+        'onenote' => array('US', $text),
+
+        'google_analytics' => array('US', array('ip_cookie')),
+        'search_console' => array('US', $none),
+        'indexnow' => array('US', $none),
+
+        'google_places' => array('US', array('address')),
+        'mapbox' => array('US', array('address')),
+        'photon' => array('DE', array('address')),
+        'google_reviews' => array('US', $none),
+        'dbip' => array('*', $none),
+
+        'pinegrap_ai' => array('TR', $text),
+        'claude' => array('US', $text),
+        'openai' => array('US', $text),
+        'anthropic' => array('US', $text),
+        'gemini' => array('US', $text),
+        'mistral' => array('FR', $text),
+        'deepseek' => array('CN', $text),
+        'openrouter' => array('US', $text),
+        'azure_openai' => array('US', $text),
+        'google_translate' => array('US', $text),
+
+        'cloudflare' => array('US', $none),
+        'turnstile' => array('US', array('ip_cookie')),
+        'hcaptcha' => array('US', array('ip_cookie')),
+        'stopforumspam' => array('GB', array('contact', 'ip_cookie')),
+
+        'github' => array('US', $none),
+        'activitypub' => array('*', array('identity', 'messages')),
+        'frankfurter' => array('*', $none),
+        'hexarate' => array('*', $none),
+        'pinegrap' => array('TR', $none),
+
+        // An MCP connector receives what an assistant asks it.
+        'mcp_deepwiki' => array('US', $text),
+        'mcp_context7' => array('US', $text),
+        'mcp_mslearn' => array('US', $text),
+        'mcp_cloudflare_docs' => array('US', $text),
+        'mcp_huggingface' => array('US', $text),
+        'mcp_linear' => array('US', $text),
+        'mcp_notion' => array('US', $text),
+        'mcp_sentry' => array('US', $text),
+        'mcp_atlassian' => array('AU', $text),
+        'mcp_vercel' => array('US', $text),
+        'mcp_canva' => array('AU', $text),
+        'mcp_github' => array('US', $text),
+    );
 }
 
 /**
@@ -641,6 +800,13 @@ function pg_connections_registry()
         'mcp_github' => array('name' => 'GitHub', 'group' => 'mcp', 'place' => '#settings/workspace_assistants/pgset-ws-mcp', 'uses' => 'Tools for the Workspace\'s assistants',
             'state' => array('kind' => 'mcp', 'key' => 'github'), 'covers' => array('mcp' => array('github'))),
     );
+
+    foreach (pg_connections_transfer_fields() as $id => $fields) {
+        if (isset($rows[$id])) {
+            $rows[$id]['country'] = $fields[0];
+            $rows[$id]['data'] = $fields[1];
+        }
+    }
 
     return $rows;
 }
