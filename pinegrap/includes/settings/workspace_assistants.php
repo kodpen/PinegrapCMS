@@ -12,8 +12,9 @@
  *
  * Each part is one folded row (includes/settings/fold.php) holding its card
  * as the card's own function draws it; the rows' order, lines and pills are
- * includes/workspace/assistants_fold.php. Fills $pg_settings_cards with the
- * one list of rows. Which cards belong here is said once, in
+ * includes/workspace/assistants_fold.php, each part's line of help and its
+ * guide drawer includes/workspace/assistants_help.php. Fills
+ * $pg_settings_cards with the one list of rows. Which cards belong here is said once, in
  * includes/settings/registry.php; this file holds them, and
  * workspace_assistants.save.php writes what they edit.
  *
@@ -34,6 +35,7 @@ if (!defined('PG_API_PANEL')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/assistants_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/assistants_help.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
 $ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
@@ -153,6 +155,14 @@ $ws_card = ws_canvas_templates_settings_card($ws_viewer);
 
 if ($ws_card !== '') {
     $ws_parts['ws-canvas-templates'] = array('html' => $ws_card) + ws_assistants_fold_templates(count(pg_canvas_templates_rows()));
+}
+
+// ── The parts' guides ──
+// "How does this work?" under a part's line opens its numbered steps.
+foreach (ws_assistants_help_keys() as $ws_key) {
+    if (isset($ws_parts[$ws_key])) {
+        $pg_settings_modals[] = ws_assistants_guide_drawer($ws_key, !empty($pg_settings_in_dialog));
+    }
 }
 
 // ── The rows ──

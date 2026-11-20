@@ -207,8 +207,8 @@ function ws_assistants_help_html($key)
 
     $id = 'pgset-' . $key . '-guide';
 
-    return '<p class="pg-text-2 fg-secondary ws-assist-help">' . h($line)
-        . ' <button type="button" class="btn btn-link p-0 align-baseline pg-text-2" data-bs-toggle="drawer" data-bs-target="#' . h($id) . '" aria-controls="' . h($id) . '">' . h(lang('How does this work?')) . '</button></p>';
+    return '<p class="pg-text-2 fg-secondary d-flex flex-wrap align-items-center gap-2">' . h($line)
+        . ' <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . h($id) . '" aria-controls="' . h($id) . '">' . h(lang('How does this work?')) . '</button></p>';
 }
 
 /**

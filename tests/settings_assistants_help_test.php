@@ -76,3 +76,33 @@ function test_settings_assistants_help_markup()
 	pg_assert_same('', ws_assistants_guide_drawer('ws-claude', true), 'no drawer for a part without a guide');
 }
 
+function test_settings_assistants_help_cards()
+{
+	$cards = array(
+		'ws-ai'               => 'includes/workspace/ai.php',
+		'ws-agents'           => 'includes/workspace/agents_settings.php',
+		'ws-mcp'              => 'includes/workspace/mcp.php',
+		'ws-voice'            => 'includes/workspace/voice.php',
+		'ws-canvas-templates' => 'includes/workspace/canvas_templates_card.php',
+	);
+
+	foreach ($cards as $key => $file) {
+		pg_assert_contains("ws_assistants_help_html('" . $key . "')", settings_assistants_help_test_source($file), $key . ': the card draws its line');
+	}
+
+	$gone = array(
+		'includes/workspace/ai.php'                    => array("lang('How to connect it')", "lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')"),
+		'includes/workspace/agents_settings.php'       => array("lang('Agents act as members of the channels they are added to, each through its own application."),
+		'includes/workspace/mcp.php'                   => array("<summary>' . h(lang('How it works'))", "Add a ready-made connector with one click, or any other by its address.')) . '</p>"),
+		'includes/workspace/canvas_templates_card.php' => array("lang('Canvases marked with Save as template in the image editor."),
+	);
+
+	foreach ($gone as $file => $texts) {
+		foreach ($texts as $text) {
+			pg_assert_true(strpos(settings_assistants_help_test_source($file), $text) === false, $file . ': the long text moved to the drawer: ' . $text);
+		}
+	}
+
+	pg_assert_contains('ws_assistants_guide_drawer(', settings_assistants_help_test_source('includes/settings/workspace_assistants.php'), 'the pane draws the guides');
+	pg_assert_contains("lang('Start from an application')", settings_assistants_help_test_source('includes/workspace/agents_settings.php'), 'Add an agent offers an application');
+}
