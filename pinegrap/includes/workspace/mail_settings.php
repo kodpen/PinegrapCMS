@@ -1027,6 +1027,84 @@ function ws_mail_sent_position_resets($before, $after)
 }
 
 /**
+ * Whether a mailbox may be removed by this person, before anything is
+ * written: the Workspace settings right, a box that exists, and not a
+ * WhatsApp or SMS account's box (kept by its own card). Pure.
+ *
+ * @param array      $viewer
+ * @param array|null $box ws_mail_box()
+ * @return array ok, error
+ */
+function ws_mail_box_remove_check($viewer, $box)
+{
+    if (empty($viewer['settings'])) {
+        return array('ok' => false, 'error' => lang('You do not have access to Workspace settings.'));
+    }
+
+    if (!is_array($box) || ((int) ($box['id'] ?? 0) < 1) || ws_mail_box_is_phone($box)) {
+        return array('ok' => false, 'error' => lang('That mailbox could not be found.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * What removing a mailbox writes. The box's row goes, and with it
+ * everything kept in its settings: the stored password (sealed there),
+ * the incoming mail rules, the routes, the reading position; its own
+ * blocked senders go too. A conversation, a mail, its card in the channel
+ * and a box's room (kept in the mailbox itself) are never touched: they
+ * stay where they are. Pure.
+ *
+ * @param int $box_id
+ * @return string[] SQL
+ */
+function ws_mail_box_remove_queries($box_id)
+{
+    $box_id = (int) $box_id;
+
+    return array(
+        "DELETE FROM ws_mail_blocks WHERE box_id = '" . $box_id . "'",
+        "DELETE FROM ws_mail_boxes WHERE id = '" . $box_id . "'",
+    );
+}
+
+/**
+ * Remove a mailbox checked by ws_mail_box_remove_check(): reading stops at
+ * once, as the row the fetch reads is gone. A Site Log line names it.
+ *
+ * @param array  $box
+ * @param string $username
+ */
+function ws_mail_box_remove_write($box, $username)
+{
+    foreach (ws_mail_box_remove_queries((int) $box['id']) as $sql) {
+        // The block list may predate its table's step.
+        if ((strpos($sql, 'ws_mail_blocks') !== false) && function_exists('ws_mail_blocks_ready') && !ws_mail_blocks_ready()) {
+            continue;
+        }
+
+        db($sql);
+    }
+
+    log_activity(lang(array('string' => 'the mailbox {var:1} was removed', 'vars' => (string) $box['name'])), $username);
+}
+
+/**
+ * What Remove's confirm says will happen, in the person's words.
+ *
+ * @param array $box
+ * @return string
+ */
+function ws_mail_box_remove_confirm($box)
+{
+    return lang(array(
+        'string' => 'Remove the mailbox {var:1}? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are.',
+        'vars'   => (string) $box['name'],
+    ));
+}
+
+/**
  * One mailbox's form, empty for a new one.
  *
  * @param string     $self_url
