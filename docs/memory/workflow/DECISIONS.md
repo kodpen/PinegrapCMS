@@ -63,12 +63,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-13, #9070)
 - decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-13, #9070)
 - decisions-made-panel-7.md: Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
-- decisions-made-panel-7.md: Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
+- decisions-made-panel-7.md: Which drawing is the Artifact Canvas icon? (owner, 2026-11-12, #8903)
 - decisions-made-panel-7.md: Does the dashboard move to look A? (owner, 2026-11-12, #8938)
 - decisions-made-panel-8.md: Where are the rules and the earlier parts?
 - decisions-made-panel-8.md: Is the report screen page the reference for the report screens? (owner, 2026-11-12, #8955)
 - decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
-- decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
+- decisions-made-panel-8.md: Where is the Artifact Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
 - decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
 - decisions-made-panel-8.md: Which drawing does the Communication row of the main menu carry? (owner, 2026-11-14, in the architect's window)
 - decisions-made-panel-9.md: Where are the rules and the earlier parts?
@@ -262,7 +262,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-45.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11, #8755)
 - decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
 - decisions-made-product-46.md: Where are the rules and the earlier parts?
-- decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
+- decisions-made-product-46.md: Does a picture saved again from the Artifact Canvas show at once? (owner, 2026-11-12, #8882)
 - decisions-made-product-46.md: How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
 - decisions-made-product-46.md: Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
 - decisions-made-product-47.md: Where are the rules and the earlier parts?
@@ -341,7 +341,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-63.md: Where are the rules and the earlier parts?
 - decisions-made-product-63.md: Does the prototype view's arrangement with its arrows go out as built? (owner, 2026-11-16, agent channel poll 89)
 - decisions-made-product-63.md: Do the waiting content changes go out as built? (owner, 2026-11-16, agent channel poll 90)
-- decisions-made-product-63.md: What did the owner ask of the Design Canvas? (owner, 2026-11-16, to the architect)
+- decisions-made-product-63.md: What did the owner ask of the Artifact Canvas? (owner, 2026-11-16, to the architect)
 - decisions-made-product-64.md: Where are the rules and the earlier parts?
 - decisions-made-product-64.md: Which features of the second study are planned, and what did he answer on them? (owner, 2026-11-16, agent channel polls 82 and 85 to 88)
 - decisions-made-product-64.md: How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)
@@ -361,7 +361,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-66.md: Who gets the task of the gallery flow "A page is due for review"? (architect, 2026-11-16, agent channel message 7026)
 - decisions-made-product-66.md: Where do a record's coordinates come from while Google Places or Mapbox is on? (architect, 2026-11-16, agent channel message 6927)
 - decisions-made-product-66.md: When does the Bundles screen get its main menu row? (architect, 2026-11-16, agent channel message 6918)
-- decisions-made-product-67.md: Do the Design Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
+- decisions-made-product-67.md: Do the Artifact Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
 - decisions-made-product-67.md: Does "Find from the address" come out as on the sheet? (owner, 2026-11-16, agent channel poll 105, message 7114)
 - decisions-made-product-67.md: Do the publish and take-back dialogs come out as on the sheet? (owner, 2026-11-16, agent channel poll 106, message 7125)
 - decisions-made-product-67.md: Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)
@@ -383,7 +383,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
 - decisions-made-product-70.md: Where are the rules and the earlier parts?
-- decisions-made-product-70.md: Is the Translations screen's group for Design Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
+- decisions-made-product-70.md: Is the Translations screen's group for Artifact Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
 - decisions-made-product-70.md: Is the Connections screen's drawing accepted, and what is the screen called? (owner, 2026-11-17, agent channel poll 120, message 7720)
 - decisions-made-product-70.md: Are Application Access's four parts for automation platforms accepted, and do they name the platforms? (owner, 2026-11-17, agent channel poll 121, message 7769)
 - decisions-made-product-70.md: Is the "Shared prices" card of an account's prices screen accepted? (owner, 2026-11-17, agent channel poll 123, message 7807)
@@ -395,7 +395,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-71.md: Where are the rules and the earlier parts?
 - decisions-made-product-71.md: Do additions to the visual designer wait for its new interface? (owner, 2026-11-17, agent channel poll 127, message 8168)
 - decisions-made-product-71.md: Are the three drawings the designer-panels plan lacked accepted? (owner, 2026-11-17, agent channel polls 128, 129 and 132)
-- decisions-made-product-71.md: Is the Design Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
+- decisions-made-product-71.md: Is the Artifact Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
 - decisions-made-product-71.md: May a language's picture be drawn while some of its texts are not translated? (owner, 2026-11-17, agent channel poll 131, message 8313)
 - decisions-made-product-72.md: Where are the rules and the earlier parts?
 - decisions-made-product-72.md: Is the "Suggest targets" window of the Prototype view accepted? (owner, 2026-11-17, agent channel poll 137, message 8763)
@@ -432,7 +432,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
 - decisions-made-product-8.md: Forum template wording: "Guide", the password page addresses, untranslated text on `/en/` (#3622)
 - decisions-made-product-80.md: Where are the rules and the earlier parts?
-- decisions-made-product-80.md: Does the Design Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
+- decisions-made-product-80.md: Does the Artifact Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - decisions-made-product-80.md: How is the Workspace writing box laid out on a phone? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - decisions-made-product-80.md: Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
 - decisions-made-product-80.md: When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
@@ -866,11 +866,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions
 - core/passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one
 - core/php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
-- core/picture-text-auto-draw.md: Translated Design Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out
+- core/picture-text-auto-draw.md: Translated Artifact Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out
 - core/picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is
-- core/picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
+- core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
-- core/picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+- core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
@@ -1009,7 +1009,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
 - platform/content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md
 - platform/content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out
-- platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
+- platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Artifact Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - platform/messages-area-sends-speed.md: How fast Communication › Sends reads 500,000 rows a queue (MA2 #9252, MA2b #9275): the architect's 300 ms, keyset bounds per branch, measured batches, the slow search and heading sorts left open
@@ -1059,25 +1059,25 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/explorer-context-menu-visible.md: The file manager's right-click menu is a Bootstrap 6 .menu shown by display, not .show, so the screen draws it and its flyouts visible itself; a right click seemed dead before
 - ui/file-manager-replaces-folder-and-file-screens.md: The folder screens (add_folder, edit_folder, their form) and the classic files list (view_files) are retired; where each of their jobs is in the File Manager, what is not there, the links that moved
 - ui/graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
-- ui/image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
-- ui/image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
-- ui/image-editor-area-cut.md: The Design Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
-- ui/image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
+- ui/image-editor-actions.md: The Artifact Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
+- ui/image-editor-animation.md: The Artifact Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
+- ui/image-editor-area-cut.md: The Artifact Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
+- ui/image-editor-attach.md: Artifact Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
-- ui/image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
-- ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
-- ui/image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
-- ui/image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
-- ui/image-editor-layers.md: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
-- ui/image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
-- ui/image-editor-overview.md: The Design Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
-- ui/image-editor-picture-to-layer.md: Convert to a layer in the Design Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
-- ui/image-editor-rail.md: The Design Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
-- ui/image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
-- ui/image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
-- ui/image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
-- ui/image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
+- ui/image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
+- ui/image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
+- ui/image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
+- ui/image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
+- ui/image-editor-layers.md: The Artifact Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
+- ui/image-editor-menu.md: The Artifact Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
+- ui/image-editor-overview.md: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
+- ui/image-editor-picture-to-layer.md: Convert to a layer in the Artifact Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
+- ui/image-editor-rail.md: The Artifact Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
+- ui/image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
+- ui/image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
+- ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
+- ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
