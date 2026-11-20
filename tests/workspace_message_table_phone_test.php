@@ -85,6 +85,9 @@ function test_workspace_message_table_takes_natural_width_on_a_phone()
 
 	$cell = workspace_message_table_phone_test_rule($phone, '.ws-table-wrap > .ws-table > :not(caption) > * > *');
 	pg_assert_true($cell !== null && (bool) preg_match('/max-width:\s*\d+(\.\d+)?rem/', $cell), 'on a phone a cell wraps at a set width');
+
+	$long = workspace_message_table_phone_test_rule($phone, ".ws-table-wrap > .ws-table > :not(caption) > * > *,\n  .ws-table-wrap > .ws-table code");
+	pg_assert_true($long !== null && strpos($long, 'overflow-wrap: anywhere') !== false, 'on a phone a link or code word longer than the cell breaks inside it');
 }
 
 function test_workspace_message_table_wide_rules_unchanged()

@@ -15577,13 +15577,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
    the right-hand column a sliver at the frame's edge. There the table
    takes each column's natural width, a cell wrapping at 11rem, and the
    frame scrolls to the columns past the edge; a table that fits (two
-   short columns) still fits. */
+   short columns) still fits. A link, path or code word longer than the
+   cell breaks inside it rather than running past it (the code element
+   is named: the theme's own wrap on code does not reach it). */
 @media (max-width: 575.98px) {
   .ws-table-wrap .table.ws-table {
     width: max-content;
   }
   .ws-table-wrap > .ws-table > :not(caption) > * > * {
     max-width: 11rem;
+  }
+  .ws-table-wrap > .ws-table > :not(caption) > * > *,
+  .ws-table-wrap > .ws-table code {
+    overflow-wrap: anywhere;
   }
 }
 .ws-checklist {

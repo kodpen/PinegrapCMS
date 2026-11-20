@@ -5,7 +5,7 @@ description: A table written in a channel message at phone width (#10816, PR #10
 
 ## How is a message's table drawn on a phone?
 - Markdown table in a message, thread or forwarded copy: `.ws-table-wrap > table.ws-table` (`includes/workspace/render.php`), styled in `assets/css/backend.src.css`, section "Tables and checklists written in a message".
-- Below 576px the table is `width: max-content` and each cell wraps at `max-width: 11rem`; the frame (`overflow-x: auto`, `overscroll-behavior-x: contain`) scrolls to the columns past its edge. The page itself never scrolls sideways.
+- Below 576px the table is `width: max-content` and each cell wraps at `max-width: 11rem`; the frame (`overflow-x: auto`, `overscroll-behavior-x: contain`) scrolls to the columns past its edge. Cells and `code` in them get `overflow-wrap: anywhere`, so a link or path longer than 11rem breaks inside its cell. `code` is named because Bootstrap's own wrap on `code` does not lower the cell's width; without the rule, one URL stretched the frame to 815px. The page itself never scrolls sideways.
 - A wide screen keeps `width: auto` and the 24rem cell. Calculation blocks (`.ws-calc-table`) and the table editor (`.ws-table-edit`) are not inside `.ws-table-wrap` and keep their own rules.
 
 ## Why?
