@@ -1,6 +1,6 @@
 ---
 name: calls-screen
-description: Workspace calls of two people on the channel screen (CL2): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
+description: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 ---
 
 ## Where are the call buttons?
@@ -26,4 +26,4 @@ description: Workspace calls of two people on the channel screen (CL2): head but
 - STUN: `ws_call_ice_servers()` gives `stun:stun.l.google.com:19302` until the Calls card (CL6) names others; no TURN yet, so about one pair in ten cannot connect (plan, poll 157).
 
 ## What could not be checked?
-- Unit tests: `tests/workspace_calls_screen_test.php` (ring, decline, the pure browser parts under node, the wiring). Two real browsers with a camera were not run (#PR of CL2).
+- Unit tests: `tests/workspace_calls_screen_test.php` (ring, decline, the pure browser parts under node, the wiring). Two real browsers with a camera were not run (#10522).
