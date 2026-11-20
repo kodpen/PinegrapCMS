@@ -361,19 +361,7 @@ function pg_booking_manage_move($row, $service, $start, $now)
 
     pg_booking_clear_expired_hold($staff_id, $start, $now);
 
-    $before = (int) $service['buffer_before'] * 60;
-    $after = (int) $service['buffer_after'] * 60;
-
-    $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
-        WHERE
-            staff_id = '" . $staff_id . "'
-            AND id <> '" . $id . "'
-            AND start_at < '" . ($end + $after) . "'
-            AND end_at > '" . ($start - $before) . "'
-            AND status <> 'cancelled'");
-
-    if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows($rows, $now))) {
+    if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows(pg_booking_rows_near($staff_id, $start, $end, $service, $id), $now))) {
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
         return array('answer' => 'taken', 'token' => '');
     }
