@@ -1651,7 +1651,10 @@
             files: !!config().filesEdit && !!config().api,
             replace: this.saveMode === 'replace',
             motion: M.hasMotion(this.doc) || (M.sceneCount(this.doc) > 1),
-            artboard: !!this.doc.artboard
+            artboard: !!this.doc.artboard,
+            // A photo of Files: the server draws its picture for the copy
+            // sent as a canvas (canvasCopy()).
+            convert: !this.doc.artboard && !!this.opts.fileId && !!config().api
         };
     };
 
@@ -1799,22 +1802,44 @@
     };
 
     // A canvas posted in another channel (options.send.url()): the same body
-    // its main button sends, to that channel's address.
+    // its main button sends, to that channel's address. A photo goes as a
+    // copy turned into a canvas (canvasCopy(), the artboard part); the open
+    // document stays as it is.
     Editor.prototype.sendTo = function (channel) {
         var self = this;
 
-        if (!this.ready || this.saving || !this.doc.artboard) {
+        if (!this.ready || this.saving) {
             return;
+        }
+
+        if (this.cropping()) {
+            this.applyCrop();
         }
 
         this.hideMessage();
         this.setSaving(true);
-        this.layersReady().then(function () {
-            self.send('url', { url: self.opts.send.url(channel.id), name: channel.name });
-        }, function () {
+        this.canvasCopy().then(function (copy) {
+            return self.withDoc(copy.doc, function () { return self.layersReady(); }).then(function () { return copy; });
+        }).then(function (copy) {
+            self.send('url', { url: self.opts.send.url(channel.id), name: channel.name, doc: copy.doc, photo: copy.photo });
+        }, function (err) {
             self.setSaving(false);
-            self.showMessage(t('sendError'), true);
+            self.showMessage((err && (err.name === 'Error') && err.message) || t('sendError'), true);
         });
+    };
+
+    // fn() run with doc as the editor's document, then the editor's own back:
+    // a copy is drawn and its body built by the code that draws the open one.
+    Editor.prototype.withDoc = function (doc, fn) {
+        var own = this.doc;
+
+        this.doc = doc;
+
+        try {
+            return fn();
+        } finally {
+            this.doc = own;
+        }
     };
 
     // Save to Files from a channel's canvas: a small window with the
@@ -2094,6 +2119,30 @@
     // (sendTo()), { folder } writes it as a new file into that folder of
     // Files (saveToFiles()); either way the editor stays open.
     Editor.prototype.send = function (mode, to) {
+        var self = this, body;
+
+        // A copy (to.doc) is drawn and described instead of the open document.
+        if (to && to.doc && (to.doc !== this.doc)) {
+            body = this.withDoc(to.doc, function () { return self.sendBody(mode, to); });
+        } else {
+            body = this.sendBody(mode, to);
+        }
+
+        if (!body) {
+            return;
+        }
+
+        this.request(body, to ? (to.url || '') : ((mode === 'url') ? this.opts.save.url : '')).then(function (r) {
+            self.sent(r, to);
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
+    };
+
+    // The body of a save: the document, the picture or overlay drawn here,
+    // and what the parts add (saveHooks); null after a refusal shown.
+    Editor.prototype.sendBody = function (mode, to) {
         var self = this, body = { action: 'save', mode: mode, doc: this.doc };
 
         // Without Imagick the server takes the colour step from here.
@@ -2126,46 +2175,54 @@
 
         Editor.saveHooks.forEach(function (hook) { hook.call(self, body, mode); });
 
-        this.request(body, to ? (to.url || '') : ((mode === 'url') ? this.opts.save.url : '')).then(function (r) {
-            if (!r || (r.status !== 'success')) {
-                self.setSaving(false);
-                self.showMessage((r && r.message) || t((to && to.url) ? 'sendError' : 'saveError'), true);
-                return;
+        // The layer a photo became in a copy sent to a channel: refused there
+        // with its own sentence when too large to be kept.
+        if (to && to.photo) {
+            body.photo = to.photo;
+        }
+
+        return body;
+    };
+
+    // The server's answer to send(). A copy sent elsewhere (to) leaves the
+    // open document as it is: its pictures are not pointed at the files
+    // written there, and the editor stays open.
+    Editor.prototype.sent = function (r, to) {
+        if (!r || (r.status !== 'success')) {
+            this.setSaving(false);
+            this.showMessage((r && r.message) || t((to && to.url) ? 'sendError' : 'saveError'), true);
+            return;
+        }
+
+        if (to && to.folder) {
+            this.setSaving(false);
+            this.showFilesSaved(to.folder);
+            return;
+        }
+
+        if (to) {
+            this.setSaving(false);
+            this.showMessage(t('sendSent').replace('{name}', to.name));
+
+            if (typeof this.opts.send.onSent === 'function') {
+                this.opts.send.onSent(r);
             }
 
-            // Pictures the save kept as files: their layers point at them.
-            if (self.takePictures) {
-                self.takePictures(r.pictures);
-            }
+            return;
+        }
 
-            if (to && to.folder) {
-                self.setSaving(false);
-                self.showFilesSaved(to.folder);
-                return;
-            }
+        // Pictures the save kept as files: their layers point at them.
+        if (this.takePictures) {
+            this.takePictures(r.pictures);
+        }
 
-            if (to) {
-                self.setSaving(false);
-                self.showMessage(t('sendSent').replace('{name}', to.name));
+        var result = { file: r, doc: M.clone(this.doc), fileId: r.id };
 
-                if (typeof self.opts.send.onSent === 'function') {
-                    self.opts.send.onSent(r);
-                }
+        if (typeof this.opts.onSave === 'function') {
+            this.opts.onSave(result);
+        }
 
-                return;
-            }
-
-            var result = { file: r, doc: M.clone(self.doc), fileId: r.id };
-
-            if (typeof self.opts.onSave === 'function') {
-                self.opts.onSave(result);
-            }
-
-            self.finish(result);
-        }, function () {
-            self.setSaving(false);
-            self.showMessage(t('saveError'), true);
-        });
+        this.finish(result);
     };
 
     Editor.prototype.requestClose = function () {

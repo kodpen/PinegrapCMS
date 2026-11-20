@@ -12397,7 +12397,8 @@
     // (the Workspace is on, the person in it); c.files: the person may edit a
     // folder of Files (Save to Files); c.replace: Save writes over a file;
     // c.motion: something moves; c.artboard: the document is a canvas, which
-    // is what a channel takes and what Download draws.
+    // is what a channel takes and what Download draws; c.convert: a photo
+    // the server can draw, sent to a channel as a copy turned into a canvas.
     function sendMenu(c) {
         var out = [];
 
@@ -12427,7 +12428,7 @@
             out.push('saveCopy');
         }
 
-        if (c.send && c.artboard) {
+        if (c.send && (c.artboard || c.convert)) {
             out.push('sendChannel');
         }
 

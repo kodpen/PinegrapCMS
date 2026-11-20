@@ -247,7 +247,7 @@
     Editor.topItems.push(function () {
         var self = this;
 
-        this.presentBtn = el('button', { type: 'button', class: 'pgie-btn pgie-presentbtn', title: t('presentTitle'), onclick: function () { self.openPresent(); } }, [
+        this.presentBtn = el('button', { type: 'button', class: 'pgie-btn pgie-presentbtn', title: t('presentTitle'), 'aria-label': t('presentTitle'), onclick: function () { self.openPresent(); } }, [
             icon('p_present'), el('span', { class: 'pgie-vlabel', text: t('present') })
         ]);
         this.presentBtn.hidden = true;

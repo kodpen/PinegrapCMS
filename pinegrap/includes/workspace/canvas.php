@@ -238,6 +238,48 @@ function ws_canvas_pictures_keep($file_id, $doc, $pictures, $user_id)
 }
 
 /**
+ * Why a photo sent to a channel as a canvas (the Artifact Canvas's "Send to
+ * a channel as a canvas...") cannot go: its picture, the layer $photo of
+ * the pictures the save carries, larger than a Workspace file may be. ''
+ * when it may go, or when no photo is named. Pure.
+ *
+ * @param mixed  $pictures  the save's pictures [{id, data, name}]
+ * @param string $photo     the layer id the photo became
+ * @param int    $max_bytes ws_upload_max_bytes()
+ * @return string
+ */
+function ws_canvas_photo_refusal($pictures, $photo, $max_bytes)
+{
+    $photo = (string) $photo;
+
+    if ($photo === '') {
+        return '';
+    }
+
+    foreach ((array) $pictures as $picture) {
+        if (!is_array($picture) || ((string) ($picture['id'] ?? '') !== $photo)) {
+            continue;
+        }
+
+        $data = (string) ($picture['data'] ?? '');
+        $comma = strpos($data, ',');
+        $bytes = ($comma === false) ? 0 : (int) floor((strlen($data) - $comma - 1) * 3 / 4);
+
+        if (($comma === false) || ($bytes <= 0)) {
+            break;
+        }
+
+        if (((int) $max_bytes > 0) && ($bytes > (int) $max_bytes)) {
+            return lang(array('string' => 'The photo is larger than {var:1} MB, the most a Workspace file may be, so it cannot be sent as a canvas.', 'vars' => (int) floor($max_bytes / 1048576)));
+        }
+
+        return '';
+    }
+
+    return lang('The photo could not be sent as a canvas.');
+}
+
+/**
  * Keeps a canvas's document beside the file just written from it, as the
  * file's newest version (source 'new'), after its pictures from this
  * computer became files beside it (ws_canvas_pictures_keep()). Nothing when

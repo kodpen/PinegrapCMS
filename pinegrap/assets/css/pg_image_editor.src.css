@@ -255,6 +255,12 @@
   background: var(--pgie-hover);
 }
 
+/* A button the editor hides (hidden) stays hidden on a page without a reset
+   that says so: .pgie-btn's display would show it. */
+.pgie-btn[hidden] {
+  display: none;
+}
+
 .pgie-btn.pgie-primary {
   border-color: var(--pgie-primary);
   background: var(--pgie-primary);
@@ -3198,6 +3204,39 @@ a.pgie-langthumb:focus-visible {
 
   .pgie-tool {
     padding: 9px 2px;
+  }
+}
+
+/* A narrow phone: the top bar's secondary buttons (Import, Languages, Save
+   animation, Present) show their glyph only, square as undo and redo, their
+   name kept as aria-label and title; the split button keeps its words and
+   the file's name gives way, so the bar never scrolls sideways. */
+
+@media (max-width: 575.98px) {
+  .pgie-top .pgie-importbtn,
+  .pgie-top .pgie-langbtn,
+  .pgie-top .pgie-animbtn,
+  .pgie-top .pgie-presentbtn {
+    flex: none;
+    width: 36px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .pgie-top .pgie-importbtn .pgie-vlabel,
+  .pgie-top .pgie-langbtn .pgie-vlabel,
+  .pgie-top .pgie-animbtn .pgie-vlabel,
+  .pgie-top .pgie-presentbtn .pgie-vlabel {
+    display: none;
+  }
+
+  .pgie-top .pgie-file {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .pgie-top .pgie-savebox {
+    flex: none;
   }
 }
 

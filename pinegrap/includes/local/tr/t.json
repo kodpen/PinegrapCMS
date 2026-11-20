@@ -6019,6 +6019,8 @@
     "The phone most people need.": "Çoğu kişinin ihtiyacı olan telefon.",
     "The phone number ID is not one of this WhatsApp Business account's numbers.": "Bu telefon numarası kimliği, bu WhatsApp Business hesabının numaralarından biri değil.",
     "The phone, in the colour and size you chose": "Seçtiğiniz renk ve boyutta telefon",
+    "The photo could not be sent as a canvas.": "Fotoğraf tuval olarak gönderilemedi.",
+    "The photo is larger than {var:1} MB, the most a Workspace file may be, so it cannot be sent as a canvas.": "Fotoğraf {var:1} MB'tan büyük, bir Workspace dosyasının olabileceği en büyük boyut bu; bu yüzden tuval olarak gönderilemez.",
     "The photo of the cards and the share image.": "Kartların fotoğrafı ve paylaşım görseli.",
     "The photo of the cards and the share image. Choose one that shows no child's face.": "Kartlardaki fotoğraf ve paylaşım görseli. Hiçbir çocuğun yüzünün görünmediği bir fotoğraf seçin.",
     "The photo of the cards: the car from the front three-quarter, in daylight.": "Kartlardaki fotoğraf: aracın gün ışığında önden üç çeyrek açıyla görünümü.",

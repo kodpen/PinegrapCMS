@@ -1168,7 +1168,7 @@
             return null;
         }
 
-        this.animBtn = el('button', { type: 'button', class: 'pgie-btn pgie-animbtn', title: t('animTitle'), onclick: function () { self.openAnimation(); } }, [
+        this.animBtn = el('button', { type: 'button', class: 'pgie-btn pgie-animbtn', title: t('animTitle'), 'aria-label': t('animTitle'), onclick: function () { self.openAnimation(); } }, [
             icon('film'), el('span', { class: 'pgie-vlabel', text: t('animSave') })
         ]);
         this.animBtn.hidden = true;
