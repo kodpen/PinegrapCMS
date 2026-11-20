@@ -23,6 +23,6 @@ description: A bug hunt (owner 2026-11-15), only in an area the architect named:
 
 ## How is the next area chosen?
 - By the architect: code built in the last weeks that many users meet and that no hunt has read yet.
-- The areas given so far and what each hunt found and read clean: `bug-hunt-areas.md`, from 2026-11-17 on `bug-hunt-areas-2.md`.
+- The areas given so far and what each hunt found and read clean: `bug-hunt-areas.md`, from 2026-11-17 on `bug-hunt-areas-2.md`, from 2026-11-20 on `bug-hunt-areas-3.md`.
 
 Related: docs/memory/workflow/bug-hunt-areas.md, docs/memory/workflow/test-coordinator.md, docs/memory/workflow/coordinator-no-plans.md
