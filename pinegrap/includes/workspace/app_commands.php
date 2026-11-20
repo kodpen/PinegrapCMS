@@ -41,6 +41,16 @@ const WS_APP_COMMAND_TEXT_MAX = 200;
 const WS_APP_COMMANDS_MAX = 20;
 
 /**
+ * How many arguments one command's definition may hold.
+ */
+const WS_APP_COMMAND_ARGS_MAX = 8;
+
+/**
+ * The longest label of an argument, shown in the strip.
+ */
+const WS_APP_COMMAND_ARG_LABEL_MAX = 40;
+
+/**
  * Checks one command an application wants to register and gives it back in
  * the shape it is kept: the name in Turkish lower case without its slash,
  * the texts trimmed with their line breaks folded into spaces.
@@ -140,7 +150,8 @@ function ws_app_commands_ready()
  * The registered commands with their application, by name.
  *
  * @param int $app_id only this application's; 0 for all
- * @return array[] id, app_id, name, description, usage_text, created_at,
+ * @return array[] id, app_id, name, description, usage_text, args (the
+ *                 stored definition, JSON or null), created_at,
  *                 updated_at, app_name, status, expires_at, owner_user_id,
  *                 scopes
  */
@@ -150,8 +161,11 @@ function ws_app_commands_rows($app_id = 0)
         return array();
     }
 
+    // The files land before the upgrade adds the column (11.0.246).
+    $args = pg_schema_has('ws_app_commands', 'args') ? 'ws_app_commands.args' : 'NULL AS args';
+
     return db_items("SELECT ws_app_commands.id, ws_app_commands.app_id, ws_app_commands.name, ws_app_commands.description,
-            ws_app_commands.usage_text, ws_app_commands.created_at, ws_app_commands.updated_at,
+            ws_app_commands.usage_text, " . $args . ", ws_app_commands.created_at, ws_app_commands.updated_at,
             api_apps.name AS app_name, api_apps.status, api_apps.expires_at, api_apps.owner_user_id, api_apps.scopes
         FROM ws_app_commands
         INNER JOIN api_apps ON api_apps.id = ws_app_commands.app_id"
@@ -200,8 +214,9 @@ function ws_app_commands_live()
 }
 
 /**
- * A registered command as a ws_commands() entry: free text after the name,
- * no live line, the application's name beside it.
+ * A registered command as a ws_commands() entry: its arguments when it has a
+ * definition (free text after the name when not), no live line, the
+ * application's name beside it.
  *
  * @param array $row ws_app_commands_rows() row
  * @return array
@@ -210,6 +225,7 @@ function ws_app_command_entry($row)
 {
     $name = '/' . (string) $row['name'];
     $usage = trim((string) $row['usage_text']);
+    $args = ws_app_command_args_read($row['args'] ?? null);
 
     return array(
         'key'         => 'app:' . (string) $row['name'],
@@ -219,7 +235,7 @@ function ws_app_command_entry($row)
         'description' => (string) $row['description'],
         'usage'       => $name . (($usage !== '') ? ' ' . $usage : ''),
         'example'     => $name . (($usage !== '') ? ' ' . $usage : ''),
-        'args'        => array(),
+        'args'        => $args,
         'live'        => false,
         'app_id'      => (int) $row['app_id'],
         'app'         => (string) $row['app_name'],
@@ -265,11 +281,14 @@ function ws_app_command_find($word, $rows = null)
  * @param string     $text
  * @param string     $body
  * @param int        $parent_id the message it answers, 0 for none
+ * @param array|null $values    the arguments by name (ws_app_command_values());
+ *                              null for a command without a definition, whose
+ *                              payload has no values key
  * @return array
  */
-function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $text, $body, $parent_id = 0)
+function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $text, $body, $parent_id = 0, $values = null)
 {
-    return array(
+    $payload = array(
         'command'      => '/' . (string) $name,
         'app_id'       => (int) $app_id,
         'channel_id'   => (int) $channel['id'],
@@ -281,6 +300,12 @@ function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $te
         'text'         => (string) $text,
         'body'         => (string) $body,
     );
+
+    if (is_array($values)) {
+        $payload['values'] = $values;
+    }
+
+    return $payload;
 }
 
 /**
@@ -291,8 +316,10 @@ function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $te
  * @param array  $row     ws_app_command_find() row
  * @param string $rest    the words after the command, as stored
  * @param int    $parent_id
- * @return array|null the writer's answer; null when the application may not
- *                    read the channel, and nothing was sent
+ * @return array|null the writer's answer (sent, or which required argument
+ *                    could not be read and nothing was sent); null when the
+ *                    application may not read the channel, and nothing was
+ *                    sent
  */
 function ws_app_command_send($viewer, $channel, $row, $rest, $parent_id = 0)
 {
@@ -303,9 +330,26 @@ function ws_app_command_send($viewer, $channel, $row, $rest, $parent_id = 0)
         return null;
     }
 
+    $args = ws_app_command_args_read($row['args'] ?? null);
+    $values = null;
+
+    if (!empty($args)) {
+        $read = ws_app_command_values($args, (string) $rest);
+
+        if ($read['missing'] !== '') {
+            return array(
+                'type' => 'ephemeral',
+                'html' => '<div>' . h(lang(array('string' => '/{var:1} needs {var:2}. Nothing was sent to the application.', 'vars' => array((string) $row['name'], $read['missing'])))) . '</div>',
+                'app_command' => '/' . (string) $row['name'],
+            );
+        }
+
+        $values = $read['values'];
+    }
+
     $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
 
-    pg_announce('workspace.app.command', ws_app_command_payload($channel, $thread, (int) $row['app_id'], $row['name'], (int) $viewer['id'], ws_plain_text($reader, $rest), (string) $rest, $parent_id));
+    pg_announce('workspace.app.command', ws_app_command_payload($channel, $thread, (int) $row['app_id'], $row['name'], (int) $viewer['id'], ws_plain_text($reader, $rest), (string) $rest, $parent_id, $values));
 
     return array(
         'type' => 'ephemeral',
@@ -321,21 +365,42 @@ function ws_app_command_send($viewer, $channel, $row, $rest, $parent_id = 0)
  * gives its name up.
  *
  * @param int   $app_id
- * @param mixed $input name, description, usage
- * @return array ok, name, description, usage, created (a new name for this
- *               application), id (the application's own row of that name, 0
- *               when created); or ok false, status (422, 409), error, field
+ * @param mixed $input name, description, usage, args (a list: the new
+ *                     definition; [] or '' removes it; left out keeps the
+ *                     stored one)
+ * @return array ok, name, description, usage, args (the definition as kept,
+ *               [] for none, null to keep what is stored), created (a new
+ *               name for this application), id (the application's own row of
+ *               that name, 0 when created); or ok false, status (422, 409),
+ *               error, field, index (the refused argument, -1 for none)
  */
 function ws_app_command_save_check($app_id, $input)
 {
     $clean = ws_app_command_check($input);
 
     if (isset($clean['error'])) {
-        return array('ok' => false, 'status' => 422, 'error' => $clean['error'], 'field' => $clean['field']);
+        return array('ok' => false, 'status' => 422, 'error' => $clean['error'], 'field' => $clean['field'], 'index' => -1);
+    }
+
+    $clean['args'] = null;
+
+    if (is_array($input) && array_key_exists('args', $input)) {
+        $args = ws_app_command_args_check($input['args']);
+
+        if (isset($args['error'])) {
+            return array('ok' => false, 'status' => 422, 'error' => $args['error'], 'field' => 'args', 'index' => $args['index']);
+        }
+
+        $clean['args'] = $args['args'];
+
+        // A definition without a usage line gets one from its labels.
+        if (($clean['usage'] === '') && !empty($clean['args'])) {
+            $clean['usage'] = ws_app_command_args_usage($clean['args']);
+        }
     }
 
     if (!ws_app_commands_ready()) {
-        return array('ok' => false, 'status' => 503, 'error' => 'not_ready', 'field' => '');
+        return array('ok' => false, 'status' => 503, 'error' => 'not_ready', 'field' => '', 'index' => -1);
     }
 
     $mine = 0;
@@ -351,7 +416,7 @@ function ws_app_command_save_check($app_id, $input)
             $own_id = $same ? (int) $row['id'] : $own_id;
         } elseif ($same) {
             if ($row['present'] !== null) {
-                return array('ok' => false, 'status' => 409, 'error' => 'name_taken', 'field' => 'name');
+                return array('ok' => false, 'status' => 409, 'error' => 'name_taken', 'field' => 'name', 'index' => -1);
             }
 
             db("DELETE FROM ws_app_commands WHERE id = '" . (int) $row['id'] . "'");
@@ -359,7 +424,7 @@ function ws_app_command_save_check($app_id, $input)
     }
 
     if (($own_id === 0) && ($mine >= WS_APP_COMMANDS_MAX)) {
-        return array('ok' => false, 'status' => 409, 'error' => 'limit_reached', 'field' => 'name');
+        return array('ok' => false, 'status' => 409, 'error' => 'limit_reached', 'field' => 'name', 'index' => -1);
     }
 
     return array('ok' => true, 'created' => ($own_id === 0), 'id' => $own_id) + $clean;
@@ -377,10 +442,25 @@ function ws_app_command_save_check($app_id, $input)
 function ws_app_command_write($app_id, $clean)
 {
     $now = time();
+    $args = $clean['args'] ?? null;
+    // Before the upgrade adds the column a definition cannot be kept; the
+    // command is kept without one.
+    $column = pg_schema_has('ws_app_commands', 'args');
+    $stored = (is_array($args) && !empty($args)) ? json_encode($args, JSON_UNESCAPED_UNICODE) : null;
 
     if (!$clean['created']) {
+        if ($column && is_array($args)) {
+            return (bool) db_q("UPDATE ws_app_commands SET name = ?, description = ?, usage_text = ?, args = ?, updated_at = ? WHERE id = ? AND app_id = ?",
+                array($clean['name'], $clean['description'], $clean['usage'], $stored, $now, (int) $clean['id'], (int) $app_id));
+        }
+
         return (bool) db_q("UPDATE ws_app_commands SET name = ?, description = ?, usage_text = ?, updated_at = ? WHERE id = ? AND app_id = ?",
             array($clean['name'], $clean['description'], $clean['usage'], $now, (int) $clean['id'], (int) $app_id));
+    }
+
+    if ($column) {
+        return (bool) db_q("INSERT INTO ws_app_commands (app_id, name, description, usage_text, args, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            array((int) $app_id, $clean['name'], $clean['description'], $clean['usage'], $stored, $now, $now));
     }
 
     return (bool) db_q("INSERT INTO ws_app_commands (app_id, name, description, usage_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -409,4 +489,319 @@ function ws_app_command_delete($app_id, $name)
     db("DELETE FROM ws_app_commands WHERE id = '" . (int) $row['id'] . "'");
 
     return true;
+}
+
+/**
+ * Where the composer finds values for an argument of a kind, as the built-in
+ * commands use it; the application never sends it.
+ *
+ * @param string $kind a ws_command_argument_kinds() value
+ * @return string a suggest source, or '' for none
+ */
+function ws_app_command_arg_suggest($kind)
+{
+    $sources = array(
+        'person'      => 'people',
+        'people'      => 'people',
+        'department'  => 'people_departments',
+        'task'        => 'tasks',
+        'record'      => 'records',
+        'date'        => 'dates',
+        'estimate'    => 'estimates',
+        'priority'    => 'priorities',
+        'status'      => 'statuses',
+        'record_kind' => 'kinds',
+        'health'      => 'healths',
+        'notify'      => 'notify',
+    );
+
+    return $sources[(string) $kind] ?? '';
+}
+
+/**
+ * Checks the arguments an application defines for its command and gives them
+ * back in the registry's shape (ws_command_registry_arg()), in the order they
+ * are typed.
+ *
+ * @param mixed $args a list of name, kind, label, optional, multiple,
+ *                    anywhere; '', null or [] for no definition
+ * @return array args (the list, [] for none); or error (too_many_args,
+ *               invalid_kind, invalid_args) and index (the refused item, -1
+ *               when the whole value is)
+ */
+function ws_app_command_args_check($args)
+{
+    if (($args === null) || ($args === '') || ($args === array())) {
+        return array('args' => array());
+    }
+
+    if (!is_array($args) || (array_values($args) !== $args)) {
+        return array('error' => 'invalid_args', 'index' => -1);
+    }
+
+    if (count($args) > WS_APP_COMMAND_ARGS_MAX) {
+        return array('error' => 'too_many_args', 'index' => WS_APP_COMMAND_ARGS_MAX);
+    }
+
+    $out = array();
+    $names = array();
+
+    foreach ($args as $index => $item) {
+        if (!is_array($item) || !isset($item['name']) || !is_string($item['name']) || !preg_match('/^[a-z][a-z0-9_]{0,19}$/', $item['name'])
+            || isset($names[$item['name']])) {
+            return array('error' => 'invalid_args', 'index' => $index);
+        }
+
+        $kind = $item['kind'] ?? null;
+
+        if (!is_string($kind) || !in_array($kind, ws_command_argument_kinds(), true)) {
+            return array('error' => 'invalid_kind', 'index' => $index);
+        }
+
+        $label = array_key_exists('label', $item) ? $item['label'] : $item['name'];
+
+        if (!is_string($label) || preg_match('/[\p{Cc}]/u', $label)) {
+            return array('error' => 'invalid_args', 'index' => $index);
+        }
+
+        $label = trim($label);
+        $length = mb_strlen($label, 'UTF-8');
+
+        if (($length < 1) || ($length > WS_APP_COMMAND_ARG_LABEL_MAX)) {
+            return array('error' => 'invalid_args', 'index' => $index);
+        }
+
+        $flags = array();
+
+        foreach (array('optional', 'multiple', 'anywhere') as $flag) {
+            if (array_key_exists($flag, $item) && !is_bool($item[$flag])) {
+                return array('error' => 'invalid_args', 'index' => $index);
+            }
+
+            $flags[$flag] = !empty($item[$flag]);
+        }
+
+        $names[$item['name']] = true;
+        $out[] = ws_command_registry_arg($item['name'], $kind, $label, $flags['optional'], ws_app_command_arg_suggest($kind),
+            array('multiple' => $flags['multiple'], 'anywhere' => $flags['anywhere']));
+    }
+
+    return array('args' => $out);
+}
+
+/**
+ * A stored definition read back. One that cannot be resolved (not JSON, not
+ * a list, an unknown kind, a bad item) is no definition: the command takes
+ * free text as one without, never an error for the writer.
+ *
+ * @param mixed $stored ws_app_commands.args
+ * @return array[] the arguments, [] for none
+ */
+function ws_app_command_args_read($stored)
+{
+    if (!is_string($stored) || (trim($stored) === '')) {
+        return array();
+    }
+
+    $read = ws_app_command_args_check(json_decode($stored, true));
+
+    return isset($read['error']) ? array() : $read['args'];
+}
+
+/**
+ * The usage line a definition writes when the application gave none:
+ * <label> for a required argument, [label] for an optional one.
+ *
+ * @param array[] $args checked arguments
+ * @return string
+ */
+function ws_app_command_args_usage($args)
+{
+    $parts = array();
+
+    foreach ($args as $arg) {
+        $parts[] = $arg['optional'] ? '[' . $arg['label'] . ']' : '<' . $arg['label'] . '>';
+    }
+
+    return ws_app_command_text(implode(' ', $parts));
+}
+
+/**
+ * The value one word gives an argument of a word kind, or null when the word
+ * is none of that kind.
+ *
+ * @param string $kind
+ * @param string $word
+ * @param string $today Y-m-d
+ * @return mixed
+ */
+function ws_app_command_word_value($kind, $word, $today)
+{
+    switch ($kind) {
+        case 'date':
+            $date = ws_parse_date_word($word, $today);
+            return ($date !== '') ? $date : null;
+
+        case 'time':
+            $time = ws_parse_time_word($word);
+            return ($time !== '') ? $time : null;
+
+        case 'estimate':
+            $minutes = ws_parse_estimate((substr($word, 0, 1) === '~') ? $word : '~' . $word);
+            return ($minutes > 0) ? $minutes : null;
+
+        case 'priority':
+            $priority = ws_parse_priority((substr($word, 0, 1) === '!') ? $word : '!' . $word);
+            return ($priority !== '') ? $priority : null;
+
+        case 'status':
+            $status = ws_parse_status_word($word);
+            return ($status !== '') ? $status : null;
+
+        case 'health':
+            $health = ws_command_health_word($word);
+            return ($health !== '') ? $health : null;
+
+        case 'notify':
+            $notify = ws_command_notify_word($word);
+            return ($notify !== '') ? $notify : null;
+
+        case 'record_kind':
+            $kinds = array(
+                'urun' => 'product', 'product' => 'product', 'grup' => 'product_group', 'group' => 'product_group',
+                'kisi' => 'contact', 'contact' => 'contact', 'satir' => 'wtable_row', 'row' => 'wtable_row',
+                'cari' => 'erp_account', 'account' => 'erp_account', 'etkinlik' => 'calendar_event', 'event' => 'calendar_event',
+            );
+            return $kinds[ws_command_fold(trim($word, " \t.,;:!"))] ?? null;
+
+        case 'amount':
+            return ws_command_parse_amount($word);
+
+        case 'quantity':
+            $quantity = ws_command_parse_quantity($word);
+            return is_array($quantity) ? $quantity['value'] : null;
+    }
+
+    return null;
+}
+
+/**
+ * Reads the words after a command with a definition into values by argument
+ * name: a person, department or task is its id, people a list of ids, a
+ * record {type, id}, a date Y-m-d, a time H:i, an estimate in minutes, an
+ * amount in minor units, a quantity an integer, text and a flow a string,
+ * options a list of strings; an argument not typed is null (a list for a
+ * multiple one). Tagged kinds take their tags, the other typed kinds the
+ * first word of their kind anywhere on the line, in the order of the
+ * definition; the words left over go to the text arguments in turn, the
+ * last one taking the rest.
+ *
+ * @param array[]     $args  ws_app_command_args_read()
+ * @param string      $body  the words after the command, as stored
+ * @param string|null $today Y-m-d, the server's day when not given
+ * @return array values (name => value), missing (the label of the first
+ *               required argument that could not be read, '' for none)
+ */
+function ws_app_command_values($args, $body, $today = null)
+{
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+    $tokens = ws_tokens($body);
+    $used_tokens = array();
+    $words = array_values(array_filter(preg_split('/\s+/u', trim((string) preg_replace('/<[@#][a-z_]+:[0-9]{1,10}>/', ' ', (string) $body))), 'strlen'));
+    $used_words = array();
+    $values = array();
+    $texts = array();
+    $records = function_exists('ws_record_type_keys') ? ws_record_type_keys() : array();
+    $tagged = array('person' => 'user', 'people' => 'user', 'department' => 'dept', 'task' => 'task');
+
+    foreach ($args as $arg) {
+        $kind = $arg['kind'];
+        $many = $arg['multiple'] || ($kind === 'people');
+        $found = array();
+
+        if (isset($tagged[$kind]) || ($kind === 'record')) {
+            foreach ($tokens as $index => $token) {
+                $fits = ($kind === 'record') ? in_array($token['type'], $records, true) : ($token['type'] === $tagged[$kind]);
+
+                if (!$fits || isset($used_tokens[$index])) {
+                    continue;
+                }
+
+                $used_tokens[$index] = true;
+                $found[] = ($kind === 'record') ? array('type' => $token['type'], 'id' => $token['id']) : $token['id'];
+
+                if (!$many) {
+                    break;
+                }
+            }
+        } elseif (!in_array($kind, array('text', 'options', 'flow'), true)) {
+            foreach ($words as $index => $word) {
+                if (isset($used_words[$index])) {
+                    continue;
+                }
+
+                $value = ws_app_command_word_value($kind, $word, $today);
+
+                if ($value === null) {
+                    continue;
+                }
+
+                $used_words[$index] = true;
+                $found[] = $value;
+
+                if (!$many) {
+                    break;
+                }
+            }
+        } else {
+            $texts[] = $arg['name'];
+            $values[$arg['name']] = null;
+            continue;
+        }
+
+        $values[$arg['name']] = $many ? (empty($found) ? null : $found) : ($found[0] ?? null);
+    }
+
+    // The words no typed argument took, in the order they were written.
+    $left = array();
+
+    foreach ($words as $index => $word) {
+        if (!isset($used_words[$index])) {
+            $left[] = $word;
+        }
+    }
+
+    $last = count($texts) - 1;
+
+    foreach ($texts as $position => $name) {
+        $share = ($position === $last) ? $left : array_slice($left, 0, 1);
+        $left = ($position === $last) ? array() : array_slice($left, 1);
+        $text = trim(implode(' ', $share));
+
+        foreach ($args as $arg) {
+            if ($arg['name'] !== $name) {
+                continue;
+            }
+
+            if ($text === '') {
+                $values[$name] = null;
+            } elseif ($arg['kind'] === 'options') {
+                $parts = (strpos($text, ',') !== false) ? explode(',', $text) : preg_split('/\s+/u', $text);
+                $values[$name] = array_values(array_filter(array_map('trim', $parts), 'strlen'));
+            } else {
+                $values[$name] = $text;
+            }
+        }
+    }
+
+    $missing = '';
+
+    foreach ($args as $arg) {
+        if (!$arg['optional'] && ($values[$arg['name']] === null)) {
+            $missing = $arg['label'];
+            break;
+        }
+    }
+
+    return array('values' => $values, 'missing' => $missing);
 }

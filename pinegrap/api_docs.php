@@ -230,6 +230,7 @@ echo pg_page_shell(array(
 /* Long addresses break inside the line on a phone instead of widening the page. */
 .doc-cred > div { min-width: 0; max-width: 100%; }
 .doc-cred code { overflow-wrap: anywhere; word-break: break-word; }
+.doc-cred select { min-width: 220px; }
 @media (max-width: 768px) {
 	.doc-cred > .ms-auto { margin-left: 0 !important; width: 100%; flex-wrap: wrap; }
 	.doc-cred select { min-width: 0 !important; width: 100%; }
@@ -260,7 +261,7 @@ echo pg_page_shell(array(
 				<div class="ms-auto d-flex align-items-end gap-3">
 					<div>
 						<label for="doc_app" class="form-label small mb-1">' . lang('Try as') . '</label>
-						<select class="form-control form-control-sm" id="doc_app" style="min-width:220px">' . $app_options . '</select>
+						<select class="form-control form-control-sm" id="doc_app">' . $app_options . '</select>
 					</div>
 					<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php?openapi=1" target="_blank"
 						title="' . h(lang('Opens the same document through this panel, with your own session instead of a key.')) . '">

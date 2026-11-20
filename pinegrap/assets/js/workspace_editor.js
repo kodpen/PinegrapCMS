@@ -112,6 +112,13 @@
         return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     }
 
+    // A field of a tip or of a block's window: full size (16px) on a touch
+    // screen, where iOS Safari zooms the page in on a smaller field taking
+    // the focus and leaves it zoomed; the small one under a mouse.
+    function tipFieldClass(touch) {
+        return touch ? 'form-control' : 'form-control form-control-sm';
+    }
+
     // The browser's own editing commands, for what behaves as typing does
     // (text, a line break, a chip or a card at the caret): the caret lands
     // where the browser puts it after typing. Marks never come this way.
@@ -380,7 +387,7 @@
                 var wrap = el('div', 'ws-block-title-field mb-3');
                 var label = el('label', 'form-label small mb-1', t('block_title'));
 
-                field = el('input', 'form-control form-control-sm');
+                field = el('input', tipFieldClass(touchScreen()));
                 field.maxLength = 160;
                 field.value = parts.title;
                 field.placeholder = t('block_title_help');
@@ -3372,9 +3379,9 @@
         tip = el('div', 'ws-link-tip shadow');
 
         var form = el('form', 'd-flex flex-column gap-1');
-        var words = el('input', 'form-control form-control-sm');
+        var words = el('input', tipFieldClass(touchScreen()));
         var line = el('div', 'd-flex align-items-center gap-1');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', tipFieldClass(touchScreen()));
 
         words.type = 'text';
         words.placeholder = t('link_text');
@@ -3872,13 +3879,13 @@
         var mine = tip;
         var form = el('form', 'd-flex flex-column gap-1');
         var line = el('div', 'd-flex align-items-center gap-1');
-        var query = el('input', 'form-control form-control-sm');
+        var query = el('input', tipFieldClass(touchScreen()));
         var count = el('span', 'small fg-3 text-nowrap ws-find-count');
         var prev = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-up', t('find_prev'));
         var next = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-down', t('find_next'));
         var close = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('find_close'));
         var swap = el('div', 'd-flex align-items-center gap-1');
-        var replace = el('input', 'form-control form-control-sm');
+        var replace = el('input', tipFieldClass(touchScreen()));
         var one = button('btn btn-sm btn-outline theme-secondary', t('find_replace'), '', '');
         var all = button('btn btn-sm btn-outline theme-secondary', t('find_replace_all'), '', '');
         var caseField = el('div', 'form-field small mb-0');
@@ -6495,7 +6502,7 @@
         var tools = el('div', 'ws-table-tools');
         var sheetBar = el('div', 'ws-sheet-bar');
         var refBox = el('span', 'ws-sheet-ref', 'A1');
-        var formulaInput = el('input', 'form-control form-control-sm ws-sheet-formula');
+        var formulaInput = el('input', tipFieldClass(touchScreen()) + ' ws-sheet-formula');
         var resultBox = el('span', 'ws-sheet-result');
         var wrap = el('div', 'ws-table-edit-wrap');
         var table = el('table', 'table table-sm ws-table ws-table-edit ws-table-sheet');
@@ -7297,7 +7304,7 @@
         titling.attach(win);
         var row = el('div', 'd-flex align-items-center gap-3 mb-3');
         var label = el('label', 'form-label mb-0 small', t('code_language'));
-        var input = el('input', 'form-control form-control-sm ws-code-language');
+        var input = el('input', tipFieldClass(touchScreen()) + ' ws-code-language');
         var listId = 'ws-code-languages-' + Date.now();
         var list = el('datalist');
 
@@ -7656,8 +7663,8 @@
 
         // How the values are shown.
         var settingsRow = el('div', 'ws-calc-settings');
-        var decimals = el('select', 'form-control form-control-sm');
-        var unit = el('input', 'form-control form-control-sm');
+        var decimals = el('select', tipFieldClass(touchScreen()));
+        var unit = el('input', tipFieldClass(touchScreen()));
         var decimalsId = 'ws-calc-decimals-' + Date.now();
 
         [['', t('calc_decimals_auto')], ['0', '0'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']].forEach(function (entry) {

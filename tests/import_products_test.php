@@ -85,10 +85,6 @@ function test_products_import_ods_to_csv()
 
 	$zone = date_default_timezone_get();
 
-	// PHPExcel predates PHP 8.2 and raises deprecations of its own while it
-	// loads; they are not what this test is about.
-	$reporting = error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-
 	try {
 
 		foreach (array('UTC', 'Europe/Istanbul', 'America/New_York') as $name) {
@@ -114,19 +110,14 @@ function test_products_import_ods_to_csv()
 			unlink($csv_path);
 
 			// A time alone is a fraction of a day from 30 December 1899, as
-			// in a .xlsx (PHPExcel gave it 1 January 1970).
+			// in a .xlsx.
 			pg_assert_same(array(
 				array('name', 'full_description', 'price', 'enabled', 'summer', 'winter', 'opens'),
 				array('Çay bardağı', "First line\nSecond line", '19.99', '1', '2026-07-15', '2026-01-02 13:45:00', '1899-12-30 08:05:30'),
 			), $rows, $name . ' rows');
 		}
 
-		// A worksheet's destructor creates PHPExcel's calculation engine, which
-		// raises the same deprecations; collected here rather than at shutdown.
-		gc_collect_cycles();
-
 	} finally {
-		error_reporting($reporting);
 		date_default_timezone_set($zone);
 		unlink($path);
 		rmdir($dir);
@@ -380,17 +371,6 @@ function test_products_import_xlsx_to_csv()
 		. '<row r="5"><c r="B5" s="1"><v>46296.572916666664</v></c></row>'
 		. '</sheetData></worksheet>');
 	$zip->close();
-
-	// The .ods test above loaded PHPExcel, which replaces the zip:// wrapper
-	// and switches libxml's loader off for the rest of the process; an import
-	// request reads one file. Put back here rather than through
-	// pg_office_zip_stream(), which does it once per process and is left for
-	// the office tests that run later.
-	@stream_wrapper_restore('zip');
-
-	if (function_exists('libxml_disable_entity_loader')) {
-		@libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists()
-	}
 
 	$error = '';
 	$csv_path = pg_products_import_xlsx_to_csv($path, $error);

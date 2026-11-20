@@ -1004,8 +1004,8 @@ echo pg_page_shell(array(
                     <div class="dialog-body">
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_import_file">' . lang('CSV file') . '</label>
-                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv" required="required"/>
-                            ' . pg_upload_limit_hint() . '
+                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv,' . PG_SHEET_IMPORT_ACCEPT . '" required="required"/>
+                            ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                             <div class="form-text">' . lang('A file exported from this screen, with its translation column filled in. Rows are matched by the hash column; a row whose source text has since changed is skipped.') . '</div>
                         </div>
                         <div class="form-field">

@@ -185,8 +185,9 @@ function erp_import_step_upload($liveform, $kind_options)
                                 <div class="row">
                                     <div class="col-12 my-3">
                                         <label for="file" class="form-label">' . h(lang('CSV file')) . '</label>
-                                        ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv')) . '
+                                        ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv,' . PG_SHEET_IMPORT_ACCEPT)) . '
                                         <div class="form-text">' . h(lang('Upload a CSV file. The first row must hold the column names.')) . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES))))) . '</div>
+                                        ' . pg_sheet_import_hint() . '
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
                                         <label for="default_kind" class="form-label">' . h(lang('Default type for rows without one')) . '</label>
@@ -555,17 +556,22 @@ if ($step === 'upload') {
 
     $liveform->add_fields_to_session();
 
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Accounts from CSV'));
+
     $upload = isset($_FILES['file']) && is_array($_FILES['file']) ? $_FILES['file'] : array('name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'tmp_name' => '', 'size' => 0);
 
     $refusal = erp_upload_refusal($upload, ERP_IMPORT_MAX_BYTES);
 
-    if (((string) $upload['name'] === '') || ((int) $upload['error'] === UPLOAD_ERR_NO_FILE)) {
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+    } elseif (((string) $upload['name'] === '') || ((int) $upload['error'] === UPLOAD_ERR_NO_FILE)) {
         $liveform->mark_error('file', lang('Please select a file.'));
     } elseif ($refusal !== '') {
         $liveform->mark_error('file', h($refusal));
-    } elseif (((int) $upload['error'] !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
+    } elseif (((int) $upload['error'] !== UPLOAD_ERR_OK) || !pg_sheet_import_file($upload)) {
         $liveform->mark_error('file', lang('The file could not be read.'));
-    } elseif (!in_array(strtolower((string) pathinfo($upload['name'], PATHINFO_EXTENSION)), array('csv', 'txt'), true)) {
+    } elseif (!in_array(strtolower((string) pathinfo($upload['name'], PATHINFO_EXTENSION)), array('csv', 'txt'), true) && (pg_sheet_kind($upload['name']) === '')) {
         $liveform->mark_error('file', lang('Only CSV files are accepted.'));
     }
 

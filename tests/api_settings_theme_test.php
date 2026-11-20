@@ -68,9 +68,9 @@ function test_api_settings_theme_new_application_fields_named()
 {
 	$source = api_settings_theme_source();
 
-	pg_assert_contains("<label class=\"form-label small\" for=\"n_name\">' . lang('Name') . '</label>", $source);
+	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_name\">' . lang('Name') . '</label>", $source);
 	pg_assert_contains('name="name" id="n_name" maxlength="190" required', $source);
-	pg_assert_contains("<label class=\"form-label small\" for=\"n_description\">' . lang('Description') . '</label>", $source);
+	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_description\">' . lang('Description') . '</label>", $source);
 	pg_assert_contains('name="description" id="n_description" maxlength="500"', $source);
 	pg_assert_true(strpos($source, '<span class="fg-danger">*</span>') === false, 'a hand-written marker doubles the injected one');
 }

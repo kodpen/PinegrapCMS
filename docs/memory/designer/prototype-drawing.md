@@ -15,7 +15,7 @@ description: The Prototype view's drawing from a mark (PV10, #10101): a mark's d
 ## What does the keyboard do?
 - Tab reaches the selected frame's marks right after its frame (`tabIndex` 0 for `own` marks only, -1 for the rest). On a mark `markKey()`: Enter or Space picks, L, the menu key or Shift+F10 opens the target menu at the mark; Escape closes the menu, then goes back from a frame zoomed to (prototype-zoom.md), then closes the view. The panel rows keep the same keys. "Change target" and "Open in the editor" find the link by frame and port, so a link under the cut works too.
 
-- The target menu opens inside the canvas under the view's bar (`menuPlace(anchor, menu, area)`): under its mark or row, else above, else beside it, clamped; its height at most the canvas's. It used to open upward over the bar and cover the zoom controls (message 7661).
+- The target menu opens inside the canvas, under the canvas bar (`menuPlace(anchor, menu, area)`): under its mark or row, else above, else beside it, clamped; its height at most the canvas's. It used to open upward over the bar and cover the zoom controls (message 7661).
 
 ## What else helps to follow an arrow?
 - The pointer on a mark or a panel row lifts its arrow (`_sdProtoLift()`): drawn last, 3 wide, the others faded to .25.

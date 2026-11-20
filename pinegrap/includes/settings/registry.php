@@ -1003,6 +1003,9 @@ function pg_settings_legacy_anchors()
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),
         'pgsub-signin'     => array('security',   'pgset-signin'),
+        // Google's sign-in fields moved onto Google's page of Connections; an
+        // old link to them lands on the card's row that leads there.
+        'oauth_google_row' => array('security',   'pgset-signin'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

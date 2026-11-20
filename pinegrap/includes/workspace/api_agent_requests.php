@@ -95,6 +95,7 @@ function ws_agent_request_api_routes()
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'One fitting emoji left on the message that asked, as the application: beside text, or with no_answer in place of it. Never on the agent\'s own message; a wake asked by no message takes none.'),
                 array('name' => 'conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Conclude the discussion the request was asked in, after the answer: only when a person in it asked for it. Never unasked.'),
                 array('name' => 'offer_conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Unasked, when the discussion seems to have reached its end: a Conclude the discussion button under the answer, which a person in it presses. Takes text; not with conclude.'),
+                array('name' => 'model', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_MODEL_MAX, 'description' => 'The model the agent runs on, as POST /workspace/agent-report takes it (one printable line of at most ' . WS_AGENT_REPORT_MODEL_MAX . ' characters): it replaces the reported model and its time and keeps the usage windows. 422 when it breaks the rule; nothing is written then.'),
             ),
         ),
         array(
@@ -566,6 +567,29 @@ function ws_api_agent_request_claim($params)
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
 }
 
+/**
+ * The model an answer names (its optional model field), checked as the
+ * report's model is: null when it names none or the report columns are not
+ * there yet (the answer goes on without it), a 422 when it breaks the rule.
+ *
+ * @param array $params
+ * @return string|null
+ */
+function ws_api_agent_answer_model($params)
+{
+    if (!array_key_exists('model', $params) || ($params['model'] === null) || !ws_agent_report_ready()) {
+        return null;
+    }
+
+    $check = ws_agent_report_model_check($params['model']);
+
+    if (!$check['ok']) {
+        api_fail_validation($check['error'], 'model');
+    }
+
+    return $check['model'];
+}
+
 function ws_api_agent_request_answer($params)
 {
     $agent = ws_api_agent_caller();
@@ -576,9 +600,13 @@ function ws_api_agent_request_answer($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    // The model it names is checked before anything, so a dry run meets the
+    // same refusal; it is written once the answer is.
+    $model = ws_api_agent_answer_model($params);
+
     // A task handed to the agent: the answer is the run's note on the task.
     if ((int) ($row['task_id'] ?? 0) > 0) {
-        ws_api_agent_task_answer($agent, $viewer, $row, $params);
+        ws_api_agent_task_answer($agent, $viewer, $row, $params, $model);
         return;
     }
 
@@ -688,6 +716,10 @@ function ws_api_agent_request_answer($params)
     // The answer takes the progress note's place.
     ws_agent_progress_clear((int) $row['id']);
 
+    if ($model !== null) {
+        ws_agent_report_model_save((int) $agent['id'], $model, $now);
+    }
+
     // The eye becomes a tick only with a reply; closed without text, the
     // eye stays: the agent saw it.
     if ($reply_id > 0) {
@@ -748,7 +780,7 @@ function ws_agent_task_answer_refusal($params)
  * @param array $row    ws_ai_requests, open
  * @param array $params
  */
-function ws_api_agent_task_answer($agent, $viewer, $row, $params)
+function ws_api_agent_task_answer($agent, $viewer, $row, $params, $model = null)
 {
     $refused = ws_agent_task_answer_refusal($params);
 
@@ -766,6 +798,10 @@ function ws_api_agent_task_answer($agent, $viewer, $row, $params)
 
     if (ws_task_delegation_answer($row, (string) $params['text'])) {
         ws_api_log(lang(array('string' => '@{var:1} answered on task {var:2}', 'vars' => array((string) $agent['handle'], ws_task_number($task['id'])))));
+    }
+
+    if ($model !== null) {
+        ws_agent_report_model_save((int) $agent['id'], $model, time());
     }
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));

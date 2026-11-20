@@ -35,7 +35,7 @@ function test_cloudflare_screen_has_form_and_status_columns()
 	pg_assert_true($form < $status, 'form column before status column');
 	pg_assert_contains('<div class="position-sticky my-7" style="top:3.3rem;">', $source, 'the status column sticks below the top bar');
 
-	foreach (array('nav nav-tabs', "pg_cloudflare_analytics_card(\$analytics, 'requests')", '$image_vary_card', "pg_list_table_search_box('cloudflare_dns')", '$audit_rows', '$fw_rows') as $part) {
+	foreach (array('pg-seg pg-list-seg', "pg_cloudflare_analytics_card(\$analytics, 'requests')", '$image_vary_card', "pg_list_table_search_box('cloudflare_dns')", '$audit_rows', '$fw_rows') as $part) {
 		$at = strpos($source, $part);
 		pg_assert_true($at !== false && $at > $form && $at < $status, $part . ' sits in the form column');
 	}
@@ -51,7 +51,8 @@ function test_cloudflare_screen_analytics_fill_the_row()
 	$source = cloudflare_screen_layout_source();
 
 	pg_assert_true(strpos($source, '<div class="md:col-2"><div class="card text-center">') === false, 'no analytics card is a fixed sixth of the row');
-	pg_assert_true(substr_count($source, '<div class="col-6 md:col-4 xl:col"><div class="card h-100">') === 5, 'the five analytics cards share the row');
+	pg_assert_contains('<div class="pg-figures mb-5" style="--pg-figures: 5;">', $source, 'the five analytics figures share one row');
+	pg_assert_true(substr_count($source, '<div class="pg-card pg-figure">') === 5, 'each analytics figure is a figure card');
 	pg_assert_contains('<span class="pg-btn-label">\' . lang(\'Clear Cache\') . \'</span>', $source, 'the Clear Cache label is in its span');
 }
 

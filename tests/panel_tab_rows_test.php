@@ -36,9 +36,9 @@ function test_panel_tab_rows_api_drawer_hidden_tab_is_disabled()
 	$source = panel_tab_rows_source('api_settings.php');
 
 	// Bootstrap's arrow keys skip disabled tabs only, not hidden ones.
-	pg_assert_contains('document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);', $source, 'devices hidden');
+	pg_assert_contains('document.getElementById("d_devices_label").classList.toggle("d-none", !keyless);', $source, 'devices hidden');
 	pg_assert_contains('devicesLabel.disabled = !keyless;', $source, 'devices disabled');
-	pg_assert_contains('document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);', $source, 'events hidden');
+	pg_assert_contains('document.getElementById("d_hooks_label").classList.toggle("d-none", keyless);', $source, 'events hidden');
 	pg_assert_contains('document.getElementById("d_hooks_label").disabled = keyless;', $source, 'events disabled');
 }
 

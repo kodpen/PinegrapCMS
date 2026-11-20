@@ -47,15 +47,59 @@ if (!defined('PG_INIT_LOADED')) {
                                             'maxlength' => '100',
                                             'required' => 'required'))?>
                                     </div>
-                                    <div class="col-12 my-3">
+                                    <?php
+                                    // What it shows: an address or a designed pop-up (a shared
+                                    // component). Asked only with the content columns and a visual
+                                    // design; otherwise the screen keeps the address kind.
+                                    $content_asked = pg_auto_dialog_form_content_asked();
+                                    $content_kind = pg_auto_dialog_content(pg_auto_dialog_form_content_sent($liveform));
+                                    $shows_component = $content_asked && ($content_kind['content'] === 'component');
+                                    ?>
+                                    <?php if ($content_asked): ?>
+                                        <?php
+                                        require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+                                        $designer_links = pg_auto_dialog_form_designer_links($content_kind['component_id'], array_keys(pg_visual_design_style_ids()), pg_designer_is_full($user));
+                                        ?>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="content" class="form-label"><?=lang('What does it show?')?></label>
+                                            <?=$liveform->output_field(array(
+                                                'type' => 'select',
+                                                'id' => 'content',
+                                                'name' => 'content',
+                                                'class' => 'form-control',
+                                                'options' => pg_auto_dialog_form_content_kinds()))?>
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3<?php if (!$shows_component): ?> d-none<?php endif ?>" data-pg-auto-dialog-shows="component">
+                                            <label for="component_id" class="form-label"><?=lang('Shared Component')?></label>
+                                            <?=$liveform->output_field(array(
+                                                'type' => 'select',
+                                                'id' => 'component_id',
+                                                'name' => 'component_id',
+                                                'class' => 'form-control',
+                                                'options' => pg_auto_dialog_form_component_options(pg_auto_dialog_component_rows())))?>
+                                            <div class="form-text d-flex flex-wrap justify-content-end gap-3">
+                                                <a id="auto_dialog_component_open" href="<?=h($designer_links['open'])?>" target="_blank" data-href="edit_system_style.php?component="<?php if ($designer_links['open'] === ''): ?> class="d-none"<?php endif ?>><?=lang('Open in the visual designer')?></a>
+                                                <?php if ($designer_links['new'] !== ''): ?>
+                                                    <a href="<?=h($designer_links['new'])?>" target="_blank"><?=lang('Design a new pop-up')?></a>
+                                                <?php endif ?>
+                                            </div>
+                                        </div>
+                                    <?php endif ?>
+                                    <div class="col-12 my-3<?php if ($shows_component): ?> d-none<?php endif ?>" data-pg-auto-dialog-shows="url">
                                         <label for="url" class="form-label"><?=lang('URL')?></label>
-                                        <?=$liveform->output_field(array(
+                                        <?php
+                                        $url_field = array(
                                             'type' => 'text',
                                             'id' => 'url',
                                             'name' => 'url',
                                             'class' => 'form-control',
-                                            'maxlength' => '255',
-                                            'required' => 'required'))?>
+                                            'maxlength' => '255');
+
+                                        if (!$shows_component) {
+                                            $url_field['required'] = 'required';
+                                        }
+                                        ?>
+                                        <?=$liveform->output_field($url_field)?>
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
                                         <label for="page" class="form-label"><?=lang('Only on Page')?></label>
@@ -272,6 +316,33 @@ if (!defined('PG_INIT_LOADED')) {
                             box.addEventListener("input", show);
                             box.addEventListener("change", show);
                         });
+                        // What it shows: the address row or the shared component row,
+                        // the URL required only with the address; the open link follows
+                        // the component chosen.
+                        (function () {
+                            var kind = document.getElementById("content");
+                            var component = document.getElementById("component_id");
+                            var open = document.getElementById("auto_dialog_component_open");
+                            var url = document.getElementById("url");
+
+                            if (!kind || !component || !open) {
+                                return;
+                            }
+
+                            var show = function () {
+                                var designed = (kind.value === "component");
+
+                                document.querySelectorAll("[data-pg-auto-dialog-shows]").forEach(function (row) {
+                                    row.classList.toggle("d-none", row.getAttribute("data-pg-auto-dialog-shows") !== (designed ? "component" : "url"));
+                                });
+                                url.required = !designed;
+                                open.setAttribute("href", open.getAttribute("data-href") + encodeURIComponent(component.value));
+                                open.classList.toggle("d-none", component.value === "");
+                            };
+
+                            kind.addEventListener("change", show);
+                            component.addEventListener("change", show);
+                        })();
                         // A select's row shows the option chosen.
                         ["open_on", "audience", "place"].forEach(function (name) {
                             var box = document.getElementById(name);

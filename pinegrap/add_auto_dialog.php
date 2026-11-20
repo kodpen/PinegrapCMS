@@ -62,7 +62,7 @@ if (!$_POST) {
         go($_SERVER['PHP_SELF']);
     }
 
-    $auto_dialog_id = pg_auto_dialog_save(0, pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform)) or output_error('Query failed.');
+    $auto_dialog_id = pg_auto_dialog_save(0, pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform), pg_auto_dialog_form_content_values($liveform, pg_auto_dialog_form_content_asked())) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
 

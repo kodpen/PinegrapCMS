@@ -1140,7 +1140,7 @@ function bs6_scope_kind($path)
 		return 'other';
 	}
 
-	if (preg_match('#^(assets/lib|assets/fonts|data|includes/local|includes/migrations|includes/(phpmailer|stripe|iyzipay-php|phpexcel|boxpacker|dompdf|qrcode))/#', $path)
+	if (preg_match('#^(assets/lib|assets/fonts|data|includes/local|includes/migrations|includes/(phpmailer|stripe|iyzipay-php|boxpacker|dompdf|qrcode))/#', $path)
 		|| preg_match('/\.min\.(js|css)$/', $base)) {
 		return 'vendor';
 	}
