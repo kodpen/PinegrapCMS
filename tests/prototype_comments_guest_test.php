@@ -121,3 +121,16 @@ function test_prototype_comments_guest_phone_fields_are_16px()
 	pg_assert_true(strpos($css, '@media (max-width: 575.98px)') !== false, 'a phone rule');
 	pg_assert_contains('.pg-proto-box .form-control { font-size: 16px; }', $phone);
 }
+
+// An answer to a thread the designer resolved or deleted meanwhile, and a
+// comment on a page that stopped being a draft, were told only "Sorry, we
+// could not accept your request.": the guest could not tell why.
+function test_prototype_comments_guest_refusals_say_why()
+{
+	$generic = pg_proto_comment_error_message('unknown-code');
+
+	pg_assert_same(lang('This comment was resolved or deleted. Open the page again to see it.'), pg_proto_comment_error_message('parent'));
+	pg_assert_same(lang('This page is no longer a draft of the design.'), pg_proto_comment_error_message('page'));
+	pg_assert_true(pg_proto_comment_error_message('parent') !== $generic);
+	pg_assert_same(400, pg_proto_comment_error_status('parent'));
+}
