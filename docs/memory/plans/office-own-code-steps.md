@@ -18,7 +18,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OE2, sheets: add, rename, delete and reorder from the sheet tabs; a delete another sheet's formula points to is refused.
   - Cut: OE2a (PR #10692), the server (`platform/office-sheets.md`); OE2b (done, PR #10723), the tabs' menu (`platform/office-sheet-tabs.md`).
 - OE3, format of the selected cells: bold, italic, text colour, fill, alignment, number format (general, number, money, percent, date); written as new styles, existing ones untouched.
-  - Cut: OE3a (PR #PRNUM), the server's style writer (`platform/office-sheet-format.md`); OE3b, the editor's controls and the preview reading the cells' formats.
+  - Cut: OE3a (PR #10827), the server's style writer (`platform/office-sheet-format.md`); OE3b, the editor's controls and the preview reading the cells' formats.
 - OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet.
 - OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing.
 
