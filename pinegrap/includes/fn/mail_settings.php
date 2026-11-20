@@ -188,6 +188,33 @@ function pg_mail_settings_dkim_matches($txt_record, array $records)
 }
 
 /**
+ * What is wrong with a number box, '' when nothing is. A port is 1 to 65535;
+ * the campaign job's Max. is 1 or more, because email_campaign_job.php puts
+ * it into its LIMIT, where 0 sends nothing and anything but digits fails the
+ * query on every run. A blank box keeps the default (587, 25).
+ *
+ * @param string $key the define (pg_mail_settings_keys())
+ * @param string $value the box as it is saved
+ * @return string
+ */
+function pg_mail_settings_number_problem($key, $value)
+{
+    $value = (string) $value;
+
+    if (($value === '') || !in_array($key, array('SYSTEM_SMTP_PORT', 'CAMPAIGN_SMTP_PORT', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS'), true)) {
+        return '';
+    }
+
+    $whole = (preg_match('/^[0-9]{1,9}$/D', $value) === 1) ? (int) $value : 0;
+
+    if ($key === 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') {
+        return ($whole >= 1) ? '' : lang('Enter a whole number of 1 or more, or leave the box blank for 25.');
+    }
+
+    return (($whole >= 1) && ($whole <= 65535)) ? '' : lang('The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.');
+}
+
+/**
  * Writes the posted boxes to config.php. A refusal marks its field or adds
  * an error to the form and writes nothing.
  *
@@ -226,6 +253,26 @@ function pg_mail_settings_save(array $post, $liveform)
         if (($posted['password'] === '') && ($stored['password'] !== '') && ($kept_passwords[$prefix . 'PASSWORD'] === '')
             && ($posted['host'] !== '') && ($posted['user'] !== '')) {
             $liveform->mark_error($kind . '_smtp_password', lang('The SMTP server or its port changed. Enter the password again.'));
+
+            return false;
+        }
+    }
+
+    // A number box that would stop the mail or the campaign job is refused
+    // before anything is written. The campaign boxes are folded away while
+    // the job is off, where a mark could not be seen or put right.
+    $job_on = (isset($post['email_campaign_job']) && ($post['email_campaign_job'] === 'true'));
+
+    foreach (array('SYSTEM_SMTP_PORT', 'CAMPAIGN_SMTP_PORT', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') as $key) {
+        $field = strtolower($key);
+
+        if (!$job_on && ($key !== 'SYSTEM_SMTP_PORT')) {
+            continue;
+        }
+        $problem = pg_mail_settings_number_problem($key, (isset($post[$field]) && is_string($post[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $post[$field])) : '');
+
+        if ($problem !== '') {
+            $liveform->mark_error($field, h($problem));
 
             return false;
         }
