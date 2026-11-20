@@ -5,10 +5,10 @@ priority: 6
 ---
 
 ## What is asked?
-- Owner (2026-11-20, agent channel poll 196, message 10821): "Evet, plana girsin": programme, criteria, assignment, blind review, the reviewer screen, combining, rounds and decisions, report and API. For scholarships, admissions, awards, calls for papers, grants, jobs and partner applications.
+- Owner (2026-11-20, agent channel poll 196, message 10821): "Evet, plana girsin": programme, criteria, assignment, blind review, the reviewer screen, combining, rounds and decisions, report and API.
 
 ## What is there today?
-- A form's submissions (`forms`, answers in `form_data`) have a Form Editor (`forms.form_editor_user_id`), watchers and Complete or Incomplete (`forms.complete`). The list filters by form, dates, text and fields (`pg_submitted_form_list_filter()`); its bulk actions are delete and export.
+- A form's submissions (`forms`, answers in `form_data`) have a Form Editor (`forms.form_editor_user_id`), watchers and Complete or Incomplete (`forms.complete`). The list's bulk actions are delete and export.
 - A form has no period or deadline, only `enabled` and the rate limits (`waf/form-submission-limits.md`).
 - Panel sight is `validate_forms_access()` and the folder rule (`pg_submitted_form_list_access()`), never per submission.
 - The submitter sees their entry through the form list's viewer filter and the item view (`core/submitter-email-access.md`); My Account lists none; there is no correction link.
@@ -22,12 +22,13 @@ priority: 6
 - An external juror's link is per juror and programme, hash stored, valid until the programme closes, revocable, rate limited, and opens nothing else.
 - The leniency correction is shown beside the raw mean and ranks only when the programme chooses it, from 5 scored entries of that reviewer.
 - Decision mails go only on a person's press after a preview with counts; the result shows to the submitter only once mailed.
-- Each score, conflict, override, decision and mail is an `audit_log` line (`pg_audit()`). Export and erase cover the new rows.
+- Each score, conflict, override, decision and mail is an `audit_log` line (`pg_audit()`).
 
-## Which questions wait for the architect?
-- Schema: programmes, reviewers, reviews (scores per round) and entries (eligibility, round, combined score, decision); four tables or fewer. Then the owner's poll.
-- A panel user as reviewer: membership of the programme only, or a new permission column.
-- Whether jury notes go into the person's export; the screen's place (under Forms).
+## What did the architect decide? (2026-11-20, agent channel message 10843)
+- Schema: four tables, `application_programs`, `application_reviewers`, `application_entries`, `application_reviews`. Rounds and criteria as JSON on the programme row, criteria templates one `config_text` row; the juror link's hash on the reviewer row, the correction link's on the entry row; no column on `forms`. Asked of the owner in poll 199 (message 10841); AR1b waits for the yes.
+- Reviewers: programme membership only, no permission column. A panel user opens "My reviews" through membership, with no Forms right, and it opens no Forms screen; a person with no panel sign-in works through the juror link. The role 3 ladder stays as it is.
+- Jury notes in the person's export: poll 200 (message 10842). Erase covers the four tables either way.
+- Place: under Forms, run by whoever passes `validate_forms_access()` and the folder rule. Close-out file: `core/application-review.md`.
 
 ## What is built?
 - Features: `application-review-features.md` (V1 to V16). Steps: `application-review-steps.md`. Claim as `[plan:application-review] <step> — <topic>`.

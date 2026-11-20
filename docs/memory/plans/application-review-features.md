@@ -16,7 +16,7 @@ description: Plan application-review, features V1 to V16: programme, eligibility
 - (V8) Blind as the plan's main file says.
 
 ## How does a reviewer work?
-- (V9) My queue, progress, next and previous, scores saved as typed, one submit per entry; reminders 3 and 1 days before the round's end to those with open entries.
+- (V9) "My reviews": the queue, progress, next and previous, scores saved as typed, one submit per entry; reminders 3 and 1 days before the round's end to those with open entries.
 - (V10) An external juror is added by name and e-mail and works through a signed link on a page with no session (as `workspace_approval.php`), rate limited in `waf.php`.
 
 ## How are scores combined?

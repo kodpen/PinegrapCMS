@@ -9,7 +9,7 @@ description: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, perio
 
 ## When is it sent?
 - (Q3) Touchpoints: a booking moved to `done`; a ticket checked in; `course.completed`; a form submission N days after it came, or when its chosen single-choice field takes a chosen value; `order.delivered`; a Workspace mail conversation closed. The missing announcements (booking done, conversation closed, check-in for flows) are added by the plan.
-- (Q4) Periodic NPS: every N months to contacts active in the last M months (an order, booking, course or form), under the consent rule the architect names.
+- (Q4) Periodic NPS: every N months to contacts active in the last M months (an order, booking, course or form), under the consent rule of poll 198.
 - (Q5) Sent after the delay, between 09:00 and 20:00 site time; a cancelled booking, refunded order or reopened conversation cancels a pending send.
 
 ## Who is never asked twice?
@@ -17,7 +17,7 @@ description: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, perio
 
 ## How is it answered?
 - (Q7) E-mail: the score buttons, each a signed link (a purpose-bound HMAC, only its hash stored, valid 30 days). The GET opens the page with the score chosen, and the page's own request writes it, so a mail scanner's visit never counts. Comment and extra questions on the page; no sign-in; the score can be changed for 7 days.
-- (Q8) SMS and WhatsApp: one short signed link to the same page, the plain-text kind the architect names.
+- (Q8) SMS and WhatsApp: one short signed link to the same page, of the kind `feedback`.
 - (Q9) After the answer the page shows the same review invitation to everyone: Google's write-a-review address from the place id, or the product's review page for a delivery. Never chosen by the score.
 
 ## What happens to a low score?

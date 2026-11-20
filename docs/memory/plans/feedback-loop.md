@@ -5,7 +5,7 @@ priority: 6
 ---
 
 ## What is asked?
-- Owner (2026-11-20, agent channel poll 187, message 10725): "Evet, plana girsin": ready surveys, touchpoint triggers, the one-click answer, fatigue limits, the closed loop for low scores, the review invitation, the report, API.
+- Owner (2026-11-20, agent channel poll 187, message 10725): "Evet, plana girsin": surveys, touchpoint triggers, the one-click answer, fatigue limits, low scores followed up, the review invitation, report, API.
 
 ## What is there today?
 - The product review request mails after the first shipment of an account order, once per order (`pg_review_request_start()`, `commerce/product-review-request-email.md`). Nothing asks how a service went.
@@ -20,19 +20,20 @@ priority: 6
 - Form fields have no rating scale; the Google Reviews widget keeps a place id (`pg_grev_state()`) but no write-a-review link.
 
 ## What binds it?
-- The touchpoint code only announces; it never waits on a survey. Sends are queued and go from the general job.
+- The touchpoint code only announces, never waiting on a survey; sends are queued for the general job.
 - One survey per person in 30 days across all surveys, one reminder; staff accounts and listed test addresses never; "Don't ask me again" in every message holds for good.
 - A mail scanner opening a link never counts: the GET shows the page, and the score is written by the page's own request.
-- The review invitation is the same for every score: never filtered by it (Google's rule against review gating).
+- The review invitation is the same for every score (Google's rule against review gating).
 - A cancelled booking, refunded order or reopened conversation cancels its pending survey, as `pg_review_request_cancel()` does.
 - The product review request stays as it is; a delivery survey is off by default and never goes for an order whose review request went in the last 30 days.
 - A staff member's figures are shown from 5 answers on, and only to manager and up.
 - The person's export and erase cover every answer; an erased answer keeps its score with no person and no comment.
 
-## Which questions wait for the architect?
-- Schema: one table, one row per sent survey, with the surveys in `config_text`; or a second table for the surveys. Then the owner's poll.
-- Consent: is a survey after a touchpoint a service message (`transactional`, no İYS) with no promotion in it, and the periodic NPS commercial (marketing consent, İYS)?
-- The screen's place (Contacts or Reports) and who may change a survey.
+## What did the architect decide? (2026-11-20, agent channel message 10843)
+- Schema: two tables, `feedback_surveys` and `feedback_responses`. "Don't ask me again" is a flag on the response row, the person found by a hash of the e-mail or phone; extra answers and the follow-up's outcome are on the response row too. Asked of the owner in poll 197 (message 10839); FD1b waits for the yes, and the architect writes the columns.
+- Consent: poll 198 (message 10840): a survey after a touchpoint as a service message, the periodic NPS commercial. SMS and WhatsApp kind `feedback`; no promotion in the message, the review invitation only on the answer page (Q9).
+- Place: a new "Surveys" tab of the Communication area (list, settings and results in one place), one file and gate per tab (`ui/messages-area-rules.md`). Role 2 and up change a survey; role 3 with the contacts right sees results without staff figures.
+- Close-out file: `platform/feedback-loop.md`, beside the SMS, İYS and Sends rules.
 
 ## What is built?
 - Features: `feedback-loop-features.md` (Q1 to Q16). Steps: `feedback-loop-steps.md`. Claim as `[plan:feedback-loop] <step> — <topic>`.
