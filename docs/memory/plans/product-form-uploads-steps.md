@@ -22,7 +22,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Existing files: `view_order.php`, `includes/fn/content.php` (the two product form renderers and `get_form_review_info()`), `widgets_lists_order.php`, `widgets_order_preview.php`, `print_order.php`, `print_packing_slip.php`, `includes/fn/order_completion.php` (the plain receipt; held by RF1 and TK1).
   - Features: U9, U10.
 
-- FU4b (M) after FU1: the API, the CSV and completion.
+- FU4b (M) after FU1: the API, the CSV and completion. Done in #10639.
   - Existing files: `includes/api/resources/orders.php`, `view_orders.php` (both CSV exports), `includes/fn/order_completion.php` (the submit-form copy; held by RF1 and TK1), `includes/fn/privacy_export.php` if its list needs the name.
   - `php tools/check_api_schema.php`. Features: U11, U12, U13, U15.
 

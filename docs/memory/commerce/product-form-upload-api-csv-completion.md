@@ -5,7 +5,7 @@ module: product_form_uploads
 ---
 
 ## What does the API give for a line's product form?
-- `GET /orders/{id}`: each `items[]` row carries `answers` (`api_order_item_answers()` reads them in one query, `api_order_item_answers_present()` shapes them, pure). Built in #PR.
+- `GET /orders/{id}`: each `items[]` row carries `answers` (`api_order_item_answers()` reads them in one query, `api_order_item_answers_present()` shapes them, pure). Built in #10639.
 - One answer per unit and field: `unit`, `field_id` (null once deleted), `name`, `label`, `value` (a check box group joined by ", "), `file` (null unless a File Upload).
 - `file` (object `OrderItemFile`): `id`, `name`, `size`, `type` (extension) and `url`, the site address get_file.php serves (`URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(name)`). It opens for order staff and the signed-in buyer, not for the API key (`commerce/product-form-upload-field.md`).
 - A file deleted from Files since: `value` keeps the name the answer had, `file` is null. The list endpoint carries no items, so no answers.
