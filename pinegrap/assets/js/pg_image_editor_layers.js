@@ -242,8 +242,10 @@
             this.drag = { kind: (h === 'rot') ? 'rotate' : ((BOX_HANDLES.indexOf(h) >= 0) ? 'resize' : 'handle'), h: h, start: M.clone(one) };
         } else {
             // A closed shape without a fill is hit on its line; a press inside
-            // it takes it too where no other layer lies.
-            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit) || M.hitLayer(this.doc, p[0], p[1], 0, function (l) {
+            // it takes it too where no other layer lies. A finger keeps a
+            // selected layer as far as its reach (M.touchReach()), so a
+            // small layer moves by a drag anywhere on it.
+            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit, this.pickedReach(e)) || M.hitLayer(this.doc, p[0], p[1], 0, function (l) {
                 var rings = M.layerRings(l);
 
                 return !!rings && M.insideRings(p, rings);
@@ -279,6 +281,13 @@
         } catch (err) {
             // The pointer is already gone.
         }
+    };
+
+    // The selection and how far, in document px, a press e keeps it, as
+    // M.hitLayer() reads its picked option: 22 screen px for a finger, the
+    // usual 4 for a mouse or a pen (M.touchReach()).
+    Editor.prototype.pickedReach = function (e) {
+        return { ids: this.sel.slice(), reach: M.touchReach(e && e.pointerType, 4) / this.view.k };
     };
 
     // The layers a selection box touches, after the ones selected before it
@@ -460,7 +469,7 @@
     // The keys of the selection: arrows nudge (Shift: 10), Delete removes,
     // Ctrl+D duplicates, Ctrl+C copies, Ctrl+A selects all. True when used.
     Editor.prototype.layerKey = function (e, mod, k) {
-        var ids = this.sel, step = e.shiftKey ? 10 : 1, free = this.selected().filter(function (l) { return !l.locked; });
+        var ids = this.sel, free = this.selected().filter(function (l) { return !l.locked; });
         var movable = free.filter(function (l) { return !fixed(l); });
 
         if (Editor.selectTools.indexOf(this.tool) < 0) {
@@ -491,21 +500,36 @@
             return true;
         }
 
-        var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+        var dir = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[k];
 
         if (!mod && dir && movable.length) {
-            this.change(function (doc) {
-                movable.forEach(function (o) {
-                    var l = find(doc, o.id);
-
-                    l.x += dir[0] * step;
-                    l.y += dir[1] * step;
-                });
-            }, 'nudge');
+            this.nudge(dir, e.shiftKey);
             return true;
         }
 
         return false;
+    };
+
+    // The selected layers that move (neither locked nor fixed) nudged by
+    // M.nudgeStep(dir, big), from an arrow key or the bar's arrows; nudges
+    // in a row are one undo step. True when one moved.
+    Editor.prototype.nudge = function (dir, big) {
+        var d = M.nudgeStep(dir, big), ids = this.selected().filter(function (l) { return !fixed(l); }).map(function (l) { return l.id; });
+
+        if (!d || !ids.length) {
+            return false;
+        }
+
+        this.change(function (doc) {
+            ids.forEach(function (id) {
+                var l = find(doc, id);
+
+                l.x += d[0];
+                l.y += d[1];
+            });
+        }, 'nudge');
+
+        return true;
     };
 
     // Copies of layers with new ids, moved by offset, on top and selected.

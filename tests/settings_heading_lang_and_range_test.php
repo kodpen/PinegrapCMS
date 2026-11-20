@@ -55,7 +55,7 @@ function test_cron_title_marks_the_os_name_as_english()
 
 function test_brand_names_in_titles_are_marked_english()
 {
-	pg_assert_contains("<span lang=\"en\">' . lang('MailChimp') . '</span>", settings_heading_source('contact.php'), 'the MailChimp title');
+	pg_assert_contains("<span lang=\"en\">' . lang('MailChimp') . '</span>", settings_heading_source('mail_sending.php'), 'the MailChimp title');
 
 	$src = settings_heading_source('security.php');
 	pg_assert_contains("'string' => 'Sign in with {var:1}, {var:2} and {var:3}'", $src, 'security.php uses the placeholder key');

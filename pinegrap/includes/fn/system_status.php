@@ -3266,22 +3266,54 @@ function get_system_status_checks()
     // 🎨 Canvas drawing (includes/fn/image_draw.php)
     //
     // Reported, not scored: a canvas an agent writes is drawn by a member's
-    // browser wherever the server cannot draw it, so nothing is broken without
-    // it. The probe behind it runs once per PHP / Imagick build and is kept
-    // in data/temp, so this tile does not draw anything on its own. Yellow only
+    // browser, and the languages of a translated Artifact Canvas picture by an
+    // open panel, wherever the server cannot draw them, so nothing is broken
+    // without it. Shown where either one happens: the Workspace is on, or the
+    // site has a target language (includes/fn/picture_server_draw.php). The
+    // probe behind it runs once per PHP / Imagick build and is kept in
+    // data/temp, so this tile does not draw anything on its own. Yellow only
     // while drawing is paused after a drawing that never finished.
-    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php')) {
+    $draw_agents = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED;
+    $draw_pictures = false;
+
+    if (function_exists('pg_tr_ready') && pg_tr_ready()) {
+        pg_tr_load();
+        $draw_pictures = (bool) pg_tr_target_languages();
+    }
+
+    if (($draw_agents || $draw_pictures) && is_file(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php')) {
 
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php');
 
         $draw_can = pg_image_draw_can();
+
+        // Each state's sentence names what the drawing is for here: the
+        // canvases agents write, the translated pictures, or both.
+        $draw_for = $draw_pictures ? ($draw_agents ? 'both' : 'pictures') : 'agents';
+        $draw_texts = array(
+            'paused' => array(
+                'agents'   => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
+                'pictures' => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. An open panel draws the languages of translated Artifact Canvas pictures until then.',
+                'both'     => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Until then members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
+            ),
+            'off' => array(
+                'agents'   => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
+                'pictures' => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. An open panel draws the languages of translated Artifact Canvas pictures.',
+                'both'     => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
+            ),
+            'on' => array(
+                'agents'   => 'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
+                'pictures' => 'With nobody in the panel, this server draws the languages of translated Artifact Canvas pictures wherever it draws every part of one faithfully. An open panel draws the others.',
+                'both'     => 'This server draws the canvases agents write at once, and the languages of translated Artifact Canvas pictures with nobody in the panel, wherever it draws every part of one faithfully. Browsers draw the others, and a member\'s browser draws an agent\'s canvas again with the image editor.',
+            ),
+        );
 
         if (!empty($draw_can['paused'])) {
             $output .= $makeIcon(
                 'bi-palette-fill',
                 'fg-warning',
                 'Canvas Drawing',
-                'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
+                $draw_texts['paused'][$draw_for],
                 lang('Paused')
             );
         } elseif (empty($draw_can['shapes'])) {
@@ -3289,7 +3321,7 @@ function get_system_status_checks()
                 'bi-palette-fill',
                 'fg-secondary',
                 'Canvas Drawing',
-                'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
+                $draw_texts['off'][$draw_for],
                 lang('Off')
             );
         } else {
@@ -3316,7 +3348,7 @@ function get_system_status_checks()
                 'bi-palette-fill',
                 'fg-success',
                 'Canvas Drawing',
-                'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
+                $draw_texts['on'][$draw_for],
                 lang('On'),
                 '',
                 $draw_detail

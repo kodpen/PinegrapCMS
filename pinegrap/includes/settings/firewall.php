@@ -72,7 +72,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="pg-title-section">' . lang('Firewall') . '</span>
-                <a href="view_waf_log.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-list-columns-reverse me-1"></i>' . lang('Firewall Log') . '</a>
+                <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-list-columns-reverse"></i>' . lang('Firewall Log') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -112,14 +112,14 @@ $pg_settings_cards[] = '
                                                             <label for="waf_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-ghost" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-ghost text-end" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric"/>
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="waf_log_max_rows" class="form-label">' . lang('Log Size Limit') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('row(s)') . '</span>
-                                                                <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-ghost" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-ghost text-end" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric"/>
                                                             </label>
                                                             <div class="form-text">' . lang('Identical events within five minutes already share one row. This is the hard ceiling: the oldest rows are dropped beyond it, so an attack cannot fill the database.') . '</div>
                                                         </div>
@@ -158,21 +158,21 @@ $pg_settings_cards[] = '
                                                                             <label for="waf_rate_limit_requests" class="form-label">' . lang('All Requests') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
-                                                                                <input type="text" name="waf_rate_limit_requests" id="waf_rate_limit_requests" class="form-ghost" value="' . (int) $waf_rate_limit_requests . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_rate_limit_requests" id="waf_rate_limit_requests" class="form-ghost text-end" value="' . (int) $waf_rate_limit_requests . '" size="5" maxlength="5" inputmode="numeric"/>
                                                                             </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_rate_limit_sensitive" class="form-label">' . lang('Sign-in, Forms and Checkout') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
-                                                                                <input type="text" name="waf_rate_limit_sensitive" id="waf_rate_limit_sensitive" class="form-ghost" value="' . (int) $waf_rate_limit_sensitive . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_rate_limit_sensitive" id="waf_rate_limit_sensitive" class="form-ghost text-end" value="' . (int) $waf_rate_limit_sensitive . '" size="5" maxlength="5" inputmode="numeric"/>
                                                                             </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_rate_limit_api" class="form-label">' . lang('Live Chat and Store Pages') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
-                                                                                <input type="text" name="waf_rate_limit_api" id="waf_rate_limit_api" class="form-ghost" value="' . (int) $waf_rate_limit_api . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_rate_limit_api" id="waf_rate_limit_api" class="form-ghost text-end" value="' . (int) $waf_rate_limit_api . '" size="5" maxlength="5" inputmode="numeric"/>
                                                                             </label>
                                                                             <div class="form-text">' . lang('The requests your pages make in the background. An open chat window alone asks about thirty times a minute.') . '</div>
                                                                         </div>
@@ -180,7 +180,7 @@ $pg_settings_cards[] = '
                                                                             <label for="waf_inflight_limit" class="form-label">' . lang('Open at Once') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('requests') . '</span>
-                                                                                <input type="text" name="waf_inflight_limit" id="waf_inflight_limit" class="form-ghost" value="' . (int) $waf_inflight_limit . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_inflight_limit" id="waf_inflight_limit" class="form-ghost text-end" value="' . (int) $waf_inflight_limit . '" size="4" maxlength="3" inputmode="numeric"/>
                                                                             </label>
                                                                             <div class="form-text">' . lang('How many sign-in, form or checkout requests one address may have running at the same time. Catches a request that waits on e-mail or a payment gateway while holding a database connection, which the per-minute limits above cannot see. 0 turns it off.') . '</div>
                                                                         </div>' : '') . '
@@ -205,21 +205,21 @@ $pg_settings_cards[] = '
                                                                             <label for="waf_auto_ban_threshold" class="form-label">' . lang('Ban After') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('events / 10 min') . '</span>
-                                                                                <input type="text" name="waf_auto_ban_threshold" id="waf_auto_ban_threshold" class="form-ghost" value="' . (int) $waf_auto_ban_threshold . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_auto_ban_threshold" id="waf_auto_ban_threshold" class="form-ghost text-end" value="' . (int) $waf_auto_ban_threshold . '" size="4" maxlength="4" inputmode="numeric"/>
                                                                             </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_auto_ban_minutes" class="form-label">' . lang('Ban Duration') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('minute(s)') . '</span>
-                                                                                <input type="text" name="waf_auto_ban_minutes" id="waf_auto_ban_minutes" class="form-ghost" value="' . (int) $waf_auto_ban_minutes . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_auto_ban_minutes" id="waf_auto_ban_minutes" class="form-ghost text-end" value="' . (int) $waf_auto_ban_minutes . '" size="5" maxlength="5" inputmode="numeric"/>
                                                                             </label>
                                                                         </div>
                                                                         ' . ($security_ready ? '<div class="pg-f-xs">
                                                                             <label for="waf_auto_ban_max_minutes" class="form-label">' . lang('Longest Ban') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('minute(s)') . '</span>
-                                                                                <input type="text" name="waf_auto_ban_max_minutes" id="waf_auto_ban_max_minutes" class="form-ghost" value="' . (int) $waf_auto_ban_max_minutes . '" size="6" maxlength="6" inputmode="numeric" style="text-align: right;"/>
+                                                                                <input type="text" name="waf_auto_ban_max_minutes" id="waf_auto_ban_max_minutes" class="form-ghost text-end" value="' . (int) $waf_auto_ban_max_minutes . '" size="6" maxlength="6" inputmode="numeric"/>
                                                                             </label>
                                                                             <div class="form-text">' . lang('An address banned again after its ban ran out is banned four times as long each time, up to this ceiling. 10080 is seven days.') . '</div>
                                                                         </div>' : '') . '
@@ -290,13 +290,13 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="pg-f-lg">
-                                                            <label for="allowed_bots" class="form-label"><i class="bi bi-check-circle fg-success me-1"></i>' . lang('Allowed Bots') . ' <span class="badge bg-subtle-success fg-emphasis-success border border-subtle-success fw-normal">' . lang('never blocked') . '</span></label>
+                                                            <label for="allowed_bots" class="form-label"><i class="bi bi-check-circle fg-success me-1"></i>' . lang('Allowed Bots') . ' <span class="pg-pill pg-tone-teal">' . lang('never blocked') . '</span></label>
                                                             ' . pg_fields_script() . '
                                                             <input type="text" value="' . h(waf_list_to_string($allowed_bots)) . '" name="allowed_bots" id="allowed_bots" class="form-control tagin min-height-tagin border-subtle-success" data-pg-chips data-placeholder="' . lang('Allow a crawler') . '"/>
                                                             <div class="form-text">' . lang('Extra crawlers to permit, on top of the built-in list. You do not need to list Google, Bing, Yandex, Facebook, Twitter or the payment gateways — those are already recognised.') . '</div>
                                                         </div>
                                                         <div class="pg-f-lg">
-                                                            <label for="waf_blocked_agents" class="form-label"><i class="bi bi-slash-circle fg-danger me-1"></i>' . lang('Blocked Bots') . ' <span class="badge bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal">' . lang('always blocked') . '</span></label>
+                                                            <label for="waf_blocked_agents" class="form-label"><i class="bi bi-slash-circle fg-danger me-1"></i>' . lang('Blocked Bots') . ' <span class="pg-pill pg-tone-rose">' . lang('always blocked') . '</span></label>
                                                             ' . pg_fields_script() . '
                                                             <input type="text" value="' . h(waf_list_to_string($waf_blocked_agents)) . '" name="waf_blocked_agents" id="waf_blocked_agents" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block a crawler') . '"/>
                                                             <div class="form-text">' . lang('Extra crawlers to reject. Checked after the built-in lists, so these can never override a search engine or a payment gateway.') . '</div>
@@ -326,13 +326,13 @@ $pg_settings_cards[] = '
                                             <div class="form-text ">' . lang('Checked before every other rule, and enforced whether or not the firewall is enabled. Behind a CDN these are matched against the real visitor address, not the edge server — provided the edge is listed under Trusted Proxies above.') . '</div>
                                            <div class="row gy-5">
                                                 <div class="pg-f-lg">
-                                                    <label for="allowed_ip_addresses" class="form-label"><i class="bi bi-check-circle fg-success me-1"></i>' . lang('Allowed IP Addresses') . ' <span class="badge bg-subtle-success fg-emphasis-success border border-subtle-success fw-normal">' . lang('never blocked') . '</span></label>
+                                                    <label for="allowed_ip_addresses" class="form-label"><i class="bi bi-check-circle fg-success me-1"></i>' . lang('Allowed IP Addresses') . ' <span class="pg-pill pg-tone-teal">' . lang('never blocked') . '</span></label>
                                                     ' . pg_fields_script() . '
                                                     <input type="text" value="' . h($output_allowed_ip_addresses) . '" name="allowed_ip_addresses" id="allowed_ip_addresses" class="form-control tagin min-height-tagin border-subtle-success" data-pg-chips data-placeholder="' . lang('Allow an address') . '"/>
                                                     <div class="form-text">' . lang('These addresses skip every firewall rule. Add your own office or VPN address before enabling blocking, so a mistuned rule cannot lock you out of your own site.') . '</div>
                                                 </div>
                                                 <div class="pg-f-lg">
-                                                    <label for="banned_ip_addresses" class="form-label"><i class="bi bi-slash-circle fg-danger me-1"></i>' . lang('Banned IP Addresses') . ' <span class="badge bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal">' . lang('always blocked') . '</span></label>
+                                                    <label for="banned_ip_addresses" class="form-label"><i class="bi bi-slash-circle fg-danger me-1"></i>' . lang('Banned IP Addresses') . ' <span class="pg-pill pg-tone-rose">' . lang('always blocked') . '</span></label>
                                                     ' . pg_fields_script() . '
                                                     <input type="text" value="' . h($output_banned_ip_addresses) . '" name="banned_ip_addresses" id="banned_ip_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
                                                     <div class="form-text">' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . ' ' . lang('Enforced whatever mode the firewall is in, including Monitor, and before the database is even opened. Allowed addresses above still win.') . '</div>
@@ -340,7 +340,7 @@ $pg_settings_cards[] = '
                                                 <div class="col-12">
                                                     <label class="form-label">' . lang('Active Automatic Bans') . '</label>
                                                     ' . ($output_auto_bans
-                                                        ? '<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                                                        ? '<div class="table-responsive"><table class="table table-hover mb-0 pg-embedded-table">
                                                         <thead><tr>
                                                             <th>' . lang('IP Address') . '</th>
                                                             <th>' . lang('Reason') . '</th>
@@ -455,7 +455,7 @@ if (!empty($waf_country_ready)) {
                         </div>
                     </div>
                     <div class="col-12 pb-0" role="group" aria-labelledby="waf_country_exempt_title">
-                        <h6 class="fg-secondary mb-0" id="waf_country_exempt_title">' . lang('Always let in') . '</h6>
+                        <h3 class="pg-group-label mb-0" id="waf_country_exempt_title">' . lang('Always let in') . '</h3>
                         <div class="form-text">' . lang('Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.') . '</div>
                         <div class="row mt-5">' . $output_waf_country_exemptions . '
                         </div>
@@ -595,12 +595,12 @@ if ($security_ready) {
                                                    <div class="row gy-5">
                                                         <div class="col-12 ">
                                                             <label class="form-label">' . lang('Log File') . '</label>
-                                                            <div class="font-monospace small text-break">' . h($waf_text_log_path) . '</div>
+                                                            <div class="font-monospace pg-text-meta text-break">' . h($waf_text_log_path) . '</div>
                                                             <div class="form-text">' . lang('Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule=, the reference and path=. Not reachable from the web.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
                                                             <label class="form-label">' . lang('fail2ban Filter and Jail') . '</label>
-                                                            <pre class="small bg-1 border rounded-4 p-3 mb-0" style="white-space: pre-wrap;">' . h($waf_fail2ban_snippet) . '</pre>
+                                                            <pre class="pg-text-meta bg-1 border rounded-4 p-3 mb-0" style="white-space: pre-wrap;">' . h($waf_fail2ban_snippet) . '</pre>
                                                             <div class="form-text">' . lang('Two files, then restart fail2ban. On shared hosting there is nothing to install; the file is simply written and can be ignored, or switched off here.') . '</div>
                                                         </div>
                                                     </div>
@@ -644,7 +644,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="pg-title-section">' . lang('HTTPS and Security Headers') . '</span>
-                <a href="view_waf_log.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-list-columns-reverse me-1"></i>' . lang('Policy Reports') . '</a>
+                <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-list-columns-reverse"></i>' . lang('Policy Reports') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -656,7 +656,7 @@ $pg_settings_cards[] = '
                                             </div>' . $output_secure_mode_offer . '
                                             <div class="alert theme-warning mt-3 mb-0 py-3 small">
                                                 <p>' . lang(array('string'=>'Warning: Do not enable Secure Mode until you have {var:1} that your site has a working SSL Certificate.','vars'=>array('<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('verified') . '</a>') )) . '</p>
-                                                <p class="mb-0 small">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
+                                                <p class="mb-0">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
                                             </div>
                                         </div>
                     ' . $output_security_headers_block . '

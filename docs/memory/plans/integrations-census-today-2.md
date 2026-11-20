@@ -4,7 +4,7 @@ description: Census (2026-11-17) of the outside services the product connects to
 ---
 
 ## Mail, SMS and messaging?
-- Sending: SMTP with DKIM and the API transports Postmark, Mailgun, Brevo, Resend, Amazon SES (System tools › SMTP Settings); Gmail and Microsoft 365 through a connected account. Reading: IMAP mailboxes with presets, Microsoft 365 by a connected account (Site Settings › Mailboxes). Mailchimp sync (Communication › MailChimp).
+- Sending: SMTP with DKIM and the API transports Postmark, Mailgun, Brevo, Resend, Amazon SES (System tools › SMTP Settings); Gmail and Microsoft 365 through a connected account. Reading: IMAP mailboxes with presets, Microsoft 365 by a connected account (Site Settings › Mailboxes). Mailchimp sync (Site Settings › E-mail sending › MailChimp).
 - SMS: Netgsm, İleti Merkezi, Twilio; İYS for consent. WhatsApp Cloud API with templates, and replies into the Workspace.
 - Slack, Microsoft Teams and Telegram receive operations alerts and Workspace events (Updates and maintenance › Chat notifications).
 

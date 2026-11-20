@@ -55,9 +55,9 @@ if (!is_dir($root . '/includes/api')) {
 }
 
 // Routes that answer with something other than a record: the OpenAPI document
-// itself, the console page, the fragment it loads, and the delete that answers
-// 204 with an empty body.
-$without_body = array('openapi', 'docs', 'docs.endpoints', 'webhooks.delete');
+// itself, the console page, the fragment it loads, and the webhook delete and
+// its POST twin, which answer 204 with an empty body.
+$without_body = array('openapi', 'docs', 'docs.endpoints', 'webhooks.delete', 'webhooks.delete_post');
 
 // Which presenter builds the shape each declaration describes. Only the pairs
 // that exist - meta and the stock endpoints build their answers inline.
@@ -114,6 +114,8 @@ $presenters = array(
 	'api_design_outline_item_schema' => 'api_design_outline_item_present',
 	'api_design_proposal_schema' => 'api_design_proposal_out',
 	'api_design_revision_schema' => 'api_design_revision_present',
+	'api_design_bundle_schema' => 'api_design_bundle_present',
+	'api_design_bundle_page_schema' => 'api_design_bundle_page_present',
 	'api_design_restore_schema'  => 'api_design_restore_present',
 	'ws_api_claude_change_type_schema' => 'ws_api_claude_change_type_present',
 	'ws_api_claude_record_schema'      => 'ws_api_claude_record_present',

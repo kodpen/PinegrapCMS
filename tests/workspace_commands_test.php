@@ -202,14 +202,14 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'tracking', 'create', 'product', 'flow', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
 // out, and names a suggestion source the composer knows (or none).
 function test_workspace_command_registry_arguments_are_typed()
 {
-	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities', 'statuses', 'kinds');
+	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'orders', 'dates', 'estimates', 'priorities', 'statuses', 'kinds', 'healths', 'notify', 'flows');
 
 	foreach (ws_commands(null) as $entry) {
 		pg_assert_true(is_string($entry['description']) && ($entry['description'] !== ''), '/' . $entry['key'] . ' has a description');
@@ -323,7 +323,7 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 			$kinds[] = ws_command_parse_create($item['value'] . ' x')['kind'];
 		}
 
-		pg_assert_same(array('product', 'product_group', 'contact', 'wtable_row'), $kinds, $language . ' kinds, every one read');
+		pg_assert_same(array('product', 'product_group', 'contact', 'wtable_row', 'erp_account', 'calendar_event'), $kinds, $language . ' kinds, every one read');
 	}
 
 	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');
@@ -694,7 +694,7 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind', 'approval', 'update', 'checkin', 'notify', 'invite', 'leave', 'topic', 'search', 'memory'), $live, 'the commands with a live line');
 }
 
 // /schedule (/zamanla) answers to its names and reads when at the start of

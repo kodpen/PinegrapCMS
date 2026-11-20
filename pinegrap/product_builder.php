@@ -182,6 +182,43 @@ function pg_pb_product_group_ids($product_id)
 
 
 /**
+ * The group links an Edit Product save changes: the groups posted that the
+ * product is not in yet, and the groups it is in that were not posted.
+ *
+ * A link row (products_groups_xref) also holds the product's sort order in
+ * the group, its featured mark and its new date, set on Edit Product Group
+ * and Featured and New Items. Rewriting every row on each save reset all
+ * three, so only the difference is written. Pure.
+ *
+ * @param array $stored group ids the product is in now
+ * @param mixed $posted the posted catalog_group_ids
+ * @return array 'add' => group ids, 'remove' => group ids
+ */
+function pg_pb_group_links_change($stored, $posted)
+{
+    $clean = function ($ids) {
+        $out = array();
+
+        foreach ((array) $ids as $id) {
+            if (is_scalar($id) && preg_match('/^[0-9]+$/', trim((string) $id)) && ((int) $id > 0)) {
+                $out[(int) $id] = (int) $id;
+            }
+        }
+
+        return $out;
+    };
+
+    $stored = $clean($stored);
+    $posted = $clean($posted);
+
+    return array(
+        'add'    => array_values(array_diff_key($posted, $stored)),
+        'remove' => array_values(array_diff_key($stored, $posted)),
+    );
+}
+
+
+/**
  * The select-type ("variant set") group a product belongs to, or 0.
  *
  * A product can sit in several groups, but only one of them can be the variant
@@ -211,15 +248,17 @@ function pg_pb_variant_group_id($product_id)
 
 /**
  * Whether a variant set member's posted attribute choice still fits its set:
- * every attribute must be one of the set's (when the set names any), and no
- * other member may already hold the same combination. Two members of one
+ * every attribute must be one of the set's and every set attribute must be
+ * chosen (when the set names any), and no other member may already hold the
+ * same combination. Two members of one
  * combination cannot be told apart by the storefront picker, and the
  * combination they replaced can no longer be bought.
  *
  * @param array $attributes      Posted pairs: array(array('attribute_id' => , 'option_id' => ), ...)
  * @param array $set_attributes  The set's attribute ids
  * @param array $siblings        Other members: product id => array(attribute id => option id)
- * @return array  array() when it fits; array('outside' => attribute id) or array('clash' => product id)
+ * @return array  array() when it fits; array('outside' => attribute id),
+ *                array('missing' => attribute id) or array('clash' => product id)
  */
 function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
 {
@@ -239,6 +278,14 @@ function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
         foreach (array_keys($posted) as $attribute_id) {
             if (!in_array($attribute_id, $set_attributes, true)) {
                 return array('outside' => $attribute_id);
+            }
+        }
+
+        // The storefront picker asks for one option of every set attribute,
+        // so a member missing one can no longer be picked or bought.
+        foreach ($set_attributes as $attribute_id) {
+            if (!isset($posted[$attribute_id])) {
+                return array('missing' => $attribute_id);
             }
         }
     }
@@ -363,6 +410,10 @@ function pg_pb_variant_set_problem($product_id, $variants, $cleared = FALSE)
         $name = db_value("SELECT name FROM product_attributes WHERE id = '" . (int) $clash['outside'] . "'");
 
         return lang(array('string' => 'The attribute {var:1} is not one of this variant set\'s attributes.', 'vars' => array((string) $name)));
+    }
+
+    if (isset($clash['missing'])) {
+        return lang('This product is a variant in a variant set: choose one option of each of its attributes.');
     }
 
     if (isset($clash['clash'])) {
@@ -6821,18 +6872,24 @@ function pg_pb_update_product($product_id)
         ));
     }
 
-    db("DELETE FROM products_groups_xref WHERE product = '" . e($product_id) . "'");
+    // Only the groups added or taken off: a row the product stays in keeps
+    // its sort order, featured mark and new date (pg_pb_group_links_change()).
+    $group_links = pg_pb_group_links_change(
+        pg_pb_product_group_ids($product_id),
+        (isset($_POST['catalog_group_ids']) && is_array($_POST['catalog_group_ids'])) ? $_POST['catalog_group_ids'] : array());
 
-    if (!empty($_POST['catalog_group_ids']) && is_array($_POST['catalog_group_ids'])) {
-        foreach ($_POST['catalog_group_ids'] as $group_id) {
-            $group_id = (int) $group_id;
-            if ($group_id) {
-                pg_pb_insert_row('products_groups_xref', array(
-                    'product'       => $product_id,
-                    'product_group' => $group_id,
-                ));
-            }
-        }
+    if ($group_links['remove']) {
+        db(
+            "DELETE FROM products_groups_xref
+            WHERE product = '" . e($product_id) . "'
+            AND product_group IN (" . implode(', ', array_map('intval', $group_links['remove'])) . ")");
+    }
+
+    foreach ($group_links['add'] as $group_id) {
+        pg_pb_insert_row('products_groups_xref', array(
+            'product'       => $product_id,
+            'product_group' => (int) $group_id,
+        ));
     }
 
     if ($shipping_on) {

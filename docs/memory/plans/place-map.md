@@ -37,4 +37,4 @@ priority: 6
 
 ## Whose look?
 - The owner's: the block on a page, with and without the map, on a phone (MP3, MP4).
-- Owner (2026-11-16, agent channel poll 105, message 7114): "Evet, böyle çıksın" to "Find from the address" (MP2; `workflow/decisions-made-product-67.md`).
+- Owner: "Evet, böyle çıksın" to "Find from the address" (MP2, poll 105, `workflow/decisions-made-product-67.md`) and to the list (MP3, poll 139, `-74.md`).

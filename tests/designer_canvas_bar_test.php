@@ -136,7 +136,7 @@ function test_designer_canvas_bar_keeps_ids_and_names_switches()
 
 	pg_assert_true($bar !== '', 'style_designer.js has createCanvasIframe()');
 
-	foreach (array('sd-vb-zoom-out', 'sd-vb-zoom-label', 'sd-vb-zoom-in', 'sd-vb-outline', 'sd-vb-theme', 'sd-vb-grid', 'sd-vb-motion', 'sd-vb-find', 'sd-vb-snapshots', 'sd-vb-proto', 'sd-vb-preview', 'sd-vb-live', 'sd-bp-label', 'sd-vb-view', 'sd-vb-design', 'sd-vb-fit') as $id) {
+	foreach (array('sd-vb-zoom-out', 'sd-vb-zoom-label', 'sd-vb-zoom-in', 'sd-vb-outline', 'sd-vb-theme', 'sd-vb-grid', 'sd-vb-motion', 'sd-vb-find', 'sd-vb-snapshots', 'sd-vb-proto', 'sd-bp-label', 'sd-vb-view', 'sd-vb-design', 'sd-vb-fit') as $id) {
 		pg_assert_contains('id="' . $id . '"', $bar, 'the bar has #' . $id);
 	}
 

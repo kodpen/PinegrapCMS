@@ -169,16 +169,20 @@ function pg_proto_link_whole_number($value)
  * stored. A link for anyone must run out, at one of the offered durations of
  * at most ninety days; a team link may run for good. The start page is 0
  * (the design's first draft) or one of the design's drafts. A password is
- * optional, 6 to 128 characters, not spaces alone.
+ * optional, 6 to 128 characters, not spaces alone. "Allow comments" is off
+ * unless asked for.
  *
  * @param array $input     audience, start_page_id, duration (seconds; 0 or
- *                         empty for none), password ('' for none)
+ *                         empty for none), password ('' for none),
+ *                         allow_comments (optional: true/false, 1/0, or the
+ *                         same as text)
  * @param int[] $draft_ids the design's drafts (pg_proto_design_pages())
  * @param int[] $durations the durations offered, in seconds
  * @param int   $now
  * @return array ok, error (audience, duration, start_page, no_drafts,
- *               password, password_blank), field, link (audience,
- *               start_page_id, expires_at, password)
+ *               password, password_blank, allow_comments), field, link
+ *               (audience, start_page_id, expires_at, password,
+ *               allow_comments 0/1)
  */
 function pg_proto_link_plan($input, $draft_ids, $durations, $now)
 {
@@ -239,12 +243,39 @@ function pg_proto_link_plan($input, $draft_ids, $durations, $now)
         return $fail('password_blank', 'password');
     }
 
+    $comments = pg_proto_link_flag(isset($input['allow_comments']) ? $input['allow_comments'] : null);
+
+    if ($comments === null) {
+        return $fail('allow_comments', 'allow_comments');
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'link' => array(
         'audience' => $audience,
         'start_page_id' => $start,
         'expires_at' => ($duration > 0) ? ((int) $now + $duration) : 0,
         'password' => $password,
+        'allow_comments' => $comments,
     ));
+}
+
+/**
+ * A switch as a form, a JSON body or the API router hands it: 1 or 0, null
+ * for anything else. Not sent (null, '') is off.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_proto_link_flag($value)
+{
+    if (($value === null) || ($value === '') || ($value === false) || ($value === 0) || ($value === '0') || ($value === 'false')) {
+        return 0;
+    }
+
+    if (($value === true) || ($value === 1) || ($value === '1') || ($value === 'true')) {
+        return 1;
+    }
+
+    return null;
 }
 
 /**
@@ -273,6 +304,9 @@ function pg_proto_link_error_message($code)
 
         case 'password_blank':
             return lang('A password cannot be made of spaces only.');
+
+        case 'allow_comments':
+            return lang('Allow comments must be on or off.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -495,6 +529,8 @@ function pg_proto_link_summary($row, $now)
         'uses' => (int) $row['uses'],
         'last_used_at' => (int) $row['last_used_at'],
         'state' => ($state === 'ok') ? 'open' : $state,
+        // A row read before the step that added the column has none.
+        'comments' => !empty($row['allow_comments']),
     );
 }
 
@@ -580,9 +616,11 @@ function pg_proto_link_pass_valid($value, $link_id, $password_hash, $key, $now)
  * @param string $key     ENCRYPTION_KEY
  * @param string $sub     the part of a pretty address after the page name
  * @param string $record  a record code (?r=)
+ * @param mixed  $bundle_id the release bundle a bundle's link shares, 0 for
+ *                          a design's link
  * @return string 64 hex characters, '' when any part is missing
  */
-function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key, $sub = '', $record = '')
+function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key, $sub = '', $record = '', $bundle_id = 0)
 {
     $style_id = (int) $style_id;
     $page_id = (int) $page_id;
@@ -593,8 +631,12 @@ function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key,
         return '';
     }
 
+    // A bundle's part comes after the escaped item and record, as in a
+    // person's frame (pg_proto_frame_sign()): a design link's signature stays
+    // as it was, and neither opens the other's frame.
     return hash_hmac('sha256', 'prototype-link-frame:' . $style_id . ':' . $page_id . ':' . $link_id . ':' . $expires
-        . ':' . rawurlencode((string) $sub) . ':' . rawurlencode((string) $record), (string) $key);
+        . ':' . rawurlencode((string) $sub) . ':' . rawurlencode((string) $record)
+        . (((int) $bundle_id > 0) ? ':bundle:' . (int) $bundle_id : ''), (string) $key);
 }
 
 /**
@@ -606,10 +648,11 @@ function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key,
  * the browser that opened the link (pg_proto_frame_bind()), so a copy those
  * scripts send away opens nothing.
  *
- * @param string $bind pg_proto_frame_bind(), '' for none
+ * @param string $bind      pg_proto_frame_bind(), '' for none
+ * @param int    $bundle_id a bundle's link (k=), 0 for a design's
  * @return string
  */
-function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $sub = '', $record = '', $bind = '')
+function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $sub = '', $record = '', $bind = '', $bundle_id = 0)
 {
     $query = 'frame=1'
         . '&s=' . (int) $style_id
@@ -620,6 +663,10 @@ function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $sig
 
     if ((string) $bind !== '') {
         $query .= '&b=' . rawurlencode((string) $bind);
+    }
+
+    if ((int) $bundle_id > 0) {
+        $query .= '&k=' . (int) $bundle_id;
     }
 
     if ((string) $sub !== '') {
@@ -637,10 +684,12 @@ function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $sig
  * Reads a link's frame address from the request: design, page, link and
  * expiry as plain positive whole numbers and a 64-character hex signature;
  * anything else is no address. A binding that is not 64 hex characters is
- * read as none, as pg_proto_frame_parse() reads it.
+ * read as none, as pg_proto_frame_parse() reads it. A bundle (k) is
+ * optional, a plain positive whole number when given.
  *
  * @param mixed $source $_GET
- * @return array|null s, p, l, e (int), sig, sub, r, b (string)
+ * @return array|null s, p, l, e, k (int, 0 for a design's link), sig, sub,
+ *                    r, b (string)
  */
 function pg_proto_link_frame_parse($source)
 {
@@ -664,6 +713,18 @@ function pg_proto_link_frame_parse($source)
 
     if (!is_string($signature) || (preg_match('/^[0-9a-f]{64}$/', $signature) !== 1)) {
         return null;
+    }
+
+    $parsed['k'] = 0;
+
+    if (isset($source['k'])) {
+        $bundle = $source['k'];
+
+        if (!is_string($bundle) || (preg_match('/^[1-9][0-9]{0,9}$/', $bundle) !== 1) || ((string) (int) $bundle !== $bundle)) {
+            return null;
+        }
+
+        $parsed['k'] = (int) $bundle;
     }
 
     $parsed['sig'] = $signature;
@@ -694,7 +755,7 @@ function pg_proto_link_frame_state($parsed, $key, $now, $client = null)
     }
 
     $expected = pg_proto_link_frame_sign($parsed['s'], $parsed['p'], $parsed['l'], $parsed['e'], $key,
-        isset($parsed['sub']) ? $parsed['sub'] : '', isset($parsed['r']) ? $parsed['r'] : '');
+        isset($parsed['sub']) ? $parsed['sub'] : '', isset($parsed['r']) ? $parsed['r'] : '', isset($parsed['k']) ? $parsed['k'] : 0);
 
     if (($expected === '') || !hash_equals($expected, (string) $parsed['sig'])) {
         return 'invalid';
@@ -1049,6 +1110,33 @@ function pg_proto_links_of_design($style_id)
 }
 
 /**
+ * The revoked links of a design among the given ids, newest first: the
+ * ones whose comments are kept (pg_proto_comments_unlisted_links()).
+ *
+ * @param int   $style_id
+ * @param int[] $ids
+ * @return array[]
+ */
+function pg_proto_links_revoked_of_design($style_id, $ids)
+{
+    $list = array();
+
+    foreach ((array) $ids as $id) {
+        if ((int) $id > 0) {
+            $list[(int) $id] = (int) $id;
+        }
+    }
+
+    if (((int) $style_id <= 0) || !$list) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_links WHERE style_id = '" . (int) $style_id . "' AND revoked_at > 0 AND id IN (" . implode(',', $list) . ") ORDER BY id DESC LIMIT 200");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
  * The name of a visual design; null when there is no such design.
  *
  * @param int $style_id
@@ -1069,10 +1157,33 @@ function pg_proto_link_design_name($style_id)
 }
 
 /**
- * Makes a link (pg_proto_link_plan()'s link) and writes its Site Log line.
+ * The name a link's Site Log lines give it: its bundle's, or its design's;
+ * '' when that is gone.
  *
- * @param int    $style_id
- * @param array  $link     audience, start_page_id, expires_at, password
+ * @param array $row
+ * @return string
+ */
+function pg_proto_link_owner_name($row)
+{
+    $bundle_id = pg_proto_link_bundle_id($row);
+
+    if ($bundle_id > 0) {
+        $bundle = function_exists('pg_page_bundle_get') ? pg_page_bundle_get($bundle_id) : null;
+
+        return is_array($bundle) ? (string) $bundle['name'] : '';
+    }
+
+    return (string) pg_proto_link_design_name(isset($row['style_id']) ? $row['style_id'] : 0);
+}
+
+/**
+ * Makes a link (pg_proto_link_plan()'s link) and writes its Site Log line.
+ * A bundle's link (pg_proto_link_bundle_plan()'s, bundle_id set) is written
+ * with style_id 0: its drafts may belong to more than one design.
+ *
+ * @param int    $style_id 0 for a bundle's link
+ * @param array  $link     audience, start_page_id, expires_at, password,
+ *                         bundle_id (optional)
  * @param int    $user_id  who made it
  * @param string $username for the Site Log
  * @param string $via      appended to the log line (the API application)
@@ -1099,8 +1210,21 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
 
     $token = pg_short_link_new_token();
 
+    // "Allow comments" is written only where the column is (the step that
+    // adds it may not have run yet).
+    $comments = (!empty($link['allow_comments']) && function_exists('pg_proto_comments_ready') && pg_proto_comments_ready());
+
+    // A bundle's link is made only where its column is
+    // (pg_proto_link_bundles_ready()); it has no design and no comments.
+    $bundle_id = isset($link['bundle_id']) ? (int) $link['bundle_id'] : 0;
+
+    if ($bundle_id > 0) {
+        $style_id = 0;
+        $comments = false;
+    }
+
     db("INSERT INTO prototype_links
-            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at)
+            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at" . ($comments ? ', allow_comments' : '') . (($bundle_id > 0) ? ', bundle_id' : '') . ")
         VALUES (
             '" . (int) $style_id . "',
             '" . (int) $link['start_page_id'] . "',
@@ -1111,7 +1235,7 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
             " . (($hash === null) ? 'NULL' : "'" . e($hash) . "'") . ",
             '" . (int) $link['expires_at'] . "',
             '" . (int) $user_id . "',
-            '" . time() . "')");
+            '" . time() . "'" . ($comments ? ", '1'" : '') . (($bundle_id > 0) ? ", '" . $bundle_id . "'" : '') . ")");
 
     $row = pg_proto_link_get((int) mysqli_insert_id(db::$con));
 
@@ -1120,10 +1244,17 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
     }
 
     // Named by its id and hint: the token itself is in no log.
-    $vars = array((int) $row['id'], (string) $row['token_hint'], (string) pg_proto_link_design_name($style_id));
-    $line = ((string) $row['audience'] === 'anyone')
-        ? lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was shared with anyone who has it', 'vars' => $vars))
-        : lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was shared with the team', 'vars' => $vars));
+    $vars = array((int) $row['id'], (string) $row['token_hint'], pg_proto_link_owner_name($row));
+
+    if (pg_proto_link_bundle_id($row) > 0) {
+        $line = ((string) $row['audience'] === 'anyone')
+            ? lang(array('string' => 'prototype link #{var:1} ({var:2}…) of bundle ({var:3}) was shared with anyone who has it', 'vars' => $vars))
+            : lang(array('string' => 'prototype link #{var:1} ({var:2}…) of bundle ({var:3}) was shared with the team', 'vars' => $vars));
+    } else {
+        $line = ((string) $row['audience'] === 'anyone')
+            ? lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was shared with anyone who has it', 'vars' => $vars))
+            : lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was shared with the team', 'vars' => $vars));
+    }
 
     log_activity($line . (string) $via, (string) $username);
 
@@ -1149,9 +1280,12 @@ function pg_proto_link_revoke($row, $user_id, $username, $via = '')
         return false;
     }
 
-    $design = (string) pg_proto_link_design_name($row['style_id']);
+    $vars = array((int) $row['id'], (string) $row['token_hint'], pg_proto_link_owner_name($row));
+    $line = (pg_proto_link_bundle_id($row) > 0)
+        ? lang(array('string' => 'prototype link #{var:1} ({var:2}…) of bundle ({var:3}) was revoked', 'vars' => $vars))
+        : lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was revoked', 'vars' => $vars));
 
-    log_activity(lang(array('string' => 'prototype link #{var:1} ({var:2}…) of design ({var:3}) was revoked', 'vars' => array((int) $row['id'], (string) $row['token_hint'], $design))) . (string) $via, (string) $username);
+    log_activity($line . (string) $via, (string) $username);
 
     return true;
 }
@@ -1267,9 +1401,11 @@ function pg_proto_link_password_try($row, $password, $now)
         return 'wrong';
     }
 
-    $design = (string) pg_proto_link_design_name($row['style_id']);
+    $vars = array($id, (string) $row['token_hint'], pg_proto_link_owner_name($row), (int) (pg_proto_link_lock_seconds() / 60), $failures);
 
-    log_activity(lang(array('string' => 'the password of prototype link #{var:1} ({var:2}…) of design ({var:3}) was locked for {var:4} minutes after {var:5} wrong passwords', 'vars' => array($id, (string) $row['token_hint'], $design, (int) (pg_proto_link_lock_seconds() / 60), $failures))), '');
+    log_activity((pg_proto_link_bundle_id($row) > 0)
+        ? lang(array('string' => 'the password of prototype link #{var:1} ({var:2}…) of bundle ({var:3}) was locked for {var:4} minutes after {var:5} wrong passwords', 'vars' => $vars))
+        : lang(array('string' => 'the password of prototype link #{var:1} ({var:2}…) of design ({var:3}) was locked for {var:4} minutes after {var:5} wrong passwords', 'vars' => $vars)), '');
 
     pg_proto_link_offence(429, 'prototype link password locked');
 
@@ -1337,6 +1473,240 @@ function pg_proto_link_offence($status = 404, $why = 'prototype link not valid')
     if (function_exists('waf_register_offence')) {
         waf_register_offence(waf_client_ip(), 5, $blocking);
     }
+}
+
+/* ---------------------------------------------------------------------------
+   A release bundle's link
+   --------------------------------------------------------------------------- */
+
+/**
+ * The release bundle a link shares the preview of; 0 for a design's link,
+ * and for a row read before the step that added the column. Pure.
+ *
+ * @param array|null $row prototype_links row
+ * @return int
+ */
+function pg_proto_link_bundle_id($row)
+{
+    return (is_array($row) && isset($row['bundle_id']) && ((int) $row['bundle_id'] > 0)) ? (int) $row['bundle_id'] : 0;
+}
+
+/**
+ * Whether a frame address signed for a link was made for what the link
+ * shares: a design's link only its own design's frames, with no bundle; a
+ * bundle's link only its own bundle's, whatever design the drawn draft
+ * belongs to. Pure.
+ *
+ * @param array $row       prototype_links row
+ * @param int   $style_id  the frame's s=
+ * @param int   $bundle_id the frame's k= (0 for none)
+ * @return bool
+ */
+function pg_proto_link_frame_owner($row, $style_id, $bundle_id)
+{
+    $own = pg_proto_link_bundle_id($row);
+
+    if ($own > 0) {
+        return ((int) $bundle_id === $own);
+    }
+
+    return ((int) $bundle_id === 0) && is_array($row) && ((int) $row['style_id'] > 0) && ((int) $row['style_id'] === (int) $style_id);
+}
+
+/**
+ * Checks what a new link of a bundle's preview is asked for, as a design's
+ * link is checked (pg_proto_link_plan()): who it opens for, its expiry and
+ * its password. It always starts on the bundle's first waiting draft (the
+ * drafts come and go while the bundle is prepared) and allows no comments,
+ * which belong to a design. Pure.
+ *
+ * @param array $input     audience, duration, password
+ * @param int   $bundle_id
+ * @param int[] $draft_ids the drafts waiting in the bundle
+ *                         (pg_proto_bundle_pages())
+ * @param int[] $durations
+ * @param int   $now
+ * @return array as pg_proto_link_plan(), the link with bundle_id
+ */
+function pg_proto_link_bundle_plan($input, $bundle_id, $draft_ids, $durations, $now)
+{
+    $input = is_array($input) ? $input : array();
+
+    if ((int) $bundle_id <= 0) {
+        return array('ok' => false, 'error' => 'no_drafts', 'field' => 'start_page_id', 'link' => null);
+    }
+
+    $plan = pg_proto_link_plan(array(
+        'audience' => isset($input['audience']) ? $input['audience'] : '',
+        'start_page_id' => 0,
+        'duration' => isset($input['duration']) ? $input['duration'] : 0,
+        'password' => isset($input['password']) ? $input['password'] : '',
+        'allow_comments' => 0,
+    ), $draft_ids, $durations, $now);
+
+    if ($plan['ok']) {
+        $plan['link']['bundle_id'] = (int) $bundle_id;
+    }
+
+    return $plan;
+}
+
+/**
+ * Whether links can share a bundle's preview: the column of step 11.0.244.
+ *
+ * @return bool
+ */
+function pg_proto_link_bundles_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_proto_links_ready() && pg_schema_has('prototype_links', 'bundle_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The links of a bundle that were not revoked, newest first.
+ *
+ * @param int $bundle_id
+ * @return array[]
+ */
+function pg_proto_links_of_bundle($bundle_id)
+{
+    if (((int) $bundle_id <= 0) || !pg_proto_link_bundles_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_links WHERE bundle_id = '" . (int) $bundle_id . "' AND revoked_at = 0 ORDER BY id DESC LIMIT 200");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * Ends the links of a bundle being deleted. Its preview has nothing to show
+ * from then on anyway; a later bundle can be given the same id (InnoDB on
+ * MySQL 5.7, as with a design: pg_proto_links_revoke_design()), and its
+ * drafts would open for the old links.
+ *
+ * @param int $bundle_id
+ * @param int $user_id
+ * @return int how many links were revoked
+ */
+function pg_proto_links_revoke_bundle($bundle_id, $user_id = 0)
+{
+    if (((int) $bundle_id <= 0) || !pg_proto_link_bundles_ready()) {
+        return 0;
+    }
+
+    db("UPDATE prototype_links SET revoked_at = '" . time() . "', revoked_by = '" . (int) $user_id . "'
+        WHERE bundle_id = '" . (int) $bundle_id . "' AND revoked_at = 0");
+
+    return max(0, (int) mysqli_affected_rows(db::$con));
+}
+
+/**
+ * The links of a bundle as the Bundles screen lists them: what
+ * pg_proto_link_summary() says, who made it, and its address when it can be
+ * read back ('' otherwise: made on a site without a key, or before the key
+ * changed).
+ *
+ * @param array[] $rows prototype_links rows
+ * @param int     $now
+ * @return array[]
+ */
+function pg_proto_link_bundle_rows($rows, $now)
+{
+    $makers = array();
+
+    foreach ((array) $rows as $row) {
+        if ((int) $row['created_by'] > 0) {
+            $makers[(int) $row['created_by']] = '';
+        }
+    }
+
+    if ($makers) {
+        foreach (db_items("SELECT user_id, user_username FROM user WHERE user_id IN (" . implode(',', array_map('intval', array_keys($makers))) . ")") as $maker) {
+            $makers[(int) $maker['user_id']] = (string) $maker['user_username'];
+        }
+    }
+
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $item = pg_proto_link_summary($row, $now);
+        $token = pg_proto_link_token($row);
+
+        $item['created_by_name'] = isset($makers[$item['created_by']]) ? $makers[$item['created_by']] : '';
+        $item['url'] = ($token !== '') ? pg_proto_link_url($token) : '';
+        $out[] = $item;
+    }
+
+    return $out;
+}
+
+/**
+ * The Bundles screen's "Share the preview": makes a link of a bundle's
+ * preview (share_create) or revokes one of its links (share_revoke). A link
+ * is made only while the bundle holds drafts waiting to be published, as the
+ * preview shows them. Administrators and designers.
+ *
+ * @param array  $bundle  pg_page_bundle_get()
+ * @param string $action  share_create, share_revoke
+ * @param array  $request audience, duration, password; link_id
+ * @param array  $user    validate_user()
+ * @return array ok, error, url (the new link's address, '' otherwise)
+ */
+function pg_proto_link_bundle_share($bundle, $action, $request, $user)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'url' => '');
+    };
+
+    if (!function_exists('pg_page_bundle_user_may') || !pg_page_bundle_user_may($user)) {
+        return $fail(lang('Permission denied.'));
+    }
+
+    if (!pg_proto_link_bundles_ready()) {
+        return $fail(lang('This site has not been upgraded to the version that shares prototypes.'));
+    }
+
+    $bundle_id = (int) $bundle['id'];
+
+    if ($action === 'share_revoke') {
+        $row = pg_proto_link_get(isset($request['link_id']) ? (int) $request['link_id'] : 0);
+
+        if (($row === null) || (pg_proto_link_bundle_id($row) !== $bundle_id) || ((int) $row['revoked_at'] > 0)) {
+            return $fail(lang('The link could not be found.'));
+        }
+
+        pg_proto_link_revoke($row, (int) $user['id'], (string) $user['username']);
+
+        return array('ok' => true, 'error' => '', 'url' => '');
+    }
+
+    $draft_ids = array();
+
+    if (pg_page_bundle_holds($bundle['status'])) {
+        foreach (pg_proto_bundle_pages($bundle_id) as $page) {
+            $draft_ids[] = (int) $page['id'];
+        }
+    }
+
+    $plan = pg_proto_link_bundle_plan($request, $bundle_id, $draft_ids, array_keys(pg_proto_link_durations()), time());
+
+    if (!$plan['ok']) {
+        return $fail(($plan['error'] === 'no_drafts') ? lang('No page of this bundle is waiting to be published.') : pg_proto_link_error_message($plan['error']));
+    }
+
+    $made = pg_proto_link_issue(0, $plan['link'], (int) $user['id'], (string) $user['username']);
+
+    if ($made === null) {
+        return $fail(lang('Sorry, we could not accept your request.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'url' => pg_proto_link_url($made['token']));
 }
 
 /* ---------------------------------------------------------------------------
@@ -1460,6 +1830,7 @@ function pg_proto_links_panel($sub, $request, $user)
             'start_page_id' => isset($request['start_page_id']) ? $request['start_page_id'] : 0,
             'duration' => isset($request['duration']) ? $request['duration'] : 0,
             'password' => isset($request['password']) ? $request['password'] : '',
+            'allow_comments' => (isset($request['allow_comments']) && pg_proto_comments_ready()) ? $request['allow_comments'] : 0,
         ), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
         if (!$plan['ok']) {
@@ -1489,12 +1860,31 @@ function pg_proto_links_panel($sub, $request, $user)
         $durations[] = array('seconds' => (int) $seconds, 'label' => (string) $label);
     }
 
+    // Each link's comments, for its "Delete comments". A revoked link keeps
+    // its comments for the designer, so it stays in the list, after the
+    // others, until they are deleted.
+    $rows = pg_proto_links_of_design($style_id);
+    $counts = pg_proto_comments_link_counts($style_id);
+    $kept = pg_proto_comments_unlisted_links($rows, $counts);
+
+    if ($kept) {
+        $rows = array_merge($rows, pg_proto_links_revoked_of_design($style_id, $kept));
+    }
+
+    $links = pg_proto_links_panel_rows($rows, $pages, $now);
+
+    foreach ($links as $i => $link) {
+        $links[$i]['comment_count'] = isset($counts[$link['id']]) ? $counts[$link['id']] : 0;
+    }
+
     return array(
         'status' => 'success',
-        'links' => pg_proto_links_panel_rows(pg_proto_links_of_design($style_id), $pages, $now),
+        'links' => $links,
         'pages' => $page_list,
         'durations' => $durations,
         // Without a key the address is shown once, when the link is made.
         'can_show' => (pg_proto_link_seal('probe') !== ''),
+        // "Allow comments" is offered once the site keeps comments.
+        'comments_ready' => pg_proto_comments_ready(),
     );
 }

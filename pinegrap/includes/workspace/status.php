@@ -840,6 +840,7 @@ function ws_status_js_strings()
         'st_health'        => lang('How does the work stand?'),
         'st_text'          => lang('What to say'),
         'st_text_help'     => lang('Filled in from the channel\'s figures; change it as you like. @ and # tags work here.'),
+        'st_text_help_own' => lang('@ and # tags work here.'),
         'st_ai'            => lang('Write a draft with Pinegrap AI'),
         'st_ai_busy'       => lang('Pinegrap AI is writing…'),
         'st_send'          => lang('Post the update'),

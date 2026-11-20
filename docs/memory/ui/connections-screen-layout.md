@@ -1,12 +1,14 @@
 ---
 name: connections-screen-layout
-description: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate, each provider's panel
+description: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
 module: connections_screen
 ---
 
 ## What is the screen?
 - System tools › Connections › Connections (`connections.php`), "Bağlantılar", for a manager; the redraw of Connected accounts as CN2's sheet shows it (owner 2026-11-17, `workflow/decisions-made-product-70.md`). Tool label and search words in `pg_settings_tool_groups()` / `pg_settings_tool_keys()` of `includes/settings/registry.php`.
+- Each row shows its state pill and one action, "Connect" ("Bağla") while not connected, else "Manage" ("Yönet") (`pg_connections_screen_action()`); a service row is a link to its page (`connections-service-page.md`), a provider row opens its drawer.
 - Rows: the account providers first (group "Account providers", from `pg_connect_providers()`, sign-in-only Apple left out: it is the Sign in with Apple row), then every row of `pg_connections_registry()` in `pg_connections_groups()` order.
+- The seven mail routes (`pg_connections_screen_mail_routes()`) are one "E-mail sending" row (`pg_connections_screen_fold_mail()`, #10434): the most urgent state of theirs, found by each route's name, counted once; "Manage" opens Site Settings › E-mail sending. Route pages stay reachable by address.
 
 ## How is a row's state read?
 - `pg_connections_screen_facts()` reads what is stored once (accounts, `connect_apps`, constants, readers, marketplace accounts, the active e-document driver, model assistants, MCP servers, chat targets); `pg_connections_screen_state()` turns it into attention, connected, not_connected, off or none. Pure, in `includes/fn/connections_screen.php`. No outside call while the list is drawn.
@@ -21,9 +23,13 @@ module: connections_screen
 ## How do the search and filter work?
 - Both in the address: `?q=` (every word in the name, group, uses or place, Turkish letters folded: `pg_connections_screen_search()`), `?state=attention|connected|not_connected` as link segments with counts. No match: what was searched, where, Clear search.
 
-## What stays of the old screen?
-- A provider row opens its panel under it (`#connections-<provider>`, the old card id; an address with that hash or a refused save opens it, and every write returns to it): accounts with Check, Connect again and Disconnect, Connect an account, the application form, Google's fallback. Field ids, names and posts are unchanged.
+## Where are the drawers and the other side?
+- `connections-screen-drawers.md`.
 - The attention block on top lists every account in `reauth`: the site's with Connect again, a person's with who reconnects it.
-- One centred column (`pg-measure-single`) until CN4 turns the panel into the drawer and adds the service drawer and the other side's block as a side column; CN4 then moves `connections` back to the two-column pages of `tests/look_page_widths_test.php`.
+
+## What does a change to the screen keep?
+- Today a service row shows no field and leads to its setting's place. Owner (2026-11-17, poll 146, message 9372; narrowed by poll 148, message 9374): Connections becomes the one management place, connection fields in each service's own panel here (e-mail sending stays a Site Settings category), feature cards holding no key; nothing moves before his yes to the drawing (`plans/connections-merges.md`).
+- No table and no column for a state, a history of states or an error; no outside call while the list is drawn. A key is never shown.
+- No catalogue of add-ons to install (`plans/addon-hook-system.md`), no copy of Application Access, no one-click broker (`plans/reverse-oauth-leftovers.md`).
 
 Tests: `tests/connections_screen_test.php`, `tests/connections_layout_test.php`.

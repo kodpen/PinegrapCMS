@@ -516,7 +516,7 @@ if (!$_POST) {
             <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_log.php" method="get" name="form">
                 <div class="row">
                     <div class="col-12">
-                        <h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5>
+                        <h5 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h5>
                     </div>
                     <fieldset class="col-12" data-pg-date-selects>
                         <legend class="form-label">' . lang('Start') . '</legend>

@@ -176,6 +176,6 @@ function test_settings_organization_erp_settings_names_organization()
 function test_settings_organization_legacy_anchors()
 {
 	$source = settings_organization_test_source('includes/settings/registry.php');
-	pg_assert_contains("'pgset-campaigns'  => array('contact',    'pgset-campaigns'),", $source, 'Campaigns stays where it is');
+	pg_assert_contains("'pgset-campaigns'  => array('mail_sending', 'pgset-mail-campaign'),", $source, 'an old Campaigns link lands on E-mail sending\'s Campaign card');
 	pg_assert_contains("'pgset-organization' => array('general',  'pgset-organization'),", $source, 'the card is reached by its anchor from any page');
 }

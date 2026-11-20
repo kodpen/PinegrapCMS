@@ -10,6 +10,7 @@ description: A script or stylesheet under assets/ (backend.src.js, backend.src.c
 - Another PR may change other parts of the file when none of its hunks is in the same function or rule block as an open PR's hunk, or on the lines next to one, and `git merge-tree --write-tree <its branch> <the other PR's head>` merges the file without a conflict.
 - The session checks that itself against every open PR that changes the file (`…/pulls/<n>/files`) and asks nobody; its PR's body names the PRs it stands beside in that file.
 - The same function, the same rule block or the neighbouring lines wait for the other PR to land, as any held file does (`claim-work.md`).
+- A draft parked until another plan has redrawn the area gives its lines there up instead: `held-file-parked-draft.md`.
 - Every other file, PHP above all, is held whole. What the architect may allow beside a holder there (a registry's rows, a function the holder does not touch) is in `held-file-registry-rows.md`.
 
 ## Why?

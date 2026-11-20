@@ -48,7 +48,7 @@ function ws_mail_providers()
 {
     return array(
         'gmail'  => array('label' => lang('Gmail or Google Workspace'), 'host' => 'imap.gmail.com', 'port' => 993, 'smtp_host' => 'smtp.gmail.com', 'smtp_port' => 465, 'auth_server' => 'mx.google.com',
-            'hint' => lang('Turn on 2-Step Verification for the account and use an app password; Google refuses the account\'s own password.')),
+            'hint' => lang('Connect the Google account for Reading mailboxes and choose it as the connected account, or turn on 2-Step Verification and use an app password; Google refuses the account\'s own password.')),
         'yandex' => array('label' => 'Yandex', 'host' => 'imap.yandex.com', 'port' => 993, 'smtp_host' => 'smtp.yandex.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Allow access by mail programs in the Yandex mail settings and use an app password.')),
         'icloud' => array('label' => 'iCloud', 'host' => 'imap.mail.me.com', 'port' => 993, 'smtp_host' => 'smtp.mail.me.com', 'smtp_port' => 587, 'auth_server' => '',
@@ -305,42 +305,106 @@ function ws_mail_box_accounts()
 }
 
 /**
- * The button that connects a Microsoft account for Reading mailboxes, for a
- * person who may connect the site's accounts (connect.php: a manager and
- * above); others are told who can.
+ * The button that connects a Microsoft or Google account for Reading
+ * mailboxes, for a person who may connect the site's accounts (connect.php:
+ * a manager and above); others are told who can.
+ *
+ * While the provider's application is not set up, connect.php can only
+ * refuse the sign-in, so no button is drawn: a sentence links to the
+ * application's drawer on Connections instead.
  *
  * @param array       $viewer
- * @param string|null $form the Site Settings form's id: a button of the hidden
- *                          Connect form pgset_mail_connect instead of a form
+ * @param string|null $form     the Site Settings form's id: a button of the
+ *                              hidden Connect form (ws_mail_connect_form_id())
+ *                              instead of a form
+ * @param bool|null   $ready    the provider's application is set up; null
+ *                              asks ws_mail_connect_ready()
+ * @param string      $provider microsoft | google
  * @return string HTML
  */
-function ws_mail_connect_form($viewer, $form = null)
+function ws_mail_connect_form($viewer, $form = null, $ready = null, $provider = 'microsoft')
 {
     if (!function_exists('pg_connect_start_fields') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
         return '';
     }
 
+    $google = ($provider === 'google');
+    $provider = $google ? 'google' : 'microsoft';
+    $icon = '<i class="bi bi-' . $provider . '" aria-hidden="true"></i>';
+
     if ((int) $viewer['role'] > 2) {
-        return '<div class="form-text mt-3">' . h(lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
+        return '<div class="pg-field-help mt-3">' . h($google
+            ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
+            : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
     }
 
-    // In Site Settings the card sits inside the settings form: its button
-    // submits the hidden Connect form the category hands over
-    // (includes/settings/workspace_channels.php).
+    if (!(($ready === null) ? ws_mail_connect_ready($provider) : $ready)) {
+        return '
+                <div class="pg-field-help mt-3">' . $icon . ' '
+                    . '<a href="connections.php?service=' . $provider . '">' . h($google ? lang('Set up the Google application first') : lang('Set up the Microsoft application first')) . '</a>'
+                    . ($google ? ' ' . h(lang('Until it is set up, Google cannot be asked for the account.')) : '') . '</div>';
+    }
+
+    $button = $icon . h($google ? lang('Connect a Google account for mailboxes') : lang('Connect a Microsoft account for mailboxes'));
+    $note = h($google
+        ? lang('Sign in with the mailbox\'s own Google account; it then shows under Connected account.')
+        : lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.'));
+
+    // In Site Settings the card and the box's drawer sit inside the settings
+    // form: the button submits the hidden Connect form the category hands
+    // over (includes/settings/mailboxes.php).
     if ($form !== null) {
         return '
                 <div class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    <button type="submit" form="pgset_mail_connect" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-microsoft me-1" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
-                    <span class="form-text m-0">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
+                    <button type="submit" form="' . ws_mail_connect_form_id($provider) . '" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
+                    <span class="pg-text-meta">' . $note . '</span>
                 </div>';
     }
 
     return '
                 <form method="post" action="connect.php" class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    ' . pg_connect_start_fields('microsoft', 'mail_read', pg_settings_workspace_link('ws-mail')) . '
-                    <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-microsoft me-1" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
-                    <span class="form-text m-0">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
+                    ' . pg_connect_start_fields($provider, 'mail_read', pg_settings_workspace_link('ws-mail')) . '
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
+                    <span class="pg-text-meta">' . $note . '</span>
                 </form>';
+}
+
+/**
+ * The id of Mailboxes' hidden Connect form for a provider. Pure.
+ *
+ * @param string $provider microsoft | google
+ * @return string
+ */
+function ws_mail_connect_form_id($provider = 'microsoft')
+{
+    return ($provider === 'google') ? 'pgset_mail_connect_google' : 'pgset_mail_connect';
+}
+
+/**
+ * Whether an account of a provider can be connected for Reading mailboxes:
+ * the site's application for it is set up (pg_connect_app_ready()).
+ *
+ * @param string $provider microsoft | google
+ * @return bool
+ */
+function ws_mail_connect_ready($provider = 'microsoft')
+{
+    return function_exists('pg_connect_app') && function_exists('pg_connect_app_ready')
+        && pg_connect_app_ready(pg_connect_app(($provider === 'google') ? 'google' : 'microsoft'));
+}
+
+/**
+ * What the Gmail part of a box's form shows beside its words: the Connect
+ * button for this person (ws_mail_connect_form()) and the addresses Google
+ * Cloud must list as redirect URIs (Sign in with Google's and connect.php's).
+ *
+ * @param array  $viewer
+ * @param string $form the Site Settings form's id
+ * @return array connect (HTML), addresses (string[])
+ */
+function ws_mail_google_parts($viewer, $form)
+{
+    return array('connect' => ws_mail_connect_form($viewer, $form, null, 'google'), 'addresses' => pg_google_cloud_redirect_addresses('google'));
 }
 
 /**
@@ -874,9 +938,11 @@ function ws_mail_sent_position_resets($before, $after)
  * @param bool       $rooms_only ws_mail_box_rooms_only(): kept in the mailbox
  *                             itself, so no channel, routing or suggestion
  *                             under a card is offered
+ * @param array      $google   ws_mail_google_parts(): the Gmail part's Connect
+ *                             button and redirect addresses
  * @return string
  */
-function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false)
+function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false, $google = array())
 {
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
@@ -897,25 +963,25 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
     $fields = '
             <div class="row g-5">
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
+                    <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
+                    <input class="pg-input" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
                 </div>
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
-                    <input class="form-control form-control-sm" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
+                    <label class="pg-field-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
+                    <input class="pg-input" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
                 </div>
                 ' . ws_mail_room_fields($prefix, $box, $options, $rooms_only) . '
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
-                    <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
+                    <label class="pg-field-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
+                    <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
+                    <div class="pg-field-help">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
                 ' . ($rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels)) . '
-                ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
+                ' . ws_mail_box_server_fields($prefix, $box, $settings, $google) . '
                 <div class="md:col-12">
-                    <label class="form-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
-                    <textarea class="form-control form-control-sm" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
-                    <div class="form-text">' . h(lang('Plain text put under a new e-mail sent from this mailbox, after the writer\'s name. Left empty, the mailbox\'s name is put there.')) . '</div>
+                    <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
+                    <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
+                    <div class="pg-field-help">' . h(lang('Plain text put under a new e-mail sent from this mailbox, after the writer\'s name. Left empty, the mailbox\'s name is put there.')) . '</div>
                 </div>
                 ' . ws_mail_support_field($prefix, $box) . '
                 <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
@@ -926,25 +992,25 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                 </div>
                 ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only) . '
                 <div class="md:col-12">
-                    <div class="form-field">
-                        <input class="check" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-checkbox" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'reads_bounces">' . h(lang('Reads bounces')) . '</label>
                     </div>
-                    <div class="form-text">' . h(lang('Queued and campaign e-mails are sent with this address as their return path, written with a + and a code after its name. Delivery failures that come back are recorded and leave the channel; an address that keeps failing gets no more mail. The mail server must deliver such addresses to this mailbox, and the site\'s sending address must be on the same domain.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Queued and campaign e-mails are sent with this address as their return path, written with a + and a code after its name. Delivery failures that come back are recorded and leave the channel; an address that keeps failing gets no more mail. The mail server must deliver such addresses to this mailbox, and the site\'s sending address must be on the same domain.')) . '</div>
                 </div>
                 <div class="md:col-12">
-                    <div class="form-field">
-                        <div class="switch"><input type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-switch" type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'enabled">' . h(lang('On')) . '</label>
                     </div>
                 </div>
             </div>';
-    $save = '<i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save'));
+    $save = h(lang('Save'));
 
     if ($form !== null) {
         return '
         <div class="ws-mail-box-form" data-ws-mail-dialog>' . ws_mail_box_dialog_names($fields, $id, $form) . '
-            <button type="submit" name="ws_mail_box_save" value="' . $id . '" form="' . h($form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5">' . $save . '</button>
+            <button type="submit" name="ws_mail_box_save" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-fill mt-5">' . $save . '</button>
         </div>';
     }
 
@@ -954,7 +1020,7 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
             <input type="hidden" name="ws_action" value="mail_box_save">
             <input type="hidden" name="box_id" value="' . $id . '">
             ' . $fields . '
-            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5">' . $save . '</button>
+            <button type="submit" class="pg-button pg-button-fill mt-5">' . $save . '</button>
         </form>';
 }
 
@@ -1004,9 +1070,10 @@ function ws_mail_settings_dialog_input($post, $id)
  * @param string     $prefix
  * @param array|null $box
  * @param array      $settings ws_mail_box_settings()
+ * @param array      $google   ws_mail_google_parts()
  * @return string
  */
-function ws_mail_box_server_fields($prefix, $box, $settings)
+function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
 {
     $provider = (string) ($settings['provider'] ?? '');
     $options = '<option value="">' . h(lang('None: only .eml files')) . '</option>';
@@ -1037,88 +1104,190 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
     $copy = !isset($settings['sent_copy']) || !empty($settings['sent_copy']);
 
     return '
-                <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Reading the mailbox')) . '</h3>
-                    <div class="form-text">' . h(lang('Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server, checking server and sending server.')) . '</div>
+                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Reading the mailbox')) . '</h3>
+                    <div class="pg-field-help">' . h(lang('Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server, checking server and sending server.')) . '</div>
                 </div>
                 <div class="md:col-4">
-                    <label class="form-label" for="' . $prefix . 'provider">' . h(lang('Mail service')) . '</label>
-                    <select class="form-control form-control-sm" name="provider" id="' . $prefix . 'provider">' . $options . '</select>
+                    <label class="pg-field-label" for="' . $prefix . 'provider">' . h(lang('Mail service')) . '</label>
+                    <select class="pg-input" name="provider" id="' . $prefix . 'provider">' . $options . '</select>
                 </div>
                 <div class="md:col-5">
-                    <label class="form-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
+                    <label class="pg-field-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
+                    <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3">
-                    <label class="form-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
-                    <input class="form-control form-control-sm" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
+                    <label class="pg-field-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
+                    <input class="pg-input" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
+                </div>
+                ' . ws_mail_google_steps($provider, $prefix, ws_mail_google_way($settings), $google) . '
+                <div class="md:col-6">
+                    <label class="pg-field-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
+                    <input class="pg-input" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
                 </div>
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
-                </div>
-                <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
-                    <input class="form-control form-control-sm" type="password" name="password" id="' . $prefix . 'password" value="" autocomplete="new-password" placeholder="' . h($kept ? lang('Stored. Type a new one to replace it.') : '') . '">
+                    <label class="pg-field-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
+                    <input class="pg-input" type="password" name="password" id="' . $prefix . 'password" value="" autocomplete="new-password" placeholder="' . h($kept ? lang('Stored. Type a new one to replace it.') : '') . '">
                 </div>
                 <div class="md:col-12">
-                    <label class="form-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
-                    <select class="form-control form-control-sm" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
-                    <div class="form-text">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password.')) . '</div>
+                    <label class="pg-field-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
+                    <select class="pg-input" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
+                    <div class="pg-field-help">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password; Gmail can too.')) . '</div>
                 </div>
                 <div class="md:col-4">
-                    <label class="form-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="folder" id="' . $prefix . 'folder" maxlength="255" value="' . h($box ? (string) $box['folder'] : 'INBOX') . '">
+                    <label class="pg-field-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
+                    <input class="pg-input" type="text" name="folder" id="' . $prefix . 'folder" maxlength="255" value="' . h($box ? (string) $box['folder'] : 'INBOX') . '">
                 </div>
                 <div class="md:col-4">
-                    <label class="form-label" for="' . $prefix . 'after">' . h(lang('After reading')) . '</label>
-                    <select class="form-control form-control-sm" name="after_fetch" id="' . $prefix . 'after">
+                    <label class="pg-field-label" for="' . $prefix . 'after">' . h(lang('After reading')) . '</label>
+                    <select class="pg-input" name="after_fetch" id="' . $prefix . 'after">
                         <option value="seen"' . ($move ? '' : ' selected') . '>' . h(lang('Mark as read')) . '</option>
                         <option value="move"' . ($move ? ' selected' : '') . '>' . h(lang('Move to a folder')) . '</option>
                     </select>
                 </div>
                 <div class="md:col-4' . ($move ? '' : ' d-none') . '" data-ws-mail-when="after_fetch=move">
-                    <label class="form-label" for="' . $prefix . 'move">' . h(lang('Folder to move to')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="move_folder" id="' . $prefix . 'move" maxlength="255" value="' . h((string) ($settings['move_folder'] ?? '')) . '" placeholder="' . h(lang('Processed')) . '">
+                    <label class="pg-field-label" for="' . $prefix . 'move">' . h(lang('Folder to move to')) . '</label>
+                    <input class="pg-input" type="text" name="move_folder" id="' . $prefix . 'move" maxlength="255" value="' . h((string) ($settings['move_folder'] ?? '')) . '" placeholder="' . h(lang('Processed')) . '">
                 </div>
-                <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Sending answers')) . '</h3>
-                    <div class="form-text">' . h(lang('Answers leave from the mailbox\'s address. Its own sending server signs in with the user name and password above; the site\'s mail settings send only for an address on the site\'s own mail domain.')) . '</div>
+                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Sending answers')) . '</h3>
+                    <div class="pg-field-help">' . h(lang('Answers leave from the mailbox\'s address. Its own sending server signs in with the user name and password above; the site\'s mail settings send only for an address on the site\'s own mail domain.')) . '</div>
                 </div>
                 <div class="md:col-4">
-                    <label class="form-label" for="' . $prefix . 'reply_via">' . h(lang('Send through')) . '</label>
-                    <select class="form-control form-control-sm" name="reply_via" id="' . $prefix . 'reply_via">
+                    <label class="pg-field-label" for="' . $prefix . 'reply_via">' . h(lang('Send through')) . '</label>
+                    <select class="pg-input" name="reply_via" id="' . $prefix . 'reply_via">
                         <option value="box"' . (($via === 'box') ? ' selected' : '') . '>' . h(lang('The mailbox\'s sending server')) . '</option>
                         <option value="site"' . (($via === 'site') ? ' selected' : '') . '>' . h(lang('The site\'s mail settings')) . '</option>
                         <option value="connection"' . (($via === 'connection') ? ' selected' : '') . '>' . h(lang('The connected account')) . '</option>
                     </select>
                 </div>
                 <div class="md:col-5' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
-                    <label class="form-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
+                    <label class="pg-field-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
+                    <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
-                    <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
-                    <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
+                    <label class="pg-field-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
+                    <input class="pg-input" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
                 </div>
                 <div class="md:col-8">
                     <div class="form-field mt-2">
-                        <input class="check" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
+                        <input class="pg-checkbox" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
                         <label for="' . $prefix . 'sent_copy">' . h(lang('Keep a copy of each answer in the mailbox\'s sent folder')) . '</label>
                     </div>
-                    <div class="form-text">' . h(lang('Needs the IMAP server above. Gmail and Microsoft 365 keep what their own sending server sends, so no copy is added for them.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Needs the IMAP server above. Gmail and Microsoft 365 keep what their own sending server sends, so no copy is added for them.')) . '</div>
                 </div>
                 <div class="md:col-4">
-                    <label class="form-label" for="' . $prefix . 'sent_folder">' . h(lang('Sent folder')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="sent_folder" id="' . $prefix . 'sent_folder" maxlength="255" value="' . h((string) ($settings['sent_folder'] ?? '')) . '" placeholder="' . h(lang('Found by itself')) . '">
+                    <label class="pg-field-label" for="' . $prefix . 'sent_folder">' . h(lang('Sent folder')) . '</label>
+                    <input class="pg-input" type="text" name="sent_folder" id="' . $prefix . 'sent_folder" maxlength="255" value="' . h((string) ($settings['sent_folder'] ?? '')) . '" placeholder="' . h(lang('Found by itself')) . '">
                 </div>
                 <div class="md:col-12">
-                    <div class="form-field">
-                        <input class="check" type="checkbox" name="read_sent" value="1" id="' . $prefix . 'read_sent"' . (!empty($settings['read_sent']) ? ' checked' : '') . '>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-checkbox" type="checkbox" name="read_sent" value="1" id="' . $prefix . 'read_sent"' . (!empty($settings['read_sent']) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'read_sent">' . h(lang('Read the Sent folder')) . '</label>
                     </div>
-                    <div class="form-text">' . h(lang('An answer written in a mail program joins its conversation as a sent mail. Only mail sent after this is switched on is read; a mail that answers no conversation is left out.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('An answer written in a mail program joins its conversation as a sent mail. Only mail sent after this is switched on is read; a mail that answers no conversation is left out.')) . '</div>
                 </div>
                 <div class="md:col-12">
                     <details class="small fg-secondary"><summary>' . h(lang('What each service needs')) . '</summary><ul class="mb-0 mt-2">' . $hints . '</ul></details>
+                </div>';
+}
+
+/**
+ * Which way a Gmail box's form opens on: the connected account for a box
+ * that has one or keeps no password (a new box), the app password for a
+ * box that keeps one, so a box working today shows what it uses. Pure.
+ *
+ * @param array $settings ws_mail_box_settings()
+ * @return string connection | password
+ */
+function ws_mail_google_way($settings)
+{
+    if ((int) ($settings['connection_id'] ?? 0) > 0) {
+        return 'connection';
+    }
+
+    return !empty($settings['secret']) ? 'password' : 'connection';
+}
+
+/**
+ * The ways a Gmail or Google Workspace mailbox signs in, shown while that
+ * service is chosen: a connected Google account (purpose mail_read, IMAP
+ * with XOAUTH2, answers through the Gmail API), with the Google
+ * application's redirect addresses, the API to enable and Google's
+ * verification warning; or an app password, the account's own password
+ * being refused. "Sign in with" only shows one of them and is not stored.
+ * Pure but for the words.
+ *
+ * @param string $provider the box's ws_mail_providers() key
+ * @param string $prefix   the form's id prefix
+ * @param string $way      ws_mail_google_way()
+ * @param array  $google   ws_mail_google_parts()
+ * @return string HTML
+ */
+function ws_mail_google_steps($provider, $prefix = 'ws_mail_0_', $way = 'connection', $google = array())
+{
+    $link = function ($url, $text) {
+        return '<a href="' . h($url) . '" target="_blank" rel="noopener noreferrer">' . h($text) . '</a>';
+    };
+    $way = ($way === 'password') ? 'password' : 'connection';
+    $connected = array(
+        h(lang('Connect the mailbox\'s own Google account with the button below; Google asks the account to allow reading and sending its mail.')),
+        h(lang('Choose that account as the Connected account below. The user name is the mailbox\'s address; no password is typed.')),
+        h(lang('Under Sending answers, choose The connected account: answers leave from the Google account through the Gmail API.')),
+        h(lang('Save, then press Test connection on the mailbox\'s row.')),
+    );
+    $steps = array(
+        h(lang('Use the mailbox\'s own Google account: the address typed above.')),
+        lang(array('string' => 'Turn on 2-Step Verification for that account in {var:1}.', 'vars' => $link('https://myaccount.google.com/security', lang('Google Account › Security')))),
+        lang(array('string' => 'Open {var:1}, type a name such as the site\'s name and create the password. Google shows a 16-character app password.', 'vars' => $link('https://myaccount.google.com/apppasswords', lang('App passwords')))),
+        h(lang('Here, keep Gmail or Google Workspace as the mail service: it fills the empty IMAP, sending and checking servers.')),
+        h(lang('Type the full address as the user name and the app password, without its spaces, as the password. Leave the connected account at None.')),
+        h(lang('Save, then press Test connection on the mailbox\'s row.')),
+    );
+    $notes = array(
+        lang('Nothing is turned on in Gmail itself: Google keeps IMAP access on for every account since January 2025.'),
+        lang('App passwords are not offered when 2-Step Verification uses only security keys, when the account has Advanced Protection, or for a work or school account whose organisation does not allow them: ask its administrator.'),
+        lang('When the account\'s Google password changes, Google revokes its app passwords: create a new one and type it here.'),
+    );
+    $warning = pg_google_cloud_verification_notes('gmail');
+    $addresses = '';
+
+    foreach (array_values((array) ($google['addresses'] ?? array())) as $index => $address) {
+        $id = $prefix . 'google_redirect_' . ($index + 1);
+        $addresses .= '
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <input type="text" class="pg-input font-monospace flex-grow-1 min-w-0" id="' . h($id) . '" value="' . h((string) $address) . '" readonly aria-label="' . h(lang('Redirect address')) . '">
+                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-copy="' . h($id) . '"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                                </div>';
+    }
+
+    if ($addresses !== '') {
+        $addresses = '
+                                <p class="pg-text-2 mt-3 mb-0">' . h(lang('Add both addresses to the application\'s OAuth client in Google Cloud, under Authorized redirect URIs:')) . '</p>' . $addresses . '
+                                <div class="pg-field-help" role="status" aria-live="polite" data-ws-mail-copied="' . h(lang('Copied')) . '" data-ws-mail-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>';
+    }
+
+    return '
+                <div class="md:col-12' . (($provider === 'gmail') ? '' : ' d-none') . '" data-ws-mail-when="provider=gmail">
+                    <div class="pg-card-inner p-3">
+                        <h4 class="pg-group-label mb-2">' . h(lang('Connecting a Gmail or Google Workspace mailbox')) . '</h4>
+                        <label class="pg-field-label" for="' . h($prefix) . 'google_way">' . h(lang('Sign in with')) . '</label>
+                        <select class="pg-input" name="google_way" id="' . h($prefix) . 'google_way">
+                            <option value="connection"' . (($way === 'connection') ? ' selected' : '') . '>' . h(lang('A connected Google account')) . '</option>
+                            <option value="password"' . (($way === 'password') ? ' selected' : '') . '>' . h(lang('An app password')) . '</option>
+                        </select>
+                        <div class="mt-3' . (($way === 'connection') ? '' : ' d-none') . '" data-ws-mail-when="google_way=connection">
+                            <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $connected) . '</li></ol>
+                            ' . (string) ($google['connect'] ?? '') . '
+                            <details class="mt-3"><summary class="pg-text-2">' . h(lang('Setting up the Google application')) . '</summary>' . $addresses . '
+                                <p class="pg-text-2 mt-3 mb-0">' . lang(array('string' => 'Turn on the Gmail API in the same Google Cloud project; answers are sent through it: {var:1}.', 'vars' => $link(pg_google_cloud_enable_url('gmail.googleapis.com'), lang('Gmail API')))) . '</p>
+                                <h5 class="pg-group-label mt-3 mb-2">' . h(lang('Google\'s verification warning')) . '</h5>
+                                <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $warning)) . '</li></ul>
+                            </details>
+                        </div>
+                        <div class="mt-3' . (($way === 'password') ? '' : ' d-none') . '" data-ws-mail-when="google_way=password">
+                            <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $steps) . '</li></ol>
+                            <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $notes)) . '</li></ul>
+                        </div>
+                    </div>
                 </div>';
 }
 
@@ -1214,7 +1383,7 @@ function ws_mail_fetch_health(array $boxes, $now)
 
 /**
  * The mailboxes card: each box with its channel and last mail, its form,
- * and the .eml upload. In Site Settings (Channels, mail and voice, with
+ * and the .eml upload. In Site Settings (Mailboxes, with
  * $form) Test connection is a named submit button of the settings form
  * (ws_mail_test, value the box's id), and a box's form with its .eml upload,
  * and Add a mailbox, open in drawers (ws_settings_mail_drawer()).
@@ -1261,13 +1430,22 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                     <div class="small fg-secondary">' . ws_mail_box_check_line($box) . '</div>
                 </div>';
         $reads = ((string) (ws_mail_box_settings($box)['host'] ?? '') !== '');
-        $test = '<i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Test connection'));
+        $test = '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection'));
 
+        // In Site Settings each box is a list row with its icon tile, its
+        // place and last mail, its last check, and its buttons under them.
         if ($form !== null) {
             $rows .= '
-            <div class="ws-dept-row flex-wrap' . ((int) $box['enabled'] === 1 ? '' : ' opacity-50') . '">' . $line . '
-                ' . ($reads ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="btn btn-sm btn-text theme-secondary">' . $test . '</button>' : '') . '
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+            <div class="pg-list-row' . ((int) $box['enabled'] === 1 ? '' : ' opacity-50') . '"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-inbox"></span></span>
+                <div class="pg-list-row-main">
+                    <div class="pg-list-row-head"><span class="pg-list-row-title">' . h((string) $box['name']) . '</span></div>
+                    <div class="pg-list-row-text">' . h((string) $box['address']) . ' · ' . $place . ' · ' . h(((int) $box['last_mail_at'] > 0) ? lang(array('string' => 'Last e-mail {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['last_mail_at']))) : lang('No e-mail yet')) . '</div>
+                    <div class="pg-list-row-text">' . ws_mail_box_check_line($box) . '</div>
+                    <div class="pg-list-row-actions">
+                        ' . ($reads ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm">' . $test . '</button>' : '') . '
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+                    </div>
+                </div>
             </div>';
             continue;
         }
@@ -1279,9 +1457,9 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mail_test">
                     <input type="hidden" name="box_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-text theme-secondary">' . $test . '</button>
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . $test . '</button>
                 </form>' : '') . '
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-mail-' . $id . '" aria-expanded="false"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="collapse" data-bs-target="#ws-mail-' . $id . '" aria-expanded="false"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
             </div>
             <div class="collapse" id="ws-mail-' . $id . '">
                 ' . ws_mail_box_form($self_url, $box, $channels, $ai_ready) . '
@@ -1293,7 +1471,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         $rows = '<div class="ws-empty small py-5"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('No mailboxes yet. A mailbox brings the e-mail sent to an address into a channel, where the team talks it over.')) . '</div>';
     }
 
-    $intro = '<div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>';
+    $intro = '<div class="pg-field-help mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>';
 
     if ($form !== null) {
         return '
@@ -1301,9 +1479,11 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
                 <span class="pg-title-section ws-grow">' . h(lang('Mailboxes')) . '</span>
-                <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-0" aria-controls="pgset-ws-mail-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-0" aria-controls="pgset-ws-mail-0"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
             </div>
             <div class="card-body">
+                <p class="pg-card-sub">' . h(lang('Mailboxes read incoming e-mail: the mail sent to a mailbox\'s address is brought in here, read and answered.'))
+                    . ' ' . lang(array('string' => 'For sending: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mail_sending')) . '">' . h(lang('E-mail sending')) . '</a>')) . '</p>
                 ' . $rows . '
                 ' . $intro . '
                 ' . ws_mail_connect_form($viewer, $form) . '
@@ -1318,7 +1498,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         <div class="card mt-7" id="ws-mail">
             <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('Mailboxes')) . '</h2>
-                <button type="button" class="btn btn-sm btn-text theme-primary" data-bs-toggle="collapse" data-bs-target="#ws-mail-new" aria-expanded="false"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="collapse" data-bs-target="#ws-mail-new" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
             </div>
             <div class="card-body">
                 <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels, $ai_ready) . '</div>
@@ -1363,10 +1543,10 @@ function ws_mail_eml_form($action, $id, $dialog)
                     ' . ($dialog ? '' : '<input type="hidden" name="ws_action" value="mail_eml">
                     <input type="hidden" name="box_id" value="' . (int) $id . '">') . '
                     <div>
-                        <label class="form-label" for="ws_mail_eml_' . (int) $id . '">' . h(lang('Bring in an .eml file')) . '</label>
-                        <input class="form-control form-control-sm" type="file" name="' . ($dialog ? 'ws_mail_eml_file' : 'eml') . '" id="ws_mail_eml_' . (int) $id . '" accept=".eml,message/rfc822">
+                        <label class="pg-field-label" for="ws_mail_eml_' . (int) $id . '">' . h(lang('Bring in an .eml file')) . '</label>
+                        <input class="pg-input" type="file" name="' . ($dialog ? 'ws_mail_eml_file' : 'eml') . '" id="ws_mail_eml_' . (int) $id . '" accept=".eml,message/rfc822">
                     </div>
-                    <button type="submit"' . ($dialog ? ' name="ws_mail_eml" value="' . (int) $id . '"' : '') . ' class="btn btn-sm btn-text theme-primary"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('Bring in')) . '</button>
+                    <button type="submit"' . ($dialog ? ' name="ws_mail_eml" value="' . (int) $id . '"' : '') . ' class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Bring in')) . '</button>
                 </form>';
 }
 
@@ -1388,13 +1568,13 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
 
     if (!$box) {
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only), $in_dialog);
+        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form)), $in_dialog);
     }
 
     $id = (int) $box['id'];
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only)
+        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form))
         . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
 }
 
@@ -1477,11 +1657,46 @@ function ws_mail_settings_script()
             }
 
             document.addEventListener(\'change\', function (event) {
-                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
+                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support|provider|google_way)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
 
                 if (form) {
                     startPlain(form, event.target);
                     sync(form);
+                }
+            });
+
+            // A redirect address of the Gmail part is copied; the line under the
+            // addresses says whether it was. Plain http has no clipboard API
+            // and a write can be refused: the text is then selected.
+            document.addEventListener(\'click\', function (event) {
+                var button = event.target.closest ? event.target.closest(\'[data-ws-mail-copy]\') : null;
+                var input = button ? document.getElementById(button.getAttribute(\'data-ws-mail-copy\')) : null;
+                var status = button ? button.closest(\'details\').querySelector(\'[data-ws-mail-copied]\') : null;
+
+                if (!input || !status) {
+                    return;
+                }
+
+                var done = function () {
+                    status.textContent = status.getAttribute(\'data-ws-mail-copied\');
+                };
+                var fallback = function () {
+                    var copied = false;
+
+                    input.focus();
+                    input.select();
+
+                    try {
+                        copied = document.execCommand(\'copy\');
+                    } catch (error) {}
+
+                    status.textContent = status.getAttribute(copied ? \'data-ws-mail-copied\' : \'data-ws-mail-refused\');
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(input.value).then(done, fallback);
+                } else {
+                    fallback();
                 }
             });
         })();

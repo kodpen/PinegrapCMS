@@ -16,7 +16,7 @@ description: Placing a flow template (G2): motion schedule from ws_flow_template
 - They are drawn only by the placement and go at the next canvas redraw (`drawEdges()` removes `.wsf-thread`): the canvas has no lasting thread layer yet (data-threads plan).
 
 ## What does the setup panel ask?
-- One field per `settings` entry, filled with the first target's current value: channel (select; a box with none gets the flow's home, the channel a flow opened from a channel lives in), person (checkboxes of the team), time (time input), url, address (comma separated), text (a box of up to 4000 characters, a post box's words).
+- One field per `settings` entry, filled with the first target's current value: channel (select; a box with none gets the flow's home, the channel a flow opened from a channel lives in), person (checkboxes of the team), time (time input), url, address (comma separated), text (a box of up to 4000 characters, a post box's words), page and group (selects of the list pages and contact groups), subject (up to 250 characters), day (a day of the week; `workspace-flows-template-post-digest.md`).
 - "Open on canvas" writes the answers into the draft; "Publish now" writes them and publishes. Close or Escape leaves the template's own values.
 - Both send `ws_flow_template_setup` (panel action, `actions.php`) after `flush()`, with the flow's `draft_rev`; a 409 shows the usual conflict bar.
 

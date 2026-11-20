@@ -120,6 +120,7 @@ function test_settings_search_every_category_names_its_group()
 		'privacy'     => 'site',
 		'languages'   => 'site',
 		'contact'     => 'site',
+		'mail_sending' => 'site',
 		'mailboxes'   => 'site',
 		'security'    => 'security',
 		'firewall'    => 'security',
@@ -457,11 +458,17 @@ function test_settings_search_finds_a_service_by_its_name()
 	pg_assert_same(array('sms'), $index[1]['keys'], 'the card keeps its own words');
 	pg_assert_true(in_array('netgsm', $index[1]['services'], true), 'Netgsm finds the SMS card');
 
+	$mail = pg_settings_search_index(
+		array('mail_sending' => array('label' => 'E-mail sending', 'sections' => array('pgset-mail-transport' => 'Sending service'), 'keywords' => array('pgset-mail-transport' => array('smtp')))),
+		array());
+
+	pg_assert_true(in_array('postmark', $mail[1]['services'], true), 'Postmark finds the Sending service card');
+
 	$rows = pg_settings_search_tool_rows(array(array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => array(
-		array('label' => 'SMTP Settings', 'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
+		array('label' => 'Marketplaces', 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php'),
 	))), '/pg/');
 
-	pg_assert_true(in_array('postmark', $rows[1]['services'], true), 'Postmark finds SMTP Settings in the dialog');
+	pg_assert_true(in_array('trendyol', $rows[1]['services'], true), 'Trendyol finds Marketplaces in the dialog');
 	pg_assert_same(array(), $rows[0]['services'], 'the System tools row holds no service');
 
 	$actions = pg_panel_search_tool_actions(array(array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => array(

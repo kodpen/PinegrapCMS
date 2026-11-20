@@ -10,6 +10,7 @@ module: content_proposals
 - Order (`pg_content_proposals_order()`): waiting, then stale, then the closed ones; each newest first.
 - Each row: the page (a link into the Studio) and the editor on one line, the status pill, time and number of changes on the next, who applied or dismissed it (and the reason), Compare, then Apply and Dismiss side by side; Dismiss opens its own reason field.
 - Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
+- A text's markup changed (link, formatting): `content-proposals-compare-markup.md`.
 - Actions are POST forms with the CSRF token; the screen reads `$_POST` itself (`post_value()` exists only in the settings screens).
 - With the switch off the screen says new saves go live and the waiting ones stay.
 - Take back is "Take back the change" ("Değişikliği geri al"), its own key: "Take back" is the Workspace's word for withdrawing a request. The designer who applied a change reads "Applied by …"; the others are told only they can take it back. The reason field and its limit say "Sebep".
@@ -21,7 +22,7 @@ module: content_proposals
 - A note an editor changed is stamped with the designer who applied it (the save stamps changed notes with its user).
 
 ## How does History name both?
-- `pg_page_revisions_list()` reads the page's applied editor rows by `after_hash` and writes the revision's author as "designer (change by editor)" (`pg_content_proposals_revision_by()`); the History panel shows it unchanged.
+- `pg_page_revisions_list()` writes the author of the revision an apply wrote as "designer (change by editor)" (`pg_content_proposals_revision_by()`); the History panel shows it unchanged. Which revision: `page-history-editor-revision.md`.
 
 ## Dismiss and take back?
 - Dismiss: a waiting or stale change, a reason of at most 300 characters (`pg_content_proposals_reason()`, characters not bytes), kept as `steps.reason`; no column.

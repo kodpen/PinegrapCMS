@@ -978,6 +978,42 @@ function _pg_cp_page($row)
 }
 
 /**
+ * Why a change's page could not be read: 'gone' when its row is deleted,
+ * 'binned' when it is in the Recycle Bin (it can be restored), '' otherwise.
+ * Pure.
+ *
+ * @param bool $exists the page row is there
+ * @param bool $binned the page is in the Recycle Bin
+ * @return string
+ */
+function pg_content_proposals_missing_kind($exists, $binned)
+{
+    if (!$exists) {
+        return 'gone';
+    }
+
+    return $binned ? 'binned' : '';
+}
+
+/**
+ * pg_content_proposals_missing_kind() for a change's page as stored now.
+ *
+ * @param array $row design_proposals row
+ * @return string
+ */
+function _pg_cp_page_missing($row)
+{
+    $page_id = (int) $row['page_id'];
+    $exists = is_array(db_item((string) pg_db_bind("SELECT page_id FROM page WHERE page_id = ? LIMIT 1", array($page_id), 'escape')));
+
+    if ($exists && !function_exists('pg_recycle_page_binned')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+    }
+
+    return pg_content_proposals_missing_kind($exists, $exists && pg_recycle_page_binned($page_id));
+}
+
+/**
  * Writes a tree and settings to the page through the design save, as the
  * designer; refused while somebody has the page open in the editor.
  */
@@ -991,9 +1027,73 @@ function _pg_cp_write($user, $row, $style_id, $fields, $tree)
 
     $fields['tree_json'] = pg_designer_tree_encode($tree);
     $fields['revision_source'] = 'publish';
+    $name = pg_content_proposals_name_set($user);
     $saved = pg_designer_save_page($style_id, $fields, $user);
+    pg_content_proposals_name_restore($name);
 
     return $saved['ok'] ? '' : implode(' ', (array) $saved['errors']);
+}
+
+/**
+ * Give the session the acting person's username when it has none, so a save
+ * outside the panel (an approval answered over the API, the approvals job)
+ * writes its Site Log line in that person's name. A name already set (the
+ * panel) is kept.
+ *
+ * @param array $user the person the write acts for
+ * @return array|null the state to put back with
+ *                    pg_content_proposals_name_restore(), null when nothing
+ *                    was changed
+ */
+function pg_content_proposals_name_set($user)
+{
+    $had = isset($_SESSION) && is_array($_SESSION) && array_key_exists('sessionusername', $_SESSION);
+
+    if ($had && ((string) $_SESSION['sessionusername'] !== '')) {
+        return null;
+    }
+
+    $state = array('had' => $had, 'old' => $had ? $_SESSION['sessionusername'] : null);
+    $_SESSION['sessionusername'] = (string) ($user['username'] ?? '');
+
+    return $state;
+}
+
+/**
+ * Put the session's username back as it was before
+ * pg_content_proposals_name_set().
+ *
+ * @param array|null $state
+ */
+function pg_content_proposals_name_restore($state)
+{
+    if (!is_array($state)) {
+        return;
+    }
+
+    if ($state['had']) {
+        $_SESSION['sessionusername'] = $state['old'];
+    } else {
+        unset($_SESSION['sessionusername']);
+    }
+}
+
+/**
+ * The change's steps with the number of the revision its apply wrote (0 when
+ * the save wrote none): History names that revision only
+ * (pg_page_revisions_editor()). Pure.
+ *
+ * @param string $steps_json
+ * @param int    $revision_no
+ * @return string
+ */
+function pg_content_proposals_steps_revision($steps_json, $revision_no)
+{
+    $steps = json_decode((string) $steps_json, true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps['revision_no'] = max(0, (int) $revision_no);
+
+    return (string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**
@@ -1023,7 +1123,22 @@ function pg_content_proposals_apply($user, $id)
     $page = _pg_cp_page($row);
 
     if (!$page) {
-        return array('ok' => false, 'error' => lang('The page could not be read.'));
+        $missing = _pg_cp_page_missing($row);
+
+        // A deleted page never comes back: the change is stale as for a
+        // missing node, and the editor is told. A page in the Recycle Bin can
+        // be restored, so its change keeps waiting.
+        if ($missing === 'gone') {
+            db_q("UPDATE design_proposals SET status = 'stale', error = ? WHERE id = ? AND status = 'pending'", array('page gone', (int) $row['id']));
+            pg_content_proposals_bell_editor($row, 'stale');
+            pg_content_proposals_request_close($row, (int) $user['id']);
+
+            return array('ok' => false, 'error' => lang('The page of this change was deleted, so it cannot be applied.'));
+        }
+
+        return array('ok' => false, 'error' => ($missing === 'binned')
+            ? lang('The page is in the Recycle Bin. Restore it to apply this change.')
+            : lang('The page could not be read.'));
     }
 
     $ops = json_decode((string) $row['ops'], true);
@@ -1048,8 +1163,8 @@ function pg_content_proposals_apply($user, $id)
         return array('ok' => false, 'error' => $error);
     }
 
-    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
-        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), (int) $user['id'], time(), (int) $row['id']));
+    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, steps = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
+        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), pg_content_proposals_steps_revision((string) $row['steps'], pg_page_revision_written((int) $row['page_id'])), (int) $user['id'], time(), (int) $row['id']));
     pg_content_proposals_bell_editor($row, 'applied');
     pg_content_proposals_request_close($row, (int) $user['id']);
 
@@ -1391,8 +1506,9 @@ function pg_content_proposals_waiting_count($page_id = 0)
         return 0;
     }
 
-    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals WHERE agent = ? AND status = 'pending'"
-        . (((int) $page_id > 0) ? ' AND page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+    // A change whose page row is gone can never be applied: not counted.
+    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals AS p JOIN page ON page.page_id = p.page_id WHERE p.agent = ? AND p.status = 'pending'"
+        . (((int) $page_id > 0) ? ' AND p.page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
 }
 
 /* ---------------------------------------------------------------------------

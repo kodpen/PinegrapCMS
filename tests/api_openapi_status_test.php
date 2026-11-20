@@ -340,7 +340,7 @@ function test_api_openapi_status_channel_groups_declare_their_nulls()
 
 	foreach (array('people', 'above') as $list) {
 		pg_assert_same('string?', $access[$list][0]['granted_by'], $list . '.granted_by');
-		pg_assert_same('string?', $access[$list][0]['granted_at'], $list . '.granted_at');
+		pg_assert_same('datetime?', $access[$list][0]['granted_at'], $list . '.granted_at');
 	}
 
 	$group = ws_api_channel_group_present(array('id' => '2', 'name' => 'Sales', 'parent_id' => '0', 'hex' => ''), false);

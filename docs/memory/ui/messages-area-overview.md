@@ -7,7 +7,7 @@ description: Start file of the Communication area (İletişim, menu row 9, #8961
 - Main menu row 9 under Marketing, "Communication", in place of My Campaigns: one place for campaigns, automatic sends, templates, every send and the channels, with the incoming e-mail first. Built by the messages-area plan, MA0 to MA13 (2026-11-12 to 2026-11-15). What binds it: [[messages-area-rules]].
 
 ## Which tabs, and where does each live?
-- Incoming e-mail, `messages_mail.php`: [[messages-area-mail-tab]]; the card and the gate: `workspace/mail-area-proposals.md`, `workspace/mail-area-shell.md`, `workspace/mail-card-answered.md`, with the Workspace off `workspace/mail-workspace-off.md`, written as HTML `workspace/mail-html-written.md`.
+- Incoming e-mail, `messages_mail.php`: [[messages-area-mail-tab]]; the card and the gate: `workspace/mail-area-proposals.md`, `workspace/mail-area-shell.md`, `workspace/mail-card-answered.md`, with the Workspace off `workspace/mail-workspace-off.md`, written as HTML `workspace/mail-html-written.md`; pinned to a person's menu [[main-menu-mail-row]], its dashboard card [[dashboard-v2-mail-card]], the channel's pill `workspace/mail-pane-channel-pill.md`.
 - Campaigns, `view_email_campaigns.php`: [[messages-area-campaigns-tab]]; the content card [[campaign-content-step]], the test send [[campaign-test-send]].
 - Automatic sends, `messages_automatic.php`: [[messages-area-automatic-tab]].
 - Templates, `messages_templates.php`: [[messages-area-templates-tab]].

@@ -553,7 +553,7 @@ function test_proto_hotspots_list_and_problems()
 
 // The view's links panel and problems (F15-F20, F24): an aside beside the
 // stage drawn from listOf(), never from the canvas; a frame row and a list
-// row pick one link; "Change target" and "Open in the editor" go through
+// row pick one link; the target control and "Open in the editor" go through
 // today's menu and row opening; "N broken" and its list and each frame's
 // badge from brokenOf(); the panel's open state per browser, closed under
 // 1,100 px; Play through _pgPrototypeUrl().
@@ -565,7 +565,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
 	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
 	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link\'s mark on the picture picks the link');
-	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, '"Change target" opens today\'s target menu at the list row, whether or not the picture shows the link');
+	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, 'the row\'s target control opens today\'s target menu at the list row, whether or not the picture shows the link');
 	pg_assert_contains('_sdProtoOpenRow(data.id, row.port);', $source, '"Open in the editor" opens the element by its frame and port');
 	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
 	pg_assert_contains('_sdProto.issues = H.problemsOf(l);', $source, 'the broken links and what to check from the marked layout');
@@ -758,7 +758,7 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 
 	pg_assert_contains('var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());', $source, 'the view hands the sections');
 	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
-	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };", $source, 'the headings are translated');
+	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: P.partH, openH: openH };", $source, 'the headings are translated');
 	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
 	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
@@ -1053,6 +1053,49 @@ function test_proto_hotspots_mark_port_side()
 	pg_assert_same(array('x' => 248, 'y' => 42, 'side' => 'right'), $out['bare'], 'a frame with no box: its middle');
 }
 
+// An arrow's leg inside its frame: from the middle of its link's mark to
+// the port markPort() gives on the frame's edge, level with the mark on a
+// side edge, under it on the bottom; a link with no mark has none.
+function test_proto_hotspots_mark_leg_from_the_mark_to_the_edge()
+{
+	$frame = proto_hotspots_test_js(array('x' => 0, 'y' => 0, 'w' => 248, 'h' => 352, 'thumb' => 298));
+	$r = proto_hotspots_test_js(array('x' => 114, 'y' => 28.5, 'w' => 57, 'h' => 14.25));
+	$out = proto_hotspots_test_node('var t = { right: { x: 400, y: 0, w: 248, h: 352 }, below: { x: 100, y: 500, w: 248, h: 352 } };'
+		. ' out = { right: H.markLeg(' . $r . ', H.markPort(' . $frame . ', ' . $r . ', t.right)), below: H.markLeg(' . $r . ', H.markPort(' . $frame . ', ' . $r . ', t.below)),'
+		. ' foot: H.markLeg(null, H.markPort(' . $frame . ', null, t.right)), early: H.markLeg(undefined, H.markPort(' . $frame . ', undefined, t.right)), noPort: H.markLeg(' . $r . ', null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('x1' => 152.5, 'y1' => 85.63, 'x2' => 248, 'y2' => 85.63), $out['right'], 'from the mark\'s middle across to the right edge, level with it');
+	pg_assert_same(array('x1' => 152.5, 'y1' => 85.63, 'x2' => 152.5, 'y2' => 352), $out['below'], 'down to the bottom edge under it');
+	pg_assert_same(null, $out['foot'], 'a link under the cut leaves from the foot: no leg');
+	pg_assert_same(null, $out['early'], 'no picture yet: no leg');
+	pg_assert_same(null, $out['noPort'], 'no port: no leg');
+}
+
+// The view draws the leg of each arrow shown in its frame, in the arrow's
+// colour, after the core routes it, and lifts and fades it with the arrow.
+function test_proto_hotspots_view_draws_the_leg_on_the_frame()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js');
+
+	pg_assert_contains("_sdProtoLegsSoon();\n        return _sdProtoPortAt(item, port);", $source, 'every route of an arrow redraws the legs');
+	pg_assert_contains("var leg = H.markLeg(rects[e.port], _sdProtoPortAt(from, e.port));", $source, 'the leg ends where the arrow leaves the frame');
+	pg_assert_contains("if (!group || window.getComputedStyle(group).display === 'none') return;", $source, 'only the arrows shown have a leg');
+	pg_assert_contains("var state = list.contains('pgc-edge-in') ? 'in' : (list.contains('pgc-edge-faint') ? 'faint' : 'out');", $source, 'the leg takes its arrow\'s state');
+	pg_assert_contains("ui.boxes.classList.toggle('sd-proto-lifting', !!group);", $source, 'the pointer lifts the leg with its arrow');
+	pg_assert_contains("if (leg) leg.classList.add('sd-proto-leg-lift');", $source, 'the lifted arrow\'s leg is drawn thicker');
+	pg_assert_contains("ui.boxes.classList.toggle('sd-proto-drawing', !!on);", $source, 'the legs fade while an arrow is drawn');
+	pg_assert_false(strpos($core, 'sd-proto') !== false, 'the core knows nothing of the view');
+	foreach (array('.sd-proto-legs {', '.sd-proto-leg-out .sd-proto-leg-line', '.sd-proto-leg-in .sd-proto-leg-line', '.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-line', '.sd-proto .pgc-boxes.sd-proto-lifting .sd-proto-leg:not(.sd-proto-leg-lift)', '.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-leg') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
 // The view puts the marks on a loaded picture, starts each arrow at its
 // mark (portAt), draws a shared part's own picture and lays the frames out
 // again once a part is measured; the link rows are gone from the frames.
@@ -1063,7 +1106,7 @@ function test_proto_hotspots_view_marks_on_the_picture()
 
 	pg_assert_contains('portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },', $source, 'an arrow leaves where markPort() says');
 	pg_assert_contains('return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);', $source, 'the mark, the foot or the middle, by the side facing the target');
-	pg_assert_contains('var rects = H.picRects(item.rows, pic.marks, item.sharedId);', $source, 'the marks are read from the picture');
+	pg_assert_contains('var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);', $source, 'the marks are read from the picture');
 	pg_assert_contains('canvas.reroute([item.id]);', $source, 'the frame\'s arrows move to its marks once loaded');
 	pg_assert_contains('var mark = window.PGProtoHotspots.markState(_sdProto.layout, id);', $source, 'which marks show follows the selected frame');
 	pg_assert_contains("children: [{ _id: 'pic-part', type: 'shared_ref', props: { sharedId: item.sharedId }, children: [] }] };", $source, 'a shared part is drawn alone');
@@ -1271,7 +1314,7 @@ function test_proto_hotspots_view_what_to_check()
 	pg_assert_contains("if (!rows.length) return;", $source, 'an empty group left out');
 	pg_assert_contains("var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
 	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
-	pg_assert_contains("(row.mark === 'empty' ? _sdT('No target') : ", $source, 'a list row without a target says so');
+	pg_assert_contains("shows.state === 'empty' ? _sdT('No target') : ", $source, 'a read-only list row without a target says so');
 	pg_assert_contains("if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');", $source, 'a link count that does not fit is left out whole');
 	pg_assert_contains('el.parentNode.title = el.textContent;', $source, 'its words stay in the bar\'s title');
 	pg_assert_contains('.sd-proto-status.sd-proto-status-out { visibility: hidden; }', $css, 'never cut with an ellipsis');
@@ -1279,6 +1322,68 @@ function test_proto_hotspots_view_what_to_check()
 	foreach (array('.sd-proto-check {', '.sd-proto-badge.sd-proto-badge-empty', '.sd-proto-unreached {', '.sd-proto-hot.sd-proto-mark-empty', '.sd-proto-li-empty .sd-proto-li-to') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
+}
+
+// The links the designer's canvas marks (canvasMarks()): of the drawable
+// links of a marked design, page frames first, then shared components, in
+// document order, the broken ones with why they are broken and the ones
+// without a target ('' or '#'). A link kept by a page that is gone is
+// broken as 'kept'. A tab, a site page, an anchor, a toggle, a classic
+// menu and a region's links get none. Without the map read (`known`
+// false) a link cannot be called broken: only the empty ones are marked.
+// The read is asked for the addresses but the empty ones and for the kept
+// pages (canvasRequest()), never for a menu or a region.
+function test_proto_hotspots_canvas_marks()
+{
+	$link = function ($id, $text, $href) {
+		return array('_id' => $id, 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => $text, 'href' => $href), 'children' => array());
+	};
+	$tree = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array(
+		$link('l1', 'Old', '/old'),
+		$link('l2', 'Lost', '/nothing'),
+		$link('l3', 'Blank', ''),
+		array('_id' => 'l4', 'type' => 'component', 'props' => array('componentType' => 'btn', 'text' => 'Buy'), 'children' => array()),
+		array('_id' => 'l5', 'type' => 'semantic', 'props' => array('tag' => 'a', 'text' => 'Top', 'href' => '#top'), 'children' => array()),
+		$link('l6', 'About', '/about'),
+		$link('l7', 'Home', '/home'),
+		array('_id' => 't1', 'type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'See <a href="/nothing">x</a>, <a href="/about">y</a>, <a href="#" data-bs-toggle="tab">t</a> and <a href="#">z</a>'), 'children' => array()),
+		proto_hotspots_test_bound(10),
+		array('_id' => 'm', 'type' => 'region', 'props' => array('regionType' => 'menu', 'regionName' => 'Gone'), 'children' => array()),
+		array('_id' => 'f', 'type' => 'region', 'props' => array('regionType' => 'common', 'regionName' => 'Footer'), 'children' => array()),
+		array('_id' => 's', 'type' => 'shared_ref', 'props' => array('sharedId' => 5), 'children' => array()),
+	));
+	$shared = array(5 => array('name' => 'Header', 'tree' => array('_id' => 'sr', 'type' => 'root', 'props' => array(), 'children' => array(
+		$link('se', 'Cart', ''),
+		$link('so', 'Gone', '/old'),
+	))));
+	$out = proto_hotspots_test_node('var read = ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ', tabs = [{ key: "p1", page_id: 1, page_name: "home" }];'
+		. ' var d = H.design([{ key: "p1", page_id: 1, page_name: "home", tree: ' . proto_hotspots_test_js($tree) . ' }], ' . proto_hotspots_test_js($shared) . ');'
+		. ' var line = function (m) { return m.nodeId + " " + m.source + "." + m.index + " " + m.mark + (m.why ? " " + m.why : "") + (m.sharedId ? " @" + m.sharedId : ""); };'
+		. ' var all = H.canvasMarks(H.mark(d, read, tabs), true);'
+		. ' out = { known: all.map(line), first: all[0], unknown: H.canvasMarks(H.mark(d, {}, tabs), false).map(line), none: [H.canvasMarks(null, true), H.canvasMarks({ pages: [], shared: [] }, true)],'
+		. ' request: H.canvasRequest(d), asked: d.request.menus.concat(d.request.regions), nothing: H.canvasRequest(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'l1 href.0 broken page',
+		'l2 href.0 broken page',
+		'l3 href.0 empty',
+		'l4 btn.0 empty',
+		't1 text.0 broken page',
+		't1 text.3 empty',
+		'b10 href.0 broken kept',
+		'se href.0 empty @5',
+		'so href.0 broken page @5',
+	), $out['known'], 'the broken and the empty links, a shared component\'s with its id');
+	pg_assert_same(array('nodeId' => 'l1', 'sharedId' => 0, 'source' => 'href', 'index' => 0, 'mark' => 'broken', 'label' => 'Old', 'href' => '/old', 'why' => 'page'), $out['first'], 'what a mark carries');
+	pg_assert_same(array('l3 href.0 empty', 'l4 btn.0 empty', 't1 text.3 empty', 'se href.0 empty @5'), $out['unknown'], 'without the read only the empty links');
+	pg_assert_same(array(array(), array()), $out['none'], 'nothing marked, nothing drawn');
+	pg_assert_same(array('hrefs' => array('/old', '/nothing', '#top', '/about', '/home'), 'page_ids' => array(10), 'menus' => array(), 'regions' => array()), $out['request'], 'the read asked without the empty addresses, menus and regions');
+	pg_assert_same(array('Gone', 'Footer'), $out['asked'], 'which the Prototype view asks');
+	pg_assert_same(array('hrefs' => array(), 'page_ids' => array(), 'menus' => array(), 'regions' => array()), $out['nothing'], 'no design, nothing asked');
 }
 
 // A system widget leads to pages its settings name (the login widget's
@@ -1684,4 +1789,497 @@ function test_proto_hotspots_picture_marker_flag_never_reaches_save()
 	pg_assert_same('<div class="t"><p><a data-pg-pic="t1.0" href="/a">A</a> <a data-pg-pic="t1.1" href="/b">B</a></p></div>', $out['text'], 'each link of a text by its index');
 	pg_assert_same('<div><a href="/z">Z</a><p><a href="/a">A</a> <a href="/b">B</a></p></div>', $out['extra'], 'markup with links the text lacks gets none');
 	pg_assert_same('<p>Hi</p>', $out['plain'], 'no link, unchanged');
+}
+
+// The target suggested for a link without one (F31): label, page name and
+// page title folded (lower case, Turkish letters plain, punctuation to
+// spaces, the filler words dropped); sure, unsure with at most three
+// candidates best first, or nothing; the link's own page and a page in the
+// bin never offered.
+function test_proto_hotspots_suggest_targets()
+{
+	$pages = array(
+		array('id' => 'p:home', 'name' => 'anasayfa', 'title' => 'Ana Sayfa'),
+		array('id' => 'p:cart', 'name' => 'sepet', 'title' => 'Alışveriş Sepeti'),
+		array('id' => 'p:blog', 'name' => 'blog', 'title' => 'Blog'),
+		array('id' => 'p:archive', 'name' => 'blog-arsivi', 'title' => 'Blog arşivi'),
+		array('id' => 'p:about', 'name' => 'hakkimizda', 'title' => 'Hakkımızda'),
+		array('id' => 'p:old', 'name' => 'iletisim', 'title' => 'İletişim', 'bin' => true),
+		array('id' => 'p:firm', 'name' => 'ŞİRKET', 'title' => ''),
+	);
+	$cases = array(
+		'sure' => array('label' => 'Sepete git', 'page' => 'p:home'),
+		'two' => array('label' => 'Blog', 'page' => 'p:home'),
+		'heading' => array('label' => 'Daha fazlası', 'page' => 'p:home', 'heading' => 'Blog'),
+		'none' => array('label' => 'Zzz qqq', 'page' => 'p:home'),
+		'own' => array('label' => 'Sepet', 'page' => 'p:cart'),
+		'bin' => array('label' => 'İletişim', 'page' => 'p:home'),
+		'folded' => array('label' => 'HAKKIMIZDA', 'page' => 'p:home'),
+		'upper' => array('label' => 'şirket sayfası', 'page' => 'p:home'),
+		'title' => array('label' => 'Alışveriş sepeti!', 'page' => 'p:home'),
+		'fillers' => array('label' => 'Go to the page', 'page' => 'p:home'),
+	);
+	$out = proto_hotspots_test_node('var pages = ' . proto_hotspots_test_js($pages) . ', cases = ' . proto_hotspots_test_js($cases) . '; out = { list: H.SUGGEST_FILLER };'
+		. ' Object.keys(cases).forEach(function (k) { var s = H.suggest(cases[k], pages); out[k] = { sure: s.sure ? s.sure.id : null, candidates: s.candidates.map(function (p) { return p.id; }) }; });'
+		. ' out.fold = H.foldWords("Ödeme, ŞİMDİ git: Sayfa-gör İncele ılık");');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('go', 'to', 'the', 'page', 'view', 'see', 'git', 'sayfa', 'gör', 'incele'), $out['list'], 'one list of filler words');
+	pg_assert_same(array('sure' => 'p:cart', 'candidates' => array('p:cart')), $out['sure'], '"Sepete git" finds Sepet: its one word begins a word of the label');
+	pg_assert_same(array('sure' => null, 'candidates' => array('p:blog', 'p:archive')), $out['two'], '"Blog": two pages match, the equal one first');
+	pg_assert_same(array('sure' => null, 'candidates' => array('p:blog', 'p:archive')), $out['heading'], 'no match by the label: the heading above it finds unsure candidates');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['none'], 'a label that matches nothing and no heading');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['own'], 'the link\'s own page is never a candidate');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['bin'], 'a page in the bin is never a candidate');
+	pg_assert_same(array('sure' => 'p:about', 'candidates' => array('p:about')), $out['folded'], 'upper case and dotless i fold to the name');
+	pg_assert_same(array('sure' => 'p:firm', 'candidates' => array('p:firm')), $out['upper'], 'a page name in Turkish capitals folds too; "sayfası" begins with a filler only as a word');
+	pg_assert_same(array('sure' => 'p:cart', 'candidates' => array('p:cart')), $out['title'], 'the page title counts; punctuation is a space');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['fillers'], 'filler words alone match nothing');
+	pg_assert_same(array('odeme', 'simdi', 'ilik'), $out['fold'], 'folded words: Turkish letters plain, punctuation a space, fillers dropped');
+}
+
+// The dialog's rows (F30, F32): one per link without a target in the
+// frames' order, a shared part's once; the nearest heading of a link's
+// block comes from the tree (headingOf()); the head's three counts.
+function test_proto_hotspots_suggest_rows()
+{
+	$laid = array(
+		'frames' => array(
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'anasayfa', 'rows' => array(
+				array('port' => 'h0', 'nodeId' => '3', 'source' => 'href', 'label' => 'Sepete git', 'href' => '', 'mark' => 'empty'),
+				array('port' => 'h1', 'nodeId' => '4', 'source' => 'href', 'label' => 'Daha fazlası', 'href' => '#', 'mark' => 'empty'),
+				array('port' => 'h2', 'nodeId' => '5', 'source' => 'href', 'label' => 'Blog', 'href' => '/blog', 'mark' => 'tab'),
+				array('port' => 'h3', 'nodeId' => '6', 'source' => 'href', 'label' => 'Old', 'href' => '/old', 'mark' => 'broken'),
+			)),
+			array('id' => 'p:b', 'kind' => 'page', 'name' => 'sepet', 'rows' => array()),
+			array('id' => 'p:c', 'kind' => 'page', 'name' => 'blog', 'rows' => array()),
+			array('id' => 's:7', 'kind' => 'shared', 'name' => 'Header', 'rows' => array(
+				array('port' => 'h0', 'nodeId' => '9', 'source' => 'href', 'label' => 'Xyz', 'href' => '', 'mark' => 'empty'),
+			)),
+		),
+		'chips' => array(),
+		'edges' => array(),
+	);
+	$tree = array('_id' => 'root', 'type' => 'root', 'props' => array(), 'children' => array(
+		array('_id' => '1', 'type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array(
+			array('_id' => '2', 'type' => 'content', 'props' => array('contentType' => 'heading', 'tag' => 'h2', 'text' => 'Son <b>Blog</b> yazıları'), 'children' => array()),
+			array('_id' => '10', 'type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+				array('_id' => '4', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Daha fazlası', 'href' => '#'), 'children' => array()),
+			)),
+		)),
+		array('_id' => '11', 'type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array(
+			array('_id' => '3', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Sepete git', 'href' => ''), 'children' => array()),
+		)),
+	));
+	$pages = array(
+		array('id' => 'p:a', 'name' => 'anasayfa', 'title' => ''),
+		array('id' => 'p:b', 'name' => 'sepet', 'title' => ''),
+		array('id' => 'p:c', 'name' => 'blog', 'title' => ''),
+	);
+	$out = proto_hotspots_test_node('var l = ' . proto_hotspots_test_js($laid) . ', t = ' . proto_hotspots_test_js($tree) . ', pages = ' . proto_hotspots_test_js($pages) . ';'
+		. ' var heads = { "p:a|h1": H.headingOf(t, "4"), "p:a|h0": H.headingOf(t, "3") };'
+		. ' var s = H.suggestRows(l, pages, heads);'
+		. ' out = { heads: heads, rows: s.rows.map(function (r) { return r.frame + "|" + r.port + " " + r.label + " " + r.kind + " " + (r.page || "-") + " " + r.candidates.join(","); }), count: s.count, missing: H.headingOf(t, "99"), none: H.suggestRows(null, pages, {}) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:a|h1' => 'Son Blog yazıları', 'p:a|h0' => ''), $out['heads'], 'the heading above a link in its block; none in a block without one');
+	pg_assert_same(array(
+		'p:a|h0 Sepete git sure p:b p:b',
+		'p:a|h1 Daha fazlası ask - p:c',
+		's:7|h0 Xyz none - ',
+	), $out['rows'], 'one row per link without a target, the shared part\'s once; a target, a broken link untouched');
+	pg_assert_same(array('sure' => 1, 'ask' => 1, 'none' => 1), $out['count'], 'the head\'s counts');
+	pg_assert_same('', $out['missing'], 'a node not in the tree has no heading');
+	pg_assert_same(array('rows' => array(), 'count' => array('sure' => 0, 'ask' => 0, 'none' => 0)), $out['none'], 'nothing laid out');
+}
+
+// Apply's batch (F34): the ticked rows grouped by the tab they are written
+// on, a tab once in the order of its first row (one undo entry each); a row
+// on a tab closed to the operator, on no tab or with no page chosen stays
+// unwritten with its reason.
+function test_proto_hotspots_suggest_batch()
+{
+	$picks = array(
+		array('frame' => 'p:a', 'port' => 'h0', 'page' => 'p:c', 'tab' => 'a', 'locked' => false),
+		array('frame' => 's:5', 'port' => 'h1', 'page' => 'p:a', 'tab' => 'b', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h2', 'page' => 'p:b', 'tab' => 'a', 'locked' => false),
+		array('frame' => 'p:d', 'port' => 'h0', 'page' => 'p:a', 'tab' => 'd', 'locked' => true),
+		array('frame' => 's:6', 'port' => 'h0', 'page' => 'p:a', 'tab' => '', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h3', 'page' => '', 'tab' => 'a', 'locked' => false),
+	);
+	$out = proto_hotspots_test_node('var b = H.suggestBatch(' . proto_hotspots_test_js($picks) . ');'
+		. ' out = { tabs: b.tabs.map(function (t) { return t.key + ": " + t.picks.map(function (p) { return p.frame + "|" + p.port; }).join(" "); }),'
+		. ' refused: b.refused.map(function (r) { return r.pick.frame + "|" + r.pick.port + " " + r.why; }), none: H.suggestBatch(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('a: p:a|h0 p:a|h2', 'b: s:5|h1'), $out['tabs'], 'three rows on two tabs: two groups, two undo entries');
+	pg_assert_same(array('p:d|h0 locked', 's:6|h0 tab', 'p:a|h3 target'), $out['refused'], 'a locked tab\'s row, a row on no tab and one without a page stay unwritten');
+	pg_assert_same(array('tabs' => array(), 'refused' => array()), $out['none'], 'nothing ticked');
+}
+
+// The Suggest targets view (F30 to F34): the bar's button, the dialog from
+// the panel's dialog parts without a backdrop, the proposed arrows through
+// the core's dashed(), Apply writing one undo entry per tab, and the
+// dialog closed with the view.
+function test_proto_hotspots_view_suggest_targets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$at = strpos($source, 'function _sdProtoSuggestOpen()');
+	$end = strpos($source, 'function _sdProtoMenuOpen(', (int) $at);
+	pg_assert_true($at !== false && $end !== false, 'the dialog\'s functions sit before the target menu');
+	$block = substr($source, (int) $at, (int) $end - (int) $at);
+
+	pg_assert_contains("_sdT('Suggest targets · {var}', toSuggest)", $source, 'the bar says "Suggest targets · n"');
+	pg_assert_contains('H.suggestRows(_sdProto.layout, pages, _sdProtoSuggestHeadings())', $block, 'the rows come from the pure match');
+	pg_assert_contains("el.setAttribute('data-bs-modal', 'false');", $block, 'a dialog without a backdrop: the map stays in sight');
+	pg_assert_contains('canvas.dashed(', $block, 'the proposed arrows go through the core');
+	pg_assert_false(strpos($block, "G.svgEl('path'") !== false, 'and no arrow is drawn beside it');
+	pg_assert_contains('H.suggestBatch(picks)', $block, 'Apply groups its rows by tab');
+	$tab = substr($block, (int) strpos($block, 'function _sdProtoSuggestTab('));
+	pg_assert_same(1, substr_count($tab, 'saveState();'), 'one undo entry per tab');
+	pg_assert_contains("_sdT('{var} links connected', done)", $block, 'the toast counts what was written');
+	pg_assert_contains("_sdProtoSuggestClose(false);\n        _sdProto.open = false;", $source, 'closing the view closes the dialog');
+	pg_assert_contains("if (_sdProto.suggest) _sdProtoSuggestArrows();", $source, 'another selected frame shows its own proposed arrows');
+}
+
+// The links panel as the place to edit: an outgoing row's target is a
+// control (a box with a caret) opening today's target menu, "Choose a
+// page" for a link without a target; a row that may not be drawn keeps its
+// target as text; "Open in the editor" stays an icon.
+function test_proto_hotspots_row_target()
+{
+	$out = proto_hotspots_test_node('out = ['
+		. ' H.rowTarget({ drawable: true, mark: "tab", why: "" }),'
+		. ' H.rowTarget({ drawable: true, mark: "empty", why: "" }),'
+		. ' H.rowTarget({ drawable: true, mark: "broken", why: "gone" }),'
+		. ' H.rowTarget({ drawable: false, mark: "tab", why: "" }),'
+		. ' H.rowTarget({ drawable: false, mark: "empty", why: "" }),'
+		. ' H.rowTarget(null) ];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('control' => true, 'state' => 'set'),
+		array('control' => true, 'state' => 'empty'),
+		array('control' => true, 'state' => 'broken'),
+		array('control' => false, 'state' => 'set'),
+		array('control' => false, 'state' => 'empty'),
+		array('control' => false, 'state' => 'set'),
+	), $out, 'a drawable row\'s target is a control, a read-only row\'s text; empty, broken or set');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$at = strpos($source, 'function _sdProtoListDraw()');
+	$end = strpos($source, 'function _sdProtoProblemsOpen(', (int) $at);
+	pg_assert_true($at !== false && $end !== false, 'the panel\'s drawing function');
+	$block = substr($source, (int) $at, (int) $end - (int) $at);
+
+	pg_assert_contains('var shows = window.PGProtoHotspots.rowTarget(row);', $block, 'each row asks the pure helper how its target shows');
+	pg_assert_contains("var pick = _sdProtoEl('button', 'sd-proto-li-target sd-proto-li-target-' + shows.state);", $block, 'the target is a button');
+	pg_assert_contains("pick.setAttribute('aria-haspopup', 'menu');", $block, 'that opens a menu');
+	pg_assert_contains("pick.addEventListener('click', function () { change(pick); });", $block, 'today\'s target menu, at the control');
+	pg_assert_contains("shows.state === 'empty' ? _sdT('Choose a page') : where", $block, 'a link without a target reads "Choose a page"');
+	pg_assert_contains("'bi bi-chevron-down sd-proto-li-caret'", $block, 'with a caret');
+	pg_assert_contains("if (!shows.control) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to'", $block, 'a read-only row keeps its target as text');
+	pg_assert_contains("_sdT('Open in the editor')", $block, '"Open in the editor" stays an icon');
+	pg_assert_false(strpos($block, 'bi-signpost-split') !== false, 'no second "Change target" icon beside the control');
+	pg_assert_contains('.sd-proto-li-out { flex-wrap: wrap; }', $css, 'the control takes a line of its own');
+	pg_assert_contains('display: flex; align-items: center; gap: 4px; flex: 1 1 100%; min-width: 0;', $css, 'as wide as the row, never wider');
+	pg_assert_contains('.sd-proto-li-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }', $css, 'a long name is cut, not pushed past the panel\'s edge');
+}
+
+// The selected page opened whole: as tall as its page between the cut and
+// the limit, every link above the limit marked, the frames under it moved
+// down, the foot a button only on the selected long page and the open one,
+// the viewport heights pinned before the frame grows.
+function test_proto_hotspots_page_opened_whole()
+{
+	$out = proto_hotspots_test_node(<<<'JS'
+var pages = [];
+for (var i = 0; i < 9; i++) pages.push({ key: "t" + i, name: "P" + i, hotspots: [], sketch: [] });
+var d = { pages: pages, shared: [] };
+var shut = H.layout(d, {});
+var open = H.layout(d, {}, { openH: { "p:t0": 4000 } });
+var rows = [{ port: "h0", nodeId: "a", source: "href" }, { port: "h1", nodeId: "b", source: "btn" }, { port: "h2", nodeId: "c", source: "href" }];
+var marks = [{ pic: "a", left: 0, top: 100, w: 100, h: 40 }, { pic: "b", left: 0, top: 3000, w: 100, h: 40 }, { pic: "c", left: 0, top: 7000, w: 100, h: 40 }];
+out = {
+    cut: [H.picOpenCut(4000), H.picOpenCut(900), H.picOpenCut(99999), H.picOpenCut(null), H.picOpenCut("2500.4")],
+    box: [H.picOpenBox(1600) === H.picSize().box, H.picOpenBox(4000), H.picOpenBox(99999)],
+    thumb: [shut.frames[0].thumb, open.frames[0].thumb, open.frames[1].thumb],
+    below: [open.frames[8].y - shut.frames[8].y, open.frames[0].y === shut.frames[0].y],
+    rects: [Object.keys(H.picRects(rows, marks, 0)), Object.keys(H.picRects(rows, marks, 0, 6400)), H.picRects(rows, marks, 0, 6400).h1],
+    foot: [H.picFoot(rows, marks, 0), H.picFoot(rows, marks, 0, 6400)],
+    long: [H.picLong(4000), H.picLong(4000, 4000), H.picLong(7000, 6400)],
+    state: [
+        H.picFootState({ page: true, selected: true, long: true, below: 2 }),
+        H.picFootState({ page: true, selected: false, long: true, below: 2 }),
+        H.picFootState({ page: true, selected: true, long: false, below: 0 }),
+        H.picFootState({ page: true, open: true, below: 0 }),
+        H.picFootState({ page: false, selected: true, long: true, below: 1 }),
+        H.picFootState(null)
+    ],
+    vh: [H.picVh("100vh", 1600), H.picVh("calc(50vh - 10px)", 1600), H.picVh("10svh 20dvh 30lvh 5vmax", 1600), H.picVh(".5vh", 1600), H.picVh("1px 2rem", 1600), H.picVh("min-vh-100", 1600), H.picVh(null, 1600)]
+};
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(4000, 1600, 6400, 1600, 2500), $out['cut'], 'the page\'s height, at least the cut, at most 6400');
+	pg_assert_same(array(true, 726, 1153), $out['box'], 'the box is the shown page pixels scaled, with its edge');
+	pg_assert_same(array(298, 726, 298), $out['thumb'], 'only the open page grows');
+	pg_assert_true($out['below'][0] >= 726 - 298, 'the frames under the open page move down by its growth');
+	pg_assert_true($out['below'][1], 'the open page keeps its place');
+	pg_assert_same(array(array('h0'), array('h0', 'h1'), array('x' => 0, 'y' => 534.38, 'w' => 17.81, 'h' => 7.13)), $out['rects'], 'opened whole, a link under the cut gets its mark');
+	pg_assert_same(array(array('links' => 3, 'below' => 2), array('links' => 3, 'below' => 1)), $out['foot'], 'the foot counts only what lies past what is shown');
+	pg_assert_same(array(true, false, true), $out['long'], 'long against what is shown');
+	pg_assert_same(array(
+		array('hidden' => false, 'action' => 'open', 'below' => 2),
+		array('hidden' => false, 'action' => '', 'below' => 2),
+		array('hidden' => true, 'action' => '', 'below' => 0),
+		array('hidden' => false, 'action' => 'close', 'below' => 0),
+		array('hidden' => false, 'action' => '', 'below' => 1),
+		array('hidden' => true, 'action' => '', 'below' => 0),
+	), $out['state'], 'the selected long page opens, the open page closes, a shared part never');
+	pg_assert_same(array('1600px', 'calc(800px - 10px)', '160px 320px 480px 80px', '8px', '1px 2rem', 'min-vh-100', ''), $out['vh'], 'viewport heights become pixels, a class name stays');
+}
+
+// The view's side: the foot is a button the canvas leaves alone, one page
+// open at a time, closed by another selection and with the view, measured
+// at the cut, the frames placed again as for a measured part.
+function test_proto_hotspots_view_opens_the_page_whole()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on',", $source, 'the canvas takes no click from the foot button');
+	pg_assert_contains("_sdProtoPicFull(_sdProto.pics.full === item.id ? null : item.id);", $source, 'the foot opens and closes the page');
+	pg_assert_contains("if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);", $source, 'another selection closes it');
+	pg_assert_contains("if (all) P.full = null;", $source, 'closing the view closes it; a redraw keeps it');
+	pg_assert_contains("if (pic.frame.getAttribute('height') !== H.PIC_FRAME.height) pic.frame.setAttribute('height', H.PIC_FRAME.height);", $source, 'measured at the cut');
+	pg_assert_contains("_sdProtoPicPinVh(doc);\n            pic.frame.setAttribute('height', String(pic.cut));", $source, 'viewport heights pinned before the frame grows');
+	pg_assert_contains("var rects = H.picRects(item.rows, pic.marks, item.sharedId, pic.cut);", $source, 'the marks down to what is shown');
+	pg_assert_contains("partH: P.partH, openH: openH };", $source, 'the layout gets the open page\'s height');
+	pg_assert_contains("_sdProtoPicSettle();\n    }", $source, 'the frames are placed again');
+	pg_assert_contains("if (id === P.full) return;", $source, 'the cap keeps the open picture');
+	pg_assert_contains("_sdT('Show the whole page')", $source, 'the open button\'s words');
+	pg_assert_contains("_sdT('Show less')", $source, 'the close button\'s words');
+	pg_assert_contains('.sd-proto-pic-foot.sd-proto-pic-foot-on {', $css, 'the button is styled');
+}
+
+// A mark under 12 screen pixels wide or high (drawn at least 6) takes
+// presses 4 screen pixels around it at any zoom: the reach in frame units.
+function test_proto_hotspots_mark_reach_for_a_small_mark()
+{
+	$out = proto_hotspots_test_node('out = [H.markReach({ w: 6, h: 6 }, 1), H.markReach({ w: 57, h: 14 }, 1), H.markReach({ w: 57, h: 14 }, 0.5), H.markReach({ w: 2, h: 2 }, 2),'
+		. ' H.markReach({ w: 57, h: 14 }, 0.3), H.markReach({ w: 10, h: 40 }, 1), H.markReach(null, 1), H.markReach({ w: 2, h: 2 }, 0)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(4, 0, 8, 0, 13.33, 4, 0, 4), $out, 'small on screen: 4 screen pixels in frame units; 12 or more: none; drawn at least 6; no zoom reads as 1');
+}
+
+// The "+" handle beside a drawable mark: 20 screen pixels and 4 from the
+// mark at any zoom (its box in screen pixels, scaled by 1 / k), right of
+// the mark, else left when the right runs past the picture's box, else
+// under or over it when a neighbour's mark is in the way; level with the
+// mark, kept inside the box.
+function test_proto_hotspots_mark_grip_beside_the_mark()
+{
+	$room = proto_hotspots_test_js(array('w' => 228, 'h' => 285));
+	$nav = proto_hotspots_test_js(array(array('x' => 20, 'y' => 4, 'w' => 30, 'h' => 6), array('x' => 88, 'y' => 4, 'w' => 30, 'h' => 6)));
+	$out = proto_hotspots_test_node('var room = ' . $room . ';'
+		. ' out = { right: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 1, []), edge: H.markGrip({ x: 200, y: 40, w: 20, h: 14 }, room, 1),'
+		. ' nav: H.markGrip({ x: 54, y: 4, w: 30, h: 6 }, room, 1, ' . $nav . '),'
+		. ' out: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 0.5, []), in: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 2, []),'
+		. ' top: H.markGrip({ x: 20, y: 0, w: 30, h: 6 }, room, 0.5, []), tiny: H.markGrip({ x: 100, y: 100, w: 2, h: 2 }, room, 1, []),'
+		. ' wide: H.markGrip({ x: -10, y: 0, w: 248, h: 285 }, room, 1, []), none: H.markGrip(null, room, 1, []) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 37, 'w' => 24, 'h' => 20, 'scale' => 1), $out['right'], 'right of the mark, level with its middle');
+	pg_assert_same(array('side' => 'left', 'x' => 176, 'y' => 37, 'w' => 24, 'h' => 20, 'scale' => 1), $out['edge'], 'at the picture\'s right edge: left of it');
+	pg_assert_same(array('side' => 'below', 'x' => 59, 'y' => 10, 'w' => 20, 'h' => 24, 'scale' => 1), $out['nav'], 'between two neighbours in a menu: under it');
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 27, 'w' => 24, 'h' => 20, 'scale' => 2), $out['out'], 'zoomed out: twice as large in frame units, the same on screen');
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 42, 'w' => 24, 'h' => 20, 'scale' => 0.5), $out['in'], 'zoomed in: half as large');
+	pg_assert_same(array('side' => 'right', 'x' => 50, 'y' => -6, 'w' => 24, 'h' => 20, 'scale' => 2), $out['top'], 'kept inside the picture\'s box');
+	pg_assert_same(array('side' => 'right', 'x' => 106, 'y' => 93, 'w' => 24, 'h' => 20, 'scale' => 1), $out['tiny'], 'beside the mark as drawn, at least 6');
+	pg_assert_same(array('side' => 'right', 'x' => 214, 'y' => 132.5, 'w' => 24, 'h' => 20, 'scale' => 1), $out['wide'], 'no room on any side: over the mark\'s right end, inside the box');
+	pg_assert_same(null, $out['none'], 'no mark, no handle');
+}
+
+// The view's side: the pointer or the focus on a drawable mark of the
+// selected frame shows the handle, which stands for its mark (a press on
+// it is the mark's: a click picks, a drag draws); the handle and the small
+// marks' reach follow the zoom; nothing new is written.
+function test_proto_hotspots_view_grip_and_reach()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);", $source, 'a press on the handle is a press on its mark');
+	pg_assert_contains("return !!(el && ui && el.classList && el.classList.contains('sd-proto-hot-own') && el.classList.contains('sd-proto-hot-draw') && ui.boxes.contains(el));", $source, 'only a drawable mark of the selected frame gets the handle');
+	pg_assert_contains("_sdProtoGrip(_sdProtoGripOk(g.hover) ? g.hover : (_sdProtoGripOk(focus) ? focus : null));", $source, 'the pointer first, else the focus');
+	pg_assert_contains("var at = window.PGProtoHotspots.markGrip(_sdProtoHotRect(hot), { w: layer.clientWidth, h: layer.clientHeight }, _sdProto.view.k, others);", $source, 'placed by markGrip() at the zoom');
+	pg_assert_contains("el.style.transform = 'scale(' + at.scale + ')';", $source, '20 screen pixels at any zoom');
+	pg_assert_contains("var reach = window.PGProtoHotspots.markReach(_sdProtoHotRect(hot), k);", $source, 'the reach of the marks shown');
+	pg_assert_contains("_sdProtoZoomSoon();", $source, 'both follow the zoom');
+	pg_assert_contains("ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });", $source, 'the focus shows the handle');
+	foreach (array('.sd-proto-grip {', '.sd-proto-grip-dot {', '.sd-proto-grip-below {', '.sd-proto-hot.sd-proto-hot-reach::before {', '.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-grip {') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
+// Two taps zoom to a frame only when both ended on that frame, the second
+// less than ZOOM_TAP (450) ms after the first (a tap on a link mark, its
+// handle, an arrow or the empty canvas has no id), and only while the frame
+// is in the layout; a chip is no frame.
+function test_proto_hotspots_zoom_tap_of_a_double_click()
+{
+	$out = proto_hotspots_test_node('var laid = { frames: [{ id: "p:t1" }, { id: "s:5" }], chips: [{ id: "c:1" }] };'
+		. ' function t(id, time) { return { id: id, time: time }; }'
+		. ' out = [H.ZOOM_TAP, H.zoomTap(t("p:t1", 1000), t("p:t1", 1300), laid), H.zoomTap(t("s:5", 1000), t("s:5", 1449), laid),'
+		. ' H.zoomTap(t("p:t1", 1000), t("p:t1", 1450), laid), H.zoomTap(t("p:t1", 1300), t("p:t1", 1000), laid),'
+		. ' H.zoomTap(t("s:5", 1000), t("p:t1", 1100), laid), H.zoomTap(t("", 1000), t("p:t1", 1100), laid), H.zoomTap(t("", 1000), t("", 1100), laid),'
+		. ' H.zoomTap(t("c:1", 1000), t("c:1", 1100), laid), H.zoomTap(t("p:gone", 1000), t("p:gone", 1100), laid),'
+		. ' H.zoomTap(null, t("p:t1", 1100), laid), H.zoomTap(t("p:t1", 1000), t("p:t1", 1100), null)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(450, 'p:t1', 's:5', null, null, null, null, null, null, null, null, null), $out, 'two taps on one frame of the layout within 450 ms, else none');
+}
+
+// The view's side of the zoom to a frame (PX1): every release on the
+// canvas is a tap or breaks a pair, two taps or Enter on a frame zoom to it
+// with the core's zoomTo(), Esc and "All" put back the view from before;
+// Fit, a new arrangement and closing the view forget it.
+function test_proto_hotspots_view_zooms_to_a_frame()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("_sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);", $source, 'a frame let go without a move is a tap');
+	pg_assert_contains("var id = window.PGProtoHotspots.zoomTap(_sdProto.tap, tap, _sdProto.layout);", $source, 'two taps on the same frame');
+	pg_assert_contains("_sdProto.tap = id ? null : tap;", $source, 'a zoom starts a new pair');
+	pg_assert_contains("_sdProto.canvas.view.zoomTo(item);", $source, 'the core zooms to the frame');
+	pg_assert_contains("if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };", $source, 'the view from before the first zoom is kept');
+	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc goes back first, then closes');
+	pg_assert_contains("if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));", $source, 'Enter on a frame zooms to it');
+	pg_assert_contains("_sdT('All')", $source, 'the "All" control');
+	pg_assert_contains("_sdProtoZoomForget();\n            _sdProto.canvas.view.fit();", $source, 'Fit forgets the zoom');
+	pg_assert_contains("if (event.key === '0') _sdProtoZoomForget();", $source, 'the 0 key fits and forgets it');
+	pg_assert_contains("if (first) {\n            _sdProtoZoomForget();", $source, 'a new arrangement forgets it');
+	pg_assert_contains("_sdProtoZoomBack(true);\n        _sdProtoPicReset(true);", $source, 'closing the view puts the view back');
+	foreach (array('.sd-proto-zoomed {', '.sd-proto-zoomed[hidden] {', '.sd-proto-zoomed-all {', '.sd-proto .pgc-boxes {') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
+// The frames and chips of a layout ({ id, x, y, w, h }) for a drop point.
+function proto_hotspots_test_drop_items()
+{
+	return array(
+		array('id' => 'p:a', 'kind' => 'page', 'name' => 'home', 'x' => 0, 'y' => 0, 'w' => 260, 'h' => 340),
+		array('id' => 's:5', 'kind' => 'shared', 'name' => 'Header', 'x' => 300, 'y' => 0, 'w' => 260, 'h' => 120),
+		array('id' => 'c:0', 'kind' => 'chip', 'mark' => 'external', 'href' => 'https://x.org/', 'x' => 600, 'y' => 0, 'w' => 180, 'h' => 32),
+		array('id' => 'c:1', 'kind' => 'chip', 'mark' => 'anchor', 'href' => '#top', 'x' => 600, 'y' => 60, 'w' => 180, 'h' => 32),
+		array('id' => 'p:b', 'kind' => 'page', 'name' => 'Our Team', 'x' => 200, 'y' => 300, 'w' => 260, 'h' => 340),
+	);
+}
+
+// A drop point (canvas units) is on the frame or chip whose box holds it,
+// edges included; where two boxes overlap, on the one drawn last; on
+// nothing in a gap or for a point that is no point.
+function test_proto_hotspots_item_under_a_drop_point()
+{
+	$items = proto_hotspots_test_js(proto_hotspots_test_drop_items());
+	$out = proto_hotspots_test_node('var items = ' . $items . ';'
+		. ' function at(x, y) { var it = H.itemAt(items, { x: x, y: y }); return it ? it.id : null; }'
+		. ' out = [at(10, 10), at(0, 0), at(260, 120), at(230, 320), at(280, 10), at(700, 16), at(700, 46), at(780, 92), at(460, 640), at(461, 640),'
+		. ' H.itemAt(items, null), H.itemAt(null, { x: 10, y: 10 }), H.itemAt(items, { x: "a", y: 10 }), H.itemAt([null, { id: "x" }], { x: 0, y: 0 })];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:a', 'p:a', 'p:a', 'p:b', null, 'c:0', null, 'c:1', 'p:b', null, null, null, null, null), $out, 'the box under the point, the last drawn where two overlap, none in a gap');
+}
+
+// A links panel row dropped on the canvas writes what an arrow drawn to
+// the same place writes: a page frame's name under the site path, a chip's
+// own href; nothing on a shared part's frame, an anchor's chip or a gap,
+// and nothing from a row an arrow may not be drawn from (a classic menu's
+// or a region's).
+function test_proto_hotspots_row_dropped_on_a_frame()
+{
+	$items = proto_hotspots_test_js(proto_hotspots_test_drop_items());
+	$out = proto_hotspots_test_node('var items = ' . $items . ', env = { path: "/site/" };'
+		. ' function drop(row, x, y) { var hit = H.rowDrop(row, items, { x: x, y: y }, env); return hit ? [hit.item.id, hit.href] : null; }'
+		. ' var link = { source: "href", from: "" }, text = { source: "text", from: "" };'
+		. ' out = [drop(link, 10, 10), drop(text, 230, 320), drop(link, 700, 16), drop(link, 400, 50), drop(link, 700, 70), drop(link, 280, 10),'
+		. ' drop({ source: "href", from: "Top" }, 10, 10), drop({ source: "menu", from: "Top" }, 10, 10), drop(null, 10, 10),'
+		. ' H.rowDrop(link, items, { x: 10, y: 10 }, {}).href];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('p:a', '/site/home'),
+		array('p:b', '/site/Our%20Team'),
+		array('c:0', 'https://x.org/'),
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		'/home',
+	), $out, 'the frame or chip under the point and the href written there, as hrefTo() gives it');
+}
+
+// The view's side of a links panel row carried onto the canvas: a row of
+// a link that may be pointed elsewhere is carried from the panel past
+// 4 px; the frame or chip under the pointer that takes the link lights
+// up, a release there writes it through
+// _sdProtoConnect() (the arrow's own save, undo and warnings); Esc, a
+// release anywhere else and closing the view write nothing.
+function test_proto_hotspots_view_drags_a_row_onto_a_frame()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains('if (!to || !_sdProtoMayDraw(from, port)) return null;', $source, 'one rule for who may point a link: the arrow\'s');
+	pg_assert_contains('_sdProtoRowDraggable(li, main, data.id, row.port);', $source, 'an outgoing row is carried');
+	pg_assert_contains('_sdProtoRowDraggable(li, main, link.frame, link.port);', $source, 'an incoming row is carried');
+	pg_assert_contains('if (!_sdProtoMayDraw(_sdProto.byId[frameId], port)) return;', $source, 'only a row whose link may be pointed elsewhere');
+	pg_assert_contains('if (Math.abs(event.clientX - d.sx) + Math.abs(event.clientY - d.sy) < 4) return;', $source, 'a drag starts past 4 px, a click still picks');
+	pg_assert_contains('var hit = window.PGProtoHotspots.rowDrop(row, _sdProto.items, _sdProto.canvas.view.point(clientX, clientY), _sdProto.env);', $source, 'the frame under the pointer, by the pure hit test');
+	pg_assert_contains('return (hit && _sdProtoArrowHref(from, hit.item, d.port) !== null) ? { from: from, to: hit.item } : null;', $source, 'what may take the arrow');
+	pg_assert_contains('if (hit) _sdProtoConnect(hit.from, hit.to, d.port);', $source, 'written as an arrow is');
+	pg_assert_contains("if (event.key !== 'Escape') return;", $source, 'Esc drops the drag');
+	pg_assert_contains("_sdProtoRowDragEnd(false);\n        _sdProtoSuggestClose(false);\n        _sdProto.open = false;", $source, 'closing the view drops the drag');
+	pg_assert_contains("_sdT('Drag onto a page to set the target')", $source, 'the row says it can be dragged');
+	foreach (array('.sd-proto-li-drag {', '.sd-proto-li-dragged {', '.sd-proto-row-drag,', '.sd-proto-ghost {') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
 }

@@ -136,6 +136,79 @@ function test_booking_widget_ws_busy()
 		'named people, the department and the company; an all-day event ends a second later');
 }
 
+// A holiday read from a calendar and left out under Workspace settings
+// ("Do not count", ws_events.skipped) is a working day: it takes no time,
+// as the Workspace calendar itself no longer shows it as a day off.
+function test_booking_widget_ws_busy_leaves_out_skipped_days()
+{
+	$staff = array(array('id' => 1, 'user_id' => 10));
+	$events = array(
+		array('scope' => 'company', 'department_id' => 0, 'people' => array(), 'starts_at' => 100, 'ends_at' => 199, 'all_day' => 1, 'skipped' => 1),
+		array('scope' => 'company', 'department_id' => 0, 'people' => array(), 'starts_at' => 500, 'ends_at' => 600, 'all_day' => 0, 'skipped' => '0'),
+	);
+
+	pg_assert_same(array(1 => array(array(500, 600))), pg_booking_ws_busy($events, $staff, array()), 'a day left out takes no time');
+
+	// The reader asks for the flag, so the pure part sees it.
+	$reflection = new ReflectionFunction('pg_booking_busy_between');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the widget reads ws_events.skipped where it exists');
+}
+
+// One function of pg_booking.js by its name, up to its closing brace at the
+// IIFE's indent; '' when it is not there.
+function booking_widget_test_js_fn($js, $name)
+{
+	$start = strpos($js, '    function ' . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+// The calendar opens on the site's today, not the visitor's: the free days
+// are the site's, so a visitor east of it near midnight saw the next month
+// with the site's today barred, and one west of it the month before.
+function test_booking_widget_calendar_today_is_the_sites()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_booking.js');
+	$fn = booking_widget_test_js_fn($js, 'zoneToday');
+
+	if (!pg_assert_true($fn !== '', 'pg_booking.js has zoneToday()')) {
+		return;
+	}
+
+	pg_assert_contains('today = zoneToday(this.s.zone, new Date())', $js, 'the calendar asks for the site\'s today');
+	pg_assert_contains('dateMin: today,', $js, 'the first pickable day is the site\'s today');
+
+	$out = array();
+	$code = 1;
+
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	// 2026-11-30 22:30 UTC: 1 December in Istanbul, 30 November in New York.
+	$file = tempnam(sys_get_temp_dir(), 'pgbooktoday');
+	file_put_contents($file, booking_widget_test_js_fn($js, 'pad') . "\n" . $fn . "\n"
+		. 'var at = new Date(Date.UTC(2026, 10, 30, 22, 30));' . "\n"
+		. 'console.log(JSON.stringify([zoneToday("Europe/Istanbul", at), zoneToday("America/New_York", at), zoneToday("No/Such_Zone", at)]));' . "\n");
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same('2026-12-01', $res[0] ?? null, 'east of UTC: already the next day');
+	pg_assert_same('2026-11-30', $res[1] ?? null, 'west of UTC: still the day before');
+	pg_assert_same(1, preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($res[2] ?? '')), 'an unknown zone falls back to the visitor\'s date');
+}
+
 function test_booking_widget_render()
 {
 	$node = function ($tag, $props, $children = array()) {

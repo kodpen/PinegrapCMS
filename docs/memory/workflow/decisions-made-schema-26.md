@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-26
-description: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral
+description: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral; ws_app_commands.args
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,3 +24,8 @@ description: Decisions list, schema part 26 (2026-11-16 on): page_bundle and pag
 
 ## How does a gift card become a referral reward? (architect, 2026-11-16, agent channel message 7257, on RF1's draft PR #10033)
 - `gift_cards.kind` is widened with the value `referral` in step 11.0.233: the step reads the column's values and appends the new one; the install definition and the kinds list get it too. No table.
+
+## Which column keeps an application command's arguments? (architect, 2026-11-17, on CC10's draft PR #10322)
+- The owner allowed one column and left it to the architect (poll 97, `decisions-made-schema-25.md`). Confirmed: `ws_app_commands.args TEXT NULL`, added by one sub-step of 2026.11.0 with `install_add_column()`; JSON like `ws_poll_options.links`. NULL or an empty list is a command without a definition, which works as before.
+- The shape is confirmed as the draft PR's proposal gives it: at most 8 arguments, every kind of `ws_command_argument_kinds()`, `suggest` set by the server from the kind, an omitted `args` keeping the stored definition, `values` in the event only with a definition.
+- Added by the architect: a stored value that does not decode to a list is read as no definition, never an error for the writer.

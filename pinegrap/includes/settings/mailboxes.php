@@ -23,6 +23,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
 $ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
+
+// connect.php sends the browser back here with what became of Connect a
+// Microsoft (or Google) account for mailboxes (a refusal, or the account
+// connected); the search index draws every category and leaves the message alone.
+if (empty($_GET['search']) && function_exists('pg_connect_flash_take')) {
+    $ws_flash = pg_connect_flash_take();
+
+    if ($ws_flash) {
+        if ($ws_flash['kind'] === 'error') {
+            $liveform->add_error(h($ws_flash['text']));
+        } else {
+            $liveform->add_notice(h($ws_flash['text']));
+        }
+    }
+}
 $ws_viewer = ws_viewer($user);
 
 // ── Mailboxes ──
@@ -39,13 +54,21 @@ if ($ws_card !== '') {
 
     $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
 
-    // Forms cannot be nested, so the card's Connect button submits this one
-    // by its form attribute; the service sends the browser back to this
-    // category's page.
+    // Forms cannot be nested, so the card's Microsoft button and a Gmail
+    // box's Google button submit these by their form attribute; the service
+    // sends the browser back to this category's page. A provider whose
+    // application is not set up gets no form: its button is not drawn.
     if (function_exists('pg_connect_start_fields') && function_exists('pg_connect_purpose') && pg_connect_purpose('mail_read') && ((int) $ws_viewer['role'] <= 2)) {
-        $pg_settings_modals[] = '
-            <form method="post" action="connect.php" id="pgset_mail_connect" class="disable_shortcut d-none">
-                ' . pg_connect_start_fields('microsoft', 'mail_read', pg_settings_url('mailboxes') . '#pgset-ws-mail') . '
+        foreach (array('microsoft', 'google') as $ws_provider) {
+            // The id is ws_mail_connect_form_id()'s.
+            $ws_suffix = ($ws_provider === 'google') ? '_google' : '';
+
+            if (ws_mail_connect_ready($ws_provider)) {
+                $pg_settings_modals[] = '
+            <form method="post" action="connect.php" id="pgset_mail_connect' . $ws_suffix . '" class="disable_shortcut d-none">
+                ' . pg_connect_start_fields($ws_provider, 'mail_read', pg_settings_url('mailboxes') . '#pgset-ws-mail') . '
             </form>';
+            }
+        }
     }
 }

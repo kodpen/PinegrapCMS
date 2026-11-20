@@ -18,7 +18,7 @@ description: Decisions list, panel part 8 (2026-11-12 on): report page reference
 ## Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
 - Owner (2026-11-13), on a channel's "+" menu, where New canvas was the only coloured icon: "yeni tuval ikonu sırıttlı açıkçası. siyah beyaz çevirelim tekrar." Asked where, he chose "Tek renkli listelerde".
 - Where the icon stands among one-colour icons it is drawn in one colour, its neighbours': Workspace's two New canvas entries, the File Manager's context menu and file tools.
-- The main menu and the editor's top bar keep drawing B's two colours (#8903, `decisions-made-panel-7.md`): that decision is narrowed, not withdrawn.
+- The main menu and the editor's top bar keep the drawing's two colours, whichever drawing it is (`decisions-made-panel-7.md`, `decisions-made-panel-10.md`).
 - Built in DI1 (`ui/design-canvas-icon.md`): `pg_design_canvas_icon_one_colour()`.
 
 ## How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)

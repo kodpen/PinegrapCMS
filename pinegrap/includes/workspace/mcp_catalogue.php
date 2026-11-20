@@ -739,9 +739,9 @@ function ws_mcp_settings_catalogue($self_url, $servers, $form = null)
     $added = ws_mcp_catalogue_added($servers);
     $labels = ws_mcp_catalogue_auth_labels();
     $badges = array(
-        'none'   => 'bg-subtle-success fg-emphasis-success',
-        'oauth'  => 'bg-subtle-primary fg-emphasis-primary',
-        'bearer' => 'bg-subtle-warning fg-emphasis-warning',
+        'none'   => 'pg-tone-teal',
+        'oauth'  => 'pg-tone-blue',
+        'bearer' => 'pg-tone-amber',
     );
     $hints = array(
         'none'   => lang('Adds it and reads its tools at once.'),
@@ -754,13 +754,13 @@ function ws_mcp_settings_catalogue($self_url, $servers, $form = null)
         $server = $added[$key] ?? null;
 
         if ($server && ($form !== null)) {
-            $action = '<span class="badge bg-subtle-success fg-emphasis-success text-nowrap"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Already added')) . '</span>';
+            $action = '<span class="pg-pill pg-tone-teal text-nowrap"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Already added')) . '</span>';
             $alias = (string) $server['alias'];
         } elseif ($server) {
-            $action = '<a class="btn btn-sm btn-outline theme-success rounded-pill px-5 text-nowrap" href="#ws-mcp-' . (int) $server['id'] . '"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Already added')) . '</a>';
+            $action = '<a class="pg-button pg-button-ghost pg-button-sm text-nowrap" href="#ws-mcp-' . (int) $server['id'] . '"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Already added')) . '</a>';
             $alias = (string) $server['alias'];
         } elseif ($form !== null) {
-            $action = '<button type="submit" name="ws_mcp_catalogue_add" value="' . h($key) . '" form="' . h($form) . '" class="btn btn-sm btn-outline theme-primary rounded-pill px-5 text-nowrap" title="' . h($hints[$entry['auth']]) . '" aria-label="' . h(lang('Add') . ' ' . $entry['name']) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>';
+            $action = '<button type="submit" name="ws_mcp_catalogue_add" value="' . h($key) . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm text-nowrap" title="' . h($hints[$entry['auth']]) . '" aria-label="' . h(lang('Add') . ' ' . $entry['name']) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add')) . '</button>';
             $alias = $entry['alias'];
         } else {
             $action = '
@@ -768,29 +768,29 @@ function ws_mcp_settings_catalogue($self_url, $servers, $form = null)
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_catalogue_add">
                     <input type="hidden" name="mcp_catalogue" value="' . h($key) . '">
-                    <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5 text-nowrap" title="' . h($hints[$entry['auth']]) . '" aria-label="' . h(lang('Add') . ' ' . $entry['name']) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm text-nowrap" title="' . h($hints[$entry['auth']]) . '" aria-label="' . h(lang('Add') . ' ' . $entry['name']) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
                 </form>';
             $alias = $entry['alias'];
         }
 
         $tiles .= '
             <div class="sm:col-6' . (($form === null) ? ' xl:col-4' : '') . '">
-                <div class="border rounded-5 p-3 h-100" id="ws-mcp-catalogue-' . h($key) . '">
+                <div class="pg-card-inner p-3 h-100" id="ws-mcp-catalogue-' . h($key) . '">
                     <div class="d-flex align-items-center gap-3">
                         <i class="bi ' . h($entry['icon']) . ' fs-lg lh-1" aria-hidden="true"></i>
-                        <div class="fw-semibold ws-grow text-truncate">' . h($entry['name']) . '</div>
+                        <div class="pg-list-row-title ws-grow text-truncate">' . h($entry['name']) . '</div>
                         ' . $action . '
                     </div>
-                    <div class="small mt-1"><span class="badge ' . $badges[$entry['auth']] . '">' . h($labels[$entry['auth']]) . '</span> <span class="fg-secondary">@' . h($alias) . '</span></div>
-                    <div class="small fg-secondary mt-1">' . h($entry['description']) . '</div>
+                    <div class="mt-1"><span class="pg-pill ' . $badges[$entry['auth']] . '">' . h($labels[$entry['auth']]) . '</span> <span class="pg-text-meta">@' . h($alias) . '</span></div>
+                    <div class="pg-text-meta mt-1">' . h($entry['description']) . '</div>
                 </div>
             </div>';
     }
 
     return '
         <section class="mb-7" id="ws-mcp-catalogue" aria-labelledby="ws-mcp-catalogue-title">
-            <h3 class="h6" id="ws-mcp-catalogue-title">' . h(lang('Ready-made connectors')) . '</h3>
-            <p class="small fg-secondary mb-3">' . h(lang('Add one with a click. A connector without an account works at once; one you sign in to opens the service\'s page first; a token is pasted into the form.')) . '</p>
+            <h4 class="pg-group-label" id="ws-mcp-catalogue-title">' . h(lang('Ready-made connectors')) . '</h4>
+            <p class="pg-text-2 fg-secondary mb-3">' . h(lang('Add one with a click. A connector without an account works at once; one you sign in to opens the service\'s page first; a token is pasted into the form.')) . '</p>
             <div class="row g-3">' . $tiles . '</div>
         </section>';
 }
@@ -837,34 +837,34 @@ function ws_mcp_settings_custom($self_url, $kept, $full_form, $form = null)
                     <input type="hidden" ' . $name('name', 'probe') . ' value="' . h($values['mcp_name'] ?? '') . '">
                     <input type="hidden" ' . $name('auth', 'probe') . ' value="' . h($kind) . '">
                     <div>
-                        <label class="form-label small mb-1" for="ws_mcp_probe_alias">' . h(lang('Alias')) . '</label>
-                        <label class="form-control form-control-sm form-adorn">
-                            <span class="form-adorn-text" aria-hidden="true">@</span>
-                            <input class="form-ghost" type="text" ' . $name('alias', 'probe') . ' id="ws_mcp_probe_alias" value="' . h($values['mcp_alias'] ?? '') . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}"' . $required . ' autocomplete="off">
+                        <label class="pg-field-label" for="ws_mcp_probe_alias">' . h(lang('Alias')) . '</label>
+                        <label class="pg-input pg-input-sm">
+                            <span class="pg-text-meta" aria-hidden="true">@</span>
+                            <input type="text" ' . $name('alias', 'probe') . ' id="ws_mcp_probe_alias" value="' . h($values['mcp_alias'] ?? '') . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}"' . $required . ' autocomplete="off">
                         </label>
                     </div>
                     ' . (($kind === 'bearer') ? '
                     <div class="ws-grow">
-                        <label class="form-label small mb-1" for="ws_mcp_probe_token">' . h(lang('Access token')) . '</label>
-                        <input class="form-control form-control-sm" type="password" ' . $name('token', 'probe') . ' id="ws_mcp_probe_token"' . $required . ' autocomplete="new-password"' . ($dialog ? '' : ' autofocus') . '>
+                        <label class="pg-field-label" for="ws_mcp_probe_token">' . h(lang('Access token')) . '</label>
+                        <input class="pg-input pg-input-sm" type="password" ' . $name('token', 'probe') . ' id="ws_mcp_probe_token"' . $required . ' autocomplete="new-password"' . ($dialog ? '' : ' autofocus') . '>
                     </div>' : '') . '
-                    <button type="submit"' . ($dialog ? ' name="ws_mcp_save" value="probe" form="' . h($form) . '"' : '') . ' class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(($kind === 'oauth') ? lang('Add and sign in') : lang('Add')) . '</button>
+                    <button type="submit"' . ($dialog ? ' name="ws_mcp_save" value="probe" form="' . h($form) . '"' : '') . ' class="pg-button pg-button-fill pg-button-sm">' . h(($kind === 'oauth') ? lang('Add and sign in') : lang('Add')) . '</button>
                 ' . ($dialog ? '</div>' : '</form>');
         }
     }
 
     return '
         <section class="mb-7" id="ws-mcp-custom" aria-labelledby="ws-mcp-custom-title">
-            <h3 class="h6" id="ws-mcp-custom-title">' . h(lang('Add a custom connector')) . '</h3>
+            <h4 class="pg-group-label" id="ws-mcp-custom-title">' . h(lang('Add a custom connector')) . '</h4>
             ' . ($dialog ? '<div class="d-flex flex-wrap align-items-center gap-3">' : '<form method="post" action="' . h($self_url) . '" class="d-flex flex-wrap align-items-center gap-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="mcp_probe">') . '
                 <label class="visually-hidden" for="ws_mcp_probe_url">' . h(lang('Server address')) . '</label>
-                <input class="form-control form-control-sm w-auto flex-grow-1" type="url" ' . $name('url', 'check') . ' id="ws_mcp_probe_url" value="' . h($probed ? ($values['mcp_url'] ?? '') : '') . '" maxlength="500" placeholder="https://"' . $required . ' autocomplete="off">
-                <button type="submit"' . ($dialog ? ' name="ws_mcp_probe" value="check" form="' . h($form) . '"' : '') . ' class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Check the address')) . '</button>
-                <button type="button" class="btn btn-sm btn-text theme-secondary text-nowrap" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new" aria-controls="ws-mcp-new" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('More settings')) . '</button>
+                <input class="pg-input pg-input-sm w-auto flex-grow-1" type="url" ' . $name('url', 'check') . ' id="ws_mcp_probe_url" value="' . h($probed ? ($values['mcp_url'] ?? '') : '') . '" maxlength="500" placeholder="https://"' . $required . ' autocomplete="off">
+                <button type="submit"' . ($dialog ? ' name="ws_mcp_probe" value="check" form="' . h($form) . '"' : '') . ' class="pg-button pg-button-' . ($probed ? 'quiet' : 'fill') . ' pg-button-sm text-nowrap"><i class="bi bi-search" aria-hidden="true"></i>' . h(lang('Check the address')) . '</button>
+                <button type="button" class="pg-button pg-button-ghost pg-button-sm text-nowrap" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new" aria-controls="ws-mcp-new" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders" aria-hidden="true"></i>' . h(lang('More settings')) . '</button>
             ' . ($dialog ? '</div>' : '</form>') . '
-            <div class="form-text">' . h(lang('Only the address is needed: it is checked first, and how the site signs in is chosen from the answer. Servers that run on a computer (npx, stdio) cannot be reached from a website.')) . '</div>
+            <div class="pg-field-help">' . h(lang('Only the address is needed: it is checked first, and how the site signs in is chosen from the answer. Servers that run on a computer (npx, stdio) cannot be reached from a website.')) . '</div>
             ' . $result . '
             <div class="collapse mt-3' . ($open ? ' show' : '') . '" id="ws-mcp-new">' . $full_form . '</div>
         </section>';

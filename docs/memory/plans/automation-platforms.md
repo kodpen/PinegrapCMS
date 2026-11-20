@@ -35,6 +35,6 @@ priority: 4
 ## What is left out?
 - OAuth sign-in for the apps: possible on paper for Zapier and Make, but it brings no instant trigger (`api/oauth-client-automation-platforms.md`).
 - Payment actions; embedded automation, other vendors' catalogues, IFTTT, Power Automate (`integrations-census-platforms.md`, `integrations-census-proposal.md`).
-- Descriptions of parameters and example bodies in the API document: plan `api-clean-modern`.
+- Descriptions of parameters and example bodies in the API document: generated already (`api/api-openapi-explains.md`).
 - Any count stated in the product before an app is public.
 - No schema change in any step.

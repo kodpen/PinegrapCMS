@@ -105,7 +105,7 @@ if (!$_POST) {
         foreach ($pg_settings_category['sections'] as $pg_settings_section_id => $pg_settings_section_label) {
 
             $pg_settings_chips .=
-                '<a class="chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
+                '<a class="pg-button pg-button-ghost pg-button-sm" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
                 . h($pg_settings_section_label) . '</a>';
         }
     }
@@ -247,23 +247,23 @@ if (!$_POST) {
 
             <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">
                 <div class="pg-menu-wrap">
-                    <button class="pg-button pg-button-fill pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
-                        <i class="bi ' . h($pg_settings_category['icon']) . ' me-3" aria-hidden="true"></i>' . h($pg_settings_category['label']) . '
+                    <button class="pg-button pg-button-quiet pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
+                        <i class="bi ' . h($pg_settings_category['icon']) . '" aria-hidden="true"></i>' . h($pg_settings_category['label']) . '
                     </button>
                     <ul class="menu">' . $pg_settings_switcher . '</ul>
                 </div>
-                <span class="fg-secondary small d-none md:d-inline">' . h(lang(array(
+                <span class="pg-text-meta d-none md:d-inline">' . h(lang(array(
                     'string' => '{var:1} section{suffix:1}, saved together',
                     'vars'   => count($pg_settings_category['sections']),
                     'suffix' => ((count($pg_settings_category['sections']) == 1) ? '' : 's'),
                 ))) . '</span>
-                <div class="pg-toolbar-grow pg-chips">' . $pg_settings_chips . '</div>
+                <div class="pg-toolbar-grow d-flex flex-wrap gap-1">' . $pg_settings_chips . '</div>
                 <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
                     <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
                     <input type="search" id="pg_settings_filter" class="form-ghost" placeholder="' . h(lang('Search in this page')) . '" aria-label="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
                 </label>
-                <span id="pg_settings_filter_status" class="small fg-secondary visually-hidden" role="status" aria-live="polite" data-pg-count="' . h(lang('{var:1} of {var:2} sections shown')) . '" data-pg-empty="' . h(lang('No section matches.')) . '"></span>
-                <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
+                <span id="pg_settings_filter_status" class="visually-hidden" role="status" aria-live="polite" data-pg-count="' . h(lang('{var:1} of {var:2} sections shown')) . '" data-pg-empty="' . h(lang('No section matches.')) . '"></span>
+                <div class="d-flex gap-1">' . $pg_settings_step_links . '</div>
             </div>
 
             <form name="form" id="pg_settings_page_form" action="' . h($pg_settings_self) . '" method="post" autocomplete="off">
@@ -295,7 +295,7 @@ if (!$_POST) {
 
                 <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
 
-                <nav class="buttons navigation position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation position-sticky" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap">
                             <button type="submit" id="create_button" name="submit_save" value="Save" class="pg-button pg-button-fill"><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>

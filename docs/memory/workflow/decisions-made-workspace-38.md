@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-38
-description: Decisions made, workspace part 38 (2026-11-17): a message's parts and the agent state line accepted as built in the narrow column; a discussion shows and takes its agents in its people panel
+description: Decisions made, workspace part 38 (2026-11-17): a message's parts, the agent state line and the picture count mark accepted as built; a discussion shows and takes its agents in its people panel
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,10 +16,17 @@ description: Decisions made, workspace part 38 (2026-11-17): a message's parts a
 - On a phone the word before the start time goes first and the time stays. Of the longest agent name only the name is cut, read whole on hover.
 - A line that reports an error or waits, with its retry time, is never cut: it wraps, so the time is never hidden.
 
-## Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window)
+## Does a question's picture say how many pictures there are? (owner, 2026-11-17, agent channel poll 135, message 8575)
+- "Evet, böyle çıksın" (PR #10037, issue #10023), after his words of 2026-11-16 that an agent question with more than one picture says so in its preview.
+- A poll or agent question with two or more different pictures shows their count in a mark at the large picture's bottom right; one picture, or two options carrying the same picture, shows none. A number, not dots: dots say there is more, not how many.
+- The mark is the same in both themes (dark surface, white text, a hairline: `ui/look-mark-over-picture.md`) and keeps its corner in the discussion panel's narrowest width and on a phone.
+- The same PR shows a picture two options share once in the large view, not twice.
+
+## Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window; agent channel poll 136, message 8677)
 - His words, with a picture of "People in the discussion" listing people only: "kanallarda ajanlar doğru gösteriliyor ancak tartışmalarda ne ajan eklenebiliyor ne de hangi ajanlar tartışmada bilgileri çıkmıyor".
 - The architect's shape, not his words (agent channel message 8422, PR #10230): that panel gets "Agents here" with the discussion's own agents, the channel's agents that can be asked there by name (each marked as the channel's), Claude and Pinegrap AI where they can be asked, and the agent the discussion follows.
 - For whoever the server already lets change them, the "Agents in this channel" section stands in the same panel, worded for a discussion.
-- Not changed: who may add or change an agent, what reaches a discussion from its channel, the schema. The look is his, one sheet and one poll; the PR stays a draft until his vote.
+- Not changed: who may add or change an agent, what reaches a discussion from its channel, the schema.
+- Owner (2026-11-17, agent channel poll 136, message 8677): "Evet, böyle çıksın" on one sheet of five pictures. On a phone the marks go to the next line and the add row stacks, nothing cut; who cannot change agents sees the list alone.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/look-narrowest-column.md, docs/memory/workspace/agent-discussion-reach.md

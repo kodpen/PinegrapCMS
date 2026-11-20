@@ -237,6 +237,9 @@ function api_webhook_core_events() {
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.
 		'file.created'         => 'A file was uploaded (not design or theme imports)',
+		// Courses (pg_course_mark_done()): once per member and course, by
+		// the "Mark as done" press that finished the last lesson.
+		'course.completed'     => 'A member completed a course: the last of its lessons was marked as done (once per member and course; a completion after Reset progress is announced again)',
 		'form.submitted'       => 'A visitor submitted a form',
 		// The order's completion when the payment service confirmed it, or the
 		// payment staff recorded for an offline one.

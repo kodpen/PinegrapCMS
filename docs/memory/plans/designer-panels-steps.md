@@ -16,13 +16,13 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: Options over the whole column, the Design tab, the bottom strip closed and open, docked under 992 px.
   - Features: D1, D2. Keeps K5.
 
-- DP3 (M) after DP2: the identity row and the section cards.
+- DP3 (M) after DP2: the identity row and the section cards. Done in #10240.
   - Functions: `renderProperties()`, `sect()`. New: a pure module for what counts as changed and for a section's summary, with its test.
   - Tests, red first: a row differing from its default counted; a section's and a tab's count; the summary of each kind (a colour, one value, none, default); a body not built while its section is closed.
   - Pictures: beside `options-1-content.jpg` and `measures-2-anatomy.jpg`, parts a, d, e, g.
   - Features: D3, D6, D7, D8, D9, D11. Keeps K2, K3, K10.
 
-- DP4 (M) after DP3: the controls and the changed dot.
+- DP4 (M) after DP3: the controls and the changed dot. Done in #10285.
   - Functions: `row()`, `mkRespRow()`, `mkNonRespRow()`; `.sd-prop-modified` becomes the dot.
   - Tests: reset as one undo step; an invalid value not written; the selected segment clicked removes the value; the size badge only on a value that starts at a size.
   - Pictures: every state of `measures-3-controls.jpg`, one crop each.
@@ -34,7 +34,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: the three tabs beside `options-1-content.jpg` and `options-2-style-advanced.jpg`.
   - Features: D4, D5, D14. Keeps K4.
   - Several elements selected (`renderMultiProperties()`, `_postProcessMultiPanel()`): as `designer-panels-measures-5.md` says. Tests: the shared options by kind, a mixed value, the dot's ring, a change written to all as one undo step. Picture: beside `options-6-multiple-selection.jpg`. Keeps K6.
-  - Over 1,000 product lines: cut as DP5a (the tabs, Content), DP5b (Style, Advanced) and DP5c (several elements selected), said before the claim.
+  - Over 1,000 product lines, so cut before the claim. DP5a: the tab strip, the tab remembered per kind, every section in its tab by the table, Content's order and summaries (D4, D5, D14). Done in #10321. DP5b: Style's and Advanced's names, order and open rules. Done in #10443. DP5c: several elements selected. Done in #10468.
 
 ## Which steps wait for each other?
 - Each waits for the one before it. DP3 to DP5 draw their parts under 300 px as `options-5-narrow-column.jpg` shows.

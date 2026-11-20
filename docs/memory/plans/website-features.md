@@ -17,12 +17,7 @@ priority: 6
 - The rules every step keeps: `plans/website-features-rules.md`. The existing files several plans touch: `plans/website-features-shared-files.md`.
 
 ## Which plans are there, in the proposed order?
-- `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
 - `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
-- `content-review.md`: a person and a "review by" date for a page or record, and the list of what is due.
-- `listen-block.md`: a "Listen" button that reads an article aloud.
-- `prototype-comments.md`: a customer's pinned comments on a shared prototype.
-- `visitor-push.md`: notifications a visitor without an account subscribes to.
 - `release-bundle.md`: several pages prepared, previewed, published and taken back together.
 - `publish-approval.md`: a content editor's change waits for a designer's yes.
 - Architect (2026-11-16, agent channel message 5847): every plan stays 6; a step opens only in a place with no begun plan's step free (`workflow/plan-order-begun-first.md`). Given: to `@elcin` RW1, then LS1 once RW1 has landed; to `@adnan` PA1 and, once PU8 (#9877) and LP1 (#9843) have landed, CM1. After CM1 OG1 and PN1 side by side, then CH1, VP1, last RB1, taken by the coordinator with a place.

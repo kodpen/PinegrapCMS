@@ -192,6 +192,109 @@ function pg_connections_screen_provider_state($accounts, $app)
 }
 
 /**
+ * The connected accounts a service's account reader stands on: the
+ * provider's accounts holding its purpose, whoever owns them. Pure.
+ *
+ * @param array|null $state    a row's 'state'
+ * @param array      $accounts pg_connect_accounts() rows
+ * @return array list of accounts, in the given order
+ */
+function pg_connections_screen_accounts_for($state, $accounts)
+{
+    if (!is_array($state) || !isset($state['kind']) || ($state['kind'] !== 'account')) {
+        return array();
+    }
+
+    $found = array();
+
+    foreach ((array) $accounts as $account) {
+        if (($account['provider'] === $state['provider']) && in_array($state['purpose'], (array) $account['purposes'], true)) {
+            $found[] = $account;
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * The last error on file among some accounts: a stopped account's first,
+ * else any account's kept error; '' when none is stored. Pure.
+ *
+ * @param array $accounts
+ * @return string
+ */
+function pg_connections_screen_last_error($accounts)
+{
+    $kept = '';
+
+    foreach ((array) $accounts as $account) {
+        $error = isset($account['last_error']) ? (string) $account['last_error'] : '';
+
+        if ($error === '') {
+            continue;
+        }
+
+        if ($account['status'] === 'reauth') {
+            return $error;
+        }
+
+        if ($kept === '') {
+            $kept = $error;
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * Whether the site stores a service's last error: only a connected account
+ * keeps one (connect_accounts.last_error); no other reader has a place for
+ * it, and none is added. Pure.
+ *
+ * @param array|null $state a row's 'state'
+ * @return bool
+ */
+function pg_connections_screen_keeps_errors($state)
+{
+    return is_array($state) && isset($state['kind']) && ($state['kind'] === 'account');
+}
+
+/**
+ * An account's address as HTML whose line breaks after its "@" when the
+ * column is too narrow. A <wbr> adds no character, so a copy and a screen
+ * reader still get the one address. Pure.
+ *
+ * @param string $text plain text, an address or a sentence holding one
+ * @return string escaped HTML
+ */
+function pg_connections_screen_address_html($text)
+{
+    return str_replace('@', '@<wbr>', h($text));
+}
+
+/**
+ * What connects to the site, as Application Access counts it: applications
+ * (keys, the documentation's temporary ones left out), team devices signed
+ * in, applications people connected with OAuth, webhook subscriptions. A
+ * table not yet installed counts none.
+ *
+ * @return array applications, devices, connected, webhooks (int)
+ */
+function pg_connections_screen_other_side()
+{
+    $count = function ($table, $column, $sql) {
+        return (function_exists('waf_table_has_column') && waf_table_has_column($table, $column)) ? (int) db_value($sql) : 0;
+    };
+
+    return array(
+        'applications' => $count('api_apps', 'id', "SELECT COUNT(*) FROM api_apps WHERE name NOT LIKE '\\_\\_test\\_\\_%'"),
+        'devices'      => $count('api_devices', 'oauth_client_id', "SELECT COUNT(*) FROM api_devices WHERE oauth_client_id IS NULL OR oauth_client_id = 0"),
+        'connected'    => $count('oauth_clients', 'id', "SELECT COUNT(*) FROM oauth_clients"),
+        'webhooks'     => $count('api_webhooks', 'id', "SELECT COUNT(*) FROM api_webhooks"),
+    );
+}
+
+/**
  * Whether a user may open a row's place, so may see the row: a card of Site
  * Settings in a category they may open, a System tools screen their tools
  * list holds, or one of pg_connections_other_screens() for a manager. Pure.
@@ -372,6 +475,216 @@ function pg_connections_screen_fold_at($states)
     $shown = max(2, $shown);
 
     return (($total - $shown) <= 1) ? $total : $shown;
+}
+
+/**
+ * The mail routes the list shows as one row, E-mail sending's: the sending
+ * services and the two accounts the System card chooses. Mailchimp keeps
+ * its own row. Pure.
+ *
+ * @return array registry keys
+ */
+function pg_connections_screen_mail_routes()
+{
+    return array('postmark', 'mailgun', 'brevo', 'resend', 'ses', 'gmail', 'microsoft_mail');
+}
+
+/**
+ * The list's rows with the mail routes folded into one, keyed mail_sending,
+ * at the first route's place: its state the most urgent of theirs, its
+ * search every route's texts besides its own, its uses their names when it
+ * brings none. Without a route the rows come back as they were. Pure.
+ *
+ * @param array $rows id => row with 'name', 'state' and 'search'
+ * @param array $row  the folded row: kind, name, group, line, url, search
+ * @return array id => row
+ */
+function pg_connections_screen_fold_mail($rows, $row)
+{
+    $routes = array_flip(pg_connections_screen_mail_routes());
+    $ranks = pg_connections_screen_state_ranks();
+    $folded = array();
+    $state = '';
+    $names = array();
+    $search = isset($row['search']) ? (array) $row['search'] : array();
+
+    foreach ($rows as $id => $item) {
+
+        if (!isset($routes[$id])) {
+            $folded[$id] = $item;
+            continue;
+        }
+
+        if (!$names) {
+            $folded['mail_sending'] = null;
+        }
+
+        $rank = isset($ranks[$item['state']]) ? $ranks[$item['state']] : count($ranks);
+
+        if (($state === '') || ($rank < (isset($ranks[$state]) ? $ranks[$state] : count($ranks)))) {
+            $state = $item['state'];
+        }
+
+        $names[] = $item['name'];
+        $search = array_merge($search, isset($item['search']) ? (array) $item['search'] : array());
+    }
+
+    if (!$names) {
+        return $rows;
+    }
+
+    $row['state'] = $state;
+    $row['search'] = $search;
+
+    if (!isset($row['uses']) || ($row['uses'] === '')) {
+        $row['uses'] = implode(', ', $names);
+    }
+
+    $folded['mail_sending'] = $row;
+
+    return $folded;
+}
+
+/**
+ * The one action a row of the list offers: Connect while nothing is set
+ * up, Manage for every other state. Pure.
+ *
+ * @param string $state a row's state (pg_connections_screen_state())
+ * @return string connect or manage
+ */
+function pg_connections_screen_action($state)
+{
+    return ($state === 'not_connected') ? 'connect' : 'manage';
+}
+
+/**
+ * The address of a service's own page on the Connections screen. Pure.
+ *
+ * @param string $id the service's registry key
+ * @return string
+ */
+function pg_connections_screen_page_url($id)
+{
+    return 'connections.php?service=' . rawurlencode((string) $id);
+}
+
+/**
+ * The service a page address asks for: its registry key when it is one of
+ * the rows the user may see and a service of the registry (an account
+ * provider keeps its drawer), else ''. Pure.
+ *
+ * @param mixed $asked the service parameter as it came
+ * @param array $rows  the screen's rows, id => row with 'kind'
+ * @return string
+ */
+function pg_connections_screen_page_id($asked, $rows)
+{
+    if (!is_string($asked) || !preg_match('/^[a-z0-9_]{1,60}$/', $asked)) {
+        return '';
+    }
+
+    if (pg_connections_screen_provider_page($asked, $rows) !== '') {
+        return $asked;
+    }
+
+    return (isset($rows[$asked]['kind']) && ($rows[$asked]['kind'] === 'service')) ? $asked : '';
+}
+
+/**
+ * The account provider a page is of when no registry service carries the
+ * page's key (Google, Microsoft: the provider's own page, its application
+ * and every account it connects), else ''. Pure.
+ *
+ * @param string $id   a page key
+ * @param array  $rows the screen's rows, id => row with 'kind'
+ * @return string the provider key
+ */
+function pg_connections_screen_provider_page($id, $rows)
+{
+    $providers = pg_connections_screen_page_providers();
+
+    if (!isset($providers[$id]) || isset($rows[$id])) {
+        return '';
+    }
+
+    $row = 'provider_' . $providers[$id];
+
+    return (isset($rows[$row]['kind']) && ($rows[$row]['kind'] === 'provider')) ? $providers[$id] : '';
+}
+
+/**
+ * The services of the registry an account provider serves, among the rows
+ * the user may see: those whose state is read from its accounts and those
+ * covering it as a sign-in provider, in the registry's order. Pure.
+ *
+ * @param string $provider a provider key
+ * @param array  $registry pg_connections_registry()
+ * @param array  $rows     the screen's rows, id => row
+ * @return array list of registry keys
+ */
+function pg_connections_screen_provider_uses($provider, $registry, $rows)
+{
+    $out = array();
+
+    foreach ((array) $registry as $id => $service) {
+
+        $state = isset($service['state']) && is_array($service['state']) ? $service['state'] : array();
+        $by_account = (isset($state['kind'], $state['provider']) && ($state['kind'] === 'account') && ($state['provider'] === $provider));
+        $by_cover = isset($service['covers']['connect']) && in_array($provider, (array) $service['covers']['connect'], true);
+
+        if (($by_account || $by_cover) && isset($rows[$id])) {
+            $out[] = (string) $id;
+        }
+
+    }
+
+    return $out;
+}
+
+/**
+ * The pages that hold an account provider's application ("Connection
+ * details"), by page key: a registry service's page (GitHub) or, where no
+ * service carries the key, the provider's own page (Google, Microsoft).
+ * That provider's row on the list opens the page instead of a drawer. Pure.
+ *
+ * @return array page key => provider key
+ */
+function pg_connections_screen_page_providers()
+{
+    return array('github' => 'github', 'google' => 'google', 'microsoft' => 'microsoft');
+}
+
+/**
+ * The cards of a service's page, in their order: "status", "details" (its
+ * provider's application, for a manager; an AI provider's key, for who may
+ * change the assistants), "uses", then "repositories" on
+ * GitHub's page for a holder of the Workspace settings right. Each card
+ * keeps the gate of the place it came from; a card the viewer may not open
+ * is left out. Pure.
+ *
+ * @param string $id  the service's registry key
+ * @param array  $can 'manager' (bool), 'repositories' (bool: may manage
+ *                    the GitHub repository links), 'ai' (bool: may change
+ *                    the assistants, connections_ai_may_manage())
+ * @return array list of card keys
+ */
+function pg_connections_screen_page_cards($id, $can)
+{
+    $cards = array('status');
+
+    if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {
+        $cards[] = 'details';
+    } elseif (!empty($can['ai']) && isset(pg_ai_connection_services()[$id])) {
+        $cards[] = 'details';
+    }
+
+    $cards[] = 'uses';
+
+    if (($id === 'github') && !empty($can['repositories'])) {
+        $cards[] = 'repositories';
+    }
+
+    return $cards;
 }
 
 /**

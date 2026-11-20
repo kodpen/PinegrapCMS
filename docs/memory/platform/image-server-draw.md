@@ -5,7 +5,7 @@ module: image_draw
 ---
 
 ## What does the server draw?
-- `includes/fn/image_draw.php` draws a canvas document as the editor's renderer would, for an agent's canvas no browser has drawn yet (`workspace/agent-canvas-picture.md`). Loaded where used (Workspace canvases, System Status), not by `functions.php` (CV6).
+- `includes/fn/image_draw.php` draws a canvas document as the editor's renderer would, for an agent's canvas no browser has drawn yet (`workspace/agent-canvas-picture.md`) and a translated picture's languages with nobody there (`core/picture-text-auto-server.md`). Loaded where used (Workspace canvases, System Status, the translation job), not by `functions.php` (CV6).
 - Drawn: rectangles, ellipses, lines (fill, stroke, dashes, round corners, mirror); text in a font the server has a file of; Bootstrap icons; pictures (PNG, JPEG, WebP) from files the caller answers for; svg layers through librsvg.
 - Anything else leaves the whole document to a browser: another layer kind or any unknown non-empty field (a shadow, a warp, a blend), a system font list (`sans`, `serif`: it differs per reader), a face the font link does not load (upright 300/400/600/700/900, italic 400/700), a letter the file lacks.
 - Text only in Latin, Greek, Cyrillic and signs (`pg_image_draw_text_plain()`): no shaped or right-to-left script, no combining mark, no emoji. Roboto lacks `→`, so a text with it waits.
@@ -20,7 +20,7 @@ module: image_draw
 ## What does the probe do?
 - `pg_image_draw_can()` answers shapes, text, icons, svg, pictures, paused, engine. It draws `pg_image_draw_fixtures()` (five 100 x 60 documents with the pixels to look at) once per PHP / Imagick / ImageMagick build and keeps the answer in `data/temp/image_draw.json`.
 - Shapes must pass or nothing is drawn. Each other part passes on its own fixture; svg also needs RSVG in `Imagick::queryFormats()`.
-- System Status, row Canvas Drawing (short label Canvas), reported and never scored, only with Workspace on: grey Off (no Imagick or shapes fail), yellow Paused, green On with a row per part (Drawn by the server / Left to browsers) and the engine.
+- System Status, row Canvas Drawing (short label Canvas), reported and never scored, with Workspace on or a target language on the site (its sentences name agents' canvases, translated pictures or both): grey Off (no Imagick or shapes fail), yellow Paused, green On with a row per part (Drawn by the server / Left to browsers) and the engine.
 
 ## Which guards hold?
 - `pg_image_draw_limits()` owns the numbers: artboard pixels, layers, a time budget looked at between layers, bytes and elements of one svg layer, letters, a picture's bytes and pixels, Imagick memory, map and disk, one thread.

@@ -643,9 +643,10 @@ function pg_sw_default_date_format($type)
 // elements that hold $mark are judged, and one that goes leaves $mark in
 // its place, so the element around it is judged in turn.
 // With $wait (a product page whose variant picker redraws the values bound
-// to data-pg-bind), an empty element holding such a value stays, marked
-// hidden and data-pg-empty-wait, for the picker to show when it fills it;
-// an element already so marked is left as it is.
+// to data-pg-bind, and the "Quantity prices" box, data-pg-civ-qty-prices),
+// an empty element holding such a value, or that box, stays, marked hidden
+// and data-pg-empty-wait, for the picker to show when it fills it; an
+// element already so marked is left as it is.
 function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
@@ -679,7 +680,7 @@ function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
         // A player is judged with its own address, which its opening tag holds.
         $judged = pg_sw_is_player_tag($tag) ? $open . $inner . '</' . $tag . '>' : pg_sw_field_value($inner);
         if (pg_sw_has_content($judged)) continue;
-        if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
+        if ($wait && ((strpos($open . $inner, 'data-pg-bind=') !== false) || (strpos($open, 'data-pg-civ-qty-prices') !== false))) {
             $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
             continue;
         }

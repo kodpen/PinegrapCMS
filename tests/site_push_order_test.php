@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_order.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_block.php');
 require_once(__DIR__ . '/helpers/source_reader.php');
 
 function test_site_push_order_text_shipped_and_delivered()
@@ -88,7 +89,8 @@ function test_site_push_watch_take_sends_each_moment_once()
 function test_site_push_watch_wiring()
 {
 	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_subscription_remove'), 'Stop forgets the waits');
-	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_queue_run'), 'a gone endpoint forgets the waits');
+	pg_assert_contains('pg_site_push_subscription_drop(', pg_test_function_source('pg_site_push_queue_run'), 'a gone endpoint is dropped');
+	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_subscription_drop'), 'a dropped subscription forgets the waits');
 	pg_assert_contains('pg_site_push_watch_tidy(', pg_test_function_source('pg_site_push_queue_tidy'));
 	pg_assert_contains('INNER JOIN site_push_subscription', pg_test_function_source('pg_site_push_watchers'), 'a wait without its browser reaches nobody');
 	pg_assert_contains("pg_site_push_order_moment((int) \$recipient['order_id'], \$ship_to_id, 'delivered')", pg_test_function_source('pg_shipment_delivered'));
@@ -101,4 +103,40 @@ function test_site_push_watch_wiring()
 
 	pg_assert_contains("'site_push_watch',", file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'));
 	pg_assert_contains('upgrade_2026_11_0_site_push_watch();', file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php'));
+}
+
+function test_site_push_order_button_markup()
+{
+	$html = pg_site_push_order_button_html('42abc');
+	pg_assert_contains('data-pg-push-order="42"', $html, 'the id is an integer');
+	pg_assert_same(0, strpos($html, '<div class="pg-push-order mt-3" data-pg-push-order="42" hidden>'), 'hidden until the script shows it');
+	pg_assert_contains('<button type="button" class="btn btn-outline-primary btn-sm" data-pg-push-order-on>Notify me on this device</button>', $html);
+	foreach (array('done', 'blocked', 'failed') as $part) {
+		pg_assert_true((bool) preg_match('/<p [^>]*data-pg-push-order-' . $part . ' role="status"[^>]* hidden>/', $html), $part . ' is a hidden status line');
+	}
+	pg_assert_true(pg_site_push_order_on_page($html), 'the page brings the script for it');
+}
+
+function test_site_push_order_button_shown_for_a_placed_order_with_an_address()
+{
+	pg_assert_true(pg_site_push_order_button_shown(array('id' => 3, 'status' => 'complete'), 1));
+	pg_assert_true(pg_site_push_order_button_shown(array('id' => 3, 'status' => 'shipped'), 2));
+	pg_assert_false(pg_site_push_order_button_shown(array('id' => 3, 'status' => 'incomplete'), 1), 'a cart is no order');
+	pg_assert_false(pg_site_push_order_button_shown(array('id' => 3, 'status' => 'complete'), 0), 'nothing to ship');
+	pg_assert_false(pg_site_push_order_button_shown(null, 1));
+	pg_assert_false(pg_site_push_order_button_shown(array('id' => 0, 'status' => 'complete'), 1));
+}
+
+// The receipt and the order view draw the button for their own order, never
+// in an e-mail.
+function test_site_push_order_button_on_the_order_pages()
+{
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_contains("pg_site_push_order_button((int) (\$_SESSION['ecommerce']['completed_order_id'] ?? 0))", $php, 'the receipt');
+	pg_assert_contains("pg_site_push_order_button(is_scalar(\$_GET['id'] ?? null) ? (int) \$_GET['id'] : 0)", $php, 'the order view');
+	pg_assert_same(2, preg_match_all('/if \(!\$email\) \{\s+\$system_output \.= pg_site_push_order_button\(/', $php), 'not in an e-mail');
+
+	$button = pg_test_function_source('pg_site_push_order_button');
+	pg_assert_contains('pg_site_push_enabled()', $button, 'nothing while the switch is off');
+	pg_assert_contains('pg_site_push_watch_ready()', $button, 'nothing before the 11.0.229 step');
 }

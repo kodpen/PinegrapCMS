@@ -141,3 +141,98 @@ function test_connections_screen_fold()
 	pg_assert_same(3, pg_connections_screen_fold_at(array('not_connected', 'not_connected', 'off')), 'one row is never folded alone');
 	pg_assert_same(1, pg_connections_screen_fold_at(array('none')), 'a one-row group');
 }
+
+function test_connections_screen_a_services_accounts_and_its_last_error()
+{
+	$accounts = array(
+		array('id' => 1, 'provider' => 'google', 'purposes' => array('account', 'backup'), 'status' => 'active', 'last_error' => ''),
+		array('id' => 2, 'provider' => 'google', 'purposes' => array('backup'), 'status' => 'reauth', 'last_error' => 'invalid_grant'),
+		array('id' => 3, 'provider' => 'microsoft', 'purposes' => array('backup'), 'status' => 'reauth', 'last_error' => 'expired'),
+		array('id' => 4, 'provider' => 'google', 'purposes' => array('mail'), 'status' => 'active', 'last_error' => 'old'),
+	);
+	$backup = array('kind' => 'account', 'provider' => 'google', 'purpose' => 'backup');
+
+	pg_assert_same(array(1, 2), array_column(pg_connections_screen_accounts_for($backup, $accounts), 'id'), 'the provider\'s accounts for the purpose');
+	pg_assert_same(array(), pg_connections_screen_accounts_for(array('kind' => 'app', 'key' => 'mail_postmark'), $accounts), 'a service with no account reader has no account');
+	pg_assert_same(array(), pg_connections_screen_accounts_for(null, $accounts), 'nor does a row without a reader');
+
+	pg_assert_same('invalid_grant', pg_connections_screen_last_error(pg_connections_screen_accounts_for($backup, $accounts)), 'the stopped account\'s error');
+	pg_assert_same('old', pg_connections_screen_last_error(array($accounts[0], $accounts[3])), 'an error kept on a working account is still the last one on file');
+	pg_assert_same('', pg_connections_screen_last_error(array($accounts[0])), 'no error on file');
+
+	pg_assert_true(pg_connections_screen_keeps_errors($backup), 'an account reader keeps the last error');
+	pg_assert_false(pg_connections_screen_keeps_errors(array('kind' => 'config', 'names' => array('X'))), 'a config reader keeps none, so the drawer has no last error line');
+	pg_assert_false(pg_connections_screen_keeps_errors(null), 'nor a row without a reader');
+}
+
+function test_connections_screen_an_address_breaks_after_its_at()
+{
+	pg_assert_same('very.long.name@<wbr>example.com', pg_connections_screen_address_html('very.long.name@example.com'), 'the line may break after the @');
+	pg_assert_same('a&amp;b@<wbr>x.com &lt;i&gt;', pg_connections_screen_address_html('a&b@x.com <i>'), 'the text is escaped first');
+	pg_assert_same('Backup account', pg_connections_screen_address_html('Backup account'), 'a name without an @ is only escaped');
+	pg_assert_same('very.long.name@example.com', strip_tags(pg_connections_screen_address_html('very.long.name@example.com')), 'copy and a screen reader get the one address');
+}
+
+function test_connections_screen_a_row_has_one_action()
+{
+	pg_assert_same('connect', pg_connections_screen_action('not_connected'), 'nothing set up: Connect');
+
+	foreach (array('attention', 'connected', 'off', 'none') as $state) {
+		pg_assert_same('manage', pg_connections_screen_action($state), $state . ': Manage');
+	}
+}
+
+function test_connections_screen_a_services_page()
+{
+	$rows = array(
+		'stripe'          => array('kind' => 'service'),
+		'provider_google' => array('kind' => 'provider'),
+	);
+
+	pg_assert_same('connections.php?service=stripe', pg_connections_screen_page_url('stripe'), 'the page\'s address');
+	pg_assert_same('stripe', pg_connections_screen_page_id('stripe', $rows), 'a service the user sees has a page');
+	pg_assert_same('', pg_connections_screen_page_id('provider_google', $rows), 'an account provider keeps its drawer');
+	pg_assert_same('', pg_connections_screen_page_id('paypal', $rows), 'a service the user may not see has none');
+	pg_assert_same('', pg_connections_screen_page_id(array('stripe'), $rows), 'a non-string parameter is refused');
+	pg_assert_same('', pg_connections_screen_page_id('Stripe<', $rows), 'so is anything but a registry key');
+}
+
+// The seven mail routes are one row on the list, E-mail sending's: in the
+// first route's place, the most urgent of their states, found by each
+// route's name, counted once by the filter. Mailchimp keeps its row.
+function test_connections_screen_folds_the_mail_routes()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');
+
+	pg_assert_same(array('postmark', 'mailgun', 'brevo', 'resend', 'ses', 'gmail', 'microsoft_mail'), pg_connections_screen_mail_routes());
+
+	$registry = pg_connections_registry();
+
+	foreach (pg_connections_screen_mail_routes() as $id) {
+		pg_assert_true(isset($registry[$id]) && ($registry[$id]['group'] === 'email'), $id . ' is a mail row of the registry');
+		pg_assert_same(0, strpos($registry[$id]['place'], '#settings/mail_sending/'), $id . ' is set up in E-mail sending');
+	}
+
+	pg_assert_same('#settings/mail_sending/pgset-mailchimp', $registry['mailchimp']['place'], 'Mailchimp is set up in E-mail sending too');
+	pg_assert_same(78, pg_connections_count(), 'the figure stays');
+
+	$rows = array(
+		'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'state' => 'connected', 'search' => array('Stripe')),
+		'postmark' => array('name' => 'Postmark', 'group' => 'email', 'state' => 'not_connected', 'search' => array('Postmark')),
+		'gmail' => array('name' => 'Gmail', 'group' => 'email', 'state' => 'connected', 'search' => array('Gmail')),
+		'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'state' => 'attention', 'search' => array('Microsoft 365 mail')),
+		'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'state' => 'not_connected', 'search' => array('Mailchimp')),
+	);
+
+	$folded = pg_connections_screen_fold_mail($rows, array('kind' => 'settings', 'name' => 'E-mail sending', 'group' => 'email', 'uses' => '', 'url' => 'settings_mail_sending.php', 'search' => array('E-mail sending')));
+
+	pg_assert_same(array('stripe', 'mail_sending', 'mailchimp'), array_keys($folded), 'one row in the first route\'s place');
+	pg_assert_same('attention', $folded['mail_sending']['state'], 'the most urgent state');
+	pg_assert_same('Postmark, Gmail, Microsoft 365 mail', $folded['mail_sending']['uses'], 'the routes named under it');
+	pg_assert_same(array('mail_sending'), array_keys(pg_connections_screen_search($folded, 'gmail')), 'a route\'s name finds the row');
+	pg_assert_same(3, pg_connections_screen_counts($folded)['all'], 'the filter counts rows');
+	pg_assert_same('connect', pg_connections_screen_action('not_connected'));
+
+	unset($rows['postmark'], $rows['gmail'], $rows['microsoft_mail']);
+	pg_assert_same($rows, pg_connections_screen_fold_mail($rows, array('name' => 'E-mail sending')), 'no route, no row');
+}

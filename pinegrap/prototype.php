@@ -9,9 +9,17 @@
  * signed-in administrator, designer or manager it draws a bar (the design's
  * name, its drafts, a hotspots switch, close) around a sandboxed frame.
  *
+ * prototype.php?bundle=<id> is a release bundle's preview, for those who
+ * make bundles (administrators and designers): the drafts waiting in the
+ * bundle, a link to a page it replaces opening the replacement.
+ *
  * prototype.php?link=<token> is the same viewer opened by a share link
  * (includes/fn/prototype_links.php): for anyone holding it, or for a
  * signed-in member of the team, past the link's password when it has one.
+ * A link may share a release bundle's preview instead of a design's
+ * prototype (prototype_links.bundle_id): it opens only while the bundle
+ * holds drafts waiting to be published, and answers as a revoked link once
+ * the bundle is published, taken back or deleted.
  * The parameter is not "token": that name is the panel's form token, which
  * validate_token_field() also reads from the query string. The frame's links
  * come back as prototype.php?l=<link id>, without the token, for the session
@@ -129,6 +137,10 @@ if ($pg_proto_frame) {
 
     unset($pg_proto_client);
 
+    // A release bundle's preview: its own signature part (pg_proto_frame_sign(),
+    // pg_proto_link_frame_sign()).
+    $pg_proto_bundle_id = isset($parsed['k']) ? (int) $parsed['k'] : 0;
+
     if ($state === 'expired') {
         pg_proto_frame_refuse(lang('This prototype view has expired. Reload the page to draw it again.'), 403);
     }
@@ -152,8 +164,9 @@ if ($pg_proto_frame) {
         $pg_proto_link = pg_proto_links_ready() ? pg_proto_link_get($parsed['l']) : null;
 
         // Revoked or run out since the viewer signed the address: the frame
-        // ends with it, as the viewer would.
-        if (($pg_proto_link === null) || (pg_proto_link_state($pg_proto_link, $pg_proto_now) !== 'ok') || ((int) $pg_proto_link['style_id'] !== (int) $parsed['s'])) {
+        // ends with it, as the viewer would. A design's link draws its own
+        // design's drafts, a bundle's link its own bundle's.
+        if (($pg_proto_link === null) || (pg_proto_link_state($pg_proto_link, $pg_proto_now) !== 'ok') || !pg_proto_link_frame_owner($pg_proto_link, $parsed['s'], $pg_proto_bundle_id)) {
             pg_proto_frame_refuse(lang('This link no longer works.'), 404);
         }
 
@@ -169,10 +182,15 @@ if ($pg_proto_frame) {
             pg_proto_frame_refuse(lang('This prototype address is not valid.'), 403);
         }
 
-        $pg_proto_base = $pg_proto_viewer;
+        // A bundle's preview stays with those who make bundles (roles 0 and 1).
+        if (($pg_proto_bundle_id > 0) && !pg_page_bundle_user_may(array('role' => (int) $pg_proto_role))) {
+            pg_proto_frame_refuse(lang('This prototype address is not valid.'), 403);
+        }
+
+        $pg_proto_base = ($pg_proto_bundle_id > 0) ? pg_proto_bundle_viewer($pg_proto_viewer, $pg_proto_bundle_id) : $pg_proto_viewer;
     }
 
-    $pg_proto_pages = pg_proto_design_pages($parsed['s']);
+    $pg_proto_pages = ($pg_proto_bundle_id > 0) ? pg_proto_bundle_pages($pg_proto_bundle_id) : pg_proto_design_pages($parsed['s']);
     $pg_proto_page = null;
 
     foreach ($pg_proto_pages as $page) {
@@ -182,8 +200,14 @@ if ($pg_proto_frame) {
         }
     }
 
+    // A bundle's link whose bundle was published, taken back or deleted since
+    // answers as a revoked link does.
+    if (($pg_proto_page === null) && isset($parsed['l']) && ($pg_proto_bundle_id > 0) && !$pg_proto_pages) {
+        pg_proto_frame_refuse(lang('This link no longer works.'), 404);
+    }
+
     if ($pg_proto_page === null) {
-        pg_proto_frame_refuse(lang('This page is no longer a draft of the design.'), 404);
+        pg_proto_frame_refuse(($pg_proto_bundle_id > 0) ? lang('This page is no longer waiting in the bundle.') : lang('This page is no longer a draft of the design.'), 404);
     }
 
     // A link for anyone draws a draft as a signed-out visitor would get it
@@ -192,6 +216,10 @@ if ($pg_proto_frame) {
     if (isset($parsed['l']) && !pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_page['id']))) {
         pg_proto_frame_refuse(lang('This page goes live behind a sign-in, so a link for anyone who has it does not show it.'), 403);
     }
+
+    // A link with "Allow comments" has its frame drawn with node marks and
+    // the comment script; the staff viewer and every other link as before.
+    $pg_proto_comments = isset($parsed['l']) && pg_proto_frame_comment_mode($pg_proto_link, pg_proto_comments_ready());
 
     require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
@@ -232,13 +260,43 @@ if ($pg_proto_frame) {
     pg_seo_rendering(true);
     ob_start();
 
+    // For comments every element carries the node it was drawn from
+    // (data-pg-node), so a comment is pinned to a node and found again after
+    // the page changes. The stored body has no marks: the saved tree is drawn
+    // again with them and handed to the render as the editor's SEO check
+    // hands its draft (pg_seo_draft_override(), read only while
+    // pg_seo_rendering() is on); widgets drawn in the render are marked too.
+    if ($pg_proto_comments) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+        pg_designer_audit_render(true);
+    }
+
     try {
+        if ($pg_proto_comments) {
+            $pg_proto_tree_row = db_item("SELECT page.page_name, page.page_tree_json, style.additional_body_classes FROM page LEFT JOIN style ON style.style_id = page.page_style WHERE page.page_id = '" . (int) $pg_proto_page['id'] . "' LIMIT 1");
+            $pg_proto_tree = (is_array($pg_proto_tree_row) && ((string) $pg_proto_tree_row['page_tree_json'] !== '')) ? json_decode((string) $pg_proto_tree_row['page_tree_json'], true) : null;
+
+            if (is_array($pg_proto_tree)) {
+                _sanitize_dynamic_placeholders($pg_proto_tree);
+                pg_seo_draft_override(array(
+                    'page_id' => (int) $pg_proto_page['id'],
+                    'page_tree_code' => generate_style_code_from_tree($pg_proto_tree, (string) $pg_proto_tree_row['page_name'], (string) $pg_proto_tree_row['additional_body_classes']),
+                ));
+            }
+        }
+
         $html = (string) get_page_content($pg_proto_page['id'], '', '', 'preview', false, array(), false, 'desktop');
     } catch (Throwable $t) {
         $error = $t->getMessage();
         $thrown = $t;
     } finally {
         pg_seo_rendering(false);
+
+        if ($pg_proto_comments) {
+            pg_designer_audit_render(false);
+            pg_seo_draft_override(array());
+        }
+
         // Whatever a renderer printed on the way is not part of the page.
         ob_end_clean();
     }
@@ -300,6 +358,7 @@ if ($pg_proto_frame) {
         'maps' => $maps,
         'form_names' => $maps['form_names'],
         'proto' => $proto,
+        'replaced' => pg_proto_bundle_replaced($pg_proto_pages),
         'draft_folder' => pg_page_draft_folder_id(false),
         'bin_folders' => array_fill_keys(pg_recycle_bin_folder_ids(), true),
         'current_page' => $pg_proto_page['id'],
@@ -311,8 +370,10 @@ if ($pg_proto_frame) {
 
     $strings = array(
         'broken' => lang('This link leads nowhere: the page it names does not exist.'),
-        'draft' => lang('This link leads to a draft of another design.'),
+        'draft' => ($pg_proto_bundle_id > 0) ? lang('This link leads to a draft that is not in this bundle.') : lang('This link leads to a draft of another design.'),
         'forms' => lang('Forms do not send anything in a prototype.'),
+        'comments' => $pg_proto_comments,
+        'pin' => lang('Comment {n}'),
     );
 
     $html = pg_proto_rewrite_links($html, function ($href) use ($ctx) {
@@ -338,6 +399,85 @@ if (!$pg_proto_link_mode) {
 
     $pg_proto_page_id = (isset($_GET['page']) && is_string($_GET['page']) && ctype_digit($_GET['page'])) ? (int) $_GET['page'] : 0;
     $pg_proto_style_id = (isset($_GET['style']) && is_string($_GET['style']) && ctype_digit($_GET['style'])) ? (int) $_GET['style'] : 0;
+
+    // A release bundle's preview (prototype.php?bundle=<id>): the drafts
+    // waiting in it, for those who make bundles, as the Bundles screen.
+    if (isset($_GET['bundle'])) {
+        validate_area_access($user, 'designer');
+
+        $pg_proto_bundle_id = (is_string($_GET['bundle']) && ctype_digit($_GET['bundle'])) ? (int) $_GET['bundle'] : 0;
+        $pg_proto_bundle = pg_page_bundle_get($pg_proto_bundle_id);
+
+        if ($pg_proto_bundle === null) {
+            output_error(lang('The bundle could not be found.'), 404);
+        }
+
+        $pg_proto_bundle_id = (int) $pg_proto_bundle['id'];
+        $pg_proto_base = pg_proto_bundle_viewer($pg_proto_viewer, $pg_proto_bundle_id);
+        $pg_proto_pages = pg_proto_bundle_pages($pg_proto_bundle_id);
+        $pg_proto_start = pg_proto_start_page($pg_proto_pages, $pg_proto_page_id);
+        $pg_proto_start_style = 0;
+
+        foreach ($pg_proto_pages as $page) {
+            if ($page['id'] === $pg_proto_start['id']) {
+                $pg_proto_start_style = (int) $page['style'];
+            }
+        }
+
+        $pg_proto_sub = '';
+        $pg_proto_record = '';
+        $pg_proto_anchor = '';
+
+        if (($pg_proto_start['id'] > 0) && !$pg_proto_start['fallback'] && ($pg_proto_start['id'] === $pg_proto_page_id)) {
+            $pg_proto_sub = pg_proto_clean_text(isset($_GET['sub']) ? $_GET['sub'] : '', 255);
+            $pg_proto_record = pg_proto_clean_text(isset($_GET['r']) ? $_GET['r'] : '', 100);
+            $pg_proto_anchor = pg_proto_clean_fragment(isset($_GET['anchor']) ? $_GET['anchor'] : '');
+        }
+
+        // One line in the Site Log per bundle and session, not one per click.
+        if (empty($_SESSION['software']['prototype_bundle_viewed'][$pg_proto_bundle_id])) {
+            $_SESSION['software']['prototype_bundle_viewed'][$pg_proto_bundle_id] = time();
+            log_activity(lang(array('string' => 'preview of bundle ({var:1}) was viewed', 'vars' => array($pg_proto_bundle['name']))));
+        }
+
+        $pg_proto_frame_url = '';
+        $pg_proto_error = '';
+
+        if ($pg_proto_start['id'] > 0) {
+            $pg_proto_expires = time() + pg_proto_frame_ttl();
+            $pg_proto_signature = pg_proto_frame_sign($pg_proto_start_style, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_key, $pg_proto_sub, $pg_proto_record, $pg_proto_bundle_id);
+
+            if ($pg_proto_signature === '') {
+                $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
+            } else {
+                // Bound to this browser's session, as a design's frame.
+                $pg_proto_frame_url = pg_proto_frame_url(
+                    $pg_proto_viewer,
+                    pg_proto_frame_query($pg_proto_start_style, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
+                        pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key), $pg_proto_bundle_id),
+                    $pg_proto_anchor
+                );
+            }
+        }
+
+        echo pg_proto_shell_html(array(
+            'design' => (string) $pg_proto_bundle['name'],
+            'pages' => $pg_proto_pages,
+            'current' => $pg_proto_start['id'],
+            'fallback' => $pg_proto_start['fallback'],
+            'fallback_text' => lang('The page you opened is not waiting in this bundle, so the preview starts at its first page.'),
+            'frame_url' => $pg_proto_frame_url,
+            'viewer' => $pg_proto_base,
+            'close_url' => PATH . SOFTWARE_DIRECTORY . '/page_bundles.php?id=' . $pg_proto_bundle_id,
+            'software' => PATH . SOFTWARE_DIRECTORY,
+            'lang' => lang(array('info' => '')),
+            'error' => $pg_proto_error,
+            'empty_title' => lang('No page of this bundle is waiting to be published.'),
+            'empty_text' => lang('Add a copy of a page or a draft on the Bundles screen to look at it here before it goes live.'),
+            'wide_pages' => true,
+        ));
+        exit;
+    }
 
     if (($pg_proto_style_id <= 0) && ($pg_proto_page_id > 0)) {
         $pg_proto_style_id = (int) db_value("SELECT page_style FROM page WHERE page_id = '" . $pg_proto_page_id . "'");
@@ -449,12 +589,24 @@ $pg_proto_state = pg_proto_link_state($pg_proto_link, $pg_proto_now);
 $pg_proto_design = null;
 $pg_proto_pages = array();
 
-if ($pg_proto_state === 'ok') {
-    $pg_proto_design = pg_proto_link_design_name($pg_proto_link['style_id']);
-    $pg_proto_pages = ($pg_proto_design !== null) ? pg_proto_design_pages($pg_proto_link['style_id']) : array();
+$pg_proto_link_bundle = 0;
 
-    // The design was deleted, or none of its pages is a draft any more:
-    // there is no prototype left to show.
+if ($pg_proto_state === 'ok') {
+    $pg_proto_link_bundle = pg_proto_link_bundle_id($pg_proto_link);
+
+    if ($pg_proto_link_bundle > 0) {
+        // A bundle's preview: the drafts waiting in it, none once it was
+        // published, taken back or deleted (pg_proto_bundle_pages()).
+        $pg_proto_bundle = function_exists('pg_page_bundle_get') ? pg_page_bundle_get($pg_proto_link_bundle) : null;
+        $pg_proto_design = is_array($pg_proto_bundle) ? (string) $pg_proto_bundle['name'] : null;
+        $pg_proto_pages = ($pg_proto_design !== null) ? pg_proto_bundle_pages($pg_proto_link_bundle) : array();
+    } else {
+        $pg_proto_design = pg_proto_link_design_name($pg_proto_link['style_id']);
+        $pg_proto_pages = ($pg_proto_design !== null) ? pg_proto_design_pages($pg_proto_link['style_id']) : array();
+    }
+
+    // The design or the bundle was deleted, or none of its pages is a draft
+    // waiting any more: there is no prototype left to show.
     if (($pg_proto_design === null) || !$pg_proto_pages) {
         $pg_proto_state = 'gone';
     }
@@ -588,10 +740,22 @@ if (($pg_proto_start['id'] > 0) && !$pg_proto_start['fallback'] && ($pg_proto_st
     $pg_proto_anchor = pg_proto_clean_fragment(isset($_GET['anchor']) ? $_GET['anchor'] : '');
 }
 
+// The frame is signed for the drawn draft's design: a bundle's drafts may
+// belong to more than one.
+$pg_proto_frame_style = (int) $pg_proto_link['style_id'];
+
+if ($pg_proto_link_bundle > 0) {
+    foreach ($pg_proto_pages as $page) {
+        if ($page['id'] === $pg_proto_start['id']) {
+            $pg_proto_frame_style = isset($page['style']) ? (int) $page['style'] : 0;
+        }
+    }
+}
+
 $pg_proto_frame_url = '';
 $pg_proto_error = '';
 $pg_proto_expires = $pg_proto_now + pg_proto_frame_ttl();
-$pg_proto_signature = pg_proto_link_frame_sign($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_key, $pg_proto_sub, $pg_proto_record);
+$pg_proto_signature = pg_proto_link_frame_sign($pg_proto_frame_style, $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_key, $pg_proto_sub, $pg_proto_record, $pg_proto_link_bundle);
 
 if ($pg_proto_signature === '') {
     $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
@@ -601,8 +765,8 @@ if ($pg_proto_signature === '') {
     // off the page (the design's scripts can) does not.
     $pg_proto_frame_url = pg_proto_frame_url(
         $pg_proto_viewer,
-        pg_proto_link_frame_query($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
-            pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)),
+        pg_proto_link_frame_query($pg_proto_frame_style, $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
+            pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key), $pg_proto_link_bundle),
         $pg_proto_anchor
     );
 }
@@ -614,11 +778,20 @@ echo pg_proto_shell_html(array(
     'pages' => $pg_proto_pages,
     'current' => $pg_proto_start['id'],
     'fallback' => $pg_proto_start['fallback'],
-    'fallback_text' => lang('The page you opened is no longer a draft of this design, so the prototype opens at its start page.'),
+    'fallback_text' => ($pg_proto_link_bundle > 0)
+        ? lang('The page you opened is not waiting in this bundle, so the preview starts at its first page.')
+        : lang('The page you opened is no longer a draft of this design, so the prototype opens at its start page.'),
     'frame_url' => $pg_proto_frame_url,
     'viewer' => $pg_proto_base,
     'close_url' => '',
     'software' => PATH . SOFTWARE_DIRECTORY,
     'lang' => lang(array('info' => '')),
     'error' => $pg_proto_error,
+    // A bundle's drafts may come from more than one design: the page chooser
+    // is not held to one row of tabs.
+    'wide_pages' => ($pg_proto_link_bundle > 0),
+    // A link with "Allow comments": the comment mode, with this page's
+    // comments of this link.
+    'comments' => pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
+        isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => ''))),
 ));

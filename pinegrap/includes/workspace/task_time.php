@@ -1286,18 +1286,43 @@ function ws_task_time_people($user_ids, $from, $to)
  * The minutes written this week (from Monday), on a channel's tasks or on
  * all of them: the time_logged_week count of the scheduled actions.
  *
- * @param int $channel_id 0 for every task
+ * @param int    $channel_id 0 for every task
+ * @param string $tasks_sql  with no channel, a condition on the task t
  * @return int
  */
-function ws_task_time_week_minutes($channel_id = 0)
+function ws_task_time_week_minutes($channel_id = 0, $tasks_sql = '')
 {
     if (!ws_task_time_ready()) {
         return 0;
     }
 
-    return (int) db_value("SELECT COALESCE(SUM(tt.minutes), 0) FROM ws_task_time tt"
-        . (((int) $channel_id > 0) ? " INNER JOIN ws_tasks t ON t.id = tt.task_id AND t.channel_id = '" . (int) $channel_id . "'" : '')
-        . " WHERE tt.worked_on >= '" . e(date('Y-m-d', strtotime('monday this week'))) . "'");
+    $narrow = ws_task_time_week_narrow($channel_id, $tasks_sql);
+
+    return (int) db_value("SELECT COALESCE(SUM(tt.minutes), 0) FROM ws_task_time tt" . $narrow['join']
+        . " WHERE tt.worked_on >= '" . e(date('Y-m-d', strtotime('monday this week'))) . "'" . $narrow['where']);
+}
+
+/**
+ * How the week's minutes are narrowed to their tasks: the one channel, or,
+ * with none named, the tasks the condition keeps (the scheduled count leaves
+ * agent channels out with ws_tasks_agent_out_sql()); minutes whose task is
+ * gone still count then. Pure.
+ *
+ * @param int    $channel_id 0 for every channel
+ * @param string $tasks_sql  a condition on t, used when no channel is named
+ * @return array join, where (each '' when nothing narrows them)
+ */
+function ws_task_time_week_narrow($channel_id, $tasks_sql = '')
+{
+    if ((int) $channel_id > 0) {
+        return array('join' => " INNER JOIN ws_tasks t ON t.id = tt.task_id AND t.channel_id = '" . (int) $channel_id . "'", 'where' => '');
+    }
+
+    if ((string) $tasks_sql === '') {
+        return array('join' => '', 'where' => '');
+    }
+
+    return array('join' => ' LEFT JOIN ws_tasks t ON t.id = tt.task_id', 'where' => ' AND (t.id IS NULL OR ' . $tasks_sql . ')');
 }
 
 /**

@@ -14,7 +14,7 @@ description: Plan designer-panels: what today's editor does that no step may los
 - (K8) A bar hides labels, never controls (`designer/designer-narrow-screen-bars.md`); the canvas chrome's places (`designer-canvas-chrome-placement.md`).
 - (K9) Every shortcut of today (Ctrl+Shift+P the command palette, Ctrl+Alt+P the preview, O the outline). A new one is taken only where today has none in that focus; a clash stops the step.
 - (K10) A section's open or closed state per browser (`sd_cs_<sid>`); the per-screen-size toggles.
-- (K11) The Prototype view's K1 to K9 (`plans/prototype-canvas-rules.md`).
+- (K11) The Prototype view's K1 to K9 (`designer/prototype-view-rules.md`).
 - (K12) Opening the editor loads no part (`designer/designer-parts-on-demand.md`, `tests/designer_parts_test.php`).
 
 ## Which rules does every step keep?

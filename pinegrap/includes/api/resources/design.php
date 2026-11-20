@@ -158,9 +158,9 @@ function api_design_page_schema() {
 		'framework'         => 'string',
 		'pending_proposals' => 'integer',
 		'draft'             => 'boolean',
-		'publish_at'        => 'string?',
-		'unpublish_at'      => 'string?',
-		'updated_at'        => 'string?',
+		'publish_at'        => 'datetime?',
+		'unpublish_at'      => 'datetime?',
+		'updated_at'        => 'datetime?',
 		'updated_at_unix'   => 'integer'
 	);
 
@@ -299,7 +299,7 @@ function api_design_schema() {
 		'drafts'          => 'integer',
 		'home'            => 'boolean',
 		'state'           => 'string',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 
@@ -785,8 +785,8 @@ function api_design_view_schema() {
 		'design_id'    => 'integer',
 		'framework'    => 'string',
 		'draft'        => 'boolean',
-		'publish_at'   => 'string?',
-		'unpublish_at' => 'string?',
+		'publish_at'   => 'datetime?',
+		'unpublish_at' => 'datetime?',
 		'node_id'      => 'string',
 		'root_id'      => 'string',
 		'hash'         => 'string',
@@ -892,8 +892,8 @@ function api_design_proposal_schema() {
 		'dropped'    => 'string[]',
 		'removed'    => 'string[]',
 		'message_id' => 'integer?',
-		'created_at' => 'string?',
-		'decided_at' => 'string?'
+		'created_at' => 'datetime?',
+		'decided_at' => 'datetime?'
 	);
 
 }
@@ -1131,7 +1131,7 @@ function api_design_revision_schema() {
 		'user_id'         => 'integer?',
 		'user'            => 'string?',
 		'size'            => 'integer',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer'
 	);
 
@@ -1358,6 +1358,7 @@ function api_design_prototype_link_present($row, $now) {
 		'hint'            => $link['hint'],
 		'password'        => $link['password'],
 		'password_locked' => $link['locked'],
+		'allow_comments'  => $link['comments'],
 		'state'           => $link['state'],
 		'expires_at'      => api_time($link['expires_at']),
 		'uses'            => $link['uses'],
@@ -1380,13 +1381,14 @@ function api_design_prototype_link_schema() {
 		'hint'            => 'string',
 		'password'        => 'boolean',
 		'password_locked' => 'boolean',
+		'allow_comments'  => 'boolean',
 		'state'           => 'string',
-		'expires_at'      => 'string?',
+		'expires_at'      => 'datetime?',
 		'uses'            => 'integer',
-		'last_used_at'    => 'string?',
+		'last_used_at'    => 'datetime?',
 		'created_by'      => 'integer?',
-		'created_at'      => 'string?',
-		'revoked_at'      => 'string?'
+		'created_at'      => 'datetime?',
+		'revoked_at'      => 'datetime?'
 	);
 
 }
@@ -1579,7 +1581,8 @@ function api_design_prototype_links_create($params) {
 		'audience'      => isset($params['audience']) ? $params['audience'] : '',
 		'start_page_id' => isset($params['start_page_id']) ? (int)$params['start_page_id'] : 0,
 		'duration'      => isset($params['duration']) ? (int)$params['duration'] : 0,
-		'password'      => $password
+		'password'      => $password,
+		'allow_comments' => !empty($params['allow_comments'])
 	), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
 	if (!$plan['ok']) {
@@ -1588,12 +1591,21 @@ function api_design_prototype_links_create($params) {
 
 	}
 
+	// A site whose schema has no comments yet refuses the switch rather than
+	// making a link without it.
+	if (($plan['link']['allow_comments'] === 1) && !pg_proto_comments_ready()) {
+
+		api_fail_validation(lang('This site has not been upgraded to the version that takes prototype comments.'), 'allow_comments');
+
+	}
+
 	api_dry_run_stop('created', 'design_prototype_link', array(
 		'design_id'     => $design_id,
 		'audience'      => $plan['link']['audience'],
 		'start_page_id' => ($plan['link']['start_page_id'] > 0) ? $plan['link']['start_page_id'] : null,
 		'expires_at'    => api_time($plan['link']['expires_at']),
-		'password'      => ($plan['link']['password'] !== '')
+		'password'      => ($plan['link']['password'] !== ''),
+		'allow_comments' => ($plan['link']['allow_comments'] === 1)
 	));
 
 	$owner = $app['owner'];

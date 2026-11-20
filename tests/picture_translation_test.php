@@ -202,9 +202,11 @@ function test_picture_translation_module_loaded()
 	pg_assert_true(function_exists('pg_picture_tr_saved'), 'loaded');
 }
 
-// Runs $script with the editor's model as M and answers its JSON; null
-// without Node.
-function picture_translation_node($script)
+// Runs $script with a script of assets/js (the editor's model unless named)
+// as $name, M by default, and answers its JSON; null without Node. The script
+// goes through a file, never `node -e`: on Windows the shell's quoting turns
+// the double quotes of an inline script into spaces.
+function picture_translation_node($script, $module = 'pg_image_editor_model.js', $name = 'M')
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -224,7 +226,7 @@ function picture_translation_node($script)
 		return null;
 	}
 
-	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n" . $script);
+	file_put_contents($file, 'var ' . $name . ' = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/' . $module) . ');' . "\n" . $script);
 
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
@@ -347,8 +349,10 @@ function test_picture_translation_draw_refusals()
 	$check = strpos($body, 'pg_image_editor_file(');
 
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
-	pg_assert_true($check < strpos($body, 'pg_image_editor_take_png('), 'before the picture is taken');
-	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_canvas('), 'before a canvas\'s picture is taken');
+	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_photo('), 'before a photo\'s is drawn');
+	pg_assert_true(strpos($body, 'pg_picture_tr_keep(') > strpos($body, 'pg_picture_tr_draw_refusal('), 'a draw is kept once it is taken');
+	pg_assert_true(strpos(picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep'), 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
 	pg_assert_true(strpos($body, "'missing'  => pg_picture_tr_untranslated(\$texts)") !== false, 'the draw counts the texts not translated');
 	pg_assert_true(strpos($body, 'count($texts), count($texts) - pg_picture_tr_untranslated($texts))') !== false, 'the state after a draw is read from the real count');
 
@@ -375,4 +379,101 @@ function test_picture_translation_pictures_hidden()
 	pg_assert_true(strpos(picture_translation_body('includes/fn/picker.php', 'pg_picker_where_for'), 'pg_picture_tr_hidden_sql(') !== false, 'the file pickers');
 	pg_assert_true(strpos(picture_translation_body('includes/fn/image_editor.php', 'pg_image_editor_action_sticker_files'), 'pg_picture_tr_hidden_sql(') !== false, 'the Design Canvas\'s pictures from Files');
 	pg_assert_true(strpos(picture_translation_body('includes/explorer/handle_file_usage.php', 'pg_explorer_handle_file_usage'), 'pg_picture_tr_is_picture(') !== false, 'Where used');
+}
+
+// A photo with text layers is drawn as well as a canvas: its live document
+// is the newest save over a base row; the language's picture keeps the
+// photo's format.
+function test_picture_translation_photo_kinds()
+{
+	$canvas = picture_translation_doc(array());
+	$photo = array('v' => 1, 'source' => array('fileId' => 7, 'width' => 800, 'height' => 600, 'base' => 2), 'geometry' => array('rot' => 0), 'layers' => array());
+
+	pg_assert_same('canvas', pg_picture_tr_doc_kind($canvas), 'an artboard is a canvas');
+	pg_assert_same('photo', pg_picture_tr_doc_kind($photo), 'a source picture is a photo');
+	pg_assert_same('photo', pg_picture_tr_doc_kind(json_decode(json_encode($photo))), 'decoded as objects too');
+	pg_assert_same('', pg_picture_tr_doc_kind(array('v' => 1, 'geometry' => array())), 'neither');
+	pg_assert_same('', pg_picture_tr_doc_kind(null), 'no document');
+	pg_assert_same('', pg_picture_tr_doc_kind(array('v' => 1, 'source' => array('base' => 2), 'artboard' => array('width' => 9, 'height' => 9))), 'both is neither');
+
+	pg_assert_same('summer-de.jpg', pg_picture_tr_picture_name('summer.jpg', 'de', 'jpg'), 'a photo keeps its format');
+	pg_assert_same('summer-de.webp', pg_picture_tr_picture_name('summer.jpg', 'de', 'webp'), 'or the export\'s');
+	pg_assert_same('summer-de.png', pg_picture_tr_picture_name('summer.jpg', 'de'), 'a canvas is a PNG');
+
+	// The pixels are made from the base the live document names, never a
+	// base the request names, through the save's own steps.
+	$body = picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_draw_photo');
+	pg_assert_true(strpos($body, 'pg_image_editor_photo_parts(') !== false, 'the browser\'s overlay and masks taken as a save takes them');
+	pg_assert_true(strpos($body, 'pg_image_editor_photo_pixels(') !== false, 'drawn on the base as a save draws');
+	pg_assert_true(strpos($body, "\$live['base']") !== false, 'from the live document\'s base');
+	pg_assert_false(strpos($body, "\$request['base']") !== false, 'not one the request names');
+	pg_assert_true(strpos($body, "'first_frame'] = true") !== false, 'an animated photo gives its first frame');
+
+	// The save reads the redaction from its recipe after the parts moved out.
+	pg_assert_true(strpos(picture_translation_body('includes/fn/image_editor.php', 'pg_image_editor_save'), "!empty(\$edit['redact'])") !== false, 'a redacted save is still marked');
+
+	$r = picture_translation_node('var doc = { v: 1, source: { fileId: 3, width: 800, height: 600, base: 2 }, geometry: { rot: 0 }, layers: [ { id: "t1", type: "text", text: "Sale" } ] };'
+		. 'var put = M.languageDoc(M.versionOpenDoc(doc, 9), [{ id: "t1", field: "text", text: "Rebajas" }]);'
+		. 'console.log(JSON.stringify({ text: put.doc.layers[0].text, file: put.doc.source.fileId, base: put.doc.source.base === undefined, fitted: Object.keys(put.source) }));');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_same(array('text' => 'Rebajas', 'file' => 9, 'base' => true, 'fitted' => array('t1')), $r, 'a photo\'s document takes the words as a canvas\'s does');
+}
+
+// The queue: the languages' rows waiting or out of date whose every text is
+// translated, of the languages that are drawn (no right to left), in a
+// bounded list.
+function test_picture_translation_queue_sql()
+{
+	$sql = pg_picture_tr_queue_sql(array('de', 'fr'), 200);
+
+	pg_assert_contains('ft.state IN (0, 2)', $sql, 'waiting and out of date rows');
+	pg_assert_contains("ft.language IN ('de', 'fr')", $sql, 'only the languages drawn');
+	pg_assert_contains("t.id IS NULL OR t.text = ''", $sql, 'a row with an untranslated text is left out');
+	pg_assert_contains('EXISTS (SELECT 1 FROM translation_uses', $sql, 'a picture with texts');
+	pg_assert_contains('LIMIT 200', $sql, 'bounded');
+	pg_assert_same('', pg_picture_tr_queue_sql(array(), 200), 'no language, no query');
+	pg_assert_contains("ft.language IN ('pt-BR')", pg_picture_tr_queue_sql(array('pt-BR'), 5), 'a code with a region');
+	pg_assert_false(strpos(pg_picture_tr_queue_sql(array("x' OR '1"), 5), "OR '1") !== false, 'a code with a quote does not reach the query');
+
+	// The Pictures group offers the queue; its view prints the editor and
+	// the queue's own script.
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+	pg_assert_contains("'draw' => 1", $screen, 'a link to the queue');
+	pg_assert_contains('assets/js/picture_queue.js', $screen, 'the queue\'s script');
+	pg_assert_contains('pg_picture_tr_queue(', $screen, 'the queue\'s rows');
+	pg_assert_contains('data-pq-reason="1"', $screen, 'the reason a row waits is its own part, dropped once drawn');
+	pg_assert_contains('pg-list-row-head pg-list-row-head-wrap', $screen, 'the pill goes under a name it would cut');
+	pg_assert_contains('data-pq-edit="1" hidden', $screen, 'a row to look at by hand offers the Design Canvas, hidden until the run ends');
+	pg_assert_contains('data-pg-image-edit="\' . h($queue_item[\'name\'])', $screen, 'the button opens the row\'s picture');
+	pg_assert_contains('class="pg-button pg-button-quiet" id="pg_pq_stop"', $screen, 'Stop is quiet');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($url(array(\'draw\' => 1', $screen, 'the group\'s button is quiet');
+}
+
+// The queue's script: the count left, a row's reason, edit link, button and
+// end line. The state a draw's answer gives is the shared drawing's
+// (tests/picture_auto_test.php).
+function test_picture_translation_queue_script()
+{
+	$r = picture_translation_node('console.log(JSON.stringify({'
+		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
+		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
+		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
+		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
+		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
+		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
+		. '}));', 'picture_queue.js', 'Q');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_same(array('left' => 3,
+		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
+		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
 }

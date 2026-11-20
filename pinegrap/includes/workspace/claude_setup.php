@@ -239,7 +239,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
             'art'   => 'app',
             'title' => h(lang('An application for Claude')),
             'text'  => h(lang('Press Create Claude\'s key above: the window that opens shows its key, its secret and the prompt, once. To use another application, make it in Application Access and choose it under Use another application.')),
-            'extra' => '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
+            'extra' => '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
             'art'   => 'routine',
@@ -248,7 +248,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
                 lang(array('string' => 'Open {var:1} and press {var:2}. Name it {var:3}, paste this prompt into the {var:4} box and choose a model in the box\'s selector. The prompt is short: it signs in and reads the rest of its instructions from this site, so they keep up with every update; copy it again only when this card asks. If the form asks for a repository, any small private repository will do; the routine does not change it.', 'vars' => ws_claude_setup_marks(4))),
                 array('claude.ai/code/routines', 'New routine', 'Pinegrap Workspace', 'Instructions')
             ),
-            'extra' => '<a class="btn btn-sm btn-outline theme-secondary mb-3" href="https://claude.ai/code/routines" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>claude.ai/code/routines</a>'
+            'extra' => '<a class="pg-button pg-button-quiet pg-button-sm mb-3" href="https://claude.ai/code/routines" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>claude.ai/code/routines</a>'
                 . $copy('ws-claude-prompt', $prompt, 8, lang('The prompt for the routine'))
                 . '<div class="alert theme-warning small py-3 mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h(lang('Paste the prompt as it is and add no instructions of your own: a run that does not read this site\'s current instructions cannot take a request, and the channel it was asked in is told so.')) . '</div>',
         ),
@@ -293,9 +293,9 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
     foreach ($steps as $step) {
         $html .= '
             <li class="ws-claude-step">
-                <div class="small fw-semibold">' . $step['title'] . '</div>
-                <div class="small fg-secondary mb-3">' . $step['text'] . '</div>
-                ' . (!empty($step['more']) ? '<div class="small fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '
+                <div class="pg-field-label">' . $step['title'] . '</div>
+                <div class="pg-text-2 fg-secondary mb-3">' . $step['text'] . '</div>
+                ' . (!empty($step['more']) ? '<div class="pg-text-2 fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '
                 ' . ws_claude_setup_picture($step['art'], $host) . '
                 ' . $step['extra'] . '
             </li>';

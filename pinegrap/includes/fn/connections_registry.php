@@ -153,7 +153,11 @@ function pg_connections_not_services()
  * A row: 'name', 'group' (a key of pg_connections_groups()), 'place'
  * ('#settings/<category>/<card>' or a System tools script), 'state' (a reader
  * of pg_connections_state_kinds(), or null with the reason in 'no_state'),
- * 'uses' (English, a few words) and optionally 'covers' (list name => keys).
+ * 'uses' (English, a few words), optionally 'covers' (list name => keys)
+ * and 'found_at' (a card its name still finds in the settings search after
+ * its settings moved to its page on Connections); a Google feature names
+ * under 'apis' the Google Cloud APIs it calls (service name => product
+ * name), listed on Google's page (pg_google_cloud_apis()).
  *
  * @param mixed $row
  * @return array list of key names
@@ -308,8 +312,12 @@ function pg_connections_place_keys()
     foreach (pg_connections_registry() as $row) {
         $name = mb_strtolower(str_replace('İ', 'i', $row['name']), 'UTF-8');
 
-        if (!isset($keys[$row['place']]) || !in_array($name, $keys[$row['place']], true)) {
-            $keys[$row['place']][] = $name;
+        // A service whose settings moved to its page on Connections is
+        // still found at the card that chooses it ('found_at').
+        foreach (array_filter(array($row['place'], isset($row['found_at']) ? $row['found_at'] : '')) as $place) {
+            if (!isset($keys[$place]) || !in_array($name, $keys[$place], true)) {
+                $keys[$place][] = $name;
+            }
         }
     }
 
@@ -425,6 +433,7 @@ function pg_connections_registry()
             'covers' => array('marketplace' => array('trendyol'))),
         'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'merchant_center', 'attention' => true),
+            'apis' => array('merchantapi.googleapis.com' => 'Merchant API'),
             'covers' => array('marketplace' => array('merchant_center'), 'purpose' => array('merchant_center'))),
         'openai_feed' => array('name' => 'OpenAI product feed', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'A product feed for ChatGPT shopping',
             'state' => null, 'no_state' => 'A file the service fetches; a format offered is no account.'),
@@ -440,28 +449,29 @@ function pg_connections_registry()
             'state' => null, 'no_state' => 'No key or switch of its own; it runs whenever tax is on.'),
 
         // E-mail.
-        'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail',
+        'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_postmark'),
             'covers' => array('mail' => array('postmark'))),
-        'mailgun' => array('name' => 'Mailgun', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail',
+        'mailgun' => array('name' => 'Mailgun', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_mailgun'),
             'covers' => array('mail' => array('mailgun'))),
-        'brevo' => array('name' => 'Brevo', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail',
+        'brevo' => array('name' => 'Brevo', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_brevo'),
             'covers' => array('mail' => array('brevo'))),
-        'resend' => array('name' => 'Resend', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail',
+        'resend' => array('name' => 'Resend', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_resend'),
             'covers' => array('mail' => array('resend'))),
-        'ses' => array('name' => 'Amazon SES', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail',
+        'ses' => array('name' => 'Amazon SES', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_ses'),
             'covers' => array('mail' => array('ses'))),
-        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail through a Google account',
+        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'mail', 'attention' => true),
-            'covers' => array('purpose' => array('mail'))),
-        'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => 'smtp_settings.php', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
+            'apis' => array('gmail.googleapis.com' => 'Gmail API'),
+            'covers' => array('purpose' => array('mail', 'mail_read'))),
+        'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'mail', 'attention' => true),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
-        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/contact/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
+        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
             'state' => array('kind' => 'config', 'names' => array('MAILCHIMP'))),
 
         // SMS, consent and messaging.
@@ -491,6 +501,7 @@ function pg_connections_registry()
         // Files and backups.
         'google_drive' => array('name' => 'Google Drive', 'group' => 'storage', 'place' => '#settings/maintenance/pgset-backup', 'uses' => 'Backups and the file picker',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'backup', 'attention' => true),
+            'apis' => array('drive.googleapis.com' => 'Google Drive API'),
             'covers' => array('picker' => array('google'), 'purpose' => array('backup', 'file_picker'))),
         'onedrive' => array('name' => 'OneDrive', 'group' => 'storage', 'place' => '#settings/maintenance/pgset-backup', 'uses' => 'Backups and the file picker',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'backup', 'attention' => true),
@@ -514,6 +525,7 @@ function pg_connections_registry()
         // Calendars and notes: each person connects their own account.
         'google_calendar' => array('name' => 'Google Calendar', 'group' => 'calendar', 'place' => '#settings/workspace_team/pgset-ws-calendar', 'uses' => 'A person\'s tasks in their calendar, and moves back',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'calendar_sync', 'attention' => true),
+            'apis' => array('calendar-json.googleapis.com' => 'Google Calendar API'),
             'covers' => array('purpose' => array('calendar_sync'))),
         'outlook_calendar' => array('name' => 'Outlook Calendar', 'group' => 'calendar', 'place' => '#settings/workspace_team/pgset-ws-calendar', 'uses' => 'A person\'s tasks in their calendar, and moves back',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'calendar_sync', 'attention' => true)),
@@ -524,9 +536,11 @@ function pg_connections_registry()
         // Analytics and search.
         'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'google_analytics', 'attention' => true),
+            'apis' => array('analyticsadmin.googleapis.com' => 'Google Analytics Admin API', 'analyticsdata.googleapis.com' => 'Google Analytics Data API'),
             'covers' => array('purpose' => array('google_analytics'))),
         'search_console' => array('name' => 'Google Search Console', 'group' => 'analytics', 'place' => 'search_console.php', 'uses' => 'Search queries and clicks of the site\'s pages',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'search_console', 'attention' => true),
+            'apis' => array('searchconsole.googleapis.com' => 'Google Search Console API', 'siteverification.googleapis.com' => 'Google Site Verification API'),
             'covers' => array('purpose' => array('search_console'))),
         'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
             'state' => array('kind' => 'config', 'names' => array('INDEXNOW_KEY'))),
@@ -546,31 +560,32 @@ function pg_connections_registry()
         'dbip' => array('name' => 'DB-IP', 'group' => 'maps', 'place' => '#settings/firewall/pgset-countries', 'uses' => 'The country of a visitor\'s address',
             'state' => null, 'no_state' => 'A free database the site fetches; no account or key.'),
 
-        // AI.
+        // AI. A provider's key is its connection, typed on its page on
+        // Connections (includes/fn/ai_connections.php).
         'pinegrap_ai' => array('name' => 'Pinegrap AI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-ai', 'uses' => 'Writing help and translation on the licence key',
             'state' => array('kind' => 'reader', 'function' => 'ws_ai_ready')),
         'claude' => array('name' => 'Claude', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-claude', 'uses' => 'Claude in the channels, through a routine',
             'state' => array('kind' => 'reader', 'function' => 'ws_claude_ready')),
-        'openai' => array('name' => 'OpenAI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'openai'),
+        'openai' => array('name' => 'OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('openai')),
             'covers' => array('model' => array('openai'))),
-        'anthropic' => array('name' => 'Anthropic', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'anthropic'),
+        'anthropic' => array('name' => 'Anthropic', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('anthropic')),
             'covers' => array('model' => array('anthropic'))),
-        'gemini' => array('name' => 'Google Gemini', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'gemini'),
+        'gemini' => array('name' => 'Google Gemini', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('gemini')),
             'covers' => array('model' => array('gemini'))),
-        'mistral' => array('name' => 'Mistral', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'mistral'),
+        'mistral' => array('name' => 'Mistral', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('mistral')),
             'covers' => array('model' => array('mistral'))),
-        'deepseek' => array('name' => 'DeepSeek', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'deepseek'),
+        'deepseek' => array('name' => 'DeepSeek', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('deepseek')),
             'covers' => array('model' => array('deepseek'))),
-        'openrouter' => array('name' => 'OpenRouter', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'openrouter'),
+        'openrouter' => array('name' => 'OpenRouter', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('openrouter')),
             'covers' => array('model' => array('openrouter'))),
-        'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'azure'),
+        'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('azure')),
             'covers' => array('model' => array('azure'))),
         'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
             'state' => array('kind' => 'config', 'names' => array('TRANSLATION_GOOGLE_KEY_ENC'))),
@@ -588,7 +603,7 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_form_spam_enabled')),
 
         // Other.
-        'github' => array('name' => 'GitHub', 'group' => 'other', 'place' => '#settings/workspace_channels/pgset-ws-github', 'uses' => 'Repository events into a channel',
+        'github' => array('name' => 'GitHub', 'group' => 'other', 'place' => 'connections.php', 'uses' => 'Repository events into a channel',
             'state' => array('kind' => 'account', 'provider' => 'github', 'purpose' => 'channel_links', 'attention' => true),
             'covers' => array('connect' => array('github'), 'purpose' => array('channel_links'))),
         'activitypub' => array('name' => 'ActivityPub', 'group' => 'other', 'place' => '#settings/fediverse/pgset-fediverse', 'uses' => 'The site as an account of the fediverse',

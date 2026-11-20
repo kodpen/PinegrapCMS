@@ -3351,6 +3351,40 @@ function get_effective_tax_rate($product_rate, $zone_rate)
     return (float) $product_rate;
 }
 
+/**
+ * Whether the site charges tax (the Commerce setting ECOMMERCE_TAX). With it
+ * off the checkout takes no tax at all: the stored price is what the buyer
+ * pays.
+ *
+ * @return bool
+ */
+function pg_tax_switched_on()
+{
+    return defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true);
+}
+
+/**
+ * The VAT rate an order line is taxed at, the checkout's rule
+ * (update_order_item_taxes()) and the counter sale's (local_sale_line_rate()):
+ * none while the site charges no tax, for a product that is not taxable, or
+ * on an address in no tax zone (a zone rate of false, or 0); otherwise the
+ * product's own rate, the zone's when it has none. Pure.
+ *
+ * @param bool        $tax_on       pg_tax_switched_on()
+ * @param mixed       $taxable      products.taxable
+ * @param mixed       $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param float|false $zone_rate    the address's zone rate, false in no zone
+ * @return float
+ */
+function pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate)
+{
+    if (!$tax_on || !$taxable || !$zone_rate) {
+        return 0.0;
+    }
+
+    return (float) get_effective_tax_rate($product_rate, $zone_rate);
+}
+
 
 /**
  * The price a buyer pays for one unit, in minor units: the stored price plus
@@ -4861,42 +4895,19 @@ function update_order_item_taxes($ship_to_addresses = array())
             while ($row = mysqli_fetch_assoc($result)) {
                 $order_items[] = $row;
             }
-            // foreach order item
+            // A line with a recipient is taxed on the recipient's address,
+            // one without on the billing address.
+            $zone_rate = ($ship_to['ship_to_id'] > 0) ? $shipping_address_tax_rate : $billing_address_tax_rate;
+
             foreach ($order_items as $order_item) {
-                // if order item is taxable
-                if ($order_item['taxable']) {
-                    // if this order item has a recipient
-                    if ($ship_to['ship_to_id'] > 0) {
-                        // if shipping address is in a tax zone, apply tax
-                        if ($shipping_address_tax_rate) {
-                            $apply_tax = true;
-                            $tax_rate = $shipping_address_tax_rate;
-                            // else shipping address is not in a tax zone, so don't apply tax
-                        } else {
-                            $apply_tax = false;
-                        }
-                        // else this order item does not have a recipient
-                    } else {
-                        // if billing address is in a tax zone, apply tax
-                        if ($billing_address_tax_rate) {
-                            $apply_tax = true;
-                            $tax_rate = $billing_address_tax_rate;
-                            // else billing address is not in a tax zone, so don't apply tax
-                        } else {
-                            $apply_tax = false;
-                        }
-                    }
-                    // else order item is not taxable
-                } else {
-                    $apply_tax = false;
-                }
-                // The zone said tax is due; the product says at what rate. The
+                // The zone says whether tax is due, the product at what rate
+                // (pg_order_line_tax_rate(), the counter sale's rule too). The
                 // base is the whole line, not one unit: rounding a unit and then
                 // multiplying gives a different answer above quantity one.
                 $line_quantity = max(1, (int) $order_item['quantity']);
                 $lines[(int) $order_item['id']] = array(
                     'amount' => (int) $order_item['price'] * $line_quantity,
-                    'rate' => ($apply_tax == true) ? (float) get_effective_tax_rate($order_item['tax_rate'], $tax_rate) : 0.0,
+                    'rate' => pg_order_line_tax_rate(pg_tax_switched_on(), $order_item['taxable'], $order_item['tax_rate'], $zone_rate),
                     // A line saved for later is no part of the sale.
                     'alone' => !empty($order_item['saved_for_later'])
                         || !pg_order_line_charged_today($order_item['recurring'], $order_item['recurring_start_date'], $order_item['start'], $today, $clearcommerce),
@@ -12028,9 +12039,14 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
 // The money a cancelled order still owes its customer, in minor units:
 // 'payment' what its payment took and has not given back (total less
-// refunded_amount, never below 0), 'gift_card' what gift cards paid of it
-// (orders.total has that part taken off already, and it does not go back to
-// the cards by itself), 'total' both. An order cancelled before its payment
+// refunded_amount, never below 0), 'gift_card' the gift card part it still
+// owes (pg_order_gift_card_owed(): what the cards gave less what a return
+// gave back; orders.total has that part taken off already, and it does not go
+// back to the cards by itself), 'total' both. The gift card part is read from
+// $order['gift_card_owed'] when the caller selected it
+// (pg_order_gift_card_owed_sql()), otherwise from the database by the row's
+// id; orders.gift_card_discount is what checkout asked of the cards, not what
+// they gave, so it is never read here. An order cancelled before its payment
 // arrived (Offline Payment or a method whose service left the payment pending,
 // paid_at still 0) owes no payment money: nothing was taken. A row without
 // paid_at (a schema before the column) cannot tell, so its payment counts as
@@ -12044,7 +12060,11 @@ function pg_order_cancel_refund_owed(array $order)
         && (($method === 'Offline Payment') || in_array($method, pg_order_pending_payment_methods(), true));
 
     $payment = $unpaid ? 0 : max(0, (int) round((float) ($order['total'] ?? 0)) - (int) round((float) ($order['refunded_amount'] ?? 0)));
-    $gift_card = max(0, (int) round((float) ($order['gift_card_discount'] ?? 0)));
+    if (array_key_exists('gift_card_owed', $order)) {
+        $gift_card = max(0, (int) round((float) $order['gift_card_owed']));
+    } else {
+        $gift_card = ((int) ($order['id'] ?? 0) > 0) ? pg_order_gift_card_owed((int) $order['id']) : 0;
+    }
 
     return array('payment' => $payment, 'gift_card' => $gift_card, 'total' => $payment + $gift_card);
 }
@@ -12064,7 +12084,63 @@ function pg_order_cancel_refund_owed_sql($has_paid_at, $has_refunded_amount)
         $payment = "(CASE WHEN orders.payment_method IN (" . implode(', ', $methods) . ") AND orders.paid_at = 0 THEN 0 ELSE " . $payment . " END)";
     }
 
-    return '(' . $payment . ' + COALESCE(orders.gift_card_discount, 0))';
+    // order_refunds arrived with refunded_amount (2026.1.14).
+    return '(' . $payment . ' + ' . pg_order_gift_card_owed_sql('orders.id', $has_refunded_amount) . ')';
+}
+
+// What gift cards really gave an order, in minor units: the sum of its
+// applied_gift_cards.amount. pg_order_complete_gift_cards() writes the amount
+// on each card it redeemed and deletes the rows of cards that failed, so a
+// card that could not be redeemed (spent by another order at the same moment,
+// deleted, a Givex error) counts nothing, while orders.gift_card_discount
+// keeps what was asked of the cards. $order_id_sql is the SQL expression of
+// the order id (a column such as 'orders.id', or a quoted integer). The ERP
+// invoice settles this figure alone (erp_invoice_from_order_locked()).
+function pg_order_gift_card_redeemed_sql($order_id_sql = 'orders.id')
+{
+    return '(SELECT COALESCE(SUM(applied_gift_cards.amount), 0) FROM applied_gift_cards WHERE applied_gift_cards.order_id = ' . $order_id_sql . ')';
+}
+
+// The gift card part an order still owes back, as one SQL expression in minor
+// units: what the cards gave (pg_order_gift_card_redeemed_sql()) less the
+// amount_cents of the order's order_refunds rows of refund_type
+// 'return_gift_card' (what a return already gave back of that part), never
+// below 0. $has_order_refunds false leaves the second term out (a schema
+// before order_refunds). pg_order_gift_card_owed() reads it for one order,
+// pg_order_gift_card_owed_amount() is the same sum in PHP.
+function pg_order_gift_card_owed_sql($order_id_sql = 'orders.id', $has_order_refunds = true)
+{
+    $redeemed = pg_order_gift_card_redeemed_sql($order_id_sql);
+
+    if (!$has_order_refunds) {
+        return 'GREATEST(0, CAST(' . $redeemed . ' AS SIGNED))';
+    }
+
+    $returned = "(SELECT COALESCE(SUM(order_refunds.amount_cents), 0) FROM order_refunds WHERE order_refunds.order_id = " . $order_id_sql . " AND order_refunds.refund_type = 'return_gift_card')";
+
+    return 'GREATEST(0, CAST(' . $redeemed . ' AS SIGNED) - CAST(' . $returned . ' AS SIGNED))';
+}
+
+// pg_order_gift_card_owed_sql() in PHP: what the cards gave less what a return
+// gave back of it, in minor units, never below 0.
+function pg_order_gift_card_owed_amount($redeemed, $returned)
+{
+    return max(0, (int) round((float) $redeemed) - (int) round((float) $returned));
+}
+
+// The gift card part one order still owes back, in minor units
+// (pg_order_gift_card_owed_sql()); 0 when the query fails.
+function pg_order_gift_card_owed($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return 0;
+    }
+
+    $owed = db_value('SELECT ' . pg_order_gift_card_owed_sql("'" . $order_id . "'", pg_schema_has('order_refunds', 'refund_type')));
+
+    return max(0, (int) $owed);
 }
 
 // How an order is named in a site log line: its order number, the one the

@@ -257,62 +257,7 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
-	$parts = parse_url($url);
-
-	$port = isset($parts['port'])
-		? (int)$parts['port']
-		: (strtolower($parts['scheme']) === 'https' ? 443 : 80);
-
-	$handle = curl_init($url);
-
-	curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
-
-	// A HEAD answer has no body; without this curl waits for one.
-	if ($method === 'HEAD') {
-
-		curl_setopt($handle, CURLOPT_NOBODY, true);
-
-	}
-
-	if ($body !== null && $method !== 'GET' && $method !== 'HEAD') {
-
-		curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
-
-	}
-
-	curl_setopt($handle, CURLOPT_HTTPHEADER, $headers);
-	curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($handle, CURLOPT_TIMEOUT, $settings['timeout']);
-	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, $settings['connect_timeout']);
-	curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
-
-	if ($settings['decode']) {
-
-		curl_setopt($handle, CURLOPT_ENCODING, '');
-
-	}
-
-	// The certificate is verified against the store the site chose
-	// (pg_ca_bundle_effective(): the CURL_CA_BUNDLE override, the shipped
-	// data/cacert.pem on a host whose own store is missing or failing, else
-	// the server's own) - the same choice the update channel makes. There
-	// is deliberately no insecure fallback: a delivery whose receiver cannot
-	// be identified is a delivery to whoever answered, and this client is
-	// what carries webhooks, push and the keys to the shop's marketplace
-	// accounts.
-	curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, 1);
-	curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 2);
-
-	$ca_file = pg_ca_bundle_effective();
-
-	if ($ca_file !== '') {
-		curl_setopt($handle, CURLOPT_CAINFO, $ca_file);
-	}
-
-	curl_setopt($handle, CURLOPT_USERAGENT, $settings['user_agent']);
-
-	// The address that was checked is the address that is called.
-	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
+	$handle = api_http_curl_handle($url, $settings, $check);
 
 	$received = array();
 
@@ -419,6 +364,245 @@ function api_http_request($method, $url, $options = array()) {
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
 	return $result;
+
+}
+
+// Several requests sent together, at most $concurrency at a time, each with
+// what api_http_request() gives one alone: the address check, the pinned
+// address, the agent, the timeout, max_body and, asked for, the response
+// headers. $requests holds array('method', 'url', 'options') items under any
+// keys; the answer holds api_http_request()'s answer for each under the same
+// keys, in the same order. The options that read a body as it arrives
+// (complete, write) and head_get_on_405 belong to one request at a time and
+// are not taken here. Where curl_multi is missing the requests go one after
+// another through api_http_request().
+function api_http_request_many($requests, $concurrency = 20) {
+
+	$results = array();
+
+	if (!function_exists('curl_multi_init') || !function_exists('curl_init')) {
+
+		foreach ($requests as $key => $request) {
+
+			$results[$key] = api_http_request($request['method'], $request['url'], isset($request['options']) ? (array)$request['options'] : array());
+
+		}
+
+		return $results;
+
+	}
+
+	foreach (array_chunk($requests, max(1, (int)$concurrency), true) as $group) {
+
+		foreach (api_http_request_group($group) as $key => $result) {
+
+			$results[$key] = $result;
+
+		}
+
+	}
+
+	return $results;
+
+}
+
+// One group of api_http_request_many(), all on the wire at once through
+// curl_multi. A request whose address is refused never reaches curl.
+function api_http_request_group($requests) {
+
+	$results = array();
+
+	$pending = array();
+
+	$received = array();
+
+	$multi = curl_multi_init();
+
+	foreach ($requests as $key => $request) {
+
+		$options = isset($request['options']) ? (array)$request['options'] : array();
+
+		$results[$key] = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'errno' => 0, 'duration_ms' => 0);
+
+		if (!empty($options['response_headers'])) {
+
+			$results[$key]['headers'] = array();
+
+		}
+
+		$settings = api_http_request_settings($request['method'], $options);
+
+		$check = api_http_check_url($request['url'], $settings['allow_http']);
+
+		if (!$check['ok']) {
+
+			$results[$key]['error'] = $check['error'];
+
+			continue;
+
+		}
+
+		$handle = api_http_curl_handle($request['url'], $settings, $check);
+
+		if (!empty($options['response_headers'])) {
+
+			$received[$key] = array();
+
+			curl_setopt($handle, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$received, $key) {
+
+				$received[$key] = api_http_header_line($received[$key], $line);
+
+				return strlen($line);
+
+			});
+
+		}
+
+		curl_multi_add_handle($multi, $handle);
+
+		$pending[$key] = array('handle' => $handle, 'max_body' => $settings['max_body'], 'errno' => 0);
+
+	}
+
+	// Every handle has its own timeout, so the loop ends within the longest.
+	do {
+
+		$state = curl_multi_exec($multi, $running);
+
+		if (($running > 0) && (curl_multi_select($multi, 1.0) === -1)) {
+
+			usleep(10000);
+
+		}
+
+	} while (($running > 0) && (($state === CURLM_OK) || ($state === CURLM_CALL_MULTI_PERFORM)));
+
+	// A transfer's own result code is read from the multi handle; curl_errno()
+	// on an easy handle run by curl_multi says nothing.
+	while ($info = curl_multi_info_read($multi)) {
+
+		foreach ($pending as $key => $item) {
+
+			if ($item['handle'] === $info['handle']) {
+
+				$pending[$key]['errno'] = (int)$info['result'];
+
+			}
+
+		}
+
+	}
+
+	foreach ($pending as $key => $item) {
+
+		$handle = $item['handle'];
+
+		if ($item['errno'] !== 0) {
+
+			$results[$key]['errno'] = $item['errno'];
+
+			$results[$key]['error'] = curl_strerror($item['errno'])
+				. (function_exists('pg_curl_tls_hint') ? pg_curl_tls_hint($item['errno']) : '');
+
+		} else {
+
+			$response = (string)curl_multi_getcontent($handle);
+
+			$results[$key]['status'] = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
+
+			$results[$key]['body'] = ($item['max_body'] > 0) ? substr($response, 0, $item['max_body']) : $response;
+
+			$results[$key]['ok'] = ($results[$key]['status'] >= 200 && $results[$key]['status'] < 300);
+
+		}
+
+		if (isset($received[$key])) {
+
+			$results[$key]['headers'] = $received[$key];
+
+		}
+
+		$results[$key]['duration_ms'] = (int)round(((float)curl_getinfo($handle, CURLINFO_TOTAL_TIME)) * 1000);
+
+		curl_multi_remove_handle($multi, $handle);
+
+	}
+
+	curl_multi_close($multi);
+
+	return $results;
+
+}
+
+// A curl handle for one request whose address api_http_check_url() passed:
+// the method, body and headers, the timeouts, no redirects, the verified
+// certificate, the user agent, and curl pinned to the address that was
+// checked. api_http_request() and api_http_request_many() both build theirs
+// here, so a request sent with others is guarded as one sent alone.
+function api_http_curl_handle($url, $settings, $check) {
+
+	$parts = parse_url($url);
+
+	$port = isset($parts['port'])
+		? (int)$parts['port']
+		: (strtolower($parts['scheme']) === 'https' ? 443 : 80);
+
+	$handle = curl_init($url);
+
+	$method  = $settings['method'];
+	$body    = $settings['body'];
+	$headers = $settings['headers'];
+
+	curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
+
+	// A HEAD answer has no body; without this curl waits for one.
+	if ($method === 'HEAD') {
+
+		curl_setopt($handle, CURLOPT_NOBODY, true);
+
+	}
+
+	if ($body !== null && $method !== 'GET' && $method !== 'HEAD') {
+
+		curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
+
+	}
+
+	curl_setopt($handle, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($handle, CURLOPT_TIMEOUT, $settings['timeout']);
+	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, $settings['connect_timeout']);
+	curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
+
+	if ($settings['decode']) {
+
+		curl_setopt($handle, CURLOPT_ENCODING, '');
+
+	}
+
+	// The certificate is verified against the store the site chose
+	// (pg_ca_bundle_effective(): the CURL_CA_BUNDLE override, the shipped
+	// data/cacert.pem on a host whose own store is missing or failing, else
+	// the server's own) - the same choice the update channel makes. There
+	// is deliberately no insecure fallback: a delivery whose receiver cannot
+	// be identified is a delivery to whoever answered, and this client is
+	// what carries webhooks, push and the keys to the shop's marketplace
+	// accounts.
+	curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, 1);
+	curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 2);
+
+	$ca_file = pg_ca_bundle_effective();
+
+	if ($ca_file !== '') {
+		curl_setopt($handle, CURLOPT_CAINFO, $ca_file);
+	}
+
+	curl_setopt($handle, CURLOPT_USERAGENT, $settings['user_agent']);
+
+	// The address that was checked is the address that is called.
+	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
+
+	return $handle;
 
 }
 

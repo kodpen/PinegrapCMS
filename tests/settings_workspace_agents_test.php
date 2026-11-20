@@ -106,7 +106,9 @@ function test_settings_workspace_agents_form_shows_the_kind_fields()
 	// The dialog's form: no form of its own, fields by id, named buttons.
 	pg_assert_contains("return \$dialog ? 'ws_agent[' . \$id . '][' . \$field . ']' : 'agent_' . \$field;", $form, 'the names');
 	pg_assert_contains("if (\$dialog) {\n        return '<div class=\"ws-agent-form\">' . \$body . '</div>';", $form, 'no form in the dialog');
-	pg_assert_contains("'<button type=\"submit\" name=\"ws_' . \$action . '\" value=\"' . \$id . '\" form=\"' . h(\$form) . '\"", $form, 'a named button of the settings form');
+	$buttons = settings_workspace_agents_test_function('includes/workspace/agents_settings.php', 'ws_agents_settings_buttons');
+	pg_assert_contains("'<button type=\"submit\" name=\"ws_' . \$action . '\" value=\"' . \$id . '\" form=\"' . h(\$form) . '\"", $buttons, 'a named button of the settings form');
+	pg_assert_contains("(\$admin && !\$dialog) ? '<div class=\"d-flex gap-3 mt-5\">' . ws_agents_settings_buttons(\$agent, \$admin)", $form, 'the old screen keeps them under its form; the dialog\'s stand in the drawer\'s foot');
 
 	$activity = settings_workspace_agents_test_function('includes/workspace/agent_activity.php', 'ws_agent_activity_block');
 	pg_assert_contains("'<button type=\"submit\" name=\"ws_' . \$action . '\" value=\"' . (int) \$row['id'] . '\" form=\"' . h(\$form) . '\"", $activity, 'a request row\'s button carries the request');

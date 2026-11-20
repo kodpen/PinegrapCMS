@@ -129,7 +129,7 @@ function test_designer_turkish_terms_flex_wrap_has_own_key()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("['wrap',_sdT('Wrap Lines')]", $source);
 	pg_assert_contains("row(_sdT('Wrap'),", $source);
-	pg_assert_contains("mkRespRow(_sdT('Flex Wrap'),", $source);
+	pg_assert_contains("wrap:         [_sdT('Flex Wrap'),", $source);
 	pg_assert_same('Satır Kaydırma', $language['Wrap Lines']);
 	pg_assert_same('Satır Kaydırma', $language['Flex Wrap']);
 	pg_assert_same('Satır Kaydırma Yok', $language['No Wrap']);

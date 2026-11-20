@@ -29,6 +29,24 @@
         return (n < 10 ? '0' : '') + n;
     }
 
+    // The date (YYYY-MM-DD) in a zone at a moment: the free days are the
+    // site's, so the calendar opens on the site's today, not the visitor's.
+    // The visitor's own date where the browser cannot read the zone.
+    function zoneToday(zone, now) {
+        try {
+            var out = {};
+            new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now).forEach(function (part) {
+                out[part.type] = part.value;
+            });
+            if (/^\d{4}$/.test(out.year) && /^\d{2}$/.test(out.month) && /^\d{2}$/.test(out.day)) {
+                return out.year + '-' + out.month + '-' + out.day;
+            }
+        } catch (e) {
+            // An unknown zone or no Intl: the visitor's date below.
+        }
+        return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    }
+
     function readSettings(root) {
         try {
             return JSON.parse(root.getAttribute('data-pg-booking')) || null;
@@ -157,7 +175,7 @@
     };
 
     Widget.prototype.openWhen = function () {
-        var self = this, today = new Date(), month = today.getFullYear() + '-' + pad(today.getMonth() + 1);
+        var self = this, today = zoneToday(this.s.zone, new Date()), month = today.slice(0, 7);
         this.state.day = '';
         this.state.month = month;
         var times = this.part('times');
@@ -178,7 +196,7 @@
                 days: [],
                 locale: self.lang,
                 firstWeekday: self.lang === 'tr' ? 1 : 0,
-                dateMin: today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate()),
+                dateMin: today,
                 onPick: function (iso) {
                     self.pickDay(iso);
                 },

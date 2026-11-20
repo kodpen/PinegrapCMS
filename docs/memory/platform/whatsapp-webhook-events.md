@@ -16,6 +16,7 @@ module: whatsapp_webhook
 
 ## What happens to a customer's message?
 - `whatsapp_inbox` (step 11.0.198, approved in #9085): one row per wamid (`INSERT IGNORE` on the UNIQUE key, so Meta's second delivery is neither kept nor announced again). Kept only while the card's switch is on.
+- No read mark: 11.0.237 drops the unused `read_user_id`, `read_at` (#10402).
 - Text: the text, a caption, a document's file name, a button's or list item's title, a reaction's emoji, a place's name; cut at 4096 characters. Media keeps Meta's media id and type only (not downloaded).
 - Contact: the newest contact whose mobile phone is the number however typed (`pg_sms_number_variants()`, `pg_sms_number_sql()`), else the contact of the same WhatsApp user id's last message (a username without a number).
 - Bell: action `whatsapp_message` (title the text, order_total the sender, form_id the row), for role below 3; the user role needs the contacts right and the row's contact in one of its contact groups (`pg_notification_whatsapp_visible()`, `pg_contact_owner_sql()`), so an unmatched number is staff only; module Shop (`pg_notification_module()`); it opens the contact, else Contacts. No device banner.
@@ -23,7 +24,7 @@ module: whatsapp_webhook
 - With the Workspace on and a channel named on the card it also becomes a conversation there (`workspace/mail-phone-conversations.md`).
 - Kept two years (`pg_whatsapp_inbox_sweep()` in `job.php`, 1000 rows a run); a contact holder (merge move, erase find) and erased by number or contact as "WhatsApp messages received".
 
-- A new message (not a retry of a wamid already kept) is announced as `whatsapp.received` after the bell notice (WA7, #9372): flows start on "A WhatsApp message arrived" and the API's webhooks get it (`workspace/workspace-flows-whatsapp-box.md`).
+- A new wamid's message is announced as `whatsapp.received` after the bell notice (WA7, #9372): flows start on "A WhatsApp message arrived" and the API's webhooks get it (`workspace/workspace-flows-whatsapp-box.md`).
 
 ## How was it verified?
 - `tests/whatsapp_webhook_test.php` (events, states, template changes, notice, bell visibility, history line, wiring), `privacy_erase_test.php`, `contact_holders_test.php`. No database and no Meta account in the cloud session: the step, the writes and a real post were not run.

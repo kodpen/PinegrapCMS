@@ -67,6 +67,76 @@ class PHPExcel_Shared_OLERead
     public $summaryInformation              = null;
     public $documentSummaryInformation      = null;
 
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $numBigBlockDepotBlocks;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $rootStartBlock;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $sbdStartBlock;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $extensionBlock;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $numExtensionBlocks;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var string
+     */
+    public $bigBlockChain;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var string
+     */
+    public $smallBlockChain;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var string
+     */
+    public $entry;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var int
+     */
+    public $rootentry;
+
+    /**
+     * Header values, block chains and directory entries read from the file
+     *
+     * @var array
+     */
+    public $props;
+
 
     /**
      * Read the file

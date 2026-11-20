@@ -91,6 +91,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         'offer_message' => '(SELECT offers.description FROM offers WHERE offers.code = key_codes.offer_code LIMIT 1)',
     )));
 
+    pg_list_excel_capture(array('expiration_date' => 'date', 'last_modified' => 'date'), lang('Key Codes'));
     pg_csv_download_start('key_codes.csv');
 
     // Output column headings for CSV data.

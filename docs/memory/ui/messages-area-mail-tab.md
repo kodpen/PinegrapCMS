@@ -20,6 +20,8 @@ module: messages_area
 
 ## Where is the unread number?
 - On row 9's badge (`pg_messages_mail_unread()` = `ws_mail_unread_count()`), counted when the person may open the tab; the screen's script no longer finds a tile to update, so the badge changes on the next page.
+- A person who pinned the tab (Pin to main menu on its toolbar) gets row 27 too, with the same count; the tab then lights row 27 (`main-menu-mail-row.md`, IM1 #10408).
+- The new dashboard's Incoming e-mail card shows it in its head, above the newest conversations (`dashboard-v2-mail-card.md`, IM2 #10429).
 
 ## What comes next?
 - MA10b2 (#9473): an HTML body for a written e-mail (`workspace/mail-html-written.md`). Mail with the Workspace off: `workspace/mail-workspace-off.md`.

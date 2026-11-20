@@ -108,7 +108,8 @@ function ws_channel_brief($row, $unread = 0, $mentions = 0)
         'kind_icon'  => ws_channel_kind_icon($row),
         'department_id' => (int) $row['department_id'],
         'archived'   => ((int) $row['archived_at'] > 0),
-        // Read only here; /agent-channel sets it (agent_channel.php).
+        // Set by ws_agent_channel_set() (agent_channel.php): the command,
+        // Channel settings and the New channel form.
         'agent_channel' => !empty($row['agent_channel']),
         'unread'     => (int) $unread,
         'mentions'   => (int) $mentions,
@@ -298,11 +299,12 @@ function ws_channel_detail($viewer, $channel)
 
 /**
  * What the channel's tabs hold, for the marks beside their names: the
- * decisions and notes, the open tasks, and whether the summary is written.
- * Two indexed counts (ws_messages.idx_kind, ws_tasks.idx_channel).
+ * decisions and notes, the open tasks, the files posted, and whether the
+ * summary is written. Three counts on indexes led by channel_id
+ * (ws_messages.idx_kind and idx_touched, ws_tasks.idx_channel).
  *
  * @param array $channel
- * @return array decisions, tasks, summary
+ * @return array decisions, tasks, files, summary
  */
 function ws_channel_tab_counts($channel)
 {
@@ -313,6 +315,10 @@ function ws_channel_tab_counts($channel)
             WHERE channel_id = '" . $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0"),
         'tasks'     => (int) db_value("SELECT COUNT(*) FROM ws_tasks
             WHERE channel_id = '" . $channel_id . "' AND status NOT IN ('done', 'cancelled')"),
+        // Every file of the channel, as ws_channel_file_rows() reads them
+        // without its page limit: the tab says how many there are.
+        'files'     => (int) db_value("SELECT COUNT(*) FROM ws_messages
+            WHERE channel_id = '" . $channel_id . "' AND file_id > 0 AND deleted_at = 0"),
         'summary'   => (trim((string) ($channel['summary'] ?? '')) !== ''),
     );
 }
