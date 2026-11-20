@@ -246,3 +246,158 @@ function test_image_editor_motion_click_keeps_playhead()
 	pg_assert_same(array(7), $r['ctrl']['sel'], 'and select the layer');
 	pg_assert_same('in', $r['ctrl']['tab'], 'without the key press of the Path tab');
 }
+
+// A text being typed (a 40 x 20 text 9 at 60, 60) with textKeep set by a
+// press on the panel, so the typing box's blur ends nothing, as on a phone.
+function image_editor_select_press_typing()
+{
+	return 'function typing(tool) {' . "\n"
+		. ' var e = fake(tool);' . "\n"
+		. ' e.tools = { list: ["select", "text", "motion"] }; e.root = { classList: { add: none, remove: none } };' . "\n"
+		. ' e.doc.layers.push({ id: 9, type: "text", text: "Hi", x: 60, y: 60, w: 40, h: 20, rot: 0, opacity: 1 });' . "\n"
+		. ' e.textEdit = { id: 9, layer: e.doc.layers[2], area: { parentNode: null }, key: "type-1" }; e.textKeep = true; e.sel = [9];' . "\n"
+		. ' return e;' . "\n"
+		. '}' . "\n";
+}
+
+// The fault of a phone: a text typed, then Animate or Select picked, kept
+// the typing on; its box lay over the text and kept the presses, so neither
+// tool picked the text until a press with the Text tool ended it. Another
+// tool and a press on the stage in one now end it; the Text tool keeps it.
+function test_image_editor_typing_ends_with_another_tool()
+{
+	$r = image_editor_select_press_node(
+		image_editor_select_press_typing()
+		. 'var out = {}, e = typing("text");' . "\n"
+		. 'e.pickTool("motion"); out.motion = { typing: !!e.textEdit, tool: e.tool, keep: e.textKeep };' . "\n"
+		. 'press(e, 70, 70); out.motionPress = { sel: e.sel };' . "\n"
+		. 'e = typing("text"); e.pickTool("select"); press(e, 70, 70, null, [80, 75]); out.select = { typing: !!e.textEdit, sel: e.sel, x: e.doc.layers[2].x };' . "\n"
+		. 'e = typing("select"); press(e, 20, 20); out.press = { typing: !!e.textEdit, sel: e.sel };' . "\n"
+		. 'e = typing("motion"); e.sel = []; e.time = 1200; press(e, 70, 70); out.animate = { typing: !!e.textEdit, sel: e.sel, time: e.time };' . "\n"
+		. 'e = typing("text"); e.pickTool("text"); out.text = !!e.textEdit; e.pickTool("nothing"); out.unknown = !!e.textEdit;' . "\n"
+		. 'console.log(JSON.stringify(out));',
+		true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_false($r['motion']['typing'], 'Animate ends the typing');
+	pg_assert_same('motion', $r['motion']['tool'], 'and is the tool');
+	pg_assert_false($r['motion']['keep'], 'no textKeep is left for the next typing');
+	pg_assert_same(array(9), $r['motionPress']['sel'], 'a tap in Animate picks the text');
+	pg_assert_false($r['select']['typing'], 'Select ends the typing');
+	pg_assert_same(array(9), $r['select']['sel'], 'a press picks the text');
+	pg_assert_same(70, (int) $r['select']['x'], 'and a drag moves it');
+	pg_assert_false($r['press']['typing'], 'a press on the stage in Select ends the typing');
+	pg_assert_same(array(7), $r['press']['sel'], 'and picks what it lands on');
+	pg_assert_false($r['animate']['typing'], 'a press in Animate ends the typing');
+	pg_assert_same(array(9), $r['animate']['sel'], 'and picks the text at the playhead');
+	pg_assert_same(1200, $r['animate']['time'], 'the playhead stays');
+	pg_assert_true($r['text'], 'the Text tool keeps the typing');
+	pg_assert_true($r['unknown'], 'a tool the editor lacks changes nothing');
+}
+
+// A finger keeps a selected layer as far as its reach (22 screen px) beyond
+// it, so a small one moves by a drag anywhere on it; a mouse 4 px, an
+// unselected layer its usual slack; a layer above still takes the press
+// where it lies. M.hitLayer()'s picked option.
+function test_image_editor_finger_reach_keeps_picked_layer()
+{
+	$r = image_editor_select_press_node(
+		'var out = {}, doc = { layers: [{ id: 1, type: "image", x: 0, y: 0, w: 10, h: 6 }, { id: 2, type: "image", x: 20, y: 0, w: 10, h: 6 }] };' . "\n"
+		. 'var id = function (l) { return l ? l.id : null; };' . "\n"
+		. 'out.model = [id(M.hitLayer(doc, 5, 20, 4)), id(M.hitLayer(doc, 5, 20, 4, null, { ids: [1], reach: 22 })), id(M.hitLayer(doc, -15, 20, 4, null, { ids: [2], reach: 22 })),' . "\n"
+		. ' id(M.hitLayer(doc, 22, 3, 4, null, { ids: [1], reach: 22 })), id(M.hitLayer(doc, 5, 40, 4, null, { ids: [1], reach: 22 }))];' . "\n"
+		. 'function small(tool) { var e = fake(tool); e.doc.layers.push({ id: 9, type: "text", text: "a", x: 60, y: 60, w: 10, h: 6, rot: 0, opacity: 1 }); e.sel = [9]; return e; }' . "\n"
+		. 'var e = small("select"); press(e, 65, 81, { pointerType: "touch" }, [75, 91]); out.touch = { sel: e.sel, x: e.doc.layers[2].x, y: e.doc.layers[2].y };' . "\n"
+		. 'e = small("select"); press(e, 65, 81, null, [75, 91]); out.mouse = { sel: e.sel, x: e.doc.layers[2].x };' . "\n"
+		. 'e = small("select"); e.sel = []; press(e, 65, 81, { pointerType: "touch" }); out.unpicked = e.sel;' . "\n"
+		. 'e = small("motion"); press(e, 65, 81, { pointerType: "touch" }, [75, 91]); out.motion = { sel: e.sel, x: e.doc.layers[2].x };' . "\n"
+		. 'console.log(JSON.stringify(out));',
+		true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(null, 1, null, 2, null), $r['model'], 'an unpicked layer its slack, a picked one its reach, a layer above where it lies, nothing beyond');
+	pg_assert_same(array(9), $r['touch']['sel'], 'a finger 15 px under a small selected text keeps it');
+	pg_assert_same(array(70, 70), array((int) $r['touch']['x'], (int) $r['touch']['y']), 'and drags it');
+	pg_assert_same(array(), $r['mouse']['sel'], 'a mouse there misses it');
+	pg_assert_same(60, (int) $r['mouse']['x'], 'and leaves it');
+	pg_assert_same(array(), $r['unpicked'], 'an unselected layer is not reached');
+	pg_assert_same(array(9), $r['motion']['sel'], 'Animate keeps it too');
+	pg_assert_same(70, (int) $r['motion']['x'], 'and drags it at rest');
+}
+
+// Animate at a moment: a layer shows moved, scaled and turned by its keys;
+// a press is taken back to its rest (M.restPoint()), a finger reaching a
+// selected layer's box from outside and any layer's up to its edge; a mouse
+// 4 px inside, as before.
+function test_image_editor_animate_hit_where_it_shows()
+{
+	$r = image_editor_select_press_node(
+		'var out = {}, l = { id: 1, x: 60, y: 60, w: 10, h: 6 };' . "\n"
+		. 'out.rest = [M.restPoint(l, { x: 40, y: 0, scale: 3, rot: 0 }, 115, 70), M.restPoint(l, { x: 0, y: 0, scale: 1, rot: 90 }, 65, 68), M.restPoint(l, { x: 0, y: 0, scale: 0, rot: 0 }, 65, 63)];' . "\n"
+		. 'function keyed(tool) {' . "\n"
+		. ' var e = fake(tool), t = { id: 9, type: "text", text: "a", x: 60, y: 60, w: 10, h: 6, rot: 0, opacity: 1 };' . "\n"
+		. ' t.anim = { keys: [{ t: 0, x: 0, y: 0, scale: 1, rot: 0, opacity: 1 }, { t: 1200, x: 40, y: 0, scale: 3, rot: 0, opacity: 1 }] };' . "\n"
+		. ' e.doc.layers.push(t); e.time = 1200; return e;' . "\n"
+		. '}' . "\n"
+		. 'var e = keyed("motion"); out.scaled = [e.keyHit([115, 70], 0, "touch"), e.keyHit([115, 70], 0, "mouse"), e.keyHit([100, 63], 0, "mouse")].map(function (h) { return h ? h.id : null; });' . "\n"
+		. 'e.sel = [9]; out.reach = [e.keyHit([105, 80], 0, "touch"), e.keyHit([105, 80], 0, "mouse")].map(function (h) { return h ? h.id : null; });' . "\n"
+		. 'e = keyed("motion"); press(e, 115, 70, { pointerType: "touch" }); out.tap = { sel: e.sel, time: e.time };' . "\n"
+		. 'console.log(JSON.stringify(out));',
+		true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(68.333, 65.333), array(round($r['rest'][0][0], 3), round($r['rest'][0][1], 3)), 'moved and scaled three times: back to rest');
+	pg_assert_same(array(70.0, 63.0), array(round($r['rest'][1][0], 3), round($r['rest'][1][1], 3)), 'turned a quarter: back to rest');
+	pg_assert_same(null, $r['rest'][2], 'scaled to nothing: no point');
+	pg_assert_same(array(9, null, 9), $r['scaled'], 'a finger on its scaled place; a mouse 4 px inside it');
+	pg_assert_same(array(9, null), $r['reach'], 'a finger 8 px under it when it is selected, not a mouse');
+	pg_assert_same(array(9), $r['tap']['sel'], 'a tap picks the text where it shows');
+	pg_assert_same(1200, $r['tap']['time'], 'at the playhead');
+}
+
+// The arrows nudge the selected layers that move, 1 px or 10 px, a locked
+// or fixed one staying; nudges in a row are one undo step, as the arrow
+// keys' (layerKey()).
+function test_image_editor_nudge_one_undo_step()
+{
+	$r = image_editor_select_press_node(
+		'var e = fake("select"), out = {};' . "\n"
+		. 'e.history = new M.History(); e.change = function (fn, key) { this.history.push(M.clone(this.doc), key); fn(this.doc); };' . "\n"
+		. 'e.doc.layers[1].locked = true; e.sel = [7, 8];' . "\n"
+		. 'out.moved = [e.nudge("left"), e.nudge("down", true), e.nudge("right", true)];' . "\n"
+		. 'out.at = [e.doc.layers[0].x, e.doc.layers[0].y, e.doc.layers[1].x]; out.steps = e.history.past.length;' . "\n"
+		. 'out.key = e.layerKey({ shiftKey: true, target: {} }, false, "ArrowUp"); out.up = e.doc.layers[0].y; out.keySteps = e.history.past.length;' . "\n"
+		. 'e.sel = [8]; out.locked = e.nudge("up"); out.other = e.nudge("sideways");' . "\n"
+		. 'console.log(JSON.stringify(out));',
+		true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(true, true, true), $r['moved'], 'each nudge moves');
+	pg_assert_same(array(19, 20, 120), $r['at'], '1 px left, 10 px down, 10 px right; the locked one stays');
+	pg_assert_same(1, $r['steps'], 'one undo step');
+	pg_assert_true($r['key'], 'Shift and an arrow key nudge');
+	pg_assert_same(10, $r['up'], '10 px up');
+	pg_assert_same(1, $r['keySteps'], 'in the same undo step');
+	pg_assert_false($r['locked'], 'a locked layer does not move');
+	pg_assert_false($r['other'], 'nor another direction');
+}

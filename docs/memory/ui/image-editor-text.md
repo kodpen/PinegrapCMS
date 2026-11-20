@@ -14,7 +14,7 @@ module: image_editor
 
 ## How does typing work?
 - The Text tool: a press on a text or a handle moves, sizes and turns it as Select does; elsewhere a `<textarea>` opens over that point in the layer's letters at the view's zoom. The layer joins the document with the first letter and the whole typing is one undo step; ending with an empty text removes it.
-- Double click (Select or Text) or Enter on one selected text types into it. Escape or Ctrl+Enter ends; Enter is a new line; a press on the stage ends it. A press on the panel keeps the typing on and gives the caret back after a button. While typing, the selection handles hide (`.pgie-typing`).
+- Double click (Select or Text) or Enter on one selected text types into it. Escape or Ctrl+Enter ends; Enter is a new line; a press on the stage ends it, and so does another tool (`pickTool()`; in any tool but Text a stage press ends it before the tool takes the press, #10500). A press on the panel keeps the typing on and gives the caret back after a button. While typing, the selection handles hide (`.pgie-typing`).
 - A new text takes the style last chosen (`editor.textStyle`); its size, until one is chosen, is a twelfth of the picture's shorter side.
 
 ## Which fonts are offered?
