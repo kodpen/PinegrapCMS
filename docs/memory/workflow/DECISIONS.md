@@ -478,6 +478,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-9.md: May a customer without an account accept a sales quote by link? (#3671)
 - decisions-made-product-9.md: Sales quote templates and the expiry follow-up switch (#3672)
 - decisions-made-product-9.md: Does the Workspace get a density switch and a rounded display font? (#3673)
+- decisions-made-product-90.md: Where are the rules and the earlier parts?
+- decisions-made-product-90.md: Should the store learn each customer's own rhythm and each product's reorder time, and hand due, late and slipping customers to flows and campaigns? (owner, 2026-11-20, agent channel poll 176, channel message 10524)
+- decisions-made-product-90.md: Should the store measure each carrier's real delivery time per province and find stuck, not handed over and problem parcels before the customer asks? (owner, 2026-11-20, agent channel poll 178, channel message 10566)
+- decisions-made-product-90.md: Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
+- decisions-made-product-90.md: Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
