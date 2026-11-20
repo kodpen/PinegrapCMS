@@ -15,6 +15,8 @@ description: Generated from the module field of the memory files: each includes/
 - `activitypub_settings`: [[fediverse-settings]]
 - `address_autocomplete`: [[address-autocomplete]]
 - `ads`: [[api-design-ads]]
+- `agent_guide`: [[agent-guide-engine]]
+- `agent_guide_start`: [[agent-guide-engine]]
 - `ai_connections`: [[ai-connections]], [[ai-connections-feature-cards]]
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]

@@ -410,6 +410,7 @@
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: The label filter of the Options panel's search box (filterPropertiesPanel()): what it hides, sections without rows, the No option matches line, Turkish İ and capitals
+- designer-options-review.md: Options panel "Only what I changed" (DP9, #10699): the switch at the bottom with the count, the list of changed rows of all three tabs, "Reset all" as one undo step
 - designer-options-search.md: Options panel "Search or add an option…" (DP8, #10658): three tabs by label, section, CSS property, class prefix; results with path; Enter opens the row; no result offers the class
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
 - designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps

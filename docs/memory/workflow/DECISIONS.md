@@ -796,7 +796,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
-- api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
+- api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Design, Content, Store, Accounting, All; #1716, #10709): what each ticks, why record writes are ticked by hand
 - api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
@@ -1160,6 +1160,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
