@@ -1,11 +1,11 @@
 ---
 name: designer-canvas-bar-prototype
-description: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, and the room kept for the Comments button
+description: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6)
 ---
 
 ## What does the bar show in Prototype mode?
 - The mode switch's Prototype side opens the view; `_sdProtoOpen()` calls `_sdCanvasBarMode(true)`: `#sd-bp-bar` gets `sd-bp-proto` and the View menu closes. The switch stays; the canvas zone (`.sd-bp-canvas`) and the tools (`.sd-bp-tools`, their line `.sd-bp-zsep-tools`) hide; the `.sd-bp-pv` zones show (D59).
-- `_sdProtoBuild()` adds them to the bar once, at the first opening. The map zone `.sd-bp-pmap` (group "Prototype map"): the count `.sd-bp-pcount` ("N pages · N links", role status), "N broken", "N to check", a line, − % + and Fit. Then a zone line and the tools zone `.sd-bp-ptools`: "All arrows", "Tidy up", "Suggest targets · n", "Links", "Play", "Read the links again".
+- `_sdProtoBuild()` adds them to the bar once, at the first opening. The map zone `.sd-bp-pmap` (group "Prototype map"): the count `.sd-bp-pcount` ("N pages · N links", role status), "N broken", "N to check", a line, − % + and Fit. Then a zone line and the tools zone `.sd-bp-ptools`: "All arrows", "Tidy up", "Suggest targets · n", "Links", "Comments", "Play", "Read the links again".
 - No sizes, no View menu, no Close button: the switch's Design side or Escape closes the view; `_sdProtoClose()` calls `_sdCanvasBarMode(false)` and focuses `#sd-vb-design`.
 
 ## Where did the old bar's controls go (D60)?
@@ -21,8 +21,9 @@ description: The canvas bar's Prototype mode (DP24, #10507): its zones, where ea
 - As in Design mode (designer/designer-narrow-screen-bars.md); the class change makes the bar's MutationObserver measure again. Level 1 hides the count first (its words stay in the map zone's title), level 3 the labels (`.sd-vb-txt`); "Suggest targets" keeps its count. No control hides.
 - "All arrows" is a switch (`.sd-bp-switch`, `role="switch"`, `aria-checked`, the View menu's knob `.sd-vb-switch`), unlike an action or the mode (D61).
 
-## What joins the tools zone later?
-- Architect (2026-11-20): the Prototype comments button moves into this zone, only in Prototype mode, with an unread badge, in its own PR; until then it stays in the top bar (designer/designer-prototype-comments-list.md). Nothing sits after the tools zone and a narrow bar wraps whole zones to a second row, so a button can join it.
+## Where is the Comments button?
+- In the tools zone after Links (PN6, `ui.pcBtn`, `#sd-bp-pcomments`), only in Prototype mode, shown once the comments part runs. Its badge (`.sd-bp-pc-badge`) is the open count, amber (`sd-bp-pc-new`) while a comment is unread; it stays when the labels fold.
+- Links and Comments each open the side panel at their own tab, or close it when their tab is shown (`_sdProtoSideToggle()`); each is pressed while its tab is shown. Architect (2026-11-20, agent channel message 9873): this place, not the top bar (designer/designer-prototype-comments-list.md).
 
 ## How is it checked?
-- `tests/designer_canvas_bar_test.php` (`test_designer_canvas_bar_prototype_mode`) and `tests/proto_hotspots_test.php` (the controls, the count, the keyboard guard).
+- `tests/designer_canvas_bar_test.php` (`test_designer_canvas_bar_prototype_mode`, `test_designer_canvas_bar_prototype_comments`) and `tests/proto_hotspots_test.php` (the controls, the count, the keyboard guard).

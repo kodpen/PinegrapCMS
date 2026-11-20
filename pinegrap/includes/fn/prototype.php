@@ -1603,6 +1603,8 @@ function pg_proto_shell_comment_css()
   .pg-proto-cbar { padding: .375rem .75rem; }
   .pg-proto-gone { flex-basis: 100%; }
   .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
+  /* Under 16px iOS zooms the page in when a field is tapped. */
+  .pg-proto-box .form-control { font-size: 16px; }
 }';
 }
 
@@ -1644,6 +1646,7 @@ function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
         'lang' => (string) $lang,
         'nameMax' => (int) $limits['name'],
         'textMax' => (int) $limits['text'],
+        'ping' => pg_proto_comment_ping_seconds(),
         'comments' => $rows,
         'strings' => array(
             'hint' => lang('Click a spot on the page to leave a comment.'),
@@ -1663,6 +1666,7 @@ function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
             'failed' => lang('Sorry, we could not accept your request.'),
             'network' => lang('Network error.'),
             'close' => lang('Close'),
+            'held' => lang('Send or close this comment first.'),
         ),
     );
 }

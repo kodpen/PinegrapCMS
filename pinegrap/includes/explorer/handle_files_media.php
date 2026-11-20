@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The file manager's sub-actions on files' content: a Word or Excel file
- * read for a preview, a picture turned a quarter to the right, and selected
- * pictures optimized or converted to WebP. Each handler answers through respond(), which ends the request. Called by
+ * read for a preview, an .xls saved beside itself as a copy in .xlsx, a
+ * picture turned a quarter to the right, and selected pictures optimized or converted to WebP. Each handler answers through respond(), which ends the request. Called by
  * pg_explorer_handle() and loaded by view_folder_and_files_f.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -62,7 +62,9 @@ function pg_explorer_webp_base_name($name)
 //
 // A .csv or .tsv is drawn as a sheet and only looked at; the choice
 // above it sends the separator and character set to read it with
-// (delimiter, encoding).
+// (delimiter, encoding). An .xls is only looked at too; the answer's
+// can_copy says whether a copy as .xlsx may be saved beside it
+// (explorer_office_copy).
 function pg_explorer_handle_office_preview($type, $request, $user)
 {
     $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
@@ -94,7 +96,97 @@ function pg_explorer_handle_office_preview($type, $request, $user)
 
     unset($office['ok'], $office['error']);
 
-    respond(array('status' => 'success', 'request' => $type, 'office' => $office));
+    $answer = array('status' => 'success', 'request' => $type, 'office' => $office);
+
+    if ($office['kind'] === 'xls') {
+        $answer['can_copy'] = !$office_erp && pg_explorer_office_copy_allowed($office_file);
+    }
+
+    respond($answer);
+}
+
+// Whether a copy may be saved beside a file: who may add a file to its
+// folder (explorer_create_file's rule), outside the recycle bin.
+function pg_explorer_office_copy_allowed($office_file)
+{
+    return (check_edit_access($office_file['folder']) == true) && !pg_recycle_is_inside((int) $office_file['folder']);
+}
+
+// ── An .xls saved as a copy in .xlsx ─────────────────────────────
+//
+// The .xls preview's Save a copy as .xlsx: every sheet written again by
+// the shared xlsx writer (pg_office_xls_copy()) into a new file beside the
+// original, named after it with .xlsx, numbered as any new file is when
+// the name is taken. For whoever may read the file and add a file to its
+// folder; never for an ERP document. The copy is then opened and changed
+// as any .xlsx is.
+function pg_explorer_handle_office_copy($type, $request, $user)
+{
+    $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
+
+    if (!$office_file || (pg_office_preview_kind($office_file['name']) !== 'xls')) {
+        respond(array('status' => 'error', 'message' => lang('Only an .xls file is saved as a copy here.')));
+    }
+
+    // Read as the preview reads it (pg_explorer_handle_office_preview()):
+    // whoever may view the folder, no form or chat attachment they may not
+    // open, and never an ERP document.
+    if (
+        pg_files_include_erp_document(array($office_file['id']))
+        || (check_view_access($office_file['folder']) == false)
+        || !pg_file_panel_content_verdict($office_file['attachment'], check_edit_access($office_file['folder']), $user['id'], $user['role'], pg_file_chat_conversations($office_file['id']))
+        || !pg_explorer_office_copy_allowed($office_file)
+    ) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    // A large workbook takes a few seconds to write again.
+    @set_time_limit(120);
+
+    $name = get_unique_name(array('name' => prepare_file_name(pg_office_xls_copy_name($office_file['name'])), 'type' => 'file'));
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $copied = pg_office_xls_copy(pg_file_reader_path($office_file['name']), $path);
+
+    if (!$copied['ok']) {
+        respond(array('status' => 'error', 'message' => $copied['error']));
+    }
+
+    db(
+        "INSERT INTO files (
+            name,
+            folder,
+            type,
+            size,
+            design,
+            optimized,
+            user,
+            timestamp)
+        VALUES (
+            '" . e($name) . "',
+            '" . e($office_file['folder']) . "',
+            'xlsx',
+            '" . e(filesize($path)) . "',
+            '0',
+            '0',
+            '" . e($user['id']) . "',
+            UNIX_TIMESTAMP())");
+
+    $file_id = (int) mysqli_insert_id(db::$con);
+
+    if ($file_id <= 0) {
+        @unlink($path);
+        respond(array('status' => 'error', 'message' => lang('The copy could not be written.')));
+    }
+
+    pg_audit_record('create', 'files', $file_id);
+
+    log_activity(lang(array('string' => '{var:1} was saved as a copy in .xlsx ({var:2})', 'vars' => array($office_file['name'], $name))), $_SESSION['sessionusername']);
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'file' => array('id' => $file_id, 'name' => $name),
+        'message' => lang(array('string' => 'A copy was saved as {var:1}.', 'vars' => $name))));
 }
 
 // ── Turn a picture a quarter to the right ────────────────────────

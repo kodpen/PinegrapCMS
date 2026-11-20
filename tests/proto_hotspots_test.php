@@ -561,7 +561,8 @@ function test_proto_hotspots_view_list_and_problems()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
-	pg_assert_contains("ui.list = _sdProtoEl('aside', 'sd-proto-list');", $source, 'the panel is an aside');
+	pg_assert_contains("ui.side = _sdProtoEl('aside', 'sd-proto-list');", $source, 'the panel is an aside');
+	pg_assert_contains("ui.list = _sdProtoEl('div', 'sd-proto-links');", $source, 'the links are its Links tab');
 	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
 	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
 	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link\'s mark on the picture picks the link');
@@ -2432,7 +2433,7 @@ function test_proto_hotspots_view_badge_lists_links_without_a_target()
 	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',", $source, 'the canvas leaves it its clicks and keys');
 	pg_assert_contains('var only = (frameId && issues) ? window.PGProtoHotspots.emptyOf(issues, frameId) : null;', $source, 'only the frame\'s links without a target');
 	pg_assert_contains('go: function () { _sdProtoEmptyGo(one.frame, one.port); }', $source, 'a row goes to the link in the panel');
-	pg_assert_contains("if (!ui.root.classList.contains('sd-proto-list-open')) _sdProtoListShow(true, false);", $source, 'the panel opens, not kept as a choice');
+	pg_assert_contains("if (!ui.root.classList.contains('sd-proto-list-open') || _sdProto.side !== 'links') _sdProtoSide('links', true, false);", $source, 'the panel opens at its Links tab, not kept as a choice');
 	pg_assert_contains("var to = li ? (li.querySelector('.sd-proto-li-target') || li.querySelector('.sd-proto-li-main')) : null;", $source, 'the focus on the target box, else the row');
 	pg_assert_contains("_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target)", $source, 'a press on the count is no press outside');
 	pg_assert_contains("Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-badge-empty')).forEach(function (b) {", $source, 'Tab reaches the selected frame\'s count');

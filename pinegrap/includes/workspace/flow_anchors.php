@@ -349,6 +349,8 @@ function ws_flow_event_outputs()
             $value('completed_at', 'text', lang('Completed on'))),
         'credit.issued'          => $credit,
         'credit.expired'         => $credit,
+        'referral.rewarded'      => array($value('customer_id', 'number', lang('Contact')), $value('order_id', 'number', lang('Order')), $value('amount', 'number', lang('Amount')),
+            $value('affiliate_code', 'text', lang('Referral code'))),
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.status_changed' => array_merge($task, array($value('previous_status', 'text', lang('Previous status')), $value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),

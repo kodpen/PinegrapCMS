@@ -771,6 +771,15 @@ if ($pg_proto_signature === '') {
     );
 }
 
+// A link for anyone draws no draft that goes live behind a sign-in (the
+// frame shows a note): that page gets no comment mode either.
+// A bundle's link takes no comments.
+$pg_proto_start_shown = false;
+
+if (($pg_proto_start['id'] > 0) && ($pg_proto_link_bundle <= 0)) {
+    $pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_start['id']));
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 echo pg_proto_shell_html(array(
@@ -792,6 +801,6 @@ echo pg_proto_shell_html(array(
     'wide_pages' => ($pg_proto_link_bundle > 0),
     // A link with "Allow comments": the comment mode, with this page's
     // comments of this link.
-    'comments' => pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
+    'comments' => !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
         isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => ''))),
 ));

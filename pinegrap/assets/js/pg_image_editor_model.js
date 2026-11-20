@@ -3885,7 +3885,12 @@
         return ((doc && doc.layers) || []).some(function (l) {
             var a = l.anim;
 
-            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length));
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length)) || groupPath(l).some(function (g) {
+                // A group's own keys (GROUP below).
+                var o = l.gfx && l.gfx[g];
+
+                return !!(o && Array.isArray(o.keys) && o.keys.length);
+            });
         });
     }
 
@@ -4812,7 +4817,7 @@
             var frames = [], len = Array.from(String(l.text || '')).length;
 
             for (var i = 0; i <= SVG_MOTION_STEPS; i++) {
-                var t = Math.min(m.duration - 1, m.duration * i / SVG_MOTION_STEPS), st = motionAt(l, t, m.duration);
+                var t = Math.min(m.duration - 1, m.duration * i / SVG_MOTION_STEPS), st = groupMotionAt((doc && doc.layers) || layers, l, t, m.duration);
                 var shown = (st.clip ? clamp(Number(st.clip.f) || 0, 0, 1) : 1) * clamp(st.draw, 0, 1) * ((st.chars !== null) && len ? clamp(st.chars / len, 0, 1) : 1);
 
                 frames.push([Math.round(10000 * i / SVG_MOTION_STEPS) / 100].concat([clamp(st.opacity, 0, 1) * shown, st.x, st.y, st.scale, st.rot].map(function (v) {
@@ -5129,6 +5134,16 @@
         }
 
         if (s.layers) {
+            // Group for several layers, Ungroup for a picked group (s.group,
+            // s.ungroup as the context menu reads them).
+            if (s.group) {
+                add('group');
+            }
+
+            if (s.ungroup) {
+                add('ungroup');
+            }
+
             // One clip in the Animate tool: Split at the playhead too.
             if (s.split) {
                 add('split', !s.free);
@@ -5176,9 +5191,10 @@
     // actionList() reads it, and s.kind: the one layer's type; s.animate:
     // the Animate tool). The type's own command (a text: Edit text; a video
     // in Animate: Split), Motion in Animate (never for a redaction, which
-    // does not move), Duplicate, Delete, Lock, More (the context menu's
-    // list). Every layer locked: Unlock and More. The picture and an area
-    // keep their commands in the panel: no bar.
+    // does not move), Group or Ungroup (s.group, s.ungroup), Duplicate,
+    // Delete, Lock, More (the context menu's list). Every layer locked:
+    // Unlock and More. The picture and an area keep their commands in the
+    // panel: no bar.
     function objectActions(s) {
         var out = [];
         var add = function (name) { out.push({ name: name, off: false }); };
@@ -5211,6 +5227,14 @@
             if (s.animate && (s.kind !== 'redact')) {
                 add('motion');
             }
+        }
+
+        if (s.group) {
+            add('group');
+        }
+
+        if (s.ungroup) {
+            add('ungroup');
         }
 
         ['duplicate', 'remove', 'lock', 'more'].forEach(add);
@@ -11020,8 +11044,9 @@
 
         return groupFlat(groupTree((layers || []).map(function (l) {
             var path = groupPath(l).filter(function (g) { return count[g] > 1; });
+            var stale = l.gfx ? Object.keys(l.gfx).filter(function (g) { return path.indexOf(g) < 0; }) : [];
 
-            if (!l.grp || (path.length && (path.length === l.grp.length))) {
+            if ((!l.grp || (path.length && (path.length === l.grp.length))) && !stale.length) {
                 return l;
             }
 
@@ -11032,6 +11057,9 @@
             } else {
                 delete c.grp;
             }
+
+            // A group's look (gfx) goes with the group.
+            stale.forEach(function (g) { fxPut(c, g, null); });
 
             return c;
         })));
@@ -11143,6 +11171,15 @@
                 delete c.grp;
             }
 
+            // The look of a copied group under its new id; the groups
+            // left behind keep theirs.
+            delete c.gfx;
+            groupPath(o).forEach(function (g) {
+                if (names[g] && o.gfx && o.gfx[g]) {
+                    fxPut(c, names[g], clone(o.gfx[g]));
+                }
+            });
+
             return c;
         });
     }
@@ -11188,11 +11225,215 @@
         return { group: !!groupMake(layers, ids, gid), ungroup: !!groupOfSelection(layers, ids) };
     }
 
+    // -- a group's own look: opacity and Animate's keys (GC1b) --
+    //
+    // A group's own opacity and keys sit on each of its members as
+    // l.gfx[gid] = { opacity, keys }, the same on every one, so a layer
+    // carries all it needs to be drawn (the server's draw reads it alone)
+    // and a scene's layers carry their groups' looks. Nothing for a group
+    // at opacity 1 without keys. The opacity multiplies each member's own;
+    // the keys move, turn, scale and fade the members round the group's
+    // centre, over each member's own motion.
+
+    // l's gfx with gid set to val, or taken out for null (changes l).
+    function fxPut(l, gid, val) {
+        var m = Object.assign({}, l.gfx || {});
+
+        if (val) {
+            m[gid] = val;
+        } else {
+            delete m[gid];
+        }
+
+        if (Object.keys(m).length) {
+            l.gfx = m;
+        } else {
+            delete l.gfx;
+        }
+    }
+
+    // A group's own opacity from its entry o: 1 without one.
+    function fxOpacity(o) {
+        return (o && (o.opacity !== undefined) && (o.opacity !== null)) ? clamp(keyNumber(o.opacity, 1), 0, 1) : 1;
+    }
+
+    function fxOf(l, gid) {
+        var o = l && l.gfx && l.gfx[gid];
+
+        return (o && (typeof o === 'object')) ? o : null;
+    }
+
+    // Group gid's own look: { opacity, keys } (keys cleaned, keyList()).
+    function groupFx(layers, gid) {
+        var own = null;
+
+        (layers || []).forEach(function (l) {
+            if (!own && (groupPath(l).indexOf(gid) >= 0)) {
+                own = fxOf(l, gid);
+            }
+        });
+
+        return {
+            opacity: fxOpacity(own),
+            keys: keyList({ anim: { keys: (own && Array.isArray(own.keys)) ? own.keys : [] } })
+        };
+    }
+
+    // The layers with group gid's look changed by patch ({ opacity, keys })
+    // on every member; nothing left at opacity 1 without keys.
+    function groupFxSet(layers, gid, patch) {
+        var fx = Object.assign(groupFx(layers, gid), patch || {}), val = {};
+
+        fx.opacity = clamp(keyNumber(fx.opacity, 1), 0, 1);
+        fx.keys = keyList({ anim: { keys: fx.keys || [] } });
+
+        if (fx.opacity < 1) {
+            val.opacity = fx.opacity;
+        }
+
+        if (fx.keys.length) {
+            val.keys = fx.keys;
+        }
+
+        return (layers || []).map(function (l) {
+            if (groupPath(l).indexOf(gid) < 0) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            fxPut(c, gid, Object.keys(val).length ? clone(val) : null);
+
+            return c;
+        });
+    }
+
+    // The opacity l's groups give it: their own opacities multiplied.
+    function groupAlpha(l) {
+        return groupPath(l).reduce(function (a, g) {
+            return a * fxOpacity(fxOf(l, g));
+        }, 1);
+    }
+
+    // l as it is drawn: a copy with its groups' opacity on its own; l
+    // itself when its groups do not fade it.
+    function groupLook(l) {
+        var a = groupAlpha(l);
+
+        return (a >= 1) ? l : Object.assign({}, l, { opacity: ((l.opacity === undefined) ? 1 : keyNumber(l.opacity, 1)) * a });
+    }
+
+    // The group ids pick when they are exactly one whole group's layers
+    // (its own size, turn, opacity and keys then apply); '' otherwise.
+    function groupPicked(layers, ids) {
+        var gid = groupOfSelection(layers, ids);
+
+        return (gid && sameSet(groupMembers(layers, gid), ids || [])) ? gid : '';
+    }
+
+    // The box round group gid's layers, turned ones by their corners.
+    function groupBox(layers, gid) {
+        return bounds((layers || []).filter(function (l) { return groupPath(l).indexOf(gid) >= 0; }));
+    }
+
+    // list (layers) scaled from box to nb as one, proportions kept by
+    // nb's width: each centre keeps its place in the box, each size grows
+    // as the box; turns stay. Copies with the new x, y, w, h.
+    function groupScale(list, box, nb) {
+        var f = (box && (box.w > 0)) ? nb.w / box.w : 1;
+
+        return (list || []).map(function (l) {
+            var c = clone(l), cx = nb.x + (l.x + l.w / 2 - box.x) * f, cy = nb.y + (l.y + l.h / 2 - box.y) * f;
+
+            c.w = l.w * f;
+            c.h = l.h * f;
+            c.x = cx - c.w / 2;
+            c.y = cy - c.h / 2;
+
+            return c;
+        });
+    }
+
+    function turnWrap(a) {
+        a = ((a + 180) % 360 + 360) % 360 - 180;
+
+        return (a === -180) ? 180 : a;
+    }
+
+    // list (layers) turned as one by deg (clockwise) round cx, cy: each
+    // centre turns, each own turn grows by deg (in -180..180). Copies.
+    function groupTurn(list, cx, cy, deg) {
+        var a = deg * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+
+        return (list || []).map(function (l) {
+            var c = clone(l), dx = l.x + l.w / 2 - cx, dy = l.y + l.h / 2 - cy;
+
+            c.x = cx + dx * cos - dy * sin - l.w / 2;
+            c.y = cy + dx * sin + dy * cos - l.h / 2;
+            c.rot = turnWrap((Number(l.rot) || 0) + deg);
+
+            return c;
+        });
+    }
+
+    // Layer l at playhead t as motionAt() gives it, with its groups' keys
+    // composed over it, the innermost first: each moves, turns and scales
+    // round its group's centre at rest and fades. The result is a state
+    // round l's own centre, so the stage, the export and a press's
+    // restPoint() read it as before. layers: the document's (the groups'
+    // boxes).
+    function groupMotionAt(layers, l, t, end) {
+        var st = motionAt(l, t, end), path = groupPath(l), cx = l.x + l.w / 2, cy = l.y + l.h / 2;
+
+        if ((t === null) || (t === undefined)) {
+            return st;
+        }
+
+        for (var i = path.length - 1; i >= 0; i--) {
+            var fx = fxOf(l, path[i]), k = (fx && Array.isArray(fx.keys) && fx.keys.length) ? keyAt({ anim: { keys: fx.keys } }, t) : null, b, gx, gy, a, px, py;
+
+            if (!k) {
+                continue;
+            }
+
+            b = groupBox(layers, path[i]) || { x: cx, y: cy, w: 0, h: 0 };
+            gx = b.x + b.w / 2;
+            gy = b.y + b.h / 2;
+            a = k.rot * Math.PI / 180;
+            px = cx + st.x - gx;
+            py = cy + st.y - gy;
+            st = Object.assign({}, st, {
+                x: gx + k.x + k.scale * (px * Math.cos(a) - py * Math.sin(a)) - cx,
+                y: gy + k.y + k.scale * (px * Math.sin(a) + py * Math.cos(a)) - cy,
+                scale: st.scale * k.scale,
+                rot: st.rot + k.rot,
+                opacity: st.opacity * k.opacity
+            });
+        }
+
+        return st;
+    }
+
+    // The layers with group gid's key at t set by patch (keySet()).
+    function groupKeySet(layers, gid, t, patch, end) {
+        return groupFxSet(layers, gid, { keys: keySet({ anim: { keys: groupFx(layers, gid).keys } }, t, patch, end) });
+    }
+
+    // Group gid as the Path tab reads a layer: id 'group:<gid>', its box at
+    // rest and its keys.
+    function groupKeyLayer(layers, gid) {
+        var b = groupBox(layers, gid) || { x: 0, y: 0, w: 0, h: 0 };
+
+        return { id: 'group:' + gid, type: 'group', x: b.x, y: b.y, w: b.w, h: b.h, rot: 0, anim: { keys: groupFx(layers, gid).keys } };
+    }
+
     var GROUP = {
         groupPath: groupPath, groupMembers: groupMembers, groupItem: groupItem, groupScope: groupScope, groupPick: groupPick,
         groupDeeper: groupDeeper, groupToggle: groupToggle, groupExpand: groupExpand, groupNewId: groupNewId, groupTidy: groupTidy,
         groupMake: groupMake, groupBreak: groupBreak, groupOfSelection: groupOfSelection, groupReorder: groupReorder,
-        groupCopy: groupCopy, groupRows: groupRows, groupNumber: groupNumber, groupCan: groupCan
+        groupCopy: groupCopy, groupRows: groupRows, groupNumber: groupNumber, groupCan: groupCan,
+        groupFx: groupFx, groupFxSet: groupFxSet, groupAlpha: groupAlpha, groupLook: groupLook, groupPicked: groupPicked, groupBox: groupBox,
+        groupScale: groupScale, groupTurn: groupTurn, groupMotionAt: groupMotionAt, groupKeySet: groupKeySet, groupKeyLayer: groupKeyLayer
     };
 
     var api = {

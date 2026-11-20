@@ -137,6 +137,7 @@ function pg_settings_categories()
                 'pgset-search-tuning' => lang('Search Tuning'),
                 'pgset-content-approval' => lang('Content Approval'),
                 'pgset-page-clicks' => lang('Clicks and scrolling'),
+                'pgset-place-map' => lang('Maps'),
                 'pgset-site-push' => lang('Visitor notifications'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
@@ -148,6 +149,7 @@ function pg_settings_categories()
                 'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-content-approval' => pg_settings_keywords(lang('approval, approve, content, editor, manager, review, waiting, publish')),
                 'pgset-page-clicks' => pg_settings_keywords(lang('clicks, scrolling, scroll depth, links, buttons, visitors, statistics, privacy')),
+                'pgset-place-map' => pg_settings_keywords(lang('map, maps, places, locations, tiles, openstreetmap, store finder, branches')),
                 'pgset-site-push' => pg_settings_keywords(lang('notifications, push, notify me, subscribe, browser, visitors, news')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
@@ -566,16 +568,18 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, GitHub links and link previews.'),
+            'description' => lang('Channel templates, GitHub links, link previews and calls.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-link-preview'    => lang('Link previews'),
+                'pgset-ws-calls'           => lang('Calls'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
+                'pgset-ws-calls'           => pg_settings_keywords(lang('workspace, call, voice call, video call, stun, turn, relay')),
             ),
         ),
 
@@ -995,6 +999,17 @@ function pg_settings_legacy_anchors()
         'pgsub-structured' => array('seo',        'pgset-structured'),
         'pgset-feeds'      => array('commerce',   'pgset-feeds'),
         'pgset-analytics'  => array('privacy',    'pgset-analytics'),
+        // The Google tag and the Google Analytics figures moved onto Google
+        // Analytics' page of Connections; an old link to one of their fields
+        // lands on the card that shows the connection.
+        'google_analytics' => array('privacy',    'pgset-analytics'),
+        'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
+        'stats_url'        => array('privacy',    'pgset-analytics'),
+        'ga_property'      => array('privacy',    'pgset-analytics'),
+        // The Google Cloud Translation key moved onto its page of
+        // Connections; an old link to its field lands on the card that shows
+        // the connection.
+        'translation_google_key' => array('languages', 'pgset-translation-engines'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail

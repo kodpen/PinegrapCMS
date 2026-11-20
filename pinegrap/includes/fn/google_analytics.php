@@ -8,8 +8,9 @@
  *
  * A site Google account connected for the google_analytics purpose
  * (includes/connect/purposes/google_analytics.php, analytics.readonly) picks
- * one GA4 property from the Admin API's account summaries on Settings › SEO ›
- * Visitor Tracking (includes/settings/seo_analytics.php).
+ * one GA4 property from the Admin API's account summaries on Google
+ * Analytics' page of Connections (connections.php?service=google_analytics),
+ * where the Google tag's settings are typed too (pg_ga_tag_input()).
  *
  * Nothing has a table or a column of its own: the chosen property and the
  * last report are one sealed value in connect_accounts as the service entry
@@ -516,7 +517,7 @@ function pg_ga_job_switch_on()
     }
 }
 
-// What the Visitor Tracking card asked for: choose a property, read the
+// What Google Analytics' page of Connections asked for: choose a property, read the
 // figures now, or stop using the property. Choosing one reads at once.
 // Returns (kind, text) pairs; the texts may carry Google's words.
 function pg_ga_save_from_screen($input)
@@ -531,7 +532,7 @@ function pg_ga_save_from_screen($input)
 
     if (!empty($input['unlink'])) {
         pg_ga_state_save(array('property' => '', 'property_name' => '', 'fetched_at' => 0, 'fetch_error' => '', 'report' => array()));
-        $messages[] = array('notice', lang('Google Analytics figures are no longer read. The Google account stays connected until you remove it under Connected accounts.'));
+        $messages[] = array('notice', lang('Google Analytics figures are no longer read. The Google account stays connected until you disconnect it under Status.'));
 
         return $messages;
     }
@@ -566,4 +567,51 @@ function pg_ga_save_from_screen($input)
     }
 
     return $messages;
+}
+
+/* ---------------------------------------------------------------------------
+   The Google tag
+   --------------------------------------------------------------------------- */
+
+// The Google tag's settings as typed on Google Analytics' page of
+// Connections: the switch, the tag ID printed into the public gtag script
+// and the analytics address printed as a link in the Visitors menu, each
+// taken only in its own format. Returns 'values' (config column => value)
+// and 'errors' (field => text); nothing is stored while an error stands.
+// Pure but for lang().
+function pg_ga_tag_input($input)
+{
+    $enabled = (isset($input['google_analytics']) && ((string) $input['google_analytics'] === '1')) ? 1 : 0;
+    $tag = isset($input['google_analytics_web_property_id']) && is_string($input['google_analytics_web_property_id'])
+        ? trim($input['google_analytics_web_property_id']) : '';
+    $stats_url = isset($input['stats_url']) && is_string($input['stats_url']) ? trim($input['stats_url']) : '';
+    $errors = array();
+
+    if (($tag !== '') && (pg_ga_tag_id($tag) === '')) {
+        $errors['google_analytics_web_property_id'] = lang('The Web Property ID must be a Google tag ID, for example G-XXXXXXXXXX.');
+    }
+
+    if (($stats_url !== '') && !preg_match('#^https?://[^\s"\'<>]+$#iD', $stats_url)) {
+        $errors['stats_url'] = lang('The Website Analytics URL must start with https:// or http://.');
+    }
+
+    return array(
+        'values' => array(
+            'google_analytics'                 => $enabled,
+            'google_analytics_web_property_id' => pg_ga_tag_id($tag),
+            'stats_url'                        => $stats_url,
+        ),
+        'errors' => $errors,
+    );
+}
+
+// Stores what pg_ga_tag_input() took.
+function pg_ga_tag_save($values)
+{
+    return db("UPDATE config SET
+        google_analytics = '" . (int) $values['google_analytics'] . "',
+        google_analytics_web_property_id = '" . escape($values['google_analytics_web_property_id']) . "',
+        stats_url = '" . escape($values['stats_url']) . "',
+        last_modified_user_id = '" . (int) USER_ID . "',
+        last_modified_timestamp = UNIX_TIMESTAMP()") !== false;
 }

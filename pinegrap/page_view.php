@@ -69,8 +69,8 @@ if (isset($_POST['ad'])) {
 }
 
 // Clicks and scroll depth (includes/fn/page_clicks.php): a page this site
-// signed today or yesterday, counted in the day's rollup unless the visitor
-// is signed in or refused statistics. It travels with the speed figures of
+// signed today or yesterday, counted in the day's rollup unless the switch
+// is off, the visitor is signed in or refused statistics. It travels with the speed figures of
 // the same beacon, which are then counted below.
 if (isset($_POST['c'])) {
     pg_page_clicks_beacon($_POST);

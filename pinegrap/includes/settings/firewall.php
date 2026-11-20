@@ -501,6 +501,20 @@ if ($security_ready) {
     // copy of what is actually sent rather than starting from nothing.
     $security_csp_placeholder = function_exists('waf_csp_policy') ? waf_csp_policy() : '';
 
+    // While Maps is on and the site's own policy would refuse the tiles, the
+    // line to add; the headers the software sends do not change with Maps.
+    $security_csp_map_note = '';
+
+    if (pg_schema_has('config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+        $security_csp_map_note = pg_place_tiles_firewall_note($security_csp_policy);
+    }
+
+    if ($security_csp_map_note !== '') {
+        $security_csp_map_note = '
+                                                            <div class="alert theme-warning mt-3 mb-0">' . $security_csp_map_note . '</div>';
+    }
+
     $waf_text_log_path = function_exists('waf_text_log_file') ? waf_text_log_file() : '';
 
     // Everything a fail2ban jail needs, ready to paste. fail2ban cuts the
@@ -577,7 +591,7 @@ if ($security_ready) {
                                                         <div class="col-12 ">
                                                             <label for="security_csp_policy" class="form-label">' . lang('Policy') . '</label>
                                                             <textarea name="security_csp_policy" id="security_csp_policy" class="form-control font-monospace" rows="4" spellcheck="false" placeholder="' . h($security_csp_placeholder) . '">' . h($security_csp_policy) . '</textarea>
-                                                            <div class="form-text">' . lang('Leave empty for the built-in policy shown above: the site\'s own files, inline code and the libraries the software itself uses are allowed, images, fonts and media may come from anywhere over https, and every other third-party source is reported. To allow one, copy the policy here and add the origin to the directive that reported it, for example https://www.googletagmanager.com to script-src. The report address is added for you.') . '</div>
+                                                            <div class="form-text">' . lang('Leave empty for the built-in policy shown above: the site\'s own files, inline code and the libraries the software itself uses are allowed, images, fonts and media may come from anywhere over https, and every other third-party source is reported. To allow one, copy the policy here and add the origin to the directive that reported it, for example https://www.googletagmanager.com to script-src. The report address is added for you.') . '</div>' . $security_csp_map_note . '
                                                         </div>
                                                     </div>
                                                 </div>

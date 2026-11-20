@@ -25,4 +25,4 @@ description: Census (2026-11-17) of where an administrator connects an outside s
 
 ## What binds a change?
 - Owner (2026-10-30): one place per setting; one dialog and one Save per pane; the tools that leave the dialog live on System tools; card addresses and old anchors stay (`workflow/decisions-made-product-14.md`, `ui/settings-modal-overview.md`).
-- The panel's old screens are being redrawn in look A, Site Settings among them (`panel-old-screens.md`); the agents' cards: `workspace/workspace-agent-settings.md`.
+- The panel's old screens were redrawn in look A, Site Settings among them (`ui/look-overview.md`); the agents' cards: `workspace/workspace-agent-settings.md`.

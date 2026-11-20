@@ -523,6 +523,12 @@
   outline-style: dashed;
 }
 
+/* A picked group's own box, a little outside its members' boxes: its
+   corners size the group and its turning handle turns it. */
+.pgie-selbox.pgie-grpsel {
+  outline-offset: 3px;
+}
+
 /* The box dragged over the stage to select the layers it touches. */
 .pgie-marquee {
   position: absolute;

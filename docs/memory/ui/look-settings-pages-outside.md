@@ -31,7 +31,7 @@ description: Settings pages outside the Site Settings dialog in look A (S6b): Ap
 ## What stayed?
 - The status columns' `top:3.3rem` sticky offset, the drawer's `min(520px,100%)` width, the pairing card's 520 px cap and the QR code's white box: no token names them.
 - The permission rows' Read / Write control (`.api-seg`, Bootstrap `btn-check` with the `implied` state) and the New Application kind cards' labels: only their sizes moved to tokens.
-- The plug glyph's size on a connection card (an icon outside a tile, `plans/panel-old-screens-rules.md`).
+- The plug glyph's size on a connection card (an icon outside a tile, `look-sheet-silent.md`).
 
 ## What was not seen in the panel?
 - The sandbox has no Cloudflare token (the screen shows only that error), no device pairing and no OAuth connection; those parts were read from the code and the unit tests.
