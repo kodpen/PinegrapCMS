@@ -140,6 +140,9 @@
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
+- supplier-feed-features.md: Plan supplier-feed, features F1 to F14: connection, mapping, price rules, hourly sync, closing and reopening, drafts, several suppliers, rates, cost link, run log, brakes, API
+- supplier-feed-steps.md: Plan supplier-feed, steps SF1 to SF7: tables and readers, the feed screen and mapping, the sync, drafts and variants, several suppliers and rates, cost link and API, close-out
+- supplier-feed.md: Plan (owner 2026-11-20, poll 168): the store pulls its suppliers' XML, CSV or JSON lists and keeps price and stock in step hourly; price rules, drafts, several suppliers, cost link; SF1 to SF7
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - website-features-rules.md: The rules every step of the nine website-side plans keeps (plans/website-features.md): fewest existing files, schema, switches, numbered features in a step's PR body, looks, texts, tests
 - website-features-shared-files.md: The existing files that steps of more than one website-side plan touch (plans/website-features.md), each with its steps; two steps on the same file are never open together

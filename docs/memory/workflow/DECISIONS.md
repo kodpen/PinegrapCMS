@@ -465,6 +465,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
 - decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
 - decisions-made-product-87.md: Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
+- decisions-made-product-87.md: Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
 - decisions-made-product-88.md: Where are the rules and the earlier parts?
 - decisions-made-product-88.md: Is Application Access drawn again? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-88.md: Does Application Access move into Connections? (owner, 2026-11-20, in the architect's window)

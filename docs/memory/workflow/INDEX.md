@@ -150,7 +150,7 @@
 - decisions-made-product-84.md: Decisions list, product part 84 (2026-11-20 on): the sales watch, where the store learns its order rhythm and says when it breaks
 - decisions-made-product-85.md: Decisions list, product part 85 (2026-11-20 on): the site explains itself to AI agents (plan ai-guide): who builds it, the guide's language and doors, the compact tool list, hints on refusals
 - decisions-made-product-86.md: Decisions list, product part 86 (2026-11-20 on): an order sold beyond the stock is flagged now; holding units during payment enters a plan; no lock and no automatic refund
-- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre enters a plan
+- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre and a supplier feed enter plans
 - decisions-made-product-88.md: Decisions list, product part 88 (2026-11-20 on): Application Access drawn again, with starting points, bulk permission choices, a guide per way to connect and an agent set up from the application
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
