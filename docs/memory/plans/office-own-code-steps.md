@@ -30,3 +30,4 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OS1 census: `plans/office-own-code-os1-census.md`.
 - OS2 census: `plans/office-own-code-os2-census.md`.
 - OS2, one import reader: every importer that takes only CSV today (census first, as OS1) also takes .xlsx, .ods and .xls through XL1's reader, and a workbook with more than one sheet asks which sheet. The product and bank statement imports get the sheet question too.
+  - Cut in three (`plans/office-own-code-os2-census.md`): OS2a (done, #10523), the shared helper and sheet question with importers 1 to 8 (`platform/sheet-import-upload.md`); OS2b, Translations' Import CSV once `translations.php` is free; OS2c, the sheet question for the product and bank statement imports after XL5.

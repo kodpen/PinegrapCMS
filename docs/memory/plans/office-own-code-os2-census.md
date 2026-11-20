@@ -21,6 +21,6 @@ description: OS2 census of plan office-own-code: the importers that take only CS
 - Not a spreadsheet of rows a person makes: the Shopify and WooCommerce migrations (`includes/import/`, those platforms' own CSV export), the system theme CSV (`add_theme_file.php`, a theme format), the workspace notes import (`str_getcsv()` on a front-matter list).
 
 ## How is it cut?
-- OS2a: the shared helper and sheet question, importers 1 to 8.
+- OS2a (#10523): the shared helper and sheet question, importers 1 to 8.
 - OS2b: Translations (9), once the open AC2a no longer holds `translations.php`.
 - OS2c: the sheet question for the product and bank statement imports, after XL5.
