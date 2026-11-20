@@ -4,9 +4,10 @@
  *
  * Scheduled job: the daily stock record behind stock planning. Writes
  * yesterday's units sold and stock per tracked product, counts the last 14
- * days' units again, and on its first runs fills the sold units of the 365
- * days before the record began. The work lives in includes/erp/stock_plan.php;
- * this script only decides who may start it and when a tick stops.
+ * days' units again, and on its first runs fills the sold units of the 420
+ * days before the record began; then rebuilds the forecast (erp_stock_plan)
+ * per tracked product. The work lives in includes/erp/stock_plan.php; this
+ * script only decides who may start it and when a tick stops.
  *
  * Runs from the job dispatcher, from a crontab line, or by hand from the
  * panel by somebody who may use the ERP.
@@ -57,7 +58,8 @@ if (defined('ERP_ENABLED') && ERP_ENABLED) {
 }
 
 if ($result['reason'] === 'more') {
-    // The first fill has days left: come back in a minute, not an hour.
+    // The first fill or the forecast has work left: come back in a minute,
+    // not an hour.
     pg_cron_due_again('erp_stock_plan_job', 60);
 } elseif ($result['reason'] === 'error') {
     log_activity(lang('The daily stock record could not be written; the next run tries again.'), 'UNKNOWN');

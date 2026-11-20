@@ -8,7 +8,7 @@ description: Which columns erp_account_save() writes only when given and which i
 - Lesson: writing "0 if absent" turns every form that does not send the column into a resetter (the edit form that omitted `contact_id` cut the account's contact link).
 
 ## Which columns does it always write?
-- Everything else: title, kind, is_person, tax_number, tax_office, email, phone, address, district, city, postcode, currency, status, notes, payment_days, overdue_notify_days. On an update an absent one falls to its default.
+- Everything else: title, kind, is_person, tax_number, tax_office, email, phone, address, district, city, postcode, currency, status, notes, payment_days, overdue_notify_days, lead_days (11.0.251, #10654). On an update an absent one falls to its default.
 - So any partial update builds the full row from the stored account first and lays the new fields over it: `erp_api_account_save_data()` for the API `PATCH`, `erp_edoc_account_save_data()` for the e-document account sync. The same pattern applies to any new partial-update door.
 
 ## How does the API PATCH handle the contact link?

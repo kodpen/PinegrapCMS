@@ -584,6 +584,7 @@ function erp_api_account_save_data($account)
         'status' => (string) $account['status'],
         'notes' => (string) $account['notes'],
         'payment_days' => (int) ($account['payment_days'] ?? 0),
+        'lead_days' => (int) ($account['lead_days'] ?? 0),
     );
 
     if (array_key_exists('overdue_notify_days', $account)) {

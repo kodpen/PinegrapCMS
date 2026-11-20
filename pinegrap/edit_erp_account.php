@@ -390,7 +390,9 @@ if (!$_POST) {
 
     // An empty country choice is saved as empty: the store's country applies.
     $result = erp_account_save(array('id' => $account_id) + erp_account_form_save_fields($liveform, $country_code, $currency, $contact_id,
-        $payment_days, $overdue_notify_days, '') + array('created_by' => (int) $user['id']));
+        $payment_days, $overdue_notify_days, '') + array('created_by' => (int) $user['id'])
+        // The card has no Lead time field yet: the stored one is kept.
+        + array('lead_days' => (int) (is_array($stored) ? ($stored['lead_days'] ?? 0) : 0)));
 
     if (!$result['success']) {
         $liveform->mark_error('_error', $result['error']);
