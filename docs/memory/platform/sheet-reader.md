@@ -25,3 +25,4 @@ module: sheet_read
 
 ## Who else reads through it?
 - The .ods preview of Quick Look, the file window and a channel (`office-ods-preview.md`): every sheet by its index, the walk left once the preview has its rows.
+- The .xls preview and its copy as .xlsx (`office-xls-preview.md`): the worksheets' names and hidden flags from `pg_sheet_xls_sheets()` (BOUNDSHEET records, counted as `pg_sheet_rows()` counts sheets), each sheet's rows as above.

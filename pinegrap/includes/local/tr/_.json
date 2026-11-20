@@ -2057,6 +2057,7 @@
     "{var:1} was removed, and its connections were ended.": "{var:1} kaldırıldı ve bağlantıları sonlandırıldı.",
     "{var:1} was renamed to {var:2}": "{var:1} adı {var:2} olarak değiştirildi",
     "{var:1} was resized to {var:2} x {var:3} pixels and optimized ({var:4} -> {var:5}, {var:6}%).": "{var:1} {var:2} x {var:3} piksele küçültüldü ve optimize edildi ({var:4} -> {var:5}, %{var:6}).",
+    "{var:1} was saved as a copy in .xlsx ({var:2})": "{var:1}, .xlsx kopyası olarak kaydedildi ({var:2})",
     "{var:1} was shipped": "{var:1} kargoya verildi",
     "{var:1} was signed out on {var:2}.": "{var:1} kullanıcısının {var:2} cihazındaki oturumu kapatıldı.",
     "{var:1} was started {var:2} times in the last hour; it is not started again for now.": "{var:1} son bir saatte {var:2} kez başlatıldı; şimdilik yeniden başlatılmıyor.",

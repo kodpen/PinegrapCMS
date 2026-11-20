@@ -285,6 +285,9 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
     /** @var array row => column => cell, the cells the library gives no type for (0-based) */
     public $pg_cells = array();
 
+    /** @var array[] the BOUNDSHEET records in their order: offset, hidden, name (bytes), unicode */
+    public $pg_bound = array();
+
     /**
      * @param int $wanted which worksheet to read, 0 for the first
      */
@@ -337,6 +340,17 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
                 $this->pg_formats[$index] = ($version === SPREADSHEET_EXCEL_READER_BIFF8)
                     ? $this->pg_unicode($record, 2, true)
                     : $this->pg_bytes(substr($record, 3, ord($record[2])));
+            } elseif (($code === SPREADSHEET_EXCEL_READER_TYPE_BOUNDSHEET) && ($size >= 8)) {
+                // The sheet's stream offset, its visibility (0 shown, 1
+                // hidden, 2 very hidden), its type, then its name: a BIFF8
+                // short unicode string, or bytes in the code page.
+                $this->pg_bound[] = array(
+                    'offset'  => ord($record[0]) | (ord($record[1]) << 8) | (ord($record[2]) << 16) | (ord($record[3]) << 24),
+                    'hidden'  => (ord($record[4]) & 0x03) !== 0,
+                    'name'    => ($version === SPREADSHEET_EXCEL_READER_BIFF8) ? substr($record, 8, ord($record[6]) * ((ord($record[7]) & 0x01) ? 2 : 1)) : substr($record, 7, ord($record[6])),
+                    'unicode' => ($version === SPREADSHEET_EXCEL_READER_BIFF8) && ((ord($record[7]) & 0x01) !== 0),
+                    'biff8'   => ($version === SPREADSHEET_EXCEL_READER_BIFF8),
+                );
             } elseif (($code === SPREADSHEET_EXCEL_READER_TYPE_SST) && ($size >= 8)) {
                 // The library loops once for every string the table says it
                 // holds: a string takes at least three bytes.
@@ -557,6 +571,42 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
         $value = unpack('d', $bytes);
 
         return (float) $value[1];
+    }
+
+    /**
+     * The worksheets in their order, as the reader counts them (a chart,
+     * macro or dialog sheet left out, by its own BOF as _parsesheet() tells
+     * them): name in UTF-8 and whether it is hidden; or 'read' when the
+     * workbook could not be read.
+     *
+     * @return array|string
+     */
+    public function pg_sheet_list()
+    {
+        if ($this->pg_broken || ($this->_ole->error !== 0)) {
+            return 'read';
+        }
+
+        $data = (string) $this->data;
+        $out = array();
+
+        foreach ($this->pg_bound as $sheet) {
+            $at = (int) $sheet['offset'];
+
+            if (($at < 0) || ($at + 8 > strlen($data)) || ((ord($data[$at + 6]) | (ord($data[$at + 7]) << 8)) !== SPREADSHEET_EXCEL_READER_WORKSHEET)) {
+                continue;
+            }
+
+            if ($sheet['biff8']) {
+                $name = $this->pg_convert($sheet['name'], $sheet['unicode'] ? 'UTF-16LE' : 'ISO-8859-1');
+            } else {
+                $name = $this->pg_bytes($sheet['name']);
+            }
+
+            $out[] = array('name' => $name, 'hidden' => (bool) $sheet['hidden']);
+        }
+
+        return empty($out) ? 'read' : $out;
     }
 
     /**

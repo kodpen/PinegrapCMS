@@ -341,6 +341,7 @@
     "Save Preferences": "Tercihleri Kaydet",
     "Save Template": "Şablonu Kaydet",
     "Save a barcode first before printing.": "Yazdırmadan önce bir barkod kaydedin.",
+    "Save a copy as .xlsx": "Bir kopyasını .xlsx olarak kaydet",
     "Save a copy as {var:1}": "{var:1} olarak kopya kaydet",
     "Save a page as a draft in the Page Design Studio to play it here as a prototype.": "Burada prototip olarak oynatmak için Sayfa Tasarım Stüdyosu'nda bir sayfayı taslak olarak kaydedin.",
     "Save and Complete": "Kaydet ve Tamamla",

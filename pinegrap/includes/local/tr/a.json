@@ -601,6 +601,7 @@
     "A copy opens as a new e-mail design in your site's colours; the page it comes from stays as it is.": "Kopya, sitenizin renklerinde yeni bir e-posta tasarımı olarak açılır; geldiği sayfa olduğu gibi kalır.",
     "A copy was made for this page: <strong>{var}</strong>": "Bu sayfa için kopya oluşturuldu: <strong>{var}</strong>",
     "A copy was made for {var:1}: <strong>{var:2}</strong>": "{var:1} için kopya oluşturuldu: <strong>{var:2}</strong>",
+    "A copy was saved as {var:1}.": "Kopya {var:1} olarak kaydedildi.",
     "A coral reef, a shark tunnel and the jellyfish gallery under one roof.": "Tek çatı altında bir mercan resifi, köpekbalığı tüneli ve denizanası galerisi.",
     "A cotton bell tent on a deck at the forest edge, with a double bed, two singles and a wood stove.": "Orman kenarında platform üzerinde, bir çift kişilik ve iki tek kişilik yataklı, sobalı pamuklu bir çan çadırı.",
     "A cough for two weeks that will not go away.": "İki haftadır geçmeyen bir öksürük.",

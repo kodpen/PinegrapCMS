@@ -9,7 +9,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 ## Previews
 - OP1, .csv and .tsv open as a sheet: the delimiter (comma, semicolon, tab) and the encoding (UTF-8 with or without a mark, Windows-1254) are detected, a choice above the sheet corrects a wrong guess; view only. Done: PR #10484 (`platform/office-csv-preview.md`).
 - OP2, .ods opens as a workbook through XL1's reader, with its cell ceiling; view only. Done: PR #10519 (`platform/office-ods-preview.md`).
-- OP3, .xls opens as a workbook through XL1's reader; view only, with "Save a copy as .xlsx" (written by the shared writer beside the file, or as a new message's file in a channel), which the user then edits. Started.
+- OP3, .xls opens as a workbook through XL1's reader; view only, with "Save a copy as .xlsx" (written by the shared writer beside the file, or as a new message's file in a channel), which the user then edits. Done: PR #10542 (`platform/office-xls-preview.md`).
 - OP4, .pptx opens as a list of slides: each slide's title, text in reading order, pictures and speaker notes; no slide layout, no animation; the picture limits of the .docx preview apply.
 
 ## Sheet editing (.xlsx)

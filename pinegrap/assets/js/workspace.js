@@ -1471,6 +1471,26 @@
                     return;
                 }
 
+                // An .xls, only looked at: a copy as .xlsx is sent as a new
+                // message's file, in reply to this one, and changed there.
+                if (data.office && data.office.kind === 'xls') {
+                    window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, !data.can_copy ? null : {
+                        saveCopy: function (done) {
+                            api('ws_file_office_copy', { message_id: file.message_id }).then(function (result) {
+                                done(true, t('file_copy_sent'));
+
+                                if (typeof onSaved === 'function') {
+                                    onSaved(result);
+                                }
+                            }).catch(function (error) {
+                                done(false, (error && error.message) ? error.message : t('error_generic'));
+                            });
+                        }
+                    });
+
+                    return;
+                }
+
                 state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
                     editable: true,
                     onChange: function (count) {

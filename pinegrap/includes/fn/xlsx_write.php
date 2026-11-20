@@ -14,7 +14,9 @@
  *
  * The ERP export (includes/erp/export.php), the workflow table download
  * (workspace_wtables.php) and the panel lists' Export to Excel
- * (includes/fn/list_excel.php) write through it. Reading a workbook is the
+ * (includes/fn/list_excel.php) write through it. A workbook of several
+ * sheets of typed cells, as the sheet reader gives them, is written by
+ * pg_xlsx_write_book(): an .xls saved as a copy in .xlsx. Reading a workbook is the
  * business of includes/fn/office.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -255,4 +257,218 @@ function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
     }
 
     return $zip->close();
+}
+
+/**
+ * One cell of the sheet reader (pg_sheet_rows(): t s, n, b, d or e, and v)
+ * as a <c> element of pg_xlsx_write_book(): text inline, a number as it is
+ * written, a boolean, an error, a date (style 1), a date and time (style 2)
+ * or a time alone (style 3 with seconds, 4 without). A number or date that is not one stays text;
+ * no cell, or empty text, gives ''.
+ *
+ * @param string     $reference A1
+ * @param array|null $cell
+ * @return string
+ */
+function pg_xlsx_typed_cell($reference, $cell)
+{
+    if (!is_array($cell) || !isset($cell['t'], $cell['v'])) {
+        return '';
+    }
+
+    $value = (string) $cell['v'];
+    $at = ' r="' . $reference . '"';
+
+    switch ($cell['t']) {
+        case 'n':
+        case 'd':
+            if (!is_numeric($value) || !is_finite((float) $value)) {
+                break;
+            }
+
+            if ($cell['t'] === 'n') {
+                return '<c' . $at . '><v>' . $value . '</v></c>';
+            }
+
+            $serial = (float) $value;
+            $style = (floor($serial) == $serial) ? 1 : 2;
+
+            if (abs($serial) < 1) {
+                $style = (((int) round(abs($serial) * 86400)) % 60) ? 3 : 4;
+            }
+
+            return '<c' . $at . ' s="' . $style . '"><v>' . $value . '</v></c>';
+
+        case 'b':
+            return '<c' . $at . ' t="b"><v>' . (($value === '1') ? '1' : '0') . '</v></c>';
+
+        case 'e':
+            if (in_array($value, array('#NULL!', '#DIV/0!', '#VALUE!', '#REF!', '#NAME?', '#NUM!', '#N/A'), true)) {
+                return '<c' . $at . ' t="e"><v>' . pg_xlsx_xml($value) . '</v></c>';
+            }
+            break;
+    }
+
+    if ($value === '') {
+        return '';
+    }
+
+    return '<c' . $at . ' t="inlineStr"><is><t xml:space="preserve">' . pg_xlsx_xml($value) . '</t></is></c>';
+}
+
+/**
+ * A workbook of several sheets of typed cells, as the sheet reader gives
+ * them (pg_sheet_rows()), each sheet's rows asked for only when it is
+ * written and streamed to a temporary file, so one sheet at a time is held.
+ * Sheet names are made ones Excel takes and kept apart; a hidden sheet stays
+ * hidden, and the first shown sheet is the one open.
+ *
+ * $rows_of(int $index) gives a sheet's rows, row number => cells from
+ * column A (null for a gap); it may throw to stop the write, which then
+ * returns false and leaves nothing at $path.
+ *
+ * @param array[]  $sheets  name, hidden
+ * @param callable $rows_of see above
+ * @param string   $path    where to write the .xlsx
+ * @return bool
+ */
+function pg_xlsx_write_book($sheets, $rows_of, $path)
+{
+    if (!class_exists('ZipArchive') || empty($sheets)) {
+        return false;
+    }
+
+    $ns = 'http://schemas.openxmlformats.org/';
+    $head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
+    $types = '';
+    $list = '';
+    $rels = '';
+    $taken = array();
+    $active = null;
+    $temporary = array();
+    $sheets = array_values($sheets);
+
+    foreach ($sheets as $index => $sheet) {
+        $number = $index + 1;
+        $name = pg_xlsx_sheet_title(isset($sheet['name']) ? $sheet['name'] : '');
+
+        // Excel compares sheet names without case.
+        for ($copy = 2; isset($taken[mb_strtolower($name)]); $copy++) {
+            $suffix = ' (' . $copy . ')';
+            $name = rtrim(mb_substr(pg_xlsx_sheet_title(isset($sheet['name']) ? $sheet['name'] : ''), 0, 31 - strlen($suffix))) . $suffix;
+        }
+
+        $taken[mb_strtolower($name)] = true;
+        $hidden = !empty($sheet['hidden']);
+
+        if (!$hidden && ($active === null)) {
+            $active = $index;
+        }
+
+        $types .= '<Override PartName="/xl/worksheets/sheet' . $number . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        $list .= '<sheet name="' . pg_xlsx_xml($name) . '" sheetId="' . $number . '"' . ($hidden ? ' state="hidden"' : '') . ' r:id="rId' . $number . '"/>';
+        $rels .= '<Relationship Id="rId' . $number . '" Type="' . $ns . 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $number . '.xml"/>';
+    }
+
+    // A workbook needs a sheet on show: the first one, when all are hidden.
+    if ($active === null) {
+        $active = 0;
+        $list = preg_replace('/ state="hidden"/', '', $list, 1);
+    }
+
+    $count = count($sheets);
+    $zip = new ZipArchive();
+
+    if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        return false;
+    }
+
+    $written = true;
+
+    try {
+        foreach ($sheets as $index => $sheet) {
+            $file = tempnam(sys_get_temp_dir(), 'pg_xlsx_');
+            $handle = ($file !== false) ? fopen($file, 'wb') : false;
+
+            if ($handle === false) {
+                throw new RuntimeException('No temporary file.');
+            }
+
+            $temporary[] = $file;
+            fwrite($handle, $head . '<worksheet xmlns="' . $ns . 'spreadsheetml/2006/main">'
+                . (($index === $active) ? '<sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews>' : '')
+                . '<sheetData>');
+
+            foreach (call_user_func($rows_of, $index) as $number => $cells) {
+                $xml = '';
+
+                foreach ((array) $cells as $column => $cell) {
+                    $xml .= pg_xlsx_typed_cell(pg_xlsx_column_letter((int) $column) . (int) $number, $cell);
+                }
+
+                if ($xml !== '') {
+                    fwrite($handle, '<row r="' . (int) $number . '">' . $xml . '</row>');
+                }
+            }
+
+            fwrite($handle, '</sheetData></worksheet>');
+            fclose($handle);
+            $zip->addFile($file, 'xl/worksheets/sheet' . ($index + 1) . '.xml');
+        }
+    } catch (Throwable $exception) {
+        $written = false;
+    }
+
+    if ($written) {
+        $zip->addFromString('[Content_Types].xml', $head
+            . '<Types xmlns="' . $ns . 'package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . $types
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . '</Types>');
+        $zip->addFromString('_rels/.rels', $head
+            . '<Relationships xmlns="' . $ns . 'package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', $head
+            . '<workbook xmlns="' . $ns . 'spreadsheetml/2006/main" xmlns:r="' . $ns . 'officeDocument/2006/relationships">'
+            . '<bookViews><workbookView activeTab="' . $active . '"/></bookViews>'
+            . '<sheets>' . $list . '</sheets>'
+            . '</workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $head
+            . '<Relationships xmlns="' . $ns . 'package/2006/relationships">'
+            . $rels
+            . '<Relationship Id="rId' . ($count + 1) . '" Type="' . $ns . 'officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '</Relationships>');
+        // Five cell formats: 0 plain, 1 a date (built-in format 14), 2 a
+        // date and time (22), 3 a time with seconds (21, h:mm:ss), 4 a time
+        // (20, h:mm).
+        $zip->addFromString('xl/styles.xml', $head
+            . '<styleSheet xmlns="' . $ns . 'spreadsheetml/2006/main">'
+            . '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+            . '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+            . '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            . '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+            . '<xf numFmtId="22" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+            . '<xf numFmtId="21" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+            . '<xf numFmtId="20" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            . '</styleSheet>');
+        $written = $zip->close();
+    } else {
+        // Nothing is left at $path: the archive is dropped unwritten.
+        $zip->unchangeAll();
+        $zip->close();
+        @unlink($path);
+    }
+
+    foreach ($temporary as $file) {
+        @unlink($file);
+    }
+
+    return $written;
 }
