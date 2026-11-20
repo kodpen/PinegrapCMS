@@ -30,6 +30,9 @@
 - app-access-redraw-features.md: Plan app-access-redraw, features U1 to U8: the New application sheet in three steps, the starting points and who each acts as, the permission picker with search, groups and the four bulk buttons
 - app-access-redraw-steps.md: Plan app-access-redraw, steps AA1 to AA8: the New application sheet, the permission picker, the drawer and guides, the key as one token, the Agent tab, Connections' row, Claude Console, close-out
 - app-access-redraw.md: Plan (owner 2026-11-20, urgent): Application Access redrawn: starting points, a permission picker with bulk choices, a guide per way to connect, an agent made from the application; AA1 to AA8
+- application-review-features.md: Plan application-review, features V1 to V16: programme, eligibility, correction link, criteria, assignment, conflicts, blind review, reviewers, jurors, combining, rounds, decisions
+- application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
+- application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
 - assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
 - assistants-settings-tidy.md: Plan (owner 2026-11-20, urgent, in the architect's window): Site Settings › Assistants and agents tidied: each part one folded row, Claude's long guide in its drawer, repeated help cut; AT1 to AT4
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
@@ -64,6 +67,9 @@
 - discussion-everyone-hint.md: Plan (owner 2026-11-20, poll 184): in a discussion a person's @herkes that woke no agent says why under the message, and the channel's agents are added to a discussion in one go; one step, DE1
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- feedback-loop-features.md: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, periodic NPS, timing, fatigue, the signed one-click answer, review invitation, follow-up, report, group rule, API, privacy
+- feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
+- feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
