@@ -335,6 +335,9 @@ function remove_order_item($order_item_id)
     $query = "DELETE FROM order_items WHERE id = ?";
     $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     db("DELETE FROM order_item_gift_cards WHERE order_item_id = '" . escape($order_item_id) . "'");
+    // A file a shopper uploaded with the line's product form goes with its answer.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_line_files($order_item_id);
     // delete product form data for order item
     $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
     $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
@@ -2004,6 +2007,8 @@ function pg_order_drop_saved_lines($order_id)
     }
     $list = implode(', ', $ids);
     db("DELETE FROM order_item_gift_cards WHERE order_item_id IN (" . $list . ")");
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_line_files($ids);
     db("DELETE FROM form_data WHERE (order_item_id IN (" . $list . ")) AND (order_item_id != '0')");
     db("DELETE FROM order_items WHERE id IN (" . $list . ")");
 }
@@ -11905,6 +11910,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // Once, like the steps above; a restore grants it again.
     pg_order_folder_access_cancelled($order);
 
+    // ── Void the order's event tickets ─────────────────────────────────
+    // One conditional UPDATE; a restore makes them valid again.
+    pg_event_tickets_order_cancelled($order_id);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -12362,6 +12371,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     // The folder access the cancellation took back.
     pg_order_folder_access_restored($cancelled_order);
+
+    // The event tickets the cancellation voided.
+    pg_event_tickets_order_restored($order_id);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 

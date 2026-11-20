@@ -1,12 +1,12 @@
 ---
 name: look-system-tools
-description: The system tools in look A (S6a of panel-old-screens, #10533): section titles, card tables, field spans, measure, what stayed and what was held
+description: The system tools in look A (S6a of panel-old-screens, #10533; Clean Up in the plan's close-out): section titles, card tables, field spans, measure, what stayed
 ---
 
 ## Which screens moved?
 - Database Engine (`database_engine.php`), Find and Replace, Mass Edit, Repair Software (`software_repair.php`), Backups, Experiments, Import (`import.php`), Migration, API Documentation (`api_docs.php`), Developer Lock (step S6a of the plan panel-old-screens).
-- Translations and Clean Up (`translations.php`, `clean_up.php`) were held for S6c: open PRs changed them at the time (#10523, #10528).
-- Software Updater (`software_update.php`) needed nothing: it opens in the settings dialog, and what it draws its own way is the update's hero (glyph, the two version figures), a figure outside the report block (`plans/panel-old-screens-rules.md`).
+- Translations went with S6c (`look-translations-screen.md`). Clean Up (`clean_up.php`) went with the plan's close-out: its two titles `pg-title-section`, the Summary (`pg_clean_up_summary()`) a `dl.pg-kv` with its warning `pg-text-meta fg-danger`, the bar `pg_save_bar()`; the delete button, the red list rows and the list's 500 px `max-height` stayed.
+- Software Updater (`software_update.php`) needed nothing: it opens in the settings dialog, and what it draws its own way is the update's hero (glyph, the two version figures), a figure outside the report block (`look-sheet-silent.md`).
 
 ## What changed on them?
 - Card titles: the upper-case `text-uppercase h5|h6 fg-primary fw-bold` and the plain `card-header` titles are `h2.card-header.bg-reset.border-0.pg-title-section`. A header that also holds a note, a code, a badge or the search box keeps its flex div (`bg-reset border-0`) with an `h2.pg-title-section mb-0` in it (Database Engine's Visitor records, Table health, All tables; Find Results' group cards).

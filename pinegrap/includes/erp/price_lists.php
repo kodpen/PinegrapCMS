@@ -342,6 +342,31 @@ function erp_account_price_pointer_options(array $accounts, $account_id, $curren
 }
 
 /**
+ * The one-hop check of a pointer, with the chosen account and the accounts
+ * that use this one's prices read from the table: why it is refused, or ''.
+ * The panel's save and the API's account update both ask it before writing.
+ *
+ * @param int $account_id
+ * @param int $target_id 0 to use its own prices
+ * @return string
+ */
+function erp_account_price_pointer_check($account_id, $target_id)
+{
+    $account_id = (int) $account_id;
+    $target_id = max(0, (int) $target_id);
+
+    $target = ($target_id > 0) ? db_item("SELECT id, price_account_id FROM erp_accounts WHERE id = '" . $target_id . "' LIMIT 1") : null;
+
+    return erp_account_price_pointer_refusal(
+        $account_id,
+        $target_id,
+        is_array($target) && !empty($target),
+        is_array($target) ? (int) ($target['price_account_id'] ?? 0) : 0,
+        ($target_id > 0) ? count(erp_account_price_users($account_id)) : 0
+    );
+}
+
+/**
  * Sets whose prices an account buys at, or lets go with 0, after the
  * one-hop check.
  *
@@ -358,15 +383,7 @@ function erp_account_price_pointer_save($account_id, $target_id)
         return array('success' => false, 'error' => lang('The account was not found.'));
     }
 
-    $target = ($target_id > 0) ? db_item("SELECT id, price_account_id FROM erp_accounts WHERE id = '" . $target_id . "' LIMIT 1") : null;
-
-    $error = erp_account_price_pointer_refusal(
-        $account_id,
-        $target_id,
-        is_array($target) && !empty($target),
-        is_array($target) ? (int) ($target['price_account_id'] ?? 0) : 0,
-        count(erp_account_price_users($account_id))
-    );
+    $error = erp_account_price_pointer_check($account_id, $target_id);
 
     if ($error !== '') {
         return array('success' => false, 'error' => $error);

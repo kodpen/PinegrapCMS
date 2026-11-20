@@ -563,6 +563,7 @@
     "Google Client Secret": "Google Client Secret",
     "Google Cloud Translation": "Google Cloud Translation",
     "Google Cloud Translation API key": "Google Cloud Translation API anahtarı",
+    "Google Cloud Translation needs your own key from the Google Cloud console. The key is set on Google Cloud Translation's page of Connections.": "Google Cloud Translation, Google Cloud konsolundan alacağınız kendi anahtarınızla çalışır. Anahtar, Bağlantılar'daki Google Cloud Translation sayfasında girilir.",
     "Google Fonts": "Google Fonts",
     "Google Form": "Google Formu",
     "Google Login": "Google Girişi",

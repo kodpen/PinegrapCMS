@@ -145,6 +145,20 @@ function connections_seo_may_manage($user) {
 
 }
 
+// May the user change the Google Cloud Translation key? It came from Site
+// Settings › Languages and Translation, so it keeps that category's gate.
+function connections_languages_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('languages', $user);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -306,6 +320,61 @@ if ($_POST) {
 					}
 
 				}
+			}
+
+		}
+
+	}
+
+	// The Google Cloud Translation key, saved or removed on its page under the
+	// gate of the Translation Engines card it came from; the write returns to
+	// the page. The key is sealed and never drawn back.
+	if (in_array($action, array('translate_save', 'translate_remove'), true) && connections_languages_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/translate.php');
+		pg_tr_load();
+
+		if ($action === 'translate_remove') {
+
+			pg_tr_google_key_store('');
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'Google Cloud Translation')));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Google Cloud Translation')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$translate_key = (isset($_POST['translation_google_key']) && is_string($_POST['translation_google_key'])) ? trim($_POST['translation_google_key']) : '';
+			$translate_stored = (defined('TRANSLATION_GOOGLE_KEY_ENC') && (TRANSLATION_GOOGLE_KEY_ENC !== ''));
+
+			if (($translate_key === '') && !$translate_stored) {
+				$liveform->add_error(lang('Type the API key.'));
+			} elseif (($translate_key !== '') && !pg_tr_google_key_valid($translate_key)) {
+				$liveform->add_error(lang('The API key may only contain letters, digits, dashes and underscores, up to 200 characters.'));
+			} else {
+
+				if ($translate_key !== '') {
+					pg_tr_google_key_store($translate_key);
+					$liveform->add_notice(lang(array('string' => 'The {var:1} key was saved.', 'vars' => 'Google Cloud Translation')));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google Cloud Translation')), $_SESSION['sessionusername']);
+				}
+
+				// Save and try: one short text goes to Google with the key
+				// just typed, or the stored one when the field was left empty.
+				if (!empty($_POST['submit_try'])) {
+
+					require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+					$translate_try = pg_tr_google_request(array('try' => 'Hello'), 'en', 'tr', ($translate_key !== '') ? $translate_key : pg_tr_google_key());
+
+					if ($translate_try['ok']) {
+						$liveform->add_notice(lang(array('string' => '{var:1} answered.', 'vars' => 'Google Cloud Translation')));
+					} else {
+						// Google's own words, escaped whole.
+						$liveform->add_error(h((string) $translate_try['error']));
+					}
+
+				}
+
 			}
 
 		}
@@ -1001,6 +1070,75 @@ function connections_indexnow_page($page, $may_manage) {
 						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › SEO › ' . h(lang('Search Engine Optimization')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill(($key !== '') ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Google Cloud Translation's page: "Connection details" takes the API key
+   (sealed, never drawn back) for who may open Site Settings › Languages and
+   Translation, Status has Disconnect, and "Where it is used" leads to the
+   Translation Engines card and the languages set to the engine. */
+
+function connections_translate_page($page, $may_manage, $can_seal) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/translate.php');
+
+	$stored = defined('TRANSLATION_GOOGLE_KEY_ENC') && (TRANSLATION_GOOGLE_KEY_ENC !== '');
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The key the languages set to Google Cloud Translation are translated with.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="translate_save">
+				<input type="hidden" name="connections_return" value="google_translate">
+				<div>
+					<label class="pg-field-label" for="translation_google_key">' . h(lang('Google Cloud Translation API key')) . '</label>
+					<input type="password" class="pg-input font-monospace" id="translation_google_key" name="translation_google_key" value="" maxlength="200" autocomplete="new-password" spellcheck="false"
+						placeholder="' . h($stored ? lang('Stored. Leave empty to keep it.') : '') . '">
+					<div class="pg-field-help">' . h(lang('Your own key from the Google Cloud console, with the Cloud Translation API enabled on the project. It is stored encrypted and never shown again.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if ($stored) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="translate_remove" data-id="0"
+					data-confirm="' . h(lang('The Google Cloud Translation key is removed: the languages set to Google are translated by their fallback engine, or wait, until a key is typed again.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	// The languages whose engine or fallback is Google.
+	$languages = array();
+
+	foreach (pg_tr_languages(false) as $code => $row) {
+		if (($row['engine'] === 'google') || ($row['fallback_engine'] === 'google')) {
+			$languages[] = ((string) $row['label'] !== '') ? $row['label'] . ' (' . $code . ')' : $code;
+		}
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('languages', 'pgset-translation-engines')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Translating pages and texts')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Languages and Translation')) . ' › ' . h(lang('Translation Engines')) . '</span>
+						<span class="pg-text-meta d-block">' . h($languages ? implode(', ', $languages) : lang('No language is set to it yet.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($stored ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -2099,14 +2237,20 @@ if ($provider_page !== '') {
 			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
 			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
+			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate'), true),
 	);
+
+	// Google Cloud Translation's page: its key and the languages that use it.
+	if ($page_id === 'google_translate') {
+		$page = connections_translate_page($page, connections_languages_may_manage($user), $can_seal);
+	}
 
 	// Google Analytics' page: its tag, its figures and where both are used.
 	if ($page_id === 'google_analytics') {

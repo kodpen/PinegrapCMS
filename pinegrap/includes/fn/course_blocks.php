@@ -336,7 +336,7 @@ function pg_course_member_view(array $course, $page_id)
 {
     $lessons = array();
 
-    foreach (pg_course_lessons($course['id']) as $lesson) {
+    foreach (pg_course_member_lessons($course) as $lesson) {
         $lesson['name'] = _pg_course_lesson_name($lesson['page_id']);
         $lesson['url'] = _pg_course_page_path($lesson['page_id']);
         $lessons[] = $lesson;

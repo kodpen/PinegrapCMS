@@ -334,3 +334,123 @@ function test_workspace_app_command_limit_unchanged()
 	pg_assert_same(20, WS_APP_COMMANDS_MAX);
 	pg_assert_same(8, WS_APP_COMMAND_ARGS_MAX);
 }
+
+// The agent an application's commands belong to: its first active app agent.
+function test_workspace_app_command_agent_of()
+{
+	$agents = array(
+		array('id' => 8, 'kind' => 'app', 'status' => 'active', 'app_id' => 7),
+		array('id' => 3, 'kind' => 'app', 'status' => 'active', 'app_id' => 7),
+		array('id' => 2, 'kind' => 'app', 'status' => 'paused', 'app_id' => 7),
+		array('id' => 5, 'kind' => 'model', 'status' => 'active', 'app_id' => 6),
+	);
+
+	pg_assert_same(3, ws_app_command_agent_of($agents, 7)['id'], 'the first active one in id order');
+	pg_assert_same(null, ws_app_command_agent_of($agents, 6), 'a model agent waits on no queue of an application');
+	pg_assert_same(null, ws_app_command_agent_of($agents, 9), 'an application without an agent');
+	pg_assert_same(null, ws_app_command_agent_of($agents, 0));
+}
+
+// Without an agent the command goes to the application as before; with one
+// only a channel that allows it runs it, a discussion through its channel.
+function test_workspace_app_command_route()
+{
+	$agent = array('id' => 3, 'kind' => 'app', 'status' => 'active', 'app_id' => 7);
+	$allowed = array(array('id' => 3, 'kind' => 'app', 'app_id' => 7, 'wake_rule' => 'mention', 'loop_guard' => 0));
+
+	pg_assert_same('app', ws_app_command_route(null, array()), 'an application without an agent unchanged');
+	pg_assert_same('agent', ws_app_command_route($agent, $allowed));
+	pg_assert_same('none', ws_app_command_route($agent, array(array('id' => 4))), 'an agent not allowed in the channel');
+	pg_assert_same('none', ws_app_command_route($agent, array()));
+
+	// A discussion with no row of its own reaches the channel's agent, its
+	// loop guard on.
+	$merged = ws_agent_reach_merge(array(), array(), array('id' => 9, 'archived_at' => 0), $allowed);
+	pg_assert_same('agent', ws_app_command_route($agent, $merged), 'a discussion of an allowing channel');
+	pg_assert_same(1, $merged[0]['loop_guard'], 'the loop guard is on there');
+}
+
+// The composer's list learns where an agent's command is offered; an
+// application's command without an agent carries null and is left as it was.
+function test_workspace_app_command_entry_reach()
+{
+	$entry = ws_app_command_entry(array('name' => 'rapor', 'usage_text' => '', 'args' => null, 'description' => 'd', 'app_id' => 7, 'app_name' => 'Bot'));
+	$agents = array(array('id' => 3, 'kind' => 'app', 'status' => 'active', 'app_id' => 7, 'channels' => array('4', 9)));
+
+	pg_assert_same(array(4, 9), ws_app_command_entry_reach($entry, $agents)['agent_channels']);
+
+	$plain = ws_app_command_entry_reach($entry, array());
+	pg_assert_same(null, $plain['agent_channels'], 'no agent');
+	unset($plain['agent_channels']);
+	pg_assert_same($entry, $plain, 'otherwise unchanged');
+}
+
+// Typed for an agent: the line posted as the writer's message, one request
+// for the agent hung on it with the command and its values, the event sent
+// once.
+function test_workspace_app_command_agent_send()
+{
+	$calls = array('post' => array(), 'ask' => array(), 'announce' => 0);
+	$writer = array('id' => 5);
+	$channel = array('id' => 4, 'name' => 'ops', 'kind' => 'public');
+	$row = array('name' => 'rapor', 'app_id' => 7, 'app_name' => 'Bot');
+	$agent = array('id' => 3, 'kind' => 'app', 'status' => 'active', 'app_id' => 7);
+	$stubs = array(
+		'post' => function ($viewer, $channel, $body, $parent_id) use (&$calls) {
+			$calls['post'][] = array($viewer['id'], $channel['id'], $body, $parent_id);
+
+			return array('ok' => true, 'error' => '', 'message_id' => 610);
+		},
+		'ask' => function ($viewer, $channel, $message_id, $body, $agent_value, $state) use (&$calls) {
+			$calls['ask'][] = array($viewer['id'], $message_id, $agent_value, $state);
+
+			return array($agent_value);
+		},
+		'announce' => function () use (&$calls) {
+			$calls['announce']++;
+		},
+	);
+
+	$answer = ws_app_command_agent_send($writer, $channel, $row, $agent, 'hafta ', array('period' => 'hafta'), 600, $stubs);
+
+	pg_assert_same(array(array(5, 4, '/rapor hafta', 600)), $calls['post'], 'the line under the writer\'s name, as an answer when typed as one');
+	pg_assert_same(1, count($calls['ask']), 'one request');
+	pg_assert_same(array(5, 610, 'agent:3'), array_slice($calls['ask'][0], 0, 3), 'hung on the posted message, for the agent');
+	pg_assert_same(array('name' => '/rapor', 'values' => array('period' => 'hafta')), ws_app_command_request_of(array('ai_state' => $calls['ask'][0][3])), 'the command and its values travel to the brief');
+	pg_assert_same(1, $calls['announce'], 'the event sent once');
+	pg_assert_same(array('type' => 'done', 'message_id' => 610, 'app_command' => '/rapor', 'agents' => array('agent:3')), $answer);
+
+	// A brake held it: the line stays posted, no request, the event still once.
+	$stubs['ask'] = function () {
+		return array();
+	};
+	$calls['announce'] = 0;
+	$braked = ws_app_command_agent_send($writer, $channel, $row, $agent, '', null, 0, $stubs);
+	pg_assert_same(array(), $braked['agents']);
+	pg_assert_same('/rapor', $calls['post'][1][2], 'no words after it: the name alone');
+	pg_assert_same(1, $calls['announce']);
+	pg_assert_same('hourly', ws_agent_brake(0, WS_AGENT_HOURLY_MAX), 'a mention\'s hourly brake');
+	pg_assert_true(ws_agent_brake_line_due(false, true), 'under a person\'s line the braked line is always written');
+
+	// The line could not be posted: nothing asked, nothing sent.
+	$stubs['post'] = function () {
+		return array('ok' => false, 'error' => 'You cannot post in that channel.', 'message_id' => 0);
+	};
+	$calls['announce'] = 0;
+	pg_assert_same(array('type' => 'error', 'error' => 'You cannot post in that channel.'), ws_app_command_agent_send($writer, $channel, $row, $agent, '', null, 0, $stubs));
+	pg_assert_same(0, $calls['announce']);
+}
+
+// The brief names the command and its values; any other request says nothing.
+function test_workspace_app_command_brief_lines()
+{
+	pg_assert_same(array(), ws_app_command_brief_lines(ws_app_command_request_of(array('ai_state' => ''))));
+	pg_assert_same(null, ws_app_command_request_of(array('ai_state' => '{"item":{"type":"note"}}')), 'a tag outside a message is no command');
+
+	$lines = ws_app_command_brief_lines(ws_app_command_request_of(array('ai_state' => ws_app_command_request_state('rapor', null))));
+	pg_assert_same(1, count($lines), 'a command without a definition: its name alone');
+	pg_assert_contains('/rapor', $lines[0]);
+
+	$lines = implode("\n", ws_app_command_brief_lines(ws_app_command_request_of(array('ai_state' => ws_app_command_request_state('rapor', array('who' => 12))))));
+	pg_assert_contains('{"who":12}', $lines);
+}

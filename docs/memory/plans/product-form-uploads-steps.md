@@ -4,7 +4,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
 ---
 
 ## Which steps are there?
-- FU1 (M) after bug issue #10541 has landed: the field, its rules and the file's door, server side.
+- FU1 (M) after bug issue #10541 has landed: the field, its rules and the file's door, server side. Done in #10598.
   - Existing files: `includes/fn/forms.php` (`select_field_type()`), `includes/forms/field_form.php`, `add_field.php`, `edit_field.php` (the settings rows), `get_file.php` (the product answer's check, placed before the folder's own), `includes/fn/ecommerce.php` (`remove_order_item()`, `pg_order_drop_saved_lines()`), `remove_item_from_cart.php`, `delete_order.php`.
   - New: `includes/fn/product_form_uploads.php` (the rule read from `form_fields.rules`, check, place, keep, remove), `tests/product_form_uploads_test.php`.
   - Tests, red first: the allow-list on top of the blocklist; the size cap; who opens the file (cart owner, buyer, order staff, a stranger); a removed line taking its file.

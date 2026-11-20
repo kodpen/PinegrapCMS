@@ -1,13 +1,13 @@
 ---
 name: office-files-scope
-description: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no .doc/.ppt, .xls only shown and copied, no library; where the xlsx reader may go next
+description: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, .pptx only shown, no .doc/.ppt, .xls only shown and copied, no library; where the xlsx reader may go next
 ---
 
 ## What does "simple editing" mean?
 - Cell edits in a workbook (`office-cell-edits.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19). An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
 
 ## Which files are out?
-- .pptx: out of scope, no preview; the browser downloads it.
+- .pptx: shown as a list of slides, only looked at (`office-pptx-preview.md`); never edited.
 - .doc, .ppt (binary): no preview or edit. An .xls is shown and saved as a copy in .xlsx, never edited in place (`office-xls-preview.md`). A channel still takes them; it refuses only the macro forms of the new formats (`workspace/workspace-upload-refusals.md`).
 - No library is added for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord): the readers and writers are the product's own (`office-files.md`), as its xlsx writer is (`erp/erp-accountant-pack.md`).
 - PHPExcel, the one spreadsheet library the product carried, is removed (#10528): the importers read .xlsx, .xls and .ods through the sheet reader (`sheet-reader.md`), the Paraşüt exports are written by the xlsx writer (`erp/parasut-import-sheets.md`).
