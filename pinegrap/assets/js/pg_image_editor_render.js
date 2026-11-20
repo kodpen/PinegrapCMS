@@ -65,7 +65,7 @@
             return;
         }
 
-        var st = M.motionAt(l, time, M.docMotion(this.doc).duration);
+        var st = M.groupMotionAt(this.doc.layers, l, time, M.docMotion(this.doc).duration);
 
         if (st.opacity <= 0) {
             return;
@@ -165,7 +165,7 @@
         var self = this, end = M.docMotion(this.doc).duration, cuts = {}, waits = [];
 
         this.doc.layers.forEach(function (l) {
-            var st = (!l.hidden && (STILL.indexOf(l.type) < 0)) ? M.motionAt(l, time, end) : null;
+            var st = (!l.hidden && (STILL.indexOf(l.type) < 0)) ? M.groupMotionAt(self.doc.layers, l, time, end) : null;
 
             if (st && (st.draw < 1) && (st.opacity > 0)) {
                 waits.push(self.drawCut(l, st.draw, k).then(function (cut) { cuts[l.id] = cut; }));
