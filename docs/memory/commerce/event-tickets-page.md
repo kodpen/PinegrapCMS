@@ -23,6 +23,6 @@ module: event_tickets_page, widgets_event_tickets
 - Designer twins: `_sdAccountTicketsHtml()` (the section's canvas sample), `_sdAccountTicketsList()` (a new list's starter, the badge's colour a condition on the tone). The section is in no starter; "Convert to design elements" does not offer it yet.
 - The account part is site output (Bootstrap 5.3.8) in `includes/fn/widgets_event_tickets.php`; the page's in `includes/fn/event_tickets_page.php`. Both are loaded where used, not by `functions.php`.
 
-Test: `tests/event_tickets_page_test.php`. Pictures from a sandbox site went to the owner; not run on a production database.
+Test: `tests/event_tickets_page_test.php`. Run on a sandbox site (one ticket, four, a void one, phone, print); not on a production database.
 
 Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/event-tickets-key.md, docs/memory/core/qr-code-generator.md, docs/memory/commerce/booking-manage.md
