@@ -1143,7 +1143,7 @@ function pg_stock_notify_event_status_message($status)
         case 'email':
             return lang('Please enter a valid e-mail address.');
         case 'limit':
-            return lang('You are already waiting for many products. Please try again later.');
+            return lang('You are already on many waiting lists. Please try again later.');
         case 'unavailable':
             return lang('The waiting list is not available on this site.');
     }

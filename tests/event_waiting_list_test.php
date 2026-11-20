@@ -353,3 +353,9 @@ function test_event_waiting_list_shared_places()
 	pg_assert_contains('pg_stock_notify_event_shared(', $send, 'the mail names no single date');
 	pg_assert_contains('pg_stock_notify_event_shared(', pg_test_function_source('pg_stock_notify_event_start'), 'the export names no single date');
 }
+
+// A limit reached on the waiting list speaks of waiting lists, not products.
+function test_event_waiting_list_limit_sentence()
+{
+	pg_assert_false(stripos(pg_stock_notify_event_status_message('limit'), 'product') !== false, 'no products');
+}
