@@ -165,13 +165,13 @@ function pg_look_examples($prefix = 'light')
     $sections[] = array(
         'id'      => 'facts',
         'title'   => lang('Facts and numbered steps'),
-        'classes' => array('.pg-facts', '.pg-facts-item', '.stepper', '.pg-steps', '.stepper-item'),
+        'classes' => array('.pg-facts', '.pg-facts-item', '.stepper', '.pg-stepper-cards', '.stepper-item'),
         'html'    => '<div class="pg-look-stack"><div class="pg-facts">'
             . '<div class="pg-facts-item"><small>' . h(lang('Status')) . '</small><b>' . h(lang('Active')) . '</b></div>'
             . '<div class="pg-facts-item"><small>' . h(lang('Last used')) . '</small><b>' . h(lang('2 min ago')) . '</b></div>'
             . '<div class="pg-facts-item"><small>' . h(lang('Errors in 24 hours')) . '</small><b>0</b></div>'
             . '<div class="pg-facts-item"><small>' . h(lang('Owner')) . '</small><b>Ayşe Demir</b></div>'
-            . '</div><ol class="stepper pg-steps mb-0">'
+            . '</div><ol class="stepper pg-stepper-cards mb-0">'
             . '<li class="stepper-item"><div><div class="pg-list-row-title">' . h(lang('Add the MCP address in the application')) . '</div><div class="pg-text-meta">' . h(lang('Exactly as shown.')) . '</div></div></li>'
             . '<li class="stepper-item"><div><div class="pg-list-row-title">' . h(lang('Sign in and agree')) . '</div><div class="pg-text-meta">' . h(lang('The person signs in with their own panel account.')) . '</div></div></li>'
             . '</ol></div><p class="pg-text-meta">' . h(lang('Facts sit at the top of a drawer; numbered steps are what a person follows somewhere else.')) . '</p>',

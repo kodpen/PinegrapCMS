@@ -56,7 +56,7 @@ function api_app_acts_text($acts) {
 
 }
 
-// A guide's numbered steps (Bootstrap's stepper, .pg-steps), the MCP
+// A guide's numbered steps (Bootstrap's stepper, .pg-stepper-cards), the MCP
 // clients' own steps and the notes. $prefix keeps the ids of the drawer and
 // the sheet apart; $skip leaves out steps by value id (the sheet's step 3
 // gives the credentials in its own first step).
@@ -108,7 +108,7 @@ function api_app_guide_body_html($guide, $prefix, $skip = array()) {
 			<p class="pg-text-2 mb-3"><i class="bi ' . (($guide['acts'] === 'person') ? 'bi-person' : 'bi-box') . ' me-1" aria-hidden="true"></i>'
 				. lang('Acts as:') . ' <b>' . h(api_app_acts_text($guide['acts'])) . '</b></p>
 			<p class="alert theme-warning py-2 px-4 small mb-3" data-guide-off hidden></p>
-			<ol class="stepper pg-steps mb-0">' . $steps . '
+			<ol class="stepper pg-stepper-cards mb-0">' . $steps . '
 			</ol>'
 			. (($clients !== '') ? '
 			<div class="api-guide mt-3 mb-0">
@@ -513,7 +513,7 @@ function api_app_new_connect_html($made, $site_address, $guide, $others) {
 	// value the first step gives is left out.
 	$body = api_app_guide_body_html($guide, 'ng', array('site'));
 
-	$body = preg_replace('~<ol class="stepper pg-steps mb-0">~', '<ol class="stepper pg-steps mb-0">' . $first, $body, 1);
+	$body = preg_replace('~<ol class="stepper pg-stepper-cards mb-0">~', '<ol class="stepper pg-stepper-cards mb-0">' . $first, $body, 1);
 
 	$other_rows = api_app_guides_fold_html($others, 'no', '');
 

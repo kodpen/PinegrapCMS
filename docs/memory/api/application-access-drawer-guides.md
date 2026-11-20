@@ -5,7 +5,7 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 
 ## What does the edit drawer show?
 - `#api_drawer`, `min(760px, 100%)`, from the end; under 576 px the script swaps in `drawer-bottom` (88vh). Drawn by `api_app_drawer_view()` (`includes/api/app_drawer_view.php`) to `plans/app-access-redraw/app-edit.html`, since AA3. `openApp()` in `api_settings.php` fills it.
-- Head: the kind's icon tile, the name, "Integration · key and secret · Acts as: the application itself" (OAuth and team devices: "sign-in", "the person who signs in"), the list's state as a pill, Close.
+- Head: the kind's tile, the name, "Integration · key and secret · Acts as: the application itself" (OAuth and team devices: "sign-in", "the person who signs in"), the list's state as a pill, Close.
 - Tabs (`pg-seg`, role=tab): Overview, Connect, Permissions (its count beside it), Events, Devices (Connections on OAuth), Logs. The Agent tab comes with AA5. The old Security tab is gone: its fields are Overview's Advanced row.
 
 ## What is on Overview?
@@ -29,7 +29,7 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 - It replaced the three centred sheets.
 
 ## Which parts did it add to Design examples?
-- `.pg-facts` / `.pg-facts-item` and `.stepper.pg-steps` (numbered steps, no line), in `backend.src.css` beside `.pg-card-inner`; shown under "Facts and numbered steps". A folded row inside `.pg-card-inner` gets a top border.
+- `.pg-facts` / `.pg-facts-item` in `backend.src.css` beside `.pg-card-inner`; numbered steps are `.stepper.pg-stepper-cards` (`ui/step-rail.md`); shown under "Facts and numbered steps". A fold row in `.pg-card-inner` gets a top border.
 - `includes/settings/fold.php` opens under `PG_API_PANEL` too.
 
 Related: docs/memory/api/application-access-new-sheet.md, docs/memory/api/application-access-keys.md, docs/memory/ui/screen-composition-rules.md
