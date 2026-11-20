@@ -4,7 +4,7 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
 ---
 
 ## Which steps are there?
-- RF1 (M) The rules, server and data only.
+- RF1 (M) The rules, server and data only. Done (#10033): `commerce/referral-rules.md`, `commerce/referral-commission-readers.md`.
   - First a census in the draft PR's body: every reader of `commissions` (screens, lists, reports, the API, the affiliate's account part, the personal data export and erasure) and what each does with a referral's row. The architect confirms it there before the rest is written.
   - A migration step adds the value `referral` to `gift_cards.kind`.
   - Existing files, one call each beside what affiliates and points already have there: `includes/fn/order_completion.php` (at the commission's call), `includes/fn/ecommerce.php` (`process_order_cancellation()`, `pg_order_restore_cancelled()`), `includes/fn/returns.php` and the order screen's line refund, `includes/fn/store_credit.php` (the kind), `includes/fn/commission_list.php` (a referral's row not set by hand).

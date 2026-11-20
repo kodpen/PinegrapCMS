@@ -1142,6 +1142,7 @@
     "{var:1} h planned of {var:2} h": "{var:2} saatin {var:1} saati planlı",
     "{var:1} h {var:2} min": "{var:1} sa {var:2} dk",
     "{var:1} had an error and was repaired by the last check": "{var:1} tablosunda bir hata vardı, son denetim onardı",
+    "{var:1} had been spent and could not be taken back.": "{var:1} harcanmıştı ve geri alınamadı.",
     "{var:1} handed the document to GİB.": "{var:1} belgeyi GİB'e gönderdi.",
     "{var:1} handed you a new task: {var:2}.": "{var:1} sana yeni bir görev verdi: {var:2}.",
     "{var:1} handed you a note": "{var:1} size bir not verdi",
