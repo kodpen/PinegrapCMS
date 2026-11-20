@@ -105,7 +105,8 @@ function pg_cart_recovery_weak_step(array $order)
  * needs it. Pure.
  *
  * @param int   $left      the period's left carts
- * @param array $untouched facts of the untouched carts: address, consent (bool)
+ * @param array $untouched facts of the untouched carts: address (bool, null
+ *                         for an order deleted since), consent (bool)
  * @return array|null array('rule' => 'unreachable', 'carts', 'left',
  *                    'no_address', 'no_consent', 'percent')
  */
@@ -121,6 +122,11 @@ function pg_cart_recovery_weak_unreachable($left, array $untouched)
     $no_consent = 0;
 
     foreach ($untouched as $cart) {
+        // An order deleted since: nothing is known of its address.
+        if (array_key_exists('address', $cart) && ($cart['address'] === null)) {
+            continue;
+        }
+
         if (empty($cart['address'])) {
             $no_address++;
         } elseif (empty($cart['consent'])) {
@@ -193,7 +199,7 @@ function pg_cart_recovery_weak_messages(array $messages)
  * open ones reached. Pure.
  *
  * @param array $touched facts of the touched carts: returned, recovered,
- *                       open (bool), completed (bool), step
+ *                       open (bool), completed (bool: after the 7 days), step
  * @return array|null array('rule' => 'stalled', 'carts', 'returned', 'open',
  *                    'late', 'steps' => step => count, 'step', 'percent')
  */
@@ -344,12 +350,13 @@ function pg_cart_recovery_weak(array $figures, array $touched, array $untouched)
 
 /**
  * The touched carts of [from, to) from their touch rows: whether each came
- * back or was recovered, when it was completed and its first send. Pure.
+ * back or was recovered, when it was completed, its first send and whether
+ * it was completed more than 7 days after its last touch (late). Pure.
  *
  * @param array $touches pg_cart_recovery_touch_rows() with completed_at
  * @param int   $from
  * @param int   $to
- * @return array order id => array('first_sent', 'returned', 'recovered', 'completed_at')
+ * @return array order id => array('first_sent', 'returned', 'recovered', 'completed_at', 'late')
  */
 function pg_cart_recovery_weak_carts(array $touches, $from, $to)
 {
@@ -363,8 +370,10 @@ function pg_cart_recovery_weak_carts(array $touches, $from, $to)
         $id = (int) $touch['order_id'];
 
         if (!isset($carts[$id])) {
-            $carts[$id] = array('first_sent' => (int) $touch['sent_at'], 'returned' => false, 'recovered' => false, 'completed_at' => 0);
+            $carts[$id] = array('first_sent' => (int) $touch['sent_at'], 'returned' => false, 'recovered' => false, 'completed_at' => 0, 'sent' => array());
         }
+
+        $carts[$id]['sent'][] = (int) $touch['sent_at'];
 
         $carts[$id]['first_sent'] = min($carts[$id]['first_sent'], (int) $touch['sent_at']);
         $carts[$id]['returned'] = $carts[$id]['returned'] || ((int) $touch['clicked_at'] > 0) || ((int) $touch['restored_at'] > 0);
@@ -375,7 +384,25 @@ function pg_cart_recovery_weak_carts(array $touches, $from, $to)
     foreach ($carts as $id => $cart) {
         if (($cart['first_sent'] < (int) $from) || ($cart['first_sent'] >= (int) $to)) {
             unset($carts[$id]);
+
+            continue;
         }
+
+        // Late: completed, not recovered, and its last touch before the
+        // completion more than 7 days earlier. A cart completed within the 7
+        // days without a recovery was not left (the completion rule).
+        $last_sent = 0;
+
+        foreach ($cart['sent'] as $sent_at) {
+            if ($sent_at <= $cart['completed_at']) {
+                $last_sent = max($last_sent, $sent_at);
+            }
+        }
+
+        $carts[$id]['late'] = ($cart['completed_at'] > 0) && !$cart['recovered']
+            && (($last_sent === 0) || (($cart['completed_at'] - $last_sent) > PG_CART_RECOVERY_WINDOW));
+
+        unset($carts[$id]['sent']);
     }
 
     return $carts;
@@ -566,7 +593,7 @@ function pg_cart_recovery_weak_facts($from, $to, $now)
             'returned'  => $cart['returned'],
             'recovered' => $cart['recovered'],
             'open'      => $order['open'],
-            'completed' => ($cart['completed_at'] > 0),
+            'completed' => $cart['late'],
             'step'      => $order['step'],
             // A completed order's start time was rewritten at completion.
             'delay'     => ($order['open'] && ($order['order_date'] > 0)) ? max(0, $cart['first_sent'] - $order['order_date']) : null,
@@ -577,17 +604,34 @@ function pg_cart_recovery_weak_facts($from, $to, $now)
     $untouched = array();
 
     foreach ($untouched_ids as $id) {
-        $order = isset($orders[$id]) ? $orders[$id] : array('open' => false, 'address' => false, 'opt_in' => false, 'stock_out' => false);
-
-        $untouched[] = array(
-            'address'   => $order['address'],
-            'consent'   => !$consent_needed || $order['opt_in'],
-            'recovered' => false,
-            'stock_out' => $order['open'] && $order['stock_out'],
-        );
+        $untouched[] = pg_cart_recovery_weak_untouched_fact(isset($orders[$id]) ? $orders[$id] : null, $consent_needed);
     }
 
     return array('touched' => $touched, 'untouched' => $untouched);
+}
+
+/**
+ * The facts of one untouched left cart for the rules, pure. A no-touch row
+ * outlives its order (a deleted order keeps its touches): for it the
+ * address is null, unknown, so the unreachable rule does not count it as a
+ * cart with no address.
+ *
+ * @param array|null $order          pg_cart_recovery_weak_orders() row, null when the order is gone
+ * @param bool       $consent_needed pg_cart_recovery_weak_consent_needed()
+ * @return array address (bool|null), consent, recovered, stock_out
+ */
+function pg_cart_recovery_weak_untouched_fact($order, $consent_needed)
+{
+    if (!is_array($order)) {
+        return array('address' => null, 'consent' => false, 'recovered' => false, 'stock_out' => false);
+    }
+
+    return array(
+        'address'   => !empty($order['address']),
+        'consent'   => !$consent_needed || !empty($order['opt_in']),
+        'recovered' => false,
+        'stock_out' => !empty($order['open']) && !empty($order['stock_out']),
+    );
 }
 
 /**

@@ -18,7 +18,7 @@ module: picture_translation
 
 ## Is a binned source's picture shown?
 - No. A binned file is parked as `pgbin_<id>_<name>`, so no page names it. A file inside a binned folder keeps its name, so `pg_picture_tr_page_apply()` drops rows whose `f.folder` is binned (the page pass hands it `pg_folder_binned`): no swap, no waiting row. The tree is already read for the page's own access check.
-- The daily prune drops a binned source's rows and pictures (reason `binned`, `picture-text-translation-store.md`) but keeps its texts; a restore shows the source until a visit writes its waiting row and it is drawn again. Before #10569 the texts went too and a restored picture was never drawn until saved again in the Design Canvas.
+- The daily prune drops a binned source's rows and pictures (reason `binned`, `picture-text-translation-store.md`) but keeps its texts; a restore shows the source until a visit writes its waiting row and it is drawn again. Before #10569 the texts went too and a restored picture was never drawn until saved again in the Artifact Canvas.
 
 ## Is it in Disk Usage?
 - Yes, with no code of its own: `pg_files_disk_usage()` sums every `files` row (`pg_file_storage_usage()`) and every version; the draw writes the size through `pg_image_editor_record()`. The object store's move job moves it as any row.

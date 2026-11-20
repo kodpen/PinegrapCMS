@@ -638,15 +638,189 @@ function pg_credit_points_order_cancelled(array $order)
 }
 
 /**
- * A refund of some of an order's lines (a return, the order screen's refund
- * by lines) takes back those lines' reward points. A cancelled order's
- * points went back with the cancellation.
+ * How many units of a line have had their reward points taken back. The
+ * order screen's refunds by lines (screen) and the returns refunded with
+ * money (paid) each took their units; a return recorded as refunded with 0
+ * (recorded: the money went back another way) is matched first to the
+ * screen's units no other such return matched, and only its units above
+ * them were taken. Never more than the line's quantity. Pure.
  *
- * @param int   $order_id
- * @param array $quantities  order item id => quantity refunded
+ * @param int|string $quantity  the line's quantity
+ * @param array      $counts    screen, paid, recorded (units; any missing is 0)
+ * @return int
+ */
+function pg_credit_points_units_taken($quantity, array $counts)
+{
+    $screen = max(0, (int) ($counts['screen'] ?? 0));
+    $paid = max(0, (int) ($counts['paid'] ?? 0));
+    $recorded = max(0, (int) ($counts['recorded'] ?? 0));
+
+    return min(max(0, (int) $quantity), $paid + max($screen, $recorded));
+}
+
+/**
+ * The units of each line a new refund takes reward points for: what the
+ * line counts as taken with the refund (pg_credit_points_units_taken()) less
+ * what it counted before, so each unit's points are taken once whichever
+ * way and in whichever order its refunds came. Pure.
+ *
+ * @param array $lines   order_item_id, quantity
+ * @param array $before  order item id => counts (screen, paid, recorded)
+ * @param array $add     order item id => the refund's counts
+ * @return array  order item id => units, the lines with none left out
+ */
+function pg_credit_points_units_to_take(array $lines, array $before, array $add)
+{
+    $units = array();
+
+    foreach ($lines as $line) {
+        $id = (int) $line['order_item_id'];
+
+        if (!isset($add[$id])) {
+            continue;
+        }
+
+        $was = isset($before[$id]) ? (array) $before[$id] : array();
+        $now = $was;
+
+        foreach ((array) $add[$id] as $kind => $count) {
+            $now[$kind] = (int) ($now[$kind] ?? 0) + max(0, (int) $count);
+        }
+
+        $new = pg_credit_points_units_taken($line['quantity'], $now) - pg_credit_points_units_taken($line['quantity'], $was);
+
+        if ($new > 0) {
+            $units[$id] = $new;
+        }
+    }
+
+    return $units;
+}
+
+/**
+ * The note an order screen refund by lines of an invoiced order leaves for
+ * the reward points count: the order lines and quantities it gave back
+ * (pg_credit_points_erp_quantities()). An order without an invoice notes its
+ * lines for the ERP already (erp_order_refund_lines_note()); this marker is
+ * written only where that one is not, and the ERP's count never reads it.
+ * Pure.
+ *
+ * @param array $quantities  order item id => quantity
+ * @return string  'points-lines:101=2,102=1'; '' for none
+ */
+function pg_credit_points_lines_marker(array $quantities)
+{
+    $parts = array();
+
+    foreach ($quantities as $item_id => $quantity) {
+        if (((int) $item_id > 0) && ((int) $quantity > 0)) {
+            $parts[] = (int) $item_id . '=' . (int) $quantity;
+        }
+    }
+
+    return $parts ? 'points-lines:' . implode(',', $parts) : '';
+}
+
+/**
+ * The order lines and quantities the order screen's refunds by lines gave
+ * back, from their order_refunds notes: the points-lines marker of an
+ * invoiced order (pg_credit_points_lines_marker()), else the lines an order
+ * without an invoice noted for the ERP (erp_order_refund_lines_note(),
+ * 'lines:12=1,-1=1', shipping -1 and surcharge -2 left out). A note is read
+ * from one of the two only, so no line counts twice. Pure.
+ *
+ * @param array $notes  order_refunds.notes values
+ * @return array  order item id => quantity
+ */
+function pg_credit_points_screen_noted(array $notes)
+{
+    $noted = array();
+
+    foreach ($notes as $note) {
+        $note = (string) $note;
+
+        if (!preg_match_all('/(?:^|\s)points-lines:([-\d=.,]+)/', $note, $found)
+            && !preg_match_all('/(?:^|\s)lines:([-\d=.,]+)/', $note, $found)) {
+            continue;
+        }
+
+        foreach ($found[1] as $list) {
+            foreach (explode(',', $list) as $pair) {
+                $parts = explode('=', $pair, 2);
+                $id = (int) $parts[0];
+
+                if (($id > 0) && isset($parts[1])) {
+                    $noted[$id] = ($noted[$id] ?? 0) + (int) $parts[1];
+                }
+            }
+        }
+    }
+
+    return $noted;
+}
+
+/**
+ * The units of an order's lines whose reward points refunds took back so
+ * far, by way (pg_credit_points_units_taken()): the refunded returns, the
+ * one being refunded left out, split by whether money went back with them,
+ * and the order screen's refunds by lines as their notes name them
+ * (pg_credit_points_screen_noted()). An invoiced order's refunds written
+ * before the points-lines marker name no lines and count none.
+ *
+ * @param int $order_id
+ * @param int $except_return_id  the return being refunded, 0 for none
+ * @return array  order item id => screen, paid, recorded
+ */
+function pg_credit_points_lines_counted($order_id, $except_return_id = 0)
+{
+    $order_id = (int) $order_id;
+    $counts = array();
+
+    if (pg_returns_ready()) {
+        // Before the refund columns (11.0.34) a return's amount is unknown;
+        // it counts as paid, which takes its points as before.
+        $kept = pg_schema_has('order_returns', 'refund_amount');
+        $rows = db_items(
+            "SELECT order_return_items.order_item_id, SUM(order_return_items.quantity) AS quantity, "
+            . ($kept ? "(order_returns.refund_amount = 0)" : "0") . " AS recorded
+            FROM order_return_items
+            JOIN order_returns ON order_returns.id = order_return_items.return_id
+            WHERE order_returns.order_id = '" . $order_id . "' AND order_returns.refunded_at > 0
+                AND order_returns.id <> '" . (int) $except_return_id . "'
+            GROUP BY order_return_items.order_item_id, recorded");
+
+        foreach ((array) $rows as $row) {
+            $kind = ((int) $row['recorded'] === 1) ? 'recorded' : 'paid';
+            $counts[(int) $row['order_item_id']][$kind] = ($counts[(int) $row['order_item_id']][$kind] ?? 0) + (int) $row['quantity'];
+        }
+    }
+
+    if (pg_schema_has('order_refunds', 'notes')) {
+        $notes = db_values("SELECT notes FROM order_refunds WHERE order_id = '" . $order_id . "' AND refund_type = 'refund' AND notes LIKE '%lines:%'");
+
+        foreach (pg_credit_points_screen_noted(is_array($notes) ? $notes : array()) as $item_id => $quantity) {
+            $counts[$item_id]['screen'] = ($counts[$item_id]['screen'] ?? 0) + $quantity;
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * A refund of some of an order's lines (a return, the order screen's refund
+ * by lines) takes back those lines' reward points, each unit once
+ * (pg_credit_points_units_to_take()): a return recorded as refunded with 0
+ * after the order screen gave the same lines back takes nothing, nor does
+ * the screen after such a return. A cancelled order's points went back with
+ * the cancellation.
+ *
+ * @param int        $order_id
+ * @param array      $quantities  order item id => quantity refunded
+ * @param array|null $return      the return being refunded: id, amount
+ *                                (minor units); null for the order screen
  * @return array  pg_credit_points_take_back()'s
  */
-function pg_credit_points_lines_refunded($order_id, array $quantities)
+function pg_credit_points_lines_refunded($order_id, array $quantities, $return = null)
 {
     $none = array('points' => 0, 'value' => 0, 'total' => 0);
 
@@ -661,7 +835,16 @@ function pg_credit_points_lines_refunded($order_id, array $quantities)
         return $none;
     }
 
-    $points = pg_credit_points_of_lines(pg_credit_points_order_lines($order['id']), $quantities, true);
+    $kind = !is_array($return) ? 'screen' : (((int) ($return['amount'] ?? 0) > 0) ? 'paid' : 'recorded');
+    $add = array();
+
+    foreach ($quantities as $item_id => $quantity) {
+        $add[(int) $item_id] = array($kind => (int) $quantity);
+    }
+
+    $lines = pg_credit_points_order_lines($order['id']);
+    $before = pg_credit_points_lines_counted($order['id'], is_array($return) ? (int) ($return['id'] ?? 0) : 0);
+    $points = pg_credit_points_of_lines($lines, pg_credit_points_units_to_take($lines, $before, $add), true);
 
     return pg_credit_points_take_back($user_id, $points, pg_order_log_number($order));
 }

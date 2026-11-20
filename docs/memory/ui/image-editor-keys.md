@@ -1,6 +1,6 @@
 ---
 name: image-editor-keys
-description: The Design Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
+description: The Artifact Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 module: image_editor
 ---
 

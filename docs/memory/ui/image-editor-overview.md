@@ -1,15 +1,15 @@
 ---
 name: image-editor-overview
-description: The Design Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
+description: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
 module: image_editor
 ---
 
 ## What is it?
 - One editor for the whole software, written here with no outside engine: photo work, marking, redaction, vectors and SVG, a blank canvas sized as an artboard, animation, optimisation on save.
-- On screen it is the Design Canvas ("Tasarım Tuvali", owner 2026-11-12, #8849), with its own icon (`design-canvas-icon.md`); code names keep `image_editor`.
-- A core part: a `<dialog>` with a full-screen button, opened from any screen by one call (`pgImageEditor.open()`, alias `window.openImageEditor()`); a caller may limit the tools to a floating mini bar (`ui/image-editor-modal.md`, `image-editor-callers.md`).
+- On screen it is the Artifact Canvas ("Yapıt Tuvali", owner 2026-11-20, `workflow/decisions-made-panel-10.md`), with its own icon (`design-canvas-icon.md`); code names keep `image_editor`.
+- A core `<dialog>` with a full-screen button, opened from any screen by one call (`pgImageEditor.open()`, alias `window.openImageEditor()`); a caller may limit tools to a floating mini bar (`ui/image-editor-modal.md`, `image-editor-callers.md`).
 - Texts and shapes stay editable: a save keeps its document in `file_versions`, so a later open edits layers, not pixels (a canvas too: "New image", Workspace).
-- It replaced a bundled third-party editor (#4609; `image_editor_edit.php` redirects).
+- It replaced a bundled third-party editor (#4609).
 
 ## Which decisions bind it?
 - Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`, `-15.md`, `decisions-made-schema-7.md`): own code, no engine; core modal with full screen; callable with a tool subset; labels through `lang()`; work on the server where it is efficient, else in JS; a versions table (the original plus the last 10 saves); optimisation inside; ready-made shapes and corner rounding; artboard sizing; "New image" opens the canvas; a redacted save keeps no metadata; the live site's edit button for signed-in editors only.

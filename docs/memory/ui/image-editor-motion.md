@@ -1,6 +1,6 @@
 ---
 name: image-editor-motion
-description: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the Motion popover, the empty panel
+description: The Artifact Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the Motion popover, the empty panel
 module: image_editor
 ---
 

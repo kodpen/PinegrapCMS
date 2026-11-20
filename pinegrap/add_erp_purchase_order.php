@@ -14,7 +14,9 @@
  * number when saved. ?account_id=<id> opens it on that supplier.
  * ?products[]=<id> (the minimum stock screen) opens it with a line for each
  * product: what it needs to get back to its minimum, at its last purchase
- * price.
+ * price. Stock Planning's New purchase order posts plan_fill=1 with the
+ * supplier and quantities[<id>]=<units>: that post only fills the form,
+ * nothing is saved until the form itself is.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -38,7 +40,19 @@ $liveform = new liveform('add_erp_purchase_order');
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php';
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_purchase_order.php';
 
-if (!$_POST) {
+// Stock Planning's press: a post that fills the form and saves nothing.
+// Its supplier and switch are one value each; the quantities are a list
+// read by erp_purchase_order_plan_quantities().
+pg_request_single_values(array('plan_fill', 'account_id'));
+$plan_fill = (($_POST['plan_fill'] ?? '') === '1');
+$plan_quantities = array();
+
+if ($plan_fill) {
+    validate_token_field();
+    $plan_quantities = erp_purchase_order_plan_quantities($_POST['quantities'] ?? null);
+}
+
+if (!$_POST || $plan_fill) {
 
     // Read before the prefill writes the form into the session: a form
     // already there is one sent back with an error, and keeps what was typed.
@@ -80,7 +94,16 @@ if (!$_POST) {
     // and put product 1 on the order.
     $product_ids = (isset($_GET['products']) && is_array($_GET['products'])) ? array_filter($_GET['products'], 'is_scalar') : array();
 
-    if (($copy_id === 0) && !empty($product_ids)) {
+    if ($plan_fill) {
+        // The plan's lines replace a form left in the session: the press
+        // asks for this supplier's order as the plan has it now.
+        if (!empty($plan_quantities)) {
+            $liveform->remove_form();
+            erp_invoice_form_prefill($liveform, null, 'purchase');
+            $card_options['lines'] = erp_invoice_form_lines($liveform, erp_purchase_order_rows_for_products(array_keys($plan_quantities), $plan_quantities));
+            $liveform->add_notice(h(lang('The lines are the quantities Stock Planning suggests, at each product\'s last purchase price. Check them before saving.')));
+        }
+    } elseif (($copy_id === 0) && !empty($product_ids)) {
         $card_options['lines'] = erp_invoice_form_lines($liveform, erp_purchase_order_rows_for_products($product_ids));
 
         if ($fresh) {
@@ -88,9 +111,11 @@ if (!$_POST) {
         }
     }
 
-    // An order started from a supplier's card opens on that supplier.
-    $card_account_id = is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0;
-    if (($card_account_id > 0) && !$liveform->field_in_session('account_id')) {
+    // An order started from a supplier's card, or from Stock Planning,
+    // opens on that supplier.
+    $card_source = $plan_fill ? $_POST : $_GET;
+    $card_account_id = is_scalar($card_source['account_id'] ?? null) ? (int) $card_source['account_id'] : 0;
+    if (($card_account_id > 0) && ($plan_fill || !$liveform->field_in_session('account_id'))) {
         $liveform->assign_field_value('account_id', (string) $card_account_id);
     }
 

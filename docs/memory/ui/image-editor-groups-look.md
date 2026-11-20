@@ -1,6 +1,6 @@
 ---
 name: image-editor-groups-look
-description: Design Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
+description: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
 module: image_editor
 ---
 

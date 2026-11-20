@@ -1,6 +1,6 @@
 ---
 name: image-editor-render
-description: The Design Canvas's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
+description: The Artifact Canvas's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
 module: image_editor
 ---
 

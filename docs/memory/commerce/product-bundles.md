@@ -18,21 +18,21 @@ module: bundles
 ## What refreshes a bundle?
 - `pg_marketplace_product_changed()` calls `pg_bundle_refresh_for()` first: every stock and price writer ends there, `pg_product_stock_changed()` included; a static guard skips the bundle's own call.
 - `import_products.php` ends with `pg_bundle_refresh_all()`: it overwrites a stock or price the file gave a bundle.
-- A bundle's stock is never written directly: inventory API 409 `bundle` (bulk: status `bundle`); barcode screens and ERP stock count refuse it; bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`; the quick stock cells (`pg_pb_quick_update()` code `bundle`, #2826; Catalog Manager `handle_catalog_edit.php`) refuse it.
-- A sum-priced bundle takes no typed price: API bulk prices (status `bundle`), the Products list quick price (code `bundle`) and the Catalog Manager's refuse it (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` skips the edited bundle itself, so a typed value would stay until a component changed.
+- A bundle's stock is never written directly: inventory API 409 `bundle` (bulk: status `bundle`); barcode screens and ERP stock count refuse it; bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`; the quick stock cells (`pg_pb_quick_update()` code `bundle`, #2826; `handle_catalog_edit.php`) refuse it.
+- A sum-priced bundle takes no typed price: API bulk prices, the Products list quick price and the Catalog Manager's refuse it (code `bundle`) (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` skips the bundle itself.
 
 ## How is a bundle sold? (#2691)
 - Counter sale (`pg_local_order_complete()`): a bundle line calls `pg_bundle_take_stock()`: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down; `$stock_left` is shared.
 - Marketplace import (`mp_order_take_stock()`) the same, source `marketplace`; cancel restock (`mp_order_return_stock()`) returns the snapshot's components (`pg_bundle_return_stock()`).
 - Checkout (#2826): `pg_order_complete_line_stock()` sends a line passing `pg_bundle_sale_takes_components()` (pure) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` before the plain decrement.
-- `check_inventory()`: a bundle cart goes to `pg_bundle_check_inventory()`: every line against one pool at the order's location (`pg_bundle_cart_allowance()`, id order).
+- `check_inventory()`: a bundle cart goes to `pg_bundle_check_inventory()`: every line against one pool at the order's location (`pg_bundle_cart_allowance()`, id order). A bundle with `backorder` 0: every tracked component limits it (#10680).
 
 ## Where else is a bundle handled?
 - ERP: one invoice line, a stock move per component (`erp/erp-bundle-lines.md`). Storefront: [[product-bundles-storefront]]. Copy: [[product-duplicate]].
 
 ## What does the product screen do?
 - Edit screen only: Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search via `add_order.php?request=search_products`; hidden `bundle_card` marks a save carrying it.
-- `pg_pb_validate_product_post()` refuses contents (`pg_bundle_items_problem()`: not found, bundle, donation, gift card, recurring, private access; a component cannot become a bundle). While on, posted stock is ignored; off empties the contents.
+- `pg_pb_validate_product_post()` refuses contents (`pg_bundle_items_problem()`: not found, bundle, donation, gift card, recurring, private access); a component cannot become one (`pg_bundle_switch_on_problem()`, #10680). While on, posted stock is ignored; off empties the contents.
 
 ## Can a component be deleted?
 - No: `pg_pb_delete_product()` returns false for a component and deletes a bundle's own contents rows; API `DELETE` 409 `product_in_bundle`. The Recycle Bin refuses a component (`pg_catalog_bin_product()` false; screen, list, API, Workspace say why).

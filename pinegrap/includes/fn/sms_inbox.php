@@ -330,8 +330,8 @@ function pg_sms_webhook_throttled()
 }
 
 /**
- * The address a provider that posts customers' SMS is given, drawn in its
- * own block of the SMS settings; '' for a provider that is asked instead or
+ * The address a provider that posts customers' SMS is given, drawn on its
+ * page of Connections; '' for a provider that is asked instead or
  * with the Workspace off.
  *
  * @param string $provider
@@ -344,11 +344,11 @@ function pg_sms_webhook_field($provider)
     }
 
     return '
-                                                        <div class="pg-f-md">
-                                                            <label for="sms_webhook_url_' . h($provider) . '" class="form-label">' . lang('Address for customers\' messages') . '</label>
-                                                            <input type="text" id="sms_webhook_url_' . h($provider) . '" class="form-control" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
-                                                            <div class="form-text">' . lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).') . '</div>
-                                                        </div>';
+				<div>
+					<label class="pg-field-label" for="sms_webhook_url_' . h($provider) . '">' . h(lang('Address for customers\' messages')) . '</label>
+					<input type="text" id="sms_webhook_url_' . h($provider) . '" class="pg-input" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
+					<div class="pg-field-help">' . h(lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).')) . '</div>
+				</div>';
 }
 
 /**

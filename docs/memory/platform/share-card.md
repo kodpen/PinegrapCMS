@@ -24,7 +24,7 @@ module: share_card
 ## What did the owner and architect decide?
 - Off on every site, a new install too: `workflow/decisions-made-product-59.md` (poll 70).
 - The look as built, approved: `workflow/decisions-made-product-62.md` (poll 81).
-- Architect (2026-11-16, agent channel message 5763): the card's document is built in code, not as a Design Canvas template.
+- Architect (2026-11-16, agent channel message 5763): the card's document is built in code, not as a Artifact Canvas template.
 
 ## What was left out?
 - A card designed as a template of one's own; the item's own picture as the card's background; fonts for letters the bundled Roboto lacks. Each would be a new yes from the owner.

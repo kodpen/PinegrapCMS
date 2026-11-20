@@ -490,10 +490,30 @@ function test_carrier_label_geliver_track_maps_statuses()
 
 function test_carrier_label_geliver_track_without_status_or_answer()
 {
-	carrier_label_geliver_test_stub(array('GET /shipments/s-1' => array(array(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":{"trackingStatusCode":"UNKNOWN"}}}'))));
-	$answer = pg_label_call('geliver', 'track', array('s-1', carrier_label_geliver_test_account()));
-	pg_assert_false($answer['success']);
-	pg_assert_false($answer['unclear']);
+	// A label the carrier has not scanned yet is created, not a failure: the
+	// tracking job stops a driver after failures in a row.
+	carrier_label_geliver_test_stub(array('GET /shipments/s-1' => array(
+		array(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":{"trackingStatusCode":"UNKNOWN"}}}'),
+		array(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":null}}'),
+		array(200, '{"result":true,"data":{"id":"s-1","statusCode":"","trackingStatus":{"trackingStatusCode":"SOMETHING_NEW"}}}'),
+	)));
+	$unknown = pg_label_call('geliver', 'track', array('s-1', carrier_label_geliver_test_account()));
+	$none = pg_label_call('geliver', 'track', array('s-1', carrier_label_geliver_test_account()));
+	$new = pg_label_call('geliver', 'track', array('s-1', carrier_label_geliver_test_account()));
+
+	foreach (array($unknown, $none) as $answer) {
+		pg_assert_true($answer['success'], $answer['error']);
+		pg_assert_same('created', $answer['status']);
+		pg_assert_same(0, $answer['status_at']);
+		pg_assert_same('s-1', $answer['reference']);
+	}
+
+	pg_assert_false($new['success'], 'a code Geliver added later is not read as created');
+	pg_assert_false($new['unclear']);
+
+	// A webhook message without a status never moves a parcel back.
+	$message = pg_label_geliver_track_answer(array('id' => 's-1', 'trackingStatus' => array('trackingStatusCode' => 'UNKNOWN')), array());
+	pg_assert_false($message['success']);
 
 	// A read that was not answered changed nothing.
 	carrier_label_geliver_test_stub(array());

@@ -177,6 +177,49 @@ function pg_sheet_float_text($value)
     return sprintf('%.17G', $value);
 }
 
+/**
+ * How many digits a number format always shows when it is made only of 0
+ * placeholders (a post code's 00000, a tax ID's 00000000000), with or
+ * without fixed text around them ("TR"0000, \T\R0000, 00000-0000); 0 for
+ * any other format, and for a single 0. A format with decimals, grouping,
+ * sections, a colour or a condition is not one.
+ *
+ * @param string $code the number format code (Excel's)
+ * @return int
+ */
+function pg_sheet_zero_digits($code)
+{
+    // Quoted and escaped text, and the dash, space and brackets Excel shows
+    // as they are, are fixed text.
+    $code = preg_replace('/"[^"]*"|\\\\./s', '', (string) $code);
+    $code = str_replace(array('-', ' ', '(', ')'), '', $code);
+
+    return preg_match('/^0{2,}$/', $code) ? strlen($code) : 0;
+}
+
+/**
+ * A whole-number cell as the text its format of zeros shows: the digits
+ * padded with leading zeros to $digits (pg_sheet_zero_digits()); a number
+ * already that long, any other cell and any other value as they are. The
+ * padded value is text, so an importer keeps the zeros.
+ *
+ * @param array|null $cell   a cell of pg_sheet_rows()
+ * @param int        $digits the digits the format shows
+ * @return array|null
+ */
+function pg_sheet_zero_pad($cell, $digits)
+{
+    if (!is_array($cell) || !isset($cell['t'], $cell['v']) || ($cell['t'] !== 'n') || !preg_match('/^(-?)(\d+)$/', (string) $cell['v'], $match)) {
+        return $cell;
+    }
+
+    if (strlen($match[2]) >= (int) $digits) {
+        return $cell;
+    }
+
+    return array('t' => 's', 'v' => $match[1] . str_pad($match[2], (int) $digits, '0', STR_PAD_LEFT));
+}
+
 /* ---------------------------------------------------------------------------
    .xlsx
    --------------------------------------------------------------------------- */
@@ -189,7 +232,8 @@ function pg_sheet_float_text($value)
  * the sheet are walked node by node with no limit but the size the package
  * declares for them. Dates are known by the cell's number format
  * (pg_office_xlsx_date_styles()); a workbook counting from 1904 has its
- * dates moved to the 1900 count.
+ * dates moved to the 1900 count. A whole number whose format is a run of
+ * zeros is padded to them (pg_sheet_xlsx_zero_styles()).
  *
  * @param string $path
  * @param int    $sheet
@@ -219,6 +263,7 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     }
 
     $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
+    $zero_styles = ($refused === '') ? pg_sheet_xlsx_zero_styles($zip) : array();
     $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook_xml);
     $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
@@ -298,6 +343,10 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
             $style = (int) $reader->getAttribute('s');
             $cell = pg_sheet_xlsx_cell($type, pg_office_xlsx_cell_parts($reader), $strings, isset($date_styles[$style]), $date1904);
 
+            if (isset($zero_styles[$style])) {
+                $cell = pg_sheet_zero_pad($cell, $zero_styles[$style]);
+            }
+
             if ($cell === null) {
                 continue;
             }
@@ -324,6 +373,62 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     if (pg_zip_entry_overran()) {
         $error = 'read';
     }
+}
+
+/**
+ * The cell styles of a .xlsx whose number format is a run of zeros: style
+ * index => the digits it shows (pg_sheet_zero_digits()). Only custom
+ * formats can be one; no built-in format shows more than one 0 before the
+ * point. The styles keep pg_office_xml()'s ceiling; an unread part gives
+ * none.
+ *
+ * @param ZipArchive $zip
+ * @param string     $part the styles part (pg_sheet_xlsx_part())
+ * @return array
+ */
+function pg_sheet_xlsx_zero_styles($zip, $part = 'xl/styles.xml')
+{
+    if ((string) $part === '') {
+        return array();
+    }
+
+    $styles = pg_office_xml($zip, (string) $part, $status);
+    $zeros = array();
+
+    if ($styles === null) {
+        return $zeros;
+    }
+
+    $formats = array();
+
+    foreach ($styles->getElementsByTagName('numFmt') as $format) {
+        $digits = pg_sheet_zero_digits((string) $format->getAttribute('formatCode'));
+
+        if ($digits > 0) {
+            $formats[(int) $format->getAttribute('numFmtId')] = $digits;
+        }
+    }
+
+    if (empty($formats)) {
+        return $zeros;
+    }
+
+    $index = 0;
+
+    // Counted as pg_office_xlsx_date_styles() counts them.
+    foreach ($styles->getElementsByTagName('cellXfs') as $xfs) {
+        foreach ($xfs->getElementsByTagName('xf') as $xf) {
+            $format_id = (int) $xf->getAttribute('numFmtId');
+
+            if (isset($formats[$format_id])) {
+                $zeros[$index] = $formats[$format_id];
+            }
+
+            $index++;
+        }
+    }
+
+    return $zeros;
 }
 
 /**
@@ -459,7 +564,9 @@ function pg_sheet_iso_serial($text)
  * one) costs a step, and a repeated row or cell with a value is given once
  * for every repeat, counted against PG_SHEET_ODS_MAX_CELLS; the used range
  * is held to PG_SHEET_ODS_MAX_RANGE. Either ceiling passed ends the walk
- * with 'large'.
+ * with 'large'. A whole number whose number style shows leading zeros
+ * (the cell's style, else its row's or its column's default) is padded to
+ * them (pg_sheet_ods_zero_digits()).
  *
  * @param string $path
  * @param int    $sheet
@@ -493,6 +600,13 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
     }
 
     $table_ns = 'urn:oasis:names:tc:opendocument:xmlns:table:1.0';
+    $style_ns = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
+    $number_ns = 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0';
+    // The automatic styles ahead of the body: number style name => the
+    // digits it always shows (pg_sheet_ods_zero_digits()), cell style name
+    // => its number style.
+    $zero_formats = array();
+    $cell_formats = array();
     $previous = libxml_use_internal_errors(true);
     $tables = 0;
     $found = false;
@@ -505,6 +619,23 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
 
     while ($skip ? $reader->next() : $reader->read()) {
         $skip = false;
+
+        if (($reader->nodeType === XMLReader::ELEMENT) && !$found) {
+            if (($reader->namespaceURI === $number_ns) && ($reader->localName === 'number-style')) {
+                $digits = pg_sheet_ods_zero_digits($reader);
+
+                if ($digits > 0) {
+                    $zero_formats[(string) $reader->getAttributeNs('name', $style_ns)] = $digits;
+                }
+
+                $skip = !$reader->isEmptyElement;
+                continue;
+            }
+
+            if (($reader->namespaceURI === $style_ns) && ($reader->localName === 'style') && ($reader->getAttributeNs('family', $style_ns) === 'table-cell')) {
+                $cell_formats[(string) $reader->getAttributeNs('name', $style_ns)] = (string) $reader->getAttributeNs('data-style-name', $style_ns);
+            }
+        }
 
         if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->localName !== 'table') || ($reader->namespaceURI !== $table_ns)) {
             continue;
@@ -524,6 +655,16 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
 
         $table_depth = $reader->depth;
         $row_number = 1;
+        // A cell style name => the digits its number style shows, 0 for
+        // none; the columns whose default cell style shows some, as
+        // [first, last, digits].
+        $zero_of = function ($name) use ($zero_formats, $cell_formats) {
+            $name = (string) $name;
+
+            return (isset($cell_formats[$name]) && isset($zero_formats[$cell_formats[$name]])) ? $zero_formats[$cell_formats[$name]] : 0;
+        };
+        $zero_columns = array();
+        $next_column = 0;
 
         while (($skip ? $reader->next() : $reader->read()) && ($reader->depth > $table_depth)) {
             $skip = false;
@@ -532,10 +673,25 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
                 continue;
             }
 
-            // Rows stand in the table or in its row groups; the columns,
-            // shapes and named ranges hold no cell.
+            // A column's default cell style stands for its cells that have
+            // none of their own or of their row.
+            if (($reader->namespaceURI === $table_ns) && ($reader->localName === 'table-column')) {
+                $columns_repeated = pg_sheet_ods_repeat($reader->getAttributeNs('number-columns-repeated', $table_ns));
+                $digits = $zero_of($reader->getAttributeNs('default-cell-style-name', $table_ns));
+
+                if ($digits > 0) {
+                    $zero_columns[] = array($next_column, $next_column + $columns_repeated - 1, $digits);
+                }
+
+                $next_column += $columns_repeated;
+                $skip = !$reader->isEmptyElement;
+                continue;
+            }
+
+            // Rows stand in the table or in its row groups, columns in its
+            // column groups; shapes and named ranges hold no cell.
             if (($reader->namespaceURI !== $table_ns) || ($reader->localName !== 'table-row')) {
-                if (($reader->namespaceURI === $table_ns) && in_array($reader->localName, array('table-row-group', 'table-header-rows', 'table-rows'), true)) {
+                if (($reader->namespaceURI === $table_ns) && in_array($reader->localName, array('table-row-group', 'table-header-rows', 'table-rows', 'table-column-group', 'table-header-columns', 'table-columns'), true)) {
                     continue;
                 }
 
@@ -544,6 +700,7 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
             }
 
             $rows_repeated = pg_sheet_ods_repeat($reader->getAttributeNs('number-rows-repeated', $table_ns));
+            $row_style = $reader->getAttributeNs('default-cell-style-name', $table_ns);
             $row = array();
             $column = 0;
 
@@ -565,6 +722,10 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
                     }
 
                     $columns_repeated = pg_sheet_ods_repeat($reader->getAttributeNs('number-columns-repeated', $table_ns));
+                    // Only a plain number is padded: a percentage or an
+                    // amount shows its own format.
+                    $plain = ($reader->getAttributeNs('value-type', 'urn:oasis:names:tc:opendocument:xmlns:office:1.0') === 'float');
+                    $cell_style = $reader->getAttributeNs('style-name', $table_ns);
                     $cell = pg_sheet_ods_cell($reader);
 
                     if ($cell !== null) {
@@ -581,8 +742,11 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
                             $row[] = null;
                         }
 
+                        $own = (($cell_style !== null) && ($cell_style !== '')) ? $cell_style : $row_style;
+
                         for ($index = 0; $index < $columns_repeated; $index++) {
-                            $row[] = $cell;
+                            $digits = !$plain ? 0 : ((($own !== null) && ($own !== '')) ? $zero_of($own) : pg_sheet_ods_zero_column($zero_columns, $column + $index));
+                            $row[] = ($digits > 0) ? pg_sheet_zero_pad($cell, $digits) : $cell;
                         }
                     }
 
@@ -617,6 +781,83 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
     } elseif (!$found) {
         $error = 'sheet';
     }
+}
+
+/**
+ * The digits an .ods number style always shows when it is a whole number
+ * with leading zeros (number:min-integer-digits of 2 or more, no decimals,
+ * no grouping), with or without fixed text; 0 for any other style, and for
+ * one with a condition (style:map). Read from the reader on its
+ * number:number-style element, which is left where it is.
+ *
+ * @param XMLReader $reader
+ * @return int
+ */
+function pg_sheet_ods_zero_digits($reader)
+{
+    if ($reader->isEmptyElement || !class_exists('DOMDocument')) {
+        return 0;
+    }
+
+    $style = $reader->expand();
+
+    if (!$style) {
+        return 0;
+    }
+
+    $number_ns = 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0';
+    $style_ns = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
+    $digits = 0;
+    $numbers = 0;
+
+    foreach ($style->childNodes as $child) {
+        if ($child->nodeType !== XML_ELEMENT_NODE) {
+            continue;
+        }
+
+        if (($child->namespaceURI === $number_ns) && ($child->localName === 'text')) {
+            continue;
+        }
+
+        if (($child->namespaceURI === $style_ns) && ($child->localName === 'text-properties')) {
+            continue;
+        }
+
+        if (($child->namespaceURI !== $number_ns) || ($child->localName !== 'number') || $child->hasChildNodes()) {
+            return 0;
+        }
+
+        $numbers++;
+        $decimals = $child->getAttributeNS($number_ns, 'decimal-places');
+        $min_decimals = $child->getAttributeNS($number_ns, 'min-decimal-places');
+
+        if ((($decimals !== '') && ($decimals !== '0')) || (($min_decimals !== '') && ($min_decimals !== '0')) || ($child->getAttributeNS($number_ns, 'grouping') === 'true')) {
+            return 0;
+        }
+
+        $digits = (int) $child->getAttributeNS($number_ns, 'min-integer-digits');
+    }
+
+    return (($numbers === 1) && ($digits >= 2)) ? min($digits, 255) : 0;
+}
+
+/**
+ * The digits a column's default cell style shows for a column (0-based),
+ * 0 when it shows none.
+ *
+ * @param array $ranges [first, last, digits] of pg_sheet_ods_rows()
+ * @param int   $column
+ * @return int
+ */
+function pg_sheet_ods_zero_column($ranges, $column)
+{
+    foreach ($ranges as $range) {
+        if (($column >= $range[0]) && ($column <= $range[1])) {
+            return $range[2];
+        }
+    }
+
+    return 0;
 }
 
 /**

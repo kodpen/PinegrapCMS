@@ -8,7 +8,7 @@ description: Panel team chat attachments open only for the conversation's sides 
 - The folder's own setting does not decide: the attachment usually sits in the top folder, which is public (`pg_default_upload_folder('chat_upload_folder_id')`). Same principle as submitted-form files (#1989, `workflow/decisions-made-files.md`).
 
 ## Which other doors ask it?
-- The Design Canvas (`image_editor_api.php`): before any action, the files a request names (`file_id`, `to`, `target`, `file_name`; `pg_image_editor_request_files()`) are looked up with `pg_chat_attachment_conversations_by_file()` and refused with a JSON 403 by `pg_chat_attachment_files_refused()` (all three in `includes/authentication.php`).
+- The Artifact Canvas (`image_editor_api.php`): before any action, the files a request names (`file_id`, `to`, `target`, `file_name`; `pg_image_editor_request_files()`) are looked up with `pg_chat_attachment_conversations_by_file()` and refused with a JSON 403 by `pg_chat_attachment_files_refused()` (all three in `includes/authentication.php`).
 - Symptom fixed: a manager or designer, who passes the folder edit check everywhere, opened a staff conversation's picture in the editor and saved a copy, a plain file in the public upload folder that anyone could fetch. Test: `tests/image_editor_chat_attachment_test.php`.
 
 ## Do the file manager's readers ask it too?
