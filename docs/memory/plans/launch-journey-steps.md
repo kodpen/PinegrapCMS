@@ -4,8 +4,7 @@ description: Plan launch-journey, steps LJ1a to LJ7: the pure catalogue, the sto
 ---
 
 ## Which steps are there?
-- LJ1a (S) first, no schema: new `includes/fn/launch_journey.php`, pure: the step catalogue per purpose and its order, each step's rule over a facts array, blocker or warning, the payment-live rule per driver (Stripe by key prefix), the first-week window, hidden steps never done.
-- LJ1a's test: `tests/launch_journey_test.php` red first: a shop with PayTR in test mode, a blog without a shop, `Disallow: /` in the robots extras, a hidden blocker, a week ending. Features: L1, L2, L4 (the rules).
+- LJ1a (S) first, no schema: new `includes/fn/launch_journey.php`, pure: the step catalogue per purpose, each step's rule over a facts array, blocker or warning, the payment-live rule per driver (Stripe by key prefix), the first-week window. `tests/launch_journey_test.php` red first: a shop with PayTR in test mode, a blog, `Disallow: /` in the robots extras, a hidden blocker, a week ending. Features: L1, L2, L4.
 
 - LJ1b (S) after LJ1a, after the owner's yes to the schema poll: the purpose, go-live time and hidden steps as a migration step in the open version, in the PR body, asked of the architect before ready. Features: L1, L4, L5 (the store).
 
