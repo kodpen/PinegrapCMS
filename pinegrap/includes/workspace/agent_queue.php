@@ -1150,5 +1150,13 @@ function ws_agent_brief($agent, $row, $scopes)
         $lines[] = ws_agent_instructions_brief_line_for($agent);
     }
 
+    // In an agent channel an agent tells its model at least once an hour.
+    $home = ($channel && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : $channel;
+    $model_line = function_exists('ws_agent_report_brief_line') ? ws_agent_report_brief_line($agent, ws_agent_channel_is($home), time()) : '';
+
+    if ($model_line !== '') {
+        $lines[] = $model_line;
+    }
+
     return ws_ai_briefing_text($lines, ws_ai_request_language($request));
 }
