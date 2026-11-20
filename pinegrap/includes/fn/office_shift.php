@@ -924,7 +924,8 @@ function pg_office_xlsx_shift_parts($zip, $op, $fail, $spool)
         return array('ok' => false, 'code' => 'read', 'error' => pg_office_refusal_error($refused), 'size' => 0, 'version' => '', 'changed' => 0);
     }
 
-    $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $workbook_part = pg_sheet_xlsx_workbook($zip)['part'];
+    $workbook = (string) pg_zip_entry_contents($zip, $workbook_part, PG_OFFICE_MAX_DOM, $unread);
 
     if (pg_office_xlsx_write_reserved($workbook)) {
         return $fail('password');
@@ -943,7 +944,7 @@ function pg_office_xlsx_shift_parts($zip, $op, $fail, $spool)
 
     // The sheet's place among all the workbook's sheets (a defined name
     // local to it carries that place) and its id (the calculation chain's).
-    $book = pg_office_xml($zip, 'xl/workbook.xml', $status);
+    $book = pg_office_xml($zip, $workbook_part, $status);
     $place = -1;
     $sheet_id = '';
 

@@ -493,7 +493,7 @@ function pg_office_xlsx_text_format($code)
 function pg_office_xlsx_style_kinds($zip, &$refused = null)
 {
     $out = array('date' => pg_office_xlsx_date_styles($zip, $refused), 'text' => array(), 'open' => array());
-    $styles = pg_office_xml($zip, 'xl/styles.xml', $status);
+    $styles = pg_office_xml($zip, pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml'), $status);
     pg_office_refuse($refused, $status);
 
     if ($styles === null) {
@@ -2129,7 +2129,7 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
         return array('ok' => false, 'code' => 'read', 'error' => pg_office_refusal_error($refused), 'size' => 0, 'version' => '', 'changed' => 0);
     }
 
-    $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $workbook = (string) pg_zip_entry_contents($zip, pg_sheet_xlsx_workbook($zip)['part'], PG_OFFICE_MAX_DOM, $unread);
 
     if (pg_office_xlsx_write_reserved($workbook)) {
         return $fail('password');
@@ -2237,7 +2237,7 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
  * @param ZipArchive $zip
  * @param array      $sheets   pg_office_xlsx_sheets()
  * @param array      $parts    part name => file, written already
- * @param string     $workbook xl/workbook.xml
+ * @param string     $workbook the workbook part (pg_sheet_xlsx_workbook())
  * @param callable   $fail
  * @param callable   $spool
  * @param int        $changed
@@ -2283,7 +2283,7 @@ function pg_office_xlsx_recalc_parts($zip, $sheets, $parts, $workbook, $fail, $s
         return $fail('save');
     }
 
-    $parts['xl/workbook.xml'] = $file;
+    $parts[pg_sheet_xlsx_workbook($zip)['part']] = $file;
 
     return array('ok' => true, 'parts' => $parts, 'changed' => $changed);
 }
