@@ -14,7 +14,7 @@
 - page-clicks-designer-layer.md: The designer's Clicks layer (part clicks, CM4a #10056): the canvas matched by the four folded parts, badges, tenth lines, device choice, side list, empty state; what CM4b wires in the core
 - page-clicks-script.md: The clicks and scroll depth script (pg_clicks.src.js, CM2 #9946): who gets it, how it names and folds an element, the depth, the one request it shares with the speed beacon, the consent check
 - page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where [decision: here]
-- page-clicks.md: Clicks and scroll depth counter (page_click_daily, 11.0.224, #9902): four row kinds, the beacon in page_view.php, the fold, the 200-element bound, figures, 400-day sweep [decision: decisions-made-schema-23.md]
+- page-clicks.md: Clicks and scroll depth counter (page_click_daily, #9902): row kinds, the beacon in page_view.php and its gate, the fold, the 200-element bound, figures, 400-day sweep, the hunt of 10214 [decision: decisions-made-schema-23.md]
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3). [decision: decisions-made-product.md]
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
 - page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
