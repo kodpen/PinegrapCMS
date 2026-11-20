@@ -24,6 +24,7 @@
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
+- bug-hunt-mail-sending.md: Bug hunt of Site Settings › E-mail sending (architect, agent channel message 10151, 2026-11-20): the five faults fixed, the issue opened, what was read clean
 - bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
