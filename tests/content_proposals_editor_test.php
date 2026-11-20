@@ -183,7 +183,7 @@ function test_content_proposals_studio_strip_wiring()
 
 	pg_assert_contains('_pgContentChangeBadge(p) +', $body('_pgTabHtml'), 'the tab');
 	pg_assert_contains('_pgContentAnswerAuto();', $body('_pgTabsRender'), 'the answer opens once');
-	pg_assert_contains('_pgContentChangeBadge(p, true)', $body('_pgTabsAllFill'), 'the Pages list');
+	pg_assert_contains('badge: _pgContentChangeBadge(p, true)', $body('_pgPagesHost'), 'the Pages window');
 	pg_assert_contains('_pgContentChangeBadge(p, true)', $body('_pgTabsChipList'), 'a chip\'s list');
 	pg_assert_contains('_pgContentClimbHtml(', $body('_pgTabGroupChipHtml'), 'a group\'s chip');
 	$fit = $body('_pgTabsFit');
