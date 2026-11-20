@@ -319,3 +319,31 @@ function test_page_clicks_script_keeps_the_part_under_the_server_limit()
 	pg_assert_true(count($c['e']) >= 10, 'it drops only what does not fit: ' . count($c['e']));
 	pg_assert_true(pg_page_clicks_parse($out['c'], 'www.example.com') !== null, 'the server counts it');
 }
+
+// The script runs deferred, before the page's pictures have loaded: a page
+// of 4000 px can be 800 px high then, and a measure at that moment found the
+// window's bottom at its end. The deepest tenth only grows, so every view of
+// the page counted as read to the bottom. The page is measured once it has
+// loaded.
+function test_page_clicks_script_measures_the_depth_once_the_page_has_loaded()
+{
+	$page = str_replace(
+		array('documentElement: { scrollHeight: 4000, scrollTop: 0, clientHeight: 800 }, body: { scrollHeight: 4000 }, visibilityState: "visible"'),
+		array('documentElement: { scrollHeight: 800, scrollTop: 0, clientHeight: 800 }, body: { scrollHeight: 800 }, visibilityState: "visible", readyState: "interactive"'),
+		page_clicks_script_test_page(true));
+	$grow = 'doc.documentElement.scrollHeight = 4000; doc.body.scrollHeight = 4000; doc.readyState = "complete";';
+
+	$loaded = page_clicks_script_test_node($page, $grow . ' (listeners.wload || []).forEach(function (f) { f(); }); hide(); out = JSON.parse(beacons[0].f.c).t;');
+	$scrolled = page_clicks_script_test_node($page, 'scrollTo(50);' . $grow . ' (listeners.wload || []).forEach(function (f) { f(); }); scrollTo(1600); hide(); out = JSON.parse(beacons[0].f.c).t;');
+	$early = page_clicks_script_test_node($page, 'hide(); out = JSON.parse(beacons[0].f.c).t;');
+	$done = page_clicks_script_test_node(str_replace(array('visibilityState: "visible"', 'pageYOffset: 0'), array('visibilityState: "visible", readyState: "complete"', 'pageYOffset: 3200'), page_clicks_script_test_page(true)), 'scrollTo(0); hide(); out = JSON.parse(beacons[0].f.c).t;');
+
+	if ($loaded === null) {
+		return;
+	}
+
+	pg_assert_same(2, $loaded, 'the top 800 px of a loaded 4000 px page: the second tenth, not the end');
+	pg_assert_same(6, $scrolled, 'a scroll before the load is measured against the loaded page');
+	pg_assert_same(10, $early, 'a visitor who leaves before the load is measured as the page stands then');
+	pg_assert_same(10, $done, 'a script that runs after the load measures at once: a page opened at its end reached it');
+}
