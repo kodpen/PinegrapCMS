@@ -229,6 +229,8 @@ function pg_designer_screen_render($ctx)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
     $sd_ai = pg_design_ai_editor_config($user);
+    // The "Clicks" layer's settings, null for whoever may not open Visitors.
+    $sd_clicks = pg_page_clicks_designer_config($user, pg_page_clicks_switch_on(), pg_page_clicks_ready(), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY);
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
@@ -373,11 +375,14 @@ function pg_designer_screen_render($ctx)
         'hiddenPages'   => $hidden_pages,
         // The assistant panel (assets/js/designer_ai.js): designers only.
         'ai'            => $sd_ai,
+        // The "Clicks" layer (pg_page_clicks_designer_config()); null hides
+        // its toggle.
+        'clicks'        => $sd_clicks,
         // The editor's parts not needed to open a page, run on first use
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,

@@ -8133,6 +8133,8 @@ function pg_js_bundles()
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The "Clicks" layer over the canvas, from the visitors' counts.
+        'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8224,6 +8226,9 @@ function pg_designer_parts()
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
         'pages' => 'assets/js/style_designer_pages.min.js',
+        // The "Clicks" layer: badges and tenth lines over the canvas and
+        // its panel, handed only with sdDesign.clicks (who may open Visitors).
+        'clicks' => 'assets/js/style_designer_clicks.min.js',
     );
 }
 
