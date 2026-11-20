@@ -391,12 +391,36 @@ function ws_library_send($viewer, $channel, $file_id, $body = '', $options = arr
  */
 function ws_library_channels($viewer)
 {
+    return ws_library_postable(ws_channels_for($viewer), function ($id) use ($viewer) {
+        return ws_can_post_channel($viewer, ws_channel($id));
+    });
+}
+
+/**
+ * The channels of a list that a person may write in, in the list's order,
+ * in the short form the file manager's "Send to a channel" and the Artifact
+ * Canvas's send menu draw. Pure: who may write is asked of $may_post.
+ *
+ * @param array[]  $briefs   ws_channel_brief() rows
+ * @param callable $may_post fn(int channel id): bool
+ * @return array[] id, name, icon, badge, hex
+ */
+function ws_library_postable($briefs, $may_post)
+{
     $channels = array();
 
-    foreach (ws_channels_for($viewer) as $brief) {
-        if (ws_can_post_channel($viewer, ws_channel($brief['id']))) {
-            $channels[] = array('id' => $brief['id'], 'name' => $brief['name'], 'icon' => $brief['icon'], 'badge' => $brief['icon_badge'], 'hex' => $brief['hex']);
+    foreach ((array) $briefs as $brief) {
+        if (!is_array($brief) || ((int) ($brief['id'] ?? 0) <= 0) || !$may_post((int) $brief['id'])) {
+            continue;
         }
+
+        $channels[] = array(
+            'id'    => (int) $brief['id'],
+            'name'  => (string) ($brief['name'] ?? ''),
+            'icon'  => $brief['icon'] ?? '',
+            'badge' => $brief['icon_badge'] ?? '',
+            'hex'   => $brief['hex'] ?? '',
+        );
     }
 
     return $channels;

@@ -107,3 +107,27 @@ function pg_test_workspace_library_ids($set)
 
 	return $ids;
 }
+
+// The channels offered to send to: only those the person may write in, in
+// the sidebar's order, in their short form; a row without an id never.
+function test_workspace_library_postable_keeps_the_writable_ones()
+{
+	$briefs = array(
+		array('id' => 4, 'name' => 'General', 'icon' => 'hash', 'icon_badge' => '', 'hex' => '#123456', 'unread' => 3),
+		array('id' => 7, 'name' => 'Read only', 'icon' => 'lock', 'icon_badge' => '', 'hex' => ''),
+		array('id' => 9, 'name' => 'Design', 'icon' => 'hash', 'icon_badge' => 'b', 'hex' => ''),
+		array('name' => 'No id'),
+		'not a row',
+	);
+	$asked = array();
+	$out = ws_library_postable($briefs, function ($id) use (&$asked) {
+		$asked[] = $id;
+
+		return $id !== 7;
+	});
+
+	pg_assert_same(array(4, 9), array_column($out, 'id'), 'a channel the person may not write in is not offered');
+	pg_assert_same(array(4, 7, 9), $asked, 'asked once for each real row');
+	pg_assert_same(array('id' => 4, 'name' => 'General', 'icon' => 'hash', 'badge' => '', 'hex' => '#123456'), $out[0], 'the short form');
+	pg_assert_same(array(), ws_library_postable(array(), function () { return true; }), 'none');
+}
