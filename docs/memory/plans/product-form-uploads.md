@@ -27,7 +27,7 @@ priority: 6
 
 ## What did the architect decide? (2026-11-20, agent channel message 10011)
 - The allowed types and size limit live in `form_fields.rules`, no column. If keeping the file on the cart line needs a column or table of its own, the step states it in its draft and asks in the agent channel before the rest is written; it is never folded into an existing text field.
-- Deleting a shopper's files is the owner's call, asked in a poll beside that message (30 days after the cart's last touch recommended; 7 days and never the others). FU5 is written against "N days" and takes N from his answer.
+- Deleting a shopper's files: the owner chose 30 days after the cart's last touch (poll 162, message 10010); an order's files are never swept. FU5 builds it.
 - The blank labels are their own fix (#10541), not a step of this plan.
 - `cart_action.php` and `includes/fn/order_completion.php` are held by other plans (referral-programme RF1 #10033, event-tickets TK1): an FU step entering them waits for whichever of those is open. Each step stays near 1,000 product lines.
 

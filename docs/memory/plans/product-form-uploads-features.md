@@ -27,4 +27,4 @@ description: Plan product-form-uploads, features U1 to U16: the field and its ru
 ## What happens to the file later?
 - (U14) Removing a cart line, lowering its quantity, dropping saved lines and deleting an order delete the files with their answers, through one function every path calls.
 - (U15) The privacy erase and export keep their work: the erase already collects these files by order.
-- (U16) The general job deletes the uploaded files of a cart that never became an order, N days after the cart's last touch (N is the owner's answer to the architect's poll, message 10011); a cart that became an order is never swept.
+- (U16) The general job deletes the uploaded files of a cart that never became an order, 30 days after the cart's last touch (owner, poll 162, channel message 10010); a cart that became an order is never swept.

@@ -26,7 +26,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Existing files: `includes/api/resources/orders.php`, `view_orders.php` (both CSV exports), `includes/fn/order_completion.php` (the submit-form copy; held by RF1 and TK1), `includes/fn/privacy_export.php` if its list needs the name.
   - `php tools/check_api_schema.php`. Features: U11, U12, U13, U15.
 
-- FU5 (S) after FU1 and the owner's answer on N: the sweep in the general job, in `includes/fn/product_form_uploads.php`; the job's file names the call. Tests: an unordered cart past N swept, one inside N kept, an order never swept. Feature: U16.
+- FU5 (S) after FU1: the sweep in the general job, in `includes/fn/product_form_uploads.php`; the job's file names the call. 30 days after the cart's last touch (owner, poll 162). Tests: an unordered cart past 30 days swept, one inside them kept, an order never swept. Feature: U16.
 
 - FU6 (S) close-out: every U number checked against the code with its PR; `commerce/product-form-uploads.md` written; `commerce/cart-product-form-file-field.md` rewritten for the built field; this plan's three files deleted.
 
