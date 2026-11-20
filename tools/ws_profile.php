@@ -2,18 +2,25 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Reports the calling agent's model and plan usage to a site with its own
- * application key (POST /workspace/agent-report); the site's Agents card
- * shows the last report with its age. How the session reads its plan's
- * limits is its own: this tool only sends what it is given.
+ * Reports the calling agent's model, plan usage, context, project and
+ * branch to a site with its own application key (POST
+ * /workspace/agent-report); the site's Agents card and Channel info's
+ * Activity tab show the last report with its age. How the session reads
+ * its plan's limits and its context is its own: this tool only sends what
+ * it is given.
  *
  * Usage:  php tools/ws_profile.php [--model=NAME]
  *                                  [--windows=NAME:PERCENT:RESETS[,…]]
+ *                                  [--context=USED:SIZE]
+ *                                  [--project=NAME] [--branch=NAME]
  *                                  [--skip-missing]
  *         NAME of a window is five_hour, daily, weekly, weekly_model or
  *         monthly; PERCENT a whole number 0-100; RESETS ISO-8601 or a unix
  *         timestamp, e.g. --windows=five_hour:42:2026-11-13T22:00:00Z,weekly:61:1795000000
- *         A report needs --model or --windows; leave out what cannot be read.
+ *         USED and SIZE of --context are whole numbers of tokens (used at
+ *         most size), e.g. --context=412000:1000000; a project is at most 80
+ *         characters, a branch at most 120.
+ *         A report needs one of them; leave out what cannot be read.
  * Exit:   0 reported (or skipped with --skip-missing while settings are
  *         missing); 1 the site refused or could not be reached; 2 usage or
  *         missing settings.
@@ -80,8 +87,35 @@ function ws_profile_body($options)
 		$body['windows'] = $windows;
 	}
 
+	$context = isset($options['context']) && is_string($options['context']) ? trim($options['context']) : '';
+
+	if ($context !== '') {
+		$fields = explode(':', $context);
+
+		if (count($fields) !== 2 || !ctype_digit($fields[0]) || !ctype_digit($fields[1]) || (int) $fields[1] < 1 || (int) $fields[0] > (int) $fields[1]) {
+			return array('body' => null, 'error' => 'the context is USED:SIZE in tokens, used at most size, e.g. 412000:1000000');
+		}
+
+		$body['context'] = array('used' => (int) $fields[0], 'size' => (int) $fields[1]);
+	}
+
+	// The route's own limits (80 and 120 characters).
+	foreach (array('project' => 80, 'branch' => 120) as $name => $max) {
+		$value = isset($options[$name]) && is_string($options[$name]) ? trim($options[$name]) : '';
+
+		if ($value === '') {
+			continue;
+		}
+
+		if ((function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value)) > $max) {
+			return array('body' => null, 'error' => 'the ' . $name . ' is longer than ' . $max . ' characters');
+		}
+
+		$body[$name] = $value;
+	}
+
 	if (!$body) {
-		return array('body' => null, 'error' => 'give --model, --windows or both');
+		return array('body' => null, 'error' => 'give --model, --windows, --context, --project or --branch');
 	}
 
 	return array('body' => $body, 'error' => '');

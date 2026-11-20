@@ -3,11 +3,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - an application agent's report about itself: the model it runs
- * on and its plan's usage windows as it reads them (percent used, reset
- * time), sent with its own key (POST /workspace/agent-report). The site
- * cannot check either value: they are kept as the agent's report, the last
- * one only (ws_agents.report_model, report_usage, report_at), and shown on
- * the Agents card with their age.
+ * on, its plan's usage windows as it reads them (percent used, reset time),
+ * its context (tokens used and the window's size), the project and the git
+ * branch it works on, sent with its own key (POST /workspace/agent-report).
+ * The site cannot check any of it: it is kept as the agent's report, the
+ * last one only (ws_agents.report_model, report_at, and report_usage holding
+ * windows, context, project and branch as one JSON object; an older report
+ * stored the windows alone as a list, which still reads), and shown on the
+ * Agents card with its age.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,6 +27,15 @@ define('WS_AGENT_REPORT_MODEL_MAX', 80);
 
 // The most usage windows one report carries.
 define('WS_AGENT_REPORT_WINDOWS_MAX', 4);
+
+// The largest context window a report names, in tokens.
+define('WS_AGENT_REPORT_CONTEXT_MAX', 10000000);
+
+// The longest project name a report carries.
+define('WS_AGENT_REPORT_PROJECT_MAX', 80);
+
+// The longest branch name a report carries.
+define('WS_AGENT_REPORT_BRANCH_MAX', 120);
 
 // A report older than this is drawn muted on the card.
 define('WS_AGENT_REPORT_STALE_AFTER', 86400);
@@ -67,17 +79,71 @@ function ws_agent_report_window_labels()
 }
 
 /**
+ * Checks a context as a report gives it: exactly {used, size}, whole
+ * numbers of tokens, used from 0 to size, size from 1 to
+ * WS_AGENT_REPORT_CONTEXT_MAX. Pure but for lang().
+ *
+ * @param mixed $context
+ * @return array ok, error, context (used, size)
+ */
+function ws_agent_report_context_check($context)
+{
+    $keys = is_array($context) ? array_keys($context) : array();
+    sort($keys);
+    $used = $context['used'] ?? null;
+    $size = $context['size'] ?? null;
+
+    if (($keys !== array('size', 'used')) || !is_int($used) || !is_int($size) || ($size < 1) || ($size > WS_AGENT_REPORT_CONTEXT_MAX) || ($used < 0) || ($used > $size)) {
+        return array('ok' => false, 'error' => lang('The context is {used, size}: whole numbers of tokens, used at most size, size at most 10,000,000.'), 'context' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'context' => array('used' => $used, 'size' => $size));
+}
+
+/**
+ * Is a value one printable line of UTF-8 text of at most $max characters?
+ * Pure.
+ *
+ * @param string $text
+ * @param int    $max
+ * @return bool
+ */
+function ws_agent_report_line_ok($text, $max)
+{
+    return (preg_match('//u', $text) === 1) && (mb_strlen($text) <= $max) && (preg_match('/[\p{C}]/u', $text) !== 1);
+}
+
+/**
+ * Is a value a git branch name the report takes: at most 120 of a ref's
+ * plain characters (letters, digits, . _ / -), no "..", no "//", not
+ * starting with / or -, not ending with / or a dot. Pure.
+ *
+ * @param string $branch
+ * @return bool
+ */
+function ws_agent_report_branch_ok($branch)
+{
+    return (strlen($branch) <= WS_AGENT_REPORT_BRANCH_MAX)
+        && (preg_match('#^[A-Za-z0-9._/-]+$#', $branch) === 1)
+        && (strpos($branch, '..') === false) && (strpos($branch, '//') === false)
+        && (strpos('/-', $branch[0]) === false) && (strpos('/.', substr($branch, -1)) === false);
+}
+
+/**
  * Checks a report before it is written: a model name of at most 80
- * characters and at most four windows, each exactly {name, percent,
+ * characters; at most four windows, each exactly {name, percent,
  * resets_at} with a name of the list given once, a whole percent 0-100 and a
- * reset time (unix seconds, already parsed). Anything else refuses the whole
- * report. A report needs a model or a window. Pure.
+ * reset time (unix seconds, already parsed); a context
+ * (ws_agent_report_context_check()); a project of one printable line of at
+ * most 80 characters; a branch (ws_agent_report_branch_ok()). Anything else
+ * refuses the whole report. A report needs one of them. Pure.
  *
  * @param mixed $model
  * @param mixed $windows list of window objects, null for none
- * @return array ok, error (a sentence), field, values (model, windows, usage: the stored JSON)
+ * @param array $fields  context, project, branch; a field left out or null is none
+ * @return array ok, error (a sentence), field, values (model, windows, context, project, branch, usage: the stored JSON)
  */
-function ws_agent_report_check($model, $windows)
+function ws_agent_report_check($model, $windows, $fields = array())
 {
     $fail = function ($error, $field) {
         return array('ok' => false, 'error' => $error, 'field' => $field, 'values' => null);
@@ -90,7 +156,7 @@ function ws_agent_report_check($model, $windows)
     $model = trim((string) $model);
 
     // Text from outside: printable, one line.
-    if ((mb_strlen($model) > WS_AGENT_REPORT_MODEL_MAX) || (preg_match('/[\p{C}]/u', $model) === 1) || (preg_match('//u', $model) !== 1)) {
+    if (!ws_agent_report_line_ok($model, WS_AGENT_REPORT_MODEL_MAX)) {
         return $fail(lang('The model is a name of up to 80 characters.'), 'model');
     }
 
@@ -134,8 +200,44 @@ function ws_agent_report_check($model, $windows)
         $out[$name] = array('name' => $name, 'percent' => $percent, 'resets_at' => $resets);
     }
 
-    if (($model === '') && !$out) {
-        return $fail(lang('Report a model or a usage window.'), 'model');
+    $context = null;
+
+    if (isset($fields['context'])) {
+        $checked = ws_agent_report_context_check($fields['context']);
+
+        if (!$checked['ok']) {
+            return $fail($checked['error'], 'context');
+        }
+
+        $context = $checked['context'];
+    }
+
+    $project = $fields['project'] ?? null;
+
+    if (($project !== null) && !is_string($project)) {
+        return $fail(lang('The project is a name of up to 80 characters.'), 'project');
+    }
+
+    $project = trim((string) $project);
+
+    if (!ws_agent_report_line_ok($project, WS_AGENT_REPORT_PROJECT_MAX)) {
+        return $fail(lang('The project is a name of up to 80 characters.'), 'project');
+    }
+
+    $branch = $fields['branch'] ?? null;
+
+    if (($branch !== null) && !is_string($branch)) {
+        return $fail(lang('The branch is a git branch name of up to 120 characters.'), 'branch');
+    }
+
+    $branch = trim((string) $branch);
+
+    if (($branch !== '') && !ws_agent_report_branch_ok($branch)) {
+        return $fail(lang('The branch is a git branch name of up to 120 characters.'), 'branch');
+    }
+
+    if (($model === '') && !$out && ($context === null) && ($project === '') && ($branch === '')) {
+        return $fail(lang('Report a model, a usage window, the context, the project or the branch.'), 'model');
     }
 
     // Kept in the list's order, whatever order they came in.
@@ -143,31 +245,168 @@ function ws_agent_report_check($model, $windows)
         return $out[$name] ?? null;
     }, array_keys($names))));
 
+    $stored = '';
+
+    if ($ordered || ($context !== null) || ($project !== '') || ($branch !== '')) {
+        $stored = json_encode(array('windows' => $ordered, 'context' => $context, 'project' => $project, 'branch' => $branch), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'values' => array(
         'model'   => $model,
         'windows' => $ordered,
-        'usage'   => $ordered ? json_encode($ordered) : '',
+        'context' => $context,
+        'project' => $project,
+        'branch'  => $branch,
+        'usage'   => (string) $stored,
     ));
 }
 
 /**
- * The windows of a stored report, read back as the check wrote them; a
- * value that does not read so gives no windows. Pure.
+ * A stored report read back through the same check: the object of windows,
+ * context, project and branch, or the list of windows an older report
+ * stored. A value that does not read gives nothing. Pure.
+ *
+ * @param string $usage ws_agents.report_usage
+ * @return array windows (name, percent, resets_at), context (used, size)|null, project, branch
+ */
+function ws_agent_report_read($usage)
+{
+    $none = array('windows' => array(), 'context' => null, 'project' => '', 'branch' => '');
+    $stored = json_decode((string) $usage, true);
+
+    if (!is_array($stored)) {
+        return $none;
+    }
+
+    $fields = array();
+
+    if (($stored !== array()) && (array_values($stored) === $stored)) {
+        // An older report: the windows alone, as a list.
+        $windows = $stored;
+    } else {
+        if (array_diff(array_keys($stored), array('windows', 'context', 'project', 'branch'))) {
+            return $none;
+        }
+
+        $windows = $stored['windows'] ?? array();
+        $fields = $stored;
+    }
+
+    $check = ws_agent_report_check('x', $windows, $fields);
+
+    if (!$check['ok']) {
+        return $none;
+    }
+
+    return array(
+        'windows' => $check['values']['windows'],
+        'context' => $check['values']['context'],
+        'project' => $check['values']['project'],
+        'branch'  => $check['values']['branch'],
+    );
+}
+
+/**
+ * The windows of a stored report (ws_agent_report_read()). Pure.
  *
  * @param string $usage ws_agents.report_usage
  * @return array[] name, percent, resets_at
  */
 function ws_agent_report_windows($usage)
 {
-    $list = json_decode((string) $usage, true);
+    return ws_agent_report_read($usage)['windows'];
+}
 
-    if (!is_array($list)) {
-        return array();
+/**
+ * A stored report with its context replaced, the rest kept: an answer
+ * names its context beside its model. Pure.
+ *
+ * @param string $usage   ws_agents.report_usage
+ * @param array  $context ws_agent_report_context_check()'s context
+ * @return string the JSON to store
+ */
+function ws_agent_report_usage_with_context($usage, $context)
+{
+    $read = ws_agent_report_read($usage);
+    $read['context'] = array('used' => (int) $context['used'], 'size' => (int) $context['size']);
+
+    return (string) json_encode($read, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * A number of tokens in short: 950, 412k, 1.5M. Pure.
+ *
+ * @param int $tokens
+ * @return string
+ */
+function ws_agent_report_tokens($tokens)
+{
+    $tokens = (int) $tokens;
+
+    if ($tokens < 1000) {
+        return (string) $tokens;
     }
 
-    $check = ws_agent_report_check('x', $list);
+    $thousands = (int) round($tokens / 1000);
 
-    return $check['ok'] ? $check['values']['windows'] : array();
+    if ($thousands < 1000) {
+        return $thousands . 'k';
+    }
+
+    $millions = round($tokens / 1000000, 1);
+
+    return rtrim(rtrim(number_format($millions, 1, '.', ''), '0'), '.') . 'M';
+}
+
+/**
+ * An agent's reported context: tokens used, the window's size, the percent
+ * used and its words. Null when its last report names none. Pure but for
+ * lang().
+ *
+ * @param array $agent ws_agent_shape() or the raw row: report_usage
+ * @return array|null used, size, percent, words
+ */
+function ws_agent_report_context($agent)
+{
+    $context = ws_agent_report_read($agent['report_usage'] ?? '')['context'];
+
+    if ($context === null) {
+        return null;
+    }
+
+    $percent = (int) round($context['used'] * 100 / $context['size']);
+
+    return $context + array(
+        'percent' => $percent,
+        'words'   => lang(array('string' => 'Context {var:1} of {var:2} tokens ({var:3}%)', 'vars' => array(ws_agent_report_tokens($context['used']), ws_agent_report_tokens($context['size']), $percent))),
+    );
+}
+
+/**
+ * An agent's reported project, null when its last report names none. Pure.
+ *
+ * @param array $agent ws_agent_shape() or the raw row: report_usage
+ * @return string|null
+ */
+function ws_agent_report_project($agent)
+{
+    $project = ws_agent_report_read($agent['report_usage'] ?? '')['project'];
+
+    return ($project === '') ? null : $project;
+}
+
+/**
+ * An agent's reported git branch, null when its last report names none.
+ * Pure.
+ *
+ * @param array $agent ws_agent_shape() or the raw row: report_usage
+ * @return string|null
+ */
+function ws_agent_report_branch($agent)
+{
+    $branch = ws_agent_report_read($agent['report_usage'] ?? '')['branch'];
+
+    return ($branch === '') ? null : $branch;
 }
 
 /**
@@ -203,6 +442,10 @@ function ws_agent_report_save($agent_id, $values, $now)
  */
 function ws_agent_report_model_check($model)
 {
+    if (is_string($model) && (trim($model) === '')) {
+        return array('ok' => false, 'error' => lang('The model is a name of up to 80 characters.'), 'model' => '');
+    }
+
     $check = ws_agent_report_check($model, null);
 
     return $check['ok'] ? array('ok' => true, 'error' => '', 'model' => $check['values']['model'])
@@ -220,6 +463,26 @@ function ws_agent_report_model_check($model)
 function ws_agent_report_model_save($agent_id, $model, $now)
 {
     db("UPDATE ws_agents SET report_model = '" . e((string) $model) . "', report_at = '" . (int) $now . "'
+        WHERE id = '" . (int) $agent_id . "'");
+}
+
+/**
+ * Writes a context named with an answer: the context and the report's time,
+ * the rest of the last report kept.
+ *
+ * @param int   $agent_id
+ * @param array $context ws_agent_report_context_check()'s context
+ * @param int   $now
+ */
+function ws_agent_report_context_save($agent_id, $context, $now)
+{
+    $row = db_item("SELECT report_usage FROM ws_agents WHERE id = '" . (int) $agent_id . "'");
+
+    if (!$row) {
+        return;
+    }
+
+    db("UPDATE ws_agents SET report_usage = '" . e(ws_agent_report_usage_with_context($row['report_usage'] ?? '', $context)) . "', report_at = '" . (int) $now . "'
         WHERE id = '" . (int) $agent_id . "'");
 }
 
