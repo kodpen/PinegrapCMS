@@ -30,6 +30,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-10.md: Where does an area's tab strip sit? (owner, 2026-11-19, agent channel poll 153, message 9494)
 - decisions-made-panel-10.md: Is the Design Canvas renamed Artifact Canvas? (owner, 2026-11-20)
 - decisions-made-panel-10.md: Which drawing is the Artifact Canvas icon? (owner, 2026-11-20)
+- decisions-made-panel-11.md: Where are the rules and the earlier parts?
+- decisions-made-panel-11.md: Is the Site Settings dialog bigger? (owner, 2026-11-20, in the architect's window)
+- decisions-made-panel-11.md: Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -461,6 +464,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-87.md: Where are the rules and the earlier parts?
 - decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
 - decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
+- decisions-made-product-87.md: Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
+- decisions-made-product-87.md: Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
+- decisions-made-product-88.md: Where are the rules and the earlier parts?
+- decisions-made-product-88.md: Is Application Access drawn again? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-88.md: Does Application Access move into Connections? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-88.md: Is an agent given to a channel from the application's screen? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -562,6 +571,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-35.md: Where are the rules and the earlier parts?
 - decisions-made-schema-35.md: Does the ad conversions plan get a table? (owner, 2026-11-20, agent channel poll 174, channel message 10512)
 - decisions-made-schema-35.md: Which columns does it have? (architect, 2026-11-20, channel message 10514)
+- decisions-made-schema-36.md: Where are the rules and the earlier parts?
+- decisions-made-schema-36.md: Does the request box get a table? (owner, 2026-11-20, agent channel poll 177, channel message 10555)
+- decisions-made-schema-36.md: Which columns does it have? (architect, 2026-11-20, channel message 10557)
+- decisions-made-schema-36.md: Where do destruction records live? (architect, 2026-11-20, channel message 10557)
+- decisions-made-schema-37.md: Where are the rules and the earlier parts?
+- decisions-made-schema-37.md: Is the application that changed a note kept? (owner, 2026-11-20, agent channel poll 180, message 10580)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -743,6 +758,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-40.md: Does the Workspace get voice and video calls? (owner, 2026-11-20, in the architect's window, channel message 9832; poll 157, message 9833)
 - decisions-made-workspace-41.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-41.md: Is a table shown on a canvas as a chart or a table that follows its data? (owner, 2026-11-20, in the architect's window, channel message 9848)
+- decisions-made-workspace-42.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-42.md: Does a channel get an activity panel and Markdown documents? (owner, 2026-11-20, agent channel message 10569, poll 179 in message 10572)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
@@ -796,7 +813,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
-- api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
+- api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Design, Content, Store, Accounting, All; #1716, #10709): what each ticks, why record writes are ticked by hand
 - api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
@@ -806,6 +823,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards
 - api/claude-connect-button.md: The "Connect to Claude" button on the panel's OAuth connection guide: Claude's install link with the site's name and MCP file address, who sees it, the https rule
 - api/claude-connector-listing.md: A connector listing in Claude's directory for a server whose address is each customer's own, as Anthropic's pages state it (read 2026-11-17): the URL pattern, Verified only, sign-in, the install link
+- api/claude-console-agents.md: Claude Console's agents (Claude Managed Agents) as Anthropic's pages state them (read 2026-11-20): MCP and vault credentials, the sandbox, waking a session, long runs; what was not found
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
 - api/connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (78 + 12 MCP connectors), the difference from the census's 79, adding a service
@@ -829,6 +847,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
 - commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
+- commerce/event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
@@ -1003,6 +1022,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
 - erp/erp-parasut-overview.md: Paraşüt as a whole: connection card, the ERP's e-document driver, the order screen's legacy Create Invoice and E-Shipment, inbox, export; its decisions and which erp-parasut-* file holds each part
 - erp/erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public
+- erp/erp-stock-planning.md: Stock Planning (Accounting › Stock Planning): what it is, the owner's and architect's decisions, its parts and which file holds each, the defaults, what is left out; PRs #10612, #10654, #10693, #10687
 - erp/erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp/erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp/erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
@@ -1160,6 +1180,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
+- workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean

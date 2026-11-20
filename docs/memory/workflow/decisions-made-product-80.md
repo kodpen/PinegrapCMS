@@ -27,6 +27,6 @@ description: Decisions list, product part 80 (2026-11-20 on): Artifact Canvas gr
 
 ## Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
 - Asked: a nightly plan per product from the sales of every channel without the out-of-stock days, the season from last year, the supplier's measured lead time; days left, run-out day, the quantity to order net of open purchase orders, dead stock after 90 days at average cost; a press per supplier opening a purchase order a person checks and sends; the bell; API and MCP.
-- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `plans/stock-planning.md`.
+- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `erp/erp-stock-planning.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/image-editor-overview.md, docs/memory/workspace/workspace-channel-composer.md, docs/memory/commerce/cart-product-form-file-field.md

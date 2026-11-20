@@ -24,12 +24,12 @@ description: Plan designer-panels, steps DP6 to DP10 of the Options chain: layou
   - Pictures: the four cases of `options-3-search-review.jpg`.
   - Features: D21, D22, D23, D24.
 
-- DP9 (S) after DP8: the review view.
+- DP9 (S) after DP8: the review view. Done in #10699.
   - Tests: the list equal to the dots of all three tabs; "Reset all" as one undo step.
   - Pictures: the list, its foot, the question of "Reset all".
   - Features: D25, D26.
 
-- DP10 (M) after DP9: copy and paste style, the quick strip.
+- DP10 (M) after DP9: copy and paste style, the quick strip. Done in #10719.
   - New: a pure function that takes an element's changed Style rows and one that fits them to a target kind, with its test; the fixed list of the quick strip per element kind.
   - Tests: content, link and binding never copied; a row the target lacks left out and counted; paste as one undo step; a multiple selection.
   - Pictures: the brush on the identity row and on the canvas toolbar, the toast, the quick strip on three kinds.

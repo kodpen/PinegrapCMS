@@ -1138,6 +1138,11 @@ function pg_office_xlsx_read($path, $edit = false)
 
     if ($edit) {
         $book['version'] = $version;
+
+        // Whether the sheet tabs offer to add, rename, delete and move sheets.
+        if (function_exists('pg_office_sheets_edit_info')) {
+            $book['sheets_edit'] = pg_office_sheets_edit_info($signed, $reserved, $workbook_xml);
+        }
     }
 
     return $book;
