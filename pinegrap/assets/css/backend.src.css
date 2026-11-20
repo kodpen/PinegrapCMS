@@ -19198,39 +19198,86 @@ a.ws-chip-message:hover,
   width: min(20rem, calc(100vw - 2rem));
   padding: var(--ws-space-2);
 }
+.ws-call.is-group {
+  width: min(28rem, calc(100vw - 2rem));
+}
+/* The grid: one tile a member; of two, one's own picture sits small in
+   the corner of the other's. The one speaking is ringed. */
 .ws-call-stage {
   position: relative;
+  display: grid;
+  gap: var(--ws-space-1);
+}
+.ws-call-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
   overflow: hidden;
   border-radius: var(--pg-radius);
   background: var(--pg-bg-2);
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow .15s ease;
 }
-.ws-call[data-kind="video"] .ws-call-stage {
+.ws-call[data-kind="video"] .ws-call-tile {
   aspect-ratio: 16 / 9;
 }
-.ws-call-remote {
-  display: block;
+.ws-call-tile.is-speaking {
+  box-shadow: 0 0 0 2px var(--pg-success-fg-emphasis);
+}
+.ws-call-tile.is-lost {
+  opacity: .5;
+}
+.ws-call-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.ws-call[data-kind="voice"] .ws-call-remote {
-  display: none;
+.ws-call-tile > .bi {
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
 }
-.ws-call-who {
-  padding: var(--ws-space-3);
-  text-align: center;
-  font-weight: var(--pg-weight-strong);
+.ws-call[data-kind="voice"] .ws-call-video,
+.ws-call-tile.is-camera-off .ws-call-video {
+  visibility: hidden;
 }
-.ws-call-self {
+.ws-call[data-kind="video"] .ws-call-tile:not(.is-camera-off) > .bi {
+  visibility: hidden;
+}
+.ws-call-tile-name {
+  position: absolute;
+  left: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  max-width: calc(100% - 2 * var(--ws-space-1));
+  overflow: hidden;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: var(--pg-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-call-stage[data-count="2"],
+.ws-call-stage[data-count="3"],
+.ws-call-stage[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
   position: absolute;
   right: var(--ws-space-1);
   bottom: var(--ws-space-1);
+  z-index: 1;
   width: 28%;
-  border-radius: var(--pg-radius);
-  object-fit: cover;
+  min-height: 0;
 }
-.ws-call.is-camera-off .ws-call-self {
-  visibility: hidden;
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self .ws-call-tile-name {
+  display: none;
 }
 .ws-call-bar {
   display: flex;
