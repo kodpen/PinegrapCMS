@@ -8,10 +8,11 @@
  * The address is asked once, on the server, when the button is pressed;
  * nothing is looked up when a page is viewed and no table keeps coordinates.
  *
- * The fields are found by name: a number field named latitude (lat, enlem)
- * and one named longitude (lng, lon, boylam), and the text fields that
- * make up the address (address, street, city, postcode, country and the
- * like), joined in the form's order.
+ * The fields a "Map of places" block chose for the form come first
+ * (pg_place_map_block_choice()); every part not chosen is found by name: a
+ * number field named latitude (lat, enlem) and one named longitude (lng,
+ * lon, boylam), and the text fields that make up the address (address,
+ * street, city, postcode, country and the like), joined in the form's order.
  *
  * Coordinates always come from Photon (OpenStreetMap data), whatever
  * provider gives the address suggestions: Photon's results may be kept and
@@ -79,16 +80,35 @@ function pg_place_map_name($name)
 }
 
 /**
- * Which of a form's fields hold the address and the two coordinates. Pure.
+ * Which of a form's fields hold the address and the two coordinates: the
+ * block's chosen field for a part when the form still has it and it fits
+ * (pg_place_list_chosen_ids()), else the one found by name. A chosen
+ * address is the address alone. Pure.
  *
  * @param array $fields rows in form order: id, name, type, kind
- *                      (form_fields.collection_kind)
+ *                      (form_fields.collection_kind), office
+ * @param array $choice pg_place_list_saved_choice(): part => field name
  * @return array|null lat, lng (field ids), address (field ids in order);
  *                    null unless both coordinates and an address are there
  */
-function pg_place_map_field_roles($fields)
+function pg_place_map_field_roles($fields, $choice = array())
 {
     $roles = pg_place_map_field_roles_found($fields);
+
+    if ($choice) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+        $chosen = pg_place_list_chosen_ids($fields, $choice);
+
+        foreach (array('lat', 'lng') as $part) {
+            if (isset($chosen[$part])) {
+                $roles[$part] = $chosen[$part];
+            }
+        }
+
+        if (isset($chosen['address'])) {
+            $roles['address'] = array($chosen['address']);
+        }
+    }
 
     return (($roles['lat'] > 0) && ($roles['lng'] > 0) && $roles['address']) ? $roles : null;
 }
@@ -147,13 +167,89 @@ function pg_place_map_fields($page_id)
         return null;
     }
 
-    $fields = array();
+    static $cache = array();
 
-    foreach ((array) db_items("SELECT id, name, type, collection_kind FROM form_fields WHERE page_id = '" . $page_id . "' ORDER BY sort_order") as $row) {
-        $fields[] = array('id' => $row['id'], 'name' => $row['name'], 'type' => $row['type'], 'kind' => pg_coll_field_kind($row['collection_kind'], $row['type']));
+    if (array_key_exists($page_id, $cache)) {
+        return $cache[$page_id];
     }
 
-    return pg_place_map_field_roles($fields);
+    $fields = array();
+
+    foreach ((array) db_items("SELECT id, name, type, collection_kind, office_use_only FROM form_fields WHERE page_id = '" . $page_id . "' ORDER BY sort_order") as $row) {
+        $fields[] = array('id' => $row['id'], 'name' => $row['name'], 'type' => $row['type'], 'kind' => pg_coll_field_kind($row['collection_kind'], $row['type']), 'office' => (int) $row['office_use_only']);
+    }
+
+    return $cache[$page_id] = pg_place_map_field_roles($fields, pg_place_map_block_choice($page_id));
+}
+
+/**
+ * Whose block choice a form takes when several pages list it: the page with
+ * the lowest id whose first form list shows the form and whose "Map of
+ * places" block names a field. Pure.
+ *
+ * @param array $pages   rows: page_id, form (the first list's form page id),
+ *                       choice (pg_place_list_saved_choice())
+ * @param int   $form_id
+ * @return array part => field name; empty for none
+ */
+function pg_place_map_pick_choice($pages, $form_id)
+{
+    $best = null;
+
+    foreach ((array) $pages as $page) {
+        $id = isset($page['page_id']) ? (int) $page['page_id'] : 0;
+
+        if (($id <= 0) || !isset($page['form']) || ((int) $page['form'] !== (int) $form_id) || empty($page['choice']) || !is_array($page['choice'])) {
+            continue;
+        }
+
+        if (($best === null) || ($id < (int) $best['page_id'])) {
+            $best = $page;
+        }
+    }
+
+    return ($best === null) ? array() : $best['choice'];
+}
+
+/**
+ * The fields a "Map of places" block chose for a custom form
+ * (data-pg-map-fields, read as places.php reads it): from the pages not in
+ * the bin whose first form list shows the form, picked by
+ * pg_place_map_pick_choice(). Empty when no block names a field.
+ *
+ * @param int $form_page_id
+ * @return array part => field name
+ */
+function pg_place_map_block_choice($form_page_id)
+{
+    $form_page_id = (int) $form_page_id;
+
+    if (($form_page_id <= 0) || !function_exists('pg_sw_widget_pages')) {
+        return array();
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+    $pages = array();
+
+    foreach ((array) pg_sw_widget_pages('form_list_view', function ($cfg) use ($form_page_id) {
+        return pg_sw_form_widget_form_page_id($cfg) === $form_page_id;
+    }) as $row) {
+        $page_id = (int) $row['page_id'];
+        $tree = (string) pg_page_tree_json($page_id);
+
+        if (strpos($tree, pg_place_list_choice_attr()) === false) {
+            continue;
+        }
+
+        $list = pg_sw_page_widget($page_id, 'form_list_view');
+        $pages[] = array(
+            'page_id' => $page_id,
+            'form'    => is_array($list) ? pg_sw_form_widget_form_page_id($list['cfg']) : 0,
+            'choice'  => pg_place_list_saved_choice(json_decode($tree, true)),
+        );
+    }
+
+    return pg_place_map_pick_choice($pages, $form_page_id);
 }
 
 /**
