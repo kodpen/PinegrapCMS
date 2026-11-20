@@ -247,6 +247,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
+	upgrade_2026_11_0_privacy_requests();        // 11.0.258
 
 }
 
@@ -8408,5 +8409,45 @@ function upgrade_2026_11_0_ws_note_app() {
 	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
+
+}
+
+// The Privacy centre's request box (2026.11.0, 11.0.258;
+// includes/fn/privacy_requests.php).
+//
+// privacy_requests: one row per request a person makes about their personal
+// data (information, correction, erasure, objection, other), from My
+// Account, the public form or typed in by staff. The 30 days run from
+// received_at, the moment the address is proven; a row never proven is not
+// in the box and is swept after 7 days. A request's steps are audit_log
+// lines (entity_type = 'privacy_request'), not columns.
+function upgrade_2026_11_0_privacy_requests() {
+
+	install_create_table('privacy_requests', "CREATE TABLE privacy_requests (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind              VARCHAR(16) NOT NULL DEFAULT '',
+		status            VARCHAR(16) NOT NULL DEFAULT '',
+		source            VARCHAR(16) NOT NULL DEFAULT '',
+		result            VARCHAR(16) NOT NULL DEFAULT '',
+		contact_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		assigned_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		email             VARCHAR(100) NOT NULL DEFAULT '',
+		name              VARCHAR(100) NOT NULL DEFAULT '',
+		message           TEXT NULL,
+		answer            MEDIUMTEXT NULL,
+		verified_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		due_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_due (status, due_at),
+		KEY idx_contact (contact_id),
+		KEY idx_email (email)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Privacy centre: requests about personal data are kept with their 30 days and their answer.');
 
 }

@@ -954,6 +954,24 @@ if (pg_privacy_rules_due()) {
     }
 }
 
+// The Privacy centre's request box (includes/fn/privacy_requests.php):
+// requests never proven are swept after 7 days, and open ones are reminded
+// of at 7 and 2 days left, each once. Nothing on a site without the table.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
+
+if (pg_privacy_requests_ready()) {
+
+    $privacy_requests_swept = pg_privacy_requests_sweep();
+    pg_privacy_requests_remind();
+
+    if ($privacy_requests_swept > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} privacy request(s) whose address was never proven',
+            'vars'   => array(pg_format_number($privacy_requests_swept, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Cancelled appointment bookings past 400 days since their last change
 // (includes/fn/booking_retention.php): once a day, five seconds a tick until
 // the pass is through. Nothing to do on a site without the booking tables; a

@@ -9137,6 +9137,7 @@ function get_tables() {
 		'photo_gallery_pages',
 		'pregion',
 		'preview_styles',
+		'privacy_requests',
 		'product_attribute_options',
 		'product_attributes',
 		'product_groups',

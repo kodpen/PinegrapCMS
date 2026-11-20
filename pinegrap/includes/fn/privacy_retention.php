@@ -269,6 +269,8 @@ function pg_privacy_rules_catalogue()
         // The cart row stays: cart recovery counts open carts from orders.
         'carts'    => array('unit' => 'days', 'default' => 90, 'min' => 31, 'max' => 3650, 'table' => 'orders', 'entries' => array('ship_tos', 'orders')),
         'orders'   => array('unit' => 'years', 'default' => null, 'min' => 1, 'max' => 30, 'table' => 'orders', 'entries' => array('ship_tos', 'order_returns', 'shipment_labels', 'orders')),
+        // Answered and refused requests of the request box, from their closing.
+        'requests' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'privacy_requests', 'entries' => array('privacy_requests')),
     );
 }
 
@@ -344,6 +346,7 @@ function pg_privacy_rules_labels()
             'forms'    => lang('Form submissions'),
             'carts'    => lang('Incomplete carts: personal fields, contact and account links'),
             'orders'   => lang('Orders: personal fields anonymised'),
+            'requests' => lang('Closed privacy requests: the person and the texts anonymised'),
         ),
         'skips' => array(
             'staff'       => lang('Staff account'),
@@ -764,6 +767,10 @@ function pg_privacy_rule_candidate_where($key, array $rule, $now, array $has)
         return "(status IN ('complete', 'exported', 'cancelled')) AND (order_date > 0) AND (order_date < " . $at . ") AND " . $pending;
     }
 
+    if ($key === 'requests') {
+        return "(status IN ('answered', 'refused')) AND (closed_at > 0) AND (closed_at < " . $at . ") AND " . $pending;
+    }
+
     return '';
 }
 
@@ -974,6 +981,10 @@ function _pg_privacy_rule_where($key, array $rule, $now)
 
     $has = in_array($key, array('carts', 'orders'), true) ? array('pending' => _pg_privacy_rule_orders_pending()) : array();
 
+    if ($key === 'requests') {
+        $has = array('pending' => pg_privacy_rule_pending_where(pg_privacy_erase_tables()['privacy_requests']['fields']));
+    }
+
     return pg_privacy_rule_candidate_where($key, $rule, $now, $has);
 }
 
@@ -1091,7 +1102,7 @@ function _pg_privacy_rule_scope(array $lists)
 {
     $scope = array();
 
-    foreach (array('user_ids', 'contact_ids', 'emails', 'actors', 'tokens', 'phones', 'order_ids', 'form_ids', 'account_ids', 'conversation_ids', 'file_ids', 'return_ids', 'audit_ids', 'cell_ids', 'revision_form_ids', 'wtable_row_ids', 'wtable_bin_ids') as $key) {
+    foreach (array('user_ids', 'contact_ids', 'emails', 'actors', 'tokens', 'phones', 'order_ids', 'form_ids', 'account_ids', 'conversation_ids', 'file_ids', 'return_ids', 'audit_ids', 'cell_ids', 'revision_form_ids', 'wtable_row_ids', 'wtable_bin_ids', 'request_ids') as $key) {
         $scope[$key] = isset($lists[$key]) ? array_values($lists[$key]) : array();
     }
 
@@ -1114,6 +1125,12 @@ function pg_privacy_rule_one($key, $id, $cutoff, $now, $apply)
     $id = (int) $id;
     $input = array();
     $lists = array();
+
+    // A closed request is the record of an answer, not a person's: nothing
+    // holds it back, and only the request itself is anonymised.
+    if ($key === 'requests') {
+        return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('request_ids' => array($id))), $apply, pg_privacy_rule_entries($key)));
+    }
 
     if ($key === 'contacts') {
         $input = array('contact_id' => $id);
