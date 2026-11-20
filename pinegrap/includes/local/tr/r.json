@@ -731,6 +731,8 @@
     "Redirect URI (add this as a further Web redirect URI to the Microsoft application)": "Yönlendirme adresi (Microsoft uygulamasına ek bir Web yönlendirme adresi olarak ekleyin)",
     "Redirect URL (after signing in)": "Yönlendirme URL (giriş sonrası)",
     "Redirect address": "Yönlendirme adresi",
+    "Redirect addresses to add in Google Cloud": "Google Cloud'a eklenecek dönüş adresleri",
+    "Redirect addresses to add to the Microsoft application": "Microsoft uygulamasına eklenecek dönüş adresleri",
     "Redirect after a successful sign-in": "Başarılı giriş yönlendirme",
     "Redirect after activation": "Aktivasyon sonrası yönlendirme",
     "Redirect after registration": "Kayıt sonrası yönlendirme",
