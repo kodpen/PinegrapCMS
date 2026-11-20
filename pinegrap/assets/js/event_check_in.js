@@ -225,29 +225,25 @@
         list.forEach(function (ticket) {
             var row = document.createElement('div');
             var main = document.createElement('div');
-            var name = document.createElement('div');
+            var head = document.createElement('div');
+            var name = document.createElement('span');
             var meta = document.createElement('div');
 
             row.className = 'pg-list-row';
             main.className = 'pg-list-row-main';
+            head.className = 'pg-list-row-head pg-list-row-head-wrap';
             name.className = 'pg-list-row-title';
-            meta.className = 'pg-text-meta';
+            meta.className = 'pg-list-row-text';
             name.textContent = ticket.name;
             meta.textContent = ticket.of + ' · ' + ticket.order;
-            main.appendChild(name);
-            main.appendChild(meta);
-            row.appendChild(main);
-
-            var side = document.createElement('div');
-
-            side.className = 'pg-list-row-side';
+            head.appendChild(name);
 
             if (ticket.state === 'used') {
                 var pill = document.createElement('span');
 
                 pill.className = 'pg-pill pg-tone-amber';
                 pill.textContent = texts.checked_in;
-                side.appendChild(pill);
+                head.appendChild(pill);
             } else {
                 var button = document.createElement('button');
 
@@ -261,10 +257,12 @@
                         runSearch();
                     });
                 });
-                side.appendChild(button);
+                head.appendChild(button);
             }
 
-            row.appendChild(side);
+            main.appendChild(head);
+            main.appendChild(meta);
+            row.appendChild(main);
             results.appendChild(row);
         });
     }

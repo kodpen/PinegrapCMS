@@ -478,7 +478,7 @@ function pg_check_in_picks(array $user, $event_access)
         $dated[] = array(
             'value'  => pg_check_in_pick_value(array('kind' => 'event', 'event_id' => $event_id, 'recurrence_number' => (int) $group['recurrence_number'])),
             'label'  => (string) $event['name'],
-            'detail' => trim(strip_tags((string) $event['date_and_time_range']) . (((string) $event['location'] !== '') ? ' · ' . strip_tags((string) $event['location']) : '')),
+            'detail' => trim(pg_check_in_event_date($event) . (((string) $event['location'] !== '') ? ' · ' . strip_tags((string) $event['location']) : '')),
             'start'  => (string) $event['start_date_and_time'],
         );
     }
@@ -560,6 +560,24 @@ function pg_check_in_answer_text($answer, $ticket, $for = '')
 }
 
 /**
+ * An event date's start in the panel's language, day and month names
+ * translated (get_absolute_time()).
+ *
+ * @param array $event get_calendar_event()
+ * @return string
+ */
+function pg_check_in_event_date(array $event)
+{
+    $start = strtotime((string) ($event['start_date_and_time'] ?? ''));
+
+    if (!$start) {
+        return '';
+    }
+
+    return trim(strip_tags((string) get_absolute_time(array('timestamp' => $start, 'size' => 'long'))));
+}
+
+/**
  * What a ticket is for, as a wrong-event answer names it: the event's name
  * and date, or the product's name.
  *
@@ -573,7 +591,7 @@ function pg_check_in_ticket_for(array $ticket)
     if ($event_id > 0) {
         $event = function_exists('get_calendar_event') ? get_calendar_event($event_id, (int) ($ticket['recurrence_number'] ?? 0)) : false;
 
-        return is_array($event) ? trim((string) $event['name'] . ', ' . strip_tags((string) $event['date_and_time_range']), ', ') : '';
+        return is_array($event) ? trim((string) $event['name'] . ', ' . pg_check_in_event_date($event), ', ') : '';
     }
 
     return (string) db_value("SELECT short_description FROM products WHERE id = '" . (int) ($ticket['product_id'] ?? 0) . "'");
