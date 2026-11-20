@@ -1151,6 +1151,7 @@
     "Erased data stays in backups made before the erasure until those backups are removed.": "Silinen veriler, silmeden önce alınmış yedeklerde o yedekler kaldırılana kadar durur.",
     "Eraser": "Silgi",
     "Eraser size": "Silgi boyutu",
+    "Erasure": "Silme",
     "Erasures and retention rule runs are destruction records: their lines stay at least {var:1} years, whatever is set here.": "Silmeler ve saklama kuralı çalışmaları imha kaydıdır: satırları burada ne ayarlanırsa ayarlansın en az {var:1} yıl kalır.",
     "Error": "Hata",
     "Error / Notice": "Hata / Bildirim",
