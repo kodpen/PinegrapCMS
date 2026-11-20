@@ -5010,6 +5010,10 @@ button.pgie-sndfile:hover {
   gap: 8px;
 }
 
+.pgie .pgie-datafield {
+  width: 100%;
+}
+
 .pgie-datavalues .pgie-check {
   margin: 6px 0 0;
 }

@@ -468,7 +468,7 @@
 
     // A select of choices [[value, label]].
     function choose(label, choices, value, pick) {
-        var s = el('select', { class: 'pgie-input', 'aria-label': label });
+        var s = el('select', { class: 'pgie-input pgie-datafield', 'aria-label': label });
 
         choices.forEach(function (o) {
             s.appendChild(el('option', { value: o[0], text: o[1], selected: o[0] === value }));
@@ -599,7 +599,7 @@
     };
 
     Editor.prototype.dataGroup_text = function (body, l, d, read, set) {
-        var title = el('input', { type: 'text', class: 'pgie-input', maxlength: String(M.DATA_MAX.title), value: d.title, 'aria-label': t('dataTitle') });
+        var title = el('input', { type: 'text', class: 'pgie-input pgie-datafield', maxlength: String(M.DATA_MAX.title), value: d.title, 'aria-label': t('dataTitle') });
 
         title.addEventListener('input', function () {
             set({ title: title.value.replace(/[\n\r]+/g, ' ') }, 'data-title-' + l.id, true);

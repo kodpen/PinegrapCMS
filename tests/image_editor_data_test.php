@@ -243,10 +243,15 @@ function test_image_editor_data_bundled()
 
 	pg_assert_true(array_search('assets/js/pg_image_editor_data.js', $files, true) > array_search('assets/js/pg_image_editor_glyph.js', $files, true), 'after the glyph part');
 	pg_assert_true(in_array('data', pg_image_editor_parts(), true), 'a part with its strings');
-	pg_assert_same(array('layer_data', 'dataEmpty', 'dataRefused', 'dataMore', 'dataCount', 'dataOther'), array_keys(pg_image_editor_strings_data()));
 	pg_assert_contains('%d', pg_image_editor_strings_data()['dataMore']);
+	pg_assert_contains('%d', pg_image_editor_strings_data()['dataRowsCount']);
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_data.js');
+
+	// Every label the part asks for is the part's own (Close is the core's); the kinds' labels too.
+	preg_match_all("/\\bt\\('([A-Za-z_]+)'\\)/", $js, $keys);
+	$keys = array_unique(array_merge($keys[1], array('data_kind_table', 'data_kind_bar', 'data_kind_stacked_bar', 'data_kind_line', 'data_kind_area', 'data_kind_donut')));
+	pg_assert_same(array(), array_values(array_diff($keys, array_keys(pg_image_editor_strings_data()), array('close'))), 'every label is in pg_image_editor_strings_data()');
 
 	pg_assert_contains('Editor.layerTypes.data = {', $js);
 	pg_assert_contains("var UPRIGHT = ['text', 'sticker', 'image', 'glyph', 'data'];", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js'));
