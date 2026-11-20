@@ -174,6 +174,21 @@ function connections_contact_may_manage($user) {
 
 }
 
+// May the user connect an account for mailboxes on Google's or Microsoft's
+// page? The action came from Site Settings › Mailboxes, so it keeps that
+// category's gate.
+function connections_mailboxes_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('mailboxes', $user);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -2007,7 +2022,7 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
    used": each service of the registry the provider serves, linking to its
    page. */
 
-function connections_provider_page($provider_key, $provider, $row, $app, $accounts, $uses, $rows, $registry, $details, $can_seal) {
+function connections_provider_page($provider_key, $provider, $row, $app, $accounts, $uses, $rows, $registry, $details, $can_seal, $mail_part = '') {
 
 	$ready = pg_connect_app_ready($app);
 	$connect_purpose = !empty($provider['connect_purpose']) ? (string) $provider['connect_purpose'] : 'account';
@@ -2045,6 +2060,7 @@ function connections_provider_page($provider_key, $provider, $row, $app, $accoun
 					data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 					<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
 			</div>
+			' . $mail_part . '
 		</section>';
 
 	$html .= $details;
@@ -2072,6 +2088,36 @@ function connections_provider_page($provider_key, $provider, $row, $app, $accoun
 		</section>';
 
 	return $html;
+
+}
+
+/* Connect an account for mailboxes, in Status on Google's and Microsoft's
+   pages (purpose mail_read): the Mailboxes card and a box's form lead
+   here. Which account a mailbox uses stays the box's setting. The
+   connection returns to $return: the settings page the person came from,
+   else this page. */
+
+function connections_mail_part($provider_key, $accounts, $ready, $return) {
+
+	$count = 0;
+
+	foreach ($accounts as $account) {
+		if (in_array('mail_read', (array) $account['purposes'], true)) {
+			$count++;
+		}
+	}
+
+	return '
+			<div class="mt-5" id="connections-mail">
+				<div class="pg-field-label">' . h(lang('Mailboxes')) . '<span class="pg-count">' . $count . '</span></div>
+				<p class="pg-text-2 mb-3">' . h(lang('Mailboxes read their e-mail through an account connected for them; which account a mailbox uses is chosen in its form in Site Settings › Mailboxes.')) . '</p>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect"
+						data-provider="' . h($provider_key) . '" data-purpose="mail_read" data-connection="0" data-return="' . h($return) . '"' . ($ready ? '' : ' disabled') . '>
+						<i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('Connect an account for mailboxes')) . '</button>
+					<a class="pg-text-2" href="settings_mailboxes.php#pgset-ws-mail">' . h(lang('Mailboxes')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+				</div>
+			</div>';
 
 }
 
@@ -2418,9 +2464,21 @@ if ($provider_page !== '') {
 
 	$details = '';
 	$page_cards = pg_connections_screen_page_cards($page_id, array(
-		'manager' => $is_manager,
-		'signin'  => ($provider_page === 'google') && connections_signin_may_manage($user),
+		'manager'   => $is_manager,
+		'signin'    => ($provider_page === 'google') && connections_signin_may_manage($user),
+		'mailboxes' => connections_mailboxes_may_manage($user),
 	));
+
+	// Connect an account for mailboxes, back to where the person came from.
+	$mail_part = '';
+
+	if (in_array('mailboxes', $page_cards, true) && pg_connect_purpose('mail_read')) {
+		$mail_return = pg_connections_screen_mail_return(isset($_GET['mail_return']) ? $_GET['mail_return'] : '');
+		$mail_part = connections_mail_part($provider_page,
+			isset($site_accounts[$provider_page]) ? $site_accounts[$provider_page] : array(),
+			pg_connect_app_ready($provider_apps[$provider_page]) && $can_seal,
+			pg_connect_return_path(($mail_return !== '') ? $mail_return : pg_connections_screen_page_url($page_id)));
+	}
 
 	// Google's two applications are shown together: the connected accounts'
 	// one falls back to the Sign in with Google application.
@@ -2459,7 +2517,7 @@ if ($provider_page !== '') {
 		<div class="col-12 lg:col-8 2xl:col-9">
 			' . connections_provider_page($provider_page, $provider, $page_row, $provider_apps[$provider_page],
 				isset($site_accounts[$provider_page]) ? $site_accounts[$provider_page] : array(),
-				pg_connections_screen_provider_uses($provider_page, $registry, $rows), $rows, $registry, $details, $can_seal) . '
+				pg_connections_screen_provider_uses($provider_page, $registry, $rows), $rows, $registry, $details, $can_seal, $mail_part) . '
 		</div>
 	</div>';
 
@@ -2643,7 +2701,7 @@ echo $shell . '
 		' . (($page_id !== '') ? '<input type="hidden" name="connections_return" value="' . h($page_id) . '">' : '') . '
 	</form>
 
-	<form method="post" action="connect.php" id="connections_connect_form" class="disable_shortcut d-none">
+	<form method="post" action="connect.php" id="connections_connect_form" class="disable_shortcut d-none" data-return="' . h(pg_connect_return_path($connect_return)) . '">
 		' . pg_connect_start_fields('', 'account', $connect_return) . '
 	</form>
 </main>
@@ -2739,6 +2797,8 @@ echo $shell . '
 			form.elements.provider.value = connect.dataset.provider;
 			form.elements.purpose.value = connect.dataset.purpose || "account";
 			form.elements.connection_id.value = connect.dataset.connection;
+			// Connect an account for mailboxes may return to Site Settings.
+			form.elements["return"].value = connect.dataset["return"] || form.dataset["return"];
 			form.submit();
 			return;
 		}

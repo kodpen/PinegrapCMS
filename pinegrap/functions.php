@@ -203,6 +203,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_ip.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_figures.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ops_alerts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sales_watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_notice.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_rescue.php');

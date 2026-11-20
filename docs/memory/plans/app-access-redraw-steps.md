@@ -14,12 +14,12 @@ description: Plan app-access-redraw, steps AA1 to AA8: the New application sheet
 - AA4 (S) after AA1, beside AA2: the key as one token. `includes/api/auth.php` (the token read before a device token by its prefix), `includes/api/keys.php` (`api_app_token()`), the OpenAPI security text. Tests: accepted on the API and the MCP address, a wrong secret counted as a Basic one is, the grace day, never from the query string. The sheet's field comes with AA3. Feature: U10.
 - AA5 (M) after AA3: the Agent tab and the agent starting point. New `includes/workspace/agent_app_setup.php` (`ws_agent_app_setup_check()`, `_write()`, the channel list a person may manage) and `includes/api/app_agent_view.php`; `api_settings.php` only the tab's call and one POST branch. Tests: the rights, each refusal names its part, nothing written twice on a second save. Tried on dev: an agent made from the sheet answers in its channel. Features: U11 to U13.
 - AA6 (S) after AA3: Connections' row and the link back (`pg_connections_registry()` and its facts reader). Feature: the last line of U14.
-- AA7 (S) after AA4, waits for the architect's word: Claude Console. The research agent reads Anthropic's pages for what Claude Console's connection form asks and how a session there is woken; the architect then writes this step's lines (the guide, and whether an agent's own routes become tools for its own key).
+- AA7 (M) after AA3 and AA4: Claude Console, as `app-access-redraw-console.md` says: the agent's own routes as MCP tools for its own key (the route flag and the tool list's reader), the second sending form in `includes/workspace/agent_instructions.php` and the start text, the guide in `app_guides.php`. Tests: the three callers that never see the tools; the instructions' version changes. Features: U15 to U18.
 - AA8 (S) close-out, after all: every U number checked against the code with its PR; `api/application-access-overview.md` and its files written, `api/application-access-keys.md`, `application-access-automation.md` and `ui/look-settings-pages-outside.md` corrected; the user documentation's page noted in `workflow/user-docs-pages.md`; the `[NEW]` line named; this plan deleted.
 
 ## Which steps run side by side?
 - `api_settings.php` is entered by AA1, AA3 and AA5 in that order, each after the one before has landed; AA2, AA4 and AA6 stay in their own files.
-- AG7 of `plans/ai-guide.md` enters the connection guide of `api_settings.php`: it waits for AA3 and writes its compact address into `app_guides.php`.
+- AG7 of `plans/ai-guide.md` never enters `api_settings.php` or the guides: AA3 writes the compact address into `app_guides.php` once AG7 has landed, and names the one address until then.
 
 ## What does each step's PR carry?
 - `Decision:` the owner's words in the architect's window, 2026-11-20 (`workflow/decisions-made-product-88.md`); no migration step; what was seen on dev where a step draws.
