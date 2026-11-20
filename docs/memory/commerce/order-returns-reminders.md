@@ -4,7 +4,8 @@ description: Daily refund reminder of customer returns (return_reminder_job.php)
 ---
 
 ## How are staff reminded?
-- `return_reminder_job.php` (daily, light lane; registry row in `pg_cron_jobs()`): `pg_return_remind_refunds()` rings `order_return` with `order_total` `refund_due` (`PG_RETURN_REMIND_DAYS` = 3 days before `pg_return_refund_due()`) and `refund_overdue` (after it), once per return and stage, statuses `shipped` and `received`. `create_notification()` also queues it for subscribed devices.
+- `return_reminder_job.php` (daily, light lane; registry row in `pg_cron_jobs()`): `pg_return_remind_refunds()` rings `order_return` with `order_total` `refund_due` (`PG_RETURN_REMIND_DAYS` = 3 days before `pg_return_refund_due()`) and `refund_overdue` (after it), once per return and stage, statuses `shipped` and `received`.
+- Only while the order is complete or exported: a cancelled order's return is never refunded, so `pg_return_refund_due($return, $order_status)` gives '' and nothing rings (PR #10647). `create_notification()` also queues it for subscribed devices.
 - Stage from `pg_return_reminder_stage($deadline, $today)`; the column that records a stage from `pg_return_reminder_stamp_column($stage)`.
 
 ## Why is the stage stamped on the return?
