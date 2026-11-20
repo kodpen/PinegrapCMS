@@ -45,6 +45,9 @@
         remove: ['delete', function () { this.removeLayers(); }, true],
         group: ['groupLayers', function () { this.groupLayers(); }],
         ungroup: ['ungroupLayers', function () { this.ungroupLayers(); }],
+        attach: ['attachTo'],
+        attachTo: [null, function (ctx, it) { this.attachLayer(this.sel[0], it.att); }],
+        detach: ['detach', function () { this.attachLayer(this.sel[0], ''); }],
         order: ['arrange'],
         front: ['bringFront', function () { this.arrangeLayers('top'); }],
         forward: ['bringForward', function () { this.arrangeLayers('up'); }],
@@ -171,6 +174,8 @@
         s.clip = !!(this.clip && this.clip.length);
         s.group = !!(picked.length > 1 && this.groupState && this.groupState().group);
         s.ungroup = !!(picked.length > 1 && this.groupState && this.groupState().ungroup);
+        s.attach = this.attachOffer ? this.attachOffer() : [];
+        s.attached = !!(one && M.attachOf(one));
         s.locked = picked.length > 0 && picked.every(function (l) { return !!l.locked; });
         s.hidden = picked.length > 0 && picked.every(function (l) { return !!l.hidden; });
         s.areas = (picked.length && this.pathfinderItems) ? this.pathfinderItems().length : 0;
@@ -291,7 +296,7 @@
                 return;
             }
 
-            var c = COMMANDS[it.name], text = c[0] ? t(c[0]) : t((strings['mode_' + it.mode] !== undefined) ? 'mode_' + it.mode : 'tool_' + it.mode);
+            var c = COMMANDS[it.name], text = it.att ? self.attachLabel(it.att) : (c[0] ? t(c[0]) : t((strings['mode_' + it.mode] !== undefined) ? 'mode_' + it.mode : 'tool_' + it.mode));
             var b = el('button', {
                 type: 'button',
                 class: (c[2] ? 'pgie-ctx-danger' : '') + (it.sub ? ' pgie-ctxopen' : ''),
