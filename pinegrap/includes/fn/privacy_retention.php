@@ -539,7 +539,9 @@ function _pg_privacy_rules_read($name)
         return array();
     }
 
-    $value = json_decode((string) db_value("SELECT value FROM config_text WHERE name = '" . e($name) . "'"), true);
+    $result = db_q("SELECT value FROM config_text WHERE name = ?", array((string) $name));
+    $row = ($result === false) ? null : mysqli_fetch_row($result);
+    $value = json_decode(is_array($row) ? (string) $row[0] : '', true);
 
     return is_array($value) ? $value : array();
 }
