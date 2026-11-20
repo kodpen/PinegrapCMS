@@ -4,7 +4,7 @@ description: Plan designer-panels, steps DP6 to DP10 of the Options chain: layou
 ---
 
 ## Which steps are there?
-- DP6 (S) after DP5: layout by context. Started.
+- DP6 (S) after DP5: layout by context. Done in #10504.
   - New: a pure function answering which Layout rows an element gets from its own display and its parent's, with its test (a flex container, a child of one, both, neither).
   - Pictures: the three cases beside `options-2-style-advanced.jpg`; "Make it a container" pressed.
   - Features: D19, D20.

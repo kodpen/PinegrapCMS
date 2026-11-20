@@ -8906,6 +8906,7 @@
     "This element is inside a {var}. Bind it to the chosen form's fields or to the built-in fields.": "Bu element bir {var} içinde. Seçilen formun alanlarına ya da yerleşik alanlara bağlayın.",
     "This element is inside a {var}. Bind it to the chosen form's fields or to the built-in tokens.": "Bu element bir {var} içinde. Seçilen formun alanlarıyla veya yerleşik tokenlerle bağlama yapın.",
     "This element is locked here: only its attribute values and its text can change.": "Bu öğe burada kilitli: yalnız nitelik değerleri ve metni değişebilir.",
+    "This element is not a flex container; the {var} rows are hidden.": "Bu öğe flex kapsayıcı değil; {var} satırları gizli.",
     "This element stands inside a widget: it belongs to that widget and is not a part placed outside.": "Bu öğe bir bileşenin içinde duruyor: o bileşene aittir, dışarıya yerleştirilmiş bir parça değildir.",
     "This element's text comes from a data binding — it cannot be edited here. Change the binding in the right-hand panel.": "Bu öğenin metni veri bağlamadan geliyor — buradan düzenlenemez. Bağlamayı sağ panelden değiştirebilirsin.",
     "This email address cannot be used on this site.": "Bu e-posta adresi bu sitede kullanılamaz.",

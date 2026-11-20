@@ -2676,6 +2676,8 @@
     "Not enough visits yet: about {var:1} more for each version.": "Henüz yeterli ziyaret yok: her sürüm için yaklaşık {var:1} ziyaret daha gerekiyor.",
     "Not entered": "Girilmedi",
     "Not every day by the sea is a beach day, and a grey afternoon is the best time for the spa.": "Deniz kenarındaki her gün plaj günü değildir; bulutlu bir öğleden sonra spa için en iyi zamandır.",
+    "Not every selected element has a flex parent; the {var} rows are hidden.": "Seçilen öğelerin hepsinin üst öğesi flex değil; {var} satırları gizli.",
+    "Not every selected element is a flex container; the {var} rows are hidden.": "Seçilen öğelerin hepsi flex kapsayıcı değil; {var} satırları gizli.",
     "Not every text is translated": "Tüm metinler çevrilmedi",
     "Not for an emergency": "Acil durumlar için değil",
     "Not for dark mode, use {var}": "Koyu modda çalışmaz, {var} kullanın",
