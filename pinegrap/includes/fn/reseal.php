@@ -150,6 +150,8 @@ function pg_reseal_registry()
     $registry[] = $config_text('event_tickets', 'event_tickets_key', 'iv');
     // Meta Conversions API's access token (ad_conversions_meta.php).
     $registry[] = $config_text('ad_conversions', 'ad_conversions_meta_capi', 'connect', array('fields' => array('token')));
+    // GA4 Measurement Protocol's API secret (ad_conversions_ga4.php).
+    $registry[] = $config_text('ad_conversions', 'ad_conversions_ga4_mp', 'connect', array('fields' => array('secret')));
 
     return $registry;
 }

@@ -1,6 +1,6 @@
 ---
 name: connections-registry
-description: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (79 + 12 MCP connectors), the difference from the census's 79, adding a service
+description: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (80 + 12 MCP connectors), the difference from the census's 79, adding a service
 module: connections_registry
 ---
 
@@ -22,7 +22,7 @@ module: connections_registry
 - The 12 ready-made MCP connectors are rows of group `mcp`, counted apart: `pg_connections_connector_count()`.
 
 ## What is the figure?
-- `pg_connections_count()`: 79 services (Meta Conversions API built since the census), beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
+- `pg_connections_count()`: 80 services (Meta CAPI and GA4 MP built since the census), beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
 - Architect (2026-11-17, agent channel message 7524): the public figure is the registry's count, kept by a test and never typed in a text.
 
 ## How does it differ from the census's 79? (`plans/integrations-census-today.md`)

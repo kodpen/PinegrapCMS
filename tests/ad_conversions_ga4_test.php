@@ -197,7 +197,7 @@ function test_ad_conversions_ga4_places()
 
 	$connections = ad_conversions_ga4_test_source('connections.php');
 	pg_assert_true(strpos($connections, "pg_ad_conversion_ga4_post_page(\$action, \$_POST, \$liveform)") !== false, 'the write');
-	pg_assert_true(strpos($connections, "array('ga4_mp_save', 'ga4_mp_remove')) && connections_privacy_may_manage(\$user)") !== false, 'the write under the Visitors and privacy gate');
+	pg_assert_true(strpos($connections, "array('ga4_mp_save', 'ga4_mp_remove'), true) && connections_privacy_may_manage(\$user)") !== false, 'the write under the Visitors and privacy gate');
 	pg_assert_true(strpos($connections, "pg_ad_conversion_ga4_page(\$page, connections_privacy_may_manage(\$user), \$can_seal)") !== false, 'the page under the same gate');
 
 	pg_assert_true(strpos(ad_conversions_ga4_test_source('job.php'), 'pg_ad_conversion_ga4_queue_refunds();') !== false, 'the job writes the refund rows');

@@ -363,6 +363,12 @@ if ($_POST) {
 		pg_ad_conversion_meta_post_page($action, $_POST, $liveform);
 	}
 
+	// GA4 Measurement Protocol's sealed API secret, events and boxes, saved,
+	// tried or removed on its page under the gate of Visitors and privacy.
+	if (in_array($action, array('ga4_mp_save', 'ga4_mp_remove'), true) && connections_privacy_may_manage($user)) {
+		pg_ad_conversion_ga4_post_page($action, $_POST, $liveform);
+	}
+
 	// The Google Cloud Translation key, saved or removed on its page under the
 	// gate of the Translation Engines card it came from; the write returns to
 	// the page. The key is sealed and never drawn back.
@@ -2900,6 +2906,13 @@ if ($provider_page !== '') {
 	// and the consent boxes, under the Visitors and privacy gate.
 	if ($page_id === 'meta_capi') {
 		$page = pg_ad_conversion_meta_page($page, connections_privacy_may_manage($user), $can_seal);
+	}
+
+	// GA4 Measurement Protocol's page: its API secret beside the Google
+	// Analytics page's Measurement ID, the events it gets and the consent
+	// boxes, under the Visitors and privacy gate.
+	if ($page_id === 'ga4_mp') {
+		$page = pg_ad_conversion_ga4_page($page, connections_privacy_may_manage($user), $can_seal);
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.
