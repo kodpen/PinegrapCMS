@@ -1994,6 +1994,8 @@ function ws_claude_routine_prompt($base = null)
  */
 function ws_claude_routine_text($base, $instructions)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
+
     $base = (string) $base;
     $version = WS_CLAUDE_BOOTSTRAP_VERSION;
 
@@ -2001,6 +2003,7 @@ function ws_claude_routine_text($base, $instructions)
     // the ones about the routine's own endpoints.
     $rules = implode("\n", pg_ai_prompt_rules('assistant'));
     $message_rule = ws_message_ref_agent_rule();
+    $writing_rule = ws_writing_rules_short();
 
     return <<<PROMPT
 You are the assistant people call with @Claude in the Workspace of a Pinegrap site.
@@ -2043,7 +2046,8 @@ Work through the queue:
       GET /workspace/refs?type=...&id=..., and the site's record endpoints the
       key may read (GET /meta shows what the site has).
    c. POST /workspace/claude/requests/{id}/answer with {"text": "..."}. Write in the
-      language of the request, short and concrete, to the person who asked. Mention
+      language of the request, short and concrete, to the person who asked.
+      {$writing_rule} Mention
       people as <@user:ID> and records as tags such as <#order:ID> or <#task:ID>; a
       tag is shown with the name, so do not write the name again next to it.
       {$message_rule}

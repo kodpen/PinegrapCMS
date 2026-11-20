@@ -3561,6 +3561,8 @@ function ws_ai_variant_attributes_guide()
  */
 function ws_ai_system_prompt($row, $asker, $readable)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
+
     $note = ((int) ($row['note_id'] ?? 0) > 0);
     $task = ((int) ($row['task_id'] ?? 0) > 0);
     $name = ws_person_name($asker['id']);
@@ -3576,7 +3578,7 @@ function ws_ai_system_prompt($row, $asker, $readable)
         '- Records of these kinds can be looked up with search_records and read with read_record: '
             . (empty($readable) ? 'none' : implode(', ', array_keys($readable))) . '. Tasks are read with read_task.',
         '- Finish with one call of answer, or of fail when you cannot do the request.',
-        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings, do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
+        '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. ' . ws_writing_rules_short() . ' Do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
         '- Mention people as <@user:ID> and records as tags such as <#order:ID>, <#product:ID> or <#task:ID>. A tag is shown with its name, so do not write the name again next to it. Use only IDs you have read; never make one up.',
         '- ' . ws_message_ref_agent_rule() . ' A message\'s id is the first number of its line in the context.',
         '- When the answer holds figures that follow from other figures (totals, sums, differences, shares, percentages), do not work them out yourself: the site does. In a Markdown table a cell that starts with = is a formula: columns are letters, rows are numbers, the header is row 1 (=B2*C2, =SUM(D2:D5)). Or use a ```hesap block: one value a line, "Name = expression"; a later line may use an earlier name (Total = Rent + Dues). Both know + - * / ^, brackets, percentages (18%), SUM, AVERAGE, MIN, MAX, COUNT, ROUND(x; places) and ABS; arguments are separated by ;. Write the figures you were given as they are.',
