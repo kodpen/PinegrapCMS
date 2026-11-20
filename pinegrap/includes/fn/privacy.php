@@ -866,6 +866,9 @@ function pg_privacy_erase_tables()
         'shipment_labels' => array('find' => array('order_id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
             'label_file' => '',
         )),
+        // The ad services' events of the person's orders, sent or not: the
+        // buyer's ids and what each order said.
+        'ad_conversion_events' => array('find' => array('order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
         // A card the person bought loses the sender's name and message, a
         // card sent to them the address (_pg_privacy_erase_apply_gift_cards()).
         'gift_cards' => array('find' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'), 'action' => 'anonymise', 'fields' => array(
@@ -1083,6 +1086,7 @@ function pg_privacy_erase_labels()
         'order_documents'              => lang('Accepted documents'),
         'order_returns'                => lang('Returns'),
         'shipment_labels'              => lang('Shipping labels'),
+        'ad_conversion_events'         => lang('Ad service events'),
         'gift_cards'                   => lang('Gift cards'),
         'store_credit'                 => lang('Store credit'),
         'erp_accounts'                 => lang('Current accounts'),

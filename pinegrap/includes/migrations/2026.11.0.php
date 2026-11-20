@@ -243,6 +243,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
+	upgrade_2026_11_0_ad_conversion_events();    // 11.0.254
 
 }
 
@@ -8190,5 +8191,41 @@ function upgrade_2026_11_0_stock_holds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
+
+}
+
+// The ad services' events (2026.11.0, 11.0.254; includes/fn/ad_conversions.php):
+// the send queue, the event log and the buyer's ids until the event is sent.
+// One row per event and service. ids holds that service's browser and click
+// ids, the address and the browser's name (NULL once sent or given up); no
+// plain e-mail or phone is ever kept, the body is built at send time. status:
+// 0 waits for the order, 1 due, 2 sent, 3 refused or given up. Rows older
+// than 30 days are swept by the general job, whatever their status.
+function upgrade_2026_11_0_ad_conversion_events() {
+
+	install_create_table('ad_conversion_events', "CREATE TABLE ad_conversion_events (
+		id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		service          VARCHAR(20) NOT NULL DEFAULT '',
+		event            VARCHAR(30) NOT NULL DEFAULT '',
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		event_id         VARCHAR(64) NOT NULL DEFAULT '',
+		ids              TEXT NULL,
+		detail           TEXT NULL,
+		person           TINYINT NOT NULL DEFAULT 0,
+		status           TINYINT NOT NULL DEFAULT 0,
+		attempts         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_attempt_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		last_status_code SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error       VARCHAR(500) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_service_event (service, event_id),
+		KEY idx_status_next (status, next_attempt_at),
+		KEY idx_order (order_id),
+		KEY idx_service_created (service, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Ad conversions: purchases can be queued for the ad services the shop connects.');
 
 }

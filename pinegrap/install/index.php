@@ -8942,6 +8942,7 @@ function get_tables() {
 
 	return array(
 		'aclfolder',
+		'ad_conversion_events',
 		'ad_regions',
 		'address_book',
 		'ads',

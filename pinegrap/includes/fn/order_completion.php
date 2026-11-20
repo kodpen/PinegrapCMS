@@ -1077,6 +1077,11 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
         $values['total'],
         array('city' => $order['billing_city'], 'state' => $order['billing_state'], 'zip_code' => $order['billing_zip_code'], 'country' => $order['billing_country']));
 
+    // The purchase for the ad services the shop connected: only queued, the
+    // general job sends it. Reads the rows the payment step kept, never the
+    // visitor's cookies, so a payment service's message queues it the same.
+    pg_ad_conversion_order_completed($order_id, $values['total'], $order_number);
+
     // A page experiment whose goal is an order counts it for the variant the
     // buyer's pg_exp cookie holds; a payment service's own request has none.
     if (function_exists('pg_experiment_goal')) {
