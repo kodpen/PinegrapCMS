@@ -15825,6 +15825,14 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-emoji-item {
     height: 2.5rem;
   }
+  /* Cells a finger can pick, as the emoji items; six still fit 320 px. */
+  .ws-table-pick-grid {
+    grid-template-columns: repeat(6, 2.5rem);
+  }
+  .ws-table-pick-cell {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
   .ws-react {
     height: 1.9rem;
   }

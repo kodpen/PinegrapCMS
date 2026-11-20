@@ -89,3 +89,16 @@ function test_workspace_phone_composer_tools_are_touch_targets()
 	pg_assert_contains('min-height: 2.75rem', (string) $tools, 'the tools and Send are 44 px high');
 	pg_assert_contains('padding: .3rem .4rem', (string) $tools, 'the narrow pads keep the row on one line at 375 px');
 }
+
+function test_workspace_phone_table_picker_cells_on_touch()
+{
+	$touch = workspace_phone_touch_test_blocks('(pointer: coarse)');
+
+	$grid = workspace_phone_touch_test_rule($touch, '.ws-table-pick-grid');
+	pg_assert_true($grid !== null && strpos($grid, 'repeat(6, 2.5rem)') !== false, 'the picker has six 2.5rem columns on touch');
+
+	$cell = workspace_phone_touch_test_rule($touch, '.ws-table-pick-cell');
+	pg_assert_true($cell !== null, 'the picker cells have a touch size');
+	pg_assert_contains('width: 2.5rem', (string) $cell, 'a cell is 2.5rem wide on touch');
+	pg_assert_contains('height: 2.5rem', (string) $cell, 'a cell is 2.5rem high on touch');
+}
