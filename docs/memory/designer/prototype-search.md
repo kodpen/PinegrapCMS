@@ -1,11 +1,11 @@
 ---
 name: prototype-search
-description: The Prototype view's search (PX4, #PRNUM): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back
+description: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back
 ---
 
 ## What does Ctrl+F do in the Prototype view?
 - Architect (2026-11-19, plans/prototype-next.md): "Ctrl+F searches page names and link texts."
-- (PX4 #PRNUM) Ctrl+F (Cmd+F) opens a row under the view's bar: the box, the count, the match before and after, Close. The bar's magnifier ("Search pages and links (Ctrl+F)") opens and closes it too, the way on a phone.
+- (PX4 #10561) Ctrl+F (Cmd+F) opens a row under the view's bar: the box, the count, the match before and after, Close. The bar's magnifier ("Search pages and links (Ctrl+F)") opens and closes it too, the way on a phone.
 - It is taken only while the view is open and the focus is in it, or the pointer is over it and no other text field is typed in (`_sdProtoSearchKey()`). The Overview's tree search keeps its Ctrl+F: its listener runs first and the view's skips a key already taken (`defaultPrevented`). Elsewhere the browser's own find. In the view's own box Ctrl+F selects the words again; no rule sends a second Ctrl+F to the browser (none existed).
 
 ## What does it find?
