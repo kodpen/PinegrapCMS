@@ -43,9 +43,13 @@ function pg_products_import_is_spreadsheet($file_name)
 
 // Turn an uploaded spreadsheet into a CSV file and return its path.
 //
+// $sheet is the worksheet to read, 0 for the first: a workbook with more
+// than one sheet asks which (pg_sheet_import_workbook_ask(),
+// includes/fn/sheet_import.php), counted as pg_sheet_names() counts them.
+//
 // Returns '' and fills $error when the file cannot be read. The caller owns
 // the returned file and should unlink() it when the import is over.
-function pg_products_import_to_csv($source_path, $file_name, &$error)
+function pg_products_import_to_csv($source_path, $file_name, &$error, $sheet = 0)
 {
     $error = '';
 
@@ -62,28 +66,28 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
     // past. The older Excel format and OpenDocument are read by the sheet
     // reader (includes/fn/sheet_read.php).
     if (($kind == 'xlsx') && class_exists('ZipArchive')) {
-        return pg_products_import_xlsx_to_csv($source_path, $error);
+        return pg_products_import_xlsx_to_csv($source_path, $error, $sheet);
     }
 
-    return pg_products_import_sheet_to_csv($source_path, $kind, $error);
+    return pg_products_import_sheet_to_csv($source_path, $kind, $error, $sheet);
 }
 
-// Turn the first sheet of a workbook into the CSV the importer reads, through
-// the sheet reader, and return its path.
+// Turn one sheet of a workbook (0 for the first) into the CSV the importer
+// reads, through the sheet reader, and return its path.
 //
 // The rows are held until the sheet has been read to its end: a reader error
 // late in the file drops what came before it, and every row is squared off
 // to the widest one in the sheet, so a short line never reads the next
 // column's value. An .ods is held to the reader's cell ceilings and an .xls
 // is read whole by the reader anyway, so this costs no more than the file.
-function pg_products_import_sheet_to_csv($source_path, $kind, &$error)
+function pg_products_import_sheet_to_csv($source_path, $kind, &$error, $sheet = 0)
 {
     $error = '';
     $reader_error = '';
     $rows = array();
     $width = 0;
 
-    foreach (pg_sheet_rows($source_path, $kind, $reader_error) as $cells) {
+    foreach (pg_sheet_rows($source_path, $kind, $reader_error, $sheet) as $cells) {
 
         $row = array();
         $filled = false;
@@ -157,12 +161,38 @@ function pg_products_import_sheet_to_csv($source_path, $kind, &$error)
 // memory cost is one row rather than one workbook, and the CSV is written as
 // the rows go past.
 
+// Which part of the zip holds the worksheet asked for, 0 for the first.
+//
+// Counted among worksheets only, a chart sheet left out, as the sheet
+// question and the sheet reader count them (pg_office_xlsx_sheets()). When
+// that list cannot be read, the first sheet is found below as before.
+function pg_products_import_xlsx_sheet_part($zip, $sheet = 0)
+{
+    $worksheets = array();
+
+    foreach (pg_office_xlsx_sheets($zip, $refused) as $entry) {
+        if ($entry['type'] === 'worksheet') {
+            $worksheets[] = $entry['part'];
+        }
+    }
+
+    if ($worksheets && ($refused === '')) {
+        return isset($worksheets[(int) $sheet]) ? $worksheets[(int) $sheet] : '';
+    }
+
+    if ((int) $sheet !== 0) {
+        return '';
+    }
+
+    return pg_products_import_xlsx_first_part($zip);
+}
+
 // Which part of the zip holds the first sheet.
 //
 // Not assumed to be sheet1.xml: a workbook whose sheets have been reordered or
 // deleted keeps the old file names, and the first tab can be sheet3.xml. The
 // answer is in the workbook and its relationships, both small.
-function pg_products_import_xlsx_sheet_part($zip)
+function pg_products_import_xlsx_first_part($zip)
 {
     $book = $zip->getFromName('xl/workbook.xml');
     $rels = $zip->getFromName('xl/_rels/workbook.xml.rels');
@@ -367,7 +397,7 @@ function pg_products_import_xlsx_date($serial)
 }
 
 // Turn a .xlsx into the CSV the importer reads, and return its path.
-function pg_products_import_xlsx_to_csv($source_path, &$error)
+function pg_products_import_xlsx_to_csv($source_path, &$error, $sheet = 0)
 {
     $error = '';
 
@@ -378,7 +408,7 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
         return '';
     }
 
-    $part = pg_products_import_xlsx_sheet_part($zip);
+    $part = pg_products_import_xlsx_sheet_part($zip, $sheet);
 
     if (($part == '') || ($zip->locateName($part) === false)) {
         $zip->close();
