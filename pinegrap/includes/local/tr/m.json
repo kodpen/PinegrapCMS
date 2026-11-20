@@ -1739,6 +1739,7 @@
     "Movements: {var:1}": "Hareketler: {var:1}",
     "Moves a task to another status: to do, in progress, waiting, done or cancelled.": "Bir görevin durumunu değiştirir: yapılacak, sürüyor, bekliyor, bitti ya da iptal.",
     "Moves a task's due date.": "Bir görevin bitiş tarihini değiştirir.",
+    "Moves money": "Para hareketi",
     "Moves units of one product from one location to another. The product's total stays the same.": "Bir ürünün adetlerini bir konumdan diğerine taşır. Ürünün toplam stoku değişmez.",
     "Move…": "Taşı…",
     "Moving a socket or a light point": "Bir prizin ya da ışık noktasının taşınması",
