@@ -1493,6 +1493,12 @@ function pg_image_editor_strings_layers()
         'opacity'        => lang('Layer opacity'),
         'duplicate'      => lang('Duplicate'),
         'delete'         => lang('Delete'),
+        'groups'         => lang('Groups'),
+        'groupLayers'    => lang('Group'),
+        'ungroupLayers'  => lang('Ungroup'),
+        'groupName'      => lang('Group {n}'),
+        'groupOpen'      => lang('Show the layers in the group'),
+        'groupClose'     => lang('Hide the layers in the group'),
     );
 }
 
@@ -5084,6 +5090,8 @@ function pg_image_editor_strings_access()
         'keyCopy'       => lang('Copy the selection'),
         'keyPaste'      => lang('Paste a picture or the copied layers'),
         'keySelectAll'  => lang('Select every layer'),
+        'keyGroup'      => lang('Group the selected layers'),
+        'keyUngroup'    => lang('Ungroup the selected group'),
         'keyPan'        => lang('Move the view'),
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
