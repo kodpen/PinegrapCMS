@@ -1,11 +1,12 @@
 ---
 name: walk-in-queue-screens
-description: Plan walk-in-queue, how its screens are put together (WQ2 to WQ7): the places list, a place in tabs with Set-up as folded rows, the desk, the person's page, the lobby and kiosk
+description: Plan walk-in-queue, how its panel screens are put together (WQ2, WQ4, WQ7): the places list, a place in tabs with Set-up as folded rows, desks, the desk's now-calling block
 ---
 
 ## Which screens, and by which rules?
-- WQ2: Calendars › Queue (places), a place's screen. WQ3 and WQ5: the number page and the person's page. WQ4: the desk. WQ6: lobby and kiosk. WQ7: the Report tab.
-- `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, its section named in brackets (`workflow/screen-described-in-plan.md`); a part it lacks is asked of the architect, never made.
+- WQ2: Calendars › Queue (places), a place's screen. WQ4: the desk. WQ7: the Report tab. The person's page, lobby and kiosk: `walk-in-queue-screens-public.md`.
+- `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, its section named in brackets (`workflow/screen-described-in-plan.md`). The parts it lacks were answered by the architect (2026-11-20, agent channel message 11146) and are named here with their classes.
+- A screen step builds a whole part (a screen with its drawer), never structure first and content later. Its worker renders it at 1440 and 390 px before ready and writes "Screen check" in the PR.
 
 ## How is the places list laid out? (WQ2)
 - A list on the list table driver: name, services, desks open of all, waiting now, a pill [Segmented control and status]: Open, Closed, Paused.
@@ -25,17 +26,15 @@ description: Plan walk-in-queue, how its screens are put together (WQ2 to WQ7): 
 
 ## How does a desk work? (WQ4)
 - From Today, or "My desk" in the menu for a place's staff member: "Open this desk" first.
-- Top: the number now served large [Type and text], its service, the name if given, a priority reason, minutes since the call. "Call next" the fill [Buttons]; "Call again", "Not here", "Send to another service", "Finish" quiet; "Pause" and "Close desk" in the menu.
+- Top, the now-calling block: one `.pg-card`, the number in `.pg-figure-value`, its service and desk in `.pg-figure-label`, the name if given, a priority reason, minutes since the call. Its buttons in one row under it: "Call next" the fill [Buttons]; "Call again", "Not here", "Send to another service", "Finish" quiet; "Pause" and "Close desk" in the menu.
 - Under it the waiting as rows [Rows and gathered rows]: number, service, minutes waited, pills Priority, Booked, On the way. One column on a phone.
-
-## What does the person see? (WQ3, WQ5)
-- A page in the site's own look, not the panel: the place's name, the services as large choices, name and phone optional, "Take a number". Then their page: the number large, "N ahead", "about M minutes", the desk when called, "Leave the queue" quiet. Remote join: the same with "I'm on my way".
-
-## What do the lobby and kiosk show? (WQ6)
-- Lobby: no menu, the whole screen: now serving (number and desk) large, the last five calls, a chime. Kiosk: the number page at tablet size, back to the start after a minute idle.
-- Parts the Design examples screen lacks, asked of the architect: the lobby board, the kiosk's large service choices, the desk's now-serving block.
 
 ## Which words?
 - "Place", "Desk", "Number", "Waiting", "Now serving", "Not here", "about"; never "ticket", "token" or a column's name.
 
-Related: docs/memory/plans/walk-in-queue.md, docs/memory/plans/walk-in-queue-steps.md
+## What must be true?
+- The places list, a place's head and the desk have one fill each.
+- Set-up has six folded rows, one open at a time; a row missing values carries "Not set".
+- The desk's buttons stay in one row at 1440; at 390 the waiting rows are one column.
+
+Related: docs/memory/plans/walk-in-queue.md, docs/memory/plans/walk-in-queue-steps.md, docs/memory/plans/walk-in-queue-screens-public.md

@@ -20,13 +20,15 @@ priority: 6
 - "Call next" takes its row with one conditional UPDATE (`WHERE state = 'waiting'`): two desks never call the same person.
 - The person's page and the lobby screen show the number, never a name. The signed link opens that number only; `queue.php` is in `waf_sensitive_scripts()`.
 - Bookings keep their rows and moves: an arrival is a queue row naming the booking.
-- A notice goes only for the number's own moves, at most three; SMS and WhatsApp as a service message (kind `queue`, not commercial).
+- A notice goes only for the number's own moves, at most three, to the phone given for the number; kind `queue`. Service or commercial message: the owner's answer to poll 207 (open).
 - The estimate reads "about" and shows from 20 handled; priority groups are the place's setting, the reason seen at the desk.
 - Times unix UTC, days in the site's zone, hours in the bookings' shape (`pg_booking_hours_clean()`).
 - Personal fields cleared after the keep period (W14); the five privacy registrations (`pg_privacy_erase_tables()`, `pg_privacy_erase_labels()`, `pg_privacy_export_sections()`, `pg_privacy_inventory()`, `pg_privacy_rules_catalogue()`) and `pg_contact_holders()`.
 
-## What is asked of the architect?
-- The tables (proposed: `queue_places`, `queue_desks`, `queue_tickets`); the place and gate (proposed: Calendars › Queue beside Bookings, roles 0-2 and a role-3 user named a place's staff); the parts the Design examples screen lacks (`walk-in-queue-screens.md`).
+## What did the architect answer? (2026-11-20, agent channel messages 11145, 11146)
+- Tables `waiting_places`, `waiting_desks`, `waiting_tickets` (a name with "queue" reads as a job queue beside `push_queue`); owner's yes, poll 206 (`workflow/decisions-made-schema-46.md`). Services with their letters, hours, cap and notices are JSON on the place; a ticket names the service's key, its desk and a booking id. No column on an existing table.
+- Place: Calendars › Queue beside Bookings. Roles 0-2, and a role-3 user only as a place's staff, by a scope function of the plan's own module shaped as `pg_booking_agenda_scope()`.
+- The parts: `walk-in-queue-screens.md`.
 
 ## What is built?
 - Features: `walk-in-queue-features.md` (W1 to W14). Steps: `walk-in-queue-steps.md`. Screens: `walk-in-queue-screens.md`. Claim as `[plan:walk-in-queue] <step> — <topic>`.

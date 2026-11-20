@@ -1,11 +1,12 @@
 ---
 name: volunteer-shifts-screens
-description: Plan volunteer-shifts, how its screens are put together (VS2 to VS7): programmes, a programme in tabs with Set-up as folded rows, the shift board, volunteers, hours, the volunteer's own pages
+description: Plan volunteer-shifts, how its panel screens are put together (VS2, VS3, VS6): programmes, a programme in tabs with Set-up as folded rows, applications, volunteers, the shift board, hours
 ---
 
 ## Which screens, and by which rules?
-- VS2: Contacts › Volunteers (programmes), a programme's Set-up, Applications and Volunteers tabs. VS3: Shifts. VS4: the volunteer's pages. VS6: the scan page and Hours. VS7: Report.
-- `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, its section named in brackets (`workflow/screen-described-in-plan.md`); a part it lacks is asked of the architect, never made.
+- VS2: Contacts › Volunteers (programmes), a programme's Set-up, Applications and Volunteers tabs. VS3: Shifts. VS6: Hours. VS7: Report. The volunteer's pages and the scan page: `volunteer-shifts-screens-own.md`.
+- `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, its section named in brackets (`workflow/screen-described-in-plan.md`). The parts it lacks were answered by the architect (2026-11-20, agent channel message 11146).
+- A screen step builds a whole part (a screen with its drawer), never structure first and content later. Its worker renders it at 1440 and 390 px before ready and writes "Screen check" in the PR.
 
 ## How are programmes laid out? (VS2)
 - A list on the list table driver: name, active volunteers, shifts this week filled of needed, a pill [Segmented control and status]: Open, Paused. One fill "Add programme" [Buttons]: a small drawer asks the name and the form.
@@ -24,18 +25,16 @@ description: Plan volunteer-shifts, how its screens are put together (VS2 to VS7
 - Volunteers: rows: name, state pill (Active, Paused, Left), roles, hours this year, show-up rate. The profile drawer: details, documents with their dates, shifts, hours; "Pause" quiet, "Mark as left" danger with a confirm.
 
 ## How is the shift board laid out? (VS3)
-- A week by place: days as columns, a shift a card [Cards] with its time, roles as "2 of 3", a pill Full, Short, or Short and near. Week arrows and "Copy last week" quiet; "Add shift" the fill: a drawer with place, date, start and end, roles and counts, "Repeat weekly".
+- Not a grid (architect, message 11146): the week's days as gathered groups [Rows and gathered rows], a shift a row with its place, time and one pill a role, "3 of 5": teal full, amber short, rose short and near. The place is a segmented filter [Segmented control and status].
+- Week arrows and "Copy last week" quiet; "Add shift" the fill: a drawer with place, date, start and end, roles and counts, "Repeat weekly".
 - A shift's drawer: signed up per role, the waitlist, "Call volunteers" quiet (says how many will be asked), Remove (danger, says who is told).
-- The week grid is not on the Design examples screen: asked of the architect.
-
-## What does a volunteer see? (VS4, VS6, VS7)
-- In the site's own look: "My volunteering": my next shifts with "Cancel" (or "Offer my place" past the cut-off), "Shifts for you" with "Sign up" or "Join the waitlist", my hours and "Get my certificate", my documents with their dates and "Upload a new one".
-- The scan page on a phone: the shift's name and one large button, "Check in" or "Check out", then the time; asked of the architect as a part.
 
 ## How are hours laid out? (VS6)
-- Rows waiting for approval [Rows and gathered rows]: volunteer, shift or "Outside a shift", minutes, "Approve" quiet, bulk Approve the fill.
+- Rows waiting for approval [Rows and gathered rows]: volunteer, shift or "Outside a shift", minutes, "Approve" quiet; bulk Approve the fill.
 
-## Which words?
-- "Programme", "Shift", "Role", "Sign up", "Waitlist", "Did not come", "Hours"; never "slot", "token" or a column's name.
+## What must be true?
+- Set-up has six folded rows, one open at a time; the programmes list and Hours have one fill each.
+- The board draws one group a day and one pill a role, in three colours only.
+- No list or export shows a document's file or number to anyone but the programme's coordinators.
 
-Related: docs/memory/plans/volunteer-shifts.md, docs/memory/plans/volunteer-shifts-steps.md
+Related: docs/memory/plans/volunteer-shifts.md, docs/memory/plans/volunteer-shifts-steps.md, docs/memory/plans/volunteer-shifts-screens-own.md

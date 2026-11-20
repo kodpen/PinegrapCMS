@@ -9,7 +9,7 @@ description: Plan volunteer-shifts, features G1 to G16: programmes, profiles fro
 ## Who is a volunteer?
 - (G2) A profile made from an application on the form: the contact, skills from a choice field, the weekly days and hours free (the bookings' hours shape), trainings done (a course of the site completed), state Applied, Active, Paused or Left.
 - (G3) A coordinator approves an application with one press; the welcome e-mail goes from the programme's template. A volunteer pauses or leaves themselves.
-- (G4) Documents with a valid-until date (a criminal record certificate, a first-aid card); 30 and 7 days before the date the volunteer and the coordinator are told; a role needing an expired document takes no sign-up.
+- (G4) Documents with a valid-until date (a criminal record certificate, a first-aid card): kind, number, valid until and "seen by" (who, when) stand without a file; the file is a part left out unless poll 208 says yes. 30 and 7 days before the date the volunteer and the coordinator are told; a role needing an expired document takes no sign-up.
 
 ## How are shifts made?
 - (G5) A shift: place, start and end, the roles with how many each needs, a note. A weekly series and "Copy last week".

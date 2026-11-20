@@ -1,6 +1,6 @@
 ---
 name: launch-journey
-description: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; LJ1a to LJ7
+description: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; SJ1a to SJ7
 priority: 5
 ---
 
@@ -22,14 +22,15 @@ priority: 5
 - Going live with a blocker asks a confirmation naming each one; the choice is kept in the Site Log.
 - The agency's summary page shows only what the agency wrote for it and the steps' states, never a setting's value; its link is signed (the per-feature HMAC, hash stored) and can be withdrawn.
 
-## What is asked of the architect?
-- The schema: the site's purpose, the go-live time and the hidden steps (config columns proposed), the agency summary (a table: items, answers, link hash, expiry).
-- Whether `user.tours_seen` may carry first-visit hint marks (proposed: `hint:<screen>` keys) or a column of their own.
-- What "Go live" writes: turning off maintenance mode and the robots catch-all `Disallow: /` (`pg_robots_catch_all_closed()`), or only links to them; whether the template install sets the purpose (a `purpose` key in the template's metadata).
-- The parts the Design examples screen lacks (`launch-journey-screens.md`).
+## What did the architect answer? (2026-11-20, agent channel messages 11145, 11146)
+- No config column (the config table takes none since 11.0.145, `data/config-table-no-varchar.md`): the purpose, the go-live time, the hidden steps and the summary link's hash and expiry are one JSON row in `config_text` (`pg_config_text_save()`), no schema step.
+- The agency summary's lines are one table (text, answer, answered at, order); owner's yes, poll 206 (`workflow/decisions-made-schema-46.md`).
+- First-visit hints: `user.tours_seen` carries `hint:<screen>` keys through `pg_tour_seen()` and `pg_tour_mark()`; a hint exists only for a screen in the journey's catalogue, so the column stays bounded.
+- "Go live": whether the button itself turns maintenance mode off and removes the robots catch-all, or only leads there, is the owner's answer to poll 209 (open). It never changes a payment mode.
+- Purpose from a template: the journey's catalogue maps a template's key to a purpose; an unknown template leaves it to the dialog. No template file is touched (design template plans are paused).
 
 ## What is built?
-- Features: `launch-journey-features.md` (L1 to L8). Steps: `launch-journey-steps.md`. Screens: `launch-journey-screens.md`. Claim as `[plan:launch-journey] <step> — <topic>`.
+- Features: `launch-journey-features.md` (L1 to L8). Steps: `launch-journey-steps.md`. Screens: `launch-journey-screens.md`, `launch-journey-screens-later.md`. Claim as `[plan:launch-journey] <step> — <topic>`.
 
 ## What is left out?
 - A domain or DNS ownership check, an external link checker, a real invitation flow (accept, expire), uploads by the customer on the summary page, AI-written set-up advice: each a later yes.

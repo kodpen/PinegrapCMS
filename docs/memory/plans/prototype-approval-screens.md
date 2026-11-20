@@ -6,6 +6,7 @@ description: Plan prototype-approval, how its parts sit: the Share prototype dia
 ## Which look do they follow?
 - No panel screen is added. Every part sits in a place prototype comments already have and keeps its accepted look: the designer's chrome tokens (`designer/designer-chrome-tokens.md`) in the editor, the viewer's bar and box in the viewer. Architect (2026-11-20, agent channel message 9873, for comments): inside the accepted look, no new look.
 - A part the editor or the viewer lacks is asked of the architect, never made (`workflow/screen-described-in-plan.md`).
+- A screen step builds a whole part, never structure first and content later. Its worker renders it at 1440 and 390 px before ready and writes "Screen check" in the PR.
 
 ## How does the Share prototype dialog change? (PA2, PA3)
 - Under "Allow comments": "Ask for approval" as a checkbox; checked, it shows in order: Approver's name, Approver's e-mail (optional, "Sent the answers and a reminder"), "Answer by" (a date, no later than the link's expiry), "Publish only after approval" (a checkbox). Checking it turns "Allow comments" on.
@@ -23,5 +24,10 @@ description: Plan prototype-approval, how its parts sit: the Share prototype dia
 
 ## Which words?
 - "Approve this page", "Request changes", "Answer by", "Waiting for approval", "Changed since your last review"; never "verdict", "fingerprint", "hash" or a column's name.
+
+## What must be true?
+- "Review this page" is drawn only on a link asking approval; its box has two choices and one Send.
+- A Request changes without a note is refused under the note's field.
+- The Publish sheet's held row reads "Waiting for approval"; "Publish anyway" is offered to role 0 only and asks a reason.
 
 Related: docs/memory/plans/prototype-approval.md, docs/memory/plans/prototype-approval-steps.md

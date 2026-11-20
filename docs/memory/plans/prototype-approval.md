@@ -21,10 +21,12 @@ priority: 5
 - A mail carries the link's address (sealed, `pg_proto_link_seal()`), never its password.
 - A verdict counts only through the comment door's gates (`pg_proto_comment_door()`); one verdict a page per link stands, the newest.
 
-## What is asked of the architect?
-- The schema: columns on `prototype_links` (approval, publish rule, approver name and e-mail, answer by) or a table of their own; a verdicts table (link, design, page, verdict, name, note, fingerprint, node fingerprints, created).
-- Every path that turns a draft live and must honour A5 (the editor's save through `pg_experiment_variant_hold_message()`, the API's publish and schedule routes, the scheduled publish job) and who may override it (proposed: role 0 with a reason in the Site Log).
-- Whether the verdict and comment routes may be MCP tools (the links route is not); the parts in `prototype-approval-screens.md`.
+## What did the architect answer? (2026-11-20, agent channel messages 11145, 11146)
+- Five columns on `prototype_links` (`approval`, `publish_rule`, `approver_name`, `approver_email`, `answer_by`), read with the link, and a table `prototype_verdicts`; owner's yes, poll 206 (`workflow/decisions-made-schema-46.md`).
+- The publish rule (A5) is a third hold beside the experiment's and the bundle's (`pg_experiment_variant_hold_message()`, `pg_page_bundle_hold()`), read where the server already refuses a held draft; not written per path. The writers it must reach: the Publish sheet's save, the API's publish and schedule routes and their MCP tools, the scheduled publish job (`designer/page-schedule.md`), a release bundle's publish, an experiment applying its variant, content proposals' approval.
+- Override: role 0 only, a reason required, written to the Site Log with the link and the page; no new right.
+- MCP: a design's verdicts and comments as read-only tools, the guest's words quoted as data; no MCP tool writes a verdict or makes a link.
+- The approver's mails ask no consent question: they answer the person's own review, hold no promotion and go only to the address the designer typed.
 
 ## What is built?
 - Features: `prototype-approval-features.md`. Steps: `prototype-approval-steps.md`. Screens: `prototype-approval-screens.md`. Claim as `[plan:prototype-approval] <step> — <topic>`.
