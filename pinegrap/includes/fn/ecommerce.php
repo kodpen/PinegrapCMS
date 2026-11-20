@@ -9205,6 +9205,8 @@ function check_quantity($liveform)
         // then adjust the quantity and add notice.
         if (($order_item['minimum_quantity'] != 0) && ($order_item['maximum_quantity'] != 0) && ($order_item['minimum_quantity'] == $order_item['maximum_quantity']) && ($order_item['quantity'] != $order_item['minimum_quantity'])) {
             db("UPDATE order_items SET quantity = '" . $order_item['minimum_quantity'] . "' WHERE id = '" . $order_item['id'] . "'");
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+            pg_pfu_quantity_lowered($order_item['id'], $order_item['quantity'], $order_item['minimum_quantity']);
             // prepare product description for notice
             $product_description = '';
             // if there is a name, then add it to the description
@@ -9251,6 +9253,8 @@ function check_quantity($liveform)
             // then update quantity and add notice.
         } else if (($order_item['maximum_quantity'] != 0) && ($order_item['quantity'] > $order_item['maximum_quantity'])) {
             db("UPDATE order_items SET quantity = '" . $order_item['maximum_quantity'] . "' WHERE id = '" . $order_item['id'] . "'");
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+            pg_pfu_quantity_lowered($order_item['id'], $order_item['quantity'], $order_item['maximum_quantity']);
             // prepare product description for notice
             $product_description = '';
             // if there is a name, then add it to the description
@@ -9437,9 +9441,12 @@ function check_inventory($liveform)
             }
             // if the stock cannot cover the whole quantity, then reduce it to what the stock allows
             if ($stock['allowed'] < $order_item['quantity']) {
+                $was_quantity = $order_item['quantity'];
                 $order_item['quantity'] = $stock['allowed'];
                 $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
                 $result = db_q($query, array((string) $order_item['quantity'], (string) $order_item['id'])) or output_error(lang('Query failed.'));
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+                pg_pfu_quantity_lowered($order_item['id'], $was_quantity, $order_item['quantity']);
                 // if there is a ship to and it is complete, then update shipping cost for ship to
                 if (($order_item['ship_to_id'] != '') && ($order_item['ship_to_complete'] == 1)) {
                     require_once(PG_FUNCTIONS_DIR . '/shipping.php');
@@ -9543,6 +9550,8 @@ function check_reservations($liveform)
                 } else if ($reservation_order_item['quantity'] > $calendar_event['number_of_remaining_spots']) {
                     $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
                     $result = db_q($query, array((string) $calendar_event['number_of_remaining_spots'], (string) $reservation_order_item['id'])) or output_error(lang('Query failed.'));
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+                    pg_pfu_quantity_lowered($reservation_order_item['id'], $reservation_order_item['quantity'], $calendar_event['number_of_remaining_spots']);
                     // if there is a ship to and it is complete, then update shipping cost for ship to
                     if (($reservation_order_item['ship_to_id'] != '') && ($reservation_order_item['ship_to_complete'] == 1)) {
                         require_once(PG_FUNCTIONS_DIR . '/shipping.php');
