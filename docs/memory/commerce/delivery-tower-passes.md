@@ -20,6 +20,6 @@ module: delivery_tower_passes
 - At the end of a walk, open rows whose parcel is gone or whose order is gone, incomplete or cancelled are closed with reason 1.
 - Settings: `pg_delivery_tower_settings()` reads `config_text` `delivery_tower_settings`.
 
-## How long does it take? (DT1b)
+## How long does it take? (DT1b, #10847)
 - Sandbox MariaDB, 100k parcels (70k delivered in 90 days, 20k in transit, 5k created, 3k exception, 2k returned), PHP 8.3 CLI: summary 1.4 s; first pass 1.1 s (30k parcels read, 24k rows opened); a repeat pass 1.3 s; peak memory 62.5 MB against 48.5 MB for `init.php` alone. A 2 s budget stopped after the summary and 21 pages and went on next tick.
 - No index was added to `shipping_tracking_numbers` (no schema beyond the decided table); both walks go by primary key.

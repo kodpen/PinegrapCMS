@@ -16,4 +16,4 @@ description: The shipment_problems table (step 11.0.258): one row per problem fo
 - `delete_order.php` removes an order's rows (`pg_delivery_tower_delete_for_order()`). No name or address is kept: the desk reads them from the order.
 
 ## Was the step run twice?
-- Yes, on a sandbox MariaDB (#PR of DT1b): `config.version` set back to 2026.4.10 and `php install/index.php automated_upgrade` twice; the second run found the table in place.
+- Yes, on a sandbox MariaDB (#10847): `config.version` set back to 2026.4.10 and `php install/index.php automated_upgrade` twice; the second run found the table in place.
