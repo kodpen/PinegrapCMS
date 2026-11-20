@@ -14,7 +14,7 @@ description: Plan referral-programme, features E1 to E15: settings, who can refe
 - (E6) Arriving by a referral link puts the friend's offer in the cart as an affiliate's group offer is put today. Nothing tells the friend who sent them.
 
 ## When is a reward given?
-- (E7) When the friend's order is completed, in the same step as an affiliate's commission, and only if all hold: the code is a referral code of a customer who can refer; the buyer is not the referrer (account, contact, folded billing e-mail); this friend (account, else e-mail) has no earlier order that counts; the order reaches the smallest value; the referrer's month has room.
+- (E7) When the friend's order is completed, in the same step as an affiliate's commission, and only if all hold: the code is a referral code of a customer who can refer; the buyer is not the referrer (account, contact, folded billing e-mail); this friend (account and folded e-mail together: `decisions-made-product-82.md`) has no earlier order that counts; the order reaches the smallest value; the referrer's month has room.
 - (E8) The referral is a commission row under the code, with the friend's order and the reward as its amount. In the same step the reward is issued as store credit through `pg_credit_issue()` with the kind `referral`, named "Referral" to the customer, and the row is marked paid. No waiting stage.
 - (E9) The month's room is taken in one statement or under a named lock, never read and then written: two orders at once cannot pass the cap.
 - (E10) The referrer gets a mail through the mail queue: what they earned and their balance.

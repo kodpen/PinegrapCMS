@@ -23,6 +23,7 @@ description: External API manners (#10142): HEAD as GET without a body, Location
 ## Which 401s carry WWW-Authenticate?
 - `credentials_missing` (nothing sent) and `unauthorized` (wrong key) both carry `Basic realm="Pinegrap API"` through `api_basic_challenge()`, unless `X-Requested-With: XMLHttpRequest` marks a script-made call (the /docs console). Before, `credentials_missing` carried none while OAuth was off.
 - While OAuth is on, `api_fail()` puts the Bearer challenge in its place. The MCP endpoint's `credentials_missing` gets no Basic challenge: MCP clients sign in through OAuth.
+- A 401 to a request that sent a Bearer token and got no other challenge carries `Bearer realm="Pinegrap API", error="invalid_token"` (`api_bearer_challenge_fallback()`). Before PR #10615 a team device's expired or revoked token got none while OAuth was off.
 
 ## Where is it tested?
 - `tests/api_manners_test.php`. Added by PR #10142.

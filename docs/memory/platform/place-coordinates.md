@@ -8,7 +8,7 @@ module: place_map
 - In the record's own two number fields: no table and no column. A coordinate field has kind `number` and the name `latitude` / `lat` / `enlem` or `longitude` / `lng` / `lon` / `long` / `boylam` (`pg_place_map_names()`, compared after `pg_place_map_name()`: lower-case ASCII, words joined by `_`).
 - The address is every plain text box or text area named `address`, `street`, `city`, `postcode`, `country` and the like (Turkish `adres`, `ilce`, `il`, `sehir`…), joined with ", " in form order, each part once, at most 300 characters.
 - A form with both coordinates and an address part has place fields (`pg_place_map_fields()`). Typed, imported or API-written values count like any other.
-- Architect (2026-11-16, message 6927), for MP3: once the map block names the fields (X2), the button looks first at the block's fields, else finds them by name; the block's pickers default to the same rule.
+- Architect (2026-11-16, message 6927), for MP3: once the map block names the fields (X2), the button looks first at the block's fields, else finds them by name; the block's pickers default to the same rule. Done in #10628 (`place-coordinates-fields.md`).
 
 ## What does "Find from the address" do?
 - Drawn right under the later of the two coordinate fields on a record's add and edit screens: `pg_place_map_form_tools()` prints at the end of `pg_submitted_form_fields_markup()` and its script moves the box after that field's column.

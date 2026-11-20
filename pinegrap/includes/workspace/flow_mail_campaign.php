@@ -332,7 +332,61 @@ function ws_flow_mail_group_problems($config, $name)
         $problems[] = lang(array('string' => 'The box {var:1} draws records only in an e-mail to a contact group.', 'vars' => $name));
     }
 
+    $bcc = ws_flow_mail_group_bcc_problem($config, $name);
+
+    if ($bcc !== '') {
+        $problems[] = $bcc;
+    }
+
     return $problems;
+}
+
+/**
+ * Why an e-mail box to a contact group may not keep a BCC, '' when it may:
+ * the group's campaign goes to each contact apart, so a BCC would get one
+ * copy for every contact. Refused where a flow is written (its save and its
+ * publish check), never at run time: a box published with one before sends
+ * without it, as it always did. Pure but for lang().
+ *
+ * @param array  $config the box's settings
+ * @param string $name   the box's name
+ * @return string
+ */
+function ws_flow_mail_group_bcc_problem($config, $name)
+{
+    if ((($config['recipient'] ?? '') !== 'group') || (trim((string) ($config['bcc'] ?? '')) === '')) {
+        return '';
+    }
+
+    return lang(array('string' => 'The box {var:1} writes to a contact group, which takes no BCC: every contact gets the e-mail apart, so the BCC address would get one copy for each of them. Empty its BCC.', 'vars' => $name));
+}
+
+/**
+ * The first e-mail box of a graph written to a contact group with a BCC,
+ * as ws_flow_mail_group_bcc_problem() says it; '' for none. A save is
+ * refused with it (ws_flow_save_check()). Pure but for lang().
+ *
+ * @param array $graph ws_flow_graph_normalize()
+ * @return string
+ */
+function ws_flow_mail_group_bcc_refusal($graph)
+{
+    $names = function_exists('ws_flow_box_names') ? ws_flow_box_names((array) ($graph['nodes'] ?? array())) : array();
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        if ((string) ($node['kind'] ?? '') !== 'email') {
+            continue;
+        }
+
+        $id = (string) ($node['id'] ?? '');
+        $problem = ws_flow_mail_group_bcc_problem((array) ($node['config'] ?? array()), $names[$id] ?? $id);
+
+        if ($problem !== '') {
+            return $problem;
+        }
+    }
+
+    return '';
 }
 
 /**

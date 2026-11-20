@@ -5516,6 +5516,13 @@ function product_submit_form_add_field(properties) {
     // Loop through all custom form fields in order to prepare options for pick list.
     for (var index = 0; index < length; index++) {
         var status = '';
+
+        // A File Upload field is filled only when a form is created: it takes
+        // a copy of the product form's file its value names (^^photo^^).
+        if ((action != 'create') && (submit_form_custom_form_fields[index]['type'] == 'file upload')) {
+            continue;
+        }
+
         // If this option should be selected by default, then select it.
         if (form_field_id == submit_form_custom_form_fields[index]['id']) {
             status = ' selected="selected"';
@@ -5601,6 +5608,11 @@ function init_product_submit_form_update_where(field) {
     // Loop through all custom form fields in order to prepare options for pick list.
     for (var index = 0; index < length; index++) {
         var selected = '';
+
+        // A file is no value to find a form by.
+        if (submit_form_custom_form_fields[index]['type'] == 'file upload') {
+            continue;
+        }
 
         // If this option should be selected by default, then select it.
         if (submit_form_custom_form_fields[index]['id'] == field) {

@@ -22,6 +22,8 @@ description: Plan automation-platforms, steps AU8 to AU10 and the order of all t
 - AU10 (S) after AU5, AU6 and AU9: the events section of both documentation pages shows fields and sample (`includes/api/console_view.php`); the lasting rules into `api/`. The plan's files stay for AX1 to AX4.
   - Done: PR #10282 (`api/api-docs-webhook-events.md`).
 
+- Done: AU8 #10126, AU9 #10225, AU10 #10282
+
 ## What waits for what?
 - Waiting for nothing: AU1, AU3, AU4, AU7, AU8. AU2 waits for AU1; AU5 and AU6 for AU4; AU9 for AU8's yes, AU3 and AU4; AU10 for AU5, AU6 and AU9.
 - Two steps that edit the same file are not open together: AU4 to AU6 and AU9 on `includes/api/resources/webhooks.php`. AU10 also edits `includes/api/console_view.php`, where the Conventions section lives (`api/api-docs-conventions.md`).

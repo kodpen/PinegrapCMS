@@ -1,6 +1,6 @@
 ---
 name: image-editor-touch
-description: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()) for points and a selected layer, the phone's nudge arrows, a typed text Animate did not pick
+description: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
 module: image_editor
 ---
 
@@ -18,6 +18,10 @@ module: image_editor
 ## How does a phone nudge a layer?
 - The bar at the stage's foot (`image-editor-actions.md`) adds four arrows, icons only, 44 px, after Delete when a selected layer moves (neither locked nor fixed): `M.actionList()` with `s.move`.
 - A click moves 1 px (`M.nudgeStep()`); held 400 ms, 10 px, again every 120 ms until it is let go (`nudgeHold()`). `nudge()` is also the arrow keys' (Shift: 10 px); nudges in a row are one undo step (`'nudge'` key).
+
+## How does a phone reach groups and attachments?
+- Group and Ungroup sit in the bar at the stage's foot, before Duplicate (`image-editor-groups-look.md`); a tap picks the outermost group, a second tap a member (`image-editor-groups.md`).
+- Attach to and Detach: the long-press menu and the Path tab in the sheet (`image-editor-attach.md`); no key needed.
 
 ## Why did a tap on a typed text not pick it on a phone?
 - Owner (2026-11-20): in Animate and with Select a tap on a text did not pick it; only the Text tool did. Cause: typing in place outlived the tool. Its `<textarea>` lay over the text and stopped the presses, and the layer is not drawn while typed (`textNode()`).

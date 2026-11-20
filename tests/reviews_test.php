@@ -137,6 +137,37 @@ function test_reviews_purchase_stands_sql()
 	pg_assert_same($without, pg_review_verified_filter_sql('yes', false));
 }
 
+// The review form opens only on a purchase that stands: an order whose lines
+// of the item were all returned and refunded is no purchase, so it opens no
+// review (which would hide at once) and is never chosen over an order whose
+// purchase stands.
+function test_reviews_eligibility_purchase_stands()
+{
+	$with = pg_review_order_item_stands_sql('product', 12, true);
+	$without = pg_review_order_item_stands_sql('product', 12, false);
+
+	foreach (array($with, $without) as $sql) {
+		pg_assert_contains('order_items.order_id = orders.id', $sql, 'a line of this order');
+		pg_assert_contains(pg_review_item_lines_sql('product', 12), $sql, 'of the reviewed item, bought');
+	}
+
+	pg_assert_contains('order_returns.refunded_at > 0', $with, 'a refunded return');
+	pg_assert_contains('order_items.quantity > (SELECT COALESCE(SUM(order_return_items.quantity), 0)', $with, 'only the whole quantity');
+	pg_assert_false(strpos($without, 'order_return') !== false, 'no returns table before the step adds them');
+	pg_assert_contains("products_groups_xref.product_group = '7'", pg_review_order_item_stands_sql('product_group', 7, true), 'a group counts any of its products');
+	pg_assert_same('', pg_review_order_item_stands_sql('submitted_form', 7, true), 'no item, no condition');
+
+	// The refunded quantity is read as the review list reads it.
+	pg_assert_contains('order_returns.refunded_at > 0', pg_review_purchase_stands_sql(true));
+
+	$function = new ReflectionFunction('pg_review_eligibility');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_contains('pg_review_order_item_stands_sql(', $source, 'the form asks it');
+	pg_assert_contains('pg_review_returns_ready()', $source, 'with the returns tables when they are there');
+}
+
 // Cancelling, restoring and a refunded return move the ratings of the
 // order's products at once; the daily pass catches the rest.
 function test_reviews_purchase_change_refreshes()

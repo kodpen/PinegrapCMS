@@ -130,6 +130,63 @@ function test_courses_enrolment_day_from_first_open()
 	pg_assert_same('', pg_course_enrolment_day(array(), 0), 'neither: no day');
 }
 
+function test_courses_folder_chain_walks_the_parents()
+{
+	// 10 Academy at the root, 11 Course A below it, 12 a lesson group below that.
+	$parents = array(10 => 0, 11 => 10, 12 => 11, 20 => 0);
+
+	pg_assert_same(array(10), pg_course_folder_chain($parents, 10), 'a root folder: itself only');
+	pg_assert_same(array(11, 10), pg_course_folder_chain($parents, 11), 'a parent grant opens the folder');
+	pg_assert_same(array(12, 11, 10), pg_course_folder_chain($parents, 12), 'a grandparent grant opens it too');
+	pg_assert_same(array(), pg_course_folder_chain($parents, 99), 'a folder that does not exist: none');
+	pg_assert_same(array(), pg_course_folder_chain($parents, 0), 'no folder: none');
+}
+
+function test_courses_folder_chain_stops_on_a_broken_chain()
+{
+	pg_assert_same(array(5, 6), pg_course_folder_chain(array(5 => 6, 6 => 5), 5), 'a loop stops at the folder seen');
+	pg_assert_same(array(7), pg_course_folder_chain(array(7 => 7), 7), 'a folder that is its own parent');
+	pg_assert_same(array(3, 4), pg_course_folder_chain(array(3 => 4, 4 => 8), 3), 'a parent that names no folder stops the walk');
+
+	$deep = array(1 => 0);
+	for ($i = 2; $i <= 200; $i++) {
+		$deep[$i] = $i - 1;
+	}
+	pg_assert_same(PG_COURSE_FOLDER_DEPTH, count(pg_course_folder_chain($deep, 200)), 'the walk is bounded');
+}
+
+function test_courses_grant_folder_sql_matches_the_chain()
+{
+	pg_assert_same("(products.private_folder IN ('11', '10'))", pg_course_grant_folder_sql(array(11, 10)), 'the folder and its parents');
+	pg_assert_same('(1 = 0)', pg_course_grant_folder_sql(array()), 'no folder matches nothing');
+	pg_assert_same("(products.private_folder IN ('3'))", pg_course_grant_folder_sql(array('3 OR 1', 0)), 'ids are integers');
+
+	// The gate, the course blocks and the learners list read the same chain.
+	$fn = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/courses.php');
+	$admin = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/courses_admin.php');
+	pg_assert_contains('pg_course_grant_folder_sql(pg_course_folder_ids($folder_id))', $fn, 'pg_course_member_orders() walks the parents');
+	pg_assert_contains('pg_course_grant_folder_sql(pg_course_folder_ids($folder_id))', $admin, 'the learners list walks the parents');
+	pg_assert_false(strpos($fn . $admin, "products.private_folder = '") !== false, 'no reader matches the course folder alone');
+}
+
+function test_courses_enrolment_day_from_a_parent_folder_grant()
+{
+	// Bought on day 1 a product opening "Academy", the parent of the course
+	// folder; first open on day 10. The order counts: lesson 2 at 7 days
+	// opens on day 8.
+	$chain = pg_course_folder_chain(array(10 => 0, 11 => 10), 11);
+	pg_assert_true(in_array(10, $chain, true), 'the parent grant opens the course folder');
+
+	$orders = array(array('status' => 'complete', 'order_date' => mktime(10, 0, 0, 11, 1, 2026)));
+	$day = pg_course_enrolment_day($orders, mktime(9, 0, 0, 11, 10, 2026));
+	pg_assert_same('2026-11-01', $day, 'the order day, not the first open');
+
+	$state = pg_course_lesson_state(_courses_test_lessons(), 12, array(), $day, false, '2026-11-10', false);
+	pg_assert_true($state['open'], 'lesson 2 is open on day 10');
+	$state = pg_course_lesson_state(_courses_test_lessons(), 12, array(), $day, false, '2026-11-07', false);
+	pg_assert_same('2026-11-08', $state['opens_on'], 'lesson 2 opens on day 8');
+}
+
 function test_courses_first_open_row_only_for_member_with_folder()
 {
 	$now = mktime(12, 0, 0, 11, 2, 2026);

@@ -58,7 +58,9 @@ function _pccf_blocks($qty, $per)
 		array('form_field_id' => 3, 'data' => 'm', 'quantity_number' => 2),
 		array('form_field_id' => 6, 'data' => 'x|z', 'quantity_number' => 1),
 		array('form_field_id' => 7, 'data' => (string)mktime(12, 0, 0, 12, 1, 2026), 'quantity_number' => 1),
-		array('form_field_id' => 11, 'data' => 'photo.jpg', 'quantity_number' => 1),
+		array('form_field_id' => 11, 'data' => 'photo.jpg', 'quantity_number' => 1, 'file_id' => 7, 'file_size' => 2048),
+		// An answer the cart saved as text before uploads were stored.
+		array('form_field_id' => 11, 'data' => 'old.jpg', 'quantity_number' => 2),
 	);
 	$opts = array(
 		3 => array(array('name' => 'M', 'value' => 'm'), array('name' => 'L', 'value' => 'l')),
@@ -173,9 +175,35 @@ function test_widget_parts_cart_form_blocks()
 	pg_assert_same(array('choice', 'checkbox', array(true, false, true)), array($f[5]['kind'], $f[5]['type'], array_column($f[5]['options'], 'selected')));
 	pg_assert_same(array('date', '2026-12-01', 0), array($f[6]['type'], $f[6]['value'], $f[6]['maxlength']));
 	pg_assert_same(array('file', '', 'photo.jpg'), array($f[10]['kind'], $f[10]['value'], $f[10]['file']));
+	pg_assert_same(array('2 KB', 'order_item_41_quantity_number_1_form_field_11_remove'), array($f[10]['file_size'], $f[10]['file_remove']));
+	pg_assert_true(substr($f[10]['file_url'], -10) === '/photo.jpg' && $f[10]['file_image_url'] === $f[10]['file_url'], 'an image is its own preview');
+	pg_assert_same(array(true, false), array($f[10]['required'], $f[10]['control_required']), 'a kept file answers a required upload');
+	$g = $blocks[1]['fields'][10];
+	pg_assert_same(array('', true), array($g['file'], $g['control_required']), 'a name with no stored file keeps nothing');
 	$plain = _pg_cart_item_form_blocks(41, _pccf_fields(), array(), array(), 1, 'One Form per Product', '');
 	pg_assert_false($plain[0]['has_legend'], 'no name and one block: no heading');
 	pg_assert_same(1, count(_pccf_blocks(3, false)), 'one form per product');
+}
+
+function test_widget_parts_cart_form_marks_a_refused_field()
+{
+	$blocks = _pg_cart_item_form_mark_errors(_pccf_blocks(2, true), array('order_item_41_quantity_number_2_form_field_11' => 'big.tif cannot be uploaded here.', 'order_item_41_quantity_number_1_form_field_6' => 'Pick one'));
+	pg_assert_same('big.tif cannot be uploaded here.', $blocks[1]['fields'][10]['error'], 'the refused upload carries its message');
+	pg_assert_same('Pick one', $blocks[0]['fields'][5]['error'], 'a list field is found without its []');
+	pg_assert_same('', $blocks[0]['fields'][10]['error'], 'the other unit is untouched');
+	$html = _pg_render_cart_item_form_html(41, $blocks, 'f');
+	pg_assert_contains('<div class="invalid-feedback d-block">big.tif cannot be uploaded here.</div>', $html);
+}
+
+function test_widget_parts_cart_form_kept_file_has_replace_and_remove()
+{
+	$html = _pg_render_cart_item_form_html(41, _pccf_blocks(2, true), 'pg-cart-form-w9');
+	pg_assert_same(1, preg_match('/<input type="file" name="order_item_41_quantity_number_1_form_field_11"[^>]*>/', $html, $m));
+	pg_assert_true(strpos($m[0], 'required') === false, 'a kept file is not asked for again');
+	pg_assert_same(1, preg_match('/<input type="file" name="order_item_41_quantity_number_2_form_field_11"[^>]* required>/', $html), 'a unit without a file is');
+	pg_assert_contains('name="order_item_41_quantity_number_1_form_field_11_remove" id="pgCif_41_q1_f11_remove" value="1" form="pg-cart-form-w9"', $html);
+	pg_assert_contains('class="pg-cart-item-file-preview', $html);
+	pg_assert_contains('>photo.jpg</a> <span class="text-muted">2 KB</span>', $html);
 }
 
 function test_widget_parts_cart_form_rows()
@@ -185,6 +213,7 @@ function test_widget_parts_cart_form_rows()
 	pg_assert_same(array('41001', '41002'), array_column($rows['cart.item_forms'][41], '__form_key'));
 	$fields = $rows['cart.item_form_fields']['41001'];
 	pg_assert_same(12, count($fields), 'an empty information field gives no row');
+	pg_assert_same(array('photo.jpg', '2 KB', 'order_item_41_quantity_number_1_form_field_11_remove', ''), array($fields[10]['__field_file'], $fields[10]['__field_file_size'], $fields[10]['__field_file_remove'], $fields[10]['__field_control_required']));
 	pg_assert_same(array('41001001', 'input', '1', '40'), array($fields[0]['__field_key'], $fields[0]['__field_control'], $fields[0]['__field_required'], $fields[0]['__field_maxlength']));
 	pg_assert_contains('<option value="">Select...</option>', $fields[2]['__field_options_html']);
 	pg_assert_same(array('1', ''), array($fields[3]['__field_multiple'], $fields[1]['__field_maxlength']));
@@ -213,6 +242,9 @@ function test_widget_parts_cart_form_matches_the_old_block()
 		pg_assert_same(_pccf_controls($old), _pccf_controls($new), $case . ': same controls and marker');
 		pg_assert_same(1, preg_match('/<label class="form-label" for="pgCif_41_q1_f1_pgw/', $new), $case . ': a label names its control');
 		pg_assert_same(1, preg_match('/<label class="form-check-label" for="pgCif_41_q1_f5_0_pgw/', $new), $case . ': a choice\'s label names its check');
+		pg_assert_same(1, preg_match('/<label class="form-check-label" for="pgCif_41_q1_f11_remove_pgw/', $new), $case . ': the Remove label names its check');
+		pg_assert_same(1, preg_match('/<img [^>]*src="[^"]*\/photo\.jpg"/', $new), $case . ': the preview');
+		pg_assert_same(1, preg_match('/<a [^>]*href="[^"]*\/photo\.jpg"[^>]*>photo\.jpg<\/a>/', $new), $case . ': the link');
 		pg_assert_true(strpos($new, '^^') === false && strpos($new, '<!--pg-') === false && strpos($new, '{{') === false && strpos($new, 'pgav-') === false, $case . ': nothing left');
 	}
 }

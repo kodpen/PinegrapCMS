@@ -41,6 +41,14 @@ define('PG_PLACE_LIST_RATE_LIMIT', 30);
 define('PG_PLACE_LIST_RATE_WINDOW', 60);
 
 /**
+ * Typed-address lookups one address may ask for per window (X12), and the
+ * longest text one carries. Each asks Photon once, so the bound is lower
+ * than the list's.
+ */
+define('PG_PLACE_LIST_FIND_LIMIT', 10);
+define('PG_PLACE_LIST_FIND_MAX', 200);
+
+/**
  * The block's mark as an attribute of its own (not data-pg-map-page): the
  * Preview's row in _SD_PAGE_SCRIPTS uses the same expression.
  *
@@ -81,6 +89,17 @@ function pg_place_list_labels()
         'The map shows once you allow marketing in the cookie settings.' => lang('The map shows once you allow marketing in the cookie settings.'),
         'Map of places' => lang('Map of places'),
         'Show on the map' => lang('Show on the map'),
+        'Near me' => lang('Near me'),
+        'Your browser did not give a position.' => lang('Your browser did not give a position.'),
+        'Nearest first from your position.' => lang('Nearest first from your position.'),
+        'Find near an address' => lang('Find near an address'),
+        'Address or postcode' => lang('Address or postcode'),
+        'Find' => lang('Find'),
+        'Nearest first from: {address}' => lang('Nearest first from: {address}'),
+        'The address was not found.' => lang('The address was not found.'),
+        'The address service asks to wait. Try again in a minute.' => lang('The address service asks to wait. Try again in a minute.'),
+        'The address could not be looked up.' => lang('The address could not be looked up.'),
+        '{km} km' => lang('{km} km'),
     );
 }
 
@@ -114,7 +133,7 @@ function pg_place_list_inject($content, $page_id, $src = null, $map = null)
 
     $endpoint = (defined('OUTPUT_PATH') ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY : '') . '/places.php';
     // JSON_HEX_TAG: a credit line or a text holding "</script>" stays inside.
-    $file = '<script>window.pgMap = ' . json_encode(array('page' => (int) $page_id, 'endpoint' => $endpoint, 'labels' => pg_place_list_labels(), 'map' => $map), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ';</script>' . "\n"
+    $file = '<script>window.pgMap = ' . json_encode(array('page' => (int) $page_id, 'endpoint' => $endpoint, 'labels' => pg_place_list_labels(), 'map' => $map, 'find' => pg_place_list_find_on()), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ';</script>' . "\n"
           . '<script src="' . h($src) . '" defer></script>' . "\n";
 
     $body = strripos($content, '</body>');
@@ -235,6 +254,38 @@ function pg_place_list_field_fits($field, $part)
 }
 
 /**
+ * The fields a block chose that the form still has: part => field id. A
+ * part is taken only when a field of that exact name is there, fits the
+ * part and is not office-use-only; the others are left out, for the name
+ * rule to find. Pure.
+ *
+ * @param array $fields rows in form order: id, name, type, kind, office
+ * @param array $choice pg_place_list_saved_choice(): part => field name
+ * @return array
+ */
+function pg_place_list_chosen_ids($fields, $choice)
+{
+    $chosen = array();
+
+    foreach ((array) $choice as $part => $wanted) {
+        if (!in_array($part, pg_place_list_parts(), true) || !is_string($wanted)) {
+            continue;
+        }
+
+        foreach ((array) $fields as $field) {
+            $id = isset($field['id']) ? (int) $field['id'] : 0;
+
+            if (($id > 0) && empty($field['office']) && isset($field['name']) && ((string) $field['name'] === $wanted) && pg_place_list_field_fits($field, $part)) {
+                $chosen[$part] = $id;
+                break;
+            }
+        }
+    }
+
+    return $chosen;
+}
+
+/**
  * Which fields an answer carries. A part the block chose ($choice, from the
  * saved page) takes that field when the collection has it, it fits the part
  * and it is not office-use-only; every other part is found by the server's
@@ -256,23 +307,7 @@ function pg_place_list_field_roles($fields, $choice = array())
         }
     }
 
-    $chosen = array();
-
-    foreach ((array) $choice as $part => $wanted) {
-        if (!in_array($part, pg_place_list_parts(), true) || !is_string($wanted)) {
-            continue;
-        }
-
-        foreach ($public as $field) {
-            $id = isset($field['id']) ? (int) $field['id'] : 0;
-
-            if (($id > 0) && isset($field['name']) && ((string) $field['name'] === $wanted) && pg_place_list_field_fits($field, $part)) {
-                $chosen[$part] = $id;
-                break;
-            }
-        }
-    }
-
+    $chosen = pg_place_list_chosen_ids($public, $choice);
     $roles = pg_place_map_field_roles_found($public);
 
     foreach (array('lat', 'lng') as $part) {
@@ -507,29 +542,147 @@ function pg_place_list_for_page($page_id)
  * Whether one address has asked too often in the window, with the
  * firewall's counters.
  *
+ * @param string|null   $ip     the client address; null asks the firewall
+ * @param callable|null $record waf_rate_record()'s shape; null uses it
  * @return bool
  */
-function pg_place_list_throttled()
+function pg_place_list_throttled($ip = null, $record = null)
 {
-    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+    return pg_place_list_rate('place_list', PG_PLACE_LIST_RATE_LIMIT, 'rate-place-list', $ip, $record);
+}
+
+/**
+ * Whether one address has looked up too many typed addresses in the window.
+ *
+ * @param string|null   $ip     the client address; null asks the firewall
+ * @param callable|null $record waf_rate_record()'s shape; null uses it
+ * @return bool
+ */
+function pg_place_list_find_throttled($ip = null, $record = null)
+{
+    return pg_place_list_rate('place_find', PG_PLACE_LIST_FIND_LIMIT, 'rate-place-find', $ip, $record);
+}
+
+/**
+ * Counts one request of a scope against the client address; true once the
+ * limit is passed. The log line names the rule and the address only, never
+ * what was asked.
+ *
+ * @param string        $scope
+ * @param int           $limit  requests per PG_PLACE_LIST_RATE_WINDOW
+ * @param string        $rule   the firewall log's rule name
+ * @param string|null   $ip     the client address; null asks the firewall
+ * @param callable|null $record waf_rate_record()'s shape; null uses it
+ * @return bool
+ */
+function pg_place_list_rate($scope, $limit, $rule, $ip = null, $record = null)
+{
+    if (!function_exists('waf_rate_record') || !function_exists('waf_ip_subject') || (($ip === null) && !function_exists('waf_client_ip'))) {
         return false;
     }
 
-    $ip = (string) waf_client_ip();
+    $ip = (string) (($ip === null) ? waf_client_ip() : $ip);
 
     if (($ip === '') || (function_exists('waf_ip_is_counted') && !waf_ip_is_counted($ip))) {
         return false;
     }
 
-    $exceeded = waf_rate_exceeded(waf_ip_subject($ip), 'place_list', PG_PLACE_LIST_RATE_LIMIT, PG_PLACE_LIST_RATE_WINDOW);
+    $record = is_callable($record) ? $record : 'waf_rate_record';
+    $exceeded = ((int) call_user_func($record, waf_ip_subject($ip), $scope, PG_PLACE_LIST_RATE_WINDOW) > $limit);
+
+    if ($record !== 'waf_rate_record') {
+        return $exceeded;
+    }
 
     if (function_exists('waf_rate_sweep') && (mt_rand(1, 100) === 1)) {
         waf_rate_sweep();
     }
 
     if ($exceeded && function_exists('waf_text_log')) {
-        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-place-list'));
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => $rule));
     }
 
     return $exceeded;
+}
+
+/**
+ * Whether a typed address can be looked up (X12): only through Photon, as
+ * "Find from the address" (place_map.php), which needs cURL; without it the
+ * page draws no address box.
+ *
+ * @param bool|null $curl whether cURL is there; null asks
+ * @return bool
+ */
+function pg_place_list_find_on($curl = null)
+{
+    if ($curl === null) {
+        $curl = function_exists('curl_init');
+    }
+
+    return $curl && is_file(PG_FUNCTIONS_DIR . '/includes/geo/geocode/photon.php');
+}
+
+/**
+ * The typed text as it is asked: one line, at most PG_PLACE_LIST_FIND_MAX
+ * characters. Pure.
+ *
+ * @param mixed $text
+ * @return string
+ */
+function pg_place_list_find_text($text)
+{
+    if (!is_string($text)) {
+        return '';
+    }
+
+    $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+    return function_exists('mb_substr') ? mb_substr($text, 0, PG_PLACE_LIST_FIND_MAX, 'UTF-8') : substr($text, 0, PG_PLACE_LIST_FIND_MAX);
+}
+
+/**
+ * What a lookup's answer gives the page: its state and, when found, the
+ * point as numbers. Nothing of the typed text comes back or is kept. Pure.
+ *
+ * @param array $result pg_place_map_lookup()
+ * @return array ok, state (found, not_found, empty, wait, error), lat, lng
+ */
+function pg_place_list_find_answer($result)
+{
+    $state = (is_array($result) && isset($result['state'])) ? (string) $result['state'] : 'error';
+
+    if (!in_array($state, array('found', 'not_found', 'empty', 'wait', 'error'), true)) {
+        $state = 'error';
+    }
+
+    $found = ($state === 'found') && is_numeric($result['lat']) && is_numeric($result['lng']);
+
+    return array(
+        'ok'    => true,
+        'state' => ($state === 'found' && !$found) ? 'error' : $state,
+        'lat'   => $found ? (float) $result['lat'] : null,
+        'lng'   => $found ? (float) $result['lng'] : null,
+    );
+}
+
+/**
+ * Looks up one typed address, once, through Photon (the site's server while
+ * its account is on, else the public instance). Called by places.php when a
+ * visitor pressed Find. The text is neither stored nor logged: it goes to
+ * Photon and is dropped with the request.
+ *
+ * @param mixed $text
+ * @return array pg_place_list_find_answer()
+ */
+function pg_place_list_find($text)
+{
+    $text = pg_place_list_find_text($text);
+
+    if ($text === '') {
+        return pg_place_list_find_answer(array('state' => 'empty'));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
+
+    return pg_place_list_find_answer(pg_place_map_lookup($text));
 }

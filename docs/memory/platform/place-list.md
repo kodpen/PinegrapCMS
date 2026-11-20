@@ -9,6 +9,7 @@ module: place_list
 - Gate (`pg_place_list_page_reason()`): the page exists, its folder is open to everyone (`get_access_control_type()` = `public`) and not in the bin, and the list is public (`pg_sw_form_widget_public()`). Otherwise no places.
 - Records: complete only, the list's and its detail view's filters (`pg_sw_list_record_filter_clause()`, no URL filters), in the list's order (`pg_place_list_order()`: id, date or a form field; a statistic order falls back to the date), at most `PG_PLACE_LIST_MAX` (500).
 - Same origin only (`pg_request_cross_site()`, 403), then 30 answers a minute per address (`pg_place_list_throttled()`, rule `rate-place-list`, 429), `Cache-Control: private, no-store`.
+- `POST places.php` with `find` is the typed-address lookup (X12): `place-list-near.md`.
 
 ## Which fields does an answer carry?
 - From the saved page, never from the request: the block's own choice, else the name rule (`place-list-fields.md`).

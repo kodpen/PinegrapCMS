@@ -103,7 +103,10 @@ function pg_referral_code_contact($code, $key)
     list($number, $signature) = explode('-', substr($code, 1), 2);
     $contact_id = (int) base_convert($number, 36, 10);
 
-    if (($contact_id <= 0) || !hash_equals(pg_referral_code_sign($contact_id, $key), $signature)) {
+    // Only the spelling pg_referral_code_make() writes: a zero before the
+    // number reads as the same contact, but the month's room counts rows by
+    // the exact code, so another spelling would have a month of its own.
+    if (($contact_id <= 0) || ($number !== strtoupper(base_convert((string) $contact_id, 10, 36))) || !hash_equals(pg_referral_code_sign($contact_id, $key), $signature)) {
         return 0;
     }
 
@@ -214,8 +217,9 @@ function pg_referral_refund_takes_back($value, $smallest)
  *
  * @param array $facts on (bool), contact_id (from the signed code, 0 for
  *                     none), affiliate (an approved affiliate has the code),
- *                     referrer (user_id, contact_id, email,
+ *                     referrer (user_id, contact_id, email, contact_email,
  *                     affiliate_approved, orders; null without an account),
+ *                     the buyer's e-mail matched against both addresses,
  *                     buyer (user_id, contact_id, email), friend_orders
  *                     (earlier orders that count), value
  *                     (pg_referral_order_value()), smallest, month_count
@@ -250,7 +254,7 @@ function pg_referral_check(array $facts)
     if (
         (((int) ($buyer['user_id'] ?? 0) > 0) && ((int) $buyer['user_id'] === (int) $referrer['user_id']))
         || (((int) ($buyer['contact_id'] ?? 0) > 0) && ((int) $buyer['contact_id'] === (int) $referrer['contact_id']))
-        || (($buyer_email !== '') && ($buyer_email === pg_referral_fold_email($referrer['email'] ?? '')))
+        || (($buyer_email !== '') && in_array($buyer_email, array(pg_referral_fold_email($referrer['email'] ?? ''), pg_referral_fold_email($referrer['contact_email'] ?? '')), true))
     ) {
         return 'self';
     }
@@ -421,6 +425,7 @@ function pg_referral_referrer($contact_id, $order_id = 0)
         'user_id'            => (int) $row['user_id'],
         'contact_id'         => (int) $row['contact_id'],
         'email'              => ((string) $row['user_email'] !== '') ? (string) $row['user_email'] : (string) $row['email_address'],
+        'contact_email'      => (string) $row['email_address'],
         'affiliate_approved' => (int) $row['affiliate_approved'],
         'orders'             => (int) db_value(
             "SELECT COUNT(*) FROM orders
@@ -431,25 +436,39 @@ function pg_referral_referrer($contact_id, $order_id = 0)
 }
 
 /**
- * How many earlier orders that count the friend has: by account, else by
- * the billing e-mail.
+ * The condition that finds the friend's other orders that count: by
+ * account, else by the billing e-mail; '' for a guest without an e-mail.
+ * Every other completed order counts, not only those of a lower id: of two
+ * orders by the same link, the one placed first may be completed last.
+ *
+ * @param array $order id, user_id, billing_email_address
+ * @return string
+ */
+function pg_referral_friend_orders_sql(array $order)
+{
+    if ((int) $order['user_id'] > 0) {
+        $who = "user_id = '" . (int) $order['user_id'] . "'";
+    } elseif (trim((string) $order['billing_email_address']) !== '') {
+        $who = "LOWER(TRIM(billing_email_address)) = '" . e(strtolower(trim((string) $order['billing_email_address']))) . "'";
+    } else {
+        return '';
+    }
+
+    return "(" . $who . ") AND (status IN ('complete', 'exported')) AND (id <> '" . (int) $order['id'] . "')";
+}
+
+/**
+ * How many other orders that count the friend has
+ * (pg_referral_friend_orders_sql()).
  *
  * @param array $order id, user_id, billing_email_address
  * @return int
  */
 function pg_referral_friend_orders(array $order)
 {
-    $where = ((int) $order['user_id'] > 0)
-        ? "user_id = '" . (int) $order['user_id'] . "'"
-        : "LOWER(TRIM(billing_email_address)) = '" . e(strtolower(trim((string) $order['billing_email_address']))) . "'";
+    $where = pg_referral_friend_orders_sql($order);
 
-    if (((int) $order['user_id'] <= 0) && (trim((string) $order['billing_email_address']) === '')) {
-        return 0;
-    }
-
-    return (int) db_value(
-        "SELECT COUNT(*) FROM orders
-        WHERE (" . $where . ") AND (status IN ('complete', 'exported')) AND (id < '" . (int) $order['id'] . "')");
+    return ($where === '') ? 0 : (int) db_value("SELECT COUNT(*) FROM orders WHERE " . $where);
 }
 
 /**

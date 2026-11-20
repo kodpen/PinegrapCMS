@@ -1229,7 +1229,8 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
                         $variable_fields,
                         $product_form_quantity_number ? $product_form_variable_fields[$product_form_quantity_number] : null,
                         $add_watcher_user,
-                        $pretty_urls);
+                        $pretty_urls,
+                        $product_form_quantity_number);
 
                     if ($created_form_id) {
                         $submitted_form_id = $created_form_id;
@@ -3135,9 +3136,12 @@ function pg_order_form_admin_addresses(array $option_addresses, $to)
  * @param array|null $product_form    the unit's product form fields, null for none
  * @param array      $watcher         pg_order_line_watcher()
  * @param bool       $pretty_urls     whether the form page uses pretty URLs
+ * @param int        $product_form_number the unit whose product form fills the
+ *                                    form (pg_order_product_form_number()), 0 for none;
+ *                                    a File Upload field takes that unit's file
  * @return int the created submitted form's id, 0 when the page is not a form page
  */
-function pg_order_complete_line_form_create(array $line, array $order, array $variable_fields, $product_form, array $watcher, $pretty_urls)
+function pg_order_complete_line_form_create(array $line, array $order, array $variable_fields, $product_form, array $watcher, $pretty_urls, $product_form_number = 0)
 {
     $page_id = (int) $line['submit_form_custom_form_page_id'];
 
@@ -3180,19 +3184,37 @@ function pg_order_complete_line_form_create(array $line, array $order, array $va
             product_submit_form_fields.value,
             form_fields.name,
             form_fields.type,
-            form_fields.wysiwyg
+            form_fields.wysiwyg,
+            form_fields.upload_folder_id
         FROM product_submit_form_fields
         LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
         WHERE
             (form_fields.id IS NOT NULL)
             AND (product_submit_form_fields.product_id = '" . (int) $line['product_id'] . "')
             AND (product_submit_form_fields.action = 'create')
-            AND (form_fields.type != 'information')
-            AND (form_fields.type != 'file upload')");
+            AND (form_fields.type != 'information')");
 
     $option_addresses = array();
 
     foreach ($submit_form_fields as $submit_form_field) {
+        // A File Upload field gets a copy of the file the unit's product form
+        // answer holds (its value names that field, ^^photo^^), a file of the
+        // submission's own: deleting the order's file or the form's never
+        // takes the other.
+        if ($submit_form_field['type'] == 'file upload') {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
+            pg_pfu_copy_to_submission(
+                $submitted_form_id,
+                $submit_form_field,
+                $submit_form_field['value'],
+                isset($line['order_item_id']) ? (int) $line['order_item_id'] : 0,
+                (int) $product_form_number,
+                (int) $order['user_id']);
+
+            continue;
+        }
+
         $value = pg_order_line_fill($submit_form_field['value'], $variable_fields, $product_form);
 
         $form_data_type = pg_order_form_data_type($submit_form_field['type'], $submit_form_field['wysiwyg']);

@@ -25,6 +25,8 @@ description: The existing files that steps of more than one of the eight plans o
 ## Which files does one step touch, yet other plans hold?
 - `assets/js/workspace_flow.js` and `assets/js/workspace.js`: DG3. `job.php`: CV1. `submit_order.php`: WS4. `edit_offer_f.php`: WS1. `includes/fn/consent.php`: MP4. `get_page.php`: CO3.
 - `edit_submitted_form.php` and `view_submitted_forms.php`: MP2. `reserve_calendar_event.php`: TK4. `includes/fn/stock_notify.php`: TK4, and VP5 of `plans/visitor-push.md`. `includes/fn/privacy.php`: CO1.
+- Found in TK4 (PR #10578): `edit_calendar_event.php` (raised spots mail those waiting; a delete forgets the waiting list), `get_calendar_event_view_screen_content.php` and the event view widget in `includes/fn/widgets.php` (the waiting line).
+- Found in TK4 (PR #10578): `includes/api/resources/calendars.php` and `includes/workspace/changes.php` (an event's delete forgets its waiting list), `includes/fn/privacy_export.php` (the export's event and date).
 - Each step checks the open PRs' files before it opens.
 
 ## How is the list kept?

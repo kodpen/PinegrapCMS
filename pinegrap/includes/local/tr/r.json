@@ -1326,6 +1326,7 @@
     "Repeats its row for each item of the recipient, with its quantity, price and amount.": "Alıcının her ürünü için satırını miktarı, fiyatı ve tutarıyla birlikte yineler.",
     "Repeats its row for each offer applied to the order, with the amount it takes off.": "Siparişe uygulanan her teklif için satırını, düştüğü tutarla yineler.",
     "Repeats its row for each offer the visitor could still get, such as spending a little more for free shipping.": "Ziyaretçinin hâlâ alabileceği her teklif için satırını yineler; örneğin biraz daha harcayıp ücretsiz kargo kazanmak.",
+    "Repeats its row for each order of the signed-in member that holds event tickets.": "Satırını, oturum açmış üyenin etkinlik bileti içeren her siparişi için tekrarlar.",
     "Repeats its row for each order of the signed-in member.": "Oturum açmış üyenin her siparişi için satırını yineler.",
     "Repeats its row for each order that spent the store credit card.": "Mağaza kredisi kartını harcayan her sipariş için satırını yineler.",
     "Repeats its row for each page number of a list spread over several pages.": "Birden çok sayfaya yayılan bir listenin her sayfa numarası için satırını yineler.",

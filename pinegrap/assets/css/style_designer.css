@@ -1847,6 +1847,32 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-spb-size.is-has { color: var(--sd-text-muted); }
 .sd-spb-size.is-on { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-spb-size:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
+/* The corners (Style › Border and corner, the same part): a side's number
+   on each edge, the all-corners value in the shape's middle, each corner
+   numbered and drawn with the radius the browser gives it. */
+.sd-rdb-host:empty { min-height: 104px; }
+.sd-rdb {
+    position: relative; padding: 24px 34px; border-radius: 12px; font-size: 11.5px;
+    border: 1px dashed var(--sd-border-strong); background: color-mix(in srgb, var(--sd-text) 3%, transparent);
+}
+.sd-rdb-shape {
+    height: 52px; display: grid; place-items: center; background: var(--sd-input-bg);
+    border: 1.5px solid var(--sd-accent-line);
+    border-top-left-radius: var(--sd-rdb-ts, 3px); border-top-right-radius: var(--sd-rdb-te, 3px);
+    border-bottom-right-radius: var(--sd-rdb-be, 3px); border-bottom-left-radius: var(--sd-rdb-bs, 3px);
+}
+.sd-rdb-shape > .sd-rdb-all { position: relative; }
+.sd-rdb-c {
+    position: absolute; font-size: 9.5px; font-weight: 650; line-height: 1; color: var(--sd-text-muted);
+    pointer-events: none;
+}
+.sd-rdb-ts { top: 6px; left: 9px; }
+.sd-rdb-te { top: 6px; right: 9px; }
+.sd-rdb-be { bottom: 6px; right: 9px; }
+.sd-rdb-bs { bottom: 6px; left: 9px; }
+@container (max-width: 230px) {
+    .sd-rdb { padding-left: 27px; padding-right: 27px; }
+}
 
 /* ── Attributes column (bottom panel, right) ── */
 .sd-bp-attrs-col {
@@ -2112,6 +2138,19 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-tree-ctx-item:hover { background: rgba(var(--sd-accent-rgb), .1); }
 .sd-tree-ctx-item .bi { font-size: .78rem; opacity: .8; }
+/* The Artifact Canvas's own icon in one colour (pgImageEditorConfig.canvasIcon)
+   on the buttons that open it: this screen has no backend.css, so it sizes it
+   and drops the tint here; its lines take the text colour, as the .bi glyphs
+   beside it. */
+.pg-mi.pg-dc-mono {
+    flex: none;
+    width: 1.15em; height: 1.15em;
+    overflow: visible;
+    vertical-align: -0.2em;
+}
+.pg-mi.pg-dc-mono .pg-mi-2,
+.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }
+.sd-tree-ctx-item .pg-dc-mono { font-size: .78rem; opacity: .8; }
 .sd-tree-ctx-danger:hover { background: color-mix(in srgb, var(--sd-danger) 13%, transparent) !important; color: var(--sd-danger); }
 .sd-tree-ctx-sep { border-top: 1px solid var(--sd-panel-border); margin: 3px 0; }
 .sd-tree-ctx-label-wrap { padding: 5px 12px 9px; }
@@ -7656,6 +7695,25 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { marker-end: url(#sd-proto-arrow-broken); }
 .sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
 .sd-proto-arrowhead-in { fill: var(--pgc-in); }
+/* The shortest click path (_sdProtoPathShow()): its arrows (the core's
+   trail) and frames in green, the page no path reaches ringed in amber;
+   the pages in words at the canvas's foot. */
+.sd-proto { --sd-proto-path: #3ccf91; --pgc-trail: var(--sd-proto-path); --pgc-marker-trail: url(#sd-proto-arrow-path); }
+.sd-proto-arrowhead-path { fill: var(--sd-proto-path); }
+.sd-proto .pgc-edge.pgc-edge-trail .pgc-edge-line { stroke: var(--sd-proto-path); stroke-dasharray: none; marker-end: url(#sd-proto-arrow-path); }
+.sd-proto .pgc-edge.pgc-edge-trail.sd-proto-from-shared { display: inline; }
+.sd-proto .pgc-node.sd-proto-path-on { box-shadow: 0 0 0 3px var(--sd-proto-path), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto .pgc-node.sd-proto-path-none { opacity: 1; box-shadow: 0 0 0 3px var(--pgc-in), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto-pathbar {
+    position: absolute; left: 8px; bottom: 8px; z-index: 3; max-width: calc(100% - 16px);
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 2px 2px 12px; border-radius: 14px; border: 1px solid var(--sd-proto-path);
+    background: #2a2f36; color: var(--sd-text); font-size: .75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-proto-pathbar[hidden] { display: none; }
+.sd-proto-pathbar.sd-proto-pathbar-none { border-color: var(--pgc-in); }
+.sd-proto-pathbar-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-proto-arrowhead-broken { fill: #ff6b6b; }
 /* What to check (F26 to F29), in amber: "N to check" in the bar, its
    groups in the list, a frame's count of links without a target, the

@@ -1101,6 +1101,8 @@ function api_calendar_events_delete($params) {
 
 	api_exec("DELETE FROM remaining_reservation_spots WHERE calendar_event_id = '" . $id . "'");
 
+	pg_stock_notify_forget_event($id);
+
 	log_activity(lang(array(
 		'string' => 'Calendar event ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array((string)$row['name'], $app['name'], $app['api_key'])

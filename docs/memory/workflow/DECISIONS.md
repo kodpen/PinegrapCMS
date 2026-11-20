@@ -440,6 +440,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-81.md: Where are the rules and the earlier parts?
 - decisions-made-product-81.md: Does the Google Cloud Translation key move to Connections? (architect, 2026-11-20, agent channel message 10151, answer to K1's request 1696)
 - decisions-made-product-81.md: Does the store show each order's real net profit? (owner, 2026-11-20, agent channel poll 164, channel message 10092)
+- decisions-made-product-82.md: Where are the rules and the earlier parts?
+- decisions-made-product-82.md: Who is "this friend" in the referral programme's friend check? (architect, 2026-11-20, agent channel message 10330, answer to K1's request 1742)
+- decisions-made-product-82.md: Does the self check compare addresses? (architect, 2026-11-20, agent channel message 10330)
+- decisions-made-product-82.md: What happens to a reward whose referrer's lock was busy? (architect, 2026-11-20, agent channel message 10330)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -526,6 +530,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-30.md: Where are the rules and the earlier parts?
 - decisions-made-schema-30.md: Which columns does an event's waiting list add to `stock_notify`? (architect, 2026-11-20, agent channel message 10143, answer to K1's request 1691)
+- decisions-made-schema-30.md: Which tables does the stock plan add? (architect, 2026-11-20, agent channel message 10139, answer to Arge's request 1686)
+- decisions-made-schema-31.md: Where are the rules and the earlier parts?
+- decisions-made-schema-31.md: Which tables does an order's profit add? (architect, 2026-11-20, agent channel message 10292, answer to K2's request 1738)
+- decisions-made-schema-32.md: Where are the rules and the earlier parts?
+- decisions-made-schema-32.md: May the Workspace get a table for an application's answer to the writer alone? (owner, 2026-11-20, agent channel poll 169, message 10332)
+- decisions-made-schema-32.md: Which columns does ws_app_answers have? (architect, 2026-11-20, agent channel message 10333, answer to K2's request 1744)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -783,13 +793,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
 - commerce/cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days
 - commerce/checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
+- commerce/course-enrolment-day.md: A course's enrolment day: the first counting order granting the course folder or a parent of it, else the first open; one reader for gate, blocks and learners
 - commerce/course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row
 - commerce/course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress
 - commerce/course-student-hunt.md: Bug hunt of the courses' student side (architect, 2026-11-20, agent channel message 10214): files read, the lesson outside its folder fixed (#10601), the parent-folder enrolment day left as #10603
-- commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
+- commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 - commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
+- commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
@@ -804,6 +816,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
 - commerce/product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function
+- commerce/product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept
 - commerce/referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind
 - commerce/referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings
 - commerce/shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API
@@ -812,6 +825,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
 - commerce/tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
 - commerce/user-delete-store-credit.md: Deleting a user account voids its open store credit (note "Account deleted", audit revoke) and releases the closed cards; a card that lost the void race stays bound (#9016)
+- commerce/wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch
 - core/audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - core/audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - core/audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
@@ -906,6 +920,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/page-region-into-page-tree.md: A page's own regions (pregion) moved into its designer tree: one _editable block per page region node, the Nth node takes the Nth row, refused inside shared components, rows kept unread
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - designer/page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
+- designer/page-tab-link-counts.md: A page tab's tip on the Page Design Studio's page strip lists its outgoing, incoming and broken link counts, counted from the Prototype view's own data (tabCounts()); when, words, what shows none
 - designer/prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up
 - designer/prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel
 - designer/prototype-comments-place.md: Where the Prototype comments button and list sit (PN6): the canvas bar's Prototype mode, the Prototype view's Comments tab beside Links, the View menu's item, a row's frame, Open in the editor
@@ -920,6 +935,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge
 - designer/prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing
 - designer/prototype-search.md: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back
+- designer/prototype-shortest-path.md: The Prototype view's shortest click path (PX5, #10644): Shift+click, Shift+Enter or the bar's path button picks the page to go to; pathOf(), the core's trail(), "No path", Esc
 - designer/prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
@@ -947,6 +963,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/widget-lists-checkout.md: The express order's lists (W24a): applied offers, offer suggestions, applied gift cards, recipients with their cart lines; family checkout, key, tokens, where rows are read, the editor starters
 - erp/erp-isbasi-invoice-payload.md: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes.
 - erp/erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
+- erp/erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes
 - erp/erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
 - erp/erp-parasut-overview.md: Paraşüt as a whole: connection card, the ERP's e-document driver, the order screen's legacy Create Invoice and E-Shipment, inbox, export; its decisions and which erp-parasut-* file holds each part
 - erp/erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public
@@ -1015,10 +1032,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
 - ui/image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
 - ui/image-editor-area-cut.md: The Design Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
+- ui/image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
 - ui/image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
 - ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
+- ui/image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
 - ui/image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - ui/image-editor-layers.md: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - ui/image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
@@ -1026,7 +1045,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-picture-to-layer.md: Convert to a layer in the Design Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 - ui/image-editor-rail.md: The Design Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
-- ui/image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()) for points and a selected layer, the phone's nudge arrows, a typed text Animate did not pick
+- ui/image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
 - ui/image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
@@ -1102,6 +1121,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues, what read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
@@ -1265,6 +1285,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-channel-run-card.md: Add › Start a flow in a channel's composer and the run's card there (C2, #3048): which flows are listed, the start, the system line tied by ws_refs, the card following the run
 - workspace/workspace-flows-contact-group-box.md: Flow box Add to or take out of a contact group (contact_group, #9291): settings, whose contact, hand groups only, no consent written, a flow not started again by its own add
 - workspace/workspace-flows-decisions.md: Lasting decisions behind Workspace Flows ("Akışlar"): the three uses, the owner's answers 1-8 (editor, builders, record writes, AI drafts only), rights, data-passing rules (#2414)
+- workspace/workspace-flows-email-group-canvas.md: Flow e-mail box to a contact group on the canvas: the "A contact group" fields, and no BCC (field not drawn, writes refuse group + BCC, run time sends without it)
 - workspace/workspace-flows-email-group.md: Flow e-mail box to a contact group (post-digest DG2): one campaign through the campaigns' create path, the records block, nothing at count 0, Try mails only the trier
 - workspace/workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
 - workspace/workspace-flows-quick-setup-map.md: Flows quick setup drawing against today's boxes and events: drawn starts, steps and recipes by kind; general boxes proposed for what has none (SMS, contact group, offer code)
