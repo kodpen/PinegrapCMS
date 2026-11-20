@@ -2724,8 +2724,6 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
     $admin = ((int) $viewer['role'] === 0);
     $app = ws_claude_app();
     $missing = ws_claude_missing();
-    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $host = (string) HOSTNAME_SETTING;
     $disabled = $admin ? '' : ' disabled';
     $dialog = ($form !== null);
     $field_name = function ($field) use ($dialog) {
@@ -2861,9 +2859,6 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
         return ws_claude_copy_field($id, $value, $rows, $label);
     };
 
-    // The steps, each with its picture (claude_setup.php).
-    $guide = ws_claude_setup_guide($base, $host, $prompt, $copy);
-
     // A start that failed, or a routine whose pasted prompt is out of date
     // or names an address this site no longer has (ws_claude_note_version()):
     // all kept in config.ws_claude_error.
@@ -2992,7 +2987,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                             <div class="d-flex align-items-start gap-3">
                                 <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_claude_enabled" aria-describedby="ws_claude_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
                                 <div><label class="pg-text-2" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
-                                <div class="pg-field-help" id="ws_claude_enabled-help">' . h(lang('A run on the routine owner\'s claude.ai subscription answers the requests; each run counts against that account\'s daily allowance. Public channels are open to Claude, private ones only when their manager allows it.')) . ' ' . h(lang('A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.')) . '</div></div>
+                                <div class="pg-field-help" id="ws_claude_enabled-help">' . h(lang('When someone writes @Claude in a channel, your routine on claude.ai answers.')) . '</div></div>
                             </div>
                             <details class="ws-agset-section ws-agset-advanced">
                                 <summary class="pg-group-label">' . h(lang('Use another application')) . '</summary>
@@ -3019,18 +3014,17 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                             ' . $summary_block . '
                             ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                         ' . ($dialog ? '</div>' : '</form>') . '
-                        <details class="ws-agset-section ws-agset-advanced ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
-                            <summary class="pg-group-label">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-4">' . $guide . '</ol>
-                        </details>
+                        <div class="ws-agset-section d-flex flex-wrap align-items-start gap-3">
+                            ' . ($admin && empty($missing) ? $button('claude_test', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection')), '', '
+                                <div class="pg-field-help">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>') : '') . '
+                            ' . ws_claude_setup_button($missing) . '
+                        </div>
                     </div>
                     <div class="lg:col-5">
                         <div class="ws-claude-status">
                             ' . (!empty($missing) ? '<h4 class="pg-group-label">' . h(lang('Still missing')) . '</h4><ul class="pg-text-2 mb-5">' . $status_list . '</ul>' : '') . '
                             ' . $error_note . '
                             ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ($admin && empty($missing) ? $button('claude_test', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection')), '', '
-                                <div class="pg-field-help">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>', 'mb-5') : '') . '
                             <div class="pg-text-2 mb-5"><span class="pg-text-meta">' . h(lang('Version of the instructions the site gives the routine')) . ':</span> <span class="font-monospace">' . h(ws_claude_instructions_version()) . '</span>
                                 <div class="pg-field-help">' . h(lang('It changes with every update that changes them. A run takes a request only with the version it read at its start.')) . '</div></div>
                             <h4 class="pg-group-label">' . h(lang('The latest requests')) . '</h4>
@@ -3064,6 +3058,59 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
             });
         })();
         </script>' . ws_claude_copy_script();
+}
+
+/**
+ * The button of Claude's row that opens the set-up drawer
+ * (ws_settings_claude_setup_drawer()): "Finish the set-up" while something is still
+ * missing, else "Set up on claude.ai". Quiet: the dialog's Save is the one
+ * filled button. Pure but for lang().
+ *
+ * @param string[] $missing what is still missing, as sentences (ws_claude_missing())
+ * @return string HTML
+ */
+function ws_claude_setup_button($missing)
+{
+    $label = empty($missing) ? lang('Set up on claude.ai') : lang('Finish the set-up');
+
+    return '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-claude-setup" aria-controls="pgset-ws-claude-setup"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h($label) . '</button>';
+}
+
+/**
+ * The body of the set-up drawer: the steps as Bootstrap's numbered stepper,
+ * then what a run costs and who may ask. Pure but for lang().
+ *
+ * @param string $steps the stepper's items (ws_claude_setup_guide())
+ * @return string HTML
+ */
+function ws_claude_setup_drawer_html($steps)
+{
+    return '<ol class="stepper pg-stepper-cards ws-claude-setup-steps">' . $steps . '</ol>'
+        . '<div class="alert theme-info small py-3 mt-5 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>'
+        . h(lang('Each run counts against the routine owner\'s daily allowance on claude.ai.')) . ' '
+        . h(lang('A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.')) . ' '
+        . h(lang('Public channels are open to Claude, private ones only when their manager allows it.')) . '</div>';
+}
+
+/**
+ * The drawer "Set up on claude.ai" of Claude's row in Site Settings: the
+ * steps on claude.ai, each with its picture and the values to copy.
+ *
+ * @param bool $in_dialog drawn in the settings dialog (pg_settings_drawer())
+ * @return string HTML, '' before the Claude upgrade
+ */
+function ws_settings_claude_setup_drawer($in_dialog)
+{
+    if (!ws_claude_schema_ready()) {
+        return '';
+    }
+
+    $copy = function ($id, $value, $rows = 1, $label = '') {
+        return ws_claude_copy_field($id, $value, $rows, $label);
+    };
+    $steps = ws_claude_setup_guide(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', (string) HOSTNAME_SETTING, ws_claude_bootstrap_prompt(), $copy);
+
+    return pg_settings_drawer('pgset-ws-claude-setup', h(lang('Set up on claude.ai')), ws_claude_setup_drawer_html($steps), $in_dialog);
 }
 
 /**

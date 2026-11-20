@@ -1905,6 +1905,7 @@
     "When somebody joins a channel": "Biri bir kanala katıldığında",
     "When somebody joins a public channel": "Biri herkese açık bir kanala katıldığında",
     "When somebody joins {var:1}": "Biri {var:1} kanalına katıldığında",
+    "When someone writes @Claude in a channel, your routine on claude.ai answers.": "Kanalda biri @Claude yazınca claude.ai'daki rutininiz yanıt verir.",
     "When something happens": "Bir şey olduğunda",
     "When something happens that this site no longer tells": "Bu sitenin artık bildirmediği bir şey olduğunda",
     "When something happens: {var:1}": "Bir şey olduğunda: {var:1}",
