@@ -26,7 +26,7 @@ module: carrier_labels
 - One file per driver, `includes/shipping/<key>.php`:
   - Turkey: `carrier-label-geliver.md`, `carrier-label-basitkargo.md` (and SVG labels), `carrier-label-kargonomi.md`, `carrier-label-aras.md`; the district they send: `tr-district-carriers.md`.
   - Abroad: `carrier-label-shippo.md`, `carrier-label-sendcloud.md`, its customer returns `carrier-label-sendcloud-returns.md`.
-- Status: the hourly poll `shipment-tracking.md`, webhooks `carrier-webhook.md`; pickups per driver `shipment-label-pickup-drivers.md`.
+- Status: the hourly poll `shipment-tracking.md` (a label not scanned yet: `carrier-label-track-not-scanned.md`), webhooks `carrier-webhook.md`; pickups per driver `shipment-label-pickup-drivers.md`.
 
 ## How is a new driver added?
 - A file `includes/shipping/<key>.php` with `pg_label_<key>_info()` (carriers, formats) and the operations the service has, a row in `pg_label_builtin_drivers()` (an add-on uses `pg_label_driver_register()`). It never reads the database or writes orders: the caller does through `pg_label_call()` (`carrier-label-drivers.md`).
