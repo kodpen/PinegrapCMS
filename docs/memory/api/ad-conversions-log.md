@@ -10,7 +10,8 @@ module: ad_conversions_log
 ## What does a service's page show?
 - `connections.php?service=meta_capi|ga4_mp|tiktok_events`, under the Visitors and privacy gate: an "Events" card after "Connection details" (`pg_ad_conversion_log_card()`, appended to `$page['details']` in `connections.php`).
 - "Daily counts": the last 7 days, newest first, each a connect-style row: the day, "n sent, n failed · n% with the person", a rose "All refused" pill on a day with failures and nothing sent.
-- "Last events": the newest 50 rows as `pg-list-row`: event name, time (sent time once sent), "With the person" or "Without the person", the order linked to `view_order.php`, the reason for a refusal or a retry, a status pill.
+- "Last events": the newest 50 rows as `pg-list-row` (Design examples, Rows): a gray icon tile per event, the event name, time (sent time once sent), the reason for a refusal or a retry, then the actions line: the status pill and "With the person" or "Without the person" with the order linked to `view_order.php`. `pg-list-row-side` is the 8 px unread-dot slot: a pill put there is clipped.
+- Event words: "Lead from a form" and "Customer account opened", because the bare keys "Lead" and "Account opened" already mean a lead paragraph and an accounting account in Turkish.
 - Pills: "Waiting for the order", "Waiting to be sent", "Tried again later" gray; "Sent" teal; "Refused" rose. No row yet: the empty state "No event yet.".
 
 ## What is never shown?

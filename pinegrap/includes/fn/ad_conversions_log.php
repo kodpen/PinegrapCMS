@@ -69,9 +69,9 @@ function pg_ad_conversion_log_event_label($event)
         case 'refund':
             return lang('Refund');
         case 'lead':
-            return lang('Lead');
+            return lang('Lead from a form');
         case 'complete_registration':
-            return lang('Account opened');
+            return lang('Customer account opened');
         case 'add_to_cart':
             return lang('Add to cart');
         case 'begin_checkout':
@@ -79,6 +79,26 @@ function pg_ad_conversion_log_event_label($event)
         default:
             return (string) $event;
     }
+}
+
+/**
+ * An event's icon in the log.
+ *
+ * @param string $event
+ * @return string a Bootstrap Icons class
+ */
+function pg_ad_conversion_log_event_icon($event)
+{
+    $icons = array(
+        'purchase' => 'bi-bag',
+        'refund' => 'bi-arrow-counterclockwise',
+        'lead' => 'bi-ui-checks',
+        'complete_registration' => 'bi-person-plus',
+        'add_to_cart' => 'bi-cart-plus',
+        'begin_checkout' => 'bi-credit-card',
+    );
+
+    return isset($icons[$event]) ? $icons[$event] : 'bi-send';
 }
 
 /**
@@ -480,7 +500,7 @@ function pg_ad_conversion_counts_html(array $counts)
         $rows .= '
 				<div class="pg-card-inner-row connections-row">
 					<span class="connections-row-main">
-						<span class="connections-row-name">' . h(get_relative_time(array('timestamp' => strtotime($count['day'] . ' 12:00:00'), 'type' => 'date', 'format' => 'plain_text'))) . '</span>
+						<span class="connections-row-name">' . h(get_absolute_time(array('timestamp' => strtotime($count['day'] . ' 12:00:00'), 'type' => 'date', 'format' => 'plain_text', 'size' => 'short'))) . '</span>
 						<span class="pg-text-meta d-block">' . h($line) . '</span>
 					</span>
 					<span class="connections-row-side">' . $pill . '</span>
@@ -514,14 +534,16 @@ function pg_ad_conversion_log_rows_html(array $items)
 
         $rows .= '
 				<div class="pg-list-row is-read">
+					<span class="pg-icon-tile pg-tone-gray" aria-hidden="true"><span class="bi ' . h(pg_ad_conversion_log_event_icon($item['event'])) . '"></span></span>
 					<div class="pg-list-row-main">
 						<div class="pg-list-row-head">
 							<span class="pg-list-row-title">' . h($item['event_label']) . '</span>
 							<span class="pg-list-row-time">' . h(get_relative_time(array('timestamp' => $item['at'], 'format' => 'plain_text'))) . '</span>
-						</div>
-						<div class="pg-text-meta">' . h($item['person'] ? lang('With the person') : lang('Without the person')) . $order . '</div>' . $reason . '
+						</div>' . $reason . '
+						<div class="pg-list-row-actions"><span class="pg-pill pg-tone-' . h($item['tone']) . '">' . h($item['label']) . '</span>
+							<span class="pg-list-row-place">' . h($item['person'] ? lang('With the person') : lang('Without the person')) . $order . '</span></div>
 					</div>
-					<div class="pg-list-row-side"><span class="pg-pill pg-tone-' . h($item['tone']) . '">' . h($item['label']) . '</span></div>
+					<div class="pg-list-row-side"></div>
 				</div>';
     }
 
