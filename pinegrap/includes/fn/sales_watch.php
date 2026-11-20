@@ -831,18 +831,21 @@ define('PG_SALES_WATCH_PRICE_DAYS', 30);
  * - price_error     the alert on or off
  * - close_products  take a product off sale (off by default)
  * - price_share     the share of the usual price under which a price is wrong
+ *                   (the setting's price_drop)
+ * - paused_until    the store's pause ends then; 0 for none
  *
  * @return array
  */
 function pg_sales_watch_price_settings()
 {
     $settings = pg_sales_watch_settings();
-    $share = isset($settings['price_share']) ? (float) $settings['price_share'] : 0.5;
+    $share = isset($settings['price_drop']) ? (float) $settings['price_drop'] : 0.5;
 
     return array(
         'price_error'    => isset($settings['price_error']) ? (bool) $settings['price_error'] : true,
         'close_products' => isset($settings['close_products']) ? (bool) $settings['close_products'] : false,
         'price_share'    => (($share > 0) && ($share < 1)) ? $share : 0.5,
+        'paused_until'   => isset($settings['paused']['store']) ? (int) $settings['paused']['store'] : 0,
     );
 }
 
@@ -1131,4 +1134,241 @@ function pg_sales_watch_price_detail(array $flagged, array $plan)
     }
 
     return $text;
+}
+
+/**
+ * Load the API's product writer, api_products_set_enabled(), in a process
+ * that is not an API request.
+ *
+ * @return bool
+ */
+function pg_sales_watch_product_writer()
+{
+    if (!function_exists('api_products_set_enabled')) {
+
+        if (!defined('PG_API_PANEL')) {
+            define('PG_API_PANEL', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/products.php');
+    }
+
+    return function_exists('api_products_set_enabled');
+}
+
+/**
+ * The products sold on the site or a marketplace in the last hours at a
+ * price that looks wrong.
+ *
+ * @param int   $now
+ * @param float $share
+ * @return array product id => array('name', 'price', 'usual', 'units', 'reason'),
+ *               most units first
+ */
+function pg_sales_watch_price_flagged($now, $share)
+{
+    $now = (int) $now;
+    $since = $now - (PG_SALES_WATCH_PRICE_HOURS * 3600);
+    $start = $since - (PG_SALES_WATCH_PRICE_DAYS * 86400);
+    $active = function_exists('pg_order_item_active_sql') ? pg_order_item_active_sql() : '';
+
+    // Units in the hours looked back over: at least 5, or nothing to judge.
+    $units = array();
+
+    foreach ((array) db_items(
+        "SELECT order_items.product_id, SUM(order_items.quantity) AS units
+        FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
+        WHERE
+            (orders.order_date > '" . $since . "')
+            AND (orders.type IN ('online', 'marketplace'))
+            AND (orders.status <> 'incomplete')
+            AND (order_items.product_id > 0)" . $active . "
+        GROUP BY order_items.product_id
+        HAVING units >= 5
+        ORDER BY units DESC
+        LIMIT 200") as $row) {
+        $units[(int) $row['product_id']] = (float) $row['units'];
+    }
+
+    if (!$units) {
+        return array();
+    }
+
+    $ids = "'" . implode("', '", array_keys($units)) . "'";
+
+    // Only products on sale: one already off sale has nothing to stop.
+    $products = array();
+
+    foreach ((array) db_items("SELECT id, name FROM products WHERE (id IN (" . $ids . ")) AND (enabled = '1')") as $row) {
+        $products[(int) $row['id']] = (string) $row['name'];
+    }
+
+    if (!$products) {
+        return array();
+    }
+
+    $ids = "'" . implode("', '", array_keys($products)) . "'";
+
+    // The norm: units of the 30 days before, per as many hours.
+    $norm = array();
+
+    foreach ((array) db_items(
+        "SELECT order_items.product_id, SUM(order_items.quantity) AS units
+        FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
+        WHERE
+            (orders.order_date > '" . $start . "')
+            AND (orders.order_date <= '" . $since . "')
+            AND (orders.type IN ('online', 'marketplace'))
+            AND (orders.status <> 'incomplete')
+            AND (order_items.product_id IN (" . $ids . "))" . $active . "
+        GROUP BY order_items.product_id") as $row) {
+        $norm[(int) $row['product_id']] = (float) $row['units'] * PG_SALES_WATCH_PRICE_HOURS / (PG_SALES_WATCH_PRICE_DAYS * 24);
+    }
+
+    // The prices of the 30 days, with the row before them that says the
+    // price at their start. Only the web channel has rows today; a
+    // marketplace sells at the shop's price.
+    $rows = array();
+
+    if (function_exists('pg_price_history_ready') && pg_price_history_ready()) {
+
+        foreach ((array) db_items(
+            "SELECT product_id, price, changed_at
+            FROM product_price_history
+            WHERE
+                (id IN (
+                    SELECT MAX(id) FROM product_price_history
+                    WHERE (product_id IN (" . $ids . ")) AND (channel = 'web') AND (changed_at < '" . $start . "')
+                    GROUP BY product_id))
+                OR ((product_id IN (" . $ids . ")) AND (channel = 'web') AND (changed_at >= '" . $start . "'))
+            ORDER BY product_id, changed_at, id") as $row) {
+            $rows[(int) $row['product_id']][] = array('changed_at' => (int) $row['changed_at'], 'price' => (int) $row['price']);
+        }
+    }
+
+    $costs = array();
+
+    if (defined('ERP_ENABLED') && ERP_ENABLED && pg_schema_has('erp_product_costs', 'avg_cost')) {
+        foreach ((array) db_items("SELECT product_id, avg_cost FROM erp_product_costs WHERE product_id IN (" . $ids . ")") as $row) {
+            $costs[(int) $row['product_id']] = (int) $row['avg_cost'];
+        }
+    }
+
+    $flagged = array();
+
+    foreach ($units as $id => $sold) {
+
+        if (!isset($products[$id]) || empty($rows[$id])) {
+            continue;
+        }
+
+        $newest = end($rows[$id]);
+        $usual = pg_sales_watch_price_usual($rows[$id], $start, $now);
+        $cost = isset($costs[$id]) ? $costs[$id] : null;
+        $reason = pg_sales_watch_price_reason($newest['price'], $usual, $cost, $sold, isset($norm[$id]) ? $norm[$id] : 0.0, $share);
+
+        if ($reason !== '') {
+            $flagged[$id] = array(
+                'name'   => $products[$id],
+                'price'  => (int) $newest['price'],
+                'usual'  => (int) $usual,
+                'units'  => $sold,
+                'reason' => $reason,
+            );
+        }
+    }
+
+    return $flagged;
+}
+
+/**
+ * The price error check of the operations alert pass.
+ *
+ * @param int $now
+ * @return string[] the codes raised, told or not
+ */
+function pg_sales_watch_price_check($now)
+{
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+        return array();
+    }
+
+    $settings = pg_sales_watch_price_settings();
+
+    $now = (int) $now;
+
+    if (!$settings['price_error'] || ($settings['paused_until'] > $now)) {
+        return array();
+    }
+
+    // The record first: a product a person put back since the last pass is
+    // out of it before anything is judged.
+    $raw = (string) pg_config_text('sales_watch_closed');
+    $record = pg_sales_watch_closed_normalize($raw);
+
+    if ($record['closed']) {
+
+        $enabled = array();
+
+        foreach ((array) db_items(
+            "SELECT id, enabled FROM products
+            WHERE id IN ('" . implode("', '", array_keys($record['closed'])) . "')" . pg_catalog_bin_live_sql('products')) as $row) {
+            $enabled[(int) $row['id']] = ((int) $row['enabled'] === 1);
+        }
+
+        $record = pg_sales_watch_closed_reconcile($record, $enabled, $now);
+
+    } else {
+        $record = pg_sales_watch_closed_reconcile($record, array(), $now);
+    }
+
+    $flagged = pg_sales_watch_price_flagged($now, $settings['price_share']);
+
+    // Told once a day per product.
+    foreach (array_keys($flagged) as $id) {
+        if (!pg_ops_alert_due(pg_ops_alert_last_sent('price_error', 'p' . $id), $now)) {
+            unset($flagged[$id]);
+        }
+    }
+
+    $plan = pg_sales_watch_price_plan($flagged, $record, $now, $settings['close_products'] && pg_sales_watch_product_writer());
+
+    $closed = array();
+
+    foreach ($plan['close'] as $id) {
+        if (api_products_set_enabled($id, false, lang('Sales watch'))) {
+            $closed[$id] = array('price' => $flagged[$id]['price'], 'reason' => $flagged[$id]['reason']);
+        }
+    }
+
+    $plan['close'] = array_keys($closed);
+    $record = pg_sales_watch_closed_add($record, $closed, $now);
+
+    $value = (string) json_encode($record);
+
+    if (($value !== $raw) && ($record['closed'] || $record['back'] || $record['times'] || ($raw !== ''))) {
+        pg_config_text_claim('sales_watch_closed', $raw, $value);
+    }
+
+    if (!$plan['told']) {
+        return array();
+    }
+
+    // One row for the pass; it links the first product closed, else the
+    // first named.
+    $first = $plan['close'] ? $plan['close'][0] : $plan['told'][0];
+    $sent = pg_ops_alert('price_error', pg_sales_watch_price_detail($flagged, $plan), 'p' . $first, $first);
+
+    if ($sent['sent']) {
+        pg_ops_alert_state(function ($state) use ($plan, $now) {
+            foreach ($plan['told'] as $id) {
+                $state['sent'][pg_ops_alert_key('price_error', 'p' . $id)] = $now;
+            }
+            return $state;
+        });
+    }
+
+    return array('price_error');
 }

@@ -218,3 +218,31 @@ function test_sales_watch_price_detail()
 	pg_assert_contains('9', $detail);
 	pg_assert_contains('Taken off sale: 1', $detail);
 }
+
+// Until the Sales watch settings are stored: the alert on, nothing closed,
+// half the usual price.
+function test_sales_watch_price_settings_defaults()
+{
+	$settings = pg_sales_watch_price_settings();
+
+	pg_assert_true($settings['price_error']);
+	pg_assert_false($settings['close_products']);
+	pg_assert_same(0.5, $settings['price_share']);
+}
+
+// The bell row of a price error opens the product it names; one without a
+// product opens the code's own screen.
+function test_sales_watch_price_bell_links_product()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+
+	$row = array('action' => 'ops', 'order_total' => 'price_error', 'title' => 'P1: 9 sold', 'product_id' => 42);
+	$display = pg_notification_display($row, 0);
+
+	pg_assert_same('edit_product.php?id=42', $display['url']);
+
+	$row['product_id'] = 0;
+	$display = pg_notification_display($row, 0);
+
+	pg_assert_same('view_products.php', $display['url']);
+}

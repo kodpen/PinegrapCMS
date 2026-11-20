@@ -927,6 +927,10 @@ function pg_notification_display($notification, $reader_role = null)
 		if (isset($codes[$code])) {
 			$display['title'] = h($codes[$code]['label']);
 			$display['url']   = pg_ops_alert_reader_url($code, $reader_role);
+			// A sales watch row about a product opens that product.
+			if (((int) ($notification['product_id'] ?? 0) > 0) && (($codes[$code]['group'] ?? '') === 'sales')) {
+				$display['url'] = 'edit_product.php?id=' . (int) $notification['product_id'];
+			}
 		} else {
 			$display['title'] = h(lang('Operations alert'));
 			$display['url']   = 'welcome.php';
