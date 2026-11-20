@@ -11,7 +11,8 @@ module: supplier_feed
 - `pg_supplier_feed_format_detect()` on the first bytes after a BOM and white space: `<` is xml, `[` or `{` json, anything else csv. `pg_supplier_feed_format_detect_file()` reads 4 KB.
 
 ## How is the record path found?
-- `pg_supplier_feed_record_paths($file, $format)` lists every candidate, best first (the screen's Records select); `pg_supplier_feed_record_path()` returns its first. XML: element names from the root joined with `/` (`Root/Urunler/Urun`); the shallowest element that holds elements and occurs at least twice, in the first 20,000 elements; with no repeat, the deepest one holding elements. JSON: keys joined with `/` to the list holding the most objects (a shallower one wins a tie), `''` for a top-level list. CSV: `''`.
+- `pg_supplier_feed_record_paths($file, $format)` lists every candidate, best first (the screen's Records select); `pg_supplier_feed_record_path()` returns its first.
+- XML: element names from the root joined with `/` (`Root/Urunler/Urun`); the shallowest element that holds elements and occurs at least twice, in the first 20,000 elements; with no repeat, the deepest one holding elements. JSON: keys joined with `/` to the list holding the most objects (a shallower one wins a tie), `''` for a top-level list. CSV: `''`.
 
 ## What does a read return?
 - `pg_supplier_feed_read($file, $format, $record_path, $cursor, $limit)`: `records` (flat arrays of text), `cursor` (to pass back; `null` once the file ended), `error` (`''`, `open`, `parse`, `format`, `too_large`, `no_records`).
