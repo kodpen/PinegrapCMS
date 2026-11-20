@@ -267,6 +267,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_recovery_figures.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_recovery_weak.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_quotes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/parasut_sheet.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ready_reports.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');

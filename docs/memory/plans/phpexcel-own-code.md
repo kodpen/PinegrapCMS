@@ -18,7 +18,7 @@ description: Plan (2026-11-19): PHPExcel's four callers move to the product's ow
   Tests read the same fixture files with PHPExcel and with the new reader and compare cell by cell.
 - XL2, the product import reads through it.
 - XL3, the bank statement import reads through it.
-- XL4, the Parasut export and the ERP export are written by the shared xlsx writer; a template's fixed rows become data in code. A test compares the written cells with those PHPExcel writes today from the same input.
+- XL4, the Parasut export and the ERP export are written by the shared xlsx writer. Done in #10502 (`erp/parasut-import-sheets.md`): `pg_xlsx_write_layout()` with the heads as data in `includes/fn/parasut_sheet.php`; a test compares every cell with what PHPExcel and the template wrote from the same input.
 - XL5, removal. `includes/phpexcel` is deleted and listed in `clean_up.php` so an upgraded site loses it too; `tests/phpexcel_library_php85_test.php` and the PHPExcel part of `tests/bundled_library_php85_test.php` go; every other mention found by a search is cleared.
 - Order XL1, then XL2, XL3 and XL4 in any order, XL5 last; one PR each; no schema, no new text on a screen.
 
