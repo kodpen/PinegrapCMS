@@ -30,6 +30,7 @@
 - canvas-closed-blocks-widgets.md: Sections and HTML values inside system widgets on the canvas today, per widget kind: opened as a tree, drawn true (settings only) or kept, with the step and memory file of each
 - canvas-closed-blocks.md: Designer canvas closed blocks after their opening (CB0-CB10, 2026-11): the rules an opened block keeps, which step opened what (file, PR), what stays closed [decision: decisions-made-product-48.md, decisions-made-product-54.md]
 - canvas-drop-zone.md: Canvas drop bands (before, inside, after) by pointer height; a closed element's middle band falls back beside it; when an ancestor takes over; one insert line at a time.
+- canvas-link-marks.md: Link marks on the editor canvas: red on a broken link, amber on one without a target; a click focuses its link field in Options; data from the Prototype view (canvasMarks())
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)

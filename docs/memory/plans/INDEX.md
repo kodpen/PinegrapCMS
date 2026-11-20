@@ -48,6 +48,7 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
+- designer-next.md: Plan designer-next (architect 2026-11-19): a mark on the designer canvas for a broken or target-less link, a key back to the Prototype view, link counts on a page tab; steps DX1 to DX3
 - designer-panels-additions.md: Plan designer-panels: additions of other plans to the Options column, the Overview, the page strip or the canvas bar wait for that area's new shape (owner 2026-11-17); which steps wait
 - designer-panels-differences.md: Plan designer-panels: the list of differences between a landed step and its accepted picture, kept for the close-out DP25, which brings it to the owner as one list
 - designer-panels-drawings.md: Plan designer-panels: the sheets in `plans/designer-panels/`, what each shows, where its measures are as text, which board of `boards.html` it is and how a sheet is made from its board

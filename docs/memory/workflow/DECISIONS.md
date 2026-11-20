@@ -510,6 +510,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-28.md: Where are the rules and the earlier parts?
 - decisions-made-schema-28.md: Is schema the open version added and then gave up kept? (owner, 2026-11-19, in the architect's window, agent channel message 9493)
 - decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
+- decisions-made-schema-28.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-19, agent channel message 9861, confirmed in PU6's draft, #10450)
 - decisions-made-schema-29.md: Where are the rules and the earlier parts?
 - decisions-made-schema-29.md: Which tables do Workspace calls add? (owner, 2026-11-20, poll 158, channel message 9839)
 - decisions-made-schema-29.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-20, agent channel, answer to K2's request 1584)
