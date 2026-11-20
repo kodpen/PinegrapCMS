@@ -42,20 +42,213 @@ function pg_sales_watch_window_hours()
 }
 
 /**
- * The settings of the watch. The defaults until the Sales watch part of
- * Settings › Alerts stores its own.
+ * The alert codes of the watch that Settings › Alerts switches on or off.
  *
- * - orders_stopped, payment_broken  each alert on or off
- * - sensitivity                     the chance below which a window is told
+ * @return string[]
+ */
+function pg_sales_watch_alert_names()
+{
+    return array('orders_stopped', 'payment_broken', 'price_error', 'return_spike');
+}
+
+/**
+ * The sensitivity levels: the chance below which a window is told.
  *
- * @return array
+ * @return array<string,float>
+ */
+function pg_sales_watch_levels()
+{
+    return array(
+        'low'    => 0.001,
+        'normal' => 0.01,
+        'high'   => 0.05,
+    );
+}
+
+/**
+ * The settings of the watch from their config_text row (sales_watch), every
+ * value held to what it may be. No row reads as the defaults: every alert on
+ * (while operations alerts are on), normal sensitivity, no product taken off
+ * sale, a price under half the usual one, nothing paused. Pure.
+ *
+ * The row is JSON: off (the alert codes switched off, so a code added later
+ * starts on), level, close_products, price_drop (percent, 10 to 90) and
+ * paused (channel key or 'store' => the time the pause ends).
+ *
+ * @param string|array|null $stored the row's value, or it decoded
+ * @return array orders_stopped, payment_broken, price_error, return_spike
+ *               (bool), level, sensitivity (float), close_products (bool),
+ *               price_drop (float share), paused (key => int)
+ */
+function pg_sales_watch_settings_normalize($stored)
+{
+    if (is_string($stored)) {
+        $stored = json_decode($stored, true);
+    }
+
+    if (!is_array($stored)) {
+        $stored = array();
+    }
+
+    $off = isset($stored['off']) ? array_map('strval', (array) $stored['off']) : array();
+    $settings = array();
+
+    foreach (pg_sales_watch_alert_names() as $name) {
+        $settings[$name] = !in_array($name, $off, true);
+    }
+
+    $levels = pg_sales_watch_levels();
+    $level = (isset($stored['level']) && is_string($stored['level']) && isset($levels[$stored['level']])) ? $stored['level'] : 'normal';
+
+    $settings['level'] = $level;
+    $settings['sensitivity'] = $levels[$level];
+    $settings['close_products'] = !empty($stored['close_products']);
+
+    $drop = (isset($stored['price_drop']) && is_numeric($stored['price_drop'])) ? (int) $stored['price_drop'] : 50;
+    $settings['price_drop'] = min(90, max(10, $drop)) / 100;
+
+    $paused = array();
+
+    foreach ((isset($stored['paused']) && is_array($stored['paused'])) ? $stored['paused'] : array() as $key => $until) {
+        if (preg_match('/^(store|site|mp_[0-9]+)$/', (string) $key) && is_numeric($until) && ((int) $until > 0)) {
+            $paused[(string) $key] = (int) $until;
+        }
+    }
+
+    $settings['paused'] = $paused;
+
+    return $settings;
+}
+
+/**
+ * The config_text row of settings from pg_sales_watch_settings_normalize().
+ * Pure.
+ *
+ * @param array $settings
+ * @return string JSON
+ */
+function pg_sales_watch_settings_encode(array $settings)
+{
+    $off = array();
+
+    foreach (pg_sales_watch_alert_names() as $name) {
+        if (isset($settings[$name]) && !$settings[$name]) {
+            $off[] = $name;
+        }
+    }
+
+    return json_encode(array(
+        'off'            => $off,
+        'level'          => (string) $settings['level'],
+        'close_products' => $settings['close_products'] ? 1 : 0,
+        'price_drop'     => (int) round($settings['price_drop'] * 100),
+        'paused'         => (object) $settings['paused'],
+    ));
+}
+
+/**
+ * The settings of the watch, read once per request.
+ *
+ * @return array pg_sales_watch_settings_normalize()
  */
 function pg_sales_watch_settings()
 {
+    static $settings = null;
+
+    if ($settings === null) {
+        $settings = pg_sales_watch_settings_normalize(function_exists('pg_config_text') ? pg_config_text('sales_watch') : '');
+    }
+
+    return $settings;
+}
+
+/**
+ * Whether a channel is paused at $now: its own pause, or the store's. Pure.
+ *
+ * @param array  $settings pg_sales_watch_settings_normalize()
+ * @param string $key      'site', 'mp_<id>' or 'store'
+ * @param int    $now
+ * @return bool
+ */
+function pg_sales_watch_paused(array $settings, $key, $now)
+{
+    foreach (array('store', (string) $key) as $name) {
+        if (isset($settings['paused'][$name]) && ((int) $now < $settings['paused'][$name])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The end of a pause typed as a date: the watch is paused through that whole
+ * day, so it ends at the next midnight in the site's time zone.
+ *
+ * @param string $date Y-m-d, or '' for no pause
+ * @return int|false 0 for no pause, false for a date that is not one
+ */
+function pg_sales_watch_pause_end($date)
+{
+    $date = trim((string) $date);
+
+    if ($date === '') {
+        return 0;
+    }
+
+    if (!preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/', $date, $match)
+        || !checkdate((int) $match[2], (int) $match[3], (int) $match[1])) {
+        return false;
+    }
+
+    return mktime(0, 0, 0, (int) $match[2], (int) $match[3] + 1, (int) $match[1]);
+}
+
+/**
+ * The settings from the posted Sales watch part. An alert not posted is off;
+ * a pause already over, or for a channel not listed, is dropped. Pure but
+ * for the site's time zone.
+ *
+ * @param array    $post     alerts (codes on), level, close_products,
+ *                           price_drop, pause (key => Y-m-d)
+ * @param string[] $channels the channel keys the form listed ('store' is always taken)
+ * @param int      $now
+ * @return array array('settings' => pg_sales_watch_settings_normalize(),
+ *               'invalid' => the pause keys whose date is not one)
+ */
+function pg_sales_watch_settings_from_post(array $post, array $channels, $now)
+{
+    $on = isset($post['alerts']) ? array_map('strval', (array) $post['alerts']) : array();
+    $paused = array();
+    $invalid = array();
+    $keys = array_merge(array('store'), array_map('strval', $channels));
+
+    foreach ((isset($post['pause']) && is_array($post['pause'])) ? $post['pause'] : array() as $key => $date) {
+
+        $key = (string) $key;
+
+        if (!in_array($key, $keys, true)) {
+            continue;
+        }
+
+        $end = pg_sales_watch_pause_end(is_string($date) ? $date : '');
+
+        if ($end === false) {
+            $invalid[] = $key;
+        } elseif ($end > (int) $now) {
+            $paused[$key] = $end;
+        }
+    }
+
     return array(
-        'orders_stopped' => true,
-        'payment_broken' => true,
-        'sensitivity'    => 0.01,
+        'settings' => pg_sales_watch_settings_normalize(array(
+            'off'            => array_values(array_diff(pg_sales_watch_alert_names(), $on)),
+            'level'          => isset($post['level']) ? (string) $post['level'] : 'normal',
+            'close_products' => !empty($post['close_products']),
+            'price_drop'     => (isset($post['price_drop']) && is_numeric($post['price_drop'])) ? (int) $post['price_drop'] : 50,
+            'paused'         => $paused,
+        )),
+        'invalid'  => $invalid,
     );
 }
 
