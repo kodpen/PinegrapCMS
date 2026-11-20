@@ -1752,7 +1752,7 @@ function ws_mail_settings_box_row($box, $place, $form)
         ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection')) . '</button>'
         : '';
 
-    return '<div class="ws-agset-row" data-ws-mail-box="' . $id . '">'
+    return '<div class="ws-agset-row ws-mail-box-row" data-ws-mail-box="' . $id . '">'
         . '<span class="pg-icon-tile ws-agset-face" aria-hidden="true"><i class="bi bi-inbox"></i></span>'
         . '<div class="ws-agset-main">'
         . '<div class="ws-agset-name"><strong class="pg-list-row-title">' . h((string) $box['name']) . '</strong><span class="pg-text-meta">' . h((string) $box['address']) . '</span></div>'

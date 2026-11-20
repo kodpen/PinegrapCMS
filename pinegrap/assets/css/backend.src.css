@@ -11603,6 +11603,13 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 @media (max-width: 575.98px) {
   .pg-set-fold-body { padding-inline: 12px; }
+  /* A mailbox's row has two buttons (Test connection, Edit): beside the
+     name on a phone they cut it to a letter, so they take a line under the
+     pill. */
+  .ws-mail-box-row > .ws-agset-edit {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .pg-set-fold-chevron { transition: none; }
