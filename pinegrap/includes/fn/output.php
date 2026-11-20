@@ -5175,6 +5175,8 @@ function output_menu($properties = false)
         case 'barcode_increase_inventory.php':
         case 'barcode_decrease_inventory.php':
         case 'edit_featured_and_new_items.php':
+        case 'view_supplier_feeds.php':
+        case 'edit_supplier_feed.php':
             $active_menu = 11;
             break;
         case 'view_product_groups.php':
