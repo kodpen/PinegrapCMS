@@ -260,7 +260,7 @@ function test_designer_chrome_areas_read_tokens_only()
 	$css = preg_replace_callback('#/\*.*?\*/#s', function ($m) {
 		return preg_replace('/[^\n]/', ' ', $m[0]);
 	}, $css);
-	$areas = '/\.sd-tabs?(?:-[a-z-]+)?\b|\.sd-bp-bar|\.sd-vb-|\.sd-tree|\.sd-overview|\.sd-ov-|#sd-properties|\.sd-props?-|\.sd-panel-tabs\b|\.sd-assets-tabs|\.sd-sect-|\.sd-sp-|\.sd-cp-(?:label|menu|option|opt-|trigger|grp)|\.sd-bm-|\.sd-align-|\.sd-bcp|\.sd-ctx-wrap|\.sd-quick-layouts|\.sd-tr-|\.sd-notes-/';
+	$areas = '/\.sd-tabs?(?:-[a-z-]+)?\b|\.sd-bp-bar|\.sd-vb-|\.sd-tree|\.sd-overview|\.sd-ov-|#sd-properties|\.sd-props?-|\.sd-panel-tabs\b|\.sd-assets-tabs|\.sd-sect-|\.sd-sp-|\.sd-cp-(?:label|menu|option|opt-|trigger|grp)|\.sd-bm-|\.sd-spb-|\.sd-align-|\.sd-bcp|\.sd-ctx-wrap|\.sd-quick-layouts|\.sd-tr-|\.sd-notes-/';
 	$literal = '/#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*\d|\b(?:white|black)\b(?!-)/';
 	$found = array();
 
