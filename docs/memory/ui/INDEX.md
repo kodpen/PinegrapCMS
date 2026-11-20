@@ -85,6 +85,7 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-accounts-signin-page.md: Accounts and sign-in on Connections (CX11f): Apple's sign-in application and the Turnstile and hCaptcha keys on their pages; the cards keep the switches and the choice
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
@@ -643,6 +644,7 @@
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
+- settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading
 - settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.

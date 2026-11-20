@@ -58,6 +58,7 @@
 - api-form-rich-text-in.md: Rich text answers sent through POST /forms/{id}/submissions and its update (sanitised, {path} folded, html limit), author_user_id, single-choice updates (Status field), the record's url [decision: decisions-made-product-36.md]
 - api-form-submission-revisions.md: The History of a collection item over the API: list revisions, one compared with the record, restore (dry_run), through includes/fn/record_revisions.php
 - api-form-submission-writes.md: POST /forms/{id}/submissions, its delete twins, GET /forms/{id}/fields: the create and delete path shared with the submitted form screens, answers, refusals, events
+- api-github-channel-lines-read.md: The GitHub application's channel lines read back into their parts, and the Activity tab's repository numbers of today counted from them (KA4, #10803)
 - api-github-channel-links.md: GitHub repository links of a Workspace channel (G2): link tables, the settings card, hook creation and removal, github_webhook.php, the GitHub application, the [ci]/[pr]/[label] lines
 - api-http-manners.md: External API manners (#10142): HEAD as GET without a body, Location on a 201, Content-Language on an error, exposed headers, the Basic challenge on credentials_missing
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record

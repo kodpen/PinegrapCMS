@@ -1266,11 +1266,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side (K2); files, what to look at, what is left alone
+- workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
 - workflow/bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean
