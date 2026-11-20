@@ -5,12 +5,12 @@ description: The designer's Prototype view (_sdProtoOpen()): what it is, its con
 
 ## What is it?
 - The canvas bar's mode switch, its Prototype side (`#sd-vb-proto`, `_sdProtoToggle()`), lays `section#sd-proto` over `.sd-iframe-area`: a `pgc-stage` drawn by `PGGraphCanvas.create()` and the links panel at its right. Each page is a frame showing its own picture, each link a mark on it; only the selected frame's arrows are drawn. Rebuilt in #9864 to #10243 (owner 2026-11-15; designer/prototype-view-decisions.md).
-- It is a snapshot: "Read the links again" redraws it. Escape or the switch's Design side hides it (no Close button since #10507); while the view is zoomed to a frame (a double-click on it), Escape first goes back (designer/prototype-zoom.md).
+- It is a snapshot: "Read the links again" redraws it. Escape or the switch's Design side hides it; while the view is zoomed to a frame (a double-click on it), Escape first goes back (designer/prototype-zoom.md).
 - `includes/designer_screen.php` prints `pg_graph_canvas.min.js`, `pg_link_resolve.min.js` and `pg_proto_hotspots.min.js` with `pg_js_bundle_tags(..., false)` before `style_designer.min.js`. `backend.css` styles the `pgc-` classes; `style_designer.css` themes them under `.sd-proto`, light and dark.
 
 ## Where are its controls?
-- In the canvas bar's Prototype mode since #10507; the view has no bar of its own (designer/designer-canvas-bar-prototype.md). The map zone: "N pages · N links", the red "N broken" and the amber "N to check", each opening the problems list (designer/prototype-list.md, designer/prototype-problems.md), the map's zoom and Fit.
-- The tools zone: "All arrows" (designer/prototype-focus.md), "Tidy up" (designer/prototype-arrangement.md), "Suggest targets · n" while links lack a target (designer/prototype-suggest.md), "Links" (the panel), "Play" (the prototype viewer at the selected page, hidden when no tab has an address), "Read the links again".
+- In the canvas bar's Prototype mode (#10507, designer/designer-canvas-bar-prototype.md). "N broken" and "N to check" open the problems list (designer/prototype-list.md, designer/prototype-problems.md).
+- "All arrows" (designer/prototype-focus.md), "Tidy up" (designer/prototype-arrangement.md), "Suggest targets · n" (designer/prototype-suggest.md), "Play" (the prototype viewer at the selected page, hidden when no tab has an address).
 
 ## How is a drawing built?
 - `_sdProtoLoad()`: `PGProtoHotspots.design()` over `_pages` and `_sharedCache`, `prefetchShared()`, `_pgApiPost('prototype_map', request)` (designer/prototype-map-read.md), `mark()`, `layout()` (designer/prototype-hotspots.md). A later load or a close drops an earlier answer (`_sdProto.seq`).
