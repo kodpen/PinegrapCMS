@@ -88,3 +88,25 @@ function test_api_fault_mcp_body_is_an_internal_error()
 		)
 	), api_fault_mcp_body('r9'), 'JSON-RPC error');
 }
+
+// A failed query of an API request leaves an error log line under the
+// request's id: the answer is the generic sentence outside DEBUG, so the
+// line is where the operator reads what the database said.
+function test_api_fault_query_failure_is_logged()
+{
+	$entry = api_fault_query_entry("Unknown column 'stock' in 'field list'");
+
+	pg_assert_same('error', $entry['level'], 'level');
+	pg_assert_same('Database', $entry['type'], 'type');
+	pg_assert_same("API: a query failed: Unknown column 'stock' in 'field list'", $entry['message'], 'message');
+	pg_assert_same(pg_error_request_id(), $entry['request_id'], 'request id');
+
+	$entry = api_fault_query_entry('');
+
+	pg_assert_same('API: a query failed.', $entry['message'], 'no detail');
+
+	// db.php writes it on every failed statement, before answering.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/db.php');
+
+	pg_assert_contains('api_fault_query_record(', $source);
+}

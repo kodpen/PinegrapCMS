@@ -1031,21 +1031,30 @@ function pg_privacy_export_collect(array $found)
     }
 
     // Requests to be told when a product is back in stock, by the address
-    // typed or the account, with the product's SKU and name.
+    // typed or the account, with the product's SKU and name; an event's
+    // waiting list request with the event's name and its date's start.
     if (pg_stock_notify_ready()) {
         $notify_where = _pg_privacy_export_any(array(
             _pg_privacy_export_in('stock_notify.user_id', $user_ids),
             _pg_privacy_export_in('stock_notify.email_address', $emails),
         ));
+        $notify_events = pg_stock_notify_event_ready();
 
         $sections['stock_notify'] = _pg_privacy_export_select(
-            "SELECT stock_notify.*, products.name AS product_sku, products.short_description AS product_name
+            "SELECT stock_notify.*, products.name AS product_sku, products.short_description AS product_name"
+            . ($notify_events ? ", calendar_events.name AS event_name" : '') . "
             FROM stock_notify
-            LEFT JOIN products ON products.id = stock_notify.product_id
+            LEFT JOIN products ON (stock_notify.product_id > 0) AND (products.id = stock_notify.product_id)"
+            . ($notify_events ? "
+            LEFT JOIN calendar_events ON (stock_notify.calendar_event_id > 0) AND (calendar_events.id = stock_notify.calendar_event_id)" : '') . "
             WHERE " . $notify_where . "
             ORDER BY stock_notify.id",
             ($notify_where !== '') ? array(1) : array()
         );
+
+        if ($notify_events) {
+            $sections['stock_notify']['rows'] = pg_stock_notify_export_event_dates($sections['stock_notify']['rows'], 'pg_stock_notify_event_start');
+        }
     }
 
     // Appointment bookings, by the account or the address given when

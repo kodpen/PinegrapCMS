@@ -4,6 +4,9 @@ description: Design Canvas layer groups (GC1a): l.grp on each layer, Group and U
 module: image_editor
 ---
 
+## Why are there groups?
+- Owner (2026-11-20): "tasarım tuvalinde gruplama gelecekti o özellik atlanmış." (`workflow/decisions-made-product-80.md`). Built in #10565 (this file) and #10580 (`image-editor-groups-look.md`); a layer attached to a group: `image-editor-attach.md`.
+
 ## Where does a group live?
 - On its layers: `l.grp` lists the groups a layer is in, the outermost first (`['g1', 'g2']`: g2 inside g1); a group's own look sits on its members too (`l.gfx`, `image-editor-groups-look.md`). No group entry elsewhere, so a scene's layers carry their groups and an older document opens unchanged. No schema.
 - Without a look of its own a group draws as its layers do ungrouped, on the stage, in an export and in the server's draw (`pg_image_draw_known()` takes `grp`). Group ids are `g<n>`, unique over every scene (`M.groupNewId()`).

@@ -99,14 +99,14 @@ function test_widget_lists_order_sources()
 	$sources = pg_sw_list_order_sources();
 	$order = array('order.shipments', 'order.items', 'order.parcels', 'order.steps', 'order.item_forms', 'order.item_form_fields', 'order.item_gift_cards', 'order.returns', 'order.return_lines', 'order.return_deliveries', 'order.return_delivery_lines');
 	pg_assert_same(array_merge($order, array('account.orders', 'account.upcoming_bookings', 'account.past_bookings', 'account.subscriptions',
-		'account.store_credit', 'account.store_credit_uses')), array_keys($sources));
+		'account.store_credit', 'account.store_credit_uses', 'account.tickets')), array_keys($sources));
 	foreach ($sources as $source => $d) {
 		pg_assert_same(array('family', 'key', 'label', 'arg', 'arg_required', 'tokens'), array_keys($d), $source . ' shape');
 		pg_assert_true(isset(pg_sw_list_sources()[$source]), $source . ' is a list source');
 	}
 	pg_assert_same($order, array_keys(pg_sw_kind_lists('order_view')));
 	pg_assert_same(array('account.orders', 'account.upcoming_bookings', 'account.past_bookings', 'account.subscriptions',
-		'account.store_credit', 'account.store_credit_uses'), array_keys(pg_sw_kind_lists('my_account')));
+		'account.store_credit', 'account.store_credit_uses', 'account.tickets'), array_keys(pg_sw_kind_lists('my_account')));
 	pg_assert_same(array(), pg_sw_kind_lists('address_book'));
 	pg_assert_true(!isset(pg_sw_kind_lists('calendar_view')['order.items']), 'no order list in a calendar');
 

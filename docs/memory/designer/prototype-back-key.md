@@ -25,4 +25,4 @@ description: P in the visual editor opens the Prototype view with the selected e
 - `tests/proto_hotspots_test.php`: `test_proto_hotspots_back_key` (where the key counts), `test_proto_hotspots_back_to_the_link` (rows found, every row found again from its spot), `test_proto_hotspots_view_back_from_the_editor` (the two listeners, the e-mail design, the wait for the draw, the sheet row).
 
 ## Which PR?
-- DX2 of plan designer-next, PR #10524 (2026-11-20). Before it the way back from the editor was the Prototype button, which opened the view on the open page's frame with no link picked.
+- DX2, PR #10524 (2026-11-20). Before it the way back from the editor was the Prototype button, which opened the view on the open page's frame with no link picked.

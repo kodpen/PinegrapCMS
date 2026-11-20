@@ -13,6 +13,7 @@ module: ai_connections
 ## Which key does an assistant call with?
 - `ws_model_agent_key()`: its own `key_sealed` when it keeps one, else its provider's connection (`pg_ai_connection_key_for()`). `ws_model_http()` and `ws_model_agent_missing()` read it; the agent form has no key field for a connected provider (CX9b).
 - Azure OpenAI's address stays on each assistant (`door_url`); the connection holds only the key.
+- A provider change on the form drops the assistant's own key (`pg_ai_connection_agent_key()`): it then reads the new provider's connection, or a key typed for a provider without one. Symptom fixed (#10616): an OpenAI assistant moved to Anthropic or a custom address went on sending its OpenAI key there.
 
 ## What did the data step do? (11.0.240, `upgrade_2026_11_0_ai_connections()`)
 - Per provider, `pg_ai_connection_move()`: where no connection exists the first key its model assistants hold (by id) becomes it; every assistant key equal to the connection's is set to NULL; a key that differs stays and goes on working. Run again it moves nothing; a site without an encryption key is skipped.

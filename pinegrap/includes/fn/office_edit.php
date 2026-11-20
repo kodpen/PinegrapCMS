@@ -1778,6 +1778,84 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang(array('string' => 'Sheet {var:1} is too large to change here.', 'vars' => array($sheet)));
     }
 
+    return pg_office_shift_message($code, $cell, $sheet);
+}
+
+/**
+ * Writes one inserted or deleted row or column into a workbook on disk,
+ * under the file's lock, as pg_office_xlsx_save() writes cells.
+ *
+ * @param string   $path
+ * @param array    $shift     pg_office_shift_request()
+ * @param string   $version
+ * @param string   $directory '' for data/temp
+ * @param callable $fail
+ * @return array ok, code, error, size, version, changed
+ */
+function pg_office_xlsx_shift_save($path, $shift, $version, $directory, $fail)
+{
+    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    $lock = pg_office_edit_lock($path, $directory);
+
+    if ($lock === null) {
+        return $fail('busy');
+    }
+
+    $result = pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($shift, $fail) {
+        return pg_office_xlsx_shift_parts($zip, $shift, $fail, $spool);
+    });
+
+    pg_office_edit_unlock($lock);
+
+    return $result;
+}
+
+/**
+ * The message for a refused insert or delete of a row or column.
+ *
+ * @param string $code
+ * @param string $cell
+ * @param string $sheet
+ * @return string
+ */
+function pg_office_shift_message($code, $cell, $sheet)
+{
+    $vars = array($cell, $sheet);
+
+    switch ($code) {
+        case 'shift_table':
+            return lang(array('string' => 'Sheet {var:2} has a table, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_pivot':
+            return lang(array('string' => 'Sheet {var:2} has a pivot table, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_name':
+            return lang(array('string' => 'A defined name of the workbook points to sheet {var:2}, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_other':
+            return lang(array('string' => 'Another sheet, a chart or a pivot table points to sheet {var:2}, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_cross':
+            return lang(array('string' => 'The merged cells or the array formula {var:1} on sheet {var:2} lie across this row or column, so it is not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_formula':
+            return lang(array('string' => 'The formula in cell {var:1} on sheet {var:2} cannot be moved here, so this row or column is not inserted or deleted.', 'vars' => $vars));
+        case 'shift_format':
+            return lang(array('string' => 'Sheet {var:2} has conditional formatting, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_validation':
+            return lang(array('string' => 'Sheet {var:2} has data validation, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_filter':
+            return lang(array('string' => 'Sheet {var:2} has a filter, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_drawing':
+            return lang(array('string' => 'Sheet {var:2} has pictures, charts, shapes or comments, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_part':
+            return lang(array('string' => 'Sheet {var:2} holds parts that are not moved here, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_protected':
+            return lang(array('string' => 'Sheet {var:2} is protected, so its rows and columns are not inserted or deleted here.', 'vars' => $vars));
+        case 'shift_full':
+            return lang(array('string' => 'Sheet {var:2} has no room: a cell is in its last row or column.', 'vars' => $vars));
+    }
+
     return lang('The file could not be saved.');
 }
 
@@ -1806,6 +1884,20 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
 
     if (count($changes) > PG_OFFICE_EDIT_MAX_CHANGES) {
         return $fail('many');
+    }
+
+    // A row or column inserted or deleted is a save of its own
+    // (includes/fn/office_shift.php).
+    foreach ($changes as $change) {
+        if (is_array($change) && isset($change['op'])) {
+            $shift = (count($changes) === 1) ? pg_office_shift_request($change) : null;
+
+            if ($shift === null) {
+                return $fail('none');
+            }
+
+            return pg_office_xlsx_shift_save($path, $shift, (string) $version, $directory, $fail);
+        }
     }
 
     // What was asked, by sheet, row and column; a cell named twice takes
@@ -2101,10 +2193,27 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
         $parts[$sheet['part']] = $file;
     }
 
-    // A formula on any sheet may read a changed cell, so the results the
-    // formulas cached come out of the other worksheets too. A sheet too
-    // large to read whole here keeps its own (Excel still works them out
-    // again on opening, as the workbook is marked to).
+    return pg_office_xlsx_recalc_parts($zip, $sheets, $parts, $workbook, $fail, $spool, $changed);
+}
+
+/**
+ * The parts every workbook save adds to the ones it changed: a formula on
+ * any sheet may read a changed cell, so the results the formulas cached come
+ * out of the other worksheets too (a sheet too large to read whole here
+ * keeps its own; Excel still works them out again on opening, as the
+ * workbook is marked to), and the workbook gets its recalculation mark.
+ *
+ * @param ZipArchive $zip
+ * @param array      $sheets   pg_office_xlsx_sheets()
+ * @param array      $parts    part name => file, written already
+ * @param string     $workbook xl/workbook.xml
+ * @param callable   $fail
+ * @param callable   $spool
+ * @param int        $changed
+ * @return array ok, parts, changed; or a refusal
+ */
+function pg_office_xlsx_recalc_parts($zip, $sheets, $parts, $workbook, $fail, $spool, $changed)
+{
     foreach ($sheets as $sheet) {
         if (($sheet['type'] !== 'worksheet') || isset($parts[$sheet['part']])) {
             continue;

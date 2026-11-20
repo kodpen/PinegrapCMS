@@ -1899,8 +1899,10 @@ function _pg_acct_staff_url($staff_page_id)
 // conversion form, pg_credit_account_section_html()). Flags: has_orders,
 // no_orders, is_staff, has_bookings, has_upcoming_bookings,
 // has_past_bookings, has_store_credit, has_store_credit_cards,
-// has_subscriptions; section store_credit_convert: the points conversion
-// form alone. 'bookings': the booking lists' rows
+// has_subscriptions, has_tickets; section store_credit_convert: the points
+// conversion form alone; section tickets (shop sites: the orders holding
+// event tickets, each linking to its tickets page,
+// pg_event_tickets_account_html()), 'tickets' its rows. 'bookings': the booking lists' rows
 // (pg_booking_customer_view_rows()); 'subscriptions'
 // (pg_subscription_customer_view_rows()) and 'store_credit'
 // (pg_credit_account_view(): balance_info, cards) likewise.
@@ -1919,12 +1921,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
     $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => '',
-                                                        'store_credit_convert' => ''),
+                                                        'store_credit_convert' => '', 'tickets' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
                                   'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false,
-                                  'has_store_credit_cards' => false, 'has_subscriptions' => false),
+                                  'has_store_credit_cards' => false, 'has_subscriptions' => false, 'has_tickets' => false),
                  'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()),
-                 'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()));
+                 'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()), 'tickets' => array());
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1987,6 +1989,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
             isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
         $out['sections']['subscriptions'] = pg_subscription_customer_view_html($out['subscriptions']);
         $out['flags']['has_subscriptions'] = !empty($out['subscriptions']);
+        // Orders that hold event tickets, each with its signed tickets link.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_event_tickets.php');
+        $tickets = pg_event_tickets_account((int)USER_ID);
+        $out['tickets'] = $tickets['view'];
+        $out['sections']['tickets'] = $tickets['section'];
+        $out['flags']['has_tickets'] = $tickets['has'];
     }
     return $out;
 }

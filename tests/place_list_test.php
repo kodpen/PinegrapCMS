@@ -6,7 +6,8 @@
  * places.php, assets/js/pg_map.js): which pages and records an answer may
  * carry, which fields (by the server's name rule, never the request's), the
  * cut at PG_PLACE_LIST_MAX and its note, the origin and rate checks, the
- * page's script, and the script's distance, order and search under Node.
+ * page's script, and the script's distance, order and search under Node;
+ * "Near me" and the typed-address lookup (its rate, nothing typed kept).
  * No database is used.
  *
  * @author      Erdal Güral (Kodpen)
@@ -20,6 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+require_once(PG_FUNCTIONS_DIR . '/waf.php');
 
 function place_list_test_fields()
 {
@@ -101,18 +103,93 @@ function test_place_list_item_and_cut_note()
 	pg_assert_same('', pg_place_list_reason_text(''));
 }
 
-// The request carries the page id only; same origin first, then the rate.
+// The list's request carries the page id only; the lookup's the typed text
+// only, in the body. Same origin first, then the rate.
 function test_place_list_endpoint_checks()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
 	$cross = strpos($source, 'pg_request_cross_site($_SERVER)');
+	$find_rate = strpos($source, 'pg_place_list_find_throttled()');
+	$find = strpos($source, "pg_place_list_find(\$_POST['find'] ?? '')");
 	$rate = strpos($source, 'pg_place_list_throttled()');
 	$read = strpos($source, "\$_GET['page']");
 
-	pg_assert_true(($cross !== false) && ($rate !== false) && ($read !== false), 'the checks are there');
-	pg_assert_true($cross < $rate && $rate < $read, 'origin, then rate, then the page id');
-	pg_assert_same(1, preg_match_all('/\$_(GET|POST|REQUEST)\[/', $source), 'no other request value is read');
+	pg_assert_true(($cross !== false) && ($rate !== false) && ($read !== false) && ($find_rate !== false) && ($find !== false), 'the checks are there');
+	pg_assert_true($cross < $find_rate && $find_rate < $find, 'origin, then the lookup\'s rate, then the text');
+	pg_assert_true($find < $rate && $rate < $read, 'origin, then rate, then the page id');
+	pg_assert_same(2, preg_match_all('/\$_(GET|POST|REQUEST)\[/', $source), 'no other request value is read');
+	pg_assert_same(0, preg_match('/\$_(GET|REQUEST)\[.find/', $source), 'the typed text is never read from the address');
 	pg_assert_same(30, PG_PLACE_LIST_RATE_LIMIT);
+}
+
+// The lookup has its own, lower bound: ten a minute per address, the
+// eleventh refused, another address not held back.
+function test_place_list_find_rate_limit()
+{
+	$counts = array();
+	$seen = array();
+	$record = function ($subject, $scope, $window) use (&$counts, &$seen) {
+		$seen = array($scope, $window);
+		$key = $subject . '|' . $scope;
+		$counts[$key] = isset($counts[$key]) ? $counts[$key] + 1 : 1;
+
+		return $counts[$key];
+	};
+
+	pg_assert_same(10, PG_PLACE_LIST_FIND_LIMIT);
+	pg_assert_true(PG_PLACE_LIST_FIND_LIMIT < PG_PLACE_LIST_RATE_LIMIT, 'each lookup asks Photon: a lower bound than the list');
+
+	for ($i = 1; $i <= 10; $i++) {
+		pg_assert_false(pg_place_list_find_throttled('8.8.4.4', $record), 'lookup ' . $i . ' passes');
+	}
+
+	pg_assert_true(pg_place_list_find_throttled('8.8.4.4', $record), 'the eleventh is refused');
+	pg_assert_false(pg_place_list_find_throttled('1.1.1.1', $record), 'another address counts on its own');
+	pg_assert_same(array('place_find', PG_PLACE_LIST_RATE_WINDOW), $seen, 'its own scope, a minute');
+	pg_assert_false(pg_place_list_throttled('8.8.4.4', $record), 'the list keeps its own counter');
+	pg_assert_same(1, $counts[waf_ip_subject('8.8.4.4') . '|place_list'], 'the list counts apart from the lookup');
+}
+
+// Nothing typed is kept: the lookup writes no table, file, session, cookie
+// or log, and its answer carries the point alone, not the text.
+function test_place_list_find_keeps_nothing()
+{
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	$start = strpos($fn, 'function pg_place_list_find_text(');
+	$body = substr($fn, $start, strpos($fn, "\n}\n", strpos($fn, 'function pg_place_list_find(')) - $start);
+
+	pg_assert_true($start !== false && $body !== '', 'the lookup is there');
+	pg_assert_same(0, preg_match('/\bdb\(|db_|mysqli_|file_put_contents|fopen|error_log|log_activity|waf_text_log|_SESSION|setcookie|pg_cache/', $body), 'no store, no log');
+
+	$answer = pg_place_list_find_answer(array('state' => 'found', 'lat' => '41.0', 'lng' => '29.03', 'error' => 'Moda Caddesi'));
+	pg_assert_same(array('ok' => true, 'state' => 'found', 'lat' => 41.0, 'lng' => 29.03), $answer, 'the point alone comes back');
+	pg_assert_same(array('ok' => true, 'state' => 'not_found', 'lat' => null, 'lng' => null), pg_place_list_find_answer(array('state' => 'not_found')));
+	pg_assert_same('error', pg_place_list_find_answer(array('state' => 'found', 'lat' => '', 'lng' => ''))['state'], 'found without a point is an error');
+	pg_assert_same('error', pg_place_list_find_answer(array('state' => 'other'))['state']);
+	pg_assert_same(array('ok' => true, 'state' => 'empty', 'lat' => null, 'lng' => null), pg_place_list_find('   '), 'nothing typed asks nothing');
+	pg_assert_same(array('ok' => true, 'state' => 'empty', 'lat' => null, 'lng' => null), pg_place_list_find(array('x')), 'a list is no text');
+
+	pg_assert_same('Moda Caddesi 12, Kadıköy', pg_place_list_find_text("  Moda  Caddesi 12,\n Kadıköy "));
+	pg_assert_same(PG_PLACE_LIST_FIND_MAX, mb_strlen(pg_place_list_find_text(str_repeat('ş', 300)), 'UTF-8'));
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
+	pg_assert_same(0, preg_match('/waf_text_log|error_log|log_activity/', $endpoint), 'the endpoint logs nothing itself');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_map.js');
+	pg_assert_same(0, preg_match('/localStorage|sessionStorage|document\.cookie\s*=/', $js), 'the page stores nothing typed or found');
+	pg_assert_contains("method: 'POST'", $js, 'the text goes in the body, not the address');
+	pg_assert_true(strpos($js, 'root.fetch(config.endpoint, {') > strpos($js, "form.addEventListener('submit'"), 'asked only on a press of Find');
+}
+
+// The box is drawn only while Photon can be asked; the page is told so.
+function test_place_list_find_on()
+{
+	pg_assert_false(pg_place_list_find_on(false), 'without cURL no box');
+	pg_assert_true(pg_place_list_find_on(true));
+
+	$out = pg_place_list_inject('<body><div data-pg-map></div></body>', 3, 'x.js', array('on' => false));
+	pg_assert_true(strpos($out, '"find":true') !== false || strpos($out, '"find":false') !== false, 'the page knows whether the box is drawn');
+	pg_assert_contains('"Near me":', $out);
 }
 
 function test_place_list_inject()
@@ -142,7 +219,12 @@ function test_place_list_script_under_node()
 		. 'var places = [{name:"Ankara", address:"Atatürk Bulvarı", lat:39.92, lng:32.85}, {name:"No point", address:"x"}, {name:"Kadıköy", address:"Moda Caddesi", lat:40.98, lng:29.02}, {name:"Beşiktaş", address:"Barbaros", lat:41.04, lng:29.0}];'
 		. 'var o = m.order(places, 41.0, 29.03);'
 		. 'console.log(JSON.stringify({km: Math.round(m.distance(41.0, 29.0, 39.92, 32.85)), order: o.map(function (r) { return r.place.name; }), first: Math.round(o[0].km * 10) / 10,'
-		. ' kadikoy: m.matches(places[2], "KADIKOY moda"), istanbul: m.matches({name:"İstanbul"}, "istanbul"), miss: m.matches(places[0], "izmir")}));';
+		. ' kadikoy: m.matches(places[2], "KADIKOY moda"), istanbul: m.matches({name:"İstanbul"}, "istanbul"), miss: m.matches(places[0], "izmir"),'
+		. ' near: m.arrange(places, "", {lat: 41.0, lng: 29.03}).map(function (r) { return r.place.name + (r.km === null ? "" : "@" + m.formatKm(r.km, "en")); }),'
+		. ' nearSearch: m.arrange(places, "a", {lat: 39.9, lng: 32.8}).map(function (r) { return r.place.name; }),'
+		. ' plain: m.arrange(places, "moda", null).map(function (r) { return r.place.name + (r.km === null ? "" : "!"); }),'
+		. ' offered: [m.nearOffered(places, false), m.nearOffered(places, true), m.nearOffered([{name:"x"}], false)],'
+		. ' fmt: [m.formatKm(2.345, "en"), m.formatKm(12.6, "en"), m.formatKm(2.35, "tr")]}));';
 	// A file rather than node -e: escapeshellarg() on Windows turns the
 	// script's double quotes into spaces.
 	$file = tempnam(sys_get_temp_dir(), 'pgmap');
@@ -159,6 +241,11 @@ function test_place_list_script_under_node()
 	pg_assert_true($result['kadikoy'], 'typed without accents and in capitals, every word');
 	pg_assert_true($result['istanbul'], 'dotted capital İ matches i');
 	pg_assert_false($result['miss']);
+	pg_assert_same(array('Kadıköy@2.4', 'Beşiktaş@5.1', 'Ankara@345', 'No point'), $result['near'], 'from a point: nearest first, each with its distance');
+	pg_assert_same(array('Ankara', 'Kadıköy', 'Beşiktaş'), $result['nearSearch'], 'the search narrows the ordered list');
+	pg_assert_same(array('Kadıköy'), $result['plain'], 'without a point: the list order, no distance');
+	pg_assert_same(array(true, false, false), $result['offered'], 'near me only for the whole list with a point in it');
+	pg_assert_same(array('2.3', '13', '2,4'), $result['fmt'], 'one decimal under 10 km, in the page\'s language');
 }
 
 // The block's own pickers, saved on the block in the page's tree.

@@ -532,3 +532,49 @@ function test_page_bundle_revision_before()
 	pg_assert_contains('pg_page_bundle_revision_before(', pg_test_function_source('pg_page_bundle_write_item'), 'the write keeps it so');
 	pg_assert_contains('pg_page_revision_seed(', pg_test_function_source('pg_page_bundle_write_item'), 'seeding through the revisions\' own seed');
 }
+
+// "Publish the rest" of a partly published bundle sends to the Recycle Bin
+// every replacement that now stands on its live page, also those written by
+// the earlier run that went partial, not only this run's.
+function test_page_bundle_used_replacements()
+{
+	$items = array(
+		array('id' => 1, 'draft_page_id' => 11, 'live_page_id' => 21, 'status' => 'written', 'written_state' => 'a'),
+		array('id' => 2, 'draft_page_id' => 12, 'live_page_id' => 0, 'status' => 'written', 'written_state' => 'b'),
+		array('id' => 3, 'draft_page_id' => 13, 'live_page_id' => 23, 'status' => 'written', 'written_state' => ''),
+		array('id' => 4, 'draft_page_id' => 14, 'live_page_id' => 24, 'status' => 'left_out', 'written_state' => ''),
+		array('id' => 5, 'draft_page_id' => 15, 'live_page_id' => 25, 'status' => 'written', 'written_state' => 'c'),
+	);
+
+	pg_assert_same(array(11, 15), pg_page_bundle_used_replacements($items),
+		'written replacements with a state; not a new page, an unfinished claim or a page left out');
+	pg_assert_contains('pg_page_bundle_used_replacements(', pg_test_function_source('pg_page_bundle_publish_locked'),
+		'the publish reads them after its run');
+}
+
+// A failed query while a page is taken back is a page that failed, as in a
+// publish (#10047): output_error() throws, the other pages are still tried
+// and the bundle stays published to try again, instead of the request
+// ending part-way with some pages back and the rest not tried.
+function test_page_bundle_take_back_query_failure_is_a_failed_page()
+{
+	$locked = pg_test_function_source('pg_page_bundle_take_back_locked');
+	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $locked, 'output_error() throws while pages come back');
+	pg_assert_contains('pg_page_bundle_publish_ops(', $locked, 'a throw from a page is that page failing');
+}
+
+// A page added while the bundle is being published was written as waiting
+// into a bundle that then went published: never published, never held, shown
+// as waiting for good. Adding takes the bundle's lock and reads its status
+// under it, as removing does.
+function test_page_bundle_add_runs_under_the_lock()
+{
+	foreach (array('pg_page_bundle_add_copy', 'pg_page_bundle_add_draft') as $function) {
+		$source = pg_test_function_source($function);
+		pg_assert_contains('pg_page_bundle_with_lock(', $source, $function . ' under the lock');
+		pg_assert_contains($function . '_locked(', $source, $function . ' with the bundle read under it');
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/design_bundles.php');
+	pg_assert_contains('api_design_bundle_run(', pg_test_function_source('api_design_bundles_pages_add'), 'the API answers a busy bundle with bundle_busy');
+}

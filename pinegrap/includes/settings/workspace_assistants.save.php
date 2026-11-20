@@ -114,7 +114,7 @@ if ($ws_admin && function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() &
 $ws_voice = null;
 
 if ($ws_admin && ws_voice_schema_ready() && isset($_POST['ws_voice_url'])) {
-    $ws_voice = ws_voice_settings_input($_POST, 'ws_');
+    $ws_voice = ws_voice_settings_for_stored(ws_voice_settings_input($_POST, 'ws_'), ws_voice_config(true));
 
     if (ws_voice_settings_changed($ws_voice, ws_voice_config(true), ws_voice_speech_config(true))) {
         foreach (ws_voice_settings_check($ws_voice, ws_voice_config()) as $ws_field => $ws_sentence) {

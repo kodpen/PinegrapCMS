@@ -165,3 +165,20 @@ function api_basic_challenge_wanted($requested_with) {
 	return strtolower(trim((string)$requested_with)) !== 'xmlhttprequest';
 
 }
+
+// The challenge of a 401 to a request that carried a Bearer token, when no
+// other challenge was made: while OAuth is on, api_fail() gives the one with
+// the resource metadata (pg_oauth_bearer_challenge()); while it is off, a
+// team device's token still travels as Bearer, and RFC 6750 3 wants the 401
+// to say so. '' for any other credential.
+function api_bearer_challenge_fallback($authorization) {
+
+	if (stripos(trim((string)$authorization), 'bearer ') !== 0) {
+
+		return '';
+
+	}
+
+	return 'Bearer realm="Pinegrap API", error="invalid_token"';
+
+}

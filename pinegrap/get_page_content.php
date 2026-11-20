@@ -6571,7 +6571,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 if ($auto_dialogs) {
                     $output_js .=
                         'software.init_auto_dialogs({
-                            auto_dialogs: ' . encode_json($auto_dialogs) . ',
+                            auto_dialogs: ' . pg_auto_dialogs_script_json($auto_dialogs) . ',
                             preview: true
                         });';
                 }
@@ -6618,7 +6618,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     });
 
                     $output_js .= 'software.init_auto_dialogs({
-                        auto_dialogs: ' . encode_json($auto_dialogs_page) . ',
+                        auto_dialogs: ' . pg_auto_dialogs_script_json($auto_dialogs_page) . ',
                         count_url: ' . encode_json(PATH . SOFTWARE_DIRECTORY . '/page_view.php') . '});';
                 }
             }

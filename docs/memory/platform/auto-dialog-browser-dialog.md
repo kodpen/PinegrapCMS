@@ -4,10 +4,11 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 ---
 
 ## What does the page print?
-- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers, and the open settings (#9851, `auto-dialog-open-settings.md`).
+- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency, the open settings (`auto-dialog-open-settings.md`).
+- Printed into the inline script by `pg_auto_dialogs_script_json()`, `<` `>` `&` as `\u` escapes: a URL holding `<!--<script>` (the field refuses only spaces) made the parser swallow the rest of every page (bug hunt, agent channel message 10243).
 - The same for every visitor but a cart row; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
-- Nothing goes into the session: `visit_start_timestamp` is gone (PR #9805), so a site with an auto dialog is cached again (`page-cache-gate.md`).
-- Preview `?preview_auto_dialog=<id>` (role < 3): one row, no delay, no cookie, as before.
+- Nothing goes into the session (`visit_start_timestamp` gone, #9805): the page is cached (`page-cache-gate.md`).
+- Preview `?preview_auto_dialog=<id>` (role < 3): one row, no delay, no cookie.
 
 ## What does the script pick?
 - `frontend.src.js` `software.init_auto_dialogs()` (and the hand-patched `frontend.min.js`): stops in an iframe and on body class `disable_auto_dialogs`; keeps the visit start (`sessionStorage` `pg_visit_start`, per tab).
@@ -18,10 +19,10 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 
 ## How is the dialog drawn?
 - A designed pop-up (`content` component, #10450) is drawn from a `<template>` instead: `auto-dialog-content.md`.
-- `software.open_dialog({url, width, height, title, class_name, modal})`: a `<dialog class="pg-dialog …">` with a title bar, a 20px close button and the address in an iframe; `showModal()` (centred, page inert), `show()` with `modal: false`. Escape, the close button and a press on the backdrop close it; it is removed on close. Width and height as before (height + 25 for the bar; 75 % of the window on a mobile device). Returns the dialog, `false` for a non-web address.
-- `software.dialog_style()` adds the rules once (`#pg-dialog-style`): the old frame's white box, `#c5c5c5` line, `0 0 20px #000` shadow, `.2em .2em 1em` padding, grey backdrop. No `ui-dialog` classes; themes' `.software.ui-dialog` rules no longer reach it. Not draggable or resizable any more.
-- While the notice's card is open (reopened by the visitor), a modal dialog waits for `pg:consent` and opens a tick later: a modal dialog would make the notice inert. A waiting dialog is not marked shown.
+- `software.open_dialog({url, width, height, title, class_name, modal, opened})`: a `<dialog class="pg-dialog …">`, title bar, close button, the address in an iframe; `showModal()`, or `show()` with `modal: false`. Escape, the close button and the backdrop close it; removed on close. Height + 25 for the bar; 75 % of the window on a mobile device. Returns the dialog, `false` for a non-web address.
+- `software.dialog_style()` adds the rules once (`#pg-dialog-style`): the old frame's white box, grey line, shadow and backdrop. No `ui-dialog` classes, so themes' `.software.ui-dialog` rules no longer reach it; not draggable or resizable.
+- While the notice's card is open (reopened by the visitor), a modal dialog waits for `pg:consent` and opens a tick later (it would make the notice inert). `open_dialog()` then calls `properties.opened(dialog)`, where `show_auto_dialog()` marks and counts it; before the hunt of message 10243 the waiting one was never marked and opened again on every page.
 - jQuery UI still draws the edit-region, share-comment and kiosk dialogs.
 
 ## Tested?
-- `tests/auto_dialog_form_test.php` (the consent wait and the one cookie, rows the same for every visitor, no session or cookie in the page block, the script's pick and the dialog in both scripts), `tests/web_address_test.php`, `tests/page_cache_test.php`. Before and after pictures of an old row on a sandbox site: same box (400 x 675, iframe 392.8 x 620.4).
+- `tests/auto_dialog_form_test.php` (consent wait, one cookie, rows the same for all, the script in both files), `tests/auto_dialog_script_test.php` (`show_auto_dialog()` and `open_dialog()` of both scripts run in Node: the waiting dialog, the escaped rows), `tests/web_address_test.php`, `tests/page_cache_test.php`.

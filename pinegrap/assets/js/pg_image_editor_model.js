@@ -4810,7 +4810,7 @@
         var m = docMotion(doc), out = [];
 
         (layers || []).forEach(function (l, n) {
-            if (!hasMotion({ layers: [l] }) || (l.type === 'redact')) {
+            if (!attachMoves((doc && doc.layers) || layers, l) || (l.type === 'redact')) {
                 return;
             }
 
@@ -5298,7 +5298,8 @@
     // is), s.areas (selected unlocked shapes with an area), s.texts, s.warp
     // (one warped layer), s.svg (one imported SVG), s.count (the layers),
     // s.imports (the Import button is there) and s.site (Import from the
-    // site), s.canvas (the Canvas tool is offered).
+    // site), s.canvas (the Canvas tool is offered), s.attach (the targets
+    // one free layer may attach to) and s.attached (it is attached).
     // On a rail item: s.modes, its tools, and s.tool; one mode has no menu.
     // On a scene: s.index, s.count and s.max of the scenes.
     function menuList(s) {
@@ -5343,6 +5344,15 @@
             if (s.group || s.ungroup) {
                 item('group', !s.group);
                 item('ungroup', !s.ungroup);
+            }
+
+            // One free layer: the layers and groups it may attach to.
+            if ((s.attach || []).length) {
+                item('attach', false, { sub: s.attach.map(function (att) { return { name: 'attachTo', att: att, off: false }; }) });
+            }
+
+            if (s.attached) {
+                item('detach');
             }
 
             item('order', false, { sub: sub(MENU_ORDER) });
@@ -11376,39 +11386,50 @@
         });
     }
 
-    // Layer l at playhead t as motionAt() gives it, with its groups' keys
-    // composed over it, the innermost first: each moves, turns and scales
-    // round its group's centre at rest and fades. The result is a state
-    // round l's own centre, so the stage, the export and a press's
+    // st (a state round the point cx, cy) carried by k ({ x, y, scale,
+    // rot }, a state round gx, gy): the point turns and scales round gx, gy
+    // and moves by k.x, k.y. fade multiplies the opacity too. The result is
+    // a state round cx, cy again.
+    function motionAround(st, cx, cy, gx, gy, k, fade) {
+        var a = k.rot * Math.PI / 180, px = cx + st.x - gx, py = cy + st.y - gy;
+
+        return Object.assign({}, st, {
+            x: gx + k.x + k.scale * (px * Math.cos(a) - py * Math.sin(a)) - cx,
+            y: gy + k.y + k.scale * (px * Math.sin(a) + py * Math.cos(a)) - cy,
+            scale: st.scale * k.scale,
+            rot: st.rot + k.rot,
+            opacity: fade ? st.opacity * k.opacity : st.opacity
+        });
+    }
+
+    // Layer l at playhead t as motionAt() gives it, with the motion of the
+    // layer or group it is attached to (ATTACH below) and then its groups'
+    // keys composed over it, the innermost first: each moves, turns and
+    // scales round its group's centre at rest and fades. The result is a
+    // state round l's own centre, so the stage, the export and a press's
     // restPoint() read it as before. layers: the document's (the groups'
-    // boxes).
-    function groupMotionAt(layers, l, t, end) {
+    // boxes, the targets). seen: the attachments walked so far; skip: the
+    // count of outer groups left out (attachOver()).
+    function groupMotionAt(layers, l, t, end, seen, skip) {
         var st = motionAt(l, t, end), path = groupPath(l), cx = l.x + l.w / 2, cy = l.y + l.h / 2;
 
         if ((t === null) || (t === undefined)) {
             return st;
         }
 
-        for (var i = path.length - 1; i >= 0; i--) {
-            var fx = fxOf(l, path[i]), k = (fx && Array.isArray(fx.keys) && fx.keys.length) ? keyAt({ anim: { keys: fx.keys } }, t) : null, b, gx, gy, a, px, py;
+        st = attachOver(layers, l, st, t, end, seen);
+
+        // skip: the outer groups a follower shares with this target; the
+        // follower's own pass composes them once.
+        for (var i = path.length - 1; i >= (skip || 0); i--) {
+            var fx = fxOf(l, path[i]), k = (fx && Array.isArray(fx.keys) && fx.keys.length) ? keyAt({ anim: { keys: fx.keys } }, t) : null, b;
 
             if (!k) {
                 continue;
             }
 
             b = groupBox(layers, path[i]) || { x: cx, y: cy, w: 0, h: 0 };
-            gx = b.x + b.w / 2;
-            gy = b.y + b.h / 2;
-            a = k.rot * Math.PI / 180;
-            px = cx + st.x - gx;
-            py = cy + st.y - gy;
-            st = Object.assign({}, st, {
-                x: gx + k.x + k.scale * (px * Math.cos(a) - py * Math.sin(a)) - cx,
-                y: gy + k.y + k.scale * (px * Math.sin(a) + py * Math.cos(a)) - cy,
-                scale: st.scale * k.scale,
-                rot: st.rot + k.rot,
-                opacity: st.opacity * k.opacity
-            });
+            st = motionAround(st, cx, cy, b.x + b.w / 2, b.y + b.h / 2, k, true);
         }
 
         return st;
@@ -11436,6 +11457,318 @@
         groupScale: groupScale, groupTurn: groupTurn, groupMotionAt: groupMotionAt, groupKeySet: groupKeySet, groupKeyLayer: groupKeyLayer
     };
 
+    // ---- ATTACH (pg_image_editor_layers.js, the menu, the Path tab) ----
+
+    // A layer attached to another layer or to a group (l.att: that layer's
+    // id, or 'group:<gid>') takes its target's move, turn and size at every
+    // moment, its entrance, loop, exit and keys included, and keeps its own
+    // place and keys on top. At rest the target stands still, so attaching
+    // moves nothing; a move, size or turn of the target at rest carries its
+    // followers (attachKeep()). Kept on the layer alone: no schema, and a
+    // document without att opens as before. Nothing is searched in pixels.
+
+    var ATTACH_GROUP = 'group:';
+
+    // The target layer l is attached to; '' for none.
+    function attachOf(l) {
+        return (l && (typeof l.att === 'string')) ? l.att : '';
+    }
+
+    function attachGroupId(att) {
+        return (String(att).indexOf(ATTACH_GROUP) === 0) ? String(att).slice(ATTACH_GROUP.length) : '';
+    }
+
+    // The layers target att moves with: the layer, or the group's members
+    // (a group lives while it has two); [] when it is gone.
+    function attachSource(layers, att) {
+        var gid = attachGroupId(att), list, l;
+
+        if (gid) {
+            list = (layers || []).filter(function (o) { return groupPath(o).indexOf(gid) >= 0; });
+
+            return (list.length > 1) ? list : [];
+        }
+
+        l = att ? layerById(layers, att) : null;
+
+        return l ? [l] : [];
+    }
+
+    // Target att as groupMotionAt() reads it: the layer, or the group as a
+    // layer of its box carrying the group's path and look and no motion of
+    // its own; null when it is gone.
+    function attachTarget(layers, att) {
+        var gid = attachGroupId(att), src = attachSource(layers, att), path, b;
+
+        if (!gid || !src.length) {
+            return src[0] || null;
+        }
+
+        path = groupPath(src[0]);
+        b = groupBox(layers, gid);
+
+        return { id: att, type: 'group', x: b.x, y: b.y, w: b.w, h: b.h, rot: 0, grp: path.slice(0, path.indexOf(gid) + 1), gfx: src[0].gfx };
+    }
+
+    // How many outer groups paths a and b share.
+    function pathShared(a, b) {
+        var n = 0;
+
+        while ((n < a.length) && (n < b.length) && (a[n] === b[n])) {
+            n++;
+        }
+
+        return n;
+    }
+
+    // st (layer l's own state at t) carried by its target's motion at t;
+    // st itself without a target or on a circle. The groups l shares with
+    // the target are left to l's own pass.
+    function attachOver(layers, l, st, t, end, seen) {
+        var att = attachOf(l), tg, ts;
+
+        seen = seen || [];
+
+        if (!att || (seen.indexOf(l.id) >= 0) || !(tg = attachTarget(layers, att)) || (seen.indexOf(tg.id) >= 0)) {
+            return st;
+        }
+
+        ts = groupMotionAt(layers, tg, t, end, seen.concat([l.id]), pathShared(groupPath(l), groupPath(tg)));
+
+        return motionAround(st, l.x + l.w / 2, l.y + l.h / 2, tg.x + tg.w / 2, tg.y + tg.h / 2, ts, false);
+    }
+
+    // Whether layer id may be attached to att: not to itself, not to a
+    // group it is in, and nothing att moves with comes back to id (no
+    // circle). A gone target cannot be named.
+    function attachCan(layers, id, att) {
+        var l = layerById(layers, id), gid = attachGroupId(att), seen = {}, todo;
+
+        if (!l || !att || (att === id) || (gid && (groupPath(l).indexOf(gid) >= 0))) {
+            return false;
+        }
+
+        todo = attachSource(layers, att);
+
+        if (!todo.length) {
+            return false;
+        }
+
+        while (todo.length) {
+            var o = todo.pop();
+
+            if (o.id === id) {
+                return false;
+            }
+
+            if (!seen[o.id]) {
+                seen[o.id] = true;
+                todo = todo.concat(attachOf(o) ? attachSource(layers, attachOf(o)) : []);
+            }
+        }
+
+        return true;
+    }
+
+    // What layer id may be attached to, in the layers list's order (the top
+    // first, a group before its layers): layer ids and 'group:<gid>'.
+    function attachTargets(layers, id) {
+        var out = [];
+
+        (layers || []).slice().reverse().forEach(function (l) {
+            groupPath(l).forEach(function (g) {
+                if (out.indexOf(ATTACH_GROUP + g) < 0) {
+                    out.push(ATTACH_GROUP + g);
+                }
+            });
+            out.push(l.id);
+        });
+
+        return out.filter(function (att) { return attachCan(layers, id, att); });
+    }
+
+    // The layers with layer id attached to att ('' detaches it, where it
+    // stands); null when att is refused (attachCan()).
+    function attachSet(layers, id, att) {
+        if (att && !attachCan(layers, id, att)) {
+            return null;
+        }
+
+        return (layers || []).map(function (l) {
+            if ((l.id !== id) || (attachOf(l) === (att || ''))) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            if (att) {
+                c.att = att;
+            } else {
+                delete c.att;
+            }
+
+            return c;
+        });
+    }
+
+    // How layer o became l at rest: { c0, c1, s, r } (centre before and
+    // after, scale, turn); null when it did not move. A size changed
+    // without its proportions scales nothing.
+    function attachMove(o, l) {
+        var sw, sh;
+
+        if ((o.x === l.x) && (o.y === l.y) && (o.w === l.w) && (o.h === l.h) && ((Number(o.rot) || 0) === (Number(l.rot) || 0))) {
+            return null;
+        }
+
+        sw = (o.w > 0) ? l.w / o.w : 1;
+        sh = (o.h > 0) ? l.h / o.h : 1;
+
+        return {
+            c0: [o.x + o.w / 2, o.y + o.h / 2],
+            c1: [l.x + l.w / 2, l.y + l.h / 2],
+            s: ((sw > 0) && (Math.abs(sw - sh) <= 0.001 * Math.max(sw, sh))) ? sw : 1,
+            r: turnWrap((Number(l.rot) || 0) - (Number(o.rot) || 0))
+        };
+    }
+
+    // Point p carried by move m.
+    function attachPoint(m, p) {
+        var a = m.r * Math.PI / 180, dx = p[0] - m.c0[0], dy = p[1] - m.c0[1];
+
+        return [m.c1[0] + m.s * (dx * Math.cos(a) - dy * Math.sin(a)), m.c1[1] + m.s * (dx * Math.sin(a) + dy * Math.cos(a))];
+    }
+
+    // The move target att made (moved: id => attachMove()); a group's only
+    // when every member moved as one.
+    function attachSourceMove(layers, att, moved) {
+        var src = attachSource(layers, att), m = src.length ? moved[src[0].id] : null;
+
+        if (!m) {
+            return null;
+        }
+
+        for (var i = 1; i < src.length; i++) {
+            var o = moved[src[i].id], q = o ? attachPoint(m, o.c0) : null;
+
+            if (!o || (Math.abs(q[0] - o.c1[0]) > 0.5) || (Math.abs(q[1] - o.c1[1]) > 0.5) || (Math.abs(o.s - m.s) > 0.001) || (Math.abs(turnWrap(o.r - m.r)) > 0.01)) {
+                return null;
+            }
+        }
+
+        return m;
+    }
+
+    // Layer l carried by move m: its centre moved, its size scaled, its
+    // turn added. fit(l, copy) may redo a type's own resize (a text's
+    // letters). A copy.
+    function attachCarry(l, m, fit) {
+        var c = clone(l), p = attachPoint(m, [l.x + l.w / 2, l.y + l.h / 2]);
+
+        c.w = l.w * m.s;
+        c.h = l.h * m.s;
+        c.x = p[0] - c.w / 2;
+        c.y = p[1] - c.h / 2;
+
+        if (m.r) {
+            c.rot = turnWrap((Number(l.rot) || 0) + m.r);
+        }
+
+        return ((m.s !== 1) && fit) ? (fit(l, c) || c) : c;
+    }
+
+    // After a change from before to doc (the editor's change()): a follower
+    // whose target is gone, or that would close a circle, lets go where it
+    // stands; one the change left alone goes with its target's move, size
+    // and turn at rest, followers of followers too. A follower the change
+    // moved itself keeps its own place. doc changed in place, returned.
+    function attachKeep(before, doc, fit) {
+        var layers = (doc && doc.layers) || [], old = {}, moved = {}, more = true, turns = 0;
+
+        if (!layers.some(function (l) { return attachOf(l); })) {
+            return doc;
+        }
+
+        ((before && before.layers) || []).forEach(function (l) {
+            old[l.id] = l;
+        });
+
+        layers = doc.layers = layers.map(function (l) {
+            var c;
+
+            if (attachOf(l) && !attachCan(layers, l.id, attachOf(l))) {
+                c = clone(l);
+                delete c.att;
+
+                return c;
+            }
+
+            return l;
+        });
+
+        layers.forEach(function (l) {
+            var m = old[l.id] ? attachMove(old[l.id], l) : null;
+
+            if (m) {
+                moved[l.id] = m;
+            }
+        });
+
+        while (more && (turns++ <= layers.length)) {
+            more = false;
+            layers.forEach(function (l, i) {
+                var m;
+
+                if (!attachOf(l) || !old[l.id] || moved[l.id] || !(m = attachSourceMove(layers, attachOf(l), moved))) {
+                    return;
+                }
+
+                layers[i] = attachCarry(l, m, fit);
+                moved[l.id] = m;
+                more = true;
+            });
+        }
+
+        return doc;
+    }
+
+    // Copies made together (map: an original's id => its copy's id) attach
+    // to each other's copies; a copy of a follower alone keeps its target.
+    function attachRemap(copies, map) {
+        (copies || []).forEach(function (c) {
+            var att = attachOf(c);
+
+            if (att && map[att]) {
+                c.att = map[att];
+            }
+        });
+
+        return copies;
+    }
+
+    // Whether layer l moves: by its own motion, its groups' keys or the
+    // target it is attached to.
+    function attachMoves(layers, l, seen) {
+        var tg;
+
+        seen = seen || [];
+
+        if (hasMotion({ layers: [l] })) {
+            return true;
+        }
+
+        if (!attachOf(l) || (seen.indexOf(l.id) >= 0) || !(tg = attachTarget(layers, attachOf(l)))) {
+            return false;
+        }
+
+        return attachMoves(layers, tg, seen.concat([l.id]));
+    }
+
+    var ATTACH = {
+        attachOf: attachOf, attachTarget: attachTarget, attachCan: attachCan, attachTargets: attachTargets, attachSet: attachSet,
+        attachKeep: attachKeep, attachRemap: attachRemap, attachMoves: attachMoves
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -11453,7 +11786,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

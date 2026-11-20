@@ -1,10 +1,11 @@
 ---
 name: iys-settings-card
-description: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
+description: The İYS account's fields (on İYS's page of Connections since CX11d, includes/iys/settings.php): save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 ---
 
 ## Where is the card?
-- `#pgset-iys`, last card of the `contact` pane; markup `pg_iys_settings_fields()`, check and write `pg_iys_settings_check()` / `pg_iys_settings_save()` in `includes/iys/settings.php` (required by `contact.php` and `contact.save.php`). Same shape as the SMS card (`sms-provider-layer.md`).
+- The fields are on `connections.php?service=iys`, "Connection details" (since CX11d, `ui/connections-communication-page.md`): markup `pg_iys_settings_fields()`, check and write `pg_iys_settings_check()` / `pg_iys_settings_save()` in `includes/iys/settings.php`, called by `connections.php`.
+- `#pgset-iys`, last card of the `contact` pane, shows the connection with "Manage in Connections" (`pg_iys_settings_card_html()`); the pane's save no longer writes the account.
 - Fields: switch `iys_enabled`, API user, password (sealed, never drawn back, "Stored" placeholder), İYS code (digits), brand, environment (`live` / `test` = sandbox), mode (`iys_live` 0 = dry run, 1 = live), the channel switch. A new account starts in dry run.
 
 ## What do the card's texts say?

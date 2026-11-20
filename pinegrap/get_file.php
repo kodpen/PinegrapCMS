@@ -405,9 +405,52 @@ if (!$file['local'] && !$file['stored']) {
     output_error(get_file_text('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
 }
 
+// A file a shopper uploaded with a product form answer (form_data.form_id is
+// 0, the answer belongs to a cart line) opens for the visitor whose cart
+// holds the line, the signed-in buyer of the order, and staff who manage
+// orders, whatever its folder allows; anyone else is answered as a private
+// file answers a visitor without access. Decided here, before the folder's
+// own check and the submitted-form attachment check, neither of which knows
+// a cart line.
+$product_form_upload = false;
+
+if (($erp_document === false) && ($workspace_file === false) && ($chat_attachment === false) && ($file['attachment'] == 1)) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
+    $pfu_lines = pg_pfu_file_lines((int) $file['id']);
+
+    if ($pfu_lines) {
+        $product_form_upload = true;
+
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        $pfu_user = (USER_LOGGED_IN == true) ? pg_load_user_row((int) USER_ID) : null;
+        $pfu_allowed = pg_pfu_access_verdict($pfu_lines, array(
+            'cart_order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+            'user_id' => is_array($pfu_user) ? (int) $pfu_user['id'] : 0,
+            'role' => is_array($pfu_user) ? (int) $pfu_user['role'] : 3,
+            'manage_ecommerce' => is_array($pfu_user) ? !empty($pfu_user['manage_ecommerce']) : false,
+        ));
+
+        if (!$pfu_allowed) {
+            header('Cache-Control: no-store');
+
+            if (USER_LOGGED_IN == false) {
+                get_file_sign_in_redirect('index.php');
+            }
+
+            log_activity(pg_log_lang(array('string' => 'access denied to private file ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
+            output_error(get_file_text('Sorry, you do not have access to view this file.'), 403);
+        }
+    }
+}
+
 // An ERP document or a workspace file has no folder and was checked above;
-// the folder walk would read a folder row that is not there.
-$access_control_type = ($erp_document || $workspace_file) ? 'public' : get_access_control_type($file['folder_id']);
+// the folder walk would read a folder row that is not there. A product form
+// answer's file was let through above.
+$access_control_type = ($erp_document || $workspace_file || $product_form_upload) ? 'public' : get_access_control_type($file['folder_id']);
 
 // if the access control type is not public, then do access control checks
 if (
@@ -510,7 +553,7 @@ if (
 
 // If the file is a comment or submitted form attachment
 // then check if visitor has access to attachment.
-if ($file['attachment'] == 1) {
+if (($file['attachment'] == 1) && ($product_form_upload === false)) {
     // Assume that visitor does not have access to attachment
     // until we find out otherwise.
     $attachment_access = false;

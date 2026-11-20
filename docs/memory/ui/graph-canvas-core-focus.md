@@ -19,6 +19,10 @@ module: graph_canvas
 - `canvas.allEdges(on)`: the other arrows faint; they go before the first out or in group in `ui.svg`, so the focused ones are drawn over them (an arrow drawn later takes its place the same way).
 - `canvas.groups()` draws `adapter.groups()`, the headings `G.arrange()` gives (`{ id, label, x, y, w, kind }`), into one `div.pgc-groups` (`aria-hidden`) first in `ui.layer`, behind the arrows and boxes: each `div.pgc-group pgc-group-<kind>` with `data-group`, a `pgc-group-label` and a `pgc-group-rule` (a line in `--pgc-line`). Each call replaces the holder; the adapter calls it when it draws.
 
+## What does trail() add?
+- `canvas.trail(ids)`: a set of arrows (their ids) drawn as `pgc-edge-trail` in place of the focus's out and in; the others hidden, faint with `allEdges(true)`; the boxes and targets at neither end of one dimmed, never the box in focus. The focus stays.
+- `trail(null)` or `[]` ends it; an arrow drawn later takes its state. Without `adapter.focus` it does nothing. CSS: `--pgc-trail`, `--pgc-marker-trail`, width 3. Added for the Prototype view's shortest path (designer/prototype-shortest-path.md); test `test_graph_canvas_trail`.
+
 ## How does a press focus, and what is announced?
 - A press on a box the adapter leaves to the core selects it as before and puts it in focus; a click on the empty canvas (a pan that did not move, ending in pointerup) takes the focus away; a pan keeps it. An adapter that takes the press itself (`press()` sets a kind) decides on its own.
 - `adapter.focusChanged(id)` (optional) is told each change of focus (null for none), from `focus()` or a press; the same id again tells nothing. The Prototype view redraws its row marks and notes from it.

@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(15, count($names), 'fifteen class names');
+	pg_assert_same(16, count($names), 'sixteen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -824,6 +824,116 @@ JS
 		array('pgc-group pgc-group-group', 'g1', '0px', '-40px', '900px', 'pgc-group-label', 'Shop', 'pgc-group-rule'),
 		array('pgc-group pgc-group-side', 'side', '1200px', '-40px', '160px', 'pgc-group-label', 'Outside', 'pgc-group-rule'),
 	), 'true'), $result['groups'], 'groups(): headings with a label and a rule behind the boxes, drawn again in place');
+}
+
+// A trail (trail()): its arrows drawn in place of the focus's, the others
+// hidden or faint, the boxes and targets at neither end of one dimmed; the
+// focus stays; an arrow drawn later takes its state; null ends it; without
+// adapter.focus it does nothing.
+function test_graph_canvas_trail()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+function setup(focusField) {
+    var layer = new El('div');
+    ui.layer = layer;
+    ui.boxes = layer.appendChild(new El('div'));
+    ui.svg = layer.appendChild(new El('svg'));
+    ui.temp = ui.svg.appendChild(new El('path'));
+    ui.temp.className = 'pgc-hidden';
+    ui.live = new El('div');
+    var listeners = {};
+    ui.viewport.addEventListener = function (type, handler) { listeners[type] = handler; };
+    ui.viewport.removeEventListener = function () {};
+    document.removeEventListener = function () {};
+    ui.viewport.classList = { add: function () {}, remove: function () {} };
+    ui.viewport.setPointerCapture = function () {};
+    ui.viewport.focus = function () {};
+    var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 300, y: 0 }, c: { id: 'c', x: 600, y: 0 }, d: { id: 'd', x: 900, y: 0 } };
+    var chip = { id: 'mail', x: 300, y: 200 };
+    var adapter = {
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+        text: function (key, a, b, c) { return key + '|' + a + '|' + b + '|' + c; },
+        item: function (id) { return items[id] || null; },
+        label: function (item) { return 'Box ' + item.id.toUpperCase(); },
+        editable: function () { return false; },
+        select: function () {},
+        targets: '[data-target]',
+        target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
+        groups: function () { return [{ id: 'g1', label: 'Shop', x: 0, y: -40, w: 900, kind: 'group' }, { id: 'side', label: 'Outside', x: 1200, y: -40, w: 160, kind: 'side' }]; },
+        press: function () { return true; },
+        focusChanged: function (id) { heard.push(id); },
+        move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
+    };
+    if (focusField) { adapter.focus = true; }
+    var canvas = G.create(adapter);
+    canvas.bind();
+    var els = {};
+    Object.keys(items).forEach(function (k) { els[k] = ui.boxes.appendChild(canvas.box(items[k], { into: true })); });
+    els.mail = ui.boxes.appendChild(new El('div'));
+    els.mail.setAttribute('data-target', 'mail');
+    var edges = {};
+    [['ab', 'a', 'b'], ['ca', 'c', 'a'], ['bc', 'b', 'c'], ['cd', 'c', 'd'], ['am', 'a', 'mail']].forEach(function (e) {
+        edges[e[0]] = canvas.edge(e[0], items[e[1]], e[2] === 'mail' ? chip : items[e[2]]).group;
+    });
+    return { canvas: canvas, els: els, edges: edges, listeners: listeners };
+}
+function classesOf(map) { var o = {}; Object.keys(map).forEach(function (k) { o[k] = map[k].className; }); return o; }
+function order() { return ui.svg.children.filter(function (g) { return g.attrs['data-edge']; }).map(function (g) { return g.attrs['data-edge']; }); }
+
+var heard = [];
+var plain = setup(false);
+plain.canvas.trail(['ab']);
+out.plain = classesOf(plain.edges);
+var f = setup(true);
+f.canvas.focus('a');
+f.canvas.trail(['bc']);
+out.start = classesOf(f.els).a;
+f.canvas.trail(['ab', 'bc']);
+out.on = [classesOf(f.edges), classesOf(f.els), f.canvas.focused(), order().slice(-2)];
+f.canvas.allEdges(true);
+out.faint = [classesOf(f.edges), order().slice(-2)];
+f.canvas.allEdges(false);
+var late = f.canvas.edge('cd2', { id: 'c', x: 600, y: 0 }, { id: 'd', x: 900, y: 0 });
+out.late = late.group.className;
+f.canvas.trail(null);
+out.off = [classesOf(f.edges), classesOf(f.els), heard.slice()];
+f.canvas.focus(null);
+f.canvas.trail(['cd']);
+out.noFocus = [classesOf(f.edges), classesOf(f.els)];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$all = array('ab' => 'pgc-edge', 'ca' => 'pgc-edge', 'bc' => 'pgc-edge', 'cd' => 'pgc-edge', 'am' => 'pgc-edge');
+	pg_assert_same($all, $result['plain'], 'without adapter.focus trail() does nothing');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-trail', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-edge-trail', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node pgc-dim', 'mail' => 'pgc-dim'),
+		'a',
+		array('ab', 'bc'),
+	), $result['on'], 'a trail: its arrows in place of the focus\'s, the rest hidden, the boxes at neither end dimmed, the focus kept');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-trail', 'ca' => 'pgc-edge pgc-edge-faint', 'bc' => 'pgc-edge pgc-edge-trail', 'cd' => 'pgc-edge pgc-edge-faint', 'am' => 'pgc-edge pgc-edge-faint'),
+		array('ab', 'bc'),
+	), $result['faint'], 'allEdges(true): the others faint, under the trail');
+	pg_assert_same('pgc-node', $result['start'], 'the box in focus is never dimmed by a trail');
+	pg_assert_same('pgc-edge pgc-hidden', $result['late'], 'an arrow drawn later off the trail is hidden');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-out', 'ca' => 'pgc-edge pgc-edge-in', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-edge-out'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node pgc-dim', 'mail' => ''),
+		array('a'),
+	), $result['off'], 'trail(null): the focus\'s arrows again; the focus never changed');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-edge-trail', 'am' => 'pgc-edge pgc-hidden'),
+		array('a' => 'pgc-node pgc-dim', 'b' => 'pgc-node pgc-dim', 'c' => 'pgc-node', 'd' => 'pgc-node', 'mail' => 'pgc-dim'),
+	), $result['noFocus'], 'a trail with no box in focus');
 }
 
 // A set of proposed arrows (dashed()): drawn dashed with the class and a
