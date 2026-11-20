@@ -30,4 +30,4 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
 - RF5 (S) close-out: every E number checked against the code with its PR; `commerce/referral-programme.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
 ## Which steps run side by side?
-- RF2, RF3 and RF4 run beside each other once RF1 has landed. RF1 is never open beside TK1 of `plans/event-tickets.md`: both enter the cart module and the completion file (`plans/more-features-shared-files.md`).
+- RF2, RF3 and RF4 run beside each other once RF1 has landed. RF1 is never open beside TK1 of the event tickets (`commerce/event-tickets.md`, landed): both enter the cart module and the completion file (`plans/more-features-shared-files.md`).
