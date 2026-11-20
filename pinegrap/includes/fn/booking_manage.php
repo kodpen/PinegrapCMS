@@ -53,7 +53,8 @@ function pg_booking_manage_rights($booking, $policy, $now)
 /**
  * A customer's bookings split for the account (pure): upcoming ones (a
  * request or a confirmed booking that has not ended), soonest first, and the
- * rest, latest first. Holds are left out.
+ * rest, latest first. Holds, and holds given back (cancelled with their
+ * hold_until kept), are left out.
  *
  * @param array $rows bookings rows
  * @param int   $now
@@ -67,7 +68,9 @@ function pg_booking_customer_split($rows, $now)
     foreach ((array) $rows as $row) {
         $status = (string) ($row['status'] ?? '');
 
-        if ($status === 'held') {
+        // A hold given back (cancelled with its hold_until kept) never was a
+        // booking of the customer's.
+        if (($status === 'held') || (($status === 'cancelled') && ((int) ($row['hold_until'] ?? 0) > 0))) {
             continue;
         }
 
@@ -425,6 +428,7 @@ function pg_booking_customer_rows($user_id)
         LEFT JOIN user ON user.user_id = booking_staff.user_id
         LEFT JOIN contacts ON contacts.id = user.user_contact
         WHERE bookings.user_id = '" . (int) $user_id . "' AND bookings.status <> 'held'
+            AND (bookings.status <> 'cancelled' OR bookings.hold_until = 0)
         ORDER BY bookings.start_at DESC
         LIMIT 50");
 

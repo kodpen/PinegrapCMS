@@ -18,7 +18,7 @@ module: widgets_booking
 
 ## What does booking_slots.php answer?
 - JSON body only (a cross-site form cannot post it), anonymous. `month` → free days, `day` → times `{start, staff, label}` (label on the site clock, `pg_time_format_code()`), `hold` → `{until, label}` or `error: taken`, `release`. Staff 0 = anyone: `pg_booking_day_times()` gives each start to the free staff member with the fewest busy minutes that day, lowest id on a tie.
-- Busy = bookings (`pg_booking_busy_from_rows()`) + Workspace events of the staff user (`ws_events`: people, department, company; all-day ends at 23:59:59 so +1 s), `pg_booking_busy_between()`; a holiday day set to Do not count (`ws_events.skipped`) takes none (#10399). Yearly holiday copies are not expanded yet.
+- Busy = bookings (`pg_booking_busy_from_rows()`) + Workspace events of the staff user (`ws_events`: people, department, company; all-day ends at 23:59:59 so +1 s), `pg_booking_busy_between()`; a holiday day set to Do not count (`ws_events.skipped`) takes none (#10399). Yearly holidays count every year (#10799).
 - A hold is accepted only on a start the day would offer; one hold per session (`$_SESSION['software']['booking_hold']`), released by a new hold, `release` or Back from the details step.
 - Rate limits per address (`pg_booking_throttled()`): reads 120 / 5 min, holds 20 / 10 min, logged as `rate-booking-read|hold`.
 

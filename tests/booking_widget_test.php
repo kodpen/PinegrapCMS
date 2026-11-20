@@ -155,6 +155,39 @@ function test_booking_widget_ws_busy_leaves_out_skipped_days()
 	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the widget reads ws_events.skipped where it exists');
 }
 
+// A Workspace holiday marked "Every year" (ws_events.yearly) is a day off in
+// every later year too, as the Workspace calendar shows it: its copies fall
+// on the same day and time of the asked years; 29 February on the 28th.
+function test_booking_widget_ws_yearly_events()
+{
+	$zone = new DateTimeZone('Europe/Istanbul');
+	$at = function ($local) use ($zone) {
+		return (new DateTime($local, $zone))->getTimestamp();
+	};
+	$new_year = array('id' => 4, 'scope' => 'company', 'yearly' => 1, 'all_day' => 1,
+		'starts_at' => $at('2024-01-01 00:00:00'), 'ends_at' => $at('2024-01-01 23:59:59'));
+	$leap = array('id' => 5, 'scope' => 'company', 'yearly' => '1', 'all_day' => 1,
+		'starts_at' => $at('2024-02-29 00:00:00'), 'ends_at' => $at('2024-02-29 23:59:59'));
+	$once = array('id' => 6, 'scope' => 'company', 'yearly' => 0, 'all_day' => 1,
+		'starts_at' => $at('2024-01-01 00:00:00'), 'ends_at' => $at('2024-01-01 23:59:59'));
+
+	$copies = pg_booking_ws_yearly(array($new_year, $leap, $once), $at('2025-12-31 00:00:00'), $at('2026-01-03 00:00:00'), $zone);
+	pg_assert_same(1, count($copies), 'one copy: the yearly day inside the range');
+	pg_assert_same(array(4, $at('2026-01-01 00:00:00'), $at('2026-01-01 23:59:59')),
+		array($copies[0]['id'], $copies[0]['starts_at'], $copies[0]['ends_at']), 'New Year in 2026');
+
+	$copies = pg_booking_ws_yearly(array($leap), $at('2026-02-27 00:00:00'), $at('2026-03-02 00:00:00'), $zone);
+	pg_assert_same(array($at('2026-02-28 00:00:00'), $at('2026-02-28 23:59:59')),
+		array($copies[0]['starts_at'], $copies[0]['ends_at']), '29 February on the 28th');
+
+	pg_assert_same(array(), pg_booking_ws_yearly(array($new_year), $at('2024-01-01 00:00:00'), $at('2024-01-02 00:00:00'), $zone), 'its own year is the row itself');
+
+	// The reader asks for the yearly rows, so the busy times hold them.
+	$reflection = new ReflectionFunction('pg_booking_busy_between');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains('pg_booking_ws_yearly(', $source, 'the busy times hold the yearly days');
+}
+
 // One function of pg_booking.js by its name, up to its closing brace at the
 // IIFE's indent; '' when it is not there.
 function booking_widget_test_js_fn($js, $name)

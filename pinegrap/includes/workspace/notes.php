@@ -114,6 +114,73 @@ function ws_note_revision_ready()
 }
 
 /**
+ * Does a note keep the application that changed it (2026.11.0, 11.0.257)?
+ * The columns are named only once the step has added them.
+ *
+ * @return bool
+ */
+function ws_note_app_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'updated_app_id')
+            && pg_schema_has('ws_note_versions', 'app_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The application a save is written as: the one whose key made it, 0 for a
+ * person (the panel, a person's own device). Pure.
+ *
+ * @param array $data what ws_note_save() takes; app_id from the API only
+ * @return int
+ */
+function ws_note_saver_app($data)
+{
+    return max(0, (int) ($data['app_id'] ?? 0));
+}
+
+/**
+ * Who changed a note or saved one of its versions, as the card, the versions
+ * and the API name them: the application when its key saved, else the
+ * person. Pure.
+ *
+ * @param array|null $person ws_people() entry
+ * @param array|null $app    ws_app_sender() entry, null when a person saved
+ * @return array|null
+ */
+function ws_note_changer($person, $app)
+{
+    if (is_array($app)) {
+        return $app;
+    }
+
+    return is_array($person) ? $person : null;
+}
+
+/**
+ * The words under a note card: "Changed by @handle", the application by its
+ * name. Empty when nobody is known. Pure.
+ *
+ * @param array|null $changer ws_note_changer()
+ * @return string
+ */
+function ws_note_changed_by_words($changer)
+{
+    if (!is_array($changer)) {
+        return '';
+    }
+
+    $handle = trim((string) ($changer['username'] ?? ''));
+    $name = ($handle !== '') ? '@' . $handle : trim((string) ($changer['name'] ?? ''));
+
+    return ($name !== '') ? lang(array('string' => 'Changed by {var:1}', 'vars' => $name)) : '';
+}
+
+/**
  * Are deleted notes remembered (2026.11.0, 11.0.85)?
  *
  * @return bool
@@ -713,6 +780,11 @@ function ws_notes_present($viewer, $rows, $full = false)
         }
 
         $made = $channels[(int) $row['channel_id']] ?? null;
+        $app_id = (int) ($row['updated_app_id'] ?? 0);
+        $changer = ws_note_changer(
+            ((int) ($row['updated_by'] ?? 0) > 0) ? ($people[(int) $row['updated_by']] ?? null) : null,
+            ($app_id > 0) ? ws_app_sender($app_id) : null
+        );
         $excerpt = ws_plain_text($viewer, $body, null, true);
 
         if (mb_strlen($excerpt) > 140) {
@@ -728,6 +800,10 @@ function ws_notes_present($viewer, $rows, $full = false)
             'pinned'     => $owner && !empty($row['pinned']),
             'owner'      => $people[(int) $row['user_id']] ?? null,
             'updated_by' => ((int) ($row['updated_by'] ?? 0) > 0) ? ($people[(int) $row['updated_by']] ?? null) : null,
+            // The application whose key made the last save (null: a person
+            // did), and the words the card writes under the note.
+            'updated_app' => ($app_id > 0) ? ws_app_sender($app_id) : null,
+            'changed_by' => ws_note_changed_by_words($changer),
             'updated'    => ws_time_label($row['updated_at']),
             'updated_at' => (int) $row['updated_at'],
             'created'    => ws_time_label($row['created_at'] ?? 0),
@@ -793,10 +869,11 @@ function ws_note_body_view($viewer, $body)
  *
  * @param array $viewer
  * @param array $note the row before the save
- * @param array $sets the fields the save writes
+ * @param array $sets   the fields the save writes
+ * @param int   $app_id the application this save is written as, 0 for a person
  * @return void
  */
-function ws_note_version_keep($viewer, $note, $sets)
+function ws_note_version_keep($viewer, $note, $sets, $app_id = 0)
 {
     if (!ws_note_versions_ready()) {
         return;
@@ -826,15 +903,20 @@ function ws_note_version_keep($viewer, $note, $sets)
     $keep = !is_array($last)
         || ((time() - (int) $last['created_at']) >= WS_NOTE_VERSION_GAP)
         || ((int) $note['updated_by'] !== (int) $viewer['id'])
+        || ((int) ($note['updated_app_id'] ?? 0) !== (int) $app_id)
         || ($body_changed && ($old_length >= 20) && ($new_length < $old_length * 0.6));
 
     if (!$keep) {
         return;
     }
 
-    db("INSERT INTO ws_note_versions (note_id, title, body, saved_by, saved_at, created_at)
+    // The state is kept with whoever saved it: the person, and the
+    // application when its key did.
+    $app = ws_note_app_ready();
+
+    db("INSERT INTO ws_note_versions (note_id, title, body, saved_by, " . ($app ? 'app_id, ' : '') . "saved_at, created_at)
         VALUES ('" . $note_id . "', '" . e($old_title) . "', '" . e($old_body) . "',
-            '" . (int) $note['updated_by'] . "', '" . (int) $note['updated_at'] . "', '" . time() . "')");
+            '" . (int) $note['updated_by'] . "', " . ($app ? "'" . (int) ($note['updated_app_id'] ?? 0) . "', " : '') . "'" . (int) $note['updated_at'] . "', '" . time() . "')");
 
     $old = db_values("SELECT id FROM ws_note_versions WHERE note_id = '" . $note_id . "'
         ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP . ", 1000");
@@ -850,7 +932,7 @@ function ws_note_version_keep($viewer, $note, $sets)
  *
  * @param array $viewer
  * @param array $note
- * @return array[] id, title, saved, saved_full, by (person|null), size
+ * @return array[] id, title, saved, saved_full, by (person|null), app (application|null), changed_by, size
  */
 function ws_note_versions($viewer, $note)
 {
@@ -858,19 +940,25 @@ function ws_note_versions($viewer, $note)
         return array();
     }
 
-    $rows = (array) db_items("SELECT id, title, saved_by, saved_at, CHAR_LENGTH(body) AS size FROM ws_note_versions
+    $rows = (array) db_items("SELECT id, title, saved_by, " . (ws_note_app_ready() ? 'app_id, ' : '') . "saved_at, CHAR_LENGTH(body) AS size FROM ws_note_versions
         WHERE note_id = '" . (int) $note['id'] . "' ORDER BY id DESC LIMIT " . (int) WS_NOTE_VERSIONS_KEEP);
 
     $people = ws_people(array_unique(array_filter(array_map(function ($row) { return (int) $row['saved_by']; }, $rows))));
     $out = array();
 
     foreach ($rows as $row) {
+        $app_id = (int) ($row['app_id'] ?? 0);
+        $app = ($app_id > 0) ? ws_app_sender($app_id) : null;
+
         $out[] = array(
             'id'         => (int) $row['id'],
             'title'      => (string) $row['title'],
             'saved'      => ws_time_label($row['saved_at']),
             'saved_full' => ((int) $row['saved_at'] > 0) ? date('d.m.Y H:i', (int) $row['saved_at']) : '',
             'by'         => $people[(int) $row['saved_by']] ?? null,
+            // The application whose key saved this state; null: the person.
+            'app'        => $app,
+            'changed_by' => ws_note_changed_by_words(ws_note_changer($people[(int) $row['saved_by']] ?? null, $app)),
             'size'       => (int) $row['size'],
         );
     }
@@ -930,7 +1018,8 @@ function ws_notes_list_columns()
 {
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
-        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '');
+        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '')
+        . (ws_note_app_ready() ? ', n.updated_app_id' : '');
 }
 
 /**
@@ -1340,11 +1429,14 @@ function ws_note_save($viewer, $data)
     $sets = $check['sets'];
     $pin = $check['pin'];
     $now = time();
+    // The application whose key saves, written beside the person it acts for.
+    $app_id = ws_note_saver_app($data);
+    $app_ready = ws_note_app_ready();
 
     if ($note === null) {
-        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, created_at, updated_at)
+        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, " . ($app_ready ? 'updated_app_id, ' : '') . "created_at, updated_at)
             VALUES ('" . (int) $viewer['id'] . "', '" . e($sets['title']) . "', '" . e($sets['body']) . "',
-                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
+                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', " . ($app_ready ? "'" . $app_id . "', " : '') . "'" . $now . "', '" . $now . "')");
 
         $note_id = (int) mysqli_insert_id(db::$con);
 
@@ -1362,7 +1454,7 @@ function ws_note_save($viewer, $data)
     }
 
     // The state before this save, when it is worth keeping.
-    ws_note_version_keep($viewer, $note, $sets);
+    ws_note_version_keep($viewer, $note, $sets, $app_id);
 
     $parts = array();
 
@@ -1373,6 +1465,10 @@ function ws_note_save($viewer, $data)
     if (!empty($parts)) {
         $parts[] = "updated_by = '" . (int) $viewer['id'] . "'";
         $parts[] = "updated_at = '" . $now . "'";
+
+        if ($app_ready) {
+            $parts[] = "updated_app_id = '" . $app_id . "'";
+        }
     }
 
     if ($pin !== null) {
@@ -2110,7 +2206,7 @@ function ws_note_channel_write($viewer, $channel, $data)
         return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
     }
 
-    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => $check['title'], 'body' => $check['body']));
+    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => $check['title'], 'body' => $check['body'], 'app_id' => (int) ($data['app_id'] ?? 0)));
 
     if (!$saved['ok']) {
         return array('ok' => false, 'error' => $saved['error'], 'field' => '', 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
@@ -2182,6 +2278,8 @@ function ws_note_cards_map($viewer, $message_ids)
             'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],
+            'updated_app' => $card['updated_app'],
+            'changed_by' => $card['changed_by'],
             'updated'    => $card['updated'],
             'revision'   => (int) ($note['revision'] ?? 0),
             'updated_at' => (int) $note['updated_at'],
@@ -2717,7 +2815,9 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     // so what the assistant wrote under the line can be undone.
     ws_note_version_keep($viewer, $note, $sets);
 
-    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'" . ws_note_revision_sql() . "
+    // The person's screen writes the answer in, so no application is named.
+    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'"
+        . (ws_note_app_ready() ? ", updated_app_id = 0" : '') . ws_note_revision_sql() . "
         WHERE id = '" . (int) $note['id'] . "'");
 
     ws_note_cards_touch((int) $note['id']);

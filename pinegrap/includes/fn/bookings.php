@@ -348,6 +348,9 @@ function pg_booking_slots($service, $staff, $day, $busy, $now, $policy)
  * next day's midnight. A time the spring change skips moves forward, as
  * DateTime does.
  *
+ * "24:00" is read from the next day's date: where the change skips midnight
+ * this day starts at 01:00, and a day added to that would end an hour late.
+ *
  * @param string       $day  'YYYY-MM-DD'
  * @param string       $time 'HH:MM'
  * @param DateTimeZone $zone
@@ -356,8 +359,8 @@ function pg_booking_slots($service, $staff, $day, $busy, $now, $policy)
 function pg_booking_wall_time($day, $time, $zone)
 {
     if ($time === '24:00') {
-        $moment = new DateTime($day . ' 00:00:00', $zone);
-        $moment->modify('+1 day');
+        $next = (new DateTime($day . ' 12:00:00', $zone))->modify('+1 day')->format('Y-m-d');
+        $moment = new DateTime($next . ' 00:00:00', $zone);
     } else {
         $moment = new DateTime($day . ' ' . $time . ':00', $zone);
     }

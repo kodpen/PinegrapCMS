@@ -1310,6 +1310,35 @@ function ws_api_message_app_sender($app)
     );
 }
 
+/**
+ * Who changed a note last, as the API names them: the application whose key
+ * saved (user_id null, its app_id), else the person (updated_by keeps the
+ * person an application's key acts for). Null when nobody is known. Pure.
+ *
+ * @param array|null $person ws_people() entry
+ * @param array|null $app    ws_app_sender() entry, null when a person saved
+ * @return array|null WorkspaceMessageSender
+ */
+function ws_api_note_changer($person, $app)
+{
+    if (is_array($app)) {
+        return ws_api_message_app_sender($app);
+    }
+
+    if (!is_array($person) || ((int) ($person['id'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    return array(
+        'user_id' => (int) $person['id'],
+        'name'    => (string) ($person['name'] ?? ''),
+        'app_id'  => null,
+        'agent'   => false,
+        'claude'  => false,
+        'ai'      => false,
+    );
+}
+
 // What ws_api_message_present() returns.
 function ws_api_message_schema()
 {
@@ -1481,7 +1510,7 @@ function ws_api_message_checks($body, $checks)
 
 function ws_api_message_note_card_schema()
 {
-    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string', 'revision' => 'integer', 'updated_at' => 'datetime', 'can_edit' => 'boolean');
+    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string', 'revision' => 'integer', 'updated_at' => 'datetime', 'can_edit' => 'boolean', 'changed_by' => 'WorkspaceMessageSender?');
 }
 
 /**
@@ -1510,6 +1539,8 @@ function ws_api_message_note_card($row, $note_cards)
         'revision'   => (int) ($card['revision'] ?? 0),
         'updated_at' => api_time((int) ($card['updated_at'] ?? 0)),
         'can_edit'   => in_array((string) ($card['access'] ?? ''), array('owner', 'edit'), true),
+        // The application whose key made the last change, else the person.
+        'changed_by' => ws_api_note_changer($card['updated_by'] ?? null, $card['updated_app'] ?? null),
     );
 }
 
@@ -7973,6 +8004,7 @@ function ws_api_note_present($viewer, $note)
         'unread'      => !empty($note['unread']),
         'owner'       => ws_api_person_brief_ref($note['owner'] ?? null),
         'updated_by'  => ws_api_person_brief_ref($note['updated_by'] ?? null),
+        'changed_by'  => ws_api_note_changer($note['updated_by'] ?? null, $note['updated_app'] ?? null),
         'source'      => ws_api_note_source_present($note['source'] ?? null),
         'shared_with' => ws_api_note_people_present($note['with'] ?? array()),
         'shared_in'   => ws_api_note_channels_present($note['in'] ?? array()),
@@ -8009,6 +8041,7 @@ function ws_api_note_schema()
         'unread'      => 'boolean',
         'owner'       => 'WorkspacePerson?',
         'updated_by'  => 'WorkspacePerson?',
+        'changed_by'  => 'WorkspaceMessageSender?',
         'source'      => 'WorkspaceNoteSource?',
         'shared_with' => array(array('user_id' => 'integer', 'name' => 'string', 'can_edit' => 'boolean')),
         'shared_in'   => array(array('channel_id' => 'integer', 'name' => 'string')),
@@ -8121,6 +8154,9 @@ function ws_api_notes_create($params)
 
     api_dry_run_stop('created', 'workspace_note', array('title' => (string) $checked['sets']['title'], 'pinned' => ((int) $checked['pin'] === 1)));
 
+    // The application whose key writes is kept on the note (0 for a
+    // person's own device or an OAuth client, as for messages).
+    $data['app_id'] = (int) ws_api_message_writer()['app_id'];
     $result = ws_note_save($viewer, $data);
 
     if (!$result['ok']) {
@@ -8221,6 +8257,7 @@ function ws_api_notes_update($params)
         'fields' => array_merge(array_keys($checked['sets']), ($checked['pin'] !== null) ? array('pinned') : array()),
     ));
 
+    $data['app_id'] = (int) ws_api_message_writer()['app_id'];
     $result = ws_note_save($viewer, $data);
 
     if (!$result['ok']) {

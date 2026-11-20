@@ -153,6 +153,7 @@
 - key-code-import.md: Key code CSV import and export (import_key_codes.php, view_key_codes.php): a code already there is updated, not re-added; BOM, separator, dates, yes/no cells, formula guard, offer's own code
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
+- marketplace-channel-price.md: A marketplace account's own price by rules (2026.11.0, 11.0.256): rule pick, rounding endings, the profit floor, the three repricer tables, history rows on marketplace:<account id>
 - marketplace-commission-and-invoice-columns.md: marketplace_product_map.commission and marketplace_order_map.invoice_sent (2026.11.0, 11.0.37): what each holds, NULL vs 0, the probes code reads them through (#1687)
 - marketplace-listing-view.md: Listings view of marketplace_products.php (#2066): article cards with pictures, category search by path words, one category for many articles, required attributes first
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
