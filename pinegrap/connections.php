@@ -2927,6 +2927,12 @@ if ($provider_page !== '') {
 		$page = pg_ad_conversion_ga4_page($page, connections_privacy_may_manage($user), $can_seal);
 	}
 
+	// An ad service's events: the daily counts and the last 50, below its
+	// details, under the same gate.
+	if (in_array($page_id, pg_ad_conversion_services(), true) && connections_privacy_may_manage($user)) {
+		$page['details'] .= pg_ad_conversion_log_card($page_id);
+	}
+
 	// An AI provider's page: its key, and the assistants that use it.
 	if (isset($ai_services[$page_id])) {
 		$page = connections_ai_page($page, $page_id, $page_row['name'], $ai_services[$page_id], connections_ai_may_manage($user), $can_seal);
