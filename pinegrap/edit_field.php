@@ -332,6 +332,9 @@ if (!$_POST) {
         $field['upload_folder_id'] = $folder_id;
     }
 
+    // A product form's File Upload field: its allowed types and largest size.
+    $field = array_merge($field, pg_field_form_upload_values($field['rules'] ?? null));
+
     // get field id for field directly above this field, because this will be the position value
     $query = "SELECT id
              FROM form_fields
@@ -487,6 +490,7 @@ if (!$_POST) {
         pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, $id, $name), $field_name);
         pg_field_form_validate_type($liveform, $_POST['type'] ?? '', $form_type);
         $numbers = pg_field_form_validate_numbers($liveform, $_POST);
+        $upload_rules = pg_field_form_validate_upload($liveform, $_POST, $form_type, pg_schema_has('form_fields', 'rules') ? db_value("SELECT rules FROM form_fields WHERE id = '" . (int) $id . "'") : null);
         
         // if there are errors in the liveform then send the user back to the edit field screen
         if ($liveform->check_form_errors() == true) {
@@ -535,6 +539,12 @@ if (!$_POST) {
             }
 
             $sql_upload_folder_id = "upload_folder_id = '" . e($_POST['upload_folder_id'] ?? '') . "',";
+
+            // A product form's File Upload field keeps its allowed types and
+            // largest size beside its folder.
+            if (($upload_rules !== null) && pg_schema_has('form_fields', 'rules')) {
+                $sql_upload_folder_id .= " rules = '" . e($upload_rules) . "',";
+            }
         }
         
         $required = pg_field_form_required_value($_POST['type'], $_POST['required'] ?? null);

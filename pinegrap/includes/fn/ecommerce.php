@@ -335,6 +335,9 @@ function remove_order_item($order_item_id)
     $query = "DELETE FROM order_items WHERE id = ?";
     $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     db("DELETE FROM order_item_gift_cards WHERE order_item_id = '" . escape($order_item_id) . "'");
+    // A file a shopper uploaded with the line's product form goes with its answer.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_line_files($order_item_id);
     // delete product form data for order item
     $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
     $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
@@ -2004,6 +2007,8 @@ function pg_order_drop_saved_lines($order_id)
     }
     $list = implode(', ', $ids);
     db("DELETE FROM order_item_gift_cards WHERE order_item_id IN (" . $list . ")");
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_line_files($ids);
     db("DELETE FROM form_data WHERE (order_item_id IN (" . $list . ")) AND (order_item_id != '0')");
     db("DELETE FROM order_items WHERE id IN (" . $list . ")");
 }

@@ -63,6 +63,10 @@ $result = db_q($query, array((string) $order_item_id, (string) ($_SESSION['ecomm
 
 db("DELETE FROM order_item_gift_cards WHERE order_item_id = '" . escape($order_item_id) . "'");
 
+// A file the shopper uploaded with the line's product form goes with its answer.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+pg_pfu_remove_line_files($order_item_id);
+
 // delete product form data for this order item
 $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0') AND (order_id = ?) AND (order_id != '0')";
 $result = db_q($query, array((string) $order_item_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
