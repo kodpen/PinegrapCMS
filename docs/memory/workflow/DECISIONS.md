@@ -497,6 +497,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-92.md: In which language is text written for an agent? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-92.md: What does it cover?
 - decisions-made-product-92.md: What does it leave alone?
+- decisions-made-product-92.md: In which language is a refusal? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
