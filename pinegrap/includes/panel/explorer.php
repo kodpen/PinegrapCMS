@@ -137,6 +137,7 @@ function pg_panel_file_explorer($request, $action)
         case 'explorer_files_design':
         case 'explorer_file_get':
         case 'explorer_office_preview':
+        case 'explorer_office_copy':
         case 'explorer_file_usage':
         case 'explorer_page_usage':
         case 'explorer_file_save':

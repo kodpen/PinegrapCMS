@@ -14,12 +14,13 @@ module: picture_translation
 - `pg_tr_scope_extract('file:<id>')` extracts nothing (the saves keep the texts); the Translations screen's jobs list names such a job by the Pictures group ("Images").
 
 ## What is the mark?
-- A file `data/temp/picture_draw_<md5(database@host)>.mark` holding a token; reading it (`pg_picture_tr_marked()`) costs no query. Where it cannot be written it reads as set, so nothing waits unseen.
+- A file `data/temp/picture_draw_<md5(database@host)>.mark` holding a token; reading it (`pg_picture_tr_marked()`) costs no query. Where data/temp takes no file (`pg_dir_writable()`) it reads as set, so nothing waits unseen. Before #10569 `is_writable()` read a Windows folder's read-only attribute, so the mark read as set for good there.
 - Set (`pg_picture_tr_mark_set()`) by a waiting row (a page save, a first visit), a save of a picture with a row, and a translation written for a text of a row waiting or out of date (asked only while the mark is clear).
 - Cleared when the queue's query finds nothing: `pg_picture_tr_queue()` and `pg_picture_tr_mark_check()` (also run at the end of the daily prune), and only while the token is still the one read before the query, so a set meanwhile stays. A data/temp swept by Cleanup costs at most a day.
 
 ## Who keeps a drawn picture?
 - `pg_picture_tr_keep($source, $language, $drawn, $fit, $doc_hash, $user_id)`: the language's files row (written over, or new in the source's folder), the `file_translation` upsert (`pg_picture_tr_keep_query()`, `drawn_by` the user or 0 for the server), the page cache. The Draw action calls it with the user's id.
+- It writes (`pg_picture_tr_keep_write()`) under `GET_LOCK` of the picture and language (`pg_picture_tr_keep_lock_sql()`, 10 s; a null answer keeps without it): two draws at once (a tab and the job) each wrote a new files row before #10569, one left visible in Files.
 
 ## Where is it tested?
 - `tests/picture_translation_auto_test.php`: rows at a page save (words, no words, another host, right to left, the bin), the hook's place, the job's scope and guards, the mark's moves and places, the keep's upsert with 0. The database paths were not run.

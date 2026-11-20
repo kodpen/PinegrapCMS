@@ -295,5 +295,5 @@ function test_office_ods_doors_offer_the_preview()
 	pg_assert_contains("office.kind === 'ods'", $view, 'the view draws an .ods');
 
 	$folders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
-	pg_assert_contains("'xlsx', 'xlsm', 'xltx', 'xltm', 'ods']", $folders, 'Quick Look and the file window open it');
+	pg_assert_contains("'xlsx', 'xlsm', 'xltx', 'xltm', 'ods'", $folders, 'Quick Look and the file window open it');
 }

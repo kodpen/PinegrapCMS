@@ -16,9 +16,9 @@ description: Decisions list, product part 76 (2026-11-17): connectors managed in
 
 ## Where does the Voice message transcripts card sit? (owner, 2026-11-17, agent channel poll 147, message 9342)
 - Asked how the AI keys' six places merge (CX2), he chose "Sesli mesaj dökümleri Asistanlar ve ajanlar'a taşınsın": the card moves from Site Settings › "Kanallar, e-posta ve ses" to Assistants and agents, after Pinegrap AI, and the category it leaves is named "Kanallar". No field changes; old links open the new place.
-- Staying where they are, as the poll told him: the subscription key (General › Software; it is the licence), the Google Cloud Translation key (Languages and Translation; not a model, and it works on a site without the Workspace), Application Access.
-- Not chosen: the Google translation key moving too; nothing moving.
-- After poll 146 the card's key field is to move to OpenAI's panel on Connections; that waits for his yes to the mock.
+- Staying where they are, as the poll told him: the subscription key (General › Software; it is the licence), Application Access.
+- Not chosen: the Google Cloud Translation key moving to Assistants and agents too (not a model; it works without the Workspace); nothing moving.
+- After poll 146 the card's key field moved to OpenAI's page on Connections (CX9), the Google key to its own: `decisions-made-product-81.md`.
 
 ## Where is e-mail sending set up? (owner, 2026-11-17, agent channel poll 148, message 9367)
 - Asked how its four places merge (CX3), he chose "Site Ayarları'nda "E-posta gönderimi" kategorisi olsun": a new Site Settings category between Communication and Mailboxes, for a manager as today. It holds the sending service and the system e-mail, the campaign card with Communication's two texts (İleti İzni Etiketi, Düz Metin Altbilgisi), the sending domain and MailChimp.

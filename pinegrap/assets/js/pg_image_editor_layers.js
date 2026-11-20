@@ -20,6 +20,10 @@
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button, pct = X.pct;
 
+    // Group and Ungroup: boxes held in a frame, and the frame broken.
+    X.icons.group = 'M3.5 3.5h4M16.5 3.5h4v4M20.5 16.5v4h-4M7.5 20.5h-4v-4M3.5 7.5v-4M7 7h6v6H7zM11 11h6v6h-6z';
+    X.icons.ungroup = 'M3 3h7v7H3zM14 14h7v7h-7z';
+
     // The eight handles of a box and the turning handle. The corners come
     // after the edges, so on a small box their touch targets lie on top.
     var BOX_HANDLES = ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw', 'rot'];
@@ -109,8 +113,9 @@
         // (pg_image_editor_motion.js) moves, fades and clips the group.
         this.layerGroups = {};
 
+        // A layer is drawn with its groups' opacity on its own (M.groupLook()).
         this.doc.layers.forEach(function (l) {
-            var n = l.hidden ? null : self.layerNode(l), g;
+            var n = l.hidden ? null : self.layerNode(M.groupLook(l)), g;
 
             if (n) {
                 g = document.createElementNS(SVGNS, 'g');
@@ -202,6 +207,8 @@
             box.appendChild(d);
         });
 
+        this.groupSelection(box);
+
         // The selection box being dragged.
         if (this.drag && (this.drag.kind === 'box')) {
             var a = this.drag.at, b = this.drag.to, m = el('div', { class: 'pgie-marquee' });
@@ -222,6 +229,98 @@
         });
     };
 
+    // A picked group's own box (M.groupPicked()) round its members, after
+    // their boxes: four corners that size it and the turning handle, while
+    // every member moves (neither locked nor fixed). The handles are named
+    // 'g' and the box's: gnw, gne, gse, gsw, grot.
+    Editor.prototype.groupSelection = function (box) {
+        var gid = M.groupPicked(this.doc.layers, this.sel), picked = this.selected(), v = this.view, vr = this.viewRect(), k = v.k, b, d;
+
+        if (!gid || picked.some(function (l) { return l.locked || fixed(l); }) || !(b = M.groupBox(this.doc.layers, gid))) {
+            return;
+        }
+
+        d = el('div', { class: 'pgie-selbox pgie-grpsel' });
+        d.style.left = (v.x + (b.x - vr.x) * k) + 'px';
+        d.style.top = (v.y + (b.y - vr.y) * k) + 'px';
+        d.style.width = (b.w * k) + 'px';
+        d.style.height = (b.h * k) + 'px';
+
+        ['nw', 'ne', 'se', 'sw', 'rot'].forEach(function (h) {
+            d.appendChild(el('span', { class: 'pgie-sh', 'data-h': h, 'data-gh': 'g' + h, title: (h === 'rot') ? t('rotate') : null }));
+        });
+
+        box.appendChild(d);
+    };
+
+    // A press on a picked group's handle: its corner sizes the members as
+    // one, proportions kept, round the opposite corner (M.groupScale()); its
+    // turning handle turns them round the box's centre (M.groupTurn()).
+    // One undo step each ('drag'). False when e is not on such a handle.
+    Editor.prototype.groupHandleDown = function (e, p) {
+        var gh = e.target.getAttribute && (e.target.getAttribute('data-gh') || e.target.getAttribute('data-h'));
+        var gid = M.groupPicked(this.doc.layers, this.sel), b;
+
+        if (!gid || !/^g(nw|ne|se|sw|rot)$/.test(gh || '') || !(b = M.groupBox(this.doc.layers, gid))) {
+            return false;
+        }
+
+        this.drag = { kind: (gh === 'grot') ? 'gturn' : 'gsize', h: gh.slice(1), box: b, at: p, start: this.selected().map(M.clone) };
+        this.drag.from = M.angleTo(b, p[0], p[1], false);
+
+        return true;
+    };
+
+    // A group's size or turn followed to p: its members from their start.
+    Editor.prototype.groupHandleMove = function (e, p) {
+        var d = this.drag, k = this.view.k, list;
+
+        if (d.kind === 'gsize') {
+            list = M.groupScale(d.start, d.box, M.resizeBox({ x: d.box.x, y: d.box.y, w: d.box.w, h: d.box.h, rot: 0 }, d.h, p[0], p[1], true, 4 / k));
+
+            // A type's own resize (a text scales its letters).
+            list = list.map(function (l, i) {
+                var own = kind(l).resize, f;
+
+                if (!own) {
+                    return l;
+                }
+
+                f = own.call(this, d.start[i], { x: l.x, y: l.y, w: l.w, h: l.h }, 'se');
+
+                return Object.assign(l, f, { x: l.x, y: l.y, w: l.w, h: l.h });
+            }, this);
+        } else {
+            // Shift turns by steps of 15°.
+            var deg = M.angleTo(d.box, p[0], p[1], false) - d.from;
+
+            list = M.groupTurn(d.start, d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, e.shiftKey ? Math.round(deg / 15) * 15 : deg);
+        }
+
+        this.change(function (doc) {
+            list.forEach(function (o) {
+                var l = find(doc, o.id);
+
+                Object.keys(o).forEach(function (key) { l[key] = o[key]; });
+            });
+        }, 'drag', true);
+    };
+
+    // The opacity n (0..1) of the picked layers: a picked group's own
+    // (M.groupFxSet(), its members keep theirs), else each layer's. One
+    // undo step per slider drag ('opacity').
+    Editor.prototype.setOpacity = function (picked, n) {
+        var gid = M.groupPicked(this.doc.layers, picked.map(function (l) { return l.id; }));
+
+        this.change(function (doc) {
+            if (gid) {
+                doc.layers = M.groupFxSet(doc.layers, gid, { opacity: n });
+            } else {
+                picked.forEach(function (o) { find(doc, o.id).opacity = n; });
+            }
+        }, 'opacity', true);
+    };
+
     // A press with the Select tool: a handle of the one selected layer
     // resizes or turns it; a layer is selected (Shift adds or removes it)
     // and moved with the rest of the selection; the empty stage clears it.
@@ -230,6 +329,19 @@
     Editor.prototype.startDrag = function (e) {
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
         var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit = null;
+
+        // A picked group's own handles (groupSelection()).
+        if (!one && h && this.groupHandleDown(e, p)) {
+            e.preventDefault();
+
+            try {
+                this.stage.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // The pointer is already gone.
+            }
+
+            return;
+        }
 
         // On touch a box handle's 44 px target covers a small layer's middle:
         // a press well inside the box moves the layer instead of resizing it.
@@ -261,16 +373,21 @@
 
                 this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice(), click: this.pressClick(e) };
             } else {
+                // A layer in a group picks the group (Shift adds or takes
+                // it out); a click on a picked group picks the item inside
+                // it (endDrag(), M.groupDeeper()).
                 if (e.shiftKey) {
-                    this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
+                    this.select(M.groupToggle(this.doc.layers, this.sel, hit.id));
                     return;
                 }
 
-                if (this.sel.indexOf(hit.id) < 0) {
-                    this.select([hit.id]);
+                var again = (this.sel.indexOf(hit.id) >= 0) ? hit.id : null;
+
+                if (!again) {
+                    this.select(M.groupPick(this.doc.layers, this.sel, hit.id));
                 }
 
-                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone), click: this.pressClick(e) };
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone), click: this.pressClick(e), again: again };
             }
         }
 
@@ -302,7 +419,10 @@
         // An erased or adjusted area is not caught: it is the picture's own.
         var doc = this.doc;
 
-        return d.base.concat(M.layersInBox(doc, box).filter(function (id) { return (d.base.indexOf(id) < 0) && !kind(find(doc, id)).fixed; }));
+        // A layer in a group brings its whole group.
+        return d.base.concat(M.groupExpand(doc.layers, M.layersInBox(doc, box).filter(function (id) { return !kind(find(doc, id)).fixed; })).filter(function (id) {
+            return d.base.indexOf(id) < 0;
+        }));
     };
 
     // Where a press without Shift, Alt, Ctrl or Cmd went down on the screen:
@@ -330,6 +450,11 @@
             d.to = p;
             this.sel = this.boxSelection(d);
             this.renderView();
+            return;
+        }
+
+        if ((d.kind === 'gsize') || (d.kind === 'gturn')) {
+            this.groupHandleMove(e, p);
             return;
         }
 
@@ -428,6 +553,8 @@
         // the view, gives back the one before it.
         if (d.kind === 'box') {
             this.select((Object.keys(this.pointers).length > 1) ? d.base : this.boxSelection(d));
+        } else if (click && d.again && M.groupDeeper(this.doc.layers, this.sel, d.again)) {
+            this.select(M.groupDeeper(this.doc.layers, this.sel, d.again));
         } else {
             this.render();
         }
@@ -495,6 +622,17 @@
             return true;
         }
 
+        // Ctrl+G groups, Ctrl+Shift+G ungroups (Cmd on a Mac).
+        if (mod && (k === 'g' || k === 'G')) {
+            if (e.shiftKey) {
+                this.ungroupLayers();
+            } else {
+                this.groupLayers();
+            }
+
+            return true;
+        }
+
         if (!mod && (k === 'Delete' || k === 'Backspace') && free.length) {
             this.removeLayers();
             return true;
@@ -533,13 +671,12 @@
     };
 
     // Copies of layers with new ids, moved by offset, on top and selected.
+    // Groups among them are copied as new groups (M.groupCopy()).
     Editor.prototype.addLayers = function (list, offset) {
         var added = [];
 
         this.change(function (doc) {
-            list.forEach(function (o) {
-                var l = M.clone(o);
-
+            M.groupCopy(doc, list).forEach(function (l) {
                 // A copy of an erased or adjusted area keeps its place on the
                 // picture.
                 l.id = M.newId(doc);
@@ -550,15 +687,18 @@
                 doc.layers.push(l);
                 added.push(l.id);
             });
+            doc.layers = M.groupTidy(doc.layers);
         });
         this.select(added);
     };
 
+    // The selected layers but locked ones deleted; a group left with one
+    // layer ends (M.groupTidy()).
     Editor.prototype.removeLayers = function () {
         var ids = this.selected().filter(function (l) { return !l.locked; }).map(function (l) { return l.id; });
 
         this.change(function (doc) {
-            doc.layers = doc.layers.filter(function (l) { return ids.indexOf(l.id) < 0; });
+            doc.layers = M.groupTidy(doc.layers.filter(function (l) { return ids.indexOf(l.id) < 0; }));
         });
         this.select(this.sel.filter(function (id) { return ids.indexOf(id) < 0; }));
     };
@@ -693,17 +833,17 @@
             var arrange = function (how) { self.arrangeLayers(how); };
             var align = function (how) { self.alignLayers(how); };
             var spread = function (axis) { self.spreadLayers(axis); };
-            var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
+            // A picked group's opacity is its own (setOpacity()).
+            var gid = M.groupPicked(this.doc.layers, this.sel), label = gid ? t('groupOpacity') : t('opacity');
+            var opacity = Math.round(100 * (gid ? M.groupFx(this.doc.layers, gid).opacity : ((picked[0].opacity === undefined) ? 1 : picked[0].opacity)));
             var value = el('span', { class: 'pgie-val', text: pct(opacity) });
-            var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
+            var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': label });
 
             slider.addEventListener('input', function () {
                 var n = Number(slider.value);
 
                 value.textContent = pct(n);
-                self.change(function (doc) {
-                    picked.forEach(function (o) { find(doc, o.id).opacity = n / 100; });
-                }, 'opacity', true);
+                self.setOpacity(picked, n / 100);
             });
             slider.addEventListener('change', function () { self.history.key = null; });
 
@@ -721,6 +861,12 @@
                 act('backward', t('sendBackward'), function () { arrange('down'); }),
                 act('back', t('sendBack'), function () { arrange('bottom'); })
             ])));
+            var can = this.groupState();
+
+            body.appendChild(section(t('groups'), row([
+                act('group', t('groupLayers'), function () { self.groupLayers(); }, !can.group),
+                act('ungroup', t('ungroupLayers'), function () { self.ungroupLayers(); }, !can.ungroup)
+            ])));
             body.appendChild(section(t('align'), row([
                 act('alignleft', t('alignLeft'), function () { align('left'); }, !free.length),
                 act('aligncenter', t('alignCenter'), function () { align('center'); }, !free.length),
@@ -731,7 +877,7 @@
                 act('distx', t('distributeX'), function () { spread('x'); }, free.length < 3),
                 act('disty', t('distributeY'), function () { spread('y'); }, free.length < 3)
             ])));
-            body.appendChild(section(t('opacity'), slider, value));
+            body.appendChild(section(label, slider, value));
             body.appendChild(row([
                 act('duplicate', t('duplicate'), function () { self.addLayers(self.selected(), 10); }),
                 act('trash', t('delete'), function () { self.removeLayers(); }, !free.length)
@@ -746,11 +892,47 @@
     };
 
     // The selected layers moved in the stack: 'top', 'up', 'down', 'bottom'
-    // (the panel's Arrange, the context menu's Order).
+    // (the panel's Arrange, the context menu's Order). A group moves whole,
+    // a layer in a group inside it (M.groupReorder()).
     Editor.prototype.arrangeLayers = function (how) {
         var ids = this.sel;
 
-        this.change(function (doc) { doc.layers = M.reorder(doc.layers, ids, how); });
+        this.change(function (doc) { doc.layers = M.groupReorder(doc.layers, ids, how); });
+    };
+
+    // Whether Group and Ungroup can work on the selection.
+    Editor.prototype.groupState = function () {
+        return M.groupCan(this.doc.layers, this.sel);
+    };
+
+    // The selection made one group (Ctrl+G, the panel, the context menu),
+    // picked; one undo step.
+    Editor.prototype.groupLayers = function () {
+        var ids = this.sel.slice(), gid = M.groupNewId(this.doc), made = M.groupMake(this.doc.layers, ids, gid);
+
+        if (!made) {
+            return false;
+        }
+
+        this.change(function (doc) { doc.layers = M.groupMake(doc.layers, ids, gid); });
+        this.select(M.groupMembers(this.doc.layers, gid));
+
+        return true;
+    };
+
+    // The group the selection picks taken apart (Ctrl+Shift+G); its layers
+    // stay picked and where they are. One undo step.
+    Editor.prototype.ungroupLayers = function () {
+        var gid = M.groupOfSelection(this.doc.layers, this.sel);
+
+        if (!gid) {
+            return false;
+        }
+
+        this.change(function (doc) { doc.layers = M.groupBreak(doc.layers, gid); });
+        this.render();
+
+        return true;
     };
 
     // The selected layers the Select tool may move lined up on how ('left'
@@ -814,30 +996,83 @@
             ]));
         }
 
-        this.doc.layers.slice().reverse().forEach(function (l) {
-            var on = (self.sel.indexOf(l.id) >= 0);
-            var flag = function (key, label, iconName) {
-                return button('pgie-ibtn sm', label, iconName, function () {
-                    self.change(function (doc) {
-                        var x = find(doc, l.id);
+        // A row per layer and per group (M.groupRows()), the top first. A
+        // group the selection lies inside is open, so its picked row shows.
+        var open = Object.assign({}, this.groupsOpen);
 
-                        x[key] = !x[key];
-                    });
-                });
-            };
+        this.selected().forEach(function (l) {
+            M.groupPath(l).forEach(function (g) {
+                if ((self.groupsOpen[g] !== false) && M.groupMembers(self.doc.layers, g).some(function (id) { return self.sel.indexOf(id) < 0; })) {
+                    open[g] = true;
+                }
+            });
+        });
 
-            list.appendChild(el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
-                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
-                    // The tool stays: one that does not select shows the
-                    // handles while Ctrl or Cmd is held.
-                    self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
-                } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
-                flag('hidden', l.hidden ? t('show') : t('hide'), l.hidden ? 'eyeoff' : 'eye'),
-                flag('locked', l.locked ? t('unlock') : t('lock'), l.locked ? 'lock' : 'unlock')
-            ]));
+        M.groupRows(this.doc.layers, open).forEach(function (r) {
+            list.appendChild(r.group ? self.groupRow(r) : self.layerRow(find(self.doc, r.id), r.depth));
         });
 
         body.appendChild(list);
+    };
+
+    // A row's show/hide or lock button for the layers ids: on when every
+    // one has the flag; a press sets or clears it on all, one undo step.
+    Editor.prototype.flagButton = function (ids, key, labels, icons) {
+        var self = this, all = ids.every(function (id) { return !!(find(self.doc, id) || {})[key]; });
+
+        return button('pgie-ibtn sm', all ? labels[1] : labels[0], all ? icons[1] : icons[0], function () {
+            self.change(function (doc) {
+                ids.forEach(function (id) { find(doc, id)[key] = !all; });
+            });
+        });
+    };
+
+    // A layer's row, indented by its depth in the groups: a press on its
+    // name selects it alone (Shift adds or takes it out).
+    Editor.prototype.layerRow = function (l, depth) {
+        var self = this, on = (this.sel.indexOf(l.id) >= 0);
+        var li = el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
+            el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
+                // The tool stays: one that does not select shows the
+                // handles while Ctrl or Cmd is held.
+                self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
+            } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
+            this.flagButton([l.id], 'hidden', [t('hide'), t('show')], ['eye', 'eyeoff']),
+            this.flagButton([l.id], 'locked', [t('lock'), t('unlock')], ['unlock', 'lock'])
+        ]);
+
+        li.style.setProperty('--pgie-depth', String(depth));
+
+        return li;
+    };
+
+    // A group's row: a button opening it to its members, its name picking
+    // them all (Shift adds them), show/hide and lock for all of them.
+    Editor.prototype.groupRow = function (r) {
+        var self = this, ids = M.groupMembers(this.doc.layers, r.group);
+        var on = ids.every(function (id) { return self.sel.indexOf(id) >= 0; });
+        var hidden = ids.every(function (id) { return !!(find(self.doc, id) || {}).hidden; });
+        var name = t('groupName').replace('{n}', String(M.groupNumber(r.group) || ''));
+        var toggle = button('pgie-ibtn sm pgie-gtoggle', r.open ? t('groupClose') : t('groupOpen'), 'chev', function () {
+            self.groupsOpen[r.group] = !r.open;
+            self.renderPanel();
+        });
+        var li;
+
+        toggle.setAttribute('aria-expanded', r.open ? 'true' : 'false');
+        li = el('li', { class: 'pgie-lrow pgie-grow' + (on ? ' on' : '') + (hidden ? ' off' : '') + (r.open ? ' open' : '') }, [
+            toggle,
+            el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
+                var rest = self.sel.filter(function (id) { return ids.indexOf(id) < 0; });
+
+                self.select(e.shiftKey ? (on ? rest : rest.concat(ids)) : ids);
+            } }, [X.icon('group'), el('span', { text: name + ' (' + r.count + ')' })]),
+            this.flagButton(ids, 'hidden', [t('hide'), t('show')], ['eye', 'eyeoff']),
+            this.flagButton(ids, 'locked', [t('lock'), t('unlock')], ['unlock', 'lock'])
+        ]);
+        li.style.setProperty('--pgie-depth', String(r.depth));
+
+        return li;
     };
 
     // The layers over a picture, drawn at its output size into a clear PNG
@@ -863,8 +1098,9 @@
     Editor.prototype.paintLayers = function (g, box, w, h, time) {
         var self = this, sx = w / box.w, sy = h / box.h, timed = (time !== undefined) && (time !== null) && !!this.paintMoving;
 
-        this.doc.layers.forEach(function (l) {
-            var type = kind(l);
+        // Each with its groups' opacity on its own (M.groupLook()).
+        this.doc.layers.forEach(function (o) {
+            var type = kind(o), l = M.groupLook(o);
 
             if (l.hidden || !type.paint) {
                 return;
@@ -921,6 +1157,7 @@
 
     Editor.inits.push(function () {
         this.layersOpen = false;
+        this.groupsOpen = {};
     });
 
     Editor.escapes.unshift(function () {

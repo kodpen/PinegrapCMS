@@ -100,6 +100,9 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- order-profit-features.md: Plan order-profit, features N1 to N14: an order's cost rows, product cost, payment fee, marketplace deductions, shipping, revenue, profit, the pass, the screens, break-even, bell, API
+- order-profit-steps.md: Plan order-profit, steps NP1 to NP7: the cost record and the pass, payment fees, label prices, Trendyol deductions, the screens, break-even with bell and API, close-out
+- order-profit.md: Plan (owner 2026-11-20, agent channel poll 164): every order's costs and net profit (product, payment fee, marketplace, shipping), by product and channel, break-even price, bell, API; NP1 to NP7
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -128,14 +131,6 @@
 - product-form-uploads.md: Plan (owner 2026-11-20, agent channel poll 160): a File Upload field in product forms, so a shopper's photo or print file stays with the cart line and the order; steps FU1 to FU6
 - prototype-comments-place.md: Plan (architect 2026-11-20, agent channel message 9873): the Prototype comments button moves into the canvas bar, the list becomes a tab beside the links panel; one step, PN6
 - prototype-next.md: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to a frame, drag a row onto a frame, a badge's target-less links, Ctrl+F, shortest click path, Play's misses; PX1-PX6
-- publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
-- publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
-- publish-approval-census-places.md: Plan publish-approval PA1 census: where a design proposal is listed or drawn, an editor's save today, holding a shared component change
-- publish-approval-census-table.md: Plan publish-approval PA1 census: design_proposals columns a person's proposal uses or misses, and what apply, take-back, dismiss and stale need
-- publish-approval-census.md: Plan publish-approval PA1 census, start file: the architect's decisions on the census (operations, the approval hook, no column, the list, the bell) and where the parts are
-- publish-approval-features.md: Plan publish-approval, features A1 to A16: the switch, which saves wait, what is kept, the editor's side, the designer's side, apply, dismiss and take back, the bell lines, the Workspace request
-- publish-approval-steps.md: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, is done): the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
-- publish-approval.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 64): with a switch on, a content editor's change to a live page waits for a designer's yes; steps PA1 to PA6
 - referral-programme-features.md: Plan referral-programme, features E1 to E15: settings, who can refer, the signed code on the affiliate link's rails, the checks at completion, the reward as a commission row and credit, its take-back
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
 - referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5

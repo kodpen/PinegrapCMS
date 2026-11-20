@@ -325,7 +325,7 @@ function test_picture_translation_auto_keep()
 	list(, $params) = pg_picture_tr_keep_query('12', 'de', '40', 0, 'abc', 1000, '7');
 	pg_assert_same(array(12, 'de', 40, 0, 'abc', 1000, 1000, 7), $params, 'drawn by a user');
 
-	$keep = picture_translation_auto_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep');
+	$keep = picture_translation_auto_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep_write');
 	pg_assert_contains("array('id' => (int) \$user_id)", $keep, 'the files row by the same user, or 0');
 	pg_assert_contains('pg_picture_tr_keep_query(', $keep, 'the upsert');
 	pg_assert_contains('pg_page_cache_mark_dirty()', $keep, 'the page cache');
@@ -334,4 +334,41 @@ function test_picture_translation_auto_keep()
 	pg_assert_contains("pg_picture_tr_keep(\$file['row'], \$language, \$drawn, ", $answer, 'the browser\'s draw keeps through it');
 	pg_assert_contains("(int) \$user['id']", $answer, 'with the user');
 	pg_assert_false(strpos($answer, 'INSERT INTO file_translation') !== false, 'no second upsert');
+}
+
+// Two draws of one picture and language at once (a panel tab and the
+// server's job) are kept one after the other under a lock, so the second
+// writes over the first's files row instead of leaving a second one
+// visible in Files.
+function test_picture_translation_auto_keep_lock()
+{
+	$sql = pg_picture_tr_keep_lock_sql(12, 'de');
+
+	pg_assert_contains('DATABASE()', $sql, 'the lock is this database\'s');
+	pg_assert_same($sql, pg_picture_tr_keep_lock_sql('12', 'de'), 'one name per picture and language');
+	pg_assert_true($sql !== pg_picture_tr_keep_lock_sql(12, 'fr'), 'another language, another lock');
+	pg_assert_true($sql !== pg_picture_tr_keep_lock_sql(13, 'de'), 'another picture, another lock');
+	pg_assert_false(strpos($sql, "'de'") !== false, 'the language is hashed, not quoted into the SQL');
+
+	$keep = picture_translation_auto_body('includes/fn/picture_translation.php', 'pg_picture_tr_keep');
+	$get = strpos($keep, 'GET_LOCK(');
+	$write = strpos($keep, 'pg_picture_tr_keep_write(');
+	$release = strpos($keep, 'RELEASE_LOCK(');
+
+	pg_assert_true(($get !== false) && ($write !== false) && ($release !== false) && ($get < $write) && ($write < $release), 'locked, written, released');
+}
+
+// The mark reads as set only where data/temp takes no file: asked with
+// pg_dir_writable(), since is_writable() on Windows reads the folder's
+// read-only attribute, which OneDrive and Explorer set and no write obeys.
+function test_picture_translation_auto_mark_folder_right()
+{
+	$marked = picture_translation_auto_body('includes/fn/picture_translation.php', 'pg_picture_tr_marked');
+
+	pg_assert_contains('pg_dir_writable(dirname($path))', $marked, 'the folder asked the way that settles it');
+	pg_assert_false(strpos($marked, 'is_writable(') !== false, 'not the attribute\'s guess');
+
+	$path = picture_translation_auto_mark_path();
+	@unlink($path);
+	pg_assert_false(pg_picture_tr_marked($path), 'a clear mark in a folder that takes files reads clear');
 }

@@ -1,11 +1,11 @@
 ---
 name: google-analytics-card
-description: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry
+description: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry
 module: google_analytics
 ---
 
 ## What does it do?
-- A site Google account connected for the purpose `google_analytics` (model A, scope `https://www.googleapis.com/auth/analytics.readonly`) picks one GA4 property on Settings › Visitors and privacy › Visitor Tracking (`includes/settings/privacy_analytics.php`, saved by `pg_ga_save_from_screen()` from `privacy.save.php`). The list comes from the Admin API `accountSummaries` (`pg_ga_properties_from_api()`).
+- A site Google account connected for the purpose `google_analytics` (model A, scope `https://www.googleapis.com/auth/analytics.readonly`) picks one GA4 property on Google Analytics' page of Connections (`connections.php?service=google_analytics`, CX11b; saved by `pg_ga_save_from_screen()`, `ui/connections-google-analytics-page.md`). The list comes from the Admin API `accountSummaries` (`pg_ga_properties_from_api()`).
 - The dashboard card "Google Analytics" (`widget_32.php`, wide) shows active users, sessions, views, key events and engagement rate for the 28 days to yesterday against the 28 before, the last 7 days of active users as bars (with a visually-hidden table), the top 5 pages by views and the top 5 sources (`sessionSourceMedium`) by sessions. Decided in #3180.
 
 ## Where is the state, and why no column?

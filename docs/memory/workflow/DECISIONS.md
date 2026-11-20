@@ -437,6 +437,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-80.md: Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
 - decisions-made-product-80.md: When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
 - decisions-made-product-80.md: Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
+- decisions-made-product-81.md: Where are the rules and the earlier parts?
+- decisions-made-product-81.md: Does the Google Cloud Translation key move to Connections? (architect, 2026-11-20, agent channel message 10151, answer to K1's request 1696)
+- decisions-made-product-81.md: Does the store show each order's real net profit? (owner, 2026-11-20, agent channel poll 164, channel message 10092)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -521,6 +524,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-29.md: Which columns does the tickets table get? (architect, 2026-11-20, agent channel message 10086, answer to K1's request 1671)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
+- decisions-made-schema-30.md: Where are the rules and the earlier parts?
+- decisions-made-schema-30.md: Which columns does an event's waiting list add to `stock_notify`? (architect, 2026-11-20, agent channel message 10143, answer to K1's request 1691)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -844,6 +849,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
 - designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
+- designer/content-proposals-overview.md: Start file of waiting content changes (publish approval, card "Content Approval"): what it is, the owner's and architect's decisions that bind it, what is left out, which file holds each part
+- designer/content-proposals-workspace.md: Waiting content changes asked in the Workspace: when and as whom, who is asked, what a yes or no does, a withdrawn or replaced change taking its request back
 - designer/content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows
 - designer/course-progress.md: Start file of courses: ordered and timed lessons on a private folder's pages, progress, quiz lessons, the learner's blocks, the certificate, the Courses screen; decisions, PRs, files, left out
 - designer/custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added
@@ -906,6 +913,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge
 - designer/prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing
+- designer/prototype-search.md: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back
 - designer/prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
@@ -1080,6 +1088,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
+- workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
+- workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators

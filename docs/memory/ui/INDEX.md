@@ -85,6 +85,8 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
+- connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
@@ -287,6 +289,8 @@
 - image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md]
 - image-editor-fonts.md: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Design Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
+- image-editor-groups-look.md: Design Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
+- image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
 - image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The Design Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning

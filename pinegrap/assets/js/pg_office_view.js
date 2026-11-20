@@ -5,7 +5,8 @@
  * (includes/fn/office.php): a workbook as sheet tabs over a table, a
  * document as the safe HTML the server made, a .csv or .tsv as a sheet under
  * the choice of its separator and character set, an .ods as a workbook only
- * looked at (kind 'ods', options not taken). Loaded on first use by the
+ * looked at (kind 'ods', options not taken), an .xls the same way under the
+ * button that saves a copy as .xlsx (kind 'xls'). Loaded on first use by the
  * file manager and the Workspace; nothing here reads a file itself.
  *
  *   var view = window.pgOfficeView.render(container, office, strings, options)
@@ -24,6 +25,10 @@
  *                       choice.delimiter and choice.encoding and calls
  *                       done(office) or done(null, message); without it
  *                       the choice is not drawn
+ *           for an .xls (kind 'xls', only looked at):
+ *             saveCopy  function (done): saves a copy as .xlsx and calls
+ *                       done(true, message) or done(false, message);
+ *                       without it the button is not drawn
  *
  * The view returned (for a workbook, and for a document read for editing)
  * tells the caller what was changed: view.kind ('xlsx' or 'docx'),
@@ -1556,6 +1561,54 @@
         return null;
     }
 
+    // An .xls: its sheets drawn as a workbook's, only looked at, under the
+    // button that has the window save a copy as .xlsx (options.saveCopy):
+    // the copy is the file that is changed. The button keeps its label and
+    // is disabled only while the copy is being written; the answer is said
+    // under it.
+    function renderXls(container, office, strings, options) {
+        var saveCopy = (options && typeof options.saveCopy === 'function') ? options.saveCopy : null;
+
+        if (saveCopy) {
+            var bar = el('div', 'office-choice');
+            var copy = el('button', 'pg-button pg-button-quiet pg-button-sm');
+            var said = el('div', 'pg-field-help office-choice-problem');
+
+            copy.type = 'button';
+            copy.setAttribute('data-xls-copy', '');
+            copy.appendChild(el('span', 'bi bi-filetype-xlsx'));
+            copy.appendChild(el('span', 'pg-btn-label', strings.xls_copy || ''));
+
+            copy.addEventListener('click', function () {
+                if (copy.disabled) {
+                    return;
+                }
+
+                copy.disabled = true;
+                copy.setAttribute('aria-busy', 'true');
+                said.textContent = '';
+                said.classList.remove('pg-field-error');
+
+                saveCopy(function (ok, message) {
+                    copy.disabled = false;
+                    copy.removeAttribute('aria-busy');
+                    said.classList.toggle('pg-field-error', !ok);
+                    said.textContent = message || '';
+                });
+            });
+
+            said.setAttribute('role', 'status');
+            bar.appendChild(copy);
+            bar.appendChild(el('span', 'pg-text-meta', strings.xls_copy_help || ''));
+            bar.appendChild(said);
+            container.appendChild(bar);
+        }
+
+        renderBook(container, office, strings, null);
+
+        return null;
+    }
+
     window.pgOfficeView = {
         render: function (container, office, strings, options) {
             strings = strings || {};
@@ -1575,6 +1628,10 @@
             if (office && office.kind === 'ods') {
                 renderBook(container, office, strings, null);
                 return null;
+            }
+
+            if (office && office.kind === 'xls') {
+                return renderXls(container, office, strings, options || null);
             }
 
             if (office && office.kind === 'docx') {

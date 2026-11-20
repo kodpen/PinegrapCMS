@@ -153,10 +153,11 @@
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
-- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no legacy binary forms, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
+- office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells and paragraphs, no .pptx, no .doc/.ppt, .xls only shown and copied, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: here]
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
+- office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits

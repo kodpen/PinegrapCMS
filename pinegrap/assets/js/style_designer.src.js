@@ -4748,6 +4748,9 @@ const StyleDesigner = (function () {
                 return;
             }
 
+            // M — the "Move…" window for the selection.
+            if (!isInput && _sdMoveKey(e)) { e.preventDefault(); return; }
+
             // An element picked inside a text: Delete removes that element,
             // not the whole text, and Escape goes back to the text.
             if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && _sdTextInnerKey(e)) return;
@@ -14784,6 +14787,15 @@ const StyleDesigner = (function () {
                 dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
                 if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
                 tbBtns.appendChild(dupBtn);
+            }
+            // Move… — the window that moves without dragging (M).
+            if (node.type !== 'root' && !insideComponent && !node.props._locked && !hasLockedAncestor(node) && _sdCanEditNode(node)) {
+                var mvBtn = doc.createElement('button');
+                mvBtn.type = 'button';
+                mvBtn.className = 'sd-tb-move-btn bi bi-arrows-move';
+                mvBtn.title = _sdT('Move…') + ' (M)';
+                mvBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdMoveOpen([node]); });
+                tbBtns.appendChild(mvBtn);
             }
             // Binding indicator — shown when this node has any data binding (system widget).
             // Click scrolls the props panel to the "Bind Data" section + opens it.
@@ -30176,6 +30188,7 @@ const StyleDesigner = (function () {
         _sdTreePathRender();
         _sdTreeRevealSelection();
         _sdTreeMapRender();
+        _sdTreeKeysBind(list);
 
         // Attach palette-drop handlers ONCE on the list element.
         // Using a flag prevents duplicate handlers from accumulating on every render.
@@ -31572,6 +31585,7 @@ const StyleDesigner = (function () {
                     items.push({ sep: true });
                 })(_mCType);
             }
+            items.push(_sdGuardItem({ icon: 'bi-arrows-move', label: _sdT('Move…'), handler: function() { _sdMoveOpen(targets); } }, targets));
             items.push(_sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate') + (multi ? ' (' + targets.length + ')' : ''), handler: function() {
                 saveState();
                 var lastCloned = null;
@@ -32597,6 +32611,315 @@ const StyleDesigner = (function () {
         render();
     }
 
+    // ── Moving without dragging: row buttons, row keys, the "Move…" window ──
+    // The rows cut with Ctrl+X on a row, waiting for Ctrl+V on another.
+    var _sdTreeCut = null;
+
+    // What a key pressed on a focused Overview row asks for, '' for a key
+    // the row leaves to the editor's shortcuts: Up / Down walk the rows,
+    // Left / Right close and open; Alt with an arrow moves the element among
+    // its siblings (up, down), one level out or in; Ctrl+X, Ctrl+V cut and
+    // put it after another row; Esc drops a cut.
+    function _sdTreeRowKey(e) {
+        var k = e.key, mod = e.ctrlKey || e.metaKey;
+        var arrows = { ArrowUp: 0, ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3 };
+        if (!(k in arrows)) {
+            if (e.altKey || e.shiftKey) return '';
+            if (mod) {
+                var l = String(k || '').toLowerCase();
+                return l === 'x' ? 'cut' : (l === 'v' ? 'paste' : '');
+            }
+            return k === 'Escape' ? 'uncut' : '';
+        }
+        if (e.shiftKey || (mod && e.altKey)) return '';
+        if (e.altKey) return ['up', 'down', 'out', 'in'][arrows[k]];
+        return mod ? '' : ['prev', 'next', 'close', 'open'][arrows[k]];
+    }
+
+    // Where a key move puts an element that is child `idx` of `count`:
+    // before the sibling above, after the one below, after its parent
+    // (`nested` false at the top of the page or of a component's tree), or
+    // last inside the sibling above. `ref` is a sibling's index or 'parent';
+    // `refuse` says why nothing moves.
+    function _sdTreeKeyPlan(dir, idx, count, nested) {
+        if (dir === 'up') return idx > 0 ? { ref: idx - 1, pos: 'before' } : { refuse: 'first' };
+        if (dir === 'down') return idx < count - 1 ? { ref: idx + 1, pos: 'after' } : { refuse: 'last' };
+        if (dir === 'out') return nested ? { ref: 'parent', pos: 'after' } : { refuse: 'top' };
+        if (dir === 'in') return idx > 0 ? { ref: idx - 1, pos: 'inside' } : { refuse: 'above' };
+        return { refuse: 'none' };
+    }
+
+    // Why a key move is refused before canDrop() is asked, in words.
+    function _sdTreeKeyWhy(code) {
+        switch (code) {
+            case 'first': return _sdT('The element is already the first one here');
+            case 'last': return _sdT('The element is already the last one here');
+            case 'top': return _sdT('The element is already at the top level');
+            case 'above': return _sdT('There is no element above to move into');
+        }
+        return _sdT('This element cannot be moved');
+    }
+
+    // Whether `nodes` may move before or after `ref`, or into it (`pos`
+    // 'inside'), as a drop on the Overview would: the same rules, canDrop()
+    // the judge. { code, why, parent }: code '' when it may, else
+    // _sdTreeDropCode()'s and the words of _sdTreeDropWhy(). Into a shared
+    // component is into its own tree.
+    function _sdMoveCheck(nodes, ref, pos) {
+        var parent = null;
+        if (pos === 'inside') {
+            parent = ref;
+            var sid = (ref && ref.type === 'shared_ref' && ref.props) ? parseInt(ref.props.sharedId, 10) : 0;
+            if (sid > 0 && _sharedCache[sid] && _sharedCache[sid].tree) parent = _sharedCache[sid].tree;
+        } else if (ref) {
+            var pi = _findParentAnywhere(ref);
+            parent = pi ? pi.parent : null;
+        }
+        var r = { code: '', why: '', parent: parent };
+        var name = parent ? _sdTreeDropName(parent) : '<body>';
+        var say = function (code, who) { r.code = code; r.why = _sdTreeDropWhy(code, who || name); return r; };
+        if (!nodes || !nodes.length || !ref) return say('rule');
+        if (!parent) {
+            r.code = 'body';
+            r.why = _sdT('Nothing can go before or after {var}', '<body>');
+            return r;
+        }
+        for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            if (!n || n.type === 'root') return say('rule');
+            if ((n.props && n.props._locked) || hasLockedAncestor(n)) return say('locked', _sdTreeRowName(n));
+            if (!_sdCanEditNode(n)) return say('rights', _sdTreeRowName(n));
+            if (n === ref && pos !== 'inside') return say('same');
+            if (n === parent || isDescendant(n, parent)) return say('self');
+        }
+        if (!_sdMayEdit(ref)) return say('rights');
+        for (var j = 0; j < nodes.length; j++) {
+            var data = { source: 'node', node: nodes[j], type: nodes[j].type };
+            if (!canDrop(data, parent)) return say(_sdTreeDropCode(data, parent));
+        }
+        // One element put back where it is.
+        var kids = parent.children || [];
+        var cur = nodes.length === 1 ? kids.indexOf(nodes[0]) : -1;
+        if (cur !== -1) {
+            var at = pos === 'inside' ? kids.length : kids.indexOf(ref) + (pos === 'after' ? 1 : 0);
+            if (at > cur) at--;
+            if (at === cur) return say('same');
+        }
+        return r;
+    }
+
+    // Moves `nodes` before or after `ref`, or last into it, as one undo
+    // step; the moved elements stay selected, their rows and the canvas
+    // show them. A move canDrop() refuses does nothing and says why.
+    function _sdMoveNodes(nodes, ref, pos) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
+        var c = _sdMoveCheck(nodes, ref, pos);
+        if (c.code) { sdToast(esc(c.why), 'warning'); return false; }
+        saveState();
+        var parent = c.parent;
+        nodes.forEach(function (n) {
+            var src = _findParentAnywhere(n);
+            if (!src) return;
+            src.parent.children = src.parent.children.filter(function (x) { return x !== n; });
+            if (src.sid) _sharedDirty[src.sid] = true;
+        });
+        if (!parent.children) parent.children = [];
+        var at = pos === 'inside' ? parent.children.length : parent.children.indexOf(ref) + (pos === 'after' ? 1 : 0);
+        if (at < 0) at = parent.children.length;
+        nodes.forEach(function (n, i) { parent.children.splice(at + i, 0, n); });
+        var dsid = _resolveSharedSid(parent);
+        if (dsid) _sharedDirty[dsid] = true;
+        if (pos === 'inside') ref._expanded = true;
+        _sdTreeMoveSelect(nodes);
+        scrollCanvasToNode(nodes[nodes.length - 1]);
+        return true;
+    }
+
+    // A key move (or a row's up and down buttons) of `node`.
+    function _sdTreeKeyMove(node, dir) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
+        var pi = node ? _findParentAnywhere(node) : null;
+        if (!pi) return false;
+        var kids = pi.parent.children || [];
+        var gp = pi.parent.type === 'root' ? null : _findParentAnywhere(pi.parent);
+        var plan = _sdTreeKeyPlan(dir, kids.indexOf(node), kids.length, !!gp);
+        if (plan.refuse) { sdToast(esc(_sdTreeKeyWhy(plan.refuse)), 'warning'); return false; }
+        return _sdMoveNodes([node], plan.ref === 'parent' ? pi.parent : kids[plan.ref], plan.pos);
+    }
+
+    // The "Move…" window (the `move` part) for `nodes`.
+    function _sdMoveOpen(nodes) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var list = _sdTreeMoveSet(nodes, null);
+        if (!list.length) return;
+        _sdPartCall('move', 'open', [_sdMoveHost(list)]).catch(_sdPartFailed);
+    }
+
+    // M: the "Move…" window for the selection. False when nothing is
+    // selected that could move, so the key does what it did before.
+    function _sdMoveKey(e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || String(e.key) !== 'm') return false;
+        if (!selectedNode || selectedNode.type === 'root') return false;
+        _sdMoveOpen(selectedNodes.length > 1 ? selectedNodes : [selectedNode]);
+        return true;
+    }
+
+    // What the move part reads the page through: the elements as the
+    // Overview lists them (the tree search's host), and the move itself.
+    function _sdMoveHost(nodes) {
+        var sh = _sdTreeSearchHost();
+        return {
+            nodes: nodes,
+            name: nodes.length > 1 ? _sdT('{var} elements', nodes.length) : _sdTreeRowName(nodes[0]),
+            root: tree,
+            kids: sh.kids,
+            fields: sh.fields,
+            icon: _sdTreeIconHtml,
+            check: function (ref, pos) { return _sdMoveCheck(nodes, ref, pos); },
+            move: function (ref, pos) {
+                var ok = _sdMoveNodes(nodes, ref, pos);
+                if (ok) _sdTreeFocusSel();
+                return ok;
+            }
+        };
+    }
+
+    // The selected element's row takes the keyboard focus and shows; the
+    // other rows leave the tab order (one tab stop for the tree).
+    function _sdTreeFocusSel() {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || !selectedNode || selectedNode === tree) return;
+        var row = _sdTreeRowOf(list, selectedNode);
+        if (!row) return;
+        list.querySelectorAll('li[tabindex="0"]').forEach(function (x) { if (x !== row) x.tabIndex = -1; });
+        row.tabIndex = 0;
+        try { row.focus({ preventScroll: true }); } catch (fe) { row.focus(); }
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        if (wrap) _sdTreeScrollRow(wrap, row);
+        _sdTreeMvPlace(row);
+    }
+
+    // Selects the element of a row reached with the keys.
+    function _sdTreeRowGo(row) {
+        if (!row || !row._sdNode) return;
+        selectedNodes = [];
+        _sdInner = null;
+        selectedNode = row._sdNode;
+        _sdSelectRender();
+        scrollCanvasToNode(row._sdNode);
+        _sdTreeFocusSel();
+    }
+
+    // A key on a focused row (_sdTreeRowKey()).
+    function _sdTreeRowKeydown(e) {
+        var li = e.target;
+        if (!li || li.tagName !== 'LI' || !li._sdNode) return;
+        var act = _sdTreeRowKey(e);
+        if (!act || ((act === 'paste' || act === 'uncut') && !_sdTreeCut)) {
+            // A copy drops a cut: Ctrl+V pastes the copy again.
+            if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'c') _sdTreeCutSet(null);
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        var node = li._sdNode, list = li.closest('#sd-tree-list');
+        if (act === 'prev' || act === 'next') {
+            var rows = Array.prototype.filter.call(list.querySelectorAll('li[data-nid]'), function (r) {
+                return r._sdNode && r.getClientRects().length;
+            });
+            _sdTreeRowGo(rows[rows.indexOf(li) + (act === 'next' ? 1 : -1)]);
+        } else if (act === 'close' || act === 'open') {
+            var branch = li.nextElementSibling;
+            var isOpen = !!(branch && branch.tagName === 'UL');
+            var hasKids = !!li.querySelector('.sd-tree-chev');
+            if (act === 'close' && isOpen) { node._expanded = false; renderTree(); _sdTreeFocusSel(); }
+            else if (act === 'open' && hasKids && !isOpen) { node._expanded = true; renderTree(); _sdTreeFocusSel(); }
+            else if (act === 'open' && isOpen) _sdTreeRowGo(branch.querySelector('li[data-nid]'));
+            else if (act === 'close') {
+                var up = _sdTreeParentOf(node);
+                if (up && up !== tree) _sdTreeRowGo(_sdTreeRowOf(list, up));
+            }
+        } else if (act === 'cut') {
+            var picked = (selectedNodes.length > 1 && selectedNodes.indexOf(node) !== -1) ? selectedNodes : [node];
+            var bad = _sdMoveCheck(picked, node, 'after');
+            if (bad.code === 'locked' || bad.code === 'rights') { sdToast(esc(bad.why), 'warning'); return; }
+            _sdTreeCutSet(_sdTreeMoveSet(picked, null));
+        } else if (act === 'uncut') {
+            _sdTreeCutSet(null);
+        } else if (act === 'paste') {
+            var moving = _sdTreeMoveSet(_sdTreeCut, node);
+            if (_sdMoveNodes(moving, node, 'after')) { _sdTreeCutSet(null); _sdTreeFocusSel(); }
+        } else if (_sdTreeKeyMove(node, act)) {
+            _sdTreeFocusSel();
+        }
+    }
+
+    // The cut rows are dimmed until they are put somewhere or the cut is dropped.
+    function _sdTreeCutSet(nodes) {
+        _sdTreeCut = (nodes && nodes.length) ? nodes.slice() : null;
+        document.querySelectorAll('#sd-tree-list li.sd-tree-cut').forEach(function (x) { x.classList.remove('sd-tree-cut'); });
+        var list = document.getElementById('sd-tree-list');
+        if (!list || !_sdTreeCut) return;
+        _sdTreeCut.forEach(function (n) { var r = _sdTreeRowOf(list, n); if (r) r.classList.add('sd-tree-cut'); });
+    }
+
+    // The row buttons (up, down, "Move…"): one group, moved to the row under
+    // the pointer or with the focus, else the selected row; only a row that
+    // could be dragged gets them.
+    var _sdTreeMvEl = null;
+    function _sdTreeMvPlace(li) {
+        var g = _sdTreeMvEl;
+        if (!g) {
+            g = _sdTreeMvEl = document.createElement('span');
+            g.className = 'sd-tree-mv';
+            g.setAttribute('role', 'group');
+            g.setAttribute('aria-label', _sdT('Move'));
+            g.innerHTML = [['up', 'bi-arrow-up', _sdT('Move up'), 'Alt+↑'], ['down', 'bi-arrow-down', _sdT('Move down'), 'Alt+↓'],
+                ['move', 'bi-arrows-move', _sdT('Move…'), 'M']].map(function (b) {
+                return '<button type="button" tabindex="-1" class="sd-tree-mv-b bi ' + b[1] + '" data-mv="' + b[0] + '" title="' +
+                    esc(b[2] + ' (' + b[3] + ')') + '" aria-label="' + esc(b[2]) + '"></button>';
+            }).join('');
+            g.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+            g.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var b = e.target.closest('[data-mv]');
+                var row = g.parentNode;
+                if (!b || !row || !row._sdNode) return;
+                if (b.dataset.mv === 'move') _sdMoveOpen([row._sdNode]);
+                else _sdTreeKeyMove(row._sdNode, b.dataset.mv);
+            });
+        }
+        if (!li) {
+            var list = document.getElementById('sd-tree-list');
+            li = (list && selectedNode) ? _sdTreeRowOf(list, selectedNode) : null;
+        }
+        if (li && li._sdNode && li.getAttribute('draggable') === 'true') {
+            if (g.parentNode !== li) li.appendChild(g);
+        } else if (g.parentNode) {
+            g.parentNode.removeChild(g);
+        }
+    }
+
+    // Binds the row keys and the row buttons to the list once, and after each
+    // drawing gives the tree its one tab stop and the buttons their row.
+    function _sdTreeKeysBind(list) {
+        if (!list._sdKeysBound) {
+            list._sdKeysBound = true;
+            list.addEventListener('keydown', _sdTreeRowKeydown);
+            list.addEventListener('mouseover', function (e) {
+                var li = e.target.closest && e.target.closest('li[data-nid]');
+                if (li && li !== (_sdTreeMvEl && _sdTreeMvEl.parentNode)) _sdTreeMvPlace(li);
+            });
+            list.addEventListener('mouseleave', function () { _sdTreeMvPlace(null); });
+        }
+        if (!list.querySelector('li[tabindex="0"]')) {
+            var first = list.querySelector('li[data-nid]');
+            if (first) first.tabIndex = 0;
+        }
+        if (_sdTreeCut) _sdTreeCutSet(_sdTreeCut.filter(function (n) { return !!_findParentAnywhere(n); }));
+        _sdTreeMvPlace(null);
+    }
+
     // ── Canvas Right-Click Context Menu ───────────────────────────────────────────
     function showCanvasCtxMenu(x, y, node) {
         // View mode: the menu still opens, because a menu that refuses to
@@ -33032,6 +33355,9 @@ const StyleDesigner = (function () {
         // active one.
         if (selectedNode === node && !_sdInnerSel()) li.classList.add('active');
         if (selectedNodes.indexOf(node) !== -1) li.classList.add('sd-multi-selected');
+        // Keys on a focused row (_sdTreeRowKeydown()): the selected row is the tab stop.
+        li.tabIndex = (selectedNode === node) ? 0 : -1;
+        if (_sdTreeCut && _sdTreeCut.indexOf(node) !== -1) li.classList.add('sd-tree-cut');
         li.addEventListener('click', function(e) {
             e.stopPropagation();
             node._expanded = true;
@@ -74780,6 +75106,10 @@ const StyleDesigner = (function () {
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
+        // The search (_sdProtoSearchOpen()): searchOf()'s answer, the match
+        // gone to (-1 for none), the view from before the first one, null
+        // when closed.
+        search: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74984,7 +75314,16 @@ const StyleDesigner = (function () {
         ui.play.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Play')));
         ui.play.hidden = true;
         var reload = _sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); });
-        [tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        // Search (Ctrl+F in the view): page names and link texts; the row
+        // opens over the map (_sdProtoSearchBuild()).
+        var mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+        ui.searchBtn = _sdProtoButton('bi-search', _sdT('Search pages and links') + ' (' + (mac ? '⌘F' : 'Ctrl+F') + ')', function () {
+            if (_sdProto.search) _sdProtoSearchClose(true);
+            else _sdProtoSearchOpen();
+        });
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        [ui.searchBtn, tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
         tools.appendChild(ui.suggest);
@@ -75042,6 +75381,7 @@ const StyleDesigner = (function () {
         ui.zoomed.appendChild(ui.zoomedName);
         ui.stage.appendChild(ui.zoomed);
         // The stage and, right of it, the selected page's links (F15).
+        ui.root.appendChild(_sdProtoSearchBuild(ui));
         ui.body = _sdProtoEl('div', 'sd-proto-body');
         ui.body.appendChild(ui.stage);
         ui.list = _sdProtoEl('aside', 'sd-proto-list');
@@ -75210,6 +75550,7 @@ const StyleDesigner = (function () {
         ui.root.addEventListener('wheel', function (event) {
             if (_sdProto.problems && _sdProto.problemsFrame && !_sdProto.problems.contains(event.target)) _sdProtoProblemsClose(false);
         }, { capture: true, passive: true });
+        document.addEventListener('keydown', _sdProtoSearchKey);
         return ui;
     }
 
@@ -75266,6 +75607,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoSearchClose(false);
         _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
@@ -75962,6 +76304,7 @@ const StyleDesigner = (function () {
         _sdProtoLegsSoon();
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         _sdProtoPlayState();
         if (_sdProto.suggest) _sdProtoSuggestArrows();
     }
@@ -75982,6 +76325,7 @@ const StyleDesigner = (function () {
         if (focused !== frameId && !(edge && focused === edge.to)) canvas.focus(frameId);
         _sdProtoPicked();
         _sdProtoListDraw();
+        _sdProtoSearchMark();
         var other = edge ? _sdProto.byId[(canvas.focused() === edge.to) ? frameId : edge.to] : null;
         if (other) canvas.view.reveal(other);
         if (fromCanvas) {
@@ -76264,6 +76608,211 @@ const StyleDesigner = (function () {
 
     // Where Play opens the viewer: the selected page, else the first page
     // the viewer can show; '' for none (_pgPrototypeUrl()).
+    // ── Search (Ctrl+F) ──
+    // A row under the bar: the box, the count, the match before and after,
+    // Close. It finds frames by the name they show and links by their text
+    // (PGProtoHotspots.searchOf(), folded as Suggest targets folds); the
+    // frames with a match are outlined, the links panel's matching rows
+    // marked. Enter or ArrowDown goes to the next match, Shift+Enter or
+    // ArrowUp to the one before: the view zooms to its frame (as a
+    // double-click does) and a link is picked. Esc closes it and puts back
+    // the view from before the first match.
+    function _sdProtoSearchBuild(ui) {
+        var row = _sdProtoEl('div', 'sd-proto-search');
+        row.hidden = true;
+        row.setAttribute('role', 'search');
+        ui.searchInput = _sdProtoEl('input', 'form-control form-control-sm sd-proto-search-input');
+        ui.searchInput.type = 'search';
+        ui.searchInput.id = 'sd-proto-search-input';
+        ui.searchInput.placeholder = _sdT('Search pages and links…');
+        ui.searchInput.setAttribute('aria-label', _sdT('Search pages and links'));
+        ui.searchInput.setAttribute('aria-describedby', 'sd-proto-search-count');
+        ui.searchInput.autocomplete = 'off';
+        ui.searchInput.spellcheck = false;
+        var soon = 0;
+        ui.searchInput.addEventListener('input', function () {
+            clearTimeout(soon);
+            soon = setTimeout(function () { _sdProtoSearchRun(false); }, 120);
+        });
+        ui.searchInput.addEventListener('keydown', function (event) {
+            var dir = window.PGProtoHotspots.searchKey(event);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoSearchClose(true);
+                return;
+            }
+            if (!dir) return;
+            event.preventDefault();
+            clearTimeout(soon);
+            if (!_sdProto.search || _sdProto.search.typed !== ui.searchInput.value) _sdProtoSearchRun(false);
+            _sdProtoSearchGo(dir);
+        });
+        row.appendChild(ui.searchInput);
+        ui.searchCount = _sdProtoEl('span', 'sd-proto-search-count');
+        ui.searchCount.id = 'sd-proto-search-count';
+        ui.searchCount.setAttribute('aria-live', 'polite');
+        row.appendChild(ui.searchCount);
+        // The buttons keep the focus in the box, so a phone's keyboard stays.
+        [['bi-chevron-up', _sdT('Previous match'), -1], ['bi-chevron-down', _sdT('Next match'), 1]].forEach(function (one) {
+            var b = _sdProtoButton(one[0], one[1], function () {
+                _sdProtoSearchGo(one[2]);
+                ui.searchInput.focus({ preventScroll: true });
+            });
+            b.addEventListener('pointerdown', function (event) { event.preventDefault(); });
+            row.appendChild(b);
+        });
+        row.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the search (Esc)'), function () { _sdProtoSearchClose(true); }));
+        ui.searchRow = row;
+        return row;
+    }
+
+    // Ctrl+F (Cmd+F) while the view is open and the pointer or the focus
+    // is in it (or in its zones of the canvas bar) goes to its search; never from the Overview's tree search
+    // (its own listener runs first) or from another text field, and
+    // anywhere else the browser's own find.
+    function _sdProtoSearchKey(event) {
+        var ui = _sdProto.ui;
+        if (!_sdProto.open || !ui || event.defaultPrevented) return;
+        if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || String(event.key).toLowerCase() !== 'f') return;
+        var act = document.activeElement;
+        // The view: the map and its panels, and the canvas bar's Prototype
+        // zones (.sd-bp-pv).
+        var zones = [ui.root].concat(Array.prototype.slice.call(document.querySelectorAll('#sd-bp-bar .sd-bp-pv')));
+        var inside = !!act && zones.some(function (z) { return z.contains(act); });
+        var over = zones.some(function (z) { return z.matches(':hover'); });
+        var typing = !!(act && act !== document.body && act !== ui.searchInput && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName)));
+        if (typing || (!inside && !over)) return;
+        event.preventDefault();
+        _sdProtoSearchOpen();
+    }
+
+    function _sdProtoSearchOpen() {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.open) return;
+        if (!_sdProto.search) {
+            _sdProto.search = { typed: null, found: null, at: -1, from: null };
+            ui.searchRow.hidden = false;
+            ui.searchBtn.setAttribute('aria-expanded', 'true');
+            ui.searchBtn.classList.add('active');
+            _sdProtoSearchRun(false);
+        }
+        ui.searchInput.focus({ preventScroll: true });
+        ui.searchInput.select();
+    }
+
+    // Esc or Close: the marks go, the view from before the first match
+    // comes back (refocus: the focus back on the map; not when the view
+    // closes). The words stay in the box for the next opening.
+    function _sdProtoSearchClose(refocus) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        _sdProto.search = null;
+        ui.searchRow.hidden = true;
+        ui.searchBtn.setAttribute('aria-expanded', 'false');
+        ui.searchBtn.classList.remove('active');
+        _sdProtoSearchMark();
+        if (s.from && _sdProto.open && _sdProto.canvas) {
+            _sdProto.zoom = s.from.zoom;
+            _sdProto.view = s.from.view;
+            _sdProto.canvas.view.apply();
+            _sdProtoZoomShow();
+        }
+        if (refocus) ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The box's words searched in the map drawn; `keep` (a redraw) stays
+    // on the match gone to while it is still found.
+    function _sdProtoSearchRun(keep) {
+        var ui = _sdProto.ui;
+        var s = _sdProto.search;
+        if (!ui || !s) return;
+        var was = (keep && s.found && s.at >= 0) ? s.found.hits[s.at] : null;
+        s.typed = ui.searchInput.value;
+        s.found = window.PGProtoHotspots.searchOf(_sdProto.layout, s.typed, function (item) {
+            return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item);
+        });
+        s.at = -1;
+        if (was) {
+            s.found.hits.forEach(function (h, i) {
+                if (s.at < 0 && h.kind === was.kind && h.frame === was.frame && h.port === was.port) s.at = i;
+            });
+        }
+        _sdProtoSearchMark();
+    }
+
+    // Go to the match after (dir 1) or before (dir -1) the one gone to.
+    function _sdProtoSearchGo(dir) {
+        var s = _sdProto.search;
+        var canvas = _sdProto.canvas;
+        if (!s || !s.found || !canvas) return;
+        s.at = window.PGProtoHotspots.searchStep(s.found.hits.length, s.at, dir);
+        var hit = s.at >= 0 ? s.found.hits[s.at] : null;
+        var item = hit ? _sdProto.byId[hit.frame] : null;
+        if (!item) { _sdProtoSearchMark(); return; }
+        if (!s.from) {
+            var v = _sdProto.view;
+            var z = _sdProto.zoom;
+            s.from = { view: { x: v.x, y: v.y, k: v.k }, zoom: z ? { id: z.id, back: { x: z.back.x, y: z.back.y, k: z.back.k } } : null };
+        }
+        if (hit.kind === 'chip') {
+            canvas.view.reveal(item);
+        } else {
+            _sdProtoZoomTo(item.id);
+            if (canvas.focused() !== item.id) canvas.focus(item.id);
+            if (hit.kind === 'link') {
+                // Picked in place: _sdProtoPick() would move the view to the
+                // link's other end.
+                _sdProto.link = { frame: item.id, port: hit.port };
+                _sdProtoPicked();
+                _sdProtoListDraw();
+                var li = _sdProto.ui.list.querySelector('.sd-proto-li[data-link="' + (item.id + '|' + hit.port).replace(/"/g, '') + '"]');
+                if (li) li.scrollIntoView({ block: 'nearest' });
+            }
+        }
+        _sdProtoSearchMark();
+        canvas.announce(_sdProtoSearchCount() + ': ' + hit.text);
+    }
+
+    // "2 of 5", "5 matches", "No match", or nothing for an empty box.
+    function _sdProtoSearchCount() {
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        if (!found || found.query === '') return '';
+        var n = found.hits.length;
+        if (!n) return _sdT('No match');
+        if (s.at >= 0) return _sdT('{var:1} of {var:2}', [s.at + 1, n]);
+        return n === 1 ? _sdT('1 match') : _sdT('{var:1} matches', n);
+    }
+
+    // The frames with a match outlined, the one gone to more strongly; the
+    // links panel's matching rows marked; the count.
+    function _sdProtoSearchMark() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var s = _sdProto.search;
+        var found = s ? s.found : null;
+        var hit = (found && s.at >= 0) ? found.hits[s.at] : null;
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-found, .sd-proto-found-on')).forEach(function (n) {
+            n.classList.remove('sd-proto-found', 'sd-proto-found-on');
+        });
+        ui.searchCount.textContent = _sdProtoSearchCount();
+        ui.searchRow.classList.toggle('sd-proto-search-none', !!(found && found.query !== '' && !found.hits.length));
+        if (!found) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('[data-node]')).forEach(function (n) {
+            var id = n.getAttribute('data-node');
+            if (found.frames[id]) n.classList.add('sd-proto-found');
+            if (hit && hit.frame === id) n.classList.add('sd-proto-found-on');
+        });
+        found.hits.forEach(function (h) {
+            if (h.kind !== 'link') return;
+            Array.prototype.slice.call(ui.list.querySelectorAll('.sd-proto-li[data-link="' + (h.frame + '|' + h.port).replace(/"/g, '') + '"]')).forEach(function (li) {
+                li.classList.add(hit === h ? 'sd-proto-found-on' : 'sd-proto-found');
+            });
+        });
+    }
+
     function _sdProtoPlayUrl() {
         var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
         var item = id ? _sdProto.byId[id] : null;
@@ -76382,6 +76931,7 @@ const StyleDesigner = (function () {
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
         _sdProtoSuggestArrows();
+        if (_sdProto.search) _sdProtoSearchRun(true);
         // The link the key back asked for (_sdProtoBack()), once this
         // drawing is the one of the load it opened.
         var goTo = _sdProto.goTo;
@@ -84574,7 +85124,8 @@ const StyleDesigner = (function () {
                     ['Ctrl+V',              _sdT('Paste what was copied')],
                     ['Delete',              _sdT('Delete the selected element')],
                     ['Ctrl+F',              _sdT('Find & Replace')],
-                    ['N',                   _sdT('Add / edit a note on the selected element')]
+                    ['N',                   _sdT('Add / edit a note on the selected element')],
+                    ['M',                   _sdT('Move the selected element to another place')]
                 ]},
                 { title: _sdT('View & Preview'), rows: [
                     ['Ctrl+Shift+P',        _sdT('Command palette')],
@@ -84587,6 +85138,13 @@ const StyleDesigner = (function () {
                 { title: _sdT('Selection'), rows: [
                     ['Ctrl+Click',          _sdT('Add to / remove from the selection (multi-select)')],
                     ['Shift+Click',         _sdT('Select a range of siblings (canvas & tree)')]
+                ]},
+                { title: _sdT('Overview rows'), rows: [
+                    ['↑  /  ↓',             _sdT('Go to the row above / below')],
+                    ['←  /  →',             _sdT('Close / open the row')],
+                    ['Alt+↑  /  Alt+↓',     _sdT('Move the element up / down among its siblings')],
+                    ['Alt+←  /  Alt+→',     _sdT('Move the element one level out / in')],
+                    ['Ctrl+X, Ctrl+V',      _sdT('Cut the element, then put it after another row')]
                 ]},
                 { title: _sdT('Help'), rows: [
                     ['?  /  F1',            _sdT('Show this window')],
@@ -89513,6 +90071,11 @@ const StyleDesigner = (function () {
             // P — the Prototype view with the selected element's link picked,
             // as from the canvas (_sdShortcutKeydown()).
             if (window.PGProtoHotspots && window.PGProtoHotspots.backKey(e) && _sdProtoBack()) {
+                e.preventDefault();
+                return;
+            }
+            // M — the "Move…" window, as from the canvas.
+            if (!e.target.isContentEditable && !(e.target.closest && e.target.closest('dialog, .sd-note-overlay')) && _sdMoveKey(e)) {
                 e.preventDefault();
                 return;
             }

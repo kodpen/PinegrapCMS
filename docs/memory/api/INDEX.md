@@ -122,7 +122,7 @@
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
-- google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
+- google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument

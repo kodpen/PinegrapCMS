@@ -15,7 +15,7 @@
 - api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups
 - api-order-status-moves.md: What POST /orders/{id} does with a status (plain write, cancellation, restore) and which moves it refuses; incomplete is the cart's status and is not accepted (#877, PR #1258)
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
-- back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
+- back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks [decision: decisions-made-schema-30.md]
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise [decision: decisions-made-messages.md]
 - barcode-label-print-escaping.md: The barcode label print page (LabelEditor buildPrintHTML() in backend.src.js): barcode and template values read as numbers, CSS values or escaped text before they reach the print window
 - barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
@@ -312,7 +312,9 @@
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule. [decision: decisions-made-product-26.md]
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
 - referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind [decision: here]
+- referral-report-and-event.md: Referrals Report (view_referral_report.php): who sees it, what each column counts from the referral rows, top referrers' names; the referral.rewarded event for webhooks and flows
 - referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings [decision: decisions-made-product-25.md]
+- referral-settings-card.md: Referral programme settings card (RF2): Settings › Ecommerce › Referral programme, its six config_text rows, what the save refuses, the referrer's reward mail and its texts
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split

@@ -555,11 +555,45 @@ function pg_referral_order_completed($order_id, $code)
         return 'busy';
     }
 
-    $answer = pg_referral_order_reward($order, $code, $contact_id, $settings);
+    $reward = null;
+    $answer = pg_referral_order_reward($order, $code, $contact_id, $settings, $reward);
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
+    // The referrer's mail goes after the lock: a mail sent inline when the
+    // queue is down must not hold the referrer's other orders.
+    if ($answer === '') {
+        pg_referral_mail_reward($contact_id, $settings['reward'], $settings['days']);
+    }
+    // Announced once the lock is free, once per reward: a restore's new
+    // card is announced only as credit.issued.
+    if (($answer === '') && is_array($reward)) {
+        pg_announce('referral.rewarded', pg_referral_rewarded_event($reward));
+    }
+
     return $answer;
+}
+
+/**
+ * What referral.rewarded carries: the referral's commission row, the
+ * friend's order, the reward, the referrer's contact and account and the
+ * store credit card it was given on. Pure.
+ *
+ * @param array $reward id, reference_code, affiliate_code, order_id, amount, contact_id, user_id, card_id
+ * @return array
+ */
+function pg_referral_rewarded_event(array $reward)
+{
+    return array(
+        'id'             => (int) ($reward['id'] ?? 0),
+        'reference_code' => (string) ($reward['reference_code'] ?? ''),
+        'affiliate_code' => (string) ($reward['affiliate_code'] ?? ''),
+        'order_id'       => (int) ($reward['order_id'] ?? 0),
+        'amount'         => (int) ($reward['amount'] ?? 0),
+        'customer_id'    => (int) ($reward['contact_id'] ?? 0),
+        'account_id'     => (int) ($reward['user_id'] ?? 0),
+        'card_id'        => (int) ($reward['card_id'] ?? 0),
+    );
 }
 
 /**
@@ -570,9 +604,10 @@ function pg_referral_order_completed($order_id, $code)
  * @param string $code
  * @param int    $contact_id
  * @param array  $settings pg_referral_settings()
+ * @param array|null $reward   set to what referral.rewarded carries once given
  * @return string
  */
-function pg_referral_order_reward(array $order, $code, $contact_id, array $settings)
+function pg_referral_order_reward(array $order, $code, $contact_id, array $settings, &$reward = null)
 {
     if (pg_referral_order_row($order['id']) !== null) {
         return 'done';
@@ -609,10 +644,23 @@ function pg_referral_order_reward(array $order, $code, $contact_id, array $setti
         return 'credit';
     }
 
+    $reference_code = (string) generate_commission_reference_code();
+
     db_q(
         "INSERT INTO commissions (reference_code, affiliate_code, order_id, amount, status, created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
         VALUES (?, ?, ?, ?, 'paid', 0, UNIX_TIMESTAMP(), 0, UNIX_TIMESTAMP())",
-        array((string) generate_commission_reference_code(), $code, (string) (int) $order['id'], (string) (int) $settings['reward']));
+        array($reference_code, $code, (string) (int) $order['id'], (string) (int) $settings['reward']));
+
+    $reward = array(
+        'id'             => (int) mysqli_insert_id(db::$con),
+        'reference_code' => $reference_code,
+        'affiliate_code' => $code,
+        'order_id'       => (int) $order['id'],
+        'amount'         => (int) $settings['reward'],
+        'contact_id'     => (int) $contact_id,
+        'user_id'        => (int) $referrer['user_id'],
+        'card_id'        => (int) $card_id,
+    );
 
     log_activity(pg_log_lang(array(
         'string' => 'Referral reward of {var:1} given as store credit for order #{var:2}.',
@@ -811,5 +859,297 @@ function pg_referral_arrival($code)
         if (($offer_code !== '') && pg_special_offer_code_running($offer_code)) {
             $_SESSION['ecommerce']['special_offer_code'] = $offer_code;
         }
+    }
+}
+
+/** The longest a reward may last, in days (ten years). */
+define('PG_REFERRAL_DAYS_MAX', 3650);
+
+/** The most rewards one customer may earn in a month. */
+define('PG_REFERRAL_MONTH_CAP_MAX', 1000);
+
+/** An amount's upper bound in minor units: gift_cards.amount is INT UNSIGNED. */
+define('PG_REFERRAL_AMOUNT_MAX', 4294967295);
+
+/**
+ * An amount box of the settings card as minor units. Pure but for the
+ * panel's number separators pg_parse_amount() reads.
+ *
+ * @param mixed $raw
+ * @return int|null minor units, 0 for an empty box, null when not an
+ *                  amount (letters, a minus sign, above the column)
+ */
+function pg_referral_settings_amount($raw)
+{
+    if (!is_scalar($raw)) {
+        return null;
+    }
+
+    $raw = trim(str_replace("\u{00A0}", ' ', (string) $raw));
+
+    if ($raw === '') {
+        return 0;
+    }
+
+    if (!preg_match('/^[0-9][0-9 .,]*$/', $raw)) {
+        return null;
+    }
+
+    $minor = round(pg_parse_amount($raw) * 100);
+
+    return (($minor < 0) || ($minor > PG_REFERRAL_AMOUNT_MAX)) ? null : (int) $minor;
+}
+
+/**
+ * A whole-number box of the settings card: empty is 0.
+ *
+ * @param mixed $raw
+ * @param int   $max
+ * @return int|null null when not a whole number from 0 to $max
+ */
+function pg_referral_settings_whole($raw, $max)
+{
+    if (!is_scalar($raw)) {
+        return null;
+    }
+
+    $raw = trim((string) $raw);
+
+    if ($raw === '') {
+        return 0;
+    }
+
+    if (!ctype_digit($raw) || (strlen($raw) > 10) || ((int) $raw > (int) $max)) {
+        return null;
+    }
+
+    return (int) $raw;
+}
+
+/**
+ * The settings card's post checked, before anything is written. Pure: the
+ * offer's existence is asked of $offer_exists.
+ *
+ * The stored values are the config_text rows pg_referral_settings() reads,
+ * as strings ('' for off or none). With the switch off the other values
+ * are still checked and kept, so turning it on again finds them.
+ *
+ * @param array    $post         referral_on, referral_offer_id,
+ *                               referral_reward, referral_reward_days,
+ *                               referral_smallest, referral_month_cap
+ * @param callable $offer_exists function (int $offer_id): bool
+ * @return array values (config_text name => string), errors (field =>
+ *               'reward', 'reward_needed', 'days', 'smallest',
+ *               'month_cap' or 'offer'); values is empty when errors is not
+ */
+function pg_referral_settings_check(array $post, $offer_exists)
+{
+    $errors = array();
+    $on = isset($post['referral_on']) && ((string) $post['referral_on'] === '1');
+
+    $reward = pg_referral_settings_amount($post['referral_reward'] ?? '');
+
+    if ($reward === null) {
+        $errors['referral_reward'] = 'reward';
+    } elseif ($on && ($reward === 0)) {
+        $errors['referral_reward'] = 'reward_needed';
+    }
+
+    $days = pg_referral_settings_whole($post['referral_reward_days'] ?? '', PG_REFERRAL_DAYS_MAX);
+
+    if ($days === null) {
+        $errors['referral_reward_days'] = 'days';
+    }
+
+    $smallest = pg_referral_settings_amount($post['referral_smallest'] ?? '');
+
+    if ($smallest === null) {
+        $errors['referral_smallest'] = 'smallest';
+    }
+
+    $month_cap = pg_referral_settings_whole($post['referral_month_cap'] ?? '', PG_REFERRAL_MONTH_CAP_MAX);
+
+    if ($month_cap === null) {
+        $errors['referral_month_cap'] = 'month_cap';
+    }
+
+    $offer_raw = trim((string) (is_scalar($post['referral_offer_id'] ?? '') ? ($post['referral_offer_id'] ?? '') : 'x'));
+    $offer_id = 0;
+
+    if ($offer_raw !== '') {
+        if (!ctype_digit($offer_raw) || (strlen($offer_raw) > 10) || ((int) $offer_raw <= 0) || !call_user_func($offer_exists, (int) $offer_raw)) {
+            $errors['referral_offer_id'] = 'offer';
+        } else {
+            $offer_id = (int) $offer_raw;
+        }
+    }
+
+    if ($errors) {
+        return array('values' => array(), 'errors' => $errors);
+    }
+
+    $text = function ($number) {
+        return ($number > 0) ? (string) $number : '';
+    };
+
+    return array(
+        'values' => array(
+            'referral_on'          => $on ? '1' : '',
+            'referral_offer_id'    => $text($offer_id),
+            'referral_reward'      => $text($reward),
+            'referral_reward_days' => $text($days),
+            'referral_smallest'    => $text($smallest),
+            'referral_month_cap'   => $text($month_cap),
+        ),
+        'errors' => array(),
+    );
+}
+
+/**
+ * What the settings card says for each refusal of
+ * pg_referral_settings_check().
+ *
+ * @return array code => sentence
+ */
+function pg_referral_settings_errors()
+{
+    return array(
+        'reward'        => lang('Type the reward as an amount, such as 50 or 12.50.'),
+        'reward_needed' => lang('Type a reward above zero to turn the referral programme on.'),
+        'days'          => lang(array('string' => 'Type a whole number of days from 0 to {var:1}; 0 means the credit never expires.', 'vars' => array(PG_REFERRAL_DAYS_MAX))),
+        'smallest'      => lang('Type the smallest order as an amount, or leave it empty.'),
+        'month_cap'     => lang(array('string' => 'Type a whole number from 0 to {var:1}; 0 means no limit.', 'vars' => array(PG_REFERRAL_MONTH_CAP_MAX))),
+        'offer'         => lang('Choose an offer that exists, or none.'),
+    );
+}
+
+/**
+ * The stored settings as the card's boxes show them: amounts with the
+ * panel's decimal mark, an empty box for 0.
+ *
+ * @return array on (bool), offer_id (int), reward, days, smallest,
+ *               month_cap (strings)
+ */
+function pg_referral_settings_for_input()
+{
+    $settings = pg_referral_settings();
+    $amount = function ($minor) {
+        return ($minor > 0) ? pg_format_number($minor / 100, 2) : '';
+    };
+
+    return array(
+        'on'        => pg_config_text('referral_on') === '1',
+        'offer_id'  => $settings['offer_id'],
+        'reward'    => $amount($settings['reward']),
+        'days'      => ($settings['days'] > 0) ? (string) $settings['days'] : '',
+        'smallest'  => $amount($settings['smallest']),
+        'month_cap' => ($settings['month_cap'] > 0) ? (string) $settings['month_cap'] : '',
+    );
+}
+
+/**
+ * The referrer's mail after a reward (E10): what they earned and their
+ * whole store credit balance, the last day when the credit expires, and
+ * a link to My Account. The friend is not named. Pure.
+ *
+ * @param array $data customer, amount, balance, last_day ('' = never),
+ *                    account_url ('' = no link), from_name (all text)
+ * @return string HTML
+ */
+function pg_referral_mail_body(array $data)
+{
+    $value = function ($key) use ($data) {
+        return isset($data[$key]) ? trim((string) $data[$key]) : '';
+    };
+    $paragraph = function ($html) {
+        return '<p style="margin:0 0 12px;">' . $html . '</p>';
+    };
+
+    $customer = $value('customer');
+    $last_day = $value('last_day');
+    $account_url = $value('account_url');
+
+    return '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;background:#f7f7f7;padding:20px;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;padding:24px;border-radius:6px;border:1px solid #e5e5e5;">'
+        . '<h2 style="margin:0 0 16px;font-size:18px;">' . h(lang('You earned a referral reward')) . '</h2>'
+        . $paragraph(h(lang('Hello')) . (($customer !== '') ? ' ' . h($customer) : '') . ',')
+        . $paragraph(h(lang(array(
+            'string' => 'A friend you referred completed their first order, so {var:1} was added to your account as store credit. It is used at checkout when you are signed in.',
+            'vars'   => array($value('amount'))))))
+        . $paragraph(h(lang(array('string' => 'Your store credit balance is now {var:1}.', 'vars' => array($value('balance'))))))
+        . (($last_day !== '')
+            ? $paragraph(h(lang(array('string' => 'This credit can be used until {var:1}.', 'vars' => array($last_day)))))
+            : '')
+        . (($account_url !== '') && preg_match('#^https?://#i', $account_url)
+            ? $paragraph('<a href="' . h($account_url) . '">' . h(lang('See your store credit in My Account')) . '</a>')
+            : '')
+        . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h($value('from_name')) . '</p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Sends the referrer's mail through the mail queue. A failure is logged
+ * and stops nothing: the reward stands.
+ *
+ * @param int $contact_id the referrer's contact
+ * @param int $amount     the reward in minor units
+ * @param int $days       how long it lasts, 0 = never expires
+ * @return bool sent or queued
+ */
+function pg_referral_mail_reward($contact_id, $amount, $days)
+{
+    try {
+        $row = db_item(
+            "SELECT user.user_id, user.user_email, contacts.email_address, contacts.first_name, contacts.last_name
+            FROM contacts
+            JOIN user ON user.user_contact = contacts.id
+            WHERE contacts.id = '" . (int) $contact_id . "'
+            ORDER BY user.user_id ASC
+            LIMIT 1");
+
+        if (!is_array($row) || !defined('EMAIL_ADDRESS') || (EMAIL_ADDRESS === '')) {
+            return false;
+        }
+
+        $to = trim(((string) $row['user_email'] !== '') ? (string) $row['user_email'] : (string) $row['email_address']);
+
+        if (($to === '') || (strpos($to, '@') === false)) {
+            return false;
+        }
+
+        $customer = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
+        $from_name = (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== ''))
+            ? ORGANIZATION_NAME
+            : (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : 'Pinegrap');
+        $money = function ($minor) {
+            return html_entity_decode(pg_order_log_money((int) $minor), ENT_QUOTES, 'UTF-8');
+        };
+        $account = get_page_type_url('my account');
+
+        return (bool) email(array(
+            'to'                 => $to,
+            'to_name'            => $customer,
+            'from_name'          => $from_name,
+            'from_email_address' => EMAIL_ADDRESS,
+            'subject'            => lang(array('string' => 'You earned {var:1} in store credit', 'vars' => array($money($amount)))),
+            'format'             => 'html',
+            'body'               => pg_referral_mail_body(array(
+                'customer'    => $customer,
+                'amount'      => $money($amount),
+                'balance'     => $money(pg_credit_balance((int) $row['user_id'])),
+                'last_day'    => ((int) $days > 0)
+                    ? get_absolute_time(array('timestamp' => time() + ((int) $days * 86400), 'type' => 'date', 'format' => 'plain_text'))
+                    : '',
+                'account_url' => ($account && defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . $account : '',
+                'from_name'   => $from_name,
+            )),
+            'type'               => 'system',
+            'source'             => 'account',
+            'queue'              => true,
+        ));
+    } catch (\Throwable $exception) {
+        log_activity(pg_log_lang(array('string' => 'The referral reward mail could not be sent: {var:1}', 'vars' => array($exception->getMessage()))));
+
+        return false;
     }
 }

@@ -1376,6 +1376,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             pg_explorer_handle_office_preview($type, $request, $user);
             break;
 
+        // ── An .xls saved beside itself as a copy in .xlsx ──────────────
+        case 'explorer_office_copy':
+            pg_explorer_handle_office_copy($type, $request, $user);
+            break;
+
         // ── Where a file is used ────────────────────────────────────────
         case 'explorer_file_usage':
             pg_explorer_handle_file_usage($type, $request, $user, $folders_that_user_has_access_to);
