@@ -5,7 +5,7 @@ module: cart_recovery
 ---
 
 ## When is a WhatsApp message a touch?
-- When a message carrying a single-use key (`platform/whatsapp-offer-codes.md`) is actually sent: `pg_whatsapp_queue_run()`, when the outbox row becomes `sent` with `key_code_id > 0` and a `contact_id`, calls `pg_cart_recovery_whatsapp_key_sent(0, contact_id, template_id, sent_at)` (pure test `pg_whatsapp_queue_sent_touch()`, PR #<n>): channel `whatsapp`, source `template` + the template's id. A failed, uncertain, expired or waiting message is no touch.
+- When a message carrying a single-use key (`platform/whatsapp-offer-codes.md`) is actually sent: `pg_whatsapp_queue_run()`, when the outbox row becomes `sent` with `key_code_id > 0` and a `contact_id`, calls `pg_cart_recovery_whatsapp_key_sent(0, contact_id, template_id, sent_at)` (pure test `pg_whatsapp_queue_sent_touch()`, PR #10740): channel `whatsapp`, source `template` + the template's id. A failed, uncertain, expired or waiting message is no touch.
 - Architect (2026-11-20, agent channel message 10532): one row per message sent, as the e-mail touch is written where the mail goes out.
 - The cart: the contact's last changed incomplete order with active lines (`pg_cart_recovery_left_cart()`), its left test (6 hours to 30 days) at the send time. The enqueue's `order_id` option is not carried: the outbox has no column for it. A sender naming its cart (a cart-left flow start) settles that in its own plan.
 - A shared code is no touch: nothing links its use to the message. A duplicate enqueue writes nothing.

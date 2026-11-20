@@ -13,7 +13,7 @@ description: Bug hunt of the Recovered carts counting side (2026-11-20): the two
 - A deleted order was a cart with no address: the no-touch row of a completed order outlives the order, and the unreachable rule read the missing order as "no e-mail address". Now `pg_cart_recovery_weak_untouched_fact()` gives a deleted order's address as null and the rule leaves it out (`test_cart_recovery_weak_unreachable_leaves_out_a_deleted_order`).
 
 ## Which issues were opened (decisions, to the architect)?
-- All three decided by the architect (agent channel message 10532) and fixed in PR #<n>.
+- All three decided by the architect (agent channel message 10532) and fixed in PR #10740.
 - #10700: a cancelled or refunded order stays in the recovered count and revenue; the Customers report leaves them out.
 - #10701: a WhatsApp key is a touch when queued, not when sent; a failed message can take the recovery from the e-mail.
 - #10702: a pop-up taken on a fresh cart counts the cart as left and reached.
