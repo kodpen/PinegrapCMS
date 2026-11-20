@@ -3231,6 +3231,7 @@
     "The content of {var}.": "{var} içeriği.",
     "The content review could not be saved.": "İçerik incelemesi kaydedilemedi.",
     "The contents of the file do not match the type its name claims.": "Dosyanın içeriği, adının iddia ettiği türle uyuşmuyor.",
+    "The control is required (1 or empty; not with a kept file)": "Alan zorunlu (1 ya da boş; saklanan bir dosya varken değil)",
     "The control panel": "Yönetim paneli",
     "The conversation": "Konuşma",
     "The conversation comes back at the chosen time.": "Konuşma seçilen zamanda geri gelecek.",

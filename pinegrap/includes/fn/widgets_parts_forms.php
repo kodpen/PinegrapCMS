@@ -391,12 +391,14 @@ function pg_sw_order_return_form_wire(&$node, $ctx)
 // The cart's product form controls: binding value => the tags it may sit
 // on. form_field is a field's text box, text area or pick list (the row's
 // __field_control picks which one shows), form_field_file an upload,
+// form_field_file_remove the Remove check of an upload's kept file,
 // form_field_option one choice of a radio button or check box field.
 function pg_sw_cart_form_control_tags()
 {
     return array(
         'form_field'        => array('input', 'textarea', 'select'),
         'form_field_file'   => array('input'),
+        'form_field_file_remove' => array('input'),
         'form_field_option' => array('input'),
     );
 }
@@ -431,6 +433,9 @@ function pg_sw_cart_form_control(&$node, $form_id)
         $add = array('type' => '^^__option_type^^', 'name' => '^^__option_name^^', 'value' => '^^__option_value^^',
                      'required' => '{{__option_required}}', 'checked' => '{{__option_checked}}');
         $node['props']['id'] = '^^__option_id^^';
+    } elseif ($kind === 'form_field_file_remove') {
+        $add = array('type' => 'checkbox', 'name' => '^^__field_file_remove^^', 'value' => '1');
+        $node['props']['id'] = '^^__field_id^^_remove';
     } else {
         if ($kind === 'form_field_file') {
             $add['type'] = 'file';
@@ -446,7 +451,8 @@ function pg_sw_cart_form_control(&$node, $form_id)
             $node['children'] = array();
         }
         $add['name']     = '^^__field_name^^';
-        $add['required'] = '{{__field_required}}';
+        // A kept file answers a required upload (__field_control_required).
+        $add['required'] = ($kind === 'form_field_file') ? '{{__field_control_required}}' : '{{__field_required}}';
         $node['props']['id'] = '^^__field_id^^';
     }
     if ($form_id !== '') $add['form'] = $form_id;
@@ -530,15 +536,29 @@ function pg_sw_part_cart_item_form($cfg = array())
     $controls = array();
     foreach (array('input', 'textarea', 'select', 'choice', 'file') as $kind) $controls[] = pg_sw_part_cart_form_control($kind);
     $file = pg_sw_part_when('__field_file', 'not_empty');
+    $error = pg_sw_part_value('__field_error', 'Message', 'not_empty');
+    $preview = array_merge(pg_sw_part_when('__field_file_image', 'not_empty'),
+        array('_attrs' => array(array('name' => 'src', 'value' => '^^__field_file_image^^'), array('name' => 'alt', 'value' => '^^__field_file^^'))));
+    $link = array_merge(pg_sw_part_value('__field_file', 'file.pdf'),
+        array('_attrs' => array(array('name' => 'href', 'value' => '^^__field_file_url^^'), array('name' => 'target', 'value' => '_blank'),
+            array('name' => 'rel', 'value' => 'noopener'))));
     $field = pg_sw_part_el('div', 'mb-3', 'Field', pg_sw_part_when('__field_is_info', 'empty'), array_merge(array(
         pg_sw_part_el('label', 'form-label', 'Label', array(), array(
             pg_sw_part_el('span', '', 'Text', pg_sw_part_value('__field_label', 'Label')),
             pg_sw_part_el('span', 'text-danger', 'Required mark', array_merge(array('text' => '*'), pg_sw_part_when('__field_required', 'not_empty'))),
         )),
     ), $controls, array(
-        pg_sw_part_el('div', 'form-text small', 'Current file', $file, array(
+        pg_sw_part_el('div', 'invalid-feedback d-block', 'Message', $error),
+        pg_sw_part_el('div', 'form-text small pg-cart-item-file', 'Current file', $file, array(
+            pg_sw_part_el('img', 'pg-cart-item-file-preview d-block rounded border mb-1', 'Preview', $preview),
             pg_sw_part_el('span', '', 'Text', array('text' => lang('Current file:'))),
-            pg_sw_part_el('span', '', 'File name', pg_sw_part_value('__field_file', 'file.pdf')),
+            pg_sw_part_el('a', '', 'File name', $link),
+            pg_sw_part_el('span', 'text-muted', 'Size', pg_sw_part_value('__field_file_size', '120 KB', 'not_empty')),
+            pg_sw_part_el('span', '', 'Replace', array('text' => lang('Choose another file to replace it.'))),
+            pg_sw_part_el('div', 'form-check', 'Remove', array(), array(
+                pg_sw_part_el('input', 'form-check-input', 'Remove', array('_bindings' => array('value' => 'form_field_file_remove'))),
+                pg_sw_part_el('label', 'form-check-label', 'Label', array('text' => lang('Remove'))),
+            )),
         )),
     )));
     $info = pg_sw_part_el('div', 'mb-3 small', 'Information', pg_sw_part_when('__field_is_info', 'not_empty'), array(

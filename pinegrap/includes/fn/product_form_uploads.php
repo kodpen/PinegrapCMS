@@ -579,3 +579,204 @@ function pg_pfu_access_verdict($lines, $viewer)
 
     return false;
 }
+
+/**
+ * The name of the check that removes a kept file: the field's control name
+ * with "_remove". The cart's answer pattern ends at the field id, so the
+ * check is never read as an answer of its own.
+ *
+ * @param string $control_name order_item_<id>_quantity_number_<n>_form_field_<id>
+ * @return string
+ */
+function pg_pfu_remove_name($control_name)
+{
+    return (string) $control_name . '_remove';
+}
+
+/**
+ * What a cart save does with a unit's File Upload answer: refuse the file
+ * sent (the refusal says why), place a new one, remove the kept one (the
+ * check ticked, no new file) or keep what is stored (nothing sent, the
+ * page from before multipart, or a hand-made list of files).
+ *
+ * @param mixed  $upload  one $_FILES entry, or null
+ * @param bool   $remove  the Remove check was ticked
+ * @param string $refusal pg_pfu_file_refusal()
+ * @return string refuse, place, remove or keep
+ */
+function pg_pfu_cart_file_step($upload, $remove, $refusal)
+{
+    if ((string) $refusal !== '') {
+        return 'refuse';
+    }
+
+    if (is_array($upload) && isset($upload['error']) && is_scalar($upload['error'])
+        && ((int) $upload['error'] === UPLOAD_ERR_OK) && is_scalar($upload['tmp_name'] ?? null) && ((string) $upload['tmp_name'] !== '')) {
+        return 'place';
+    }
+
+    return $remove ? 'remove' : 'keep';
+}
+
+/**
+ * Whether a unit number belongs to a cart line: 1 to its quantity for a form
+ * per unit, only 1 for a form per product. A line so holds at most its
+ * quantity times its file fields.
+ *
+ * @param int    $quantity_number
+ * @param int    $quantity           order_items.quantity
+ * @param string $form_quantity_type products.form_quantity_type
+ * @return bool
+ */
+function pg_pfu_unit_in_line($quantity_number, $quantity, $form_quantity_type)
+{
+    $quantity_number = (int) $quantity_number;
+    $units = ((string) $form_quantity_type === 'One Form per Quantity') ? (int) $quantity : min(1, (int) $quantity);
+
+    return ($quantity_number >= 1) && ($quantity_number <= $units);
+}
+
+/**
+ * A kept file as the cart shows it: its name, size, address and, for an
+ * image, the same address for the preview. Empty when the answer holds no
+ * file (an answer saved as text before uploads were stored has no file_id).
+ *
+ * @param array  $answer form_data file_id, data (the file name) and file_size (files.size)
+ * @param string $path   the site's path (PATH)
+ * @return array name, size (text, '' when not known), url, image_url
+ */
+function pg_pfu_kept_file($answer, $path)
+{
+    $name = pg_basename(str_replace('\\', '/', (string) ($answer['data'] ?? '')));
+
+    if (((int) ($answer['file_id'] ?? 0) <= 0) || ($name === '')) {
+        return array();
+    }
+
+    $size = (int) ($answer['file_size'] ?? 0);
+    $url = (string) $path . encode_url_path($name);
+    $dot = mb_strrpos($name, '.');
+    $extension = ($dot === false) ? '' : mb_strtolower(mb_substr($name, $dot + 1));
+
+    return array(
+        'name' => $name,
+        'size' => ($size > 0) ? convert_bytes_to_string($size, 'auto') : '',
+        'url' => $url,
+        'image_url' => in_array($extension, pg_pfu_image_extensions(), true) ? $url : '',
+    );
+}
+
+/**
+ * How many files one visitor may send to the cart in an hour (U7).
+ *
+ * @return int
+ */
+function pg_pfu_upload_rate_limit()
+{
+    return 60;
+}
+
+/**
+ * Whether the visitor has sent more files to the cart than the hour allows;
+ * each call counts one file. Without the firewall's counters nothing is
+ * counted.
+ *
+ * @return bool
+ */
+function pg_pfu_upload_rate_exceeded()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+        return false;
+    }
+
+    return waf_rate_exceeded(waf_ip_subject(waf_client_ip()), 'pfu_upload', pg_pfu_upload_rate_limit(), 3600);
+}
+
+/**
+ * Removes a unit's File Upload answer and its file (the Remove check).
+ *
+ * @param int $order_item_id
+ * @param int $quantity_number
+ * @param int $field_id
+ */
+function pg_pfu_remove_unit_answer($order_item_id, $quantity_number, $field_id)
+{
+    $where = "(form_data.order_item_id = '" . (int) $order_item_id . "') AND (form_data.order_item_id != '0')"
+        . " AND (form_data.form_id = '0') AND (form_data.form_field_id = '" . (int) $field_id . "')"
+        . " AND (form_data.quantity_number = '" . (int) $quantity_number . "')";
+
+    pg_pfu_remove_files_where($where);
+    db("DELETE FROM form_data WHERE " . $where);
+}
+
+/**
+ * Removes the files, and the File Upload answers holding them, of a line's
+ * units above its new quantity: the cart calls it when a quantity is
+ * lowered, so a raised quantity never shows a file that is gone.
+ *
+ * @param int $order_item_id
+ * @param int $quantity the line's new quantity
+ */
+function pg_pfu_drop_units_above($order_item_id, $quantity)
+{
+    $order_item_id = (int) $order_item_id;
+
+    if ($order_item_id <= 0) {
+        return;
+    }
+
+    pg_pfu_remove_unit_files($order_item_id, $quantity);
+    db("DELETE FROM form_data WHERE (order_item_id = '" . $order_item_id . "') AND (form_id = '0')"
+        . " AND (file_id > 0) AND (quantity_number > '" . max(0, (int) $quantity) . "')");
+}
+
+/**
+ * A cart save of one unit's File Upload answer (the designer cart and express
+ * order widgets, cart_action.php): the file sent is checked against the
+ * field's rule and placed, the kept one stays when none comes, the Remove
+ * check removes it.
+ *
+ * @param int        $order_id
+ * @param int        $order_item_id
+ * @param int        $quantity_number
+ * @param array      $field  form_fields id, name, upload_folder_id, rules
+ * @param array|null $upload the control's $_FILES entry
+ * @param bool       $remove the Remove check was ticked
+ * @return string why the file was refused, as text ('' when saved or kept)
+ */
+function pg_pfu_cart_save($order_id, $order_item_id, $quantity_number, $field, $upload, $remove)
+{
+    $limits = pg_upload_limits();
+    $refusal = pg_pfu_file_refusal($upload, pg_pfu_rule_clean($field['rules'] ?? null), (int) $limits['file_max']);
+    $step = pg_pfu_cart_file_step($upload, $remove, $refusal);
+
+    if ($step === 'refuse') {
+        return $refusal;
+    }
+
+    if ($step === 'remove') {
+        pg_pfu_remove_unit_answer($order_item_id, $quantity_number, (int) $field['id']);
+    }
+
+    if ($step !== 'place') {
+        return '';
+    }
+
+    $sent = pg_basename(str_replace('\\', '/', is_scalar($upload['name'] ?? null) ? (string) $upload['name'] : ''));
+
+    if (pg_pfu_upload_rate_exceeded()) {
+        return lang(array('string' => '{var:1} was not saved: too many files were sent from your connection. Please try again later.', 'vars' => array($sent)));
+    }
+
+    $file = ((int) ($field['upload_folder_id'] ?? 0) > 0)
+        ? pg_pfu_place($upload, (int) $field['upload_folder_id'], defined('USER_ID') ? (int) USER_ID : 0)
+        : false;
+
+    if (!$file) {
+        return lang(array('string' => 'The server could not accept {var:1}. Please try again.', 'vars' => array($sent)));
+    }
+
+    pg_pfu_keep($order_id, $order_item_id, $quantity_number, $field, $file);
+
+    return '';
+}
