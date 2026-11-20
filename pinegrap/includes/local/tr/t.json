@@ -8807,6 +8807,7 @@
     "This column is the key of the table: make it an ordinary column first, then change its type.": "Bu sütun tablonun anahtarı: önce sıradan bir sütun yapın, sonra türünü değiştirin.",
     "This command runs in the channel itself, not in one of its discussions.": "Bu komut kanalın kendisinde çalışır, tartışmalarından birinde çalışmaz.",
     "This comment is no longer there.": "Bu yorum artık yok.",
+    "This comment was resolved or deleted. Open the page again to see it.": "Bu yorum çözüldü ya da silindi. Görmek için sayfayı yeniden açın.",
     "This comment was resolved.": "Bu yorum çözüldü.",
     "This common region is a shared component: its content is edited in the Page Design Studio.": "Bu ortak bölge paylaşılan bir bileşendir: içeriği Sayfa Tasarım Stüdyosu'nda düzenlenir.",
     "This common region is now a shared component. Edit its content in the Page Design Studio.": "Bu ortak bölge artık bir paylaşılan bileşen. İçeriğini Sayfa Tasarım Stüdyosu'nda düzenleyin.",

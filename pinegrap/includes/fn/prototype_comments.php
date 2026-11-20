@@ -397,6 +397,11 @@ function pg_proto_comment_error_message($code)
             return lang('Open the prototype again from its link, then write your comment.');
         case 'link':
             return lang('This link no longer works.');
+        case 'parent':
+            // The thread was resolved or deleted while its answer was written.
+            return lang('This comment was resolved or deleted. Open the page again to see it.');
+        case 'page':
+            return lang('This page is no longer a draft of the design.');
     }
 
     return lang('Sorry, we could not accept your request.');
