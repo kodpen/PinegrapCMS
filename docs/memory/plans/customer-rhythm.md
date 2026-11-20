@@ -1,6 +1,6 @@
 ---
 name: customer-rhythm
-description: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; CR1a to CR6
+description: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
 priority: 6
 ---
 
@@ -24,13 +24,10 @@ priority: 6
 - Names only with the contacts right (`validate_contacts_access()`); the report under `validate_ecommerce_report_access()`.
 - The privacy export and erase cover what is kept per customer.
 
-## What does the architect decide?
-- Schema: a `customer_rhythm` table, one row per customer key (contact, last order, own interval, stage and since when, next due day, chance still a customer, expected 12-month value, last reminder and its order)? `data/temp/` is only a cache: a lost file would announce every stage again.
-- Product rhythm in one `config_text` summary rebuilt whole, as the Customers Report?
-- The reorder link: signed, 30 days, it only fills a cart with the same lines at today's price and stock and never shows the order or an address; or only `order_history_reorder.php` after sign-in?
-- `customer.reorder_due` and `customer.rhythm_stage_changed` through `pg_announce()` (webhooks and flows), right `contacts`, commerce sites only?
-- A contact group rule "Rhythm stage is", since these bounds do not move at a rebuild?
-- The comparison share (H12): one due customer in ten held back, off by default?
+## What did the architect decide? (2026-11-20, agent channel message 10748)
+- Schema: one new table, `customer_rhythm`, one row per customer key; no column on an existing table; the person's export and erase cover it. Asked of the owner in poll 191 (message 10744); RY1b waits for the yes, and the architect writes the columns into the schema decisions list.
+- Product rhythm: one `config_text` summary rebuilt whole, as the Customers Report; `data/temp/` only a cache.
+- The reorder link (H9), the two events only on a site with commerce on (H10), the group rule (H11) and the comparison share, off by default (H12).
 
 ## What is built?
 - Features: `customer-rhythm-features.md` (H1 to H16). Steps: `customer-rhythm-steps.md`. Claim as `[plan:customer-rhythm] <step> — <topic>`.
@@ -39,4 +36,4 @@ priority: 6
 - A trained model, "bought together" suggestions, a discount chosen by the plan, a dashboard card, marketplace buyers: each a later yes.
 
 ## Whose look?
-- No pictures (`workflow/look-pictures-none.md`): the report's part, the contact card's part and the settings are seen on dev after CR4.
+- No pictures (`workflow/look-pictures-none.md`): the report's part, the contact card's part and the settings are seen on dev after RY4.

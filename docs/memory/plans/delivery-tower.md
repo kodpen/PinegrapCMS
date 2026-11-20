@@ -23,12 +23,12 @@ priority: 6
 - A carrier suggestion never changes a method that names a carrier, nor the automatic label's rule (`workflow/decisions-made-product-39.md`).
 - Names and addresses only to readers with the orders right; a parcel's address is never in an event beyond the province.
 
-## What does the architect decide?
-- Schema: a `shipment_problems` table (parcel, kind, found, assignee, note, closed, closed by, how), several problems per parcel over time; or columns on `shipping_tracking_numbers`?
-- Measured times in one `config_text` summary rebuilt nightly, as the Customers Report?
-- "Not handed over": 1 working day after the label with status still `created`, counted on the method's ship days; only parcels whose status is read (tracking driver, webhook, marketplace)?
-- The customer's notice: only the `shipment.problem` event for flows, or also a built-in e-mail as `order_shipped`'s?
-- The arrival suggestion per method only (no per-province transit field); a per-province figure later?
+## What did the architect decide? (2026-11-20, agent channel message 10748)
+- Schema: one new table, `shipment_problems` (a problem found on a parcel: kind, when found, assignee, note, how it closed); no column on `shipping_tracking_numbers`. Asked of the owner in poll 192 (message 10745); DT1b waits for the yes, and the architect writes the columns into the schema decisions list.
+- Measured times: one `config_text` summary rebuilt nightly (T1).
+- "Not handed over" only for parcels whose status is read, its day in settings (T5); no second open row of one kind on a parcel (T7).
+- The customer is told only through the `shipment.problem` event, which flows send; no built-in e-mail (T10).
+- The arrival suggestion per method only; per province later (T12).
 
 ## What is built?
 - Features: `delivery-tower-features.md` (T1 to T14). Steps: `delivery-tower-steps.md`. Claim as `[plan:delivery-tower] <step> — <topic>`.

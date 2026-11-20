@@ -15,19 +15,19 @@ priority: 6
 - No visit is tied to a person; no score; nothing says which page or campaign brought a lead.
 
 ## What binds it?
-- A visit is tied only with a yes to the cookie notice's category the architect names; refused, unanswered or notice off: nothing is tied, the totals stay as today.
+- A visit is tied only with a yes to the cookie notice's marketing category; refused, unanswered or notice off: nothing is tied, the totals stay as today.
 - A new cookie gets its catalogue row (`platform/cookie-consent-new-cookies.md`); no cookie before the yes.
-- Ties start from the person's own act: a form sent, a newsletter yes, a sign-in, a signed e-mail link. Never from an IP or a guess.
+- Ties start from the person's own act: a form sent, a newsletter yes, a sign-in, a click through a campaign e-mail's tracking code. Never from an IP or a guess.
 - `visitors` writes and its monthly split are not slowed: the journey is its own store, written after the response where possible.
 - The person's export and erase cover the journey; staff are never scored.
 - Events carry the contact id, score and reason, never the pages seen.
 
-## What does the architect decide?
-- Schema: a browser key on `visitors` (a partitioned table) or a side table (visit, browser key); a `contact_journey` store (contact, kind, ref, page, time); the score as `contacts` columns or a `contact_scores` table?
-- Consent: statistics or marketing for the tie (profiling reads as marketing under KVKK)?
-- Topics: from the page's folder, a new page or record topic field, or collection fields?
-- E-mail clicks: campaign links signed with the contact (new), or only the existing tracking code?
-- How long the journey is kept (default 13 months?) and whether earlier anonymous visits of the same browser are tied back.
+## What did the architect decide? (2026-11-20, agent channel message 10748)
+- Schema: four new tables, `lead_browsers` (a consenting browser and its contact), `lead_visits` (that browser's visits), `contact_journey` and `contact_scores`; no column on `visitors` (partitioned) or `contacts`. Asked of the owner in poll 194 (message 10747); LJ1b waits for the yes, and the architect writes the columns into the schema decisions list.
+- Consent: the marketing category (poll 194 asks it so); the key is written only with the yes and deleted when it is taken back (J1).
+- Topics: the page's folder, on a product page the product's category; no new field (J9).
+- E-mail clicks: only the existing tracking code; no new signed link (J2).
+- The keep period, 13 months as a setting, and tying back only visits after the consent: poll 194 (J4).
 
 ## What is built?
 - Features: `lead-journey-features.md` (J1 to J15). Steps: `lead-journey-steps.md`. Claim as `[plan:lead-journey] <step> — <topic>`.

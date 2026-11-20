@@ -4,10 +4,10 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 ---
 
 ## How is a visit tied to a person?
-- (J1) With the consent yes only, a random browser key in a first-party cookie (catalogue row, its category, 13 months); no key without the yes, and a later refusal deletes the cookie and stops new ties.
-- (J2) A tie is made by the person's act: a form that writes a contact, a newsletter yes (after the double opt-in when it is on), a sign-in, an order, a booking, a signed campaign link. The browser key then points at that contact.
+- (J1) With the marketing consent yes only, a random browser key in a first-party cookie (catalogue row, its category, 13 months); no key without the yes, and a later refusal deletes the cookie and stops new ties.
+- (J2) A tie is made by the person's act: a form that writes a contact, a newsletter yes (after the double opt-in when it is on), a sign-in, an order, a booking, a click through a campaign e-mail's existing tracking code. The browser key then points at that contact.
 - (J3) One browser, one contact: a later act by another contact on the same browser moves the key (a shared computer), the earlier ties stay with their contact.
-- (J4) Earlier visits of the same browser key are tied back, inside the keep period.
+- (J4) Visits of the browser since its consent are tied back, inside the keep period (13 months, a setting).
 
 ## What is the journey?
 - (J5) Per contact, in time order: first touch (channel, campaign, referrer, landing page), visits with their pages, downloads, forms, newsletter, campaign clicks, bookings, orders, course steps. Read on the Workspace customer card, the contact screen and the API.
@@ -18,7 +18,7 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 - (J8) Scores are worked out by the general job for contacts touched since the last pass, never in the visitor's request.
 
 ## What are interests?
-- (J9) Topics of the pages and records seen (the architect's source), weighted by time spent and fading like J6; the top five on the contact. Contact groups and flows can filter by a topic and by a score range.
+- (J9) Topics of the pages and records seen (the page's folder; on a product page the product's category; no new field), weighted by time spent and fading like J6; the top five on the contact. Contact groups and flows can filter by a topic and by a score range.
 
 ## Who is told?
 - (J10) `contact.hot` once when the score passes the site's threshold (default 60), again only after it fell below and rose; `contact.returned` when a hot contact starts a new visit, at most once a day per contact. Through `pg_announce()`, the catalogue, fixtures and flow start boxes.

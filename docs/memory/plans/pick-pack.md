@@ -23,12 +23,12 @@ priority: 6
 - Marketplace calls only through the existing accept path; nothing new is pushed to a buyer.
 - Works with and without stock locations; works by typed code when no scanner or camera.
 
-## What does the architect decide?
-- Schema: the shelf address as a column on `product_stock` and one on `products` (no locations), or a `product_bins` table (product, location, address)?
-- Schema: `pick_waves` and `pick_wave_orders`, and an `order_packs` row per address (state, packer, times, counts of good and wrong scans, the short lines); each scan an `audit_log` line or a `pack_scans` table?
-- Who packs: the orders right as today, or a new "packing only" permission column so warehouse staff see no prices or e-mails?
-- Must a pack be checked before a label is made (a site switch, off by default), or is the check only offered?
-- The ship-by day: the address's `ship_date` when set, else the paid day plus the method's handling days; Trendyol's `agreedDeliveryDate` stored later?
+## What did the architect decide? (2026-11-20, agent channel message 10748)
+- Schema: four new tables, `product_bins` (an address per stock location), `pick_waves`, `pick_wave_orders` and `order_packs`; no column on `products` or `product_stock`. Asked of the owner in poll 193 (message 10746); PP1b waits for the yes, and the architect writes the columns into the schema decisions list.
+- No `pack_scans` table: the scan counts sit on the `order_packs` row, and one `audit_log` line is written when a pack closes (K12).
+- A checked pack before a label: a site switch, off by default (K12).
+- The ship-by day as K3 says; Trendyol's `agreedDeliveryDate` later.
+- A "packing only" right (no prices, no customer e-mail): asked in poll 193; if yes, its column joins PP1b under the `core/` role rules.
 
 ## What is built?
 - Features: `pick-pack-features.md` (K1 to K16). Steps: `pick-pack-steps.md`. Claim as `[plan:pick-pack] <step> — <topic>`.

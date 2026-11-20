@@ -4,11 +4,11 @@ description: Plan pick-pack, features K1 to K16: shelf addresses, waves and thei
 ---
 
 ## How is a shelf address kept?
-- (K1) One address per product and stock location ("A-03-2"), typed on the product screen's stock card, by Change Selected, by product import and by `POST /products/{id}/inventory`; without locations one per product.
+- (K1) One address per product and stock location ("A-03-2"), typed on the product screen's stock card, by Change Selected, by product import and by `POST /products/{id}/inventory`; without locations one per product. Kept in `product_bins`; no column on `products` or `product_stock`.
 - (K2) Sorting compares the address part by part, numbers as numbers ("A-3" before "A-10"); a product with none comes last, by product code.
 
 ## What is a wave?
-- (K3) A wave is a set of addresses to pick together: chosen on the orders list ("Add to a wave"), or made by a rule: paid, not cancelled, no checked pack yet, filtered by carrier, marketplace, stock location, ship-by day, single-item addresses only.
+- (K3) A wave is a set of addresses to pick together: chosen on the orders list ("Add to a wave"), or made by a rule: paid, not cancelled, no checked pack yet, filtered by carrier, marketplace, stock location, ship-by day, single-item addresses only. Ship-by day: the address's `ship_date`, else the paid day plus the method's handling days.
 - (K4) An address is in one open wave at most; a cancelled order leaves its wave by itself and the list says so.
 - (K5) Sizes: at most 200 addresses a wave; a rule fills oldest ship-by day first.
 
@@ -23,7 +23,7 @@ description: Plan pick-pack, features K1 to K16: shelf addresses, waves and thei
 - (K11) Typed code when no scanner; a phone camera through `BarcodeDetector`, as event check-in does.
 
 ## What happens when a pack is checked?
-- (K12) All units scanned: the pack is `packed` with packer and time; the label is made through the existing path and opened for printing when the address has none; a marketplace package still `Created` is accepted (Picking) through `mp_sync_approve()`; `order.packed` is announced.
+- (K12) All units scanned: the pack is `packed` with packer and time; the label is made through the existing path and opened for printing when the address has none; a marketplace package still `Created` is accepted (Picking) through `mp_sync_approve()`; `order.packed` is announced. Scan counts sit on the pack's row; one `audit_log` line when it closes. A site switch (off by default) makes a checked pack a must before a label.
 
 ## What is a short pick?
 - (K13) "Short" closes the pack as `short` with the missing lines: the address waits, the order screen and the wave show it, staff are told through `pg_ops_alert()` code `pack_short` once a day, `order.pack_short` is announced. The location's count can be set down from there, as a `stock_moves` line with reason `count`.
