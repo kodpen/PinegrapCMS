@@ -351,6 +351,9 @@ if (!$_POST) {
     $manage_erp_readonly = pg_user_has_erp_readonly_column()
         ? (int) db_value("SELECT manage_erp_readonly FROM user WHERE user_id = '" . (int) $_GET['id'] . "' LIMIT 1")
         : 0;
+    $manage_packing = pg_user_has_packing_column()
+        ? (int) db_value("SELECT manage_packing FROM user WHERE user_id = '" . (int) $_GET['id'] . "' LIMIT 1")
+        : 0;
     $ws_rights = pg_user_permission_ws_values((int) $_GET['id']);
     $set_offline_payment = $row['user_set_offline_payment'];
     $publish_calendar_events = $row['user_publish_calendar_events'];
@@ -656,6 +659,7 @@ if (!$_POST) {
             // drew switched off and a save cleared the right.
             'manage_erp'              => ($manage_erp == 1) ? '1' : '',
             'manage_workspace'        => ($ws_rights['manage_workspace'] == 1) ? '1' : '',
+            'manage_packing'          => ($manage_packing == 1) ? '1' : '',
         ),
         'panels' => $permission_panels,
         'counts' => array(

@@ -8,7 +8,7 @@ description: What deleting an order removes (delete_order.php, the only DELETE F
 - It writes the audit row (`pg_audit_record('delete', 'orders', …)`) and the site log line "Order ({var:1}) was deleted.".
 
 ## What goes with it?
-- `order_items`, `ship_tos`, `order_item_gift_cards`, `applied_gift_cards`, the order's `form_data` rows (never `order_id = 0`), `shipping_tracking_numbers`, its return requests and their lines (`pg_returns_delete_for_order()`), and the kept legal document copies in `order_documents` when the table exists.
+- `order_items`, `ship_tos`, `order_item_gift_cards`, `applied_gift_cards`, the order's `form_data` rows (never `order_id = 0`), `shipping_tracking_numbers`, its return requests and their lines (`pg_returns_delete_for_order()`), the kept legal document copies in `order_documents` when the table exists, and its pick wave and pack rows (`pick_wave_orders`, `order_packs`; `pick-pack-tables.md`).
 - A ready or paused "order abandoned" or review request (product-review-request-email.md) e-mail campaign of the order is set to cancelled, not deleted. The session's active order is dropped when it is the one deleted.
 
 ## Why are the legal document copies deleted?

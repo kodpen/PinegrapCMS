@@ -199,6 +199,7 @@ if ($send_to != '') {
     || $user['manage_ecommerce_reports']
     || !empty($user['manage_erp'])
     || !empty($user['manage_workspace'])
+    || !empty($user['manage_packing'])
     || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)
 ) {
     $continue_url = PATH . SOFTWARE_DIRECTORY . '/welcome.php';

@@ -84,6 +84,9 @@ $manage_erp = $row['manage_erp'] ?? 0;
 $manage_workspace = (pg_user_has_ws_columns())
     ? (int) db_value("SELECT manage_workspace FROM user WHERE user_id = '" . (int) ($_POST['user_id'] ?? 0) . "'")
     : 0;
+$manage_packing = (pg_user_has_packing_column())
+    ? (int) db_value("SELECT manage_packing FROM user WHERE user_id = '" . (int) ($_POST['user_id'] ?? 0) . "'")
+    : 0;
 $user_manage_forms = $row['user_manage_forms'];
 $user_manage_calendars = $row['user_manage_calendars'];
 $user_manage_visitors = $row['user_manage_visitors'];
@@ -138,6 +141,7 @@ if (
     || $manage_ecommerce_reports
     || $manage_erp
     || $manage_workspace
+    || $manage_packing
     || (count(get_items_user_can_edit('ad_regions', $_POST['user_id'])) > 0)
 ) {
     $login = 

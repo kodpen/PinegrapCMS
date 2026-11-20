@@ -461,6 +461,26 @@ function pg_user_permission_ui($config)
 		);
 	}
 
+	// Packing only, when the store is on and the column is there: a right of
+	// its own beside Commerce, not behind its gate, so a warehouse worker can
+	// hold it without the store's other screens. Nothing to pick, like Visitor
+	// Reports. Prefix-less TINYINT, so the gate value is '1'.
+	if (isset($panels['commerce_switches']) && function_exists('pg_user_has_packing_column') && pg_user_has_packing_column()) {
+		$groups[] = array(
+			'id'          => 'packing',
+			'icon'        => 'bi-box-seam',
+			'color'       => '#ffb74d',
+			'title'       => lang('Packing only'),
+			'description' => lang('The Pick waves and Pack screens only, with no prices or customer e-mail.'),
+			'panel_lead'  => '',
+			'gate_field'  => 'manage_packing',
+			'gate_value'  => '1',
+			'gate_on'     => $value('manage_packing', '1'),
+			'panel'       => '',
+			'counters'    => array(),
+		);
+	}
+
 	// ERP, only when the module is on. The gate column is prefix-less TINYINT, so
 	// gate_value is '1' rather than the 'yes' the older user_manage_* columns use.
 	if (isset($panels['erp_switches'])) {

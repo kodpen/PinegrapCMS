@@ -6,7 +6,7 @@ description: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses,
 ## Which steps are there?
 - PP1a (S) first, no schema (done, #10843): new `includes/fn/pick_pack.php` with the pure parts: the shelf sort, the wave rule's filter, the pick list totals, the scan verdict (good, wrong product, wrong variant, too many, binned), the pack state.
   - `tests/pick_pack_test.php` red first: "A-3" before "A-10", no address last, a cancelled order out of its wave, a variant named, a unit past the line, a short pack. Features: K2, K4, K9, K10.
-- PP1b (S) after PP1a, only after the owner's yes to poll 193 (message 10746): the four tables as a migration step in the open version (`release/` rules), the columns of the schema decisions list; the "packing only" column too if poll 193 says yes (`core/` role rules).
+- PP1b (S) (done, #10873) after PP1a, only after the owner's yes to poll 193 (message 10746): the four tables as a migration step in the open version (`release/` rules), the columns of the schema decisions list; the "packing only" column too if poll 193 says yes (`core/` role rules).
 - PP2 (S) after PP1b: shelf address on the product's stock card, Change Selected, product import and the inventory API. Feature: K1.
 - PP3 (M) after PP1b: Orders › "Pick waves": make by hand or rule, the pick list on paper and phone, the order code on the packing slip. Features: K3, K5, K6, K7.
 - PP4 (M) after PP1b: the pack screen (scanner, typed code, camera), the checked pack with its label and the marketplace accept, `order.packed`. Features: K8, K11, K12, K15 (packed).

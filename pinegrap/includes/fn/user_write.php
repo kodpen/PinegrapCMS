@@ -226,6 +226,10 @@ function pg_user_create($fields, $editor_id)
     $sql_erp_readonly_column = pg_user_erp_readonly_sql('columns', $fields);
     $sql_erp_readonly_value = pg_user_erp_readonly_sql('values', $fields);
 
+    // The "Packing only" right, when its column exists.
+    $sql_packing_column = pg_user_packing_sql('columns', $fields);
+    $sql_packing_value = pg_user_packing_sql('values', $fields);
+
     $query =
         "INSERT INTO user (
             user_username,
@@ -251,6 +255,7 @@ function pg_user_create($fields, $editor_id)
             manage_erp_cash,
             manage_erp_settings,
             $sql_erp_readonly_column
+            $sql_packing_column
             $sql_ws_columns
             user_set_offline_payment,
             user_publish_calendar_events,
@@ -283,6 +288,7 @@ function pg_user_create($fields, $editor_id)
             '" . e($fields['manage_erp_cash'] ?? '') . "',
             '" . e($fields['manage_erp_settings'] ?? '') . "',
             $sql_erp_readonly_value
+            $sql_packing_value
             $sql_ws_values
             '" . escape($fields['set_offline_payment'] ?? '') . "',
             '" . escape($fields['publish_calendar_events'] ?? '') . "',
@@ -345,6 +351,7 @@ function pg_user_new_account_mail($user_id, $fields)
         || ($fields['manage_ecommerce_reports'] ?? '')
         || ($fields['manage_erp'] ?? '')
         || ($fields['manage_workspace'] ?? '')
+        || ($fields['manage_packing'] ?? '')
         || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
     ) {
         // The link leaves the request in an e-mail, so it is built from the
@@ -446,6 +453,10 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
     // exists.
     $sql_erp_readonly = ((defined('ERP_ENABLED') && ERP_ENABLED) ? pg_user_erp_readonly_sql('set', $fields) : '');
 
+    // The "Packing only" right, when its row is drawn (the store is on) and
+    // the column exists.
+    $sql_packing = ((ECOMMERCE == true) ? pg_user_packing_sql('set', $fields) : '');
+
     // Switched off, the account is stamped once (one already disabled keeps
     // its date); switched on, the stamp is cleared.
     $sql_disabled = '';
@@ -483,6 +494,7 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
             user_manage_emails = '" . escape($fields['manage_emails'] ?? '') . "',
             $sql_module_rights
             $sql_erp_readonly
+            $sql_packing
             $sql_ws_rights
             $sql_set_page_types
             user_user = '" . (int) $editor['id'] . "',
