@@ -7,10 +7,11 @@ description: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers,
 - KV1 (M) first: the catalogue and transfers, no schema. Done (#10738).
   - New `includes/fn/privacy_inventory.php` (pure catalogue, live counts), country and data fields on `includes/fn/connections_registry.php`'s rows, `tests/privacy_inventory_test.php` red first (P5's two failures). Features: P1, P2, P3, P5.
 - KV2 (S) after KV1: Contacts › Privacy centre beside the erase screen, the link from Site Settings › Visitors and privacy, Excel through `includes/fn/xlsx_write.php` and PDF. Feature: P4.
-- KV3 (M) after KV1: the retention rules.
+- KV3 (M) after KV1: the retention rules. Done (#10791); `core/privacy-retention-rules.md`.
   - `includes/fn/privacy_retention.php` gains the rules (settings in `config_text`), the dry run, the pass in slices through `pg_privacy_erase()`'s actions, the skips, the `privacy_rule` audit lines and their 3-year keep in `pg_privacy_retention_run()`; the Audit trail card's sentence. No schema.
   - Tests: each skip of P8, a passive contact with a booking ahead, staff, the cart's blanked field set, the 31-day floor, the 6-month bound, the 3-year keep. Features: P6, P6b, P7, P8, P9.
-- KV4 (M) after KV2: the `privacy_requests` migration step (`workflow/decisions-made-schema-36.md`), the panel list, reminders, "Prepare the answer", the 7-day sweep; the table in the catalogue and `pg_privacy_erase_tables()` (anonymise). Feature: P11.
+- KV3b (S) after KV2 and KV3: the rules card on the Privacy centre screen: switches, periods (per form too), the interval, "Dry run" with counts, skips and sample, the yes; through `pg_privacy_rules_save()`, `pg_privacy_rule_dry_run()`, `pg_privacy_rule_approve()`, labels from `pg_privacy_rules_labels()`.
+- KV4 (M) after KV2: the `privacy_requests` migration step (`workflow/decisions-made-schema-36.md`), the panel list, reminders, "Prepare the answer", the 7-day sweep; the table in the catalogue and `pg_privacy_erase_tables()` (anonymise). Feature: P11. Also the closed-requests rule (P6) in `pg_privacy_rules_catalogue()`, through the table's erase entry.
   - Columns (message 10557): id; kind, status, source (form, account, staff) VARCHAR(16); contact_id, user_id, assigned_user_id, created_by INT UNSIGNED; email, name; message TEXT; answer MEDIUMTEXT; result VARCHAR(16).
   - verified_at, received_at, due_at, closed_at INT UNSIGNED; reminded TINYINT; keys (status, due_at), contact_id, email. The columns go in the PR body and are asked of the architect before ready.
 - KV5 (S) after KV4: the My Account request, the root `privacy_request.php` (off by default, its switch in the Privacy centre), the proof link, the rate limit. Features: P10, P10b.
