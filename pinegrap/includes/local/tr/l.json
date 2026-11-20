@@ -1566,6 +1566,8 @@
     "Lost and found": "Kayıp eşya",
     "Lost customers": "Kaybedilen müşteriler",
     "Lost it at {var:1}. The move up to there is kept; move the playhead there and follow again.": "{var:1} anında kaybedildi. Oraya kadarki hareket korundu; oynatma imlecini oraya getirip yeniden takip edin.",
+    "Lost it at {var:1}: in this video it is only a few pixels across. The move up to there is kept. A thing that shows larger follows better: a clip filmed closer or at a higher resolution.": "{var:1} anında kaybedildi: bu videoda yalnızca birkaç piksel genişliğinde. O ana kadarki hareket korundu. Daha büyük görünen bir şey daha iyi takip edilir: daha yakından ya da daha yüksek çözünürlükte çekilmiş bir klip.",
+    "Lost it at {var:1}: what the box holds changed too much there, or the box holds background that moves differently. The move up to there is kept. Draw the box inside the thing, over its clearest part, and follow again from there.": "{var:1} anında kaybedildi: kutunun içindeki görüntü orada çok değişti ya da kutu, farklı hareket eden arka planı da içeriyor. O ana kadarki hareket korundu. Kutuyu nesnenin içine, en belirgin kısmının üzerine çizin ve oradan yeniden takip edin.",
     "Lost property on board": "Gemide kayıp eşya",
     "Lost something?": "Bir şey mi kaybettin?",
     "Lost your way?": "Kayboldunuz mu?",

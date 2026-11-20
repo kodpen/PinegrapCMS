@@ -2491,6 +2491,7 @@
     "The box gives no value yet.": "Kutu henüz bir değer vermiyor.",
     "The box has more than {var:1} conditions.": "Kutuda {var:1} koşuldan fazlası var.",
     "The box has no row to change: “{var:1}” is not the id of a row.": "Kutunun değiştireceği bir satır yok: “{var:1}” bir satır kimliği değil.",
+    "The box is too small in this video's own pixels. Draw a larger box.": "Kutu, bu videonun kendi piksellerinde çok küçük. Daha büyük bir kutu çizin.",
     "The box marked Hide when empty is judged by this element alone: when it is empty, the heading and the words beside it go too.": "Boşsa gizle ile işaretli kutu yalnızca bu öğeye bakılarak değerlendirilir: bu öğe boşken başlık ve yanındaki sözcükler de gider.",
     "The box names no key.": "Kutu bir anahtar belirtmiyor.",
     "The box names no row.": "Kutu bir satır belirtmiyor.",
