@@ -6,15 +6,20 @@
  * that rings the other person of a conversation of two (Accept, Decline),
  * and the call window that stays at the bottom of the screen while the
  * person moves between channels: a grid of up to four, the one speaking
- * marked; mute, the camera, the microphone and camera in use, hang up.
+ * marked; mute, the camera, sharing one's screen (one member at a time),
+ * the microphone and camera in use, hang up.
  *
  * Sound and picture go from browser to browser (WebRTC). The site carries
  * only who is in the call and the browsers' connection messages
  * (includes/workspace/calls.php): the window reads them with ws_call_sync
  * every second and sends its own with ws_call_signal. Every two members
  * hold one connection (a mesh); of each pair the one who joined later (the
- * higher member id) makes the offer, so both never offer at once. assets/js/workspace.js draws the head and hands the
- * rings of its look (ws_sync's rings) in here with its own helpers.
+ * higher member id) makes the offer, so both never offer at once. Every
+ * connection carries a line for a shared screen from its first offer, so a
+ * share only puts the screen's track on it and needs no new offer; the
+ * server says who shares (the call part's sharer). assets/js/workspace.js
+ * draws the head and hands the rings of its look (ws_sync's rings) in here
+ * with its own helpers.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -34,6 +39,10 @@
     var LOOK_EVERY = 1000;
     var PING_EVERY = 30000;
     var LOST_AFTER = 15000;
+
+    // How long a new share's own reads may still say nobody shares, read
+    // before it was written (milliseconds).
+    var SHARE_SETTLE = 5000;
 
     // A group's call stays while the person waits alone in it, for others
     // to come or come back, up to this long (milliseconds).
@@ -206,6 +215,27 @@
         }
 
         return { audio: audio, video: video };
+    }
+
+    // The mid of a connection's screen line, among its video lines' mids:
+    // the camera's line comes first in a video call, so the screen's is the
+    // second there and the only one in a voice call; -1 before it is there.
+    function screenSlot(mids, kind) {
+        var sorted = (mids || []).map(Number).sort(function (a, b) { return a - b; });
+        var at = (kind === 'video') ? 1 : 0;
+
+        return (sorted.length > at) ? sorted[at] : -1;
+    }
+
+    // The share button against the call's sharer: shown where the browser
+    // can share a screen, pressed while this member shares, held while
+    // another member does (one share at a time).
+    function shareState(sharer, me, can) {
+        if (!can) {
+            return { show: false, on: false, busy: false };
+        }
+
+        return { show: true, on: !!sharer && (sharer === me), busy: !!sharer && (sharer !== me) };
     }
 
     // ── The ring ──
@@ -475,7 +505,8 @@
             mine.ice = result.ice || null;
             draw();
             look();
-            mine.pinger = setInterval(function () { send(0, 'ping', ''); }, PING_EVERY);
+            // A sharer's keep-alive renews its share too.
+            mine.pinger = setInterval(function () { send(0, mine.sharing ? 'share' : 'ping', ''); }, PING_EVERY);
         }).catch(function (error) {
             var denied = error && (error.name === 'NotAllowedError' || error.name === 'NotFoundError' || error.name === 'SecurityError');
 
@@ -530,6 +561,21 @@
             mine.names[member.member_id] = member.name || '';
         });
 
+        mine.sharer = part.call.sharer || 0;
+
+        // The server no longer holds this member's share (it lapsed): the
+        // screen stops. A read sent before the share was written is not
+        // taken for that.
+        if (mine.sharing && (mine.sharer !== mine.memberId)) {
+            if ((Date.now() - mine.sharedAt) > SHARE_SETTLE) {
+                shareStop(mine, false);
+            } else {
+                mine.sharer = mine.memberId;
+            }
+        }
+
+        shareDraw(mine);
+
         var diff = peersDiff(part.call.members, mine.memberId, Object.keys(mine.peers).map(Number));
 
         diff.add.forEach(function (id) {
@@ -571,6 +617,13 @@
             pc.addTrack(track, mine.stream);
         });
 
+        // The screen's line, last, in every offer; the answerer finds it in
+        // the offer (signalHeard).
+        if (offer) {
+            held.slot = pc.addTransceiver('video', { direction: 'sendrecv' });
+            screenOn(held, mine.screenTrack);
+        }
+
         pc.onicecandidate = function (event) {
             if (event.candidate) {
                 send(id, 'candidate', JSON.stringify(event.candidate));
@@ -579,6 +632,12 @@
 
         pc.ontrack = function (event) {
             var stream = event.streams && event.streams[0];
+
+            // The screen's line carries no stream of the member's own.
+            if ((held.slot && (event.transceiver === held.slot)) || !stream) {
+                held.screen = new MediaStream([event.track]);
+                return;
+            }
 
             if (held.tile && stream && (held.tile.video.srcObject !== stream)) {
                 held.tile.video.srcObject = stream;
@@ -642,6 +701,7 @@
         if (signal.kind === 'offer') {
             pc.setRemoteDescription(body).then(function () {
                 drain();
+                screenSlotTake(mine, held);
                 return pc.createAnswer();
             }).then(function (description) {
                 return pc.setLocalDescription(description);
@@ -658,6 +718,122 @@
                 held.queue.push(body);
             }
         }
+    }
+
+    // The answerer's screen line: the offer's, made to send too, so this
+    // member can share without a new offer.
+    function screenSlotTake(mine, held) {
+        if (held.slot) {
+            return;
+        }
+
+        var videos = held.pc.getTransceivers().filter(function (one) {
+            return (one.mid !== null) && one.receiver && one.receiver.track && (one.receiver.track.kind === 'video');
+        });
+        var mid = screenSlot(videos.map(function (one) { return one.mid; }), mine.kind);
+        var slot = videos.filter(function (one) { return Number(one.mid) === mid; })[0];
+
+        if (slot) {
+            slot.direction = 'sendrecv';
+            held.slot = slot;
+            screenOn(held, mine.screenTrack);
+        }
+    }
+
+    // Puts the screen's track (or none) on one connection's screen line.
+    function screenOn(held, track) {
+        if (held.slot && held.slot.sender) {
+            held.slot.sender.replaceTrack(track || null).catch(function () {});
+        }
+    }
+
+    // Starts sharing: the browser lets the person choose a screen, a window
+    // or a tab; the server is asked first, as one member shares at a time.
+    function shareStart(mine) {
+        if (mine.sharing || mine.shareAsking) {
+            return;
+        }
+
+        mine.shareAsking = true;
+
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }).then(function (stream) {
+            var track = stream.getVideoTracks()[0];
+
+            if ((call !== mine) || !track) {
+                stream.getTracks().forEach(function (one) { one.stop(); });
+                mine.shareAsking = false;
+                return;
+            }
+
+            return h().api('ws_call_signal', { call_id: mine.id, to_member_id: 0, kind: 'share', body: '' }).then(function () {
+                mine.shareAsking = false;
+
+                if (call !== mine) {
+                    track.stop();
+                    return;
+                }
+
+                if ('contentHint' in track) {
+                    track.contentHint = 'detail';
+                }
+
+                mine.sharing = true;
+                mine.sharedAt = Date.now();
+                mine.screenTrack = track;
+                mine.sharer = mine.memberId;
+                // The browser's own "Stop sharing" ends it as the button does.
+                track.onended = function () { shareStop(mine, true); };
+                Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], track); });
+                shareDraw(mine);
+            }, function (error) {
+                mine.shareAsking = false;
+                track.stop();
+                var said = (error && error.message) || t('call_share_busy');
+
+                h().toast(said, 'warning');
+            });
+        }).catch(function () {
+            // The person closed the browser's chooser: nothing is shared.
+            mine.shareAsking = false;
+        });
+    }
+
+    // Stops sharing; tell says the server is told (not when it ended it).
+    function shareStop(mine, tell) {
+        var track = mine.screenTrack;
+
+        mine.sharing = false;
+        mine.screenTrack = null;
+
+        if (mine.sharer === mine.memberId) {
+            mine.sharer = 0;
+        }
+
+        Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], null); });
+
+        if (track) {
+            track.onended = null;
+            track.stop();
+        }
+
+        if (tell) {
+            send(0, 'unshare', '');
+        }
+
+        shareDraw(mine);
+    }
+
+    function shareDraw(mine) {
+        if (!mine.shareButton) {
+            return;
+        }
+
+        var state = shareState(mine.sharer || 0, mine.memberId, true);
+
+        mine.shareButton.setAttribute('aria-pressed', state.on ? 'true' : 'false');
+        mine.shareButton.classList.toggle('is-active', state.on);
+        mine.shareButton.disabled = state.busy;
+        iconSwap(mine.shareButton, state.on ? 'bi-display-fill' : 'bi-display', t(state.on ? 'call_share_stop' : (state.busy ? 'call_share_busy' : 'call_share')));
     }
 
     // ── The window ──
@@ -705,6 +881,20 @@
             tools.appendChild(mine.cameraButton);
         }
 
+        // Sharing one's screen, where the browser can (not on a phone).
+        if (shareState(0, 0, !!navigator.mediaDevices.getDisplayMedia).show) {
+            mine.shareButton = makeButton('pg-icon-button', '', 'bi-display', t('call_share'));
+            mine.shareButton.setAttribute('aria-pressed', 'false');
+            mine.shareButton.addEventListener('click', function () {
+                if (mine.sharing) {
+                    shareStop(mine, true);
+                } else {
+                    shareStart(mine);
+                }
+            });
+            tools.appendChild(mine.shareButton);
+        }
+
         var devices = makeButton('pg-icon-button', '', 'bi-gear', t('call_devices'));
         var panel = el('div', 'ws-call-devices');
 
@@ -727,7 +917,7 @@
         win.appendChild(tools);
         win.appendChild(panel);
 
-        [mine.muteButton, mine.cameraButton, devices].forEach(function (node) {
+        [mine.muteButton, mine.cameraButton, mine.shareButton, devices].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
             }
@@ -1002,8 +1192,11 @@
             fresh.enabled = (kind === 'audio') ? !mine.muted : !mine.cameraOff;
 
             Object.keys(mine.peers).forEach(function (id) {
+                var slot = mine.peers[id].slot;
+
                 mine.peers[id].pc.getSenders().forEach(function (sender) {
-                    if (sender.track && (sender.track.kind === fresh.kind)) {
+                    // The screen's line keeps the shared screen.
+                    if (sender.track && (sender.track.kind === fresh.kind) && !(slot && (slot.sender === sender))) {
                         sender.replaceTrack(fresh).catch(function () {});
                     }
                 });
@@ -1055,6 +1248,12 @@
             mine.stream.getTracks().forEach(function (track) { track.stop(); });
         }
 
+        if (mine.screenTrack) {
+            mine.screenTrack.onended = null;
+            mine.screenTrack.stop();
+            mine.screenTrack = null;
+        }
+
         if (mine.audio) {
             mine.audio.close().catch(function () {});
         }
@@ -1093,6 +1292,8 @@
         ringsToShow: ringsToShow,
         ringsGone: ringsGone,
         clock: clock,
-        mediaAsk: mediaAsk
+        mediaAsk: mediaAsk,
+        screenSlot: screenSlot,
+        shareState: shareState
     };
 })();
