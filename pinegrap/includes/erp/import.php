@@ -867,6 +867,7 @@ function erp_import_merge($existing, $account)
         'notes' => (string) $existing['notes'],
         'payment_days' => (int) ($existing['payment_days'] ?? 0),
         'overdue_notify_days' => (int) ($existing['overdue_notify_days'] ?? 0),
+        'lead_days' => (int) ($existing['lead_days'] ?? 0),
     );
 
     foreach ($account['mapped'] as $field => $unused) {

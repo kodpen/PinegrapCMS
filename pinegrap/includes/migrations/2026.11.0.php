@@ -239,6 +239,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_event_tickets();           // 11.0.247
 	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
 	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
+	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 
 }
 
@@ -8016,5 +8017,40 @@ function upgrade_2026_11_0_erp_stock_days() {
 	}
 
 	install_note('Accounting: a daily stock record per product starts tonight, the ground of the coming stock plan.');
+
+}
+
+// The stock plan (2026.11.0, 11.0.251; includes/erp/stock_plan.php). One row
+// per tracked product, a cache the night pass rebuilds after the day's row:
+// units a day over the last 56 in-stock days, last year's season factor, the
+// supplier (latest purchase invoice, else order), the lead time and where it
+// came from (measured, typed, none), days left, run-out and order-by days,
+// the quantity to order, the state, the last sale and the bell's notice
+// stamp, which the rebuild leaves alone. erp_accounts.lead_days is the lead
+// time typed on a supplier's card, 0 when none is typed.
+function upgrade_2026_11_0_erp_stock_plan() {
+
+	install_create_table('erp_stock_plan', "CREATE TABLE erp_stock_plan (
+		product_id    INT UNSIGNED NOT NULL,
+		units_day     DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+		season        DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+		supplier_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		lead_days     SMALLINT UNSIGNED NULL,
+		lead_source   ENUM('measured','typed','none') NOT NULL DEFAULT 'none',
+		days_left     INT UNSIGNED NULL,
+		runout_day    DATE NULL,
+		order_by_day  DATE NULL,
+		quantity      INT UNSIGNED NOT NULL DEFAULT 0,
+		state         ENUM('runs_out','order_now','soon','fine','no_history') NOT NULL DEFAULT 'no_history',
+		last_sale     DATE NULL,
+		notice_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id),
+		KEY idx_state (state),
+		KEY idx_supplier (supplier_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_accounts', 'lead_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Accounting: a stock plan per product is worked out every night from the daily record, and a supplier card can hold a lead time.');
 
 }

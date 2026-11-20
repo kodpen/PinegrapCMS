@@ -9045,6 +9045,7 @@ function get_tables() {
 		'erp_stock_days',
 		'erp_stock_minimums',
 		'erp_stock_moves',
+		'erp_stock_plan',
 		'erp_waybill_items',
 		'erp_waybills',
 		'event_tickets',
