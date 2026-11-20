@@ -18,8 +18,9 @@
  * a receipt, a till or bank move, an account move, an invoice settlement or a
  * payout record: a figure becomes an order's cost row and nothing else.
  *
- * Money is integer minor units of the base currency; a rate is applied only
- * with erp_apply_rate().
+ * Money is integer minor units in the order's own currency (the unit of
+ * orders.total); a figure read in another currency is converted before it is
+ * written, and a rate is applied only with erp_apply_rate() (money.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -225,6 +226,20 @@ function erp_order_profit_product_rows($input)
 }
 
 /**
+ * An order's margin: net × 100 / revenue, rounded to one decimal with
+ * round(), or null without revenue. The only place erp_order_profit.margin
+ * is worked out; nothing writes it by hand.
+ *
+ * @param int $net
+ * @param int $revenue
+ * @return float|null
+ */
+function erp_order_profit_margin($net, $revenue)
+{
+    return ((int) $revenue !== 0) ? round(((int) $net) * 100 / ((int) $revenue), 1) : null;
+}
+
+/**
  * Compute an order's cost rows and its profit. Reads nothing.
  *
  * @param array $input
@@ -257,6 +272,9 @@ function erp_order_profit_compute($input)
     $product = erp_order_profit_product_rows($input);
     $costs = $product['rows'];
 
+    // A rate or estimate is one row per kind with an empty reference, so two
+    // never pile up for an order (UNIQUE order_id, kind, source_ref).
+
     // Payment: a marketplace collects the money itself and its deductions
     // stand for the fee, so a rate per payment method is for the shop's own
     // orders.
@@ -264,40 +282,57 @@ function erp_order_profit_compute($input)
         $method = (string) ($order['payment_method'] ?? '');
 
         if (($method !== '') && isset($rates['payment'][$method])) {
-            $costs[] = array('kind' => 'payment', 'source' => 'rate', 'ref' => 'rate:' . $method,
+            $costs[] = array('kind' => 'payment', 'source' => 'rate', 'ref' => '',
                 'amount' => erp_order_profit_rate_amount((int) ($order['total'] ?? 0), $rates['payment'][$method]));
         }
     }
 
+    // Shipping: each recipient's method that has a rate, on the order's
+    // shipping charge, added up.
     if (empty($real['shipping'])) {
-        foreach ((array) ($input['shipping_methods'] ?? array()) as $method_id) {
-            $key = (string) (int) $method_id;
+        $amount = 0;
+        $found = false;
+
+        foreach (array_unique(array_map('intval', (array) ($input['shipping_methods'] ?? array()))) as $method_id) {
+            $key = (string) $method_id;
 
             if (isset($rates['shipping'][$key])) {
-                $costs[] = array('kind' => 'shipping', 'source' => 'rate', 'ref' => 'rate:' . $key,
-                    'amount' => erp_order_profit_rate_amount((int) ($order['shipping'] ?? 0), $rates['shipping'][$key]));
+                $amount += erp_order_profit_rate_amount((int) ($order['shipping'] ?? 0), $rates['shipping'][$key]);
+                $found = true;
             }
+        }
+
+        if ($found) {
+            $costs[] = array('kind' => 'shipping', 'source' => 'rate', 'ref' => '', 'amount' => $amount);
         }
     }
 
     // Marketplace, until its own deductions are read: the listing's
-    // commission rate on each line, else the rate typed for the account.
+    // commission rate on each line, else the rate typed for the account,
+    // added up; an estimate when any line took the listing's rate.
     if (is_array($marketplace) && empty($real['marketplace'])) {
         $account = (string) (int) ($marketplace['account_id'] ?? 0);
         $commission = (array) ($marketplace['commission'] ?? array());
+        $amount = 0;
+        $found = false;
+        $source = 'rate';
 
         foreach ((array) $input['items'] as $item) {
             $gross = erp_order_profit_line_gross($item);
             $percent = $commission[(int) ($item['product_id'] ?? 0)] ?? null;
-            $ref = 'item:' . (int) $item['id'];
 
             if (($percent !== null) && ((float) $percent > 0)) {
-                $costs[] = array('kind' => 'marketplace', 'source' => 'estimate', 'ref' => 'estimate:' . $ref,
-                    'amount' => erp_order_profit_rate_amount($gross, array('percent' => (float) $percent, 'fixed' => 0)));
+                $amount += erp_order_profit_rate_amount($gross, array('percent' => (float) $percent, 'fixed' => 0));
+                $found = true;
+                $source = 'estimate';
             } elseif (isset($rates['marketplace'][$account])) {
-                $costs[] = array('kind' => 'marketplace', 'source' => 'rate', 'ref' => 'rate:' . $ref,
-                    'amount' => erp_order_profit_rate_amount($gross, $rates['marketplace'][$account]));
+                $amount += erp_order_profit_rate_amount($gross, $rates['marketplace'][$account]);
+                $found = true;
             }
+        }
+
+        if ($found) {
+            $costs[] = array('kind' => 'marketplace', 'source' => $source, 'ref' => '', 'amount' => $amount);
         }
     }
 
@@ -334,7 +369,7 @@ function erp_order_profit_compute($input)
             'cost_shipping' => $by_kind['shipping'],
             'cost_other' => $by_kind['other'],
             'net' => $net,
-            'margin' => ($revenue !== 0) ? round($net * 100 / $revenue, 1) : null,
+            'margin' => erp_order_profit_margin($net, $revenue),
             'state' => $state,
             'channel' => is_array($marketplace) ? 'marketplace:' . (int) ($marketplace['account_id'] ?? 0) : 'web',
             'basis' => erp_order_profit_basis($order),

@@ -154,8 +154,8 @@ function test_erp_order_profit_typed_rates()
 	)));
 
 	// 2.49% of 120.00 is 2.988, so 2.99, plus 0.25.
-	pg_assert_same(array('rate:Credit/Debit Card' => array('rate', 324)), erp_order_profit_test_rows($result, 'payment'));
-	pg_assert_same(array('rate:3' => array('rate', 450)), erp_order_profit_test_rows($result, 'shipping'));
+	pg_assert_same(array('' => array('rate', 324)), erp_order_profit_test_rows($result, 'payment'));
+	pg_assert_same(array('' => array('rate', 450)), erp_order_profit_test_rows($result, 'shipping'));
 	pg_assert_same('estimate', $result['profit']['state']);
 	pg_assert_same(10000 - 4000 - 324 - 450, $result['profit']['net']);
 }
@@ -172,9 +172,9 @@ function test_erp_order_profit_listing_estimate()
 		),
 	)));
 
-	// Line 501: (2 x 30.00 + 12.00) x 15% = 10.80; line 502: (35.00 + 7.00) x 10% = 4.20.
-	pg_assert_same(array('estimate:item:501' => array('estimate', 1080), 'rate:item:502' => array('rate', 420)),
-		erp_order_profit_test_rows($result, 'marketplace'));
+	// Line 501: (2 x 30.00 + 12.00) x 15% = 10.80; line 502: (35.00 + 7.00) x 10% = 4.20;
+	// one row, an estimate because a line took the listing's rate.
+	pg_assert_same(array('' => array('estimate', 1500)), erp_order_profit_test_rows($result, 'marketplace'));
 	pg_assert_same(array(), erp_order_profit_test_rows($result, 'payment'), 'the marketplace takes the payment');
 	pg_assert_same('marketplace:5', $result['profit']['channel']);
 }
@@ -283,4 +283,48 @@ function test_erp_order_profit_basis()
 	pg_assert_false($basis === erp_order_profit_basis(array_merge($order, array('refunded_amount' => 1))));
 	pg_assert_false($basis === erp_order_profit_basis(array_merge($order, array('erp_invoice_id' => 5))));
 	pg_assert_same($basis, erp_order_profit_basis($order));
+}
+
+// A rate or estimate is one row per kind with an empty reference: two
+// shipping methods with rates add up into one row, and no two rows of an
+// order share kind and reference (the table's unique key).
+function test_erp_order_profit_rate_rows_never_pile_up()
+{
+	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'shipping_methods' => array(3, 4, 3),
+		'rates' => array(
+			'payment' => array('Credit/Debit Card' => array('percent' => 0, 'fixed' => 100)),
+			'shipping' => array('3' => array('percent' => 0, 'fixed' => 450), '4' => array('percent' => 0, 'fixed' => 300)),
+		),
+	)));
+
+	pg_assert_same(array('' => array('rate', 750)), erp_order_profit_test_rows($result, 'shipping'));
+
+	$keys = array();
+
+	foreach ($result['costs'] as $row) {
+		$keys[] = $row['kind'] . '|' . $row['ref'];
+
+		if (in_array($row['source'], array('rate', 'estimate'), true)) {
+			pg_assert_same('', $row['ref'], 'a rate or estimate row has the empty reference');
+		}
+	}
+
+	pg_assert_same(count($keys), count(array_unique($keys)));
+}
+
+// The margin is net x 100 / revenue rounded to one decimal, and null when
+// there is no revenue.
+function test_erp_order_profit_margin_rule()
+{
+	pg_assert_same(33.3, erp_order_profit_margin(1, 3));
+	pg_assert_same(-12.5, erp_order_profit_margin(-125, 1000));
+	pg_assert_same(null, erp_order_profit_margin(-500, 0));
+
+	$free = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'order' => array_merge(erp_order_profit_test_input()['order'], array('total' => 0, 'tax' => 0)),
+	)));
+
+	pg_assert_same(0, $free['profit']['revenue']);
+	pg_assert_same(null, $free['profit']['margin']);
 }

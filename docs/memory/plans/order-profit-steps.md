@@ -4,7 +4,7 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
 ---
 
 ## Which steps are there?
-- NP1 (M) first: the record and the pass. Built in #10626, waiting for the architect's answer on the columns.
+- NP1 (M) first: the record and the pass. Done in #10626 (columns approved, architect message 10292).
   - Migration step in 2026.11.0: `erp_order_costs`, `erp_order_profit`, `erp_cost_rates` (typed rates per payment method, shipping method and marketplace account), idempotent helpers.
   - New: `includes/erp/order_profit.php` (pure calculation, the pass), its `pg_cron_jobs()` entry and script, `tests/erp_order_profit_test.php`.
   - `delete_order.php` deletes the order's rows in the three tables. The columns go into the PR body; the architect is asked in the agent channel before it is marked ready (architect, message 10189).
