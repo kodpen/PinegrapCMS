@@ -13,7 +13,7 @@ description: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine wit
   - New `includes/fn/agent_guide_designer.php`; `includes/api/resources/design.php` (framework, colours, font families on `design.designs.list`); `includes/mcp/prompts.php` (`design_change`). `php tools/check_api_schema.php`.
   - Tests: the five worked lists run through `pg_design_ai_apply_ops()`; every kind and operation in the text. Features: G6, G7, the prompt of G10.
 - AG3 (M) after AG1: `agent_guide_content.php`, `agent_guide_forms.php`, `agent_guide_store.php`. Feature: G5's shape for the three.
-- AG4 (S) after AG1: `agent_guide_workspace.php`, `agent_guide_erp.php` (listed only with the module on).
+- AG4 (S) after AG1: `agent_guide_workspace.php`, `agent_guide_erp.php` (listed only with the module on). Done: #10718.
 - AG5 (S) after AG1: `agent_guide_panel.php` from the search box's list, with the viewer's gates. Feature: G8.
 - AG6 (S) after AG5: the panel's door. New `agent_guide.php` and `llms.txt` answer in the software folder; the `rel="help"` link in the panel's head; "AI agent guide" in `pg_account_menu()`; the Visual Page Editor's link to `designer`. Texts with `php tools/tr_add.php`. Feature: G11.
 - AG7 (M) after AG1: the compact list.
