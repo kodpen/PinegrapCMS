@@ -207,10 +207,12 @@ StyleDesigner.definePart('spacing', function (K) {
         });
     }
 
-    function _spbSizesBind(host, bar) {
+    // The bar outlives a draw of the box: it reads the host of the last one.
+    function _spbSizesBind(bar) {
         bar.addEventListener('click', function (e) {
             var b = e.target.closest ? e.target.closest('.sd-spb-size') : null;
-            if (!b) return;
+            var host = bar._spbHost;
+            if (!b || !host) return;
             e.stopPropagation();
             host.setSize(b.getAttribute('data-size'));
             host.size = b.getAttribute('data-size');
@@ -239,8 +241,9 @@ StyleDesigner.definePart('spacing', function (K) {
                 bar.setAttribute('aria-label', _sdT('Screen size'));
                 var title = hdr.querySelector(':scope > .sd-sect-title');
                 hdr.insertBefore(bar, title ? title.nextSibling : null);
-                _spbSizesBind(host, bar);
+                _spbSizesBind(bar);
             }
+            bar._spbHost = host;
             bar.innerHTML = _spbSizesHtml(host);
         }
         if (refocus) {
