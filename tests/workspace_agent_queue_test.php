@@ -233,7 +233,7 @@ function test_workspace_agent_request_routes()
 
 	foreach (ws_agent_request_api_routes() as $route) {
 		$ids[$route['id']] = $route;
-		pg_assert_true(empty($route['mcp']), $route['id'] . ': the key used as itself, never over MCP');
+		pg_assert_true(!isset($route['mcp']) || in_array($route['mcp'], array(false, 'agent'), true), $route['id'] . ': the key used as itself, a tool only for the agent\'s own key');
 
 		if ($route['method'] === 'POST') {
 			pg_assert_true(!empty($route['dry_run']), $route['id'] . ' rehearses');

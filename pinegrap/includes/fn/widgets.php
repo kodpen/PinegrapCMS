@@ -8655,6 +8655,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $_ov_css = (empty($sw_ctx['email']) && strpos($static_html . $loop_template, 'pg-ov-timeline') !== false)
         ? _pg_widget_layout_css_once() : '';
 
+    // The order this session just completed carries its purchase's event id
+    // for a browser pixel pasted on the site (includes/fn/ad_conversions.php);
+    // never in an e-mail.
+    if ($just_completed && empty($sw_ctx['email'])) {
+        $_ov_css .= pg_ad_conversion_receipt_marker((string) ($order['reference_code'] ?? ''));
+    }
+
     if ($static_html === '') {
         // No loop_area — replace tokens in the single rendered template
         $rendered = pg_sw_fill_longest($loop_template, $static_values, $_ov_typed);

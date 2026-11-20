@@ -145,7 +145,7 @@ function test_workspace_channel_agents_api_wake_route()
 	// The agent keeps its own route.
 	$own = workspace_channel_agents_api_test_route('workspace.agent_wake.set');
 
-	pg_assert_true(is_array($own) && ($own['mcp'] === false), 'the agent\'s own agent-wake stays');
+	pg_assert_true(is_array($own) && ($own['mcp'] === 'agent'), 'the agent\'s own agent-wake stays, a tool for its own key only');
 }
 
 // The person's gate comes first; the panel's check and its writer and

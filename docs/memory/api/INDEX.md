@@ -7,6 +7,7 @@
 - ad-conversions-meta.md: Meta Conversions API (ad-conversions SC2): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
 - ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep, privacy
 - ad-conversions-tiktok.md: TikTok Events API (ad-conversions SC4): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
+- ad-conversions-visitor-events.md: Ad events besides the purchase (SC5): Lead for picked forms, CompleteRegistration, add to cart (20 a cart), begin checkout once per order, only with consent; the receipt's data-pg-event-id
 - agent-guide-areas.md: The guide's content, forms and store topics (agent_guide_content/forms/store.php): sections, which tools each names, values read from their registries, money tools named, the store prefixes, bytes
 - agent-guide-designer.md: The guide's designer topic: lines shared with the built-in assistant, <pg-keep> kinds, worked lists the test applies, colours and fonts on design_designs_list, the design_change prompt
 - agent-guide-engine.md: The guide for AI agents (agent_guide.php): topic registry, topic files, GET /guide (guide.read, no scope), MCP guide_read, pinegrap://guide resources, "Guide: <topic>." on tools, size limits
@@ -144,6 +145,7 @@
 - ga4-mp-facts.md: GA4 Measurement Protocol as Google's own documents say it (read 2026-11-20): addresses, secret, body, client id, consent, 72-hour limit, user data hashing, validation endpoint, answers
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
+- mcp-agent-own-tools.md: An application agent's own routes as MCP tools ('mcp' => 'agent', AA7a #10867): which ten, only for an active app agent's own key, the callers that never see them, the budget, the second sending form
 - mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes [decision: here]
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument

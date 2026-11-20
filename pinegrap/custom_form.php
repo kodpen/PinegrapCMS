@@ -1144,6 +1144,8 @@ if ($liveform->check_form_errors() == false) {
 
             pg_set_password_link_issue($user_id);
 
+            pg_ad_conversion_registration((int) $user_id, $submitter_email_address);
+
             // Remember the account in the session, so the sender's e-mail and
             // the confirmation page can name it and draw its set password link.
             $_SESSION['software']['custom_form_auto_registration'][$form_id] = array(
@@ -1758,6 +1760,10 @@ if ($liveform->check_form_errors() == false) {
         'reference_code' => $reference_code,
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
     ));
+
+    // A form the shop picked on an ad service's page is a Lead there, sent
+    // only with the visitor's consent (includes/fn/ad_conversions.php).
+    pg_ad_conversion_lead((int) $_POST['page_id'], $reference_code, $submitter_email_address);
     
     // The fee: the record is saved unpaid, its order written and charged.
     // Returns once the order is completed; a payment page or a refusal (the

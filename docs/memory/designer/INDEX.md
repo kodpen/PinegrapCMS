@@ -622,7 +622,7 @@
 - prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel [decision: here]
 - prototype-comments-ping.md: The prototype viewer's keep-alive ping to the comment door (every 10 minutes), why the guest's session needs it, what the door does with it
 - prototype-comments-place.md: Where the Prototype comments button and list sit (PN6): the canvas bar's Prototype mode, the Prototype view's Comments tab beside Links, the View menu's item, a row's frame, Open in the editor [decision: here]
-- prototype-comments.md: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button and list sit [decision: here]
+- prototype-comments.md: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button and list sit [decision: decisions-made-product-93.md]
 - prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
 - prototype-grip.md: The Prototype view's "+" handle beside a drawable mark (PL4, #10444): when it shows, where it goes, 20 px at any zoom, a press on it is the mark's; a small mark's 4 px reach [decision: decisions-made-product-78.md]

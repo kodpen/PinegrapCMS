@@ -2785,6 +2785,7 @@
     "A record is new when it was made, or its list's publication date came, since the last run that sent; a record dated before that is not read, and a run that could not send leaves its records to the next one.": "Bir kayıt, gönderen son koşudan beri oluşturulduysa ya da listesinin yayın tarihi geldiyse yenidir; tarihi bundan önce olan kayıt okunmaz, gönderemeyen bir koşunun kayıtları sonrakine kalır.",
     "A record keeps at most {var:1} rows.": "Bir kayıt en fazla {var:1} satır tutar.",
     "A record link is written as {\"kind\": \"contact\", \"id\": 12}.": "Kayıt bağlantısı {\"kind\": \"contact\", \"id\": 12} biçiminde yazılır.",
+    "A record of a picked form is sent as Lead, when Lead is ticked. Add to cart, Begin checkout and the other events go only after the visitor accepted marketing cookies.": "Lead işaretliyse seçilen formun her kaydı Lead olarak gönderilir. Sepete ekleme, ödemeye başlama ve diğer olaylar yalnızca ziyaretçi pazarlama çerezlerini kabul ettikten sonra gider.",
     "A record of every dose": "Her dozun kaydı",
     "A record of meeting targets": "Hedefleri tutturduğunu gösteren bir geçmiş",
     "A record of the band: the track listing, the credits, where to listen and what the fans say.": "Grubun bir kaydı: parça listesi, emeği geçenler, nereden dinleneceği ve hayranların söyledikleri.",

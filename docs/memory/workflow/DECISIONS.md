@@ -38,6 +38,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-12.md: Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
 - decisions-made-panel-12.md: Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
 - decisions-made-panel-12.md: What do the three have in common?
+- decisions-made-panel-13.md: Where are the rules and the earlier parts?
+- decisions-made-panel-13.md: Does the dashboard's Assistant card keep the agent chat while Claude is off? (owner, 2026-11-21, in the architect's window, with a picture of the card)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -498,6 +500,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-92.md: What does it cover?
 - decisions-made-product-92.md: What does it leave alone?
 - decisions-made-product-92.md: In which language is a refusal? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-93.md: Where are the rules and the earlier parts?
+- decisions-made-product-93.md: Should walk-in visitors take a number by QR, follow their place on the phone and be called to a desk? (owner, 2026-11-20, agent channel poll 201, channel message 10980)
+- decisions-made-product-93.md: Should a body run its volunteers by shifts: sign-up, waitlist, calls for an unfilled shift, check-in and hours? (owner, 2026-11-20, agent channel poll 202, channel message 11057)
+- decisions-made-product-93.md: Should every panel list keep named views of its filters, columns and order? (owner, 2026-11-20, agent channel poll 203, channel message 11082)
+- decisions-made-product-93.md: Should a new site get a set-up path by its purpose, steps marked from the real settings and a go-live check? (owner, 2026-11-20, agent channel poll 204, channel message 11083)
+- decisions-made-product-93.md: Should a customer approve each prototype page, sealed to the draft they saw? (owner, 2026-11-20, agent channel poll 205, channel message 11084)
+- decisions-made-product-94.md: Where are the rules and the earlier parts?
+- decisions-made-product-94.md: Under which consent do the queue's notices and the unfilled-shift call go? (owner, 2026-11-21, agent channel poll 207, channel message 11149)
+- decisions-made-product-94.md: Is a volunteer's document kept as a file? (owner, 2026-11-21, agent channel poll 208, channel message 11150)
+- decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -926,6 +938,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
+- commerce/event-tickets-returns.md: Event tickets and returns (#10756): a refund voids the returned units' tickets, unchecked first from the highest unit, gives the places back, tells the waiting list; restore keeps them void
 - commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
 - commerce/event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
@@ -1320,6 +1333,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/quota-use-measured.md: Where the quota goes, measured 2026-11-19 in session records: a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; what changed, what is open
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/screen-described-in-plan.md: A plan describes each screen it adds in words, by the composition rules; no drawing is approved before a step and no screenshot goes to the architect or the owner for a yes (owner, 2026-11-20)
+- workflow/screen-description-checks.md: What a screen description of a redrawn screen must hold so the result matches it: every part the screen has today placed, countable lines a unit test pins, who looks on dev after landing
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
