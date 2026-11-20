@@ -51,6 +51,24 @@ function test_marketplace_pricing_rule_order()
 	pg_assert_same(null, mp_pricing_pick_rule(array(), $chains, 'Acme'), 'no rules');
 }
 
+// A brand rule matches the way its column compares: leading and trailing
+// spaces dropped, any case, on both the stored brand and the product's;
+// inner spaces and other letters still differ.
+function test_marketplace_pricing_brand_match_trims_and_ignores_case()
+{
+	$rule = marketplace_pricing_test_rule(MP_PRICING_SCOPE_BRAND, 0, '  Acme Tools ', 700);
+	$account = marketplace_pricing_test_rule(MP_PRICING_SCOPE_ACCOUNT, 0, '', 100);
+
+	foreach (array('Acme Tools', 'acme tools', ' ACME TOOLS  ', "\tAcme Tools\n") as $brand) {
+		pg_assert_same(700, mp_pricing_pick_rule(array($account, $rule), array(), $brand)['percent'], $brand);
+	}
+
+	pg_assert_same(100, mp_pricing_pick_rule(array($account, $rule), array(), 'Acme  Tools')['percent'], 'inner spaces');
+	pg_assert_same(100, mp_pricing_pick_rule(array($account, $rule), array(), 'Acme Tool')['percent'], 'another brand');
+	pg_assert_same(100, mp_pricing_pick_rule(array($account, $rule), array(), '')['percent'], 'no brand');
+	pg_assert_same('ğüşöç', mp_pricing_brand_key(' ĞÜŞÖÇ '), 'Turkish letters lower-cased');
+}
+
 // Two categories at the same depth: the lower id, so the pick never depends
 // on the order the rows were read in.
 function test_marketplace_pricing_rule_tie_takes_the_lower_category()
