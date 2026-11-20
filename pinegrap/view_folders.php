@@ -7039,7 +7039,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
         if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>'; }
-        if (isOfficeType(item.type) && !item.erp) { return '<div class="office-view" id="quicklook_office"></div>'; }
+        if (isOfficePreviewType(item.type) && !item.erp) { return '<div class="office-view" id="quicklook_office"></div>'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) { return '<video controls autoplay preload="metadata" src="' + esc(item.url) + '"></video>'; }
         if (PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) { return '<audio controls autoplay preload="metadata" src="' + esc(item.url) + '" style="width:min(32rem,80vw);"></audio>'; }
 
@@ -14939,10 +14939,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // A Word or Excel file is read on the server (includes/fn/office.php)
     // and drawn here by assets/js/pg_office_view.js, fetched on first use.
     var OFFICE_TYPES = ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm'];
+    // A .csv or .tsv is drawn as a sheet in Quick Look, only looked at; the
+    // file window keeps opening it in the text editor, where it is changed.
+    var OFFICE_SHEET_TYPES = ['csv', 'tsv'];
     var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings()); ?>;
 
     function isOfficeType(type) {
         return OFFICE_TYPES.indexOf(String(type || '').toLowerCase()) !== -1;
+    }
+
+    function isOfficePreviewType(type) {
+        return isOfficeType(type) || (OFFICE_SHEET_TYPES.indexOf(String(type || '').toLowerCase()) !== -1);
     }
 
     // The preview of one file drawn into a box: a spinner while the server
@@ -14987,6 +14994,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         // is undone, as it does for the fields.
                         onChange: function () {
                             if (fileEdit && !fileEditDirty()) { showFileEditUnsaved(false); }
+                        }
+                    };
+                }
+
+                // A .csv is read again with the separator and character set
+                // chosen above its sheet.
+                if (response.office && (response.office.kind === 'csv')) {
+                    options = {
+                        reread: function (choice, done) {
+                            api({ type: 'explorer_office_preview', id: fileId, delimiter: choice.delimiter, encoding: choice.encoding }, function (again) {
+                                if (again.status === 'success') { done(again.office); return; }
+                                done(null, again.message || L.request_failed);
+                            }, function () { done(null, L.request_failed); });
                         }
                     };
                 }

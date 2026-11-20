@@ -1717,7 +1717,9 @@ function ws_handle_action($action, $request)
         // its cells may be changed, and a document which paragraphs, for
         // someone who may write in the channel, and whether the edited file
         // takes the old one's place (their own message) or goes as an
-        // edited copy.
+        // edited copy. A .csv or .tsv is drawn as a sheet and only looked
+        // at, read with the separator and character set the choice above
+        // it sends (delimiter, encoding).
         case 'ws_file_office':
             $message = ws_message((int) ($request['message_id'] ?? 0));
             $channel = $message ? ws_channel($message['channel_id']) : null;
@@ -1728,14 +1730,14 @@ function ws_handle_action($action, $request)
 
             $stored = ((int) $message['file_id'] > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'") : '';
 
-            if (($stored === '') || (pg_office_kind($message['file_name']) === '')) {
+            if (($stored === '') || (pg_office_preview_kind($message['file_name']) === '')) {
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
             // A macro file posted before channels refused them opens read only: its edit would be refused.
-            $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
+            $editing = !empty($request['edit']) && (pg_office_kind($message['file_name']) !== '') && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
             // The file may be in the object store: the reader gets a copy.
-            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing);
+            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing, pg_office_csv_choice($request));
 
             if (!$office['ok']) {
                 return ws_action_error($office['error']);

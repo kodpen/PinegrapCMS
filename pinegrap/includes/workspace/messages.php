@@ -526,8 +526,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // the versions it replaced.
                 'text'     => function_exists('ws_file_is_text') && ws_file_is_text($row['file_name']),
                 // A Word or Excel file opens in the preview window, read on
-                // the server (ws_file_office).
-                'office'   => function_exists('pg_office_kind') && (pg_office_kind($row['file_name']) !== ''),
+                // the server (ws_file_office); a .csv or .tsv too, as a
+                // sheet only looked at, beside its text window.
+                'office'   => function_exists('pg_office_preview_kind') && (pg_office_preview_kind($row['file_name']) !== ''),
                 'message_id' => (int) $id,
                 'versions' => (int) ($extra['versions'][$id] ?? 0),
                 // A recording's length, waveform and transcript (voice.php).
