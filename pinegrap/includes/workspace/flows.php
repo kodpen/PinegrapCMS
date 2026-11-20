@@ -2504,6 +2504,14 @@ function ws_flow_save_check($viewer, $data, $flow = null)
             return ws_flow_refusal(lang(array('string' => 'The flow is too large to keep: at most {var:1} KB.', 'vars' => (int) (WS_FLOW_GRAPH_BYTES / 1024))), 422, 'graph');
         }
 
+        // A group e-mail's campaign takes no BCC; refused, not dropped, so
+        // the writer learns the address gets nothing.
+        $bcc = function_exists('ws_flow_mail_group_bcc_refusal') ? ws_flow_mail_group_bcc_refusal($graph) : '';
+
+        if ($bcc !== '') {
+            return ws_flow_refusal($bcc, 422, 'graph');
+        }
+
         $sets['draft'] = $json;
     } else {
         $graph = ws_flow_graph_of($flow);

@@ -2624,6 +2624,7 @@
     "The box {var:1} writes \"{var:2}\" into its address when {var:3} is empty; the address takes only a whole number.": "{var:1} kutusu, {var:3} boşken adresine \"{var:2}\" yazıyor; adres yalnızca tam sayı alır.",
     "The box {var:1} writes in the channel joined, but the flow does not start when somebody joins a channel.": "{var:1} kutusu katılınan kanala yazıyor, ama akış biri bir kanala katıldığında başlamıyor.",
     "The box {var:1} writes to a contact group with a text of its own, not a page.": "{var:1} kutusu bir kişi grubuna bir sayfayla değil, kendi metniyle yazar.",
+    "The box {var:1} writes to a contact group, which takes no BCC: every contact gets the e-mail apart, so the BCC address would get one copy for each of them. Empty its BCC.": "{var:1} kutusu bir kişi grubuna yazıyor; grup e-postası BCC almaz: her kişiye e-posta ayrı gider, BCC adresi her biri için bir kopya alırdı. BCC alanını boşaltın.",
     "The box {var:1}, condition {var:2}: {var:3}": "{var:1} kutusu, {var:2}. koşul: {var:3}",
     "The box {var:1}: {var:2}": "{var:1} kutusu: {var:2}",
     "The box {var:1}: {var:2} is not an e-mail address.": "{var:1} kutusu: {var:2} bir e-posta adresi değil.",
