@@ -29,3 +29,12 @@ function test_mail_phone_views_wrap()
 	pg_assert_contains('<div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">', $toolbar, 'the views wrap onto a second line');
 	pg_assert_contains('data-ws-mail-new', $toolbar, 'the toolbar is the sending one');
 }
+
+function test_mail_phone_box_row_buttons_wrap()
+{
+	// Test connection and Edit side by side are about 240 px: on a 320 px
+	// screen Edit ran past the card's right edge, half cut.
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php'));
+
+	pg_assert_contains("<div class=\"pg-list-row-actions flex-wrap\">\n                        ' . (\$reads ? '<button type=\"submit\" name=\"ws_mail_test\"", $source, 'the box row\'s buttons wrap inside the card');
+}

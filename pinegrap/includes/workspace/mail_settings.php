@@ -1433,7 +1433,8 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         $test = '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection'));
 
         // In Site Settings each box is a list row with its icon tile, its
-        // place and last mail, its last check, and its buttons under them.
+        // place and last mail, its last check, and its buttons under them;
+        // the buttons wrap, or on a 320 px screen Edit ran past the card.
         if ($form !== null) {
             $rows .= '
             <div class="pg-list-row' . ((int) $box['enabled'] === 1 ? '' : ' opacity-50') . '"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-inbox"></span></span>
@@ -1441,7 +1442,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                     <div class="pg-list-row-head"><span class="pg-list-row-title">' . h((string) $box['name']) . '</span></div>
                     <div class="pg-list-row-text">' . h((string) $box['address']) . ' · ' . $place . ' · ' . h(((int) $box['last_mail_at'] > 0) ? lang(array('string' => 'Last e-mail {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['last_mail_at']))) : lang('No e-mail yet')) . '</div>
                     <div class="pg-list-row-text">' . ws_mail_box_check_line($box) . '</div>
-                    <div class="pg-list-row-actions">
+                    <div class="pg-list-row-actions flex-wrap">
                         ' . ($reads ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm">' . $test . '</button>' : '') . '
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
                     </div>
