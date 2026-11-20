@@ -4956,6 +4956,100 @@ button.pgie-sndfile:hover {
   }
 }
 
+/* -- Data menu and data layer (pg_image_editor_data.js) -- */
+
+/* The picker: the Import box's frame; the tables as rows (name, then its
+   channel and row count), the views as the New image dialog's cards with a
+   sample over the kind's name; their words take that dialog's .pgie-ptext. */
+.pgie-databox .pgie-importhead h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pgie-datatables {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pgie .pgie-datatable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-datatable:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-databox .pgie-datacards {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pgie .pgie-datacard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  text-align: center;
+}
+
+.pgie-datasample {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* The panel: the kinds two a row, the value columns one under another, the
+   table's name beside Change. */
+.pgie-datakinds {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pgie .pgie-datafield {
+  width: 100%;
+}
+
+.pgie-datavalues .pgie-check {
+  margin: 6px 0 0;
+}
+
+.pgie-datatablerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pgie-datatablerow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-datafold {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  margin-top: 8px;
+  border-top: 1px solid var(--pgie-line);
+  padding-top: 12px;
+}
+
 /* The phone's rows (pg_image_editor_phone.js): in the sheet under the play
    bar, each name above its lane, one ruler, the playhead across them all;
    the clip's row tall with finger-size grips; the sounds folded into one

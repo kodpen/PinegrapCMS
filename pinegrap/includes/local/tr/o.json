@@ -982,6 +982,7 @@
     "Only a sales invoice can repeat.": "Yalnız satış faturası tekrarlanabilir.",
     "Only a style edited as code can be opened in the Page Design Studio.": "Sayfa Tasarım Stüdyosu'nda yalnızca kodla düzenlenen bir stil açılabilir.",
     "Only a submitted form brings a customer in.": "Müşteriyi yalnızca gönderilen bir form getirir.",
+    "Only a table fits: this table has no number column.": "Yalnızca tablo uyar: bu tabloda sayı sütunu yok.",
     "Only a table on InnoDB is rebuilt this way; a table on MyISAM gets a smaller file when it is moved to InnoDB.": "Bu yolla yalnız InnoDB'deki tablo yeniden kurulur; MyISAM'daki tablonun dosyası InnoDB'ye taşınınca küçülür.",
     "Only a team devices session can register a device for native push.": "Yerel anlık bildirime yalnızca bir ekip cihazı oturumu cihaz kaydedebilir.",
     "Only a team member who sends campaigns can write to a contact group.": "Bir kişi grubuna yalnız kampanya gönderen bir ekip üyesi yazabilir.",

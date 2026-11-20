@@ -89,6 +89,9 @@ function test_image_draw_data_check()
 		'colours' => array(array('colours' => array('red')) + $base, array('colours' => array_fill(0, 6, '#000000')) + $base),
 		'theme'   => array(array('theme' => 'blue') + $base),
 		'font'    => array(array('font' => 'g:') + $base, array('font' => 'Comic') + $base, array('font' => 'g:Bad!Name') + $base),
+		'legend'  => array(array('legendAt' => 'left') + $base),
+		'limit'   => array(array('limit' => -1) + $base, array('limit' => 51) + $base, array('limit' => 2.5) + $base, array('limit' => '3') + $base),
+		'size'    => array(array('size' => 'xl') + $base, array('size' => 1) + $base),
 	);
 
 	foreach ($bad as $part => $list) {
@@ -98,7 +101,8 @@ function test_image_draw_data_check()
 	}
 
 	pg_assert_same(array('table' => 4, 'show' => 'chart', 'kind' => 'bar', 'group' => 'none', 'values' => array('12'), 'label' => '11', 'sort' => 'none', 'dir' => 'asc',
-		'format' => 'en', 'title' => 'Sales', 'colours' => array('#aabbcc'), 'theme' => 'light', 'font' => 'g:Inter', 'legend' => true),
+		'format' => 'en', 'title' => 'Sales', 'colours' => array('#aabbcc'), 'theme' => 'light', 'font' => 'g:Inter', 'legend' => true,
+		'legendAt' => 'top', 'limit' => 0, 'size' => 'm'),
 		pg_image_draw_data_check(array('table' => '4', 'label' => 11, 'values' => array('12', 12), 'title' => '  Sales ', 'colours' => array('#AABBCC')))['data'], 'defaults, ids as strings, a value once');
 
 	$table = pg_image_draw_data_check(array('table' => 4, 'show' => 'table', 'kind' => 'pie', 'label' => '11'));
@@ -106,6 +110,8 @@ function test_image_draw_data_check()
 	pg_assert_same(array(), pg_image_draw_data_check(array('group' => 'count') + $base)['data']['values'], 'count takes no value column');
 	pg_assert_true(pg_image_draw_data_check(array('legend' => '0') + $base)['data']['legend'], 'the legend is tested as the browser tests it');
 	pg_assert_false(pg_image_draw_data_check(array('legend' => 0) + $base)['data']['legend']);
+	pg_assert_same(array('bottom', 3, 'l'), array_values(array_intersect_key(pg_image_draw_data_check(array('legendAt' => 'bottom', 'limit' => 3.0, 'size' => 'l') + $base)['data'],
+		array('legendAt' => 1, 'limit' => 1, 'size' => 1))), 'the legend under the plot, a row limit and a type size are kept');
 }
 
 // Rows grouped, averaged, sorted and cut as the model's (the same cases as its test).

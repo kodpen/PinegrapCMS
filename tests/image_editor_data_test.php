@@ -68,7 +68,10 @@ function test_image_editor_data_check()
 		. ' title: [{ table: 1, label: "a", values: ["b"], title: "a\nb" }, { table: 1, label: "a", values: ["b"], title: new Array(122).join("x") }],'
 		. ' colours: [{ table: 1, label: "a", values: ["b"], colours: ["red"] }, { table: 1, label: "a", values: ["b"], colours: ["#000000", "#000000", "#000000", "#000000", "#000000", "#000000"] }],'
 		. ' theme: [{ table: 1, label: "a", values: ["b"], theme: "blue" }],'
-		. ' font: [{ table: 1, label: "a", values: ["b"], font: "g:" }, { table: 1, label: "a", values: ["b"], font: "Comic" }] }, codes = {};'
+		. ' font: [{ table: 1, label: "a", values: ["b"], font: "g:" }, { table: 1, label: "a", values: ["b"], font: "Comic" }],'
+		. ' legend: [{ table: 1, label: "a", values: ["b"], legendAt: "left" }],'
+		. ' limit: [{ table: 1, label: "a", values: ["b"], limit: -1 }, { table: 1, label: "a", values: ["b"], limit: 51 }, { table: 1, label: "a", values: ["b"], limit: 2.5 }, { table: 1, label: "a", values: ["b"], limit: "3" }],'
+		. ' size: [{ table: 1, label: "a", values: ["b"], size: "xl" }, { table: 1, label: "a", values: ["b"], size: 1 }] }, codes = {};'
 		. 'Object.keys(bad).forEach(function (k) { codes[k] = bad[k].map(function (d) { return M.dataCheck(d).error; }); });'
 		. 'console.log(JSON.stringify({ codes: codes, filled: M.dataCheck({ table: "4", label: 11, values: ["12", "12"], title: "  Sales ", colours: ["#AABBCC"] }),'
 		. ' table: M.dataCheck({ table: 4, show: "table", kind: "pie", label: "11" }), count: M.dataCheck({ table: 4, label: "11", values: ["12"], group: "count" }).data }));'
@@ -87,7 +90,8 @@ function test_image_editor_data_check()
 	}
 
 	pg_assert_same(array('table' => 4, 'show' => 'chart', 'kind' => 'bar', 'group' => 'none', 'values' => array('12'), 'label' => '11', 'sort' => 'none', 'dir' => 'asc',
-		'format' => 'en', 'title' => 'Sales', 'colours' => array('#aabbcc'), 'theme' => 'light', 'font' => 'g:Inter', 'legend' => true), $r['filled']['data'], 'defaults, ids as strings, a value once');
+		'format' => 'en', 'title' => 'Sales', 'colours' => array('#aabbcc'), 'theme' => 'light', 'font' => 'g:Inter', 'legend' => true,
+		'legendAt' => 'top', 'limit' => 0, 'size' => 'm'), $r['filled']['data'], 'defaults, ids as strings, a value once');
 	pg_assert_true($r['table']['ok'] && ($r['table']['data']['kind'] === 'table') && ($r['table']['data']['values'] === array()), 'a plain table needs no value column and takes no chart kind');
 	pg_assert_same(array(), $r['count']['values'], 'count takes no value column');
 }
@@ -239,10 +243,15 @@ function test_image_editor_data_bundled()
 
 	pg_assert_true(array_search('assets/js/pg_image_editor_data.js', $files, true) > array_search('assets/js/pg_image_editor_glyph.js', $files, true), 'after the glyph part');
 	pg_assert_true(in_array('data', pg_image_editor_parts(), true), 'a part with its strings');
-	pg_assert_same(array('layer_data', 'dataEmpty', 'dataRefused', 'dataMore', 'dataCount', 'dataOther'), array_keys(pg_image_editor_strings_data()));
 	pg_assert_contains('%d', pg_image_editor_strings_data()['dataMore']);
+	pg_assert_contains('%d', pg_image_editor_strings_data()['dataRowsCount']);
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_data.js');
+
+	// Every label the part asks for is the part's own (Close is the core's); the kinds' labels too.
+	preg_match_all("/\\bt\\('([A-Za-z_]+)'\\)/", $js, $keys);
+	$keys = array_unique(array_merge($keys[1], array('data_kind_table', 'data_kind_bar', 'data_kind_stacked_bar', 'data_kind_line', 'data_kind_area', 'data_kind_donut')));
+	pg_assert_same(array(), array_values(array_diff($keys, array_keys(pg_image_editor_strings_data()), array('close'))), 'every label is in pg_image_editor_strings_data()');
 
 	pg_assert_contains('Editor.layerTypes.data = {', $js);
 	pg_assert_contains("var UPRIGHT = ['text', 'sticker', 'image', 'glyph', 'data'];", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js'));
