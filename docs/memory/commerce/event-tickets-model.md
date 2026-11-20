@@ -33,4 +33,4 @@ module: event_tickets
 
 Test: `tests/event_tickets_test.php` (the step run twice against stubs). Not run on a dev database.
 
-Related: docs/memory/commerce/event-tickets-key.md, docs/memory/plans/event-tickets.md, docs/memory/commerce/calendar-reserve-occurrence.md, docs/memory/core/qr-code-generator.md
+Related: docs/memory/commerce/event-tickets-key.md, docs/memory/commerce/event-tickets.md, docs/memory/commerce/calendar-reserve-occurrence.md, docs/memory/core/qr-code-generator.md

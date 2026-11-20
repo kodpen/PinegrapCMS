@@ -1,6 +1,6 @@
 ---
 name: image-gd-palette-png
-description: A palette PNG (PNG-8) through the GD image engine: a turn, flip or crop in the Design Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, while it fits 256 colours
+description: A palette PNG (PNG-8) through the GD image engine: a turn, flip, crop in the Artifact Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, if it fits 256 colours
 module: image
 ---
 

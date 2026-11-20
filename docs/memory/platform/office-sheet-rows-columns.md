@@ -1,12 +1,12 @@
 ---
 name: office-sheet-rows-columns
-description: Insert and delete a row or column of an .xlsx (OE1a, office_shift.php): the save entry, what moves, what is refused and why, one change a save; the head menu is OE1b
+description: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
 module: office_shift
 ---
 
 ## How is a row or column inserted or deleted?
 - A save whose `cells` list holds one entry `{sheet, name, op: insert|delete, row: 7}` (or `column: "C"`), sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` hands it to `pg_office_xlsx_shift_save()`, under the same lock, version check and package rebuild. It is a save of its own: mixed with cell changes it is refused (`none`). No new endpoint, permission or schema.
-- The grid's head menu that sends it (a row's number, a column's letter, right click, Shift+F10) is step OE1b (`plans/office-own-code-steps.md`); until it lands nothing in the panel sends this entry.
+- The grid's head menu that sends it: `office-sheet-head-menu.md`.
 
 ## What moves?
 - `includes/fn/office_shift.php`: row and cell addresses past the line, a deleted row or cell taken out, the sheet's own formula references (also `Sheet!A1` and `'Sheet'!A1` of itself).
@@ -21,7 +21,7 @@ module: office_shift
 - Messages: `pg_office_shift_message()`; the file stays as it was.
 
 ## What was checked?
-- `tests/office_shift_test.php`: references, formulas, rows and columns inserted and deleted on fixture sheets, every refusal, a saved package read back by `pg_office_read()` with the locks where the cells went and untouched parts byte for byte. An openpyxl book shifted and read by openpyxl and LibreOffice 24 (merge, widths, `#REF!`). Not tried in Excel.
+- `tests/office_shift_test.php`: references, formulas, inserts and deletes on fixture sheets, every refusal, a saved package read back by `pg_office_read()` and untouched parts compared byte for byte. An openpyxl book shifted and read by openpyxl and LibreOffice 24 (merge, widths, `#REF!`). Not tried in Excel.
 
 ## What is left?
-- Several rows at once, moving conditional formatting, validations, filters and drawings with the line: not built.
+- Several rows at once; moving conditional formatting, validations, filters and drawings: not built.

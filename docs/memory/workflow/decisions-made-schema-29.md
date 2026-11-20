@@ -21,7 +21,7 @@ description: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tab
 - The architect's reading, not his words: INT UNSIGNED NOT NULL DEFAULT 0 with KEY `idx_bundle`, written into the table's CREATE of step 11.0.35 and added by `install_add_column()` where that step already ran; RB6 #10518 (`designer/release-bundle-share-link.md`).
 
 ## Which columns does the tickets table get? (architect, 2026-11-20, agent channel message 10086, answer to K1's request 1671)
-- Under the owner's yes to the table and the product's column (poll 91, `decisions-made-schema-25.md`). Table `event_tickets`, plural as the commerce tables it joins; TK1 of `plans/event-tickets-steps.md` (#10556), step 11.0.246.
+- Under the owner's yes to the table and the product's column (poll 91, `decisions-made-schema-25.md`). Table `event_tickets`, plural as the commerce tables it joins; TK1 of the event tickets (`commerce/event-tickets.md`, #10556), step 11.0.247.
 - `id`, `order_id`, `order_item_id`, `product_id`, `calendar_event_id`, `recurrence_number`, `used_at`, `used_by`, `voided_at`, `created_at` INT UNSIGNED; `unit` SMALLINT UNSIGNED (1 to 100); `code_salt` CHAR(32) and `code_hash` CHAR(64), ascii; `state` ENUM('valid','used','void') DEFAULT 'valid'. All NOT NULL, default 0 or ''.
 - Keys: UNIQUE `idx_line_unit` (`order_item_id`, `unit`), UNIQUE `idx_code` (`code_hash`), `idx_order` (`order_id`), `idx_event` (`calendar_event_id`, `recurrence_number`, `state`), `idx_product` (`product_id`, `state`).
 - `products.gives_tickets` TINYINT UNSIGNED NOT NULL DEFAULT 0, added in place where the server allows it.

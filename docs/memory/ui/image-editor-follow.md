@@ -1,6 +1,6 @@
 ---
 name: image-editor-follow
-description: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
+description: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
 module: image_editor
 ---
 

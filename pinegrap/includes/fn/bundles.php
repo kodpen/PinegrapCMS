@@ -227,15 +227,17 @@ function pg_bundle_price($pricing, $own_price, $components, $discount_bp)
 }
 
 /**
- * A discount typed as a percentage ("12.5", "12,5") in basis points, 0 for
- * anything that is not a number from 0 to 100.
+ * A discount typed as a percentage ("12.5", "12,5", "10 %", "%10") in basis
+ * points, 0 for anything that is not a number from 0 to 100. One per cent
+ * sign before or after the number is read as part of it.
  *
  * @param mixed $value
  * @return int
  */
 function pg_bundle_discount_bp_from_input($value)
 {
-    $value = str_replace(',', '.', trim((string) $value));
+    $value = trim(preg_replace('/^\s*%|%\s*$/', '', (string) $value, 1));
+    $value = str_replace(',', '.', $value);
 
     if (($value === '') || !is_numeric($value)) {
         return 0;
@@ -338,6 +340,22 @@ function pg_bundle_items_problem($bundle_id, $items)
     }
 
     return '';
+}
+
+/**
+ * Why a product cannot be switched into a bundle, '' when it can: a product
+ * inside another bundle cannot become one, with contents or without, or the
+ * bundle holding it would hold a bundle and take the cached stock of this
+ * one as a component's. A product that already is a bundle is not asked
+ * again; its contents are checked by pg_bundle_items_problem().
+ *
+ * @param bool $was_bundle   the stored products.bundle
+ * @param bool $is_component pg_bundle_is_component()
+ * @return string the reason, in English for lang()
+ */
+function pg_bundle_switch_on_problem($was_bundle, $is_component)
+{
+    return (!$was_bundle && $is_component) ? 'A product that is part of a bundle cannot be a bundle itself.' : '';
 }
 
 /**
@@ -580,6 +598,12 @@ function pg_bundle_ids_among($product_ids)
  * and inside a bundle is counted once. Other lines are not limited. A
  * bundle with no contents allows none.
  *
+ * A bundle line marked 'backorder' => false (the bundle's own Backorder
+ * switch is off) is limited by every tracked component, even one that takes
+ * back orders on its own: the bundle's cache says it cannot be sold beyond
+ * that stock. So it is limited by what plain lines of such a component took
+ * before it.
+ *
  * A line the stock would cut below its product's minimum quantity allows
  * none and takes nothing, so its units go to the lines after it: a cut line
  * under the minimum is raised back by check_quantity() on the next submit
@@ -587,7 +611,8 @@ function pg_bundle_ids_among($product_ids)
  *
  * @param array $lines rows with id, product_id, quantity, optional minimum
  *                     (products.minimum_quantity) and, for a bundle,
- *                     components: rows with product_id and quantity
+ *                     components: rows with product_id and quantity, and
+ *                     optional backorder (the bundle's cached backorder)
  * @param array $stock product_id => array(tracked, quantity, backorder)
  * @return array line id => array(allowed, unavailable): unavailable is true
  *               when the stock alone, before any other line, cannot cover
@@ -598,10 +623,15 @@ function pg_bundle_cart_allowance($lines, $stock)
     $left = array();
     $limited = array();
 
+    // Every tracked product has its units counted; only those without back
+    // orders limit a line of their own.
     foreach ((array) $stock as $product_id => $row) {
-        if (!empty($row['tracked']) && empty($row['backorder'])) {
-            $limited[(int) $product_id] = true;
+        if (!empty($row['tracked'])) {
             $left[(int) $product_id] = max(0, (int) $row['quantity']);
+
+            if (empty($row['backorder'])) {
+                $limited[(int) $product_id] = true;
+            }
         }
     }
 
@@ -615,12 +645,13 @@ function pg_bundle_cart_allowance($lines, $stock)
         if (isset($line['components'])) {
             $allowed = $line['components'] ? $wanted : 0;
             $alone = $allowed;
+            $no_backorder = array_key_exists('backorder', $line) && empty($line['backorder']);
 
             foreach ($line['components'] as $component) {
                 $product_id = (int) $component['product_id'];
                 $per_bundle = max(1, (int) $component['quantity']);
 
-                if (isset($limited[$product_id])) {
+                if (isset($limited[$product_id]) || ($no_backorder && isset($left[$product_id]))) {
                     $allowed = min($allowed, intdiv($left[$product_id], $per_bundle));
                     $alone = min($alone, intdiv($initial[$product_id], $per_bundle));
                 }
@@ -633,8 +664,8 @@ function pg_bundle_cart_allowance($lines, $stock)
             foreach ($line['components'] as $component) {
                 $product_id = (int) $component['product_id'];
 
-                if (isset($limited[$product_id])) {
-                    $left[$product_id] -= $allowed * max(1, (int) $component['quantity']);
+                if (isset($left[$product_id])) {
+                    $left[$product_id] = max(0, $left[$product_id] - $allowed * max(1, (int) $component['quantity']));
                 }
             }
 
@@ -645,6 +676,10 @@ function pg_bundle_cart_allowance($lines, $stock)
         $product_id = (int) $line['product_id'];
 
         if (!isset($limited[$product_id])) {
+            if (isset($left[$product_id])) {
+                $left[$product_id] = max(0, $left[$product_id] - $wanted);
+            }
+
             $answer[$line['id']] = array('allowed' => $wanted, 'unavailable' => false);
             continue;
         }
@@ -823,6 +858,10 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
         $line = array('id' => (int) $row['id'], 'product_id' => $product_id, 'quantity' => (int) $row['quantity'], 'minimum' => (int) $row['minimum_quantity']);
 
         if (isset($bundle_ids[$product_id])) {
+            // The bundle's cached backorder: its own choice, and only while
+            // every tracked component takes back orders (pg_bundle_backorder()).
+            $line['backorder'] = ((string) $row['backorder'] === '1');
+
             if (!isset($contents[$product_id])) {
                 $contents[$product_id] = pg_bundle_items($product_id);
             }
@@ -946,15 +985,31 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 /**
  * What a bundle saves its buyer against its components bought one by one,
  * in minor units: the components' prices times their quantities less the
- * price the bundle sells at, 0 when the bundle costs as much or more.
+ * price the bundle sells at, 0 when the bundle costs as much or more. A
+ * component the visitor pays less for on its own (an offer, an account
+ * price: get_discounted_product_prices()) counts at that price, so the
+ * saving shown is never more than buying the components would save.
  *
- * @param array $components rows with price and quantity
- * @param int   $price      the bundle's price as the visitor pays it
+ * @param array $components     rows with price, quantity and product_id
+ * @param int   $price          the bundle's price as the visitor pays it
+ * @param array $visitor_prices product_id => the price the visitor pays
  * @return int
  */
-function pg_bundle_saving($components, $price)
+function pg_bundle_saving($components, $price, $visitor_prices = array())
 {
-    return max(0, pg_bundle_price('sum', 0, $components, 0) - (int) round($price));
+    $priced = array();
+
+    foreach ((array) $components as $component) {
+        $product_id = isset($component['product_id']) ? (int) $component['product_id'] : 0;
+
+        if (isset($visitor_prices[$product_id]) && is_numeric($visitor_prices[$product_id])) {
+            $component['price'] = min((int) $component['price'], (int) round($visitor_prices[$product_id]));
+        }
+
+        $priced[] = $component;
+    }
+
+    return max(0, pg_bundle_price('sum', 0, $priced, 0) - (int) round($price));
 }
 
 /**

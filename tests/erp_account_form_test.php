@@ -80,7 +80,7 @@ function test_erp_account_form_save_fields_keys()
 	$fields = erp_account_form_save_fields(pg_test_account_form_post(), 'DE', 'EUR', 7, '30', '15', 'TR');
 
 	$keys = array('contact_id', 'kind', 'title', 'is_person', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city',
-		'state', 'postcode', 'country_code', 'currency', 'status', 'notes', 'payment_days', 'overdue_notify_days', 'overdue_notify_customer',
+		'state', 'postcode', 'country_code', 'currency', 'status', 'notes', 'payment_days', 'lead_days', 'overdue_notify_days', 'overdue_notify_customer',
 		'invoice_email', 'invoice_mail', 'credit_limit');
 
 	pg_assert_same($keys, array_keys($fields), 'every key the screens send, and no id or created_by');
@@ -104,6 +104,7 @@ function test_erp_account_form_save_fields_turkish_state()
 	pg_assert_same('', $fields['state'], 'a Turkish address has no state');
 	pg_assert_same(0, $fields['payment_days'], 'an empty term is 0');
 	pg_assert_same(0, $fields['overdue_notify_days']);
+	pg_assert_same(0, $fields['lead_days'], 'an empty lead time is 0, not set');
 }
 
 function test_erp_account_form_save_fields_country_fallback()
@@ -212,4 +213,11 @@ function test_erp_account_form_check_tax_number_taken_skips()
 		pg_assert_same(array(), $asked, 'not asked: ' . $label);
 		pg_assert_false(isset($form->errors['tax_number']), 'not marked: ' . $label);
 	}
+}
+
+// The account card's Lead time is whole days, kept to 0 to 365.
+function test_erp_account_form_save_fields_lead_days()
+{
+	pg_assert_same(21, erp_account_form_save_fields(pg_test_account_form_post(array('lead_days' => '21')), 'TR', 'TRY', 0, '', '', '')['lead_days']);
+	pg_assert_same(365, erp_account_form_save_fields(pg_test_account_form_post(array('lead_days' => '999')), 'TR', 'TRY', 0, '', '', '')['lead_days']);
 }

@@ -156,7 +156,17 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         ? lang('Goes to the account\'s e-mail address under Contact Information. Switch it off for a customer who asked not to be written to.')
                         : lang('Reminder e-mails to customers are switched off on the ERP settings card; this choice takes effect once they are on.')) . '</div>
                 </div>
-            </div>' . ((function_exists('erp_mail_ready') && erp_mail_ready() && waf_table_has_column('erp_accounts', 'invoice_email')) ? '
+            </div>' . (waf_table_has_column('erp_accounts', 'lead_days') ? '
+            <div class="row">
+                <div class="col-12 md:col-6 my-3">
+                    <label for="lead_days" class="form-label">' . lang('Lead time (days)') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'text', 'id' => 'lead_days', 'name' => 'lead_days',
+                        'class' => 'form-control', 'maxlength' => '3', 'inputmode' => 'numeric',
+                        'autocomplete' => 'off')) . '
+                    <div class="form-text">' . h(lang('For a supplier: days from a purchase order to its goods. Stock Planning uses it until it can measure them from the supplier\'s own orders and invoices. 0 is not set.')) . '</div>
+                </div>
+            </div>' : '') . ((function_exists('erp_mail_ready') && erp_mail_ready() && waf_table_has_column('erp_accounts', 'invoice_email')) ? '
             <div class="row">
                 <div class="col-12 md:col-6 my-3">
                     <label for="invoice_email" class="form-label">' . lang('Invoice e-mail address') . '</label>
@@ -845,7 +855,7 @@ function erp_account_form_country($liveform)
 function erp_account_form_single_fields()
 {
     return array('title', 'kind', 'status', 'is_person', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'state',
-        'postcode', 'country_code', 'currency', 'contact_id', 'notes', 'payment_days', 'overdue_notify_days', 'overdue_notify_customer',
+        'postcode', 'country_code', 'currency', 'contact_id', 'notes', 'payment_days', 'overdue_notify_days', 'overdue_notify_customer', 'lead_days',
         'invoice_email', 'invoice_mail', 'credit_limit', 'opening_amount', 'opening_date');
 }
 
@@ -1074,6 +1084,12 @@ function erp_account_form_check_days($liveform)
         $liveform->mark_error('overdue_notify_days', lang('Reminder threshold must be a whole number of days, 0 to 3650.'));
     }
 
+    $lead_days = trim((string) $liveform->get_field_value('lead_days'));
+
+    if (($lead_days !== '') && ((preg_match('/^[0-9]{1,3}$/', $lead_days) !== 1) || ((int) $lead_days > 365))) {
+        $liveform->mark_error('lead_days', lang('Lead time must be a whole number of days, 0 to 365.'));
+    }
+
     return array($payment_days, $overdue_notify_days);
 }
 
@@ -1134,6 +1150,7 @@ function erp_account_form_save_fields($liveform, $country_code, $currency, $cont
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
+        'lead_days' => min(365, max(0, (int) $liveform->get_field_value('lead_days'))),
         'overdue_notify_days' => (int) $overdue_days,
         'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
         'invoice_email' => (string) $liveform->get_field_value('invoice_email'),

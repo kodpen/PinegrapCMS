@@ -443,11 +443,13 @@ function get_help_url($properties = array())
         'erp_account_sync_item'   => 'erp#account-sync',
         'erp_aging'               => 'erp#aging-report',
         'erp_profit'              => 'erp#profit-and-loss',
+        'erp_profitability'       => 'erp#profitability',
         'erp_vat_report'          => 'erp#vat-report',
 
         // ERP, continued
         'erp_stock'              => 'erp-cont#stock',
         'erp_stock_minimums'     => 'erp-cont#stock-minimums',
+        'erp_stock_plan'         => 'erp-cont#stock',
         'erp_stock_counts'       => 'erp-cont#stock-counts',
         'erp_stock_count'        => 'erp-cont#stock-count',
         'erp_expenses'           => 'erp-cont#expenses',
