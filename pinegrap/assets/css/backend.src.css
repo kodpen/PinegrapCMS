@@ -19579,6 +19579,42 @@ a.ws-chip-message:hover,
   font-style: italic;
   opacity: .7;
 }
+/* A workbook whose sheets may change: its tab list is laid out in one strip
+   with the sheet being added and the add button. */
+.office-tablist {
+  display: contents;
+}
+.office-tab-add,
+.office-tab-new {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  font: inherit;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  background: transparent;
+}
+.office-tab-add {
+  border-color: transparent;
+}
+.office-tab-add:hover {
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+}
+.office-tab-delete {
+  background: var(--pg-danger-bg-subtle);
+}
+.office-tab-delete .office-tab-name {
+  text-decoration: line-through;
+}
+.office-tab-moved {
+  border-style: dashed;
+  border-color: var(--pg-primary);
+}
+.office-tab-input {
+  width: 10rem;
+  font-size: .8125rem;
+}
 /* The separator and character set a .csv is read with, above its sheet. */
 .office-choice {
   display: flex;
