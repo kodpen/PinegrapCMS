@@ -610,7 +610,8 @@ function pg_customer_value_pass_read()
 
 /**
  * Whether a rebuild is due: one under way, or a summary missing or older
- * than PG_CUSTOMER_VALUE_INTERVAL. Pure.
+ * than PG_CUSTOMER_VALUE_INTERVAL, unless the last pass ended without
+ * writing its summary less than that interval ago. Pure.
  *
  * @param array    $record
  * @param int|null $summary_at
@@ -621,6 +622,12 @@ function pg_customer_value_due($record, $summary_at, $now)
 {
     if ((int) $record['started'] > 0) {
         return true;
+    }
+
+    // The last pass could not write its summary: wait the interval from its
+    // end, so a failing write does not run the whole rebuild every tick.
+    if (isset($record['saved'], $record['ended']) && ((int) $record['saved'] === 0) && (((int) $now - (int) $record['ended']) < PG_CUSTOMER_VALUE_INTERVAL)) {
+        return false;
     }
 
     return ($summary_at === null) || (((int) $now - (int) $summary_at) >= PG_CUSTOMER_VALUE_INTERVAL);
@@ -727,7 +734,7 @@ function pg_customer_value_job_run($budget = PG_CUSTOMER_VALUE_TICK_SECONDS, $no
         @unlink($path);
         // A summary too large for its text keeps the last one; the pass
         // ends all the same and is tried again after the interval.
-        pg_config_text_claim('customer_values_pass', $claimed, json_encode(array('lease' => 0, 'started' => 0, 'done' => (int) $state['done'], 'total' => (int) $state['total'], 'saved' => $saved ? 1 : 0)));
+        pg_config_text_claim('customer_values_pass', $claimed, json_encode(array('lease' => 0, 'started' => 0, 'done' => (int) $state['done'], 'total' => (int) $state['total'], 'saved' => $saved ? 1 : 0, 'ended' => time())));
 
         return array('done' => true, 'read' => $read);
     }

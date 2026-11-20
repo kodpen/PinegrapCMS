@@ -425,3 +425,31 @@ function test_customer_values_undated_order_left_out()
 	list($sql) = pg_customer_value_page_query(1700000000, 0, 0, 500, array());
 	pg_assert_contains('(order_date > 0)', $sql, 'the walk reads what the total counts');
 }
+
+// A pass whose summary could not be written ends all the same; it is tried
+// again after the interval, not at the next tick (it was due at once, so a
+// failing write ran the whole rebuild on every tick of the general job).
+function test_customer_values_failed_write_waits()
+{
+	$now = 1800000000;
+	$idle = array('lease' => 0, 'started' => 0, 'done' => 0, 'total' => 0);
+
+	pg_assert_true(pg_customer_value_due($idle, null, $now), 'no summary yet');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('started' => $now - 60)), $now - 10, $now), 'a pass under way goes on');
+	pg_assert_false(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - 600)), null, $now), 'a failed write waits');
+	pg_assert_false(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - 600)), $now - 2 * 86400, $now), 'also with an old summary');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('saved' => 0, 'ended' => $now - PG_CUSTOMER_VALUE_INTERVAL)), null, $now), 'tried again after the interval');
+	pg_assert_true(pg_customer_value_due(array_merge($idle, array('saved' => 1, 'ended' => $now - 600)), $now - 2 * 86400, $now), 'an old summary is due');
+
+	$job = cv_test_function_source('pg_customer_value_job_run');
+	pg_assert_contains("'ended' => time()", $job, 'the end of a pass is kept');
+}
+
+// The source of a function.
+function cv_test_function_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
