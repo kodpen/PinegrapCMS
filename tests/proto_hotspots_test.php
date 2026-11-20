@@ -575,7 +575,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains("window.matchMedia('(min-width: 1100px)').matches", $source, 'closed by default under 1,100 px');
 	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
 	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
-	pg_assert_contains(".sd-proto-bar { flex-wrap: wrap; row-gap: 2px; }", $css, 'on a phone the bar wraps, so every tool stays in reach');
+	pg_assert_contains("tools.appendChild(ui.play);", $source, 'Play sits in the canvas bar\'s Prototype mode, which folds and wraps by its width, so every tool stays in reach');
 	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-hot.sd-proto-hot-picked', '.sd-proto-edge-picked') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
@@ -739,7 +739,7 @@ function test_proto_hotspots_view_draws_arrows()
 
 	pg_assert_contains('canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; }', $source, 'the core asks the view where an arrow may end');
 	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
-	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
+	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto, .sd-bp-bar.sd-bp-proto')) return;", $source, 'the document shortcuts leave the view and its controls in the canvas bar alone');
 	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href, to) : null;', $source, 'the node gets the collector\'s patch');
 	pg_assert_contains('H.applyPatch(node.props, patch);', $source, 'the patch is written with its page binding');
 	pg_assert_contains('if (menuKey && row.drawable && change(main)) event.preventDefault();', $source, 'L on a links panel row opens its target menu');
@@ -760,9 +760,9 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
 	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: P.partH, openH: openH };", $source, 'the headings are translated');
 	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
-	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
+	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
-	pg_assert_true((bool) preg_match('/@media \(max-width: 767\.98px\) \{\s*\.sd-proto-btn-label \{ display: none; \}/', $css), 'the name is hidden on a phone only');
+	pg_assert_contains('.sd-bp-bar[data-fold="3"] .sd-vb-txt { display:none; }', $css, 'the name goes only when the canvas bar is too narrow for it');
 	pg_assert_contains('var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;', $tidy, 'the shared places only for an operator who may arrange the tabs, never in view mode');
 	pg_assert_contains('if (!window.confirm(msg)) return;', $tidy, 'nothing before the confirmation');
 	pg_assert_contains("_pgTabProto = {};\n            _pgTabsLayoutSave();", $tidy, 'the shared places cleared through the tab layout save');
@@ -1307,7 +1307,7 @@ function test_proto_hotspots_view_what_to_check()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 
 	pg_assert_contains("ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';", $source, '"N to check" in the bar');
-	pg_assert_contains("bar.appendChild(ui.check);", $source, 'after "N broken" in the view\'s own bar');
+	pg_assert_contains("map.appendChild(ui.broken);\n        map.appendChild(ui.check);", $source, 'after "N broken" in the canvas bar\'s Prototype mode');
 	foreach (array("group(_sdT('Broken links'), 'sd-proto-problem-broken'", "group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached'", "group(_sdT('Links without a target'), 'sd-proto-problem-empty'") as $group) {
 		pg_assert_contains($group, $source, 'a group of the problems list');
 	}
@@ -1315,9 +1315,9 @@ function test_proto_hotspots_view_what_to_check()
 	pg_assert_contains("var amber = _sdProtoEl('button', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
 	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
 	pg_assert_contains("shows.state === 'empty' ? _sdT('No target') : ", $source, 'a read-only list row without a target says so');
-	pg_assert_contains("if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');", $source, 'a link count that does not fit is left out whole');
-	pg_assert_contains('el.parentNode.title = el.textContent;', $source, 'its words stay in the bar\'s title');
-	pg_assert_contains('.sd-proto-status.sd-proto-status-out { visibility: hidden; }', $css, 'never cut with an ellipsis');
+	pg_assert_contains('.sd-bp-bar[data-fold="1"] .sd-bp-pcount,', $css, 'a link count that does not fit is left out whole: the bar folds it away first');
+	pg_assert_contains('ui.status.parentNode.title = ui.status.textContent;', $source, 'its words stay in its zone\'s title');
+	pg_assert_contains('.sd-bp-bar .sd-bp-pcount {', $css, 'never cut with an ellipsis');
 	pg_assert_contains('.sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }', $css, '"Broken links" in its button\'s red');
 	foreach (array('.sd-proto-check {', '.sd-proto-badge.sd-proto-badge-empty', '.sd-proto-unreached {', '.sd-proto-hot.sd-proto-mark-empty', '.sd-proto-li-empty .sd-proto-li-to') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);

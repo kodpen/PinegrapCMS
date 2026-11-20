@@ -7354,7 +7354,8 @@ const StyleDesigner = (function () {
             // Three zones (D54-D57): the mode, the canvas (screen size and
             // zoom), the view and the tools. Preview and Open on Site are rows
             // of the Preview menu beside Publish (_sdPreviewMenuBuild()). The
-            // ids are the ones every handler and shortcut reaches.
+            // ids are the ones every handler and shortcut reaches. Prototype
+            // mode puts its own two zones after the mode (_sdProtoBuild()).
             '<div class="sd-bp-bar" id="sd-bp-bar" data-fold="0">' +
             '<div class="sd-bp-zone sd-bp-mode" role="group" aria-label="' + esc(_sdT('Mode')) + '">' +
             '<button type="button" class="sd-bp-seg active" id="sd-vb-design" aria-pressed="true" title="' + esc(_sdT('Design')) + '"><span class="bi bi-pencil"></span><span class="sd-vb-txt">' + esc(_sdT('Design')) + '</span></button>' +
@@ -7382,7 +7383,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '" aria-label="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-plus-lg"></span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-fit" aria-pressed="false" title="' + esc(_sdT('Fit the page to the canvas')) + '" aria-label="' + esc(_sdT('Fit the page to the canvas')) + '"><span class="bi bi-arrows-angle-contract"></span></button>' +
             '</div>' +
-            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
+            '<span class="sd-bp-zsep sd-bp-zsep-tools" aria-hidden="true"></span>' +
             '<div class="sd-bp-zone sd-bp-tools">' +
             '<button type="button" class="sd-vb-btn sd-vb-view" id="sd-vb-view" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-vb-view-menu" title="' + esc(_sdT('Canvas view')) + '"><span class="bi bi-eye"></span><span class="sd-vb-txt">' + esc(_sdT('Canvas view')) + '</span><span class="sd-vb-badge" id="sd-vb-view-badge" aria-hidden="true" hidden></span><span class="bi bi-chevron-down sd-vb-caret"></span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '" aria-label="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span></button>' +
@@ -7810,6 +7811,16 @@ const StyleDesigner = (function () {
         menu.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - mw - 8))) + 'px';
         var first = menu.querySelector('[role="menuitemcheckbox"]');
         if (first) first.focus();
+    }
+
+    // The bar's mode (D54, D59): in Prototype mode the canvas's zones give
+    // way to the map's two (_sdProtoBuild()). A class, so the bar's observer
+    // measures it again for the fold; the View menu belongs to the canvas
+    // and closes.
+    function _sdCanvasBarMode(proto) {
+        var bar = document.getElementById('sd-bp-bar');
+        if (bar) bar.classList.toggle('sd-bp-proto', !!proto);
+        _sdViewMenuOpen(false);
     }
 
     // ── Fit (D55) ───────────────────────────────────────────────────────
@@ -74478,10 +74489,12 @@ const StyleDesigner = (function () {
         return b;
     }
 
-    // The overlay over the canvas: its bar and the graph canvas stage.
+    // The overlay over the canvas (the graph canvas stage), and its
+    // controls in the canvas bar.
     function _sdProtoBuild() {
         var area = document.querySelector('#sd-canvas .sd-iframe-area');
-        if (!area) return null;
+        var cbar = document.getElementById('sd-bp-bar');
+        if (!area || !cbar) return null;
         var G = window.PGGraphCanvas;
         var ui = {};
 
@@ -74490,11 +74503,17 @@ const StyleDesigner = (function () {
         ui.root.hidden = true;
         ui.root.setAttribute('aria-label', _sdT('Prototype'));
 
-        var bar = _sdProtoEl('div', 'sd-proto-bar');
-        bar.appendChild(_sdProtoEl('span', 'sd-proto-title', _sdT('Prototype')));
-        ui.status = _sdProtoEl('span', 'sd-proto-status');
+        // Prototype mode in the canvas bar (D59, D60): after the mode switch
+        // the map's zone (the count, "N broken", "N to check", the map's own
+        // zoom and Fit) and the tools' zone; the canvas's zones give way to
+        // them while the mode is on (_sdCanvasBarMode()). No Close button:
+        // the switch's Design side leads back. A label is sd-vb-txt, so it
+        // folds with the bar (_sdCanvasBarFold()).
+        var map = _sdProtoEl('div', 'sd-bp-zone sd-bp-pv sd-bp-pmap');
+        map.setAttribute('role', 'group');
+        map.setAttribute('aria-label', _sdT('Prototype map'));
+        ui.status = _sdProtoEl('span', 'sd-bp-pcount');
         ui.status.setAttribute('role', 'status');
-        bar.appendChild(ui.status);
         // "N broken" (F19): every broken link of the design, in a list.
         ui.broken = _sdProtoEl('button', 'sd-proto-broken');
         ui.broken.type = 'button';
@@ -74504,7 +74523,6 @@ const StyleDesigner = (function () {
             if (_sdProto.problems) _sdProtoProblemsClose(true);
             else _sdProtoProblemsOpen(ui.broken);
         });
-        bar.appendChild(ui.broken);
         // "N to check" (F28), amber: links without a target and pages no
         // link leads to, in the same list.
         ui.check = _sdProtoEl('button', 'sd-proto-check');
@@ -74515,60 +74533,88 @@ const StyleDesigner = (function () {
             if (_sdProto.problems) _sdProtoProblemsClose(true);
             else _sdProtoProblemsOpen(ui.check);
         });
-        bar.appendChild(ui.check);
-        var tools = _sdProtoEl('div', 'sd-proto-tools');
-        // "Suggest targets · n" (F30) while links have no target: the bar's
-        // own quiet button with its count.
+        // The map's zoom, apart from the canvas's: each mode keeps its own.
+        // The core writes "60%" into ui.zoomLabel; the bar shows it as the
+        // canvas's zoom is shown ("%60" in Turkish), and a click on it goes
+        // back to 100% as there.
+        var zoomOut = _sdProtoButton('bi-dash-lg', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); });
+        var zoomBtn = _sdProtoEl('button', 'sd-vb-zoom', _sdT('{var:1}%', 100));
+        zoomBtn.type = 'button';
+        zoomBtn.title = _sdT('Reset zoom to 100%');
+        zoomBtn.addEventListener('click', function () {
+            if (_sdProto.canvas && _sdProto.view.k > 0) _sdProto.canvas.view.zoomBy(1 / _sdProto.view.k);
+        });
+        ui.zoomLabel = { set textContent(text) { zoomBtn.textContent = _sdT('{var:1}%', parseInt(text, 10) || 0); } };
+        var zoomIn = _sdProtoButton('bi-plus-lg', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); });
+        // Fit shows everything, so a zoom to a frame is forgotten.
+        var fit = _sdProtoButton('bi-arrows-angle-contract', _sdT('Fit to screen'), function () {
+            if (!_sdProto.canvas) return;
+            _sdProtoZoomForget();
+            _sdProto.canvas.view.fit();
+        });
+        var line = _sdProtoEl('span', 'sd-vb-sep');
+        line.setAttribute('aria-hidden', 'true');
+        map.appendChild(ui.status);
+        map.appendChild(ui.broken);
+        map.appendChild(ui.check);
+        map.appendChild(line);
+        map.appendChild(zoomOut);
+        map.appendChild(zoomBtn);
+        map.appendChild(zoomIn);
+        map.appendChild(fit);
+
+        var tools = _sdProtoEl('div', 'sd-bp-zone sd-bp-pv sd-bp-ptools');
+        // All arrows, a switch: the other frames' arrows drawn faintly too;
+        // the choice is kept in this browser.
+        ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
+        ui.allEdges.classList.add('sd-bp-switch');
+        ui.allEdges.setAttribute('role', 'switch');
+        ui.allEdges.setAttribute('aria-checked', 'false');
+        ui.allEdges.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('All arrows')));
+        var knob = _sdProtoEl('span', 'sd-vb-switch');
+        knob.setAttribute('aria-hidden', 'true');
+        ui.allEdges.appendChild(knob);
+        // Tidy up changes every editor's arrangement, so it carries its name
+        // beside the icon (gone only when the bar is too narrow, where the
+        // title and the label still name it).
+        var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
+        tidy.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Tidy up')));
+        // "Suggest targets · n" (F30) while links have no target, its count
+        // kept when the label folds.
         ui.suggest = _sdProtoButton('bi-magic', _sdT('Suggest targets'), function () {
             if (_sdProto.suggest) _sdProtoSuggestClose(true);
             else _sdProtoSuggestOpen();
         });
         ui.suggest.classList.add('sd-proto-suggest-btn');
-        ui.suggest.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Suggest targets')));
+        ui.suggest.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Suggest targets')));
         ui.suggestCount = _sdProtoEl('span', 'sd-proto-suggest-count');
         ui.suggest.appendChild(ui.suggestCount);
         ui.suggest.hidden = true;
         ui.suggest.setAttribute('aria-haspopup', 'dialog');
-        tools.appendChild(ui.suggest);
+        // The links panel (F18): open or closed kept in this browser.
+        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
+        ui.listToggle.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Links')));
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
             var url = _sdProtoPlayUrl();
             if (url) window.open(url, '_blank', 'noopener');
         });
-        ui.play.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Play')));
+        ui.play.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Play')));
         ui.play.hidden = true;
-        tools.appendChild(ui.play);
-        ui.zoomLabel = _sdProtoEl('span', 'sd-vb-zoom', '100%');
-        tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
-        tools.appendChild(ui.zoomLabel);
-        tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
-        // Fit shows everything, so a zoom to a frame is forgotten.
-        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () {
-            if (!_sdProto.canvas) return;
-            _sdProtoZoomForget();
-            _sdProto.canvas.view.fit();
-        }));
-        // All arrows: the other frames' arrows drawn faintly too; the choice
-        // is kept in this browser.
-        ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
-        ui.allEdges.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('All arrows')));
-        ui.allEdges.setAttribute('aria-pressed', 'false');
+        var reload = _sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); });
+        [tidy, ui.suggest, ui.listToggle, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
         tools.appendChild(ui.allEdges);
-        // Tidy up changes every editor's arrangement, so it carries its name
-        // beside the icon (hidden on a phone, where the title and the label
-        // still name it).
-        var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
-        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
         tools.appendChild(tidy);
-        // The links panel (F18): open or closed kept in this browser.
-        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
-        ui.listToggle.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Links')));
+        tools.appendChild(ui.suggest);
         tools.appendChild(ui.listToggle);
-        tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
-        tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
-        bar.appendChild(tools);
-        ui.root.appendChild(bar);
+        tools.appendChild(ui.play);
+        tools.appendChild(reload);
+        var zsep = _sdProtoEl('span', 'sd-bp-zsep sd-bp-pv');
+        zsep.setAttribute('aria-hidden', 'true');
+        cbar.appendChild(map);
+        cbar.appendChild(zsep);
+        cbar.appendChild(tools);
 
         ui.live = _sdProtoEl('div', 'sd-proto-sr');
         ui.live.setAttribute('aria-live', 'polite');
@@ -74768,13 +74814,14 @@ const StyleDesigner = (function () {
         // Tab onto a drawable mark shows its handle too.
         ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
         ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
-        window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
         // A drawn arrow let go of, on a target or not.
         ['pointerup', 'pointercancel'].forEach(function (type) {
             window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
         });
-        // A press outside the target menu closes it.
-        ui.root.addEventListener('pointerdown', function (event) {
+        // A press outside the target menu closes it, the problems list too:
+        // on the map or on the canvas bar, where the view's controls are.
+        document.addEventListener('pointerdown', function (event) {
+            if (!_sdProto.open) return;
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
             if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target) && !(_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target))) _sdProtoProblemsClose(false);
         }, true);
@@ -74795,16 +74842,12 @@ const StyleDesigner = (function () {
         _sdProtoStatusFit();
     }
 
-    // The bar's link count is shown whole or not at all: when it does not
-    // fit beside "N broken" and "N to check" it is left out (its place
-    // kept), and its words stay in the bar's title.
+    // The count is shown whole or not at all: the canvas bar folds it away
+    // first when the bar is too narrow (_sdCanvasBarFold(), as the width
+    // text in Design mode), and its words stay in its zone's title.
     function _sdProtoStatusFit() {
         var ui = _sdProto.ui;
-        if (!ui) return;
-        var el = ui.status;
-        el.classList.remove('sd-proto-status-out');
-        el.parentNode.title = el.textContent;
-        if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');
+        if (ui && ui.status.parentNode) ui.status.parentNode.title = ui.status.textContent;
     }
 
     function _sdProtoToggle() {
@@ -74833,6 +74876,7 @@ const StyleDesigner = (function () {
         _sdProto.focusOpen = true;
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
+        _sdCanvasBarMode(true);
         _sdProtoLoad();
         _sdProto.ui.viewport.focus({ preventScroll: true });
     }
@@ -74853,7 +74897,10 @@ const StyleDesigner = (function () {
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
-        var btn = document.getElementById('sd-vb-proto');
+        // The bar's Prototype controls go with the mode: the focus goes to
+        // the switch's side now chosen.
+        _sdCanvasBarMode(false);
+        var btn = document.getElementById('sd-vb-design');
         if (btn) btn.focus();
     }
 
@@ -75252,7 +75299,7 @@ const StyleDesigner = (function () {
         } catch (e) {}
         if (_sdProto.ui) {
             _sdProto.ui.allEdges.classList.toggle('active', on);
-            _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
+            _sdProto.ui.allEdges.setAttribute('aria-checked', on ? 'true' : 'false');
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
         _sdProtoLegsSoon();
@@ -75790,10 +75837,13 @@ const StyleDesigner = (function () {
         _sdProto.problemsAnchor = anchor;
         _sdProto.problemsFrame = only ? String(frameId) : null;
         anchor.setAttribute('aria-expanded', 'true');
+        // Its button is in the canvas bar, above the map: the list opens at
+        // the map's top, under it.
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        // Under its button, above it where the view has no room below.
-        var top = r.bottom - o.top + 2;
+        // A frame's badge is on the map: the list opens under it, above it
+        // where the view has no room below.
+        var top = Math.max(4, r.bottom - o.top + 2);
         var above = r.top - o.top - 2 - el.offsetHeight;
         if (top + el.offsetHeight > o.height - 4 && above >= 4) top = above;
         el.style.top = top + 'px';
@@ -75908,9 +75958,11 @@ const StyleDesigner = (function () {
         canvas.groups();
 
         var count = l.edges.length;
+        var pages = l.frames.filter(function (f) { return f.kind === 'page'; }).length;
         var broken = _sdProto.broken.list.length;
-        // "N links", and "N broken" in red when there are any (F19).
-        _sdProtoStatus(_sdT('{var:1} links', count));
+        // "N pages · N links" (D59), and "N broken" in red when there are
+        // any (F19).
+        _sdProtoStatus(_sdT('{var:1} pages', pages) + ' · ' + _sdT('{var:1} links', count));
         var toCheck = _sdProto.issues.check;
         ui.broken.hidden = !broken;
         ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';
@@ -89030,10 +89082,12 @@ const StyleDesigner = (function () {
     function initKeyboard() {
         document.addEventListener('keydown', function (e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-            // The Prototype view keeps its own keys (_sdProtoBuild()): a
+            // The Prototype view keeps its own keys (_sdProtoBuild()), and so
+            // does the canvas bar while it holds the view's controls: a
             // Delete there must not remove the element selected on the
-            // canvas below it, nor Ctrl+Z undo twice.
-            if (e.target.closest && e.target.closest('#sd-proto')) return;
+            // canvas below it, nor Ctrl+Z undo twice or without reading the
+            // map again.
+            if (e.target.closest && e.target.closest('#sd-proto, .sd-bp-bar.sd-bp-proto')) return;
             // The code editor has its own keymap (Ctrl+D selects the next
             // match there, Ctrl+Z is its history); the designer's shortcuts
             // keep off it. Ctrl+S is caught before this listener and saves.
