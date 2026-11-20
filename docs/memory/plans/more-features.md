@@ -24,7 +24,6 @@ priority: 6
 
 ## Which plans are there?
 - `place-map.md`: the places of a collection on a map, with "near me".
-- `referral-programme.md`: a customer brings a friend and earns store credit.
 - `event-tickets.md`: a ticket with a QR code per place, check-in at the door, a waiting list.
 
 ## When is this file deleted?
