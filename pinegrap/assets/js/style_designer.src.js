@@ -14815,6 +14815,16 @@ const StyleDesigner = (function () {
                 mvBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdMoveOpen([node]); });
                 tbBtns.appendChild(mvBtn);
             }
+            // Copy style: the selected element's changed Style rows.
+            if (node.type !== 'root') {
+                var brushBtn = doc.createElement('button');
+                brushBtn.type = 'button';
+                brushBtn.className = 'sd-tb-brush-btn bi bi-brush';
+                brushBtn.title = _sdT('Copy style');
+                brushBtn.setAttribute('aria-label', _sdT('Copy style'));
+                brushBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdStyleCopy(); });
+                tbBtns.appendChild(brushBtn);
+            }
             // Binding indicator — shown when this node has any data binding (system widget).
             // Click scrolls the props panel to the "Bind Data" section + opens it.
             if (node.type !== 'root' && node.props && node.props._bindings) {
@@ -25724,6 +25734,9 @@ const StyleDesigner = (function () {
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(nodes) || !!(panel && panel.querySelector('.sd-panel-readonly')); },
             reset: _sdReviewResetRow,
             resetAll: _sdReviewResetAll,
+            // "Copy style" under the list: one element's changed Style rows.
+            copyStyle: _sdStyleCopy,
+            several: nodes.length > 1,
             // The question before "Reset all": a promise of the answer.
             ask: function (n) {
                 var msg = _sdT('The {var} changed options go back to their defaults. Undo brings them back.', n);
@@ -25736,6 +25749,231 @@ const StyleDesigner = (function () {
         };
     }
     // ── end of "Only what I changed"
+
+    // ── Copy and paste style, the quick strip: the core's hooks ──
+    // "Copy style" (the identity row's brush, the selected element's canvas
+    // toolbar, the review list's foot) takes the element's changed Style
+    // rows (_sdStyleTake()); "Paste style" fits them to the selection's
+    // Style rows (_sdStyleFit()) and writes them as one undo step. The copy
+    // is kept in this browser only (`sd_style_copy`), so it pastes on
+    // another page of the design. The quick strip on Content shows three
+    // Style rows of the element's kind (_sdQuickPick()); the changes per
+    // kind are counted in this browser (`sd_quick_counts`).
+    var _sdStyleClipMem = null;
+
+    // The Style tab of the panel drawn now, with every closed card's body:
+    // the pane on screen, else the tab held back (a detached copy).
+    function _sdStyleRoot() {
+        var panel = document.getElementById('sd-properties');
+        var pane = panel ? panel.querySelector('[data-sd-otab="style"]') : null;
+        var t = document.createElement('template');
+        t.innerHTML = pane ? pane.innerHTML : (_sdOptHeld.style || '');
+        var guard = 0, held;
+        while ((held = t.content.querySelector('[data-sd-lazy]')) && guard++ < 200) {
+            var sid = held.getAttribute('data-sd-lazy');
+            held.removeAttribute('data-sd-lazy');
+            held.innerHTML = _sdPanelLazy[sid] || '';
+        }
+        return t.content;
+    }
+
+    // The rows under `root`, each { row, label, specs } (_sdMcSpecOf() of
+    // its controls), in the panel's order.
+    function _sdStyleRowsOf(root) {
+        var out = [];
+        root.querySelectorAll('.sd-prop-row, .sd-sp-row').forEach(function (row) {
+            var lbl = row.querySelector(':scope > .sd-prop-label, :scope > .sd-sp-label');
+            if (!lbl) return;
+            var specs = Array.prototype.slice.call(row.querySelectorAll(_SD_MC_CTRL)).map(_sdMcSpecOf).filter(Boolean);
+            if (specs.length) out.push({ row: row, label: lbl.textContent.replace(/\s+/g, ' ').trim(), specs: specs });
+        });
+        return out;
+    }
+
+    function _sdStyleNodes() {
+        return (selectedNodes.length > 1 ? selectedNodes.slice() : [selectedNode]).filter(function (n) { return n && n.type !== 'root'; });
+    }
+
+    // The copy this browser keeps, or null.
+    function _sdStyleClipGet() {
+        var text = null;
+        try { text = localStorage.getItem('sd_style_copy'); } catch (e) {}
+        return _sdStyleClipRead(text) || _sdStyleClipMem;
+    }
+
+    // "Copy style": one element's changed Style rows kept in the browser.
+    function _sdStyleCopy() {
+        var n = selectedNodes.length > 1 ? null : selectedNode;
+        if (selectedNodes.length > 1) { sdToast(esc(_sdT('Copy style takes one element: select only one.')), 'info'); return; }
+        if (!n || n.type === 'root') return;
+        var rows = [];
+        _sdStyleRowsOf(_sdStyleRoot()).forEach(function (r) {
+            r.specs.forEach(function (s) { rows.push({ tab: 'style', label: r.label, spec: s, value: _sdMcRead(n, s), def: _sdMcDefault(n, s) }); });
+        });
+        var took = _sdStyleTake(rows);
+        if (!took.length) { sdToast(esc(_sdT('This element has no changed style to copy.')), 'info'); return; }
+        _sdStyleClipMem = { v: 1, kind: _sdPanelKind(n), rows: took };
+        try { localStorage.setItem('sd_style_copy', JSON.stringify(_sdStyleClipMem)); } catch (e) {}
+        sdToast(esc(_sdT('Style copied: {var} options.', took.length)), 'success');
+    }
+
+    // "Paste style": the copy fitted to the selection's Style rows and
+    // written to every selected element as one undo step; the toast says
+    // how many rows were left out.
+    function _sdStylePaste() {
+        var clip = _sdStyleClipGet();
+        var nodes = _sdStyleNodes();
+        if (!nodes.length) return;
+        if (!clip) { sdToast(esc(_sdT('No style is copied yet.')), 'info'); return; }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var why = _sdPanelLockReason(nodes);
+        if (why) { sdToast(esc(_sdContentReason(why)), 'warning'); return; }
+        var specs = [];
+        _sdStyleRowsOf(_sdStyleRoot()).forEach(function (r) { specs = specs.concat(r.specs); });
+        var fit = _sdStyleFit(clip.rows, specs);
+        if (!fit.rows.length) { sdToast(esc(_sdT('None of the copied style fits here.')), 'warning'); return; }
+        if (nodes.length > 1) {
+            _sdMcCommit(nodes, function (n) { _sdStyleWrite(n, fit.rows, _sdMcWrite); });
+        } else {
+            saveState();
+            _sdStyleWrite(nodes[0], fit.rows, _sdMcWrite);
+            var sid = _resolveSharedSid(nodes[0]);
+            if (sid) _sharedDirty[sid] = true;
+            _sdRenderNode(nodes[0], render);
+        }
+        sdToast(esc(fit.left ? _sdT('Style pasted. {var} options this element does not have were left out.', fit.left) : _sdT('Style pasted.')), fit.left ? 'warning' : 'success');
+    }
+
+    // The two entries of the brush's menu: "Copy style" needs one element.
+    function _sdStyleMenuItems() {
+        var nodes = _sdStyleNodes();
+        return [
+            { icon: 'bi-brush', label: _sdT('Copy style'), disabled: nodes.length !== 1, handler: _sdStyleCopy },
+            _sdGuardItem({ icon: 'bi-clipboard-check', label: _sdT('Paste style'), disabled: !_sdStyleClipGet(), handler: _sdStylePaste }, nodes)
+        ];
+    }
+
+    // The brush on the identity row (one element or several).
+    function _sdStyleBrushPut(head) {
+        var row = head.querySelector('.sd-id-row');
+        if (!row || !_sdStyleNodes().length) return;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.id = 'sd-id-brush';
+        b.className = 'sd-id-more sd-id-brush bi bi-brush';
+        b.title = _sdT('Copy or paste style');
+        b.setAttribute('aria-label', _sdT('Copy or paste style'));
+        b.setAttribute('aria-haspopup', 'menu');
+        row.insertBefore(b, row.querySelector('#sd-id-more'));
+        b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var r = b.getBoundingClientRect();
+            showCtxMenu(r.left, r.bottom + 4, _sdStyleMenuItems());
+        });
+    }
+
+    // The counts of changes per kind this browser keeps.
+    function _sdQuickCounts() {
+        var all = null;
+        try { all = JSON.parse(localStorage.getItem('sd_quick_counts') || 'null'); } catch (e) {}
+        return (all && typeof all === 'object') ? all : {};
+    }
+
+    // A change in Style counted for the selected element's kind.
+    function _sdQuickCount(ctrl) {
+        if (!ctrl || !ctrl.closest || !ctrl.closest('[data-sd-otab="style"]') || selectedNodes.length > 1 || !selectedNode) return;
+        var key = _sdStyleKey(_sdMcSpecOf(ctrl));
+        if (!key) return;
+        var all = _sdQuickCounts();
+        var kind = _sdPanelKind(selectedNode);
+        all[kind] = _sdQuickTally(all[kind] || {}, key);
+        try { localStorage.setItem('sd_quick_counts', JSON.stringify(all)); } catch (e) {}
+    }
+
+    // A card's value as its row shows it: a select's option text, a
+    // colour's square; "— Multiple —" when the elements differ.
+    function _sdQuickValue(row, key, vals) {
+        var info = _sdMcVals(vals);
+        if (info.mixed) return { text: _sdT('— Multiple —'), mixed: true, swatch: '' };
+        var v = info.value;
+        var sel = Array.prototype.filter.call(row.querySelectorAll('select'), function (s) { return _sdStyleKey(_sdMcSpecOf(s)) === key; })[0];
+        var opt = sel ? Array.prototype.filter.call(sel.options, function (o) { return o.value === v; })[0] : null;
+        var text = opt ? opt.textContent : (v || _sdT('Default'));
+        var swatch = '';
+        Array.prototype.forEach.call(row.querySelectorAll('.sd-cp-option'), function (o) {
+            if (o.getAttribute('data-val') !== v) return;
+            var d = o.querySelector('.sd-color-preview');
+            if (d) swatch = Array.prototype.filter.call(d.classList, function (c) { return c !== 'sd-color-preview'; }).join(' ');
+        });
+        return { text: String(text).replace(/\s+/g, ' ').trim(), mixed: false, swatch: swatch };
+    }
+
+    // The quick strip on Content, after the element's own section: three
+    // cards of Style rows; a click opens the row in Style.
+    function _sdQuickDraw(panel, nodes) {
+        if (!panel._sdQuickOn) {
+            panel._sdQuickOn = true;
+            panel.addEventListener('change', function (e) { _sdQuickCount(e.target); }, true);
+        }
+        var pane = panel.querySelector('[data-sd-otab="content"]');
+        if (!pane || _sdOptTab !== 'content' || _sdReviewOn || panel.querySelector('[data-sd-otab-all]')) return;
+        var n0 = nodes[0];
+        var p = n0.props || {};
+        var rows = _sdStyleRowsOf(_sdStyleRoot());
+        var byKey = {};
+        var list = [];
+        rows.forEach(function (r) {
+            r.specs.forEach(function (s) {
+                var key = _sdStyleKey(s);
+                if (!key || byKey[key] || !_sdStyleSpecOk(s)) return;
+                byKey[key] = r;
+                list.push({ key: key, spec: s, label: r.label });
+            });
+        });
+        var pick = _sdQuickPick(list, _sdQuickFamily(n0.type, p.tag, p.contentType), _sdQuickCounts()[_sdPanelKind(n0)]);
+        if (!pick.length) return;
+        var strip = document.createElement('div');
+        strip.className = 'sd-quick';
+        strip.setAttribute('role', 'group');
+        strip.setAttribute('aria-label', _sdT('Quick styles'));
+        strip.innerHTML = pick.map(function (q) {
+            var v = _sdQuickValue(byKey[q.key].row, q.key, nodes.map(function (n) { return _sdMcRead(n, q.spec); }));
+            return '<button type="button" class="sd-quick-card" data-sd-quick="' + esc(q.key) + '" title="' + esc(q.label + ': ' + v.text) + '">' +
+                '<span class="sd-quick-cap">' + esc(q.label) + '</span>' +
+                '<b class="sd-quick-v' + (v.mixed ? ' sd-mixed' : '') + '">' +
+                    (v.swatch ? '<span class="sd-color-preview ' + esc(v.swatch) + '" aria-hidden="true"></span>' : '') +
+                    '<span class="sd-quick-t">' + esc(v.text) + '</span></b>' +
+            '</button>';
+        }).join('');
+        var own = pane.querySelector(':scope > [data-sd-card]');
+        pane.insertBefore(strip, own ? own.nextSibling : pane.firstChild);
+        strip.addEventListener('click', function (e) {
+            var c = e.target.closest ? e.target.closest('.sd-quick-card') : null;
+            if (c) _sdQuickGo(c.getAttribute('data-sd-quick'));
+        });
+    }
+
+    // A card's click: Style opens with the row's card open and the focus
+    // in the row's control.
+    function _sdQuickGo(key) {
+        var panel = document.getElementById('sd-properties');
+        if (!panel) return;
+        var find = function () {
+            var pane = panel.querySelector('[data-sd-otab="style"]');
+            var hit = pane ? _sdStyleRowsOf(pane).filter(function (r) {
+                return r.specs.some(function (s) { return _sdStyleKey(s) === key; });
+            })[0] : null;
+            return hit ? hit.row : null;
+        };
+        _sdOptTab = 'style';
+        var el = _sdOptReveal(find);
+        if (!el) return;
+        var ctl = el.querySelector('.sd-seg-on, select:not([hidden]):not(.d-none), .sd-cp-trigger, input:not([type="hidden"]), .sd-seg, button:not(.sd-sp-toggle):not(.sd-chg-reset)');
+        if (ctl && ctl.offsetParent) ctl.focus();
+        else { el.setAttribute('tabindex', '-1'); el.focus(); }
+        if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+    }
+    // ── end of copy and paste style hooks
 
     // Enter on a result (PGOptionsSearch.target()): the search ends, the
     // panel shows the row's tab with its card open (_sdOptReveal()), the
@@ -34403,6 +34641,7 @@ const StyleDesigner = (function () {
         bindMultiPropEvents(nodes);
         _sdSpBoxBind(nodes);
         _sdMcHead(nodes, alike, shown, counts);
+        if (alike) _sdQuickDraw(panel, nodes);
         // Content level: the panel edits only when every element may be edited.
         _sdPanelLock(panel.firstElementChild, _sdPanelLockReason(nodes));
         _sdReviewAfter(counts);
@@ -35931,12 +36170,14 @@ const StyleDesigner = (function () {
         more.addEventListener('click', function (e) {
             e.stopPropagation();
             var r = more.getBoundingClientRect();
-            showCtxMenu(r.left, r.bottom + 4, [
+            // Under 300 px the brush is not drawn: its entries lead the menu.
+            var narrow = !!(more.closest && more.closest('.sd-rcol-narrow'));
+            showCtxMenu(r.left, r.bottom + 4, (narrow ? _sdStyleMenuItems().concat([{ sep: true }]) : []).concat([
                 _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
                 { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ]);
+            ]));
         });
     }
 
@@ -36099,6 +36340,7 @@ const StyleDesigner = (function () {
         head.innerHTML = node ? (mc ? mc.id : _sdIdentityRow(node)) + _sdOptTabStrip(shown, _sdOptTab, counts) + (mc ? mc.tail : '') : '';
         if (!node) return;
         if (!mc) _sdIdentityBind(head, node);
+        _sdStyleBrushPut(head);
         var strip = head.querySelector('.sd-otabs');
         if (!strip) return;
         strip.addEventListener('click', function (e) {
@@ -36369,6 +36611,7 @@ const StyleDesigner = (function () {
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
         _sdTrLoad(selectedNode);
         _sdPropsHead(selectedNode, _shown, _counts);
+        _sdQuickDraw(panel, [selectedNode]);
         _sdReviewAfter(_counts);
         panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
@@ -63651,6 +63894,141 @@ const StyleDesigner = (function () {
             esc(_sdT('A change is written to all {var} elements at once', count)) + '</span></div>';
     }
     // ── end of several elements selected
+
+    // ── Copy and paste style: pure helpers ──
+    // No DOM and no editor state: what "Copy style" takes from an element,
+    // how it is fitted to the selection "Paste style" writes it on, the
+    // copy kept in the browser, and the three rows of the quick strip.
+    // tests/designer_style_copy_test.php runs them under Node.
+
+    // Props never copied, even from a Style row: content, a link, a
+    // picture's address, a data binding.
+    var _SD_STYLE_NEVER = /^(?:(?:text|html|content|label|caption|title|alt|src|srcset|poster|href|url|link|linkUrl|target|rel|icon)$|_?bind)/i;
+
+    // A row's key: its class group, spacing prefix, class switch or prop.
+    function _sdStyleKey(s) {
+        if (!s) return '';
+        if (s.group) return 'g:' + s.group.join(',');
+        if (s.prefix) return 'u:' + s.prefix;
+        if (s.toggle) return 't:' + s.toggle;
+        if (s.prop) return 'p:' + s.prop;
+        return '';
+    }
+
+    // Whether a control's spec may be copied: a class or a prop that is
+    // not content; never an attribute.
+    function _sdStyleSpecOk(s) {
+        if (!s || s.attr) return false;
+        if (s.group) return s.group.length > 0;
+        if (s.prefix || s.toggle) return true;
+        return !!s.prop && !_SD_STYLE_NEVER.test(s.prop);
+    }
+
+    // The changed rows of Style from the controls of an element's panel,
+    // each { tab, label, spec (_sdMcSpec()), value (_sdMcValOf()), def
+    // (_sdMcDefault()) }: [{ key, spec, value, label }] in the panel's
+    // order, a row met twice (its per-size box) once.
+    function _sdStyleTake(rows) {
+        var seen = {}, out = [];
+        (rows || []).forEach(function (r) {
+            if (!r || r.tab !== 'style' || !_sdStyleSpecOk(r.spec)) return;
+            var v = r.value == null ? '' : String(r.value);
+            if (!_sdMcChanged(r.spec, v, r.def)) return;
+            var key = _sdStyleKey(r.spec);
+            if (seen[key]) return;
+            seen[key] = 1;
+            out.push({ key: key, spec: r.spec, value: v, label: String(r.label || '').replace(/\s+/g, ' ').trim() });
+        });
+        return out;
+    }
+
+    // The copied rows fitted to the target's Style controls (`specs`): a
+    // row the target has is kept; a class group of another kind whose
+    // entries hold the value takes it through the target's group; any
+    // other row is left out. { rows, left, leftLabels }.
+    function _sdStyleFit(copied, specs) {
+        var byKey = {};
+        (specs || []).forEach(function (s) { if (_sdStyleSpecOk(s)) byKey[_sdStyleKey(s)] = s; });
+        var out = { rows: [], left: 0, leftLabels: [] };
+        (copied || []).forEach(function (r) {
+            var s = byKey[r.key];
+            if (!s && r.spec && r.spec.group) {
+                s = (specs || []).filter(function (t) { return t && t.group && t.group.indexOf(r.value) !== -1; })[0];
+            }
+            if (s) out.rows.push({ key: _sdStyleKey(s), spec: s, value: r.value, label: r.label });
+            else { out.left++; out.leftLabels.push(r.label); }
+        });
+        return out;
+    }
+
+    // Writes the fitted rows into element `n` with `write(n, spec, value)`.
+    function _sdStyleWrite(n, rows, write) {
+        (rows || []).forEach(function (r) { write(n, r.spec, r.value); });
+    }
+
+    // The copy kept in the browser read back: { v: 1, kind, rows } with
+    // rows of a spec that may be copied, else null.
+    function _sdStyleClipRead(text) {
+        var o = null;
+        try { o = JSON.parse(String(text || '')); } catch (e) { return null; }
+        if (!o || o.v !== 1 || !Array.isArray(o.rows) || !o.rows.length) return null;
+        var ok = o.rows.every(function (r) {
+            if (!r || !r.spec || typeof r.value !== 'string') return false;
+            if (r.spec.group && !Array.isArray(r.spec.group)) return false;
+            return _sdStyleSpecOk(r.spec) && r.key === _sdStyleKey(r.spec);
+        });
+        return ok ? o : null;
+    }
+
+    // The quick strip's fixed rows per family, found in Style by a class
+    // a row's group holds or by 'u:' and a spacing prefix: a text (a
+    // heading: alignment, size, colour), an image, any other box.
+    var _SD_QUICK_FIXED = {
+        text: ['text-center', 'fs-4', 'text-primary'],
+        image: ['rounded-3', 'shadow', 'u:mb-'],
+        box: ['bg-primary', 'rounded-3', 'shadow']
+    };
+
+    // An element's family for the quick strip.
+    function _sdQuickFamily(type, tag, ct) {
+        if (_sdMcHasText(type, tag, ct)) return 'text';
+        if ((type === 'content' && ct === 'image') || (type === 'semantic' && String(tag || '') === 'img')) return 'image';
+        return 'box';
+    }
+
+    // Whether a row's spec is the one probe `p` names.
+    function _sdQuickIs(s, p) {
+        if (!s) return false;
+        if (p.indexOf('u:') === 0) return s.prefix === p.slice(2);
+        return !!s.group && s.group.indexOf(p) !== -1;
+    }
+
+    // The strip's three rows from the Style rows `rows` ([{ key, spec,
+    // label }] in the panel's order): the rows this browser counted most
+    // changes of for the kind (`counts` by key) first, then the family's
+    // fixed rows; a row not in `rows` is skipped.
+    function _sdQuickPick(rows, family, counts) {
+        rows = rows || [];
+        counts = counts || {};
+        var out = [];
+        var add = function (r) { if (r && out.length < 3 && out.indexOf(r) === -1) out.push(r); };
+        rows.filter(function (r) { return (Number(counts[r.key]) || 0) > 0; })
+            .map(function (r, i) { return { r: r, i: i, n: Number(counts[r.key]) }; })
+            .sort(function (a, b) { return (b.n - a.n) || (a.i - b.i); })
+            .forEach(function (x) { add(x.r); });
+        (_SD_QUICK_FIXED[family] || _SD_QUICK_FIXED.box).forEach(function (p) {
+            add(rows.filter(function (r) { return _sdQuickIs(r.spec, p); })[0]);
+        });
+        return out;
+    }
+
+    // The counts with one more change of row `key`.
+    function _sdQuickTally(counts, key) {
+        var c = counts || {};
+        if (key) c[key] = (Number(c[key]) || 0) + 1;
+        return c;
+    }
+    // ── end of copy and paste style
 
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)

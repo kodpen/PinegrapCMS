@@ -26,7 +26,7 @@ description: The Options panel with several elements selected (#10468): identity
 - At content level the panel is locked when one element may not be edited (`_sdPanelLockReason(nodes)`).
 - Before #10468 it was one list with no head or tabs, and the fields of Size and display, Tooltip and Accessibility, the switches of Shadow and effect and the spacing box wrote nothing.
 
-## What is left to other steps?
-- The brush and the quick strip (DP10), "Only what I changed" (DP9).
+## What do the brush, the quick strip and the review do here?
+- The brush's "Paste style" writes to all, "Copy style" is dimmed; the quick strip is drawn when the kinds are alike (`designer-options-copy-style.md`). "Only what I changed": `designer-options-review.md`.
 
 Test: `tests/designer_options_multiple_test.php` (pure block "Several elements selected: pure helpers" under Node).

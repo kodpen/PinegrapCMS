@@ -9027,6 +9027,7 @@
     "This element": "Bu öğe",
     "This element cannot be deleted (it contains a loop area)": "Bu öğe silinemez (loop alanı içeriyor)",
     "This element cannot be moved": "Bu öğe taşınamaz",
+    "This element has no changed style to copy.": "Bu öğede kopyalanacak değiştirilmiş stil yok.",
     "This element is inside a <strong>{var}</strong> system widget.": "Bu element bir <strong>{var}</strong> sistem widget içinde.",
     "This element is inside a system widget. To bind data, first pick a <strong>form</strong> for the widget (the System Widget section).": "Bu element bir sistem widget içinde. Veri bağlama için önce widget'a bir <strong>form</strong> seçin (Sistem Widget bölümü).",
     "This element is inside a {var}. Bind it to the chosen form's fields or to the built-in fields.": "Bu element bir {var} içinde. Seçilen formun alanlarına ya da yerleşik alanlara bağlayın.",
