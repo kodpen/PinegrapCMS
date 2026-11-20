@@ -281,7 +281,10 @@
                 // list item.
                 marker.bindPopup(function () {
                     var item = card(place);
+                    // Leaflet draws its popup white in either colour mode:
+                    // the card's text takes the light mode's colours there.
                     var box = el('div', 'pg-map-popup');
+                    box.setAttribute('data-bs-theme', 'light');
 
                     while (item.firstChild) {
                         box.appendChild(item.firstChild);
@@ -361,8 +364,9 @@
             picture.style.position = 'relative';
 
             var ask = el('div', 'position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center gap-2 text-center p-3 rounded bg-body shadow-sm');
+            ask.style.width = '20rem';
             ask.style.maxWidth = '90%';
-            var open = el('button', 'btn btn-primary', t('Show the map'));
+            var open = el('button', 'btn btn-primary w-100 text-wrap', t('Show the map'));
             open.type = 'button';
             open.addEventListener('click', function () {
                 notice.click();
