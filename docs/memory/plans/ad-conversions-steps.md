@@ -4,12 +4,13 @@ description: Plan ad-conversions, steps SC1 to SC7: the record and queue with th
 ---
 
 ## Which steps are there?
-- SC1 (M) first: the record and the queue.
-  - Migration step in 2026.11.0: `ad_conversion_events` (C10), idempotent helpers; the columns in the PR body, asked of the architect before ready. The sweep and the privacy export and erase.
-  - New `includes/fn/ad_conversions.php`: the pure consent reader, the pure event builder (purchase, the hashing of C2, the event id), the status 0 rows at the payment step, the queueing at completion, the general job's pass. Tests red first: consent given, refused, taken back, notice off with and without the box; a marketplace order; a payment service's message completing the order; a second completion.
+- SC1 (M) first: the `ad_conversion_events` table, the consent reader and the purchase event.
+  - Migration step in 2026.11.0: the `ad_conversion_events` table (`workflow/decisions-made-schema-35.md`), idempotent helpers; the columns in the PR body, asked of the architect before ready. The sweep and the privacy export and erase.
+  - New `includes/fn/ad_conversions.php`: the pure consent reader, the pure event builder (purchase, the hashing of C2, the event id), the status 0 rows at the payment step, the queueing at completion, the general job's pass.
+  - Tests red first: the consent reader's three inputs (notice on, stored answer, the service's box): notice off and box off, notice off and box on, notice on and no answer, yes, no; consent taken back; a marketplace order; a payment service's message completing the order; a second completion.
   - Features: C1, C2, C3, C10, C10b. `submit_order.php`: not while a `plans/stock-holds.md` SH3 PR is open.
 - SC2 (M) after SC1: Meta Conversions API.
-  - The Connections page and its registry row, the sealed keys, the sender and its answers; the body read from Meta's own document into `api/meta-capi-facts.md`. Tests on recorded answers. Features: C8 (Meta), C9.
+  - The Connections page and its registry row, the sealed keys, the sender and its answers; the body read from Meta's own document into `api/meta-capi-facts.md`. Tests on recorded answers. Features: C8 (Meta, with the notice-off box), C9.
 - SC3 (S) after SC2: GA4 Measurement Protocol: the API secret on its page, purchase and refund, the validation endpoint; `api/ga4-mp-facts.md`. Features: C4, C8 (GA4).
 - SC4 (S) after SC2: TikTok Events API: page, sender, test code; `api/tiktok-events-facts.md`. Feature: C8 (TikTok).
 - SC5 (S) after SC2: Lead, CompleteRegistration, add to cart from `cart_action.php` and begin checkout (C6); the receipt page's event id. Features: C5, C6, C7.

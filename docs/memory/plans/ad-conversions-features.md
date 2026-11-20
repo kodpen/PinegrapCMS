@@ -20,10 +20,11 @@ description: Plan ad-conversions, features C1 to C12: the buyer's ids and consen
   - GA4: the Measurement ID from the Google Analytics page, and an API secret; the test goes to the validation endpoint.
   - TikTok: Pixel code and access token; the test event code.
   - Which events each service gets: ticks on its page.
-- C9 Without consent: "Send events without the person" (amount and products only) for purchase and refund, off by default; at completion with no row, a row without the person is written. "Send personal data while the cookie notice is off", off by default (poll 175).
+  - "Send personal data while the cookie notice is off": off by default, per service, in its `config_text` row, with a plain line under it: the buyer was not asked and the risk is the shop's. It acts only while the notice is off. Notice off and box clear: the page says "The cookie notice is off: events go without the person" and points to the box and the cookie consent setting. Ticking or clearing it writes an activity log line (who, which service).
+- C9 Without consent: "Send events without the person" (amount and products only) for purchase and refund, off by default; at completion with no row, a row without the person is written. With the notice off, personal data (hashed e-mail and phone, ids, IP, browser name) goes only when the service's box (C8) is ticked.
 
 ## How does it stay reliable?
-- C10 `ad_conversion_events`, one row per event and service: id BIGINT UNSIGNED, service VARCHAR(20), event VARCHAR(30), order_id, event_id VARCHAR(64), ids TEXT NULL (NULL once sent or given up), detail TEXT NULL (no personal data), person, status (0 waits for the order, 1 queued, 2 sent, 3 refused or given up), attempts, next_attempt_at, last_status_code, last_error VARCHAR(500), created_at, sent_at. UNIQUE (service, event_id); keys (status, next_attempt_at), order_id, (service, created_at).
+- C10 `ad_conversion_events`, one row per event and service; its columns and keys: `workflow/decisions-made-schema-35.md`. Status 0 waits for the order, 1 due, 2 sent, 3 refused or given up.
 - C10b Queued at completion; the body built at send from the order (C2), never a plain e-mail or phone in the row. Its own pass in the general job with its own time budget; `api_webhook_backoff()` and `api_http_should_retry()`; a refused body (400) is not retried; a service that timed out has its other rows put off without a call. Rows over 30 days swept; `pg_privacy_erase_tables()` covers a person's orders' rows.
 - C11 From the table, each page shows the last 50 events (time, event, order, sent or refused with the reason, with or without the person), and per day sent, failed and the share with the person. An operations alert when a service refused every event of a day.
 

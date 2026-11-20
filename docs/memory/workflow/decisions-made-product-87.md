@@ -13,7 +13,7 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 - The plan: `plans/ad-conversions.md`.
 
 ## Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
-- "Varsayılan gitmesin, mağaza açabilsin": with the notice off nobody is asked, so no personal data goes by default; each service's Connections page has "Send personal data while the cookie notice is off", which the shop ticks at its own risk.
+- "Varsayılan gitmesin, mağaza açabilsin": with the notice off nobody is asked, so no personal data goes by default; each service's Connections page has "Send personal data while the cookie notice is off", which the shop ticks at its own risk; off by default, per service, it acts only while the notice is off, and ticking or clearing it writes an activity log line (architect, message 10516).
 - Why asked: poll 166 says "a buyer who accepted"; `decisions-made-customers.md` (owner, 2026-10-28) counts marketing as the software's feature, and `pg_consent_allows()` answers yes while the notice is off.
 - Not chosen: "Hiç gitmesin" (never), "Hep gitsin" (always, no box).
 

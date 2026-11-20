@@ -24,9 +24,9 @@ priority: 6
 - The privacy export and erase (`pg_privacy_erase_tables()`) cover whatever the plan keeps about a person.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10514)
-- Owner, poll 174 (message 10512): one table, `ad_conversion_events`: queue, log and the buyer's ids (C10). Not `api_webhook_queue`: its dispatcher sends in order, 20 s a pass, so a slow ad service would hold webhooks and chat messages. Not a column on `orders`.
-- Owner, poll 175 (message 10513): with the cookie notice off no personal data goes by default; each Connections page has "Send personal data while the cookie notice is off", ticked at the shop's own risk.
-- Consent is read by a pure function from the stored answer (notice on and marketing yes), never `pg_consent_allows()`.
+- Owner, poll 174 (message 10512): one table, `ad_conversion_events`: queue, log and the buyer's ids (`workflow/decisions-made-schema-35.md`, message 10515). Not `api_webhook_queue`, not a column on `orders`; the reasons are in that part.
+- Owner, poll 175 (message 10513): with the cookie notice off no personal data goes by default; each Connections page has "Send personal data while the cookie notice is off" (C8), ticked at the shop's own risk (message 10516).
+- Consent is read by a pure function from three inputs (notice on, the stored answer, the service's box), never `pg_consent_allows()`.
 - Add to cart and begin checkout from the server, no new public endpoint (C6); both only with consent. The architect's reading; the owner may turn it.
 - A click id (`fbclid`, `gclid`, `ttclid`) seen before consent waits in the session, never in the table, used only if consent comes; a new cookie follows `platform/cookie-consent-new-cookies.md`.
 - `submit_order.php` is also entered by `plans/stock-holds.md` SH3: never two open PRs on it.
