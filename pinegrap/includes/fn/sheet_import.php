@@ -224,18 +224,19 @@ function pg_sheet_xls_names($path)
  * a row is as wide as the header at least; a later row the sheet leaves out, or one without text, is a blank line,
  * so a file line is the sheet's row number less the rows above the header.
  *
- * The separator is the comma, unless the headings hold commas: then the
- * semicolon or the tab, whichever none of them holds, so an importer that
- * counts separators on the header line finds it.
+ * The separator is the one given, or else the comma, unless the headings
+ * hold commas: then the semicolon or the tab, whichever none of them holds,
+ * so an importer that counts separators on the header line finds it.
  *
  * @param string $path   the workbook
  * @param string $kind   pg_sheet_kind()
  * @param int    $sheet  which sheet, 0 for the first
  * @param string $target the CSV file to write
  * @param string $error  '' or read, large, sheet (pg_sheet_rows()), empty
+ * @param string $separator the importer's own separator, '' to choose one
  * @return bool
  */
-function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error)
+function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error, $separator = '')
 {
     $error = '';
     $lines = array();
@@ -289,11 +290,14 @@ function pg_sheet_import_csv($path, $kind, $sheet, $target, &$error)
         return false;
     }
 
-    $separator = ',';
     $joined = implode('', $header);
 
-    if (strpos($joined, ',') !== false) {
-        $separator = (strpos($joined, ';') === false) ? ';' : "\t";
+    if ($separator === '') {
+        $separator = ',';
+
+        if (strpos($joined, ',') !== false) {
+            $separator = (strpos($joined, ';') === false) ? ';' : "\t";
+        }
     }
 
     $handle = @fopen($target, 'wb');
@@ -461,9 +465,10 @@ function pg_sheet_import_hidden_fields($fields, $prefix = '')
  * @param string $file_name the uploaded file's name
  * @param array  $names     the sheet names
  * @param string $token     the staged workbook's token
+ * @param string $back      where Cancel goes, '' for the importer's own address
  * @return string HTML
  */
-function pg_sheet_import_question($title, $file_name, $names, $token)
+function pg_sheet_import_question($title, $file_name, $names, $token, $back = '')
 {
     $options = '';
 
@@ -491,7 +496,7 @@ function pg_sheet_import_question($title, $file_name, $names, $token)
             <select class="pg-input" id="pg_sheet" name="pg_sheet">' . $options . '</select>
             <div class="d-flex flex-wrap gap-3 mt-5">
                 <button type="submit" class="pg-button pg-button-fill">' . h(lang('Continue')) . '</button>
-                <a class="pg-button pg-button-quiet" href="' . h($self) . '">' . h(lang('Cancel')) . '</a>
+                <a class="pg-button pg-button-quiet" href="' . h(($back !== '') ? $back : $self) . '">' . h(lang('Cancel')) . '</a>
             </div>
         </section>
     </form>
@@ -505,11 +510,15 @@ function pg_sheet_import_question($title, $file_name, $names, $token)
  * A workbook with more than one sheet and no sheet chosen yet prints the
  * sheet question and ends the request.
  *
- * @param string $field the file field's name
- * @param string $title the importer's screen title, for the sheet question
+ * @param string $field   the file field's name
+ * @param string $title   the importer's screen title, for the sheet question
+ * @param array  $options 'separator': the CSV separator the importer reads
+ *                        (pg_sheet_import_csv()); 'back': where the
+ *                        question's Cancel goes when the form posts to an
+ *                        address that is not the screen
  * @return string
  */
-function pg_sheet_import_upload($field, $title)
+function pg_sheet_import_upload($field, $title, $options = array())
 {
     $token = isset($_POST['pg_sheet_token']) ? (string) $_POST['pg_sheet_token'] : '';
     $screen = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
@@ -582,7 +591,7 @@ function pg_sheet_import_upload($field, $title)
                 'time'   => time(),
             );
 
-            print pg_sheet_import_question($title, $name, $names, $token);
+            print pg_sheet_import_question($title, $name, $names, $token, (string) ($options['back'] ?? ''));
             exit();
         }
 
@@ -597,7 +606,7 @@ function pg_sheet_import_upload($field, $title)
 
     pg_sheet_import_made($csv);
 
-    if (!pg_sheet_import_csv($path, $kind, $sheet, $csv, $error)) {
+    if (!pg_sheet_import_csv($path, $kind, $sheet, $csv, $error, (string) ($options['separator'] ?? ''))) {
         return pg_sheet_import_error_text($error);
     }
 

@@ -6,7 +6,7 @@
  * the same rows as .csv, .xlsx, .ods and .xls read the same way by each
  * importer's own CSV reading; a two-sheet workbook names its sheets and
  * gives the chosen one; the sheet question's hidden fields and the refusal
- * texts.
+ * texts; the semicolon file the translations import reads.
  *
  * The fixtures (tests/fixtures/sheet_import/) were written by LibreOffice
  * 24.2 from one openpyxl workbook: a sheet "Rows" (numbers, text with a
@@ -132,6 +132,28 @@ function test_sheet_import_each_importer_reads_a_workbook_as_its_csv()
 		pg_assert_same($expected['key codes'], sheet_import_test_key_code_rows($path), $kind . ': key codes');
 		pg_assert_same($expected['shipments'], pg_shipping_import_read(pg_csv_open($path), 100), $kind . ': tracking numbers');
 		pg_assert_same($expected['erp'], sheet_import_test_erp_rows($path), $kind . ': ERP accounts');
+	}
+}
+
+function test_sheet_import_writes_the_translations_semicolon()
+{
+	$expected = sheet_import_test_generic_rows(sheet_import_test_fixture('rows.csv'));
+
+	foreach (array('xlsx', 'ods', 'xls') as $kind) {
+		$target = tempnam(sys_get_temp_dir(), 'pg_sheet_import');
+		pg_sheet_import_made($target);
+		pg_assert_true(pg_sheet_import_csv(sheet_import_test_fixture('rows.' . $kind), $kind, 0, $target, $error, ';'), $kind);
+
+		// pg_tr_csv_import() reads the semicolon first.
+		$handle = fopen($target, 'r');
+		$rows = array();
+
+		while (($row = fgetcsv($handle, 0, ';', '"', '\\')) !== false) {
+			$rows[] = $row;
+		}
+
+		fclose($handle);
+		pg_assert_same($expected, $rows, $kind . ': the separator the translations import reads');
 	}
 }
 
