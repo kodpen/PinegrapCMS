@@ -9,7 +9,7 @@ description: Plan ad-conversions, steps SC1 to SC7: the record and queue with th
   - New `includes/fn/ad_conversions.php`: the pure consent reader, the pure event builder (purchase, the hashing of C2, the event id), the status 0 rows at the payment step, the queueing at completion, the general job's pass.
   - Tests red first: the consent reader's three inputs (notice on, stored answer, the service's box): notice off and box off, notice off and box on, notice on and no answer, yes, no; consent taken back; a marketplace order; a payment service's message completing the order; a second completion.
   - Features: C1, C2, C3, C10, C10b. `submit_order.php`: not while a `plans/stock-holds.md` SH3 PR is open.
-- SC1b (S) after SC1, beside SC2: the click ids of the landing address (`fbclid`, `gclid`, `ttclid`).
+- SC1b (S) after SC1, beside SC2: the click ids of the landing address (`fbclid`, `gclid`, `ttclid`). Done in #10781 (memory: `api/ad-conversions-click-ids.md`).
   - New `includes/fn/ad_click_ids.php`: the pure list of the parameters read per service, a value's bound (length and characters; another value is dropped), the click's time. The capture where a visitor page starts: the session only, never the table or a cookie before consent; with consent into the purchase row's `ids`, dropped when consent is refused or taken back.
   - One call in the ids reader of `ad_conversions.php`; SC2 never edits that reader. Tests red first; the PR says what a cached page does.
 - SC2 (M) after SC1: Meta Conversions API. Done in #10812 (memory: `api/ad-conversions-meta.md`, `api/meta-capi-facts.md`).
