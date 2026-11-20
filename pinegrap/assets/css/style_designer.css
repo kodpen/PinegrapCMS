@@ -7831,6 +7831,18 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-li-target-empty .sd-proto-li-target-name { color: var(--pgc-in); }
 .sd-proto-li-target-broken { border-color: color-mix(in srgb, #ff6b6b 60%, transparent); }
 .sd-proto-li-target-broken .sd-proto-li-target-name { color: #ff6b6b; }
+/* A row carried onto the canvas: on a touch screen an up or down
+   swipe still scrolls the panel and a sideways one carries the row; the
+   row fades while a ghost with its label follows the pointer. */
+.sd-proto-li-drag { touch-action: pan-y; }
+.sd-proto-li-dragged { opacity: .45; }
+.sd-proto.sd-proto-row-drag,
+.sd-proto.sd-proto-row-drag * { cursor: grabbing; user-select: none; }
+.sd-proto-ghost {
+    position: absolute; z-index: 6; max-width: 280px; padding: 3px 8px; border-radius: 4px; pointer-events: none;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: .75rem; line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
 /* "N broken" in the bar (F19) and its list; a frame's count (F20). */
 .sd-proto-broken {
     flex: none; padding: 1px 8px; border: 1px solid #ff6b6b; border-radius: 10px;

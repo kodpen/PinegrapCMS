@@ -74173,6 +74173,9 @@ const StyleDesigner = (function () {
         // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
         // back to, null when not; the last tap (_sdProtoTap()).
         zoom: null, tap: null,
+        // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
+        // null when none.
+        rowDrag: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74621,6 +74624,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
@@ -75425,6 +75429,7 @@ const StyleDesigner = (function () {
                 if (menuKey && row.drawable && change(main)) event.preventDefault();
             });
             var li = line(outBox, data.id + '|' + row.port, main);
+            _sdProtoRowDraggable(li, main, data.id, row.port);
             li.classList.add('sd-proto-li-out');
             if (row.why) li.classList.add('sd-proto-li-broken');
             if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
@@ -75463,7 +75468,8 @@ const StyleDesigner = (function () {
             if (link.shared) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdT('shared part')));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(link.frame, link.port, false); });
-            line(inBox, link.frame + '|' + link.port, main);
+            var li = line(inBox, link.frame + '|' + link.port, main);
+            _sdProtoRowDraggable(li, main, link.frame, link.port);
         });
 
         if (data.parts.length) {
@@ -76091,18 +76097,22 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // The href an arrow from a frame's row to `to` writes, null where none
-    // may go: a link of a tree, to a tab's frame or a chip of a site page,
-    // another site or a contact address, never from a tab that is not
-    // opened to the operator.
-    function _sdProtoArrowHref(from, to, port) {
-        var H = window.PGProtoHotspots;
+    // Whether a frame's link may be pointed elsewhere here (K2): a link of a
+    // tree, never on a tab that is not opened to the operator.
+    function _sdProtoMayDraw(from, port) {
         var row = _sdProtoRow(from, port);
-        if (!row || !H.drawable(row) || !to) return null;
+        if (!row || !window.PGProtoHotspots.drawable(row)) return false;
         var key = _sdProtoFrameTab(from);
         var page = key ? _pgPageByKey(key) : null;
-        if (!page || page.access === 'locked') return null;
-        return H.hrefTo(to, _sdProto.env);
+        return !!(page && page.access !== 'locked');
+    }
+
+    // The href an arrow from a frame's row to `to` writes, null where none
+    // may go: a link _sdProtoMayDraw() allows, to a tab's frame or a chip of
+    // a site page, another site or a contact address.
+    function _sdProtoArrowHref(from, to, port) {
+        if (!to || !_sdProtoMayDraw(from, port)) return null;
+        return window.PGProtoHotspots.hrefTo(to, _sdProto.env);
     }
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
@@ -76168,6 +76178,160 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // ── A links panel row carried onto the canvas ──
+    // A row of a link that may be drawn (out of the selected frame or into
+    // it) pressed and moved past 4 px is carried: a ghost with its label
+    // follows the pointer, the link's arrow is drawn from its frame to the
+    // pointer, and the frame or chip under the pointer that may take it
+    // lights up as for an arrow drawn from a mark. Let go there, the link
+    // is written by _sdProtoConnect() as such an arrow is (K1 to K3); let
+    // go anywhere else, Esc, a cancelled pointer or the view's closing
+    // write nothing. The keyboard keeps L on the row (the target menu).
+    function _sdProtoRowDraggable(li, main, frameId, port) {
+        if (!window.PGProtoHotspots.drawable(_sdProtoRow(_sdProto.byId[frameId], port))) return;
+        li.classList.add('sd-proto-li-drag');
+        main.title = _sdT('Drag onto a page to set the target');
+        li.addEventListener('pointerdown', function (event) { _sdProtoRowDragStart(event, li, frameId, port); });
+    }
+
+    function _sdProtoRowDragStart(event, li, frameId, port) {
+        if (!event.isPrimary || event.button !== 0) return;
+        if (event.target.closest && event.target.closest('.sd-proto-li-act')) return;
+        // A tab that is not opened to the operator draws nothing (K2).
+        if (!_sdProtoMayDraw(_sdProto.byId[frameId], port)) return;
+        _sdProtoRowDragEnd(false);
+        var label = li.querySelector('.sd-proto-li-label');
+        _sdProto.rowDrag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, frame: frameId, port: port, li: li, label: label ? label.textContent : '', moved: false, over: null, ghost: null };
+        window.addEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.addEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.addEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.addEventListener('keydown', _sdProtoRowDragKey, true);
+    }
+
+    function _sdProtoRowDragMove(event) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d || !ui || event.pointerId !== d.id) return;
+        if (!d.moved) {
+            if (Math.abs(event.clientX - d.sx) + Math.abs(event.clientY - d.sy) < 4) return;
+            d.moved = true;
+            _sdProtoMenuClose(false);
+            _sdProtoDrawing(true);
+            ui.root.classList.add('sd-proto-row-drag');
+            d.li.classList.add('sd-proto-li-dragged');
+            d.ghost = _sdProtoEl('div', 'sd-proto-ghost');
+            d.ghost.setAttribute('aria-hidden', 'true');
+            ui.root.appendChild(d.ghost);
+            // Held only once it is a drag, so a click still picks the link.
+            try { d.li.setPointerCapture(d.id); } catch (e) {}
+            try { window.getSelection().removeAllRanges(); } catch (e) {}
+        }
+        event.preventDefault();
+        var hit = _sdProtoRowDropAt(d, event.clientX, event.clientY);
+        var to = hit ? hit.to : null;
+        _sdProtoRowDragOver(d, to);
+        d.ghost.textContent = to ? d.label + ' → ' + (to.kind === 'chip' ? _sdProtoChipText(to) : _sdProtoFrameName(to)) : d.label;
+        var box = ui.root.getBoundingClientRect();
+        d.ghost.style.left = Math.max(4, Math.min(event.clientX - box.left + 14, box.width - d.ghost.offsetWidth - 4)) + 'px';
+        d.ghost.style.top = Math.max(4, Math.min(event.clientY - box.top + 14, box.height - d.ghost.offsetHeight - 4)) + 'px';
+        _sdProtoRowDragLine(d, event.clientX, event.clientY);
+    }
+
+    function _sdProtoRowDragUp(event) {
+        var d = _sdProto.rowDrag;
+        if (!d || event.pointerId !== d.id) return;
+        var hit = (d.moved && event.type === 'pointerup') ? _sdProtoRowDropAt(d, event.clientX, event.clientY) : null;
+        _sdProtoRowDragEnd(d.moved);
+        if (hit) _sdProtoConnect(hit.from, hit.to, d.port);
+    }
+
+    function _sdProtoRowDragKey(event) {
+        var d = _sdProto.rowDrag;
+        if (event.key !== 'Escape') return;
+        // A row carried: Esc drops it and leaves the view open.
+        if (d && d.moved) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        _sdProtoRowDragEnd(false);
+    }
+
+    // The drag let go of; `eat` swallows the click its pointer's release
+    // makes, so a row carried back onto the panel picks nothing.
+    function _sdProtoRowDragEnd(eat) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d) return;
+        _sdProto.rowDrag = null;
+        window.removeEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.removeEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.removeEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.removeEventListener('keydown', _sdProtoRowDragKey, true);
+        if (!d.moved || !ui) return;
+        _sdProtoRowDragOver(d, null);
+        if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
+        d.li.classList.remove('sd-proto-li-dragged');
+        ui.root.classList.remove('sd-proto-row-drag');
+        ui.temp.classList.add('pgc-hidden');
+        _sdProtoDrawing(false);
+        if (eat) {
+            var swallow = function (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            };
+            window.addEventListener('click', swallow, true);
+            setTimeout(function () { window.removeEventListener('click', swallow, true); }, 0);
+        }
+    }
+
+    // Whether a pointer at (clientX, clientY) is on the canvas itself: not
+    // on the bar, the links panel or a control over the canvas.
+    function _sdProtoOnCanvas(clientX, clientY) {
+        var ui = _sdProto.ui;
+        var under = ui ? document.elementFromPoint(clientX, clientY) : null;
+        return !!(under && ui.viewport.contains(under));
+    }
+
+    // The link of a carried row and the frame or chip under the pointer
+    // that may take it ({ from, to }), else null. The map may have been
+    // read again meanwhile: the frame and its row are found anew.
+    function _sdProtoRowDropAt(d, clientX, clientY) {
+        var from = _sdProto.byId[d.frame];
+        var row = _sdProtoRow(from, d.port);
+        if (!row || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) return null;
+        var hit = window.PGProtoHotspots.rowDrop(row, _sdProto.items, _sdProto.canvas.view.point(clientX, clientY), _sdProto.env);
+        return (hit && _sdProtoArrowHref(from, hit.item, d.port) !== null) ? { from: from, to: hit.item } : null;
+    }
+
+    // The frame or chip a carried row would point its link at, lit with
+    // the core's target class (null: none).
+    function _sdProtoRowDragOver(d, item) {
+        var ui = _sdProto.ui;
+        var id = item ? item.id : null;
+        if (!ui || d.over === id) return;
+        d.over = id;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.pgc-target')).forEach(function (n) { n.classList.remove('pgc-target'); });
+        var box = id ? ui.boxes.querySelector('[data-node="' + String(id).replace(/"/g, '') + '"]') : null;
+        if (box) box.classList.add('pgc-target');
+    }
+
+    // The carried link's arrow, drawn as the core draws one being drawn:
+    // from its mark's side of its frame facing the pointer, to the pointer;
+    // hidden while the pointer is off the canvas.
+    function _sdProtoRowDragLine(d, clientX, clientY) {
+        var ui = _sdProto.ui;
+        var from = _sdProto.byId[d.frame];
+        if (!from || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) {
+            ui.temp.classList.add('pgc-hidden');
+            return;
+        }
+        var at = _sdProto.canvas.view.point(clientX, clientY);
+        var rects = _sdProto.pics.rects[from.id];
+        var p = window.PGProtoHotspots.markPort(from, rects ? (rects[d.port] || null) : undefined, { x: at.x, y: at.y, w: 0, h: 0 });
+        ui.temp.setAttribute('d', window.PGGraphCanvas.curve(from.x + p.x, from.y + p.y, at.x, at.y).d);
+        ui.temp.classList.remove('pgc-hidden');
     }
 
     // ── Suggest targets (F30 to F34) ──
