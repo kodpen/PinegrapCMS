@@ -25,7 +25,7 @@ priority: 6
 - Each score, conflict, override, decision and mail is an `audit_log` line (`pg_audit()`).
 
 ## What did the architect decide? (2026-11-20, agent channel message 10843)
-- Schema: four tables, `application_programs`, `application_reviewers`, `application_entries`, `application_reviews`. Rounds and criteria as JSON on the programme row, criteria templates one `config_text` row; the juror link's hash on the reviewer row, the correction link's on the entry row; no column on `forms`. The owner said yes in poll 199 ("Evet, dört tablo eklensin", message 10845); the columns: architect, schema decisions list part 44.
+- Schema: four tables, `application_programs`, `application_reviewers`, `application_entries`, `application_reviews`. Rounds and criteria as JSON on the programme row, criteria templates one `config_text` row; the juror link's hash on the reviewer row, the correction link's on the entry row; no column on `forms`. The owner said yes in poll 199 ("Evet, dört tablo eklensin", message 10845); the columns in `decisions-made-schema-44.md`.
 - Reviewers: programme membership only, no permission column. A panel user opens "My reviews" through membership, with no Forms right, and it opens no Forms screen; a person with no panel sign-in works through the juror link. The role 3 ladder stays as it is.
 - Export (owner, poll 200, message 10846): the entry's state, decision, combined score and criterion scores; never jurors' notes or names. Erase covers the four tables.
 - Place: under Forms, run by whoever passes `validate_forms_access()` and the folder rule. Close-out file: `core/application-review.md`.

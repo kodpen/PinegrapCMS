@@ -23,7 +23,7 @@ priority: 6
 - The person's export and erase cover every answer; an erased answer keeps its score with no person and no comment.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10843)
-- Schema: two tables, `feedback_surveys` and `feedback_responses`. "Don't ask me again" is a flag on the response row, the person found by a hash of the e-mail or phone; extra answers and the follow-up's outcome are on the response row too. The owner said yes in poll 197 (message 10847); the columns: architect, schema decisions list part 45.
+- Schema: two tables, `feedback_surveys` and `feedback_responses`. "Don't ask me again" is a flag on the response row, the person found by a hash of the e-mail or phone; extra answers and the follow-up's outcome are on the response row too. The owner said yes in poll 197 (message 10847); the columns in `decisions-made-schema-45.md`.
 - Place: a new "Surveys" tab of the Communication area, one file and gate per tab (`ui/messages-area-rules.md`). Role 2 and up change a survey; role 3 with the contacts right sees results without staff figures.
 - Close-out file: `platform/feedback-loop.md`.
 
