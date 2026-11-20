@@ -7979,3 +7979,72 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-tabs-all-item .sd-tab-cc, .sd-tabs-list .sd-tab-cc { margin-left: .4rem; cursor: inherit; }
 /* A tab with a waiting change keeps room for its name beside the pill. */
 .sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }
+
+/* ── Moving without dragging (D41 to D44) ─────────────────────────────────
+   The row buttons (one group, on the row under the pointer, with the focus
+   or selected), the focused row, a cut row, the "Move…" window. */
+.sd-tree-list li:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-tree-list li.sd-tree-cut { opacity: .5; }
+.sd-tree-list li.sd-tree-cut > .sd-tree-lbl { text-decoration: line-through dashed; }
+.sd-tree-list li > .sd-tree-lbl ~ .sd-tree-mv:not(.sd-tree-sect-count) {
+    flex-shrink: 0; min-width: auto; overflow: visible;
+}
+.sd-tree-mv { display: inline-flex; gap: 2px; margin-left: auto; padding-left: 4px; }
+.sd-tree-mv-b {
+    width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px;
+    background: transparent; color: var(--sd-text-muted); font-size: 11px; line-height: 20px; cursor: pointer;
+}
+.sd-tree-mv-b:hover { background: var(--sd-accent-soft); color: var(--sd-text); }
+.sd-tree-drag-ghost .sd-tree-mv { display: none; }
+@media (pointer: coarse) { .sd-tree-mv-b { width: 32px; height: 28px; line-height: 28px; } }
+
+.sd-move-dialog { width: min(480px, calc(100vw - 32px)); }
+.sd-move-handle { display: none; }
+.sd-move-head { gap: 8px; }
+.sd-move-icon { color: var(--sd-accent); }
+.sd-move-title { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.3; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sd-move-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.sd-move-search { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px;
+    border: 1px solid var(--sd-input-border); border-radius: 6px; background: var(--sd-input-bg); color: var(--sd-text-muted); }
+.sd-move-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--sd-text); font-size: 13px; }
+.sd-move-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.sd-move-list li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px;
+    border-radius: 6px; cursor: pointer; color: var(--sd-text); }
+.sd-move-list li.sd-move-act { background: var(--sd-hover-bg, var(--sd-accent-soft)); }
+.sd-move-list li.sd-move-on { background: var(--sd-accent-soft); }
+.sd-move-list li.sd-move-more { cursor: default; color: var(--sd-text-muted); font-size: 12px; }
+.sd-move-tile { flex: 0 0 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: var(--sd-raised-bg); }
+.sd-move-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sd-move-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-path { font-size: 11px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-list mark { padding: 0; background: var(--sd-accent-soft); color: inherit; }
+.sd-move-check { color: var(--sd-accent); }
+.sd-move-foot { flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+.sd-move-places { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--sd-raised-bg); }
+.sd-move-place { height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-text-muted); font-size: 12px; cursor: pointer; }
+.sd-move-place.sd-move-place-on { background: var(--sd-accent); color: var(--sd-on-accent); }
+.sd-move-why { flex: 1; min-width: 0; font-size: 12px; color: var(--sd-text-muted); }
+.sd-move-why.sd-move-refused { color: var(--sd-warning); }
+.sd-move-go { margin-left: auto; }
+
+/* A 390 px phone: a sheet of the full height from the bottom, under the top
+   bar, with touch sizes (designer-panels-measures-6.md). */
+@media (max-width: 575.98px) {
+    .sd-move-dialog { position: fixed; inset: 58px 0 0 0; width: 100%; max-width: none; height: auto; max-height: none;
+        margin: 0; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; }
+    .sd-move-dialog:not([open]) { display: none; }
+    .sd-move-handle { display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px;
+        background: var(--sd-border-strong); touch-action: none; }
+    .sd-move-head .btn-close { width: 36px; height: 36px; }
+    .sd-move-body { flex: 1; }
+    .sd-move-search { height: 40px; }
+    .sd-move-list { max-height: none; flex: 1; }
+    .sd-move-list li { min-height: 54px; }
+    .sd-move-tile { flex-basis: 32px; height: 32px; }
+    .sd-move-places { height: 44px; align-items: center; }
+    .sd-move-place { height: 36px; }
+    .sd-move-go { height: 44px; }
+}

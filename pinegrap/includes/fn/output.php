@@ -8123,6 +8123,7 @@ function pg_js_bundles()
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
+        'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
@@ -8200,6 +8201,9 @@ function pg_designer_parts()
         // The Overview's tree search: the page's elements found by name,
         // text, class and id, listed with their path.
         'treesearch' => 'assets/js/style_designer_treesearch.min.js',
+        // The "Move…" window: an element moved without dragging, its
+        // target searched by name, Before, Into or After.
+        'move' => 'assets/js/style_designer_move.min.js',
         // The prototype comments of the design: the pins on the canvas and
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',
