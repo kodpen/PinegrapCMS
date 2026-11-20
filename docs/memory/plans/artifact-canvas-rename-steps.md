@@ -4,7 +4,7 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
 ---
 
 ## Which steps are there?
-- AC1 (S) The drawing.
+- AC1 (S) The drawing. Done: #10516.
   - Existing files: `includes/fn/output.php` (`pg_menu_icon()`, case `design_canvas`: the paths of `plans/artifact-canvas-rename.md`), `tests/design_canvas_icon_test.php` (red first: two sheets and a wave, no crop marks, no anchors, both forms).
   - Nothing else: the main menu, the canvas's top bar, the File Manager's menu and file tools and Workspace's two New canvas entries draw it through `pg_design_canvas_icon()` and its one-colour twin.
   - Memory: `ui/design-canvas-icon.md`.
