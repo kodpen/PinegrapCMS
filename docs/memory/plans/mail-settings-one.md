@@ -9,7 +9,7 @@ priority: 8
 - "eposta ayar menüsü tek olabilir. içinde 2 ye tablar ile ayrılır"; "eposta kutularını kaldırma ekleme ekranları çok modern olmalı".
 - The Mailboxes tab's own content is `plans/mailboxes-tidy.md` (MT1 to MT4); this plan does not redraw it.
 
-## What contradicts today? (read on development, 2026-11-21)
+## What contradicts today? (development, 2026-11-21)
 - (C1) Two categories, E-mail sending (`mail_sending`) and Mailboxes (`mailboxes`), each sending the reader to the other.
 - (C2) One Google or Microsoft account is connected twice: for sending (purpose `mail`) and for mailboxes (`mail_read`). System's select lists only `mail` accounts (`includes/settings/mail_sending.php:44`).
 - (C3) Three layers decide how the site's mail leaves (System's account, else the Sending service, else System's server), told only in a paragraph.
@@ -23,16 +23,16 @@ priority: 8
 - Key `email`, label "E-mail", tabs `sending` and `mailboxes` kept in the address. Each tab keeps today's gate; the category shows when the user may open one tab, and with one right there is no tab control.
 - (C2) One `connect_accounts` row per provider account, with the purposes it was granted. A box's account is offered for sending as it is, no new consent. A sending account chosen for a box asks the wider consent on the same account (its address as login hint, granted scopes kept) and updates that row, never a second. A site that only sends keeps the narrow scope.
 - (C2) Removing a box never disconnects an account sending uses; Connections' Disconnect says both uses stop.
-- (C4) Nothing switches by itself on a running site: the Campaigns line says what happens today. "The same way as system e-mail" is a way the administrator chooses, stored in `config_text` (no schema); a Google account's daily limit is why it is never automatic.
+- (C4) Nothing switches by itself on a running site: the Campaigns line says what happens today. "The same way as system e-mail" is a way the administrator chooses, stored in `config_text` (no schema); never automatic, for a Google account's daily limit.
 - (C6) MailChimp's key, list and sync to Connections' Mailchimp page, the old anchors opening it; Opt-In Label and Plain Text Footer to the Campaign mail row.
 - (C8) The addresses stay with their features: no copy in Sending, no next plan; the settings search finds them.
 
-## What did the owner answer?
-- Owner (2026-11-21): the design, boards A to E of `plans/mail-settings-one/email-settings.jpg`: "Evet, böyle yapılsın" (agent channel poll 211, message 11311). The design files land with the architect's docs PR.
-- One-click Gmail through the `connect.pinegrap.com` broker and Google's verification: poll 212 (message 11312). Whatever the answer, EM5 builds Sign in with Google on the site's own Google application; the broker is a plan of its own.
+## What did the owner answer? (`workflow/decisions-made-panel-14.md`)
+- Owner (2026-11-21): the design, boards A to E of `plans/mail-settings-one/email-settings.jpg`: "Evet, böyle yapılsın" (poll 211). Its parts enter the Design examples screen as DX2b (`plans/design-examples-patterns-mail.md`, message 11316).
+- Owner (2026-11-21): no `connect.pinegrap.com` broker or Google verification now (poll 212, "Şimdi değil"). Sign in with Google runs on the site's own Google application; not set up, the two "not set up" cards.
 
 ## What binds it?
 - Field names, ids and what a save stores do not change; old addresses and anchors open the right tab (`pg_settings_legacy_anchors()`).
 - `mail_settings.php` and `includes/settings/mailboxes*.php` take one PR at a time; mailboxes-tidy's steps go first there.
 
-Related: docs/memory/plans/mail-settings-one-steps.md, docs/memory/plans/mail-settings-one-screens.md, docs/memory/plans/mail-settings-one-design.md, docs/memory/plans/mailboxes-tidy.md
+Related: docs/memory/plans/mail-settings-one-steps.md, docs/memory/plans/mail-settings-one-screens.md, docs/memory/plans/mailboxes-tidy.md
