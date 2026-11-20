@@ -411,7 +411,30 @@ function ws_api_channel_board_get($params)
    The Activity tab
    --------------------------------------------------------------------------- */
 
-// What ws_channel_activity() returns.
+/**
+ * ws_channel_activity() as the route gives it: the same answer, part by
+ * part. Pure.
+ *
+ * @param array $activity ws_channel_activity()
+ * @return array
+ */
+function ws_api_channel_activity_present($activity)
+{
+    return array(
+        'channel_id' => (int) $activity['channel_id'],
+        'summary'    => $activity['summary'],
+        'project'    => $activity['project'],
+        'agents'     => $activity['agents'],
+        'requests'   => $activity['requests'],
+        'waiting'    => $activity['waiting'],
+        'decisions'  => $activity['decisions'],
+        'usage'      => $activity['usage'],
+        'usage_tip'  => (string) $activity['usage_tip'],
+        'repository' => $activity['repository'],
+    );
+}
+
+// What ws_api_channel_activity_present() returns.
 function ws_api_channel_activity_schema()
 {
     $agent_ref = array(array('id' => 'integer', 'handle' => 'string', 'name' => 'string'));
@@ -454,7 +477,7 @@ function ws_api_channel_activity_get($params)
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
-    api_ok(ws_channel_activity($viewer, $channel, time()));
+    api_ok(ws_api_channel_activity_present(ws_channel_activity($viewer, $channel, time())));
 }
 
 /* ---------------------------------------------------------------------------
