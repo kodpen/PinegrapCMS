@@ -19768,6 +19768,49 @@ a.ws-chip-message:hover,
   color: var(--pg-fg-2);
   font-style: italic;
 }
+/* A presentation (pg_office_view.js): its slides as a list, each its
+   title, text, pictures and speaker notes, without the slide's layout. */
+.office-slides {
+  list-style: none;
+  margin: 0;
+}
+.office-slide {
+  padding: 0 0 1rem;
+  margin: 0 0 1rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+.office-slide:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+.office-doc .office-slide-title {
+  margin-top: 0;
+  font-size: 1.0625rem;
+}
+.office-slide-n {
+  font-weight: 400;
+}
+.office-slide-hidden {
+  margin-left: .5rem;
+  font-size: .8125rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--pg-fg-2);
+}
+.office-doc .office-slide-text {
+  margin: 0 0 .35rem;
+  white-space: pre-wrap;
+}
+.office-doc .office-slide-row {
+  tab-size: 4;
+  font-variant-numeric: tabular-nums;
+}
+.office-slide-notes {
+  margin-top: .6rem;
+  padding: .5rem .75rem;
+  border-left: 3px solid var(--pg-border-color);
+  color: var(--pg-fg-2);
+}
 /* A document offered for editing (pg_office_view.js): a paragraph is
    picked, then typed in a box that takes the place of its text. */
 .office-doc [data-p] {
