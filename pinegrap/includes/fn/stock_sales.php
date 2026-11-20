@@ -217,6 +217,29 @@ function pg_stock_order_location($order_id)
 }
 
 /**
+ * The location an order line's units go back to: the location saved on its
+ * order while it is still a location, else 0 (the default). 0 without
+ * locations.
+ *
+ * @param int $order_item_id
+ * @return int
+ */
+function pg_stock_order_item_location($order_item_id)
+{
+    if (!pg_stock_has_locations()) {
+        return 0;
+    }
+
+    $stored = (int) db_value(
+        "SELECT orders.stock_location_id
+        FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
+        WHERE order_items.id = '" . (int) $order_item_id . "'");
+
+    return $stored ? (int) pg_stock_resolve_location(pg_stock_locations(), $stored) : 0;
+}
+
+/**
  * Store the order's location on the order at completion and answer it.
  * 0 (nothing written) when the site has no locations.
  *
