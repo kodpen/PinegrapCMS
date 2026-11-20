@@ -148,7 +148,7 @@
 - decisions-made-product-84.md: Decisions list, product part 84 (2026-11-20 on): the sales watch, where the store learns its order rhythm and says when it breaks
 - decisions-made-product-85.md: Decisions list, product part 85 (2026-11-20 on): the site explains itself to AI agents (plan ai-guide): who builds it, the guide's language and doors, the compact tool list, hints on refusals
 - decisions-made-product-86.md: Decisions list, product part 86 (2026-11-20 on): an order sold beyond the stock is flagged now; holding units during payment enters a plan; no lock and no automatic refund
-- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok enter a plan; personal data only with consent, not by default with the cookie notice off
+- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre enters a plan
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
@@ -179,6 +179,7 @@
 - decisions-made-schema-33.md: Decisions list, schema part 33 (2026-11-20 on): the stock_taken columns on order_items and order_item_components, so a marketplace cancel puts back only what the sale took
 - decisions-made-schema-34.md: Decisions list, schema part 34 (2026-11-20 on): the stock_holds table of plan stock-holds, units held for an order while its payment runs
 - decisions-made-schema-35.md: Decisions list, schema part 35 (2026-11-20 on): the ad_conversion_events table of plan ad-conversions, the send queue, the event log and the buyer's ids until sent
+- decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates

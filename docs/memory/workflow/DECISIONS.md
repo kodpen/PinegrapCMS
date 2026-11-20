@@ -461,6 +461,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-87.md: Where are the rules and the earlier parts?
 - decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
 - decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
+- decisions-made-product-87.md: Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -562,6 +563,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-35.md: Where are the rules and the earlier parts?
 - decisions-made-schema-35.md: Does the ad conversions plan get a table? (owner, 2026-11-20, agent channel poll 174, channel message 10512)
 - decisions-made-schema-35.md: Which columns does it have? (architect, 2026-11-20, channel message 10514)
+- decisions-made-schema-36.md: Where are the rules and the earlier parts?
+- decisions-made-schema-36.md: Does the request box get a table? (owner, 2026-11-20, agent channel poll 177, channel message 10555)
+- decisions-made-schema-36.md: Which columns does it have? (architect, 2026-11-20, channel message 10557)
+- decisions-made-schema-36.md: Where do destruction records live? (architect, 2026-11-20, channel message 10557)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
