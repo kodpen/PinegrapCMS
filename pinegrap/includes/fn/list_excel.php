@@ -390,7 +390,7 @@ function pg_list_excel_table($handle, $types, $date_format)
 
         if (empty($headings)) {
             foreach ($cells as $index => $heading) {
-                $heading = (string) $heading;
+                $heading = pg_list_excel_text((string) $heading);
                 $headings[] = $heading;
                 $column_types[] = isset($types[$index]) ? $types[$index] : (isset($types[$heading]) ? $types[$heading] : 'text');
             }
@@ -449,7 +449,27 @@ function pg_list_excel_cell($value, $type, $delimiter, $date_format)
         }
     }
 
-    return pg_csv_formula_unguard($value);
+    return pg_list_excel_text(pg_csv_formula_unguard($value));
+}
+
+/**
+ * Text as a workbook cell takes it: bytes that are no UTF-8 (a value cut
+ * inside a letter, an old Latin-1 row) replaced, and at most the 32,767
+ * characters Excel holds in a cell. Either would make Excel refuse the file
+ * as damaged, where the CSV opened.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_list_excel_text($value)
+{
+    $value = (string) $value;
+
+    if (preg_match('//u', $value) !== 1) {
+        $value = function_exists('mb_scrub') ? mb_scrub($value, 'UTF-8') : mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+    }
+
+    return (mb_strlen($value, 'UTF-8') > 32767) ? mb_substr($value, 0, 32767, 'UTF-8') : $value;
 }
 
 /**
