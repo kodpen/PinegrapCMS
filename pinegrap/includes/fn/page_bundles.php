@@ -723,6 +723,25 @@ function pg_page_bundle_load_recycle()
  */
 function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
 {
+    $busy = pg_page_bundle_busy_answer() + array('item_id' => 0, 'draft_page_id' => 0);
+
+    return pg_page_bundle_with_lock($bundle, $user, $busy, function ($bundle) use ($live_page_id, $user) {
+        return pg_page_bundle_add_copy_locked($bundle, $live_page_id, $user);
+    });
+}
+
+/**
+ * Adds a copy of a live page to a bundle, under the bundle's lock: a
+ * publish running reads the items once, so a page added meanwhile would
+ * wait in a bundle that is published.
+ *
+ * @param array $bundle       pg_page_bundle_get(), read under the lock
+ * @param int   $live_page_id
+ * @param array $user
+ * @return array as pg_page_bundle_add_copy()
+ */
+function pg_page_bundle_add_copy_locked($bundle, $live_page_id, $user)
+{
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'draft_page_id' => 0);
     };
@@ -856,6 +875,24 @@ function pg_page_bundle_add_draft_check($bundle, $draft_page_id)
  * @return array ok, error, item_id, time_cleared
  */
 function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
+{
+    $busy = pg_page_bundle_busy_answer() + array('item_id' => 0, 'time_cleared' => false);
+
+    return pg_page_bundle_with_lock($bundle, $user, $busy, function ($bundle) use ($draft_page_id, $user) {
+        return pg_page_bundle_add_draft_locked($bundle, $draft_page_id, $user);
+    });
+}
+
+/**
+ * Adds a draft to a bundle, under the bundle's lock
+ * (pg_page_bundle_add_copy_locked()).
+ *
+ * @param array $bundle        pg_page_bundle_get(), read under the lock
+ * @param int   $draft_page_id
+ * @param array $user
+ * @return array as pg_page_bundle_add_draft()
+ */
+function pg_page_bundle_add_draft_locked($bundle, $draft_page_id, $user)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'item_id' => 0, 'time_cleared' => false);

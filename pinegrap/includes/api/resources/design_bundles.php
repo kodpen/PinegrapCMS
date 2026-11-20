@@ -407,7 +407,7 @@ function api_design_bundles_pages_add($params) {
 		'draft_page_id' => ($draft > 0) ? $draft : null,
 	));
 
-	$done = pg_page_bundle_as_person($user, function () use ($bundle, $live, $draft, $user) {
+	$done = api_design_bundle_run($user, function () use ($bundle, $live, $draft, $user) {
 		return ($live > 0)
 			? pg_page_bundle_add_copy($bundle, $live, $user)
 			: pg_page_bundle_add_draft($bundle, $draft, $user);
