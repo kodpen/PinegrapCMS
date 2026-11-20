@@ -20,8 +20,10 @@ module: lead_journey_store
 ## Which acts tie a browser? (`pg_lead_tie($act, $contact_id, $ref_id)`)
 - `sign_in`: `pg_session_sign_in()` (`includes/authentication.php`) via `pg_lead_sign_in()`, the account's `user_contact`; skipped when the request was already signed in as another user (`login_as_user.php`).
 - `newsletter`: the double opt-in confirm (`confirm_subscription.php`) and a new group yes on `email_preferences.php`.
+- `campaign_click`: `view_email_campaign.php?r=<reference_code>` when the `email_recipients` row has a contact (`ref_id` = campaign). The `?t=` code ties nobody.
+- `order`: `submit_order.php` after `pg_order_complete()` returned a number, with the order's contact (`ref_id` = order).
 - On `tie`/`move`: `lead_browsers.contact_id`, `tied_at`; untied visits since the consent and inside the keep period get the contact (`pg_lead_tie_back_ids()`); one `contact_journey` row, kind 1 (tie), `detail` = act, `ref_id` = group or user.
-- Not wired yet (see the PR): the custom form save in `custom_form.php`, a campaign click (the `?t=` code is the same for every recipient), an order, a booking.
+- No booking tie (a booking holds no contact). The form tie in `custom_form.php` waits for #10868 to land.
 
 ## What does a refusal do?
 - `consent_answer.php` → `pg_lead_consent_changed()`: on a marketing refusal the browser row goes with its visits where `contact_id = 0`, the session part is dropped and the cookie deleted. A page view with the cookie but no yes does the same (`pg_lead_sync_plan()`); if the script already deleted the cookie the session names the row.

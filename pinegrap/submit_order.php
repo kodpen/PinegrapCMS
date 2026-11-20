@@ -3543,6 +3543,12 @@ function submit_order($type) {
         )
     );
 
+    // A placed order is the person's own act: the browser that allowed
+    // marketing cookies is tied to the order's contact (visitor journey).
+    if ($order_number && ((int) $contact_id > 0)) {
+        pg_lead_tie('order', (int) $contact_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+    }
+
     // Another request completed this order first (a second submit of the
     // same checkout): that one does the rest, so this one writes nothing more
     // and shows the receipt.

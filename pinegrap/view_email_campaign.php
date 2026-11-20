@@ -64,6 +64,13 @@ if (!$email_campaign_id) {
     output_error(lang('The e-mail campaign could not be found. The reference code might be invalid or missing.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// Opening a campaign e-mail's web version by its recipient's own code is the
+// person's act: the browser that allowed marketing cookies is tied to the
+// recipient's contact (visitor journey, includes/fn/lead_journey_store.php).
+if (($_GET['r'] !== '') && ((int) $contact_id > 0)) {
+    pg_lead_tie('campaign_click', (int) $contact_id, (int) $email_campaign_id);
+}
+
 // get e-mail campaign information
 $query =
     "SELECT
