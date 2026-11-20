@@ -10,4 +10,7 @@ description: Which API routes carry 'mcp' => false and are no MCP tools: the pol
 - Prototype share links (`design.prototype_links.*`): no AI app mints a public link to unpublished pages (`designer/designer-prototype-share-links.md`).
 - The person's decisions on a card: `workspace.approvals.decide`, `workspace.changes.apply`, `workspace.changes.dismiss` (owner decision 2026-10-24: made on the card). REST: a device session or an OAuth connection (a key: 403); an application's proposal only the team devices session (`ws_api_proposal_decision_gate()`, `workspace/workspace-api-callers.md`).
 
+## Which routes are tools for one caller only?
+- An application agent's own routes carry `'mcp' => 'agent'`: tools only for an active app agent's own key, never for an OAuth connection or a device session (`mcp-agent-own-tools.md`). The agent's feedback read stays `'mcp' => false`.
+
 Related: `api-mcp-server.md`, `workspace-mcp-small-file.md`, `workspace/workspace-api-callers.md`.

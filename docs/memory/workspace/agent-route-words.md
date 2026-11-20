@@ -1,10 +1,11 @@
 ---
 name: agent-route-words
-description: The words an application agent reads on its own routes: the brief's tool line (HTTP only, not MCP), the answer route's 403 and no-channel 422 and its description, a paused agent's 403 (CA6, #9768)
+description: The words an application agent reads on its own routes: the brief's tool line, the answer route's 403 and no-channel 422 and its description, a paused agent's 403 (CA6, #9768)
 ---
 
 ## What does the brief's tool line say?
-- `ws_agent_brief_tool_lines()` (`agent_queue.php`): the site's `mcp.php` address and HTTP, both with the agent's own key; the agent's own routes (`/workspace/agent-requests`, `/workspace/agent-wake`, `/workspace/agent-report`) are HTTP only, not MCP tools (`'mcp' => false` on their rows).
+- `ws_agent_brief_tool_lines()` (`agent_queue.php`): the site's `mcp.php` address and HTTP, both with the agent's own key; the agent's own routes (`/workspace/agent-instructions`, `/workspace/agent-requests`, `/workspace/agent-wake`, `/workspace/agent-report`) are tools there for its own key only, named after the route (`workspace_agent_requests_answer`); `GET /workspace/agent-feedback` is HTTP only.
+- Since AA7a (#10867, `api/mcp-agent-own-tools.md`); before it the line said the own routes were HTTP only.
 - Before CA6 it said "every API route is a tool there", and an agent looked for an answer tool that does not exist (gap G6 of the agents' census).
 
 ## What do the answer route's refusals say?

@@ -38,6 +38,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-12.md: Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
 - decisions-made-panel-12.md: Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
 - decisions-made-panel-12.md: What do the three have in common?
+- decisions-made-panel-13.md: Where are the rules and the earlier parts?
+- decisions-made-panel-13.md: Does the dashboard's Assistant card keep the agent chat while Claude is off? (owner, 2026-11-21, in the architect's window, with a picture of the card)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -498,6 +500,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-92.md: What does it cover?
 - decisions-made-product-92.md: What does it leave alone?
 - decisions-made-product-92.md: In which language is a refusal? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-93.md: Where are the rules and the earlier parts?
+- decisions-made-product-93.md: Should walk-in visitors take a number by QR, follow their place on the phone and be called to a desk? (owner, 2026-11-20, agent channel poll 201, channel message 10980)
+- decisions-made-product-93.md: Should a body run its volunteers by shifts: sign-up, waitlist, calls for an unfilled shift, check-in and hours? (owner, 2026-11-20, agent channel poll 202, channel message 11057)
+- decisions-made-product-93.md: Should every panel list keep named views of its filters, columns and order? (owner, 2026-11-20, agent channel poll 203, channel message 11082)
+- decisions-made-product-93.md: Should a new site get a set-up path by its purpose, steps marked from the real settings and a go-live check? (owner, 2026-11-20, agent channel poll 204, channel message 11083)
+- decisions-made-product-93.md: Should a customer approve each prototype page, sealed to the draft they saw? (owner, 2026-11-20, agent channel poll 205, channel message 11084)
+- decisions-made-product-94.md: Where are the rules and the earlier parts?
+- decisions-made-product-94.md: Under which consent do the queue's notices and the unfilled-shift call go? (owner, 2026-11-21, agent channel poll 207, channel message 11149)
+- decisions-made-product-94.md: Is a volunteer's document kept as a file? (owner, 2026-11-21, agent channel poll 208, channel message 11150)
+- decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -651,6 +663,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-45.md: Which columns does feedback_surveys have? (architect, 2026-11-20)
 - decisions-made-schema-45.md: Which columns does feedback_responses have? (architect, 2026-11-20)
 - decisions-made-schema-45.md: What else holds?
+- decisions-made-schema-46.md: Where are the rules and the earlier parts?
+- decisions-made-schema-46.md: Do the plans of polls 201, 202, 204 and 205 get their tables? (owner, 2026-11-21, agent channel poll 206, channel message 11148)
+- decisions-made-schema-46.md: Which tables does the walk-in queue get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: Which tables do volunteer shifts get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
+- decisions-made-schema-46.md: Who sets the columns?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
@@ -926,6 +945,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
+- commerce/event-tickets-returns.md: Event tickets and returns (#10756): a refund voids the returned units' tickets, unchecked first from the highest unit, gives the places back, tells the waiting list; restore keeps them void
 - commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
 - commerce/event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
@@ -1300,6 +1320,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
+- workflow/held-file-allowed-2.md: Held files, what the architect allowed from 2026-11-20 on: auth.php, image_editor.php and custom_form.php beside their holders; one call line in a root script's top-level code
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file
 - workflow/held-file-hunt-fixes.md: Several bug fixes of one hunt may be open at once in one PHP file beside a draft holder, each in the functions the architect named for it (includes/fn/content_proposals.php, #10188)
 - workflow/held-file-parked-draft.md: A draft that waits for an area's new shape holds nothing in that area: its lines leave the functions the redraw rewrites, so the redraw can start (#10188 PA3 beside DP18 on _pgTabsRender())
@@ -1320,6 +1341,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/quota-use-measured.md: Where the quota goes, measured 2026-11-19 in session records: a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; what changed, what is open
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/screen-described-in-plan.md: A plan describes each screen it adds in words, by the composition rules; no drawing is approved before a step and no screenshot goes to the architect or the owner for a yes (owner, 2026-11-20)
+- workflow/screen-description-checks.md: What a screen description of a redrawn screen must hold so the result matches it: every part the screen has today placed, countable lines a unit test pins, who looks on dev after landing
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas

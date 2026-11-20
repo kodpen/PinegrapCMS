@@ -653,6 +653,9 @@ function pg_member_register($form, $opts = array())
     }
     $new_user_id = (int) create_member_user($create);
 
+    // CompleteRegistration for the ad services, only with consent.
+    pg_ad_conversion_registration($new_user_id, $email);
+
     // The marketing answers, once per sign-up however many contacts share the
     // address, and only when they differ from the person's last recorded ones.
     pg_consent_log_answers(
@@ -938,6 +941,7 @@ function pg_member_activate($form, $opts = array())
     if ($new_user_id && ($pending_provider !== '') && function_exists('pg_signin_identity_add')) {
         pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
     }
+    pg_ad_conversion_registration($new_user_id, $email);
 
     // The marketing answers (see pg_member_register()). The contact id and
     // the address the contact had before find what the member answered

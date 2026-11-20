@@ -8,7 +8,7 @@ module: stock_notify
 - `process_order_cancellation()` calls `pg_order_event_places_cancelled()` after the tickets are voided; `pg_order_restore_cancelled()` calls `pg_order_event_places_restored()` (`includes/fn/ecommerce.php`).
 - Only with tickets on (`pg_event_tickets_on()`) and the calendars on; off, a cancel gives nothing back, as before (owner, agent channel poll 88).
 - `pg_order_event_places()` (pure): reservation lines of an event with `reservations = 1` and `limit_reservations = 1`, quantities summed per date. The date is `pg_stock_notify_event_date()`: the occurrence for a recurring event with separate spots, else 0.
-- Cancel: `number_of_remaining_spots + q`. Restore: down again, never below 0 (a place a waiting visitor took stays theirs). A date with no `remaining_reservation_spots` row is left alone: it reads the initial spots already.
+- Cancel: `number_of_remaining_spots + q`, less refunded returned units (`event-tickets-returns.md`). Restore: down again, never below 0 (a place a waiting visitor took stays theirs). A date with no `remaining_reservation_spots` row is left alone: it reads the initial spots already.
 - The cancel's guarded status write runs it once per cancellation. A switch turned off between cancel and restore leaves the places given back.
 
 ## Where is the waiting list kept?
@@ -26,9 +26,9 @@ module: stock_notify
 - Answers: `added`, `already` (address or account waits for that date), `limit` (`PG_STOCK_NOTIFY_PENDING_LIMIT` across products and dates), `open`, `event`, `email`, `unavailable`.
 
 ## When does the mail go?
-- `pg_stock_notify_event_freed()` after a cancel gave places back and when Edit Event raises Remaining Spots above what was stored (`edit_calendar_event.php`). The API and the Workspace do not call it.
+- `pg_stock_notify_event_freed()` after a cancel gave places back and when Edit Event raises Remaining Spots above what was stored (`edit_calendar_event.php`). Not from the API or the Workspace.
 - `pg_stock_notify_event_send()` reads the date again (must be `open`), then per waiting row: `pg_stock_notify_claim()` (conditional UPDATE) and only then the mail, so two frees at once mail once. Queued while the mail job runs (500), else 10 in the request.
-- Mail only (no SMS, WhatsApp or push): the event and date, a link to the site, no place held.
+- Mail only: the event and date, a link to the site, no place held.
 
 Test: `tests/event_waiting_list_test.php` (step run twice on stubs).
 

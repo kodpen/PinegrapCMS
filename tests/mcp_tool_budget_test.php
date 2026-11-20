@@ -284,7 +284,8 @@ function mcp_tool_budget_test_large_tools()
 }
 
 // Every route of the core and of the modules, as tools for a caller holding
-// every scope they use, on a site with every module on.
+// every scope they use, on a site with every module on; an application
+// agent's own routes too, which only its own key is offered.
 function mcp_tool_budget_test_tools()
 {
 	static $tools = null;
@@ -306,7 +307,7 @@ function mcp_tool_budget_test_tools()
 
 		$tools = array();
 
-		foreach (pg_mcp_routes_for($all, array_keys($scopes)) as $route) {
+		foreach (pg_mcp_routes_for($all, array_keys($scopes), true) as $route) {
 			$tool = pg_mcp_tool_from_route($route);
 
 			// The guide line depends on the modules a site runs, read once a

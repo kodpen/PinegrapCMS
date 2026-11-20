@@ -634,6 +634,13 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                 if (function_exists('update_order_item_prices')) update_order_item_prices();
                 if (function_exists('apply_offers_to_cart'))     apply_offers_to_cart();
                 $lf->add_notice(lang('The item has been added to your cart.'));
+
+                // The ad services' add to cart: returns at once unless one
+                // has it ticked and the visitor consented.
+                $qa_donation = ((string) $qa_product['selection_type'] === 'donation');
+                pg_ad_conversion_add_to_cart($oid, (string) $qa_product['name'],
+                    $qa_donation ? 1 : ($qa_qty ?? pg_product_default_quantity($qa_product['default_quantity'])),
+                    $qa_donation ? $qa_cents : (int) $qa_product['price']);
             }
         }
     }

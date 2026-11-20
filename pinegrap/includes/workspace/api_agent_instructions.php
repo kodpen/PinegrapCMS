@@ -36,7 +36,7 @@ function ws_agent_instructions_api_routes()
             'path'        => '/workspace/agent-instructions',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_agent_instructions',
-            'mcp'         => false,
+            'mcp'         => 'agent',
             'returns'     => 'WorkspaceAgentInstructions',
             'summary'     => 'How the calling agent works on this site',
             'description' => 'One text the agent follows: who it is, its channels and what wakes it in each, how it waits for requests behind its door (poll, webhook or routine), how it claims, answers or gives up a request, what it never does, and the rules every brief ends with. instructions_version changes whenever the text does: read the instructions again when a brief names another version. door is poll, webhook or routine. For the key of an active application agent (Workspace Settings, Agents) only, used as itself: any other caller 403 forbidden.',

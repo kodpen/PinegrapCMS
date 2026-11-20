@@ -4307,6 +4307,10 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     // And the folder access those lines granted.
     pg_order_folder_access_lines_refunded($return['order_id'], $returned_quantities);
 
+    // The returned units' event tickets become void and their places come
+    // back; a return reopened later does not give them back.
+    pg_event_tickets_return_refunded($return['order_id'], $returned_quantities);
+
     // A product whose whole ordered quantity is now refunded loses that
     // order's review from its rating (pg_review_purchase_stands_sql()).
     $returned_products = array();
