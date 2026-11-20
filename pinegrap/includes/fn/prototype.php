@@ -1603,6 +1603,8 @@ function pg_proto_shell_comment_css()
   .pg-proto-cbar { padding: .375rem .75rem; }
   .pg-proto-gone { flex-basis: 100%; }
   .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
+  /* Under 16px iOS zooms the page in when a field is tapped. */
+  .pg-proto-box .form-control { font-size: 16px; }
 }';
 }
 
