@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for Sign in with Apple's application on Connections: it is typed on
- * the service's page under the gate of the Accounts and sign-in settings it
- * came from; the sign-in card keeps the switch and leads to the page; the
- * checks are the ones the card ran; the registry keeps the service's place,
- * as the switch stays on the card.
+ * Tests for the Accounts and sign-in group on Connections: Sign in with
+ * Apple's application and the CAPTCHA providers' keys are typed on their
+ * pages under the gate of the category they came from; the cards keep the
+ * switch and the choice and lead to the pages; the checks are the ones the
+ * cards ran; the registry keeps the services' places, as the switch and
+ * the choice stay on the cards.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -27,7 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/signin.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 
-function connections_signin_apple_test_source($file)
+function connections_accounts_signin_test_source($file)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 }
@@ -74,7 +75,7 @@ function test_connections_signin_apple_card_keeps_the_sign_in_gate()
 	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('signin_apple', array('manager' => true, 'signin' => false)), 'not without the sign-in settings\' right');
 	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('signin_microsoft', array('manager' => true, 'signin' => true)), 'Microsoft\'s application is on Microsoft\'s page');
 
-	$screen = connections_signin_apple_test_source('connections.php');
+	$screen = connections_accounts_signin_test_source('connections.php');
 	$save = strpos($screen, "if (in_array(\$action, array('apple_save', 'apple_remove'), true)) {");
 	pg_assert_true($save !== false, 'the save action is there');
 	pg_assert_contains('if (connections_signin_may_manage($user)) {', substr($screen, $save, 300), 'the save asks the gate first');
@@ -83,24 +84,53 @@ function test_connections_signin_apple_card_keeps_the_sign_in_gate()
 
 function test_connections_signin_apple_fields_moved_to_the_page()
 {
-	$screen = connections_signin_apple_test_source('connections.php');
+	$screen = connections_accounts_signin_test_source('connections.php');
 
 	foreach (array('apple_client_id', 'apple_team_id', 'apple_key_id', 'apple_private_key') as $field) {
 		pg_assert_contains('name="' . $field . '"', $screen, $field . ' is typed on the page');
 	}
 
-	$card = connections_signin_apple_test_source('includes/settings/security.php');
+	$card = connections_accounts_signin_test_source('includes/settings/security.php');
 	pg_assert_false(strpos($card, 'name="apple_client_id"') !== false, 'the sign-in card no longer types the Services ID');
 	pg_assert_false(strpos($card, 'name="apple_private_key"') !== false, 'nor the key');
 	pg_assert_false(strpos($card, 'signin_microsoft_redirect') !== false, 'Microsoft\'s return address is on Microsoft\'s page');
 	pg_assert_contains('name="signin_apple"', $card, 'the switch stays');
 	pg_assert_contains('href="connections.php?service=signin_apple"', $card, 'a row leads to the page');
 
-	$save = connections_signin_apple_test_source('includes/settings/security.save.php');
+	$save = connections_accounts_signin_test_source('includes/settings/security.save.php');
 	pg_assert_false(strpos($save, 'apple_client_id') !== false, 'saving the sign-in settings leaves the application alone');
 	pg_assert_contains("db(\"UPDATE config SET signin_providers = '\"", $save, 'the switches are still saved there');
 
 	pg_assert_same(array('security', 'pgset-signin'), pg_settings_legacy_anchors()['signin_apple_row'] ?? null, 'an old link to the fields lands on the card\'s row');
 	pg_assert_same('#settings/security/pgset-signin', pg_connections_registry()['signin_apple']['place'] ?? null, 'the switch keeps the service\'s place');
 	pg_assert_same(78, pg_connections_count(), 'the figure stays');
+}
+
+function test_connections_captcha_keys_keep_the_category_gate()
+{
+	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('turnstile', array('manager' => true, 'security' => true)), 'Turnstile\'s keys on its page');
+	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('hcaptcha', array('manager' => true, 'security' => true)), 'hCaptcha\'s too');
+	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('hcaptcha', array('manager' => true, 'security' => false)), 'not without the category\'s right');
+	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('stopforumspam', array('manager' => true, 'security' => true)), 'StopForumSpam has no key');
+
+	$screen = connections_accounts_signin_test_source('connections.php');
+	$save = strpos($screen, "if (in_array(\$action, array('captcha_save', 'captcha_remove'), true)) {");
+	pg_assert_true($save !== false, 'the save action is there');
+	pg_assert_contains('if (($captcha_definition !== null) && connections_signin_may_manage($user)) {', substr($screen, $save, 900), 'the save asks the gate first');
+	pg_assert_contains('pg_captcha_settings_check(array(', $screen, 'with the card\'s checks');
+}
+
+function test_connections_captcha_keys_moved_to_the_page()
+{
+	$screen = connections_accounts_signin_test_source('connections.php');
+	pg_assert_contains('name="\' . h($name) . \'site_key"', $screen, 'the site key is typed on the page');
+	pg_assert_contains('name="\' . h($name) . \'secret"', $screen, 'and the secret');
+
+	$card = connections_accounts_signin_test_source('includes/fn/captcha.php');
+	pg_assert_false(strpos($card, 'function pg_captcha_settings_provider_fields(') !== false, 'the card draws no key fields');
+	pg_assert_contains('name="captcha_provider"', $card, 'the choice stays on the card');
+
+	pg_assert_same(array('security', 'pgset-captcha'), pg_settings_legacy_anchors()['captcha_turnstile_site_key'] ?? null, 'an old link to Turnstile\'s keys lands on the card');
+	pg_assert_same(array('security', 'pgset-captcha'), pg_settings_legacy_anchors()['captcha_hcaptcha_site_key'] ?? null, 'and hCaptcha\'s');
+	pg_assert_same('#settings/security/pgset-captcha', pg_connections_registry()['turnstile']['place'] ?? null, 'the choice keeps the service\'s place');
 }

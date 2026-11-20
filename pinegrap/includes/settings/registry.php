@@ -1040,6 +1040,10 @@ function pg_settings_legacy_anchors()
         // link to its fields lands on the card's row that leads there.
         'signin_apple_row' => array('security',   'pgset-signin'),
         'apple_client_id'  => array('security',   'pgset-signin'),
+        // The CAPTCHA providers' keys moved onto their pages; an old link to
+        // them lands on the card that chooses the provider.
+        'captcha_turnstile_site_key' => array('security', 'pgset-captcha'),
+        'captcha_hcaptcha_site_key'  => array('security', 'pgset-captcha'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

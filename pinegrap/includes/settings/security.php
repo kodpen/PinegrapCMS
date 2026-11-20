@@ -106,8 +106,9 @@ $pg_settings_cards[] = '
 
 // ── Spam Protection ──
 // The CAPTCHA switch keeps its config column and post name (captcha); the
-// provider and its keys are connect_apps rows (includes/fn/captcha.php),
-// written after the config row by security.save.php.
+// provider chosen here switches its connect_apps row on, written after the
+// config row by security.save.php. Its keys are typed on the provider's
+// page of Connections (includes/fn/captcha.php).
 $pg_settings_cards[] = '
     <div id="pgset-captcha" class="pg-set-card">
         <div class="card">

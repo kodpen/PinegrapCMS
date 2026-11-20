@@ -274,15 +274,51 @@ function test_captcha_settings_decide_refusal()
 	pg_assert_same('', $decision['ask']);
 }
 
-// A pane that does not draw a provider's fields leaves its keys alone.
+// The Spam Protection card draws no keys: they are typed on the provider's
+// page of Connections. Its choice switches a provider on with the stored
+// keys, asked about first, or off, and leaves the keys alone.
 function test_captcha_settings_decide_fields_not_drawn()
 {
 	$before = array('turnstile' => pg_captcha_test_app('0xsite', '0xsecret', true), 'hcaptcha' => pg_captcha_test_app('', '', false));
 
 	$decision = pg_captcha_settings_decide(array('captcha_provider' => ''), $before, '');
-
-	pg_assert_same('none', $decision['apps']['turnstile']['action']);
+	pg_assert_same('disable', $decision['apps']['turnstile']['action'], 'the built-in question switches it off');
 	pg_assert_same('none', $decision['apps']['hcaptcha']['action']);
+	pg_assert_same('', $decision['ask']);
+
+	$decision = pg_captcha_settings_decide(array('captcha_provider' => 'turnstile'), $before, '');
+	pg_assert_same('none', $decision['apps']['turnstile']['action'], 'kept as it was');
+	pg_assert_same('', $decision['ask'], 'not asked again');
+
+	$off = array('turnstile' => pg_captcha_test_app('0xsite', '0xsecret', false), 'hcaptcha' => pg_captcha_test_app('', '', false));
+	$decision = pg_captcha_settings_decide(array('captcha_provider' => 'turnstile'), $off, '');
+	pg_assert_same(array('action' => 'enable', 'site_key' => '0xsite', 'secret' => '', 'enabled' => true), $decision['apps']['turnstile'], 'switched on with the stored keys');
+	pg_assert_same('turnstile', $decision['ask'], 'asked about first');
+	pg_assert_same('0xsecret', $decision['secret']);
+	pg_assert_same('captcha_provider', $decision['field'], 'an answer is marked on the choice');
+
+	$decision = pg_captcha_settings_decide(array('captcha_provider' => 'hcaptcha'), $off, '');
+	pg_assert_true(isset($decision['marks']['captcha_provider']), 'no keys yet: set them up on its page first');
+	pg_assert_same('none', $decision['apps']['hcaptcha']['action']);
+	pg_assert_same('', $decision['ask']);
+
+	$decision = pg_captcha_settings_decide(array('captcha_provider' => 'turnstile'), $off, 'no key');
+	pg_assert_same('no key', $decision['marks']['captcha_provider'], 'a refusal is marked on the choice');
+	pg_assert_same('', $decision['ask']);
+
+	$refused = pg_captcha_settings_answer(pg_captcha_settings_decide(array('captcha_provider' => 'turnstile'), $off, ''), array('outcome' => 'misconfigured', 'detail' => 'invalid-input-secret'));
+	pg_assert_true(isset($refused['marks']['captcha_provider']), 'refused stored keys are marked on the choice');
+
+	$unreachable = pg_captcha_settings_answer(pg_captcha_settings_decide(array('captcha_provider' => 'turnstile'), $off, ''), array('outcome' => 'unavailable', 'detail' => 'timeout'));
+	pg_assert_same(false, $unreachable['apps']['turnstile']['enabled'], 'a provider that cannot be reached is not switched on');
+}
+
+// The card's provider fields are a line per provider leading to its page.
+function test_captcha_settings_fields_lead_to_connections()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
+	pg_assert_contains("'connections.php?service=' . \$key", $source, 'each provider leads to its page');
+	pg_assert_false(strpos($source, '<input type="password" name="') !== false, 'the card draws no secret field');
 }
 
 // The provider's answer to the settings check: refused keys are marked on the
