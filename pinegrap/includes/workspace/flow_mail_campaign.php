@@ -337,14 +337,17 @@ function ws_flow_mail_group_problems($config, $name)
 
 /**
  * The records box an e-mail box draws must be a "Read the records of a
- * list" box of the same flow. Pure but for lang().
+ * list" box of the same flow that comes before it: one after it or on
+ * another branch has given no records when the e-mail box runs, so every
+ * run would send nothing. Pure but for lang().
  *
  * @param array  $config ws_step_config_normalize('email')
  * @param string $name   the box's name
  * @param array  $graph
+ * @param string $id     the e-mail box's id
  * @return string[]
  */
-function ws_flow_mail_records_box_problems($config, $name, $graph)
+function ws_flow_mail_records_box_problems($config, $name, $graph, $id)
 {
     $box = (string) ($config['records'] ?? '');
 
@@ -352,13 +355,27 @@ function ws_flow_mail_records_box_problems($config, $name, $graph)
         return array();
     }
 
+    $found = false;
+
     foreach ((array) ($graph['nodes'] ?? array()) as $node) {
         if (((string) ($node['id'] ?? '') === $box) && ((string) ($node['kind'] ?? '') === 'list_records')) {
-            return array();
+            $found = true;
         }
     }
 
-    return array(lang(array('string' => 'The box {var:1} draws the records of a box that is not a “Read the records of a list” box of this flow.', 'vars' => $name)));
+    if (!$found) {
+        return array(lang(array('string' => 'The box {var:1} draws the records of a box that is not a “Read the records of a list” box of this flow.', 'vars' => $name)));
+    }
+
+    $into = array();
+
+    foreach ((array) ($graph['edges'] ?? array()) as $edge) {
+        $into[(string) ($edge['to'] ?? '')][] = (string) ($edge['from'] ?? '');
+    }
+
+    return isset(ws_flow_boxes_before($into, (string) $id)[$box])
+        ? array()
+        : array(lang(array('string' => 'The box {var:1} draws the records of a box that does not come before it.', 'vars' => $name)));
 }
 
 /**

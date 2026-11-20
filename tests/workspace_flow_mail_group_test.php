@@ -59,16 +59,35 @@ function test_workspace_flow_mail_group_problems()
 	pg_assert_true(count(ws_flow_mail_group_problems(array('recipient' => 'group', 'group_id' => 7, 'page_id' => 4), 'Mail')) === 1, 'a page');
 	pg_assert_true(count(ws_flow_mail_group_problems(array('recipient' => 'typed', 'records' => 'read'), 'Mail')) === 1, 'records only to a group');
 
-	$graph = array('nodes' => array(array('id' => 'read', 'kind' => 'list_records'), array('id' => 'other', 'kind' => 'rows_get')));
-	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $graph));
-	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => ''), 'Mail', $graph));
-	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'other'), 'Mail', $graph)) === 1, 'not a records box');
-	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'gone'), 'Mail', $graph)) === 1, 'not in the flow');
-	pg_assert_contains('ws_flow_mail_records_box_problems(', workspace_flow_mail_group_test_source('ws_flow_graph_check'));
+	$graph = array(
+		'nodes' => array(array('id' => 'read', 'kind' => 'list_records'), array('id' => 'other', 'kind' => 'rows_get'), array('id' => 'mail', 'kind' => 'email')),
+		'edges' => array(array('from' => 'read', 'to' => 'other', 'on' => 'done'), array('from' => 'other', 'to' => 'mail', 'on' => 'done')),
+	);
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $graph, 'mail'));
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => ''), 'Mail', $graph, 'mail'));
+	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'other'), 'Mail', $graph, 'mail')) === 1, 'not a records box');
+	pg_assert_true(count(ws_flow_mail_records_box_problems(array('records' => 'gone'), 'Mail', $graph, 'mail')) === 1, 'not in the flow');
+	pg_assert_contains('ws_flow_mail_records_box_problems($node[\'config\'], $name, $graph, (string) $id)', workspace_flow_mail_group_test_source('ws_flow_graph_check'));
 
 	// A role-3 owner is refused before any read.
 	pg_assert_true(ws_flow_mail_group_refusal_for(array('id' => 5, 'role' => 3), array('group_id' => 7)) !== '', 'role 3');
 	pg_assert_contains('ws_flow_mail_group_refusal_for(', workspace_flow_mail_group_test_source('ws_step_check'), 'checked at publish and run');
+}
+
+// A records box that does not come before the e-mail box (after it, or on
+// another branch) never gives its records to the run: the e-mail box would
+// say "No record to send" every week. Refused at publish.
+function test_workspace_flow_mail_group_records_box_before()
+{
+	$nodes = array(array('id' => 'start', 'kind' => 'schedule'), array('id' => 'read', 'kind' => 'list_records'), array('id' => 'mail', 'kind' => 'email'));
+	$after = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'mail', 'on' => 'next'), array('from' => 'mail', 'to' => 'read', 'on' => 'done')));
+	$apart = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'mail', 'on' => 'next'), array('from' => 'start', 'to' => 'read', 'on' => 'next')));
+	$before = array('nodes' => $nodes, 'edges' => array(array('from' => 'start', 'to' => 'read', 'on' => 'next'), array('from' => 'read', 'to' => 'mail', 'on' => 'done')));
+
+	pg_assert_same(1, count(ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $after, 'mail')), 'after the e-mail box');
+	pg_assert_same(1, count(ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $apart, 'mail')), 'on another branch');
+	pg_assert_same(array(), ws_flow_mail_records_box_problems(array('records' => 'read'), 'Mail', $before, 'mail'));
+
 }
 
 // A group send is one campaign, made through the campaigns' own path with
