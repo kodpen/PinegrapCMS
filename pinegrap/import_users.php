@@ -203,7 +203,7 @@ if (!$_POST) {
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                             ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control', 'required'=>'required')) . '
                             <div class="form-text">' . lang('The first row holds the column names: email_address (or email) is required, username is optional, and the other columns fill the contact, such as first_name, last_name and company.') . '</div>
-                            ' . pg_upload_limit_hint() . '
+                            ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                         </div>
                     </div>
 
@@ -310,6 +310,16 @@ if (!$_POST) {
         exit();
     }
     
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Users'));
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
+        exit();
+    }
+
     // if no file was uploaded
     if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));

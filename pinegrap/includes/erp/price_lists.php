@@ -248,6 +248,55 @@ function erp_account_price_users($account_id)
 }
 
 /**
+ * The accounts that use an account's prices as its screen lists them: how
+ * many there are, and the first $limit by title, read in one query.
+ *
+ * @param int $account_id
+ * @param int $limit
+ * @return array ['count' => int, 'rows' => [['id' => int, 'title' => string], ...]]
+ */
+function erp_account_price_users_shown($account_id, $limit = 10)
+{
+    $out = array('count' => 0, 'rows' => array());
+
+    if (((int) $account_id <= 0) || !erp_shared_prices_ready()) {
+        return $out;
+    }
+
+    // The count rides on every row (a subquery, as MySQL 5.7 has no window
+    // functions), so one query gives both.
+    $where = "price_account_id = '" . (int) $account_id . "' AND id != '" . (int) $account_id . "'";
+    $rows = (array) db_items("SELECT id, title, (SELECT COUNT(*) FROM erp_accounts WHERE " . $where . ") AS total
+        FROM erp_accounts
+        WHERE " . $where . "
+        ORDER BY title ASC, id ASC
+        LIMIT " . max(1, (int) $limit));
+
+    return erp_account_price_users_lines($rows, $limit);
+}
+
+/**
+ * Bounds the list of the accounts that use an account's prices: at most
+ * $limit rows, the count read from the rows' total. Pure.
+ *
+ * @param array $rows  id, title, total (every row carries the full count)
+ * @param int   $limit
+ * @return array ['count' => int, 'rows' => [...], 'more' => int]
+ */
+function erp_account_price_users_lines(array $rows, $limit)
+{
+    $limit = max(1, (int) $limit);
+    $count = $rows ? max(count($rows), (int) ($rows[0]['total'] ?? 0)) : 0;
+    $shown = array();
+
+    foreach (array_slice($rows, 0, $limit) as $row) {
+        $shown[] = array('id' => (int) $row['id'], 'title' => (string) $row['title']);
+    }
+
+    return array('count' => $count, 'rows' => $shown, 'more' => max(0, $count - count($shown)));
+}
+
+/**
  * Why an account may not be deleted for its prices' sake, or '' when it
  * may: accounts that use its prices must let go first. Accounts have no
  * delete today (they are set to passive); a delete path asks this. Pure.
@@ -260,6 +309,36 @@ function erp_account_delete_refusal($pointed_at_by)
     return ((int) $pointed_at_by > 0)
         ? lang('Other accounts use this account\'s prices. Let them use their own or another account\'s first.')
         : '';
+}
+
+/**
+ * The accounts the "Uses the prices of" picker offers: customer accounts
+ * (customer or both), passive ones included since a price list need not
+ * buy, but not the account itself and not an account that uses another's
+ * prices (one hop). The account already chosen stays, so the screen can
+ * show it. Pure.
+ *
+ * @param array $accounts   rows with id, title, kind, price_account_id, in the order to show
+ * @param int   $account_id the account whose screen it is
+ * @param int   $current    its pointer, 0 for none
+ * @return array id => title
+ */
+function erp_account_price_pointer_options(array $accounts, $account_id, $current)
+{
+    $options = array();
+
+    foreach ($accounts as $row) {
+        $id = (int) $row['id'];
+        $offered = ($id !== (int) $account_id)
+            && ((string) ($row['kind'] ?? '') !== 'supplier')
+            && ((int) ($row['price_account_id'] ?? 0) <= 0);
+
+        if ($offered || (($id === (int) $current) && ($id > 0))) {
+            $options[$id] = (string) $row['title'];
+        }
+    }
+
+    return $options;
 }
 
 /**

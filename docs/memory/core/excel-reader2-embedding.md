@@ -19,7 +19,7 @@ description: The bundled excel_reader2.php (php-excel-reader 2.22) that reads an
 
 ## What keeps it?
 - `tests/excel_reader2_php85_test.php` takes `convert_xls_to_text()` from the job's source and runs it in its own PHP process that reports every error.
-- It reads `tests/fixtures/excel_reader2/products.xls` (two sheets: Turkish text, decimals, a negative number, a formula, a date in built-in format 14, written by the bundled PHPExcel) and checks the exact text; a file that is no .xls and a missing one give '' quietly.
+- It reads `tests/fixtures/excel_reader2/products.xls` (two sheets: Turkish text, decimals, a negative number, a formula, a date in built-in format 14, written by PHPExcel's Excel5 writer before the library was removed) and checks the exact text; a file that is no .xls and a missing one give '' quietly.
 
 ## What does the reader still not do?
 - A custom number format stored as UTF-16 (PHPExcel's writer stores every one so) is not decoded: such a cell's text is its format with NUL bytes. This is the library's own limit on every PHP version, left as it is.

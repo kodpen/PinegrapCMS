@@ -65,8 +65,8 @@ if (!$_POST) {
                             <div class="card-body pt-0">
                                 <div class="my-3">
                                     <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                    ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'accept'=>'.csv,text/csv', 'class'=>'form-control', 'required'=>'required')) . '
-                                    ' . pg_upload_limit_hint() . '
+                                    ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'accept'=>'.csv,text/csv,' . PG_SHEET_IMPORT_ACCEPT, 'class'=>'form-control', 'required'=>'required')) . '
+                                    ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                                 </div>
                             </div>
                         </div>
@@ -132,7 +132,15 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
-    
+
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Campaign Profiles'));
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+        go($_SERVER['PHP_SELF']);
+    }
+
     // If a file was not selected, then add error and forward user back to previous screen.
     if ($_FILES['file']['name'] == '') {
         $liveform->mark_error('file', lang('Please select a file.'));

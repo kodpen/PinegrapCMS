@@ -1172,9 +1172,12 @@
         return again;
     }
 
-    // The conversation's status and holder, changed at once.
-    function state(row, message, view, h) {
+    // The conversation's status and holder, changed at once. A channel's
+    // card draws them low (py-0); the E-mails screen's pane (roomy) keeps
+    // the full height of its buttons, or on a phone they were 23 px high.
+    function state(row, message, view, h, roomy) {
         var t = h.t;
+        var tight = roomy ? ['d-inline-block', 'w-auto', 'ms-2'] : ['d-inline-block', 'w-auto', 'ms-2', 'py-0'];
         var current = message.mail_state;
         var change = function (data, control) {
             data.conversation_id = message.mail_reply || message.whatsapp_reply || message.sms_reply;
@@ -1198,7 +1201,7 @@
             return [key, t('mail_status_' + key)];
         }), current.status);
 
-        status.classList.add('d-inline-block', 'w-auto', 'ms-2', 'py-0');
+        status.classList.add.apply(status.classList, tight);
         status.setAttribute('aria-label', t('mail_status'));
         status.addEventListener('change', function () {
             change({ status: status.value }, status);
@@ -1225,7 +1228,7 @@
 
         var hold = h.select(people, current.assignee ? String(current.assignee) : '');
 
-        hold.classList.add('d-inline-block', 'w-auto', 'ms-2', 'py-0');
+        hold.classList.add.apply(hold.classList, tight);
         hold.setAttribute('aria-label', t('mail_holder'));
         hold.addEventListener('change', function () {
             change({ assign: hold.value === '' ? 'none' : hold.value }, hold);
@@ -1770,7 +1773,7 @@
             }
 
             if (data.state) {
-                state(place, message, view, h);
+                state(place, message, view, h, true);
             }
         }
 

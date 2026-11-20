@@ -47,7 +47,7 @@ function settings_deep_links_test_cards()
 // and #settings/<category>/<card> fragments.
 function settings_deep_links_test_links()
 {
-	$skip = '~/(data|assets/lib|includes/(phpmailer|stripe|iyzipay-php|phpexcel|boxpacker|dompdf))/|\.min\.js$~';
+	$skip = '~/(data|assets/lib|includes/(phpmailer|stripe|iyzipay-php|boxpacker|dompdf))/|\.min\.js$~';
 	$patterns = array(
 		"/pg_settings_(?:link|return_url)\(\s*'([a-z_]+)'\s*,\s*'(pgset-[a-z0-9-]+)'/",
 		'/settings_([a-z_]+)\.php#(pgset-[a-z0-9-]+)/',

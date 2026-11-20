@@ -176,25 +176,25 @@ foreach ($connections as $connection) {
 					<div class="d-flex align-items-start gap-3 mb-3">
 						<i class="bi bi-plug fs-lg opacity-75" aria-hidden="true"></i>
 						<div class="flex-grow-1 min-w-0">
-							<div class="fw-semibold">' . h($name) . '</div>
-							<div class="small fg-secondary">'
+							<h2 class="pg-title-section mb-0">' . h($name) . '</h2>
+							<div class="pg-text-2">'
 								. (($identity !== '') ? h(lang('Identified by')) . ' <code>' . h($identity) . '</code> &middot; ' : '')
 								. h(connected_apps_resource_label($connection['resource']))
 								. ' <code>' . h(connected_apps_resource_address($connection['resource'])) . '</code></div>
 						</div>
 						' . ($client_on
 							? ''
-							: '<span class="badge theme-secondary fw-normal">' . h(lang('Turned off by the site')) . '</span>') . '
+							: '<span class="pg-pill">' . h(lang('Turned off by the site')) . '</span>') . '
 					</div>
-					<p class="small fw-semibold mb-1">' . h(lang('It may:')) . '</p>
+					<p class="pg-group-label mb-1">' . h(lang('It may:')) . '</p>
 					' . (($lines !== '')
-						? '<ul class="small mb-3 ps-5">' . $lines . '</ul>'
-						: '<p class="small fg-secondary mb-3">' . h(lang('Nothing any more: the permissions it was given were taken away.')) . '</p>') . '
-					<p class="small fg-secondary mb-5">' . h(implode(' · ', $meta)) . '</p>
-					<button type="button" class="btn btn-sm btn-outline theme-danger connected-apps-end"
+						? '<ul class="pg-text-2 mb-3 ps-5">' . $lines . '</ul>'
+						: '<p class="pg-text-2 mb-3">' . h(lang('Nothing any more: the permissions it was given were taken away.')) . '</p>') . '
+					<p class="pg-text-meta mb-5">' . h(implode(' · ', $meta)) . '</p>
+					<button type="button" class="pg-button pg-button-danger pg-button-sm connected-apps-end"
 						data-id="' . (int)$connection['id'] . '"
 						data-confirm="' . h(lang(array('string' => '{var:1} will no longer be able to act for you. To use it again, connect it again from the application.', 'vars' => $name))) . '">
-						<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('End connection')) . '</button>
+						<i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('End connection')) . '</button>
 				</div>
 			</div>
 		</div>';
@@ -227,10 +227,10 @@ echo pg_page_shell(array(
 			lang('When you connect an application such as Claude, ChatGPT, Cursor or VS Code to this site and allow it on the consent screen, it appears here.'))
 		: '<div class="row g-5">' . $blocks . '</div>
 	<div class="d-flex flex-wrap align-items-center gap-3 mt-7">
-		<button type="button" class="btn btn-sm btn-outline theme-danger connected-apps-end" data-id="all"
+		<button type="button" class="pg-button pg-button-danger pg-button-sm connected-apps-end" data-id="all"
 			data-confirm="' . h(lang('Every application listed here will be disconnected.')) . '">
-			<i class="bi bi-x-octagon me-1" aria-hidden="true"></i>' . h(lang('End all connections')) . '</button>
-		<span class="small fg-secondary">' . h(lang('A new password, or signing out everywhere, also ends every connection.')) . '</span>
+			<i class="bi bi-x-octagon" aria-hidden="true"></i>' . h(lang('End all connections')) . '</button>
+		<span class="pg-text-2">' . h(lang('A new password, or signing out everywhere, also ends every connection.')) . '</span>
 	</div>') . '
 
 	<form method="post" action="connected_apps.php" id="connected_apps_form" class="disable_shortcut d-none">
