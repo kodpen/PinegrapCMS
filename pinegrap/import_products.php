@@ -780,6 +780,11 @@ if (!$_POST) {
                         WHERE id = '" . (int) $product_id . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+                    // The row may have switched tracking: rows follow it.
+                    if ($stock_locations) {
+                        pg_stock_tracking_sync(array($product_id));
+                    }
+
                     if ($stock_locations && ($stock_positions || ($row_quantity !== null))) {
                         pg_stock_import_write($product_id, $row_stock, $row_quantity);
                     }

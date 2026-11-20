@@ -4479,6 +4479,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
                 out_of_stock = IF(inventory = '1' AND inventory_quantity <= 0, '1', '0')
             WHERE id = '" . (int) $record['id'] . "'
             LIMIT 1");
+
+        // Stock locations: an untracked product has no rows, a tracked one
+        // gets its default row from the total.
+        pg_stock_tracking_sync(array((int) $record['id']));
     }
 
     // Site search keeps its own index of the promoted keywords.
@@ -4512,6 +4516,16 @@ function ws_change_write_product($viewer, $action, $record, $values)
 function ws_change_write_stock($viewer, $action, $record, $values)
 {
     $quantity = max(0, (int) ($values['quantity'] ?? 0));
+
+    // A tracked product on a site with stock locations is set through the
+    // writer at the default location (a decrease takes what it holds
+    // there); the total it leaves is the count the flag and the events use.
+    $written = pg_stock_total_write((int) $record['id'], 'set', $quantity, 0, 'workspace', 'workspace');
+
+    if ($written !== null) {
+        $quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $record['id'] . "'");
+    }
+
     $empty = ($quantity <= 0);
 
     // The timestamp is "out of stock since" on the product list, stamped
@@ -4521,11 +4535,15 @@ function ws_change_write_stock($viewer, $action, $record, $values)
     db("UPDATE products
         SET out_of_stock_timestamp = " . ($empty ? "IF(out_of_stock = '1', out_of_stock_timestamp, UNIX_TIMESTAMP())" : 'out_of_stock_timestamp') . ",
             out_of_stock = '" . ($empty ? '1' : '0') . "',
-            inventory_quantity = '" . $quantity . "',
+            " . (($written === null) ? "inventory_quantity = '" . $quantity . "'," : '') . "
             inventory = '1',
             timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $record['id'] . "'
         LIMIT 1");
+
+    // Tracking may have been switched on: the default row is built from
+    // the total.
+    pg_stock_tracking_sync(array((int) $record['id']));
 
     ws_change_log(lang(array('string' => 'Stock for product ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => $record['name'])));
 

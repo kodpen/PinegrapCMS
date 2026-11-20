@@ -741,16 +741,30 @@ function erp_stock_apply_pending($limit = 200)
         }
 
         $delta = (int) round((float) $move['quantity']) * (((string) $move['direction'] === 'in') ? 1 : -1);
-        $quantity_sql = "GREATEST(0, CAST(inventory_quantity AS SIGNED) + (" . $delta . "))";
 
-        // out_of_stock first: MySQL applies the assignments left to right, and
-        // the flag has to read the quantity as it stands.
-        erp_query("UPDATE products
-            SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
-                inventory_quantity = " . $quantity_sql . ",
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . (int) $move['product_id'] . "' AND inventory = '1'
-            LIMIT 1");
+        // With stock locations the move lands at the default location
+        // through the writer (a decrease takes what it holds there), then
+        // the flag follows the total it wrote.
+        $written = pg_stock_total_write((int) $move['product_id'], 'adjust', $delta, 0, 'erp', 'erp:' . (int) $move['id']);
+
+        if ($written === null) {
+            $quantity_sql = "GREATEST(0, CAST(inventory_quantity AS SIGNED) + (" . $delta . "))";
+
+            // out_of_stock first: MySQL applies the assignments left to right, and
+            // the flag has to read the quantity as it stands.
+            erp_query("UPDATE products
+                SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
+                    inventory_quantity = " . $quantity_sql . ",
+                    timestamp = UNIX_TIMESTAMP()
+                WHERE id = '" . (int) $move['product_id'] . "' AND inventory = '1'
+                LIMIT 1");
+        } else {
+            erp_query("UPDATE products
+                SET out_of_stock = IF(inventory_quantity <= 0, '1', '0'),
+                    timestamp = UNIX_TIMESTAMP()
+                WHERE id = '" . (int) $move['product_id'] . "'
+                LIMIT 1");
+        }
 
         $stock = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $move['product_id'] . "' LIMIT 1");
         erp_query("UPDATE erp_stock_moves SET stock_after = '" . $stock . "' WHERE id = '" . (int) $move['id'] . "'");
