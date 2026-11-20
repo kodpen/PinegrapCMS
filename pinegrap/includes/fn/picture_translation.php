@@ -758,23 +758,34 @@ function pg_picture_tr_url_name($value, $base, $hosts)
 
 /**
  * One address pointed at the picture $map gives for its name: the host, the
- * query and the quoting as written stay. Pure.
+ * query and the quoting as written stay. A drawing time in $stamps is added
+ * as v=<drawn_at> after the query: a redraw keeps the picture's name, and
+ * get_file.php lets a browser keep a picture a week (it ignores v). Written
+ * &amp; as in the attribute the address stands in. Pure.
  *
  * @param string $value
  * @param string $base
  * @param array  $hosts
- * @param array  $map   source name => picture name
+ * @param array  $map    source name => picture name
+ * @param array  $stamps source name => the picture's drawn_at
  * @return string
  */
-function pg_picture_tr_url_swap($value, $base, $hosts, $map)
+function pg_picture_tr_url_swap($value, $base, $hosts, $map, $stamps = array())
 {
     $name = pg_picture_tr_url_name($value, $base, $hosts);
 
-    if (($name === '') || !isset($map[$name]) || !preg_match('~^(\s*(?:(?:https?:)?//[^/?#]+)?)(/[^?#]*)(.*)$~s', (string) $value, $m)) {
+    if (($name === '') || !isset($map[$name]) || !preg_match('~^(\s*(?:(?:https?:)?//[^/?#]+)?)(/[^?#]*)(\?[^#]*)?(#.*)?$~s', (string) $value, $m)) {
         return $value;
     }
 
-    return $m[1] . $base . rawurlencode($map[$name]) . $m[3];
+    $query = isset($m[3]) ? $m[3] : '';
+    $stamp = isset($stamps[$name]) ? (int) $stamps[$name] : 0;
+
+    if ($stamp > 0) {
+        $query .= (($query === '') ? '?' : '&amp;') . 'v=' . $stamp;
+    }
+
+    return $m[1] . $base . rawurlencode($map[$name]) . $query . (isset($m[4]) ? $m[4] : '');
 }
 
 /**
@@ -866,17 +877,18 @@ function pg_picture_tr_page_names($html, $base, $hosts)
  * @param string $html
  * @param string $base
  * @param array  $hosts
- * @param array  $map source name => picture name
+ * @param array  $map    source name => picture name
+ * @param array  $stamps source name => the picture's drawn_at
  * @return string
  */
-function pg_picture_tr_page_swap($html, $base, $hosts, $map)
+function pg_picture_tr_page_swap($html, $base, $hosts, $map, $stamps = array())
 {
     if (!$map) {
         return $html;
     }
 
-    return pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, $map) {
-        return pg_picture_tr_url_swap($value, $base, $hosts, $map);
+    return pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, $map, $stamps) {
+        return pg_picture_tr_url_swap($value, $base, $hosts, $map, $stamps);
     });
 }
 
@@ -896,7 +908,7 @@ function pg_picture_tr_page_sql($names, $language)
         return "'" . e($name) . "'";
     }, array_values($names)));
 
-    return "SELECT f.id, f.name, f.folder, ft.state, p.name AS picture,
+    return "SELECT f.id, f.name, f.folder, ft.state, ft.drawn_at, p.name AS picture,
                    (SELECT 1 FROM translation_uses u WHERE u.owner_type = 'file' AND u.owner_id = f.id LIMIT 1) AS has_uses
             FROM files f
             LEFT JOIN file_translation ft ON ft.file_id = f.id AND ft.language = '" . e($language) . "'
@@ -912,11 +924,12 @@ function pg_picture_tr_page_sql($names, $language)
  *
  * @param array $rows from pg_picture_tr_page_sql()
  * @param bool  $rtl
- * @return array map (name => picture), waiting (file ids)
+ * @return array map (name => picture), stamps (name => drawn_at of a
+ *               swapped picture that has one), waiting (file ids)
  */
 function pg_picture_tr_page_plan($rows, $rtl)
 {
-    $plan = array('map' => array(), 'waiting' => array());
+    $plan = array('map' => array(), 'stamps' => array(), 'waiting' => array());
 
     foreach (is_array($rows) ? $rows : array() as $row) {
         $picture = isset($row['picture']) ? (string) $row['picture'] : '';
@@ -924,6 +937,10 @@ function pg_picture_tr_page_plan($rows, $rtl)
 
         if (($state !== null) && pg_picture_tr_shown($state) && ($picture !== '')) {
             $plan['map'][(string) $row['name']] = $picture;
+
+            if (!empty($row['drawn_at'])) {
+                $plan['stamps'][(string) $row['name']] = (int) $row['drawn_at'];
+            }
         } elseif (($state === null) && !empty($row['has_uses']) && !$rtl) {
             $plan['waiting'][] = (int) $row['id'];
         }
@@ -983,7 +1000,7 @@ function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query,
         }
     }
 
-    return pg_picture_tr_page_swap($html, $base, $hosts, $plan['map']);
+    return pg_picture_tr_page_swap($html, $base, $hosts, $plan['map'], $plan['stamps']);
 }
 
 /**

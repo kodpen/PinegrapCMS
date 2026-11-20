@@ -220,5 +220,5 @@ function test_picture_translation_doors_binned_keeps_texts()
 	$extract = picture_translation_doors_body('includes/translate/extract.php', 'pg_tr_extract_pictures');
 	pg_assert_contains("pg_picture_tr_forget(\$file_id, \$reason === 'binned')", $extract, 'so does the Pictures group\'s read');
 
-	pg_assert_same(array('map' => array(), 'waiting' => array(7)), pg_picture_tr_page_plan(array(array('id' => '7', 'name' => 'a.png', 'state' => null, 'picture' => null, 'has_uses' => '1')), false), 'restored with its texts, a visit writes its waiting row');
+	pg_assert_same(array('map' => array(), 'stamps' => array(), 'waiting' => array(7)), pg_picture_tr_page_plan(array(array('id' => '7', 'name' => 'a.png', 'state' => null, 'picture' => null, 'has_uses' => '1')), false), 'restored with its texts, a visit writes its waiting row');
 }
