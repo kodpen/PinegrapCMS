@@ -200,3 +200,28 @@ function test_settings_workspace_channels_voice_provider_rules()
 
 	pg_assert_same(array('url'), array_keys(ws_voice_settings_check($custom, $stored)), 'another address needs its address');
 }
+
+function test_settings_workspace_channels_voice_provider_change_reads_openai_and_drops_the_old_key()
+{
+	// Stored on a custom address; the Save picks OpenAI and turns it on.
+	$stored = array('enabled' => false, 'service' => 'custom', 'own_key' => true, 'connected' => false, 'openai_connected' => true);
+	$openai = ws_voice_settings_for_stored(ws_voice_settings_input(array('voice_service' => 'openai', 'voice_enabled' => '1')), $stored);
+
+	pg_assert_true($openai['key_clear'], 'the custom service\'s key is not sent to OpenAI');
+	pg_assert_same(array(), ws_voice_settings_check($openai, $stored), 'OpenAI is connected: the switch goes on with the provider change');
+	pg_assert_same(array('enabled'), array_keys(ws_voice_settings_check($openai, array('openai_connected' => false) + $stored)), 'not connected: refused, the old key does not count');
+
+	// Stored on OpenAI with an own key; the Save picks a custom address.
+	$stored = array('enabled' => true, 'service' => 'openai', 'own_key' => true, 'connected' => true, 'openai_connected' => true);
+	$custom = ws_voice_settings_for_stored(ws_voice_settings_input(array('voice_service' => 'custom', 'voice_url' => 'https://api.groq.com/openai/v1', 'voice_enabled' => '1')), $stored);
+
+	pg_assert_true($custom['key_clear'], 'the OpenAI key is not sent to another address');
+
+	$typed = ws_voice_settings_for_stored(ws_voice_settings_input(array('voice_service' => 'custom', 'voice_url' => 'https://api.groq.com/openai/v1', 'voice_key' => 'gsk-typed-1')), $stored);
+
+	pg_assert_true(!$typed['key_clear'], 'a key typed with the change replaces it');
+
+	$same = ws_voice_settings_for_stored(ws_voice_settings_input(array('voice_service' => 'openai')), $stored);
+
+	pg_assert_true(!$same['key_clear'], 'the same provider keeps its own key');
+}
