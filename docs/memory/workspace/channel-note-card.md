@@ -22,4 +22,4 @@ description: The card of a note shared in a channel and its windows: the fold, t
 
 ## What comes next?
 - The foot and the drawer's rows name the person; the server's `changed_by` words (an agent's handle) replace them in KD3b (`workspace-note-changed-by-app.md`).
-- Tests: `tests/workspace_channel_notes_js_test.php` (fold state, foot words, menu items, hooks). Introduced by PR #KD2.
+- Tests: `tests/workspace_channel_notes_js_test.php` (fold state, foot words, menu items, hooks). Introduced by PR #10863.
