@@ -29,7 +29,7 @@ description: Plan delivery-tower, how its screens are put together (DT3 to DT5):
 
 ## Where do the suggestions show? (DT4)
 - Arrival: a card above the scorecard's table, "Arrival days to check", a method a row: "Standard delivery: measured 2.6 days, set 1" and a quiet "Open the method". On the method's screen the same sentence is the one line of help under its transit days. Nothing changes by a press here.
-- Carrier: in the Create Label dialog the carriers keep their select; the list is ordered, the first carries a "Suggested" pill and each option's grey second line reads the on-time share for the province and the price where `rate()` answered. The choice stays the person's.
+- Carrier: step DT4b, a chooser on the order screen for an address whose method names no carrier (`delivery-tower-screens-label.md`). The choice stays the person's.
 
 ## How are the settings laid out? (DT5)
 - A drawer from the head's quiet "Settings": a switch a row for each problem kind with one line on when it is found; the two day counts folded under "Advanced". Foot: Save fill, Cancel quiet.
