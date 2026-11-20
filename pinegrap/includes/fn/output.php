@@ -4253,9 +4253,12 @@ function output_menu($properties = false)
         $menu_items[5]['color_class'] = 'forms-color';
         $menu_items[5]['title'] = 'Forms';
         $menu_items[5]['context'] = true;
-        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
+        $forms_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
         // add_submitted_form.php opens to the same people (validate_forms_access()).
-        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        // view_application_programs.php opens to the same people.
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-clipboard-check bi-me-2\'>' . lang('Application programmes') . '</a>';
     }
 
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
@@ -5016,6 +5019,8 @@ function output_menu($properties = false)
         case 'add_submitted_form.php':
         case 'edit_submitted_form.php':
         case 'import_submitted_forms.php':
+        case 'view_application_programs.php':
+        case 'edit_application_program.php':
             $active_menu = 5;
             break;
         case 'visitors.php':

@@ -198,6 +198,15 @@ if (!$enabled) {
     output_error(lang('The form is disabled.'));
 }
 
+// An application programme's period (includes/fn/application_programs.php):
+// before it opens and after it closes, a new entry or draft is refused with
+// the programme's own text. A form with no open programme is not touched.
+$application_refusal = pg_application_submit_refusal((int) $_POST['page_id']);
+
+if ($application_refusal !== '') {
+    output_error(h($application_refusal));
+}
+
 include_once('liveform.class.php');
 $liveform = new liveform($_POST['page_id']);
 
@@ -1011,6 +1020,13 @@ if ($liveform->check_form_errors() == false) {
 
     if ($signature_pending) {
         pg_signature_store_pending($form_id, $_POST['page_id'] ?? 0, $signature_pending);
+    }
+
+    // A completed entry of an open application programme: its entry row,
+    // with its eligibility checked now that every answer is stored. It never
+    // refuses the entry.
+    if ($complete == 1) {
+        pg_application_entry_record((int) $_POST['page_id'], (int) $form_id);
     }
 
     // If pretty URLs are enabled, then update address name.

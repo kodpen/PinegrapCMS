@@ -773,3 +773,53 @@ function pg_application_template_save($name, array $criteria)
 
     return pg_config_text_save(PG_APPLICATION_TEMPLATES_KEY, json_encode(array_slice($templates, -50), JSON_UNESCAPED_UNICODE));
 }
+
+/**
+ * The submitted form screen's "Application" card for a submission in a
+ * programme: its eligibility, the reasons when it is not eligible, and the
+ * note that lets it in anyway. The button posts a separate form (returned as
+ * 'form') through its form attribute, as the card sits inside the screen's
+ * own form.
+ *
+ * @param int $form_id
+ * @return array array('card' => HTML, 'form' => HTML); both '' outside a programme
+ */
+function pg_application_entry_card($form_id)
+{
+    $application = pg_application_entry_for_form($form_id);
+
+    if ($application === null) {
+        return array('card' => '', 'form' => '');
+    }
+
+    $entry = $application['entry'];
+    $fields = pg_application_program_fields($application['program']['page_id']);
+    $states = array(
+        0 => array('gray', lang('Not checked')),
+        1 => array('teal', lang('Eligible')),
+        2 => array('amber', lang('Not eligible')),
+        3 => array('teal', lang('Let in')),
+    );
+    $state = $states[(int) $entry['eligible']] ?? $states[0];
+    $body = '<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><span class="pg-text-2 flex-grow-1">' . h($application['program']['name']) . '</span><span class="pg-pill pg-tone-' . $state[0] . '">' . h($state[1]) . '</span></div>';
+
+    foreach ($entry['note']['reasons'] ?? array() as $reason) {
+        $body .= '<div class="pg-text-meta">' . h(pg_application_reason_text($reason, $fields[$reason['field']]['label'] ?? '')) . '</div>';
+    }
+
+    if (isset($entry['note']['override']['note'])) {
+        $body .= '<div class="pg-text-2 mt-3">' . h($entry['note']['override']['note']) . '</div>';
+    }
+
+    $form = '';
+
+    if ((int) $entry['eligible'] === 2) {
+        $body .= '<div class="mt-4"><label class="pg-field-label" for="application_note">' . h(lang('Why it is let in')) . '</label>'
+            . '<textarea class="pg-input" id="application_note" name="application_note" form="pg_application_override" rows="2" maxlength="1000" aria-describedby="application_note_help"></textarea>'
+            . '<div class="pg-field-help" id="application_note_help">' . h(lang('The entry then gets reviewers as an eligible one; the reasons stay beside your note.')) . '</div>'
+            . '<button type="submit" form="pg_application_override" name="application_override" value="1" class="pg-button pg-button-quiet pg-button-sm mt-3">' . h(lang('Let it in')) . '</button></div>';
+        $form = '<form id="pg_application_override" action="edit_submitted_form.php?id=' . (int) $form_id . '" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . (int) $form_id . '"></form>';
+    }
+
+    return array('card' => pg_submitted_form_status_card(lang('Application'), $body), 'form' => $form);
+}

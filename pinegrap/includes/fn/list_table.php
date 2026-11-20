@@ -1250,6 +1250,7 @@ function pg_list_table_printed_lists()
         'view_courses', 'edit_course_learners',
         'workspace_wtables',
         'messages_automatic',
+        'view_application_programs',
     );
 }
 
