@@ -600,6 +600,29 @@ function pg_legal_document_token_matches($session_token, $posted_token)
 }
 
 /**
+ * Whether a checkout box (legal_preinfo, legal_contract, legal_kvkk) was
+ * ticked, from the value the form posted. A browser posts a checkbox only
+ * when it is ticked, with the box's value: '1' for the boxes Pinegrap draws,
+ * whatever value a designer gave a box bound to the field. '0' is the value
+ * of no ticked box. The server's refusal and the acceptance kept with the
+ * order both read this, so an order the check lets through is never kept as
+ * not accepted.
+ *
+ * @param mixed $value  the liveform's single value of the field
+ * @return bool
+ */
+function pg_legal_document_ticked($value)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = trim((string) $value);
+
+    return ($value !== '') && ($value !== '0');
+}
+
+/**
  * The two acceptance checkboxes for a checkout form, each linking to its
  * document filled from the visitor's cart.
  *

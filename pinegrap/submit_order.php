@@ -1319,8 +1319,12 @@ function submit_order($type) {
         // accepted when the store asks for them (pg_legal_documents_inject()
         // draws their checkboxes on every checkout).
         if (pg_legal_documents_enabled()) {
+            // Ticked by the rule the kept acceptance reads: a posted '0'
+            // passes a required-field check but accepts nothing.
             foreach (pg_legal_document_types() as $legal_type => $legal_label) {
-                $liveform->validate_required_field('legal_' . $legal_type, lang(array('string' => '{var:1} must be accepted.', 'vars' => array($legal_label))));
+                if (!pg_legal_document_ticked($liveform->get_field_value('legal_' . $legal_type))) {
+                    $liveform->mark_error('legal_' . $legal_type, lang(array('string' => '{var:1} must be accepted.', 'vars' => array($legal_label))));
+                }
             }
         }
         
@@ -1957,9 +1961,9 @@ function submit_order($type) {
                         'legal_acceptance' => pg_legal_documents_enabled()
                             ? pg_order_legal_acceptance_json(
                                 array_keys(array_filter(array(
-                                    'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
-                                    'contract' => ($liveform->get_field_value('legal_contract') == 1),
-                                    'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
+                                    'preinfo'  => pg_legal_document_ticked($liveform->get_field_value('legal_preinfo')),
+                                    'contract' => pg_legal_document_ticked($liveform->get_field_value('legal_contract')),
+                                    'kvkk'     => pg_legal_document_ticked($liveform->get_field_value('legal_kvkk')),
                                 ))),
                                 function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? ''),
                                 $_SERVER['HTTP_USER_AGENT'] ?? '',
@@ -3498,9 +3502,9 @@ function submit_order($type) {
         // The checkout page, once step 11.0.120 has added its column.
         + (pg_schema_has('orders', 'checkout_page_id') ? array('checkout_page_id' => pg_order_checkout_page_id($page_id)) : array()),
         array_keys(array_filter(array(
-            'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
-            'contract' => ($liveform->get_field_value('legal_contract') == 1),
-            'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
+            'preinfo'  => pg_legal_document_ticked($liveform->get_field_value('legal_preinfo')),
+            'contract' => pg_legal_document_ticked($liveform->get_field_value('legal_contract')),
+            'kvkk'     => pg_legal_document_ticked($liveform->get_field_value('legal_kvkk')),
         ))),
         array(
             'lines' => $products,
