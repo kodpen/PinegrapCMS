@@ -264,6 +264,20 @@ function api_webhook_event_payloads() {
 			'sample' => $credit_sample(0) + array('expired_amount' => 15100)
 		),
 
+		'referral.rewarded' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The referral\'s commission row (GET /commissions/{id}, kind referral).'),
+				'reference_code' => array('string', 'The row\'s reference code.'),
+				'affiliate_code' => array('string', 'The referrer\'s referral code the friend arrived with.'),
+				'order_id'       => array('integer', 'The friend\'s order (GET /orders/{id}).'),
+				'amount'         => array('integer', 'The reward, in minor units (cents).'),
+				'customer_id'    => array('integer', 'The referrer (GET /customers/{id}).'),
+				'account_id'     => array('integer', 'The referrer\'s site account the credit was given to.'),
+				'card_id'        => array('integer', 'The store credit card of the reward (GET /gift-cards/{id}).')
+			),
+			'sample' => array('id' => 65, 'reference_code' => 'C8R4T2', 'affiliate_code' => 'R15-4K2M9QX7ZA', 'order_id' => 1042, 'amount' => 2500, 'customer_id' => 41, 'account_id' => 7, 'card_id' => 90)
+		),
+
 		'commission.status_changed' => array(
 			'fields' => array(
 				'id'              => array('integer', 'The commission (GET /commissions/{id}).'),
