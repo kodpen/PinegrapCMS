@@ -112,7 +112,6 @@
 - product-form-uploads-features.md: Plan product-form-uploads, features U1 to U16: the field and its rules, the shopper's upload, who opens the file, where the order shows it, its later life and the sweep of unordered carts
 - product-form-uploads-steps.md: Plan product-form-uploads, steps FU1 to FU6: the field and the file's door, the designer carts, the classic carts, the order's readers and the API, the sweep, close-out
 - product-form-uploads.md: Plan (owner 2026-11-20, agent channel poll 160): a File Upload field in product forms, so a shopper's photo or print file stays with the cart line and the order; steps FU1 to FU6
-- prototype-next.md: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to a frame, drag a row onto a frame, a badge's target-less links, Ctrl+F, shortest click path, Play's misses; PX1-PX6
 - referral-programme-features.md: Plan referral-programme, features E1 to E15: settings, who can refer, the signed code on the affiliate link's rails, the checks at completion, the reward as a commission row and credit, its take-back
 - referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
 - referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5

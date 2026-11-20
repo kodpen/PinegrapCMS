@@ -160,7 +160,8 @@
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
-- office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (OE1a, office_shift.php): the save entry, what moves, what is refused and why, one change a save; the head menu is OE1b
+- office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
+- office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
@@ -204,6 +205,7 @@
 - sheet-import-door-safety.md: The spreadsheet import door's guards from the bug hunt (#10619): reader by content, the CSV written row by row, waiting workbooks swept by age
 - sheet-import-upload.md: How the CSV-only importers take .xlsx, .ods and .xls (pg_sheet_import_upload(), OS2a #10523); the sheet question, also on Products > Import and the bank import (OS2c)
 - sheet-reader-differences.md: The sheet reader's .xls fixes to excel_reader2.php (SST, memory), .xlsx parts found through the relationships, its deliberate differences from PHPExcel, its tests
+- sheet-reader-leading-zeros.md: Spreadsheet import keeps the leading zeros a number format shows (phone, post code, tax ID under 00000000000): which .xlsx, .ods, .xls formats count, what stays (#10622)
 - sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel [decision: here]
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.
 - short-link-gone-destination.md: A short link whose page or file was deleted answers its address as no link had it (404 or a pattern), not with the home page; pg_short_link_destination_gone() in router.php
