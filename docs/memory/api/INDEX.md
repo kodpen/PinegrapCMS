@@ -11,6 +11,7 @@
 - ai-connections-feature-cards.md: The feature cards without a key (CX9b): the Provider select and the chosen provider's connection on the assistants' form and the Voice message transcripts card, own keys, the 11.0.241 voice data step
 - ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it [decision: here]
 - api-answer-check.md: tools/check_api_answers.php, the read-only check that calls every GET route of a running site and compares each answer with the site's OpenAPI document; how it is run, what it flags and skips
+- api-app-token.md: An application key and its secret as one token (Authorization: Bearer pgkt_<key>.<secret>, feature U10): format, where it is read, same path as HTTP Basic, never from the query string
 - api-bookings.md: Bookings API (BK8): list, get, free slots, staff-made create, status and cancel through the agenda's write path, bookings:* for roles 0-2 and role-3 staff (own rows), events
 - api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
 - api-calendar-locations-reservations.md: /calendars/locations CRUD (fn/calendar_writes.php, role 3 refused), GET /calendars/events/{id}/reservations, the calendar_event.reserved webhook
