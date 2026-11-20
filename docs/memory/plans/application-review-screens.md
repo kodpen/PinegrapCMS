@@ -12,7 +12,7 @@ description: Plan application-review, how the programme's screens are put togeth
 - One fill, "Add programme" [buttons], which asks only the name and the form in a small drawer and opens the programme as a draft. Row actions quiet small: Open; Delete in the row's menu, danger, only for a draft with no entries.
 
 ## How is a programme's screen laid out?
-- Head: the name, the pill, one fill that follows the state: "Open for entries", "Close", then the round's own. Under it tabs [segmented control]: "Set-up", "Reviewers" (AR3), "Entries" (AR5), "Decisions" (AR6), "Report" (AR7). A tab shows from the step that builds it.
+- Head: the name, the pill, one quiet button that follows the state: "Open for entries", "Close", then the round's own. Save is the view's one fill (architect, 2026-11-20, agent channel message 11221). Under it tabs [segmented control]: "Set-up", "Reviewers" (AR3), "Entries" (AR5), "Decisions" (AR6), "Report" (AR7). A tab shows from the step that builds it.
 - Set-up is folded rows, one open at a time (the settings pane of `plans/design-examples-patterns.md` DX1; before it lands, cards [cards]), each with one line saying what is set:
   1. "Period": opens, closes, the text shown outside the period.
   2. "Categories": the form's choice field.

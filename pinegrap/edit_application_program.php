@@ -6,8 +6,8 @@
  * head with the name, the status and the button that follows it, the tabs,
  * and the Set-up tab: period, categories, eligibility, rounds and criteria,
  * blind review and decision e-mails. Gated by validate_forms_access() and
- * the folder rule on the programme's form. Without an id it asks the name
- * and the form and creates the programme as a draft.
+ * the folder rule on the programme's form. It also takes the list drawer's
+ * add (a name and a form: a new draft) and the row menu's Delete.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -26,7 +26,8 @@ if (!pg_application_program_ready()) {
 
 $liveform = new liveform('edit_application_program');
 $ap_forms = pg_application_program_forms($user);
-$ap_id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
+// The list's row menu posts Delete with the programme's id as its value.
+$ap_id = (int) ($_POST['id'] ?? $_POST['submit_delete'] ?? $_GET['id'] ?? 0);
 $ap_program = ($ap_id > 0) ? pg_application_program_get($ap_id) : null;
 $ap_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_application_program.php';
 $ap_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php';
@@ -56,8 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ap_new_page = (int) ($_POST['page_id'] ?? 0);
 
         if (($ap_new_name === '') || !isset($ap_forms[$ap_new_page])) {
-            $liveform->add_error(h(lang('Give the programme a name and choose its form.')));
-            go($ap_self);
+            $ap_list_form = new liveform('view_application_programs');
+            $ap_list_form->add_error(h(lang('Give the programme a name and choose its form.')));
+            go($ap_list . '?add=1');
         }
 
         $ap_new_id = pg_application_program_create($ap_new_name, $ap_new_page, (int) $user['id']);
@@ -75,8 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($ap_list);
         }
 
-        $liveform->add_error(h(lang('Only a draft with no entries can be deleted.')));
-        go($ap_back);
+        $ap_list_form = new liveform('view_application_programs');
+        $ap_list_form->add_error(h(lang('Only a draft with no entries can be deleted.')));
+        go($ap_list);
     }
 
     if (isset($_POST['submit_open']) && ($ap_program['status'] === 0)) {
@@ -125,40 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// The new programme's page: the name and the form only.
+// A programme is added in the list's drawer.
 if ($ap_program === null) {
-    $ap_form_options = '<option value="0">' . h(lang('Choose a form')) . '</option>';
-
-    foreach ($ap_forms as $page_id => $form) {
-        $ap_form_options .= '<option value="' . $page_id . '">' . h($form['name']) . '</option>';
-    }
-
-    echo pg_page_shell(array(
-        'title' => lang('Add programme'),
-        'extra classes' => 'form pg-measure-edit',
-        'icon' => 'form',
-        'heading' => lang('Add programme'),
-        'help' => 'forms#submitted-forms',
-        'heading_description' => lang('Name the programme and choose the form people apply with. It starts as a draft.'),
-        'breadcrumb' => array(
-            array('label' => lang('Application programmes'), 'url' => $ap_list),
-            array('label' => lang('Add programme')),
-        ),
-    )) . '
-<main id="content" class="container-fluid">
-    ' . $liveform->get_messages() . '
-    <form action="edit_application_program.php" method="post" class="pg-card p-5 d-flex flex-column gap-5">
-        ' . get_token_field() . '
-        <div><label class="pg-field-label" for="aprog_new_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_new_name" name="name" maxlength="150" required></div>
-        <div><label class="pg-field-label" for="aprog_new_form">' . h(lang('Form')) . '</label><select class="pg-input" id="aprog_new_form" name="page_id" required aria-describedby="aprog_new_form_help">' . $ap_form_options . '</select>
-        <div class="pg-field-help" id="aprog_new_form_help">' . h(lang('Entries are the form\'s submissions.')) . '</div></div>
-        <div class="d-flex flex-wrap gap-2"><button type="submit" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></div>
-    </form>
-</main>
-' . output_footer();
-
-    $liveform->remove_form();
-    exit();
+    go($ap_list . '?add=1');
 }
 
 // What the form shows: the posted values after a refused save, else the
@@ -354,8 +326,6 @@ if ($ap_program['status'] === 0) {
     $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_close" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('The form stops taking entries. Drafts saved for later can no longer be finished.')) . '">' . h(lang('Close')) . '</button>';
 }
 
-$ap_deletable = ($ap_program['status'] === 0) && ($ap_entries === 0);
-
 echo pg_page_shell(array(
     'title' => $ap_program['name'],
     'extra classes' => 'form pg-measure-edit',
@@ -384,7 +354,6 @@ echo pg_page_shell(array(
         ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
         <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
             <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
-            ' . ($ap_deletable ? '<button type="submit" name="submit_delete" value="1" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The programme and its settings are deleted. The form and its submissions stay.')) . '">' . h(lang('Delete')) . '</button>' : '') . '
         </div>
     </form>
 </main>
