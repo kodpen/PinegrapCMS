@@ -21,8 +21,8 @@ priority: 6
 - A note an agent writes belongs to the person its key acts for and counts in that person's 2,000 notes.
 - An edit writes no message, wakes nobody and writes no inbox line: the card says who changed it and when; whoever wants it announced writes a message.
 
-## What waits for the owner?
-- The agent's name on an edit needs two columns (`ws_notes.updated_app_id`, `ws_note_versions.app_id`): asked in poll 180 (message 10580). KD3 is given out only after a yes; with a no it is struck and the card names the person.
+## What did the owner answer?
+- The agent's name on an edit: yes to the two columns `ws_notes.updated_app_id` and `ws_note_versions.app_id` (poll 180, message 10580; `workflow/decisions-made-schema-37.md`). KD3 is free after KD1.
 
 ## What is built?
 - Features: `channel-documents-features.md` (N1 to N10). Steps: `channel-documents-steps.md`. Claim as `[plan:channel-documents] <step> — <topic>`.
