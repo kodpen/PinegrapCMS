@@ -8427,7 +8427,7 @@ function upgrade_2026_11_0_customer_rhythm() {
 
 	install_create_table('customer_rhythm', "CREATE TABLE customer_rhythm (
 		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		customer_key        VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		customer_key        VARCHAR(24) CHARACTER SET ascii NOT NULL DEFAULT '',
 		contact_id          INT UNSIGNED NOT NULL DEFAULT 0,
 		orders              INT UNSIGNED NOT NULL DEFAULT 0,
 		first_order_at      INT UNSIGNED NOT NULL DEFAULT 0,
