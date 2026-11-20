@@ -139,3 +139,14 @@ function test_sales_watch_returns_due()
 	// Later the same day, when the night's pass was missed.
 	pg_assert_true(pg_sales_watch_returns_due(mktime(15, 0, 0, 11, 20, 2026), mktime(4, 0, 0, 11, 19, 2026)));
 }
+
+// Two nights in a row keep their alert under two subjects.
+function test_sales_watch_returns_subject()
+{
+	$one = pg_sales_watch_returns_subject(mktime(3, 10, 0, 11, 20, 2026));
+	$two = pg_sales_watch_returns_subject(mktime(3, 2, 0, 11, 21, 2026));
+
+	pg_assert_true($one !== $two);
+	pg_assert_same($one, pg_sales_watch_returns_subject(mktime(23, 59, 0, 11, 20, 2026)));
+	pg_assert_same($one, pg_sales_watch_returns_subject(mktime(3, 0, 0, 11, 22, 2026)));
+}

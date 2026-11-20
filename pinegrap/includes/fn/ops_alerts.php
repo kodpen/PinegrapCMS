@@ -130,6 +130,12 @@ function pg_ops_alert_codes()
             'url'   => 'settings_commerce.php#pgset-payments',
             'group' => 'sales',
         ),
+        'return_spike' => array(
+            'label' => lang('Returns of a product rose'),
+            'type'  => 'warning',
+            'url'   => 'view_returns.php',
+            'group' => 'sales',
+        ),
     );
 }
 
@@ -1478,6 +1484,8 @@ function pg_ops_alert_sources()
         'storage'     => 'pg_ops_alerts_check_storage',
         // Orders stopped and payment broken (includes/fn/sales_watch.php).
         'sales'       => 'pg_sales_watch_check',
+        // The return spike, once a night (includes/fn/sales_watch_returns.php).
+        'returns'     => 'pg_sales_watch_check_returns',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',

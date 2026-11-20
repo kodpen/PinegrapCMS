@@ -2268,6 +2268,7 @@
     "{var:1}: {var:2} rows of this revision have been deleted since and cannot be brought back.": "{var:1}: bu sürümün {var:2} satırı o zamandan beri silindi ve geri getirilemez.",
     "{var:1}: {var:2} shared parts placed after the trial design was made stay as they are.": "{var:1}: deneme tasarımı yapıldıktan sonra yerleştirilen {var:2} ortak parça olduğu gibi kalır.",
     "{var:1}: {var:2} tables moved so far, {var:3} remain; continuing": "{var:1}: şimdiye kadar {var:2} tablo taşındı, {var:3} kaldı; devam ediliyor",
+    "{var:1}: {var:2} units asked back, {var:3} sold the month before, about {var:4} expected": "{var:1}: {var:2} adet iade istendi, önceki ay {var:3} adet satıldı, beklenen yaklaşık {var:4}",
     "{var:1}: {var:2} uses of {var:3} names": "{var:1}: {var:3} adın {var:2} kullanımı",
     "{var:1}: {var:2} {var:3} on {var:4} records ({var:5})": "{var:1}: {var:4} kayıtta {var:3} {var:2} ({var:5})",
     "{var:1}; next on {var:2}, {var:3}.": "{var:1}; sıradaki {var:2}, {var:3}.",
