@@ -29,7 +29,7 @@
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs [decision: here]
 - coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task [decision: here]
-- coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working, a session waiting on someone else does not count, when fewer; no count from the quota
+- coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working; a ready PR or a session waiting on someone else does not count; when fewer; no count from the quota
 - coordinator.md: Coordinator session: one per account, keeps its worker sessions on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect [decision: decisions-made-workspace-14.md]
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
