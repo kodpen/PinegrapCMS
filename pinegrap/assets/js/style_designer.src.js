@@ -14029,6 +14029,12 @@ const StyleDesigner = (function () {
         'account.store_credit_uses': [
             { __credit_use_order_no: '12301', __credit_use_order_url: '/order?id=1038', __credit_use_date: '14.10.2026', __credit_use_amount: '₺15,00' }
         ],
+        // An order whose tickets were all used, beside the preview's valid one.
+        'account.tickets': [
+            { __tickets_order_no: '12288', __tickets_order_date: '02.10.2026', __tickets_events: _sdT('Autumn concert'),
+              __tickets_count: '2', __tickets_count_label: _sdT('{var:1} tickets').replace('{var:1}', '2'), __tickets_valid: '0',
+              __tickets_state_label: _sdT('None valid'), __tickets_tone: 'secondary', __tickets_url: '#' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -25807,6 +25813,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Subscriptions of the member'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'account.subscriptions' } },
                 { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
                 { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
+                { label: _sdT('Tickets of the member'), type: 'loop_area', icon: 'bi-ticket-perforated', extra: { listSource: 'account.tickets' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -36840,6 +36847,7 @@ const StyleDesigner = (function () {
             'account.subscriptions': _sdT('One row for every subscription of the signed-in member, newest first, with its pause, resume, cancel and card update forms.'),
             'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
             'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
+            'account.tickets':    _sdT('One row for every order of the signed-in member that holds event tickets, newest first, at most 50, with the link to its tickets page.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -45072,6 +45080,7 @@ const StyleDesigner = (function () {
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
+            out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -46861,6 +46870,51 @@ const StyleDesigner = (function () {
         }).join('') + '</div>';
     }
 
+    // pg_event_tickets_account_html(); rows in account.tickets' shape.
+    /* @pg-site-output */
+    function _sdAccountTicketsHtml(rows) {
+        return '<div class="list-group pg-sw-tickets">' + (rows || []).map(function (r) {
+            return '<a href="' + esc(r.__tickets_url) + '" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2">'
+                + '<span><span class="fw-semibold">' + esc(r.__tickets_events) + '</span>'
+                + '<span class="d-block small text-body-secondary">#' + esc(r.__tickets_order_no) + ' · ' + esc(r.__tickets_order_date) + ' · ' + esc(r.__tickets_count_label) + '</span></span>'
+                + '<span class="badge text-bg-' + esc(r.__tickets_tone) + '">' + esc(r.__tickets_state_label) + '</span></a>';
+        }).join('') + '</div>';
+    }
+
+    // A new list of the member's tickets, as the tickets section draws it.
+    /* @pg-site-output */
+    function _sdAccountTicketsList(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token) {
+            return sem(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        return sem('div', 'list-group', _sdT('Tickets of the member'), {}, [createNode('loop_area', { source: 'account.tickets' }, [
+            sem('a', 'list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2', _sdT('Order'),
+                { href: '#', _bindings: { href: '__tickets_url' } }, [
+                sem('span', '', _sdT('Order'), {}, [
+                    text('span', 'fw-semibold', _sdT('Events and products'), _sdT('Jazz night'), '__tickets_events'),
+                    sem('span', 'd-block small text-body-secondary', _sdT('Order'), {}, [
+                        sem('span', '', '#', { text: '#' }),
+                        text('span', '', _sdT('Order number'), '12340', '__tickets_order_no'),
+                        sem('span', '', '·', { text: ' · ' }),
+                        text('span', '', _sdT('Order date'), '18.11.2026', '__tickets_order_date'),
+                        sem('span', '', '·', { text: ' · ' }),
+                        text('span', '', _sdT('Number of tickets (words)'), _sdT('{var:1} tickets').replace('{var:1}', '4'), '__tickets_count_label')
+                    ])
+                ]),
+                // The badge's colour is a condition on the tone: a class takes no value.
+                sem('span', 'badge text-bg-success', _sdT('State'), _sdPartWhen('__tickets_tone', 'eq', 'success'),
+                    [text('span', '', _sdT('State'), _sdT('{var:1} valid').replace('{var:1}', '4'), '__tickets_state_label')]),
+                sem('span', 'badge text-bg-secondary', _sdT('State'), _sdPartWhen('__tickets_tone', 'eq', 'secondary'),
+                    [text('span', '', _sdT('State'), _sdT('None valid'), '__tickets_state_label')])
+            ])
+        ])]);
+    }
+
     // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
     // in pg_booking_customer_view_rows()' shape.
     /* @pg-site-output */
@@ -47022,6 +47076,7 @@ const StyleDesigner = (function () {
             }));
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
+        if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
         if (section === 'store_credit') {
             var use = function (u) {
                 return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
@@ -47049,7 +47104,8 @@ const StyleDesigner = (function () {
             bookings: _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.'),
             subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
             store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
-            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.')
+            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.'),
+            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.')
         };
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
@@ -48348,7 +48404,8 @@ const StyleDesigner = (function () {
             ['has_past_bookings', _sdT('The member has past bookings')],
             ['has_store_credit', _sdT('The member has store credit or points to convert')],
             ['has_store_credit_cards', _sdT('The member has store credit cards')],
-            ['has_subscriptions', _sdT('The member has subscriptions')]
+            ['has_subscriptions', _sdT('The member has subscriptions')],
+            ['has_tickets', _sdT('The member has orders with event tickets')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -65463,6 +65520,24 @@ const StyleDesigner = (function () {
                 ['__credit_use_amount',    _sdT('Amount spent')]
             ]
         },
+        // The member's orders that hold event tickets
+        // (pg_sw_list_account_ticket_rows()).
+        'account.tickets': {
+            label: _sdT('Tickets of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__tickets_order_no',    _sdT('Order number')],
+                ['__tickets_order_date',  _sdT('Order date')],
+                ['__tickets_events',      _sdT('Events and products')],
+                ['__tickets_count',       _sdT('Number of tickets')],
+                ['__tickets_count_label', _sdT('Number of tickets (words)')],
+                ['__tickets_valid',       _sdT('Valid tickets')],
+                ['__tickets_state_label', _sdT('State')],
+                ['__tickets_tone',        _sdT('State colour (success or secondary)')],
+                ['__tickets_url',         _sdT('Tickets page URL')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -65867,6 +65942,15 @@ const StyleDesigner = (function () {
         __credit_use_order_url: '/order?id=1042',
         __credit_use_date:      '20.10.2026',
         __credit_use_amount:    '₺15,00',
+        __tickets_order_no:     '12340',
+        __tickets_order_date:   '18.11.2026',
+        __tickets_events:       _sdT('Jazz night'),
+        __tickets_count:        '4',
+        __tickets_count_label:  _sdT('{var:1} tickets').replace('{var:1}', '4'),
+        __tickets_valid:        '4',
+        __tickets_state_label:  _sdT('{var:1} valid').replace('{var:1}', '4'),
+        __tickets_tone:         'success',
+        __tickets_url:          '#',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -66069,6 +66153,7 @@ const StyleDesigner = (function () {
         // The subscriptions and the store credit cards likewise.
         if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
         if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
+        if (source === 'account.tickets') return _sdAccountTicketsList(bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -86723,6 +86808,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each store credit card of the signed-in member.') },
             'l:account.store_credit_uses': { v: 'l-account-orders', k: 'store credit orders spent account list repeat loop',
                                     d: _sdT('Repeats its row for each order that spent the store credit card.') },
+            'l:account.tickets': { v: 'l-account-orders', k: 'member event tickets qr orders account list repeat loop',
+                                    d: _sdT('Repeats its row for each order of the signed-in member that holds event tickets.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',

@@ -11,11 +11,10 @@ description: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the 
   - Tests, red first: one ticket per unit and the cap; the code not the order's number and stored only hashed; cancel and restore; nothing with the switch off.
   - Features: T1, T2, T3, T4, T10.
 
-- TK2 (M) after TK1: the holder's page.
+- TK2 (M) after TK1: the holder's page. Done in #10583.
   - Existing files: `includes/fn/widgets_account.php` (`_pg_my_account_extras()`), the account lists of `assets/js/style_designer.src.js` (held by other open PRs).
   - New: the root file `tickets.php` behind a signed link.
   - A QR is drawn only when the sha256 of the code drawn again equals the row's `code_hash` (architect, 2026-11-20, `workflow/decisions-made-schema-29.md`).
-  - Pictures: one ticket, four tickets, a void one, a phone, the printed page. To the owner; not marked ready before his look.
   - Features: T5, T6.
 
 - TK3 (M) after TK1: the check-in screen.

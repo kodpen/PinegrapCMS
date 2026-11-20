@@ -4434,10 +4434,12 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
     if (pg_sw_list_wanted('account')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_event_tickets.php');
         pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date'))
             + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings'])
             + pg_sw_list_account_subscription_rows($values['account_id'], $extras['subscriptions'])
-            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards']));
+            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards'])
+            + pg_sw_list_account_ticket_rows($values['account_id'], $extras['tickets']));
     }
 
     // ── No loop_area — render entire tree once with account tokens ─────────
