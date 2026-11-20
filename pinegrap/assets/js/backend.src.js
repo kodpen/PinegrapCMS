@@ -49,6 +49,106 @@ window.pgSettingsKeepDrawer = function (drawer, button) {
     return !(button && /_(delete|remove|archive)$/.test(String(button.name || '')));
 };
 
+// Which folded row of a settings pane (includes/settings/fold.php) opens: the
+// first key asked that is a row of the pane, '' for none. The asks come in
+// their order of weight: the row holding what was asked for (a card, a field
+// the save marked, a drawer opened again), then the row open before a save.
+window.pgSettingsFoldPick = function (keys, asks) {
+    keys = keys || [];
+    asks = asks || [];
+
+    for (var i = 0; i < asks.length; i++) {
+        if (asks[i] && (keys.indexOf(String(asks[i])) !== -1)) {
+            return String(asks[i]);
+        }
+    }
+
+    return '';
+};
+
+// The folded rows of a settings pane: a click on a row's head opens it and
+// folds the others, as one row is open at a time; a second click folds it.
+// pgSettingsFoldReveal() opens the row an element sits in, for every way
+// into a card that is not a click on its head.
+(function () {
+    function setOpen(item, on) {
+        var head = item.querySelector(':scope > .pg-set-fold-head');
+        var body = item.querySelector(':scope > .pg-set-fold-body');
+
+        item.classList.toggle('is-open', on);
+
+        if (head) {
+            head.setAttribute('aria-expanded', on ? 'true' : 'false');
+        }
+
+        if (body) {
+            body.hidden = !on;
+        }
+    }
+
+    window.pgSettingsFoldOpen = function (item) {
+        var list = item ? item.parentNode : null;
+
+        if (!list) {
+            return;
+        }
+
+        Array.prototype.forEach.call(list.children, function (other) {
+            if (other.classList.contains('pg-set-fold-item')) {
+                setOpen(other, other === item);
+            }
+        });
+    };
+
+    window.pgSettingsFoldReveal = function (el) {
+        var item = (el && el.closest) ? el.closest('.pg-set-fold-item') : null;
+
+        if (!item) {
+            return false;
+        }
+
+        if (!item.classList.contains('is-open')) {
+            window.pgSettingsFoldOpen(item);
+        }
+
+        return true;
+    };
+
+    // The key of the open row inside scope, '' for none.
+    window.pgSettingsFoldKey = function (scope) {
+        var open = scope ? scope.querySelector('.pg-set-fold-item.is-open') : null;
+
+        return open ? String(open.getAttribute('data-pg-fold') || '') : '';
+    };
+
+    // Opens the row of key inside scope, as pgSettingsFoldPick() chose it.
+    window.pgSettingsFoldOpenKey = function (scope, key) {
+        var items = scope ? scope.querySelectorAll('.pg-set-fold-item') : [];
+
+        for (var i = 0; i < items.length; i++) {
+            if (key && (items[i].getAttribute('data-pg-fold') === key)) {
+                window.pgSettingsFoldOpen(items[i]);
+                return;
+            }
+        }
+    };
+
+    document.addEventListener('click', function (event) {
+        var head = event.target.closest ? event.target.closest('.pg-set-fold-head') : null;
+        var item = head ? head.parentNode : null;
+
+        if (!item || !item.classList.contains('pg-set-fold-item')) {
+            return;
+        }
+
+        if (item.classList.contains('is-open')) {
+            setOpen(item, false);
+        } else {
+            window.pgSettingsFoldOpen(item);
+        }
+    });
+})();
+
 // Says a short answer to a screen reader without moving focus. A live region
 // is only heard when its words change after it is in the document, so the two
 // regions (polite and assertive) are made empty once the page has loaded and
@@ -8624,6 +8724,8 @@ function initSettingsNav() {
 
         event.preventDefault();
 
+        window.pgSettingsFoldReveal(section);
+
         // Instant for the same reason initSettingsAnchors is instant: this page
         // lays out as it scrolls -- code editors, charts -- and every shift on
         // the way down cancels a smooth scroll a few pixels in.
@@ -8664,6 +8766,8 @@ function initSettingsAnchors() {
         }
         var target = document.getElementById(window.location.hash.slice(1));
         if (target) {
+            // A card in a folded row opens first.
+            window.pgSettingsFoldReveal(target);
             // instant, not the page default of smooth: a smooth scroll is an
             // animation, and every layout shift on the way down cancels it.
             // On a screen this long that means it stops after a few pixels.
@@ -12810,8 +12914,14 @@ var pgSettingsModal = (function () {
             control.setAttribute('data-pg-sm-marked', '');
             window.pgFieldInvalid(control, true, fields[name]);
 
-            if (!first && !control.disabled && control.getClientRects().length) {
-                first = control;
+            if (!first && !control.disabled) {
+                // The first marked field's folded row opens, so the field
+                // can be seen and take focus.
+                window.pgSettingsFoldReveal(control);
+
+                if (control.getClientRects().length) {
+                    first = control;
+                }
             }
         });
 
@@ -12859,6 +12969,10 @@ var pgSettingsModal = (function () {
             if (!card) {
                 return;
             }
+
+            // A card in a folded row is opened first: a folded one has no
+            // place to scroll to.
+            window.pgSettingsFoldReveal(card);
 
             form.scrollTop += card.getBoundingClientRect().top - form.getBoundingClientRect().top - 8;
         });
@@ -13210,6 +13324,17 @@ window.pgCodeEditorReady = function (markup, done) {
 
         locate(key);
 
+        // The folded row open before a save stays open; the pane read first
+        // keeps the row the server chose (the first part that needs
+        // attention). reopen() below may open the row of its drawer instead.
+        if (place) {
+            var folds = $pane.find('.pg-set-fold-item').map(function () {
+                return this.getAttribute('data-pg-fold');
+            }).get();
+
+            window.pgSettingsFoldOpenKey($pane[0], window.pgSettingsFoldPick(folds, [place.fold]));
+        }
+
         if (place) {
             // Read back after a save: the operator stays where they were. Once
             // more after the frame, for a code field or an image that changes
@@ -13444,6 +13569,7 @@ window.pgCodeEditorReady = function (markup, done) {
 
         return {
             scroll: form.scrollTop,
+            fold: window.pgSettingsFoldKey(form),
             drawer: keep ? from.id : '',
             drawerScroll: (keep && body) ? body.scrollTop : 0
         };
@@ -13470,6 +13596,12 @@ window.pgCodeEditorReady = function (markup, done) {
                 trigger = this;
             }
         });
+
+        // The drawer's button is the focus to come back to: its folded row
+        // opens, whichever row was open before.
+        if (trigger) {
+            window.pgSettingsFoldReveal(trigger);
+        }
 
         openCardDrawer(again, trigger);
 

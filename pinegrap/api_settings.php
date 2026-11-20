@@ -32,6 +32,9 @@ define('PG_API_PANEL', true);
 
 require_once(dirname(__FILE__) . '/includes/api/keys.php');
 require_once(dirname(__FILE__) . '/includes/api/app_access.php');
+require_once(dirname(__FILE__) . '/includes/api/app_templates.php');
+require_once(dirname(__FILE__) . '/includes/api/app_new_view.php');
+require_once(dirname(__FILE__) . '/includes/api/app_permissions_view.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
@@ -144,6 +147,54 @@ if ($_POST) {
 			// outside applications a person connects, and has none either.
 			$kind = api_app_kind(isset($_POST['kind']) ? $_POST['kind'] : '');
 
+			// The starting point picked in the sheet's first step decides the
+			// kind; its card is read again here, not trusted from the form.
+			// Only its kind and the automation note follow from it: the rows
+			// it ticked come in as the posted permissions.
+			$start_cards = api_app_templates(api_scope_groups(), array(), array());
+
+			$start = api_app_template_posted(isset($_POST['start']) ? $_POST['start'] : '', $start_cards);
+
+			if ($start !== '') {
+				$kind = $start_cards[$start]['kind'];
+			}
+
+			// The sheet's Advanced part: the same checks as the drawer's
+			// Security tab, before anything is written.
+			$too_long = api_app_text_too_long(array(
+				'name'         => $liveform->get_field_value('name'),
+				'description'  => isset($_POST['description']) ? $_POST['description'] : '',
+				'ip_allowlist' => isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : ''
+			));
+
+			$bad_ip = api_app_ip_allowlist_bad(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '');
+
+			$rate = api_app_rate_limit_in(isset($_POST['rate_limit_per_min']) ? $_POST['rate_limit_per_min'] : '');
+
+			if (($too_long !== '') || ($bad_ip !== '') || ($rate === false)) {
+
+				if ($too_long === 'name') {
+					$liveform->add_error(lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => 190)));
+				} elseif ($too_long === 'description') {
+					$liveform->add_error(lang(array('string' => 'The description can be at most {var:1} characters long.', 'vars' => 500)));
+				} elseif ($too_long !== '') {
+					$liveform->add_error(lang(array('string' => 'The list of allowed IP addresses can be at most {var:1} characters long. Use a range (CIDR) to cover several addresses.', 'vars' => 500)));
+				}
+
+				if ($bad_ip !== '') {
+					$liveform->add_error(lang(array('string' => 'Not an IP address or range: {var:1}', 'vars' => h($bad_ip))));
+				}
+
+				if ($rate === false) {
+					$liveform->add_error(lang('The rate limit is a whole number of requests a minute, from 1 to 6000.'));
+				}
+
+				header('Location: ' . $screen_url);
+
+				exit();
+
+			}
+
 			// The site serves one OAuth application, the oldest active one
 			// (pg_oauth_app()). A second would be listed with scopes no
 			// connection ever gets, so it is refused and the existing one
@@ -190,6 +241,17 @@ if ($_POST) {
 
 			}
 
+			$ip_allowlist = isset($_POST['ip_allowlist']) ? trim((string)$_POST['ip_allowlist']) : '';
+
+			if (($ip_allowlist !== '') || ($rate !== null)) {
+
+				db("UPDATE api_apps SET
+						ip_allowlist = '" . escape($ip_allowlist) . "'
+						" . (($rate === null) ? '' : ", rate_limit_per_min = '" . (int)$rate . "'") . "
+					WHERE id = '" . (int)$made['id'] . "'");
+
+			}
+
 			// The one and only time this pair is readable. It is handed to the
 			// next request through the session rather than the query string,
 			// because a query string is written to the server's access log.
@@ -200,7 +262,7 @@ if ($_POST) {
 				'kind'   => $made['kind'],
 				// The starting point is not stored: it only adds the note
 				// about an automation platform to this one sheet.
-				'automation' => (($made['kind'] === 'server') && isset($_POST['start']) && ($_POST['start'] === 'automation'))
+				'automation' => (($made['kind'] === 'server') && ($start === 'automation'))
 			);
 
 			header('Location: ' . $screen_url);
@@ -803,55 +865,6 @@ $oauth_served_id = api_app_oauth_served_id($apps, time());
    Presentation helpers
    --------------------------------------------------------------------------- */
 
-// Short Turkish-friendly labels for the resource rows, and the sentence under
-// each one saying what it actually reaches.
-function api_settings_group_text($key, $group = array()) {
-
-	$text = array(
-		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products, product groups and product attributes, and deleting them'), 'bi-box-seam'),
-		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
-		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes'), 'bi-cart3'),
-		'store'     => array(lang('Store settings'), lang('Writing the shipping methods, shipping zones and tax zones checkout charges by - reading them is under Orders'), 'bi-geo-alt'),
-		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
-		'pages'     => array(lang('Pages'),      lang('Page details, comment settings, folders, menus and short links'), 'bi-file-earmark'),
-		'design'    => array(lang('Page design'), lang('The layout of the Page Design Studio\'s pages and the site\'s ads; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, putting back a published revision, sharing the drafts as a prototype by a link, or adding, changing and removing ads and ad regions, which go live at once'), 'bi-palette'),
-		'comments'  => array(lang('Comments'),   lang('What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one'), 'bi-chat-left-text'),
-		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
-		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),
-		'gift_cards' => array(lang('Gift Cards'), lang('The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it'), 'bi-gift'),
-		'commissions' => array(lang('Commissions'), lang('What the affiliate program owes each affiliate, with its status and the order it came from - read only'), 'bi-cash-coin'),
-		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
-		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
-		'calendars' => array(lang('Calendars'),  lang('The calendars and the events on them; writing adds, changes, publishes or removes an event, not its repeats or reservations'), 'bi-calendar-event'),
-		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site and the addresses visitors did not find, as lists to work through'), 'bi-graph-up-arrow'),
-		'webhooks'  => array(lang('Webhooks'),   lang('Registering, changing and testing an address for event notifications'), 'bi-megaphone'),
-		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
-		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring, and the audit trail'), 'bi-activity'),
-		'visitors'  => array(lang('Visitors'),   lang('Visits and page views, the most viewed content and where visits came from, as totals - never a single visit'), 'bi-bar-chart'),
-		'site_log'  => array(lang('Site Log'),   lang('Who did what on the site and from which address - read only'), 'bi-journal-text'),
-		'campaigns' => array(lang('Campaigns'),  lang('E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together'), 'bi-envelope'),
-		'contact_groups' => array(lang('Contact Groups'), lang('The lists campaigns go to and who is on them; writing makes, renames and removes empty groups, puts contacts in or takes them out and records their e-mail choice'), 'bi-people'),
-		'account'   => array(lang('Own account'), lang('Notifications, signed-in devices and push registration of the account the calls act for'), 'bi-person-badge')
-	);
-
-	if (isset($text[$key])) {
-
-		return $text[$key];
-
-	}
-
-	// A group a module contributed (see includes/api/modules.php). It carries
-	// its own wording, because this screen cannot know what an ERP permission
-	// covers - and "Erp" with an empty line under it is what the operator would
-	// otherwise be asked to grant.
-	return array(
-		isset($group['label']) && ($group['label'] !== '') ? $group['label'] : ucfirst($key),
-		isset($group['description']) ? $group['description'] : '',
-		isset($group['icon']) && ($group['icon'] !== '') ? $group['icon'] : 'bi-key'
-	);
-
-}
-
 // Which of the three positions a stored scope set puts a resource in.
 function api_settings_group_choice($granted, $group) {
 
@@ -1264,58 +1277,6 @@ if ($app_rows === '') {
 }
 
 /* ---------------------------------------------------------------------------
-   The permission rows, drawn once and reused by the drawer and the new-app form
-   --------------------------------------------------------------------------- */
-
-function api_settings_permission_rows($prefix, $id_prefix = '') {
-
-	// The rows are drawn in two places on one page. The posted name has to be
-	// the same in both, the element ids must not be: a duplicate id makes a
-	// label drive the first copy of the control instead of its own.
-	if ($id_prefix === '') { $id_prefix = $prefix; }
-
-	$html = '';
-
-	foreach (api_scope_groups() as $group_key => $group) {
-
-		$text = api_settings_group_text($group_key, $group);
-
-		$name = $prefix . '[' . $group_key . ']';
-
-		$id = $id_prefix . '_' . $group_key;
-
-		// A resource with only one half offers a dash in the other position, so
-		// every row keeps the same three-column shape and the missing half reads
-		// as "not offered" rather than as an option that failed to draw.
-		$read = ($group['read'] !== '')
-			? '<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_read" value="read">
-			   <label class="btn" for="' . $id . '_read">' . lang('Read') . '</label>'
-			: '<span class="api-seg-none">&mdash;</span>';
-
-		$write = ($group['write'] !== '')
-			? '<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_write" value="write">
-			   <label class="btn" for="' . $id . '_write">' . ($group_key === 'webhooks' ? lang('Manage') : lang('Write')) . '</label>'
-			: '<span class="api-seg-none">&mdash;</span>';
-
-		$html .= '
-		<div class="api-perm" data-group="' . h($group_key) . '">
-			<i class="bi ' . $text[2] . '"></i>
-			<div class="api-perm-text"><b id="' . $id . '_label">' . h($text[0]) . '</b><span>' . h($text[1]) . '</span></div>
-			<div class="api-seg btn-group btn-group-sm" role="group" aria-labelledby="' . $id . '_label">
-				<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_none" value="" checked>
-				<label class="btn" for="' . $id . '_none">' . lang('None') . '</label>
-				' . $read . '
-				' . $write . '
-			</div>
-		</div>';
-
-	}
-
-	return $html;
-
-}
-
-/* ---------------------------------------------------------------------------
    A Copy button for the text of a <code>, with its status beside it
    --------------------------------------------------------------------------- */
 
@@ -1518,6 +1479,20 @@ $start_note = lang(array(
 	'string' => 'The {var:1} permissions the platform uses are ticked: {var:2}. They can be changed; a permission left unticked turns that step off on the platform.',
 	'vars'   => array(pg_format_number(count($start_choices), 0), implode(', ', $start_names))
 ));
+
+// The starting points of New application's sheet. The sign-in card opens the
+// OAuth application the site serves when there is one.
+$start_oauth_app = null;
+
+foreach ($apps as $listed_app) {
+
+	if ((int)$listed_app['id'] === (int)$oauth_served_id) {
+		$start_oauth_app = array('id' => (int)$listed_app['id'], 'name' => $listed_app['name']);
+	}
+
+}
+
+$start_cards = api_app_templates(api_scope_groups(), pg_automation_contract_scopes(), api_app_money_scopes(api_schema()), $start_oauth_app);
 
 // The Events tab's "New subscription": every event of the catalogue with its
 // module and its line, for the list the form searches.
@@ -2026,10 +2001,18 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 #api_drawer.api-locked .api-hook-new,
 #api_drawer.api-locked .api-hook-form,
 #api_drawer.api-locked .api-hook-sample { display: none; }
-/* The two starting points of New application side by side from md up. */
+/* New application\'s starting points: two cards a row from md up, each with
+   its icon tile beside the title. */
 .api-start { display: grid; gap: 8px; }
 @media (min-width: 768px) { .api-start { grid-template-columns: 1fr 1fr; } }
 .api-start .form-field-card { margin-bottom: 0; }
+.api-start-head { display: flex; align-items: center; gap: 8px; }
+.api-start-head .pg-pill { margin-left: auto; }
+.api-start-acts { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--pg-border-color);
+	font-size: var(--pg-text-count); }
+.api-start-acts .bi { margin-right: 4px; }
+.api-new-advanced { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 12px; }
+.api-new-advanced summary { cursor: pointer; }
 /* The Events tab\'s "New subscription" and "Send a sample" boxes. */
 .api-hook-form, .api-hook-sample { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color);
 	border-radius: 8px; padding: 10px 12px; }
@@ -2054,7 +2037,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	</div></div>
 
 	' . pg_screen_toolbar(array(
-		'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#api_new"><i class="bi bi-key" aria-hidden="true"></i>' . lang('New Application') . '</button>',
+		'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="drawer" data-bs-target="#api_new"><i class="bi bi-key" aria-hidden="true"></i>' . lang('New Application') . '</button>',
 		'secondary' => array(
 			array('label' => lang('API Documentation'), 'url' => 'api_docs.php', 'icon' => 'bi-file-earmark-text'),
 			array('label' => lang('API Settings'), 'url' => 'settings_api.php', 'icon' => 'bi-sliders'),
@@ -2362,73 +2345,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	</form>
 </dialog>
 
-<!-- New application -->
-<dialog class="dialog dialog-lg dialog-scrollable" id="api_new" aria-labelledby="api_new_title">
-		<form method="post" action="api_settings.php" autocomplete="off" class="d-contents disable_shortcut">
-			' . get_token_field() . '
-			<input type="hidden" name="api_action" value="create">
-			<div class="dialog-header">
-				<h5 class="dialog-title" id="api_new_title"><i class="bi bi-key me-3"></i>' . lang('New Application') . '</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
-			</div>
-			<div class="dialog-body">
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="n_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
-						placeholder="' . lang('For example: marketplace sync') . '">
-				</div>
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="n_description">' . lang('Description') . '</label>
-					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
-				</div>
-				<fieldset class="mb-7">
-					<legend class="form-label pg-field-label">' . lang('Who connects') . '</legend>
-					<div class="form-field form-field-card">
-						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" aria-describedby="n_kind_server_help" checked>
-						<label class="small fw-bold" for="n_kind_server">' . lang('An integration') . '</label>
-						<div class="form-text mt-0" id="n_kind_server_help">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</div>
-					</div>
-					<div class="form-field form-field-card">
-						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device" aria-describedby="n_kind_device_help">
-						<label class="small fw-bold" for="n_kind_device">' . lang('Team devices') . '</label>
-						<div class="form-text mt-0" id="n_kind_device_help">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</div>
-					</div>
-					<div class="form-field form-field-card">
-						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth" aria-describedby="n_kind_oauth_help">
-						<label class="small fw-bold" for="n_kind_oauth">' . lang('Connected apps (OAuth)') . '</label>
-						<div class="form-text mt-0" id="n_kind_oauth_help">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</div>
-					</div>
-				</fieldset>
-				<fieldset class="mb-7" id="n_start">
-					<legend class="form-label pg-field-label">' . lang('Starting point') . ' <span class="fg-2">&mdash; ' . lang('only for an integration') . '</span></legend>
-					<div class="api-start">
-						<div class="form-field form-field-card">
-							<input class="radio" type="radio" name="start" value="" id="n_start_self" aria-describedby="n_start_self_help" checked>
-							<label class="small fw-bold" for="n_start_self">' . lang('I will choose the permissions') . '</label>
-							<div class="form-text mt-0" id="n_start_self_help">' . lang('No permission comes ticked; choose below what the application may reach.') . '</div>
-						</div>
-						<div class="form-field form-field-card">
-							<input class="radio" type="radio" name="start" value="automation" id="n_start_auto" aria-describedby="n_start_auto_help">
-							<label class="small fw-bold" for="n_start_auto">' . lang('Automation platform') . '</label>
-							<div class="form-text mt-0" id="n_start_auto_help">' . lang('An automation platform connects to the site with this application. The permissions the platform uses are ticked.') . '</div>
-						</div>
-					</div>
-					<div class="alert theme-primary py-3 px-5 small mt-3 mb-0 d-none" id="n_start_note" role="status">
-						<i class="bi bi-magic me-1" aria-hidden="true"></i>' . h($start_note) . '
-					</div>
-				</fieldset>
-				<div role="group" aria-labelledby="n_scope_title">
-					<div class="form-label pg-field-label" id="n_scope_title">' . lang('Permissions') . '</div>
-					' . api_settings_permission_rows('scope', 'n_scope') . '
-				</div>
-			</div>
-			<div class="dialog-footer">
-				<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-				<button type="submit" class="pg-button pg-button-fill" id="n_submit"
-					data-server="' . h(lang('Create and show the secret')) . '" data-device="' . h(lang('Create')) . '">' . lang('Create and show the secret') . '</button>
-			</div>
-		</form>
-</dialog>';
+' . api_app_new_view($start_cards, api_settings_permission_rows('scope', 'n_scope'), $start_note);
 
 /* An OAuth application has nothing to reveal either. What the operator needs is
    the address an outside application is pointed at. */
@@ -2591,8 +2508,8 @@ echo '
 		'flash'  => isset($hooks_back['flash']) ? $hooks_back['flash'] : null,
 		'secret' => isset($hooks_back['secret'])
 	) : null, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
-	// New application: the rows the "Automation platform" starting point ticks.
-	var START_CHOICES = ' . json_encode((object)$start_choices) . ';
+	// New application: the starting points, each with the rows it ticks.
+	var START_CARDS = ' . json_encode(array_map(function ($card) { $card['choices'] = (object)$card['choices']; return $card; }, $start_cards), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
 	var HOOK_TEXT = {};
 	HOOK_EVENTS.forEach(function (e) { HOOK_TEXT[e.name] = e.text; });
 
@@ -2905,15 +2822,6 @@ echo '
 		document.getElementById("d_action").form.submit();
 	});
 
-	// The create button says what happens next: an integration is shown its
-	// secret once, a team devices application has none.
-	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
-		radio.addEventListener("change", function () {
-			var submit = document.getElementById("n_submit");
-			submit.textContent = (this.value === "server") ? submit.dataset.server : submit.dataset.device;
-		});
-	});
-
 	document.addEventListener("click", function (e) {
 		var button = e.target.closest(".api-hook-act");
 		if (!button) { return; }
@@ -3133,39 +3041,91 @@ echo '
 		document.getElementById("d_action").form.submit();
 	});
 
-	/* New application: the starting point, only for an integration. The
-	   automation platform ticks the rows its contract uses; choosing the
-	   permissions oneself starts from none, as before. */
-	var startBox = document.getElementById("n_start");
+	/* New application: a drawer in steps. Step 1 picks a starting point,
+	   step 2 takes the details and ticks the starting point\'s rows, Create
+	   posts; the page then shows the one-time sheet (step 3). Back keeps
+	   what was typed. The sign-in card opens the OAuth application the site
+	   already serves instead of making a second. */
+	var newSheet = document.getElementById("api_new");
+	var newForm = document.getElementById("n_form");
+	var nextButton = document.getElementById("n_next");
+	var createButton = document.getElementById("n_submit");
+	var backButton = document.getElementById("n_back");
+	var startPicked = "";
 
-	function syncStart() {
-		var kind = document.querySelector("#api_new input[name=\'kind\']:checked");
-		var server = !kind || kind.value === "server";
-		startBox.classList.toggle("d-none", !server);
-		if (!server) {
-			document.getElementById("n_start_self").checked = true;
-			document.getElementById("n_start_note").classList.add("d-none");
-		}
+	function newStep(number) {
+		document.getElementById("n_step_1").hidden = (number !== 1);
+		document.getElementById("n_step_2").hidden = (number !== 2);
+		backButton.hidden = (number !== 2);
+		nextButton.hidden = (number !== 1);
+		createButton.hidden = (number !== 2);
+		document.getElementById("n_cancel").hidden = (number !== 1);
+		document.getElementById("n_hint_1").hidden = (number !== 1);
+		document.getElementById("n_hint_2").hidden = (number !== 2);
+		document.getElementById("n_head_pick").hidden = (number !== 1);
+		document.getElementById("n_head_chosen").hidden = (number !== 2);
+		var card = (number === 2) ? pickedCard() : null;
+		document.getElementById("n_head_tile").className = "pg-icon-tile pg-icon-tile-lg pg-tone-" + (card ? card.tone : "blue");
+		document.getElementById("n_head_icon").className = "bi " + (card ? card.icon : "bi-plug");
+		document.querySelectorAll("#n_steps .stepper-item").forEach(function (item) {
+			var step = parseInt(item.dataset.step, 10);
+			item.classList.toggle("active", step <= number);
+			item.classList.toggle("theme-success", step < number);
+			if (step === number) { item.setAttribute("aria-current", "step"); } else { item.removeAttribute("aria-current"); }
+		});
+		var focus = (number === 2) ? document.getElementById("n_name") : document.querySelector("#api_new input[name=\'start\']:checked");
+		if (focus) { focus.focus(); }
 	}
 
-	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
-		radio.addEventListener("change", syncStart);
-	});
+	function pickedCard() {
+		var radio = document.querySelector("#api_new input[name=\'start\']:checked");
+		return radio ? START_CARDS[radio.value] : null;
+	}
+
+	function syncNext() {
+		var card = pickedCard();
+		nextButton.querySelector(".pg-btn-label").textContent = (card && card.existing) ? nextButton.dataset.open : nextButton.dataset.next;
+	}
 
 	document.querySelectorAll("#api_new input[name=\'start\']").forEach(function (radio) {
-		radio.addEventListener("change", function () {
-			var automation = (this.value === "automation");
+		radio.addEventListener("change", syncNext);
+	});
+
+	nextButton.addEventListener("click", function () {
+		var card = pickedCard();
+		if (!card) { return; }
+		if (card.existing && APPS[card.existing]) {
+			pgUI.drawer.hide(newSheet).then(function () { openApp(card.existing); });
+			return;
+		}
+		document.getElementById("n_kind").value = card.kind;
+		document.getElementById("n_chosen_title").textContent = card.title;
+		document.getElementById("n_start_note").classList.toggle("d-none", card.id !== "automation");
+		// A new starting point ticks its own rows; coming back to the same
+		// one keeps what was changed by hand.
+		if (startPicked !== card.id) {
 			document.querySelectorAll("#api_new .api-perm").forEach(function (row) {
-				var choice = automation && START_CHOICES[row.dataset.group] ? START_CHOICES[row.dataset.group] : "";
+				var choice = card.choices[row.dataset.group] || "";
 				var input = row.querySelector("input[value=\'" + choice + "\']");
 				if (input) { input.checked = true; }
 			});
 			paintImplied();
-			document.getElementById("n_start_note").classList.toggle("d-none", !automation);
-		});
+			startPicked = card.id;
+		}
+		newStep(2);
 	});
 
-	syncStart();
+	backButton.addEventListener("click", function () { newStep(1); });
+	document.getElementById("n_change").addEventListener("click", function () { newStep(1); });
+
+	// Return in a field of step 1 moves on rather than posting half a form.
+	newForm.addEventListener("submit", function (e) {
+		if (!document.getElementById("n_step_2").hidden) { return; }
+		e.preventDefault();
+		nextButton.click();
+	});
+
+	pgUI.drawer.on(newSheet, "show", function () { newStep(1); syncNext(); });
 
 	// Back from the Events tab\'s form or a sample: the drawer opens there again.
 	if (HOOKS_BACK && APPS[HOOKS_BACK.app_id]) {

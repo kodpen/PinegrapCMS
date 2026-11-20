@@ -9,7 +9,7 @@ description: Order of work after the owner's message of 2026-11-16 (agent channe
 
 ## What did he add when a coordinator gave out look steps? (owner, 2026-11-17, agent channel message 9287)
 - "adnan aryüz modernleştirmeye girişmiş. bunlar düşük öncelikli işler. herkes daha öncelikli işlere edoklanmalı. eğer iş kalmadıysa bağdaştırıcıları tek yerden erişmeye sağlayacak veya sayfa stüdyosuna girebilir (çizimlerdekilere göre bugün çok eksikleri var."
-- So: S3 and S4 of `panel-old-screens`, already built, land; no further step of it is given. When no higher-priority step is free: first the connections' merges (`plans/connections-merges.md`, each after his answer to its sheet), then the page studio's differences from its drawings (`plans/designer-panels-differences.md`). The architect's answer under his message says so to every coordinator.
+- So: S3 and S4 of `panel-old-screens`, already built, land; no further step of it is given. When no higher-priority step is free: first the connections' merges (`plans/connections-merges.md`, each after his answer to its sheet), then the page studio's differences from its drawings (`designer/designer-panels-differences.md`). The architect's answer under his message says so to every coordinator.
 
 ## Which step does a freed place take?
 - First a free step of a plan already begun: one with a landed step or an open PR.

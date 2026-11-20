@@ -107,6 +107,22 @@ function test_page_clicks_code_like_path_part_and_tel_address()
 	pg_assert_same('telegram:', pg_page_clicks_fold_url('https://t.me/someone'), 'a Telegram link keeps its kind only');
 }
 
+// A link's address comes percent-encoded from the browser: a word of
+// Turkish or another script with letters beyond ASCII is longer than it
+// reads and carries the digits of its bytes ("hakk%C4%B1m%C4%B1zda" for
+// "hakkımızda"), so it was taken for a code and every such page counted as
+// "*". The part is judged as the word it encodes; the address keeps its
+// encoding. The script's and the designer's twins read these examples too.
+function test_page_clicks_code_like_judges_the_decoded_part()
+{
+	pg_assert_same('//tr.example.org/wiki/hakk%C4%B1m%C4%B1zda', pg_page_clicks_fold_url('https://tr.example.org/wiki/hakk%C4%B1m%C4%B1zda?x=1', 'www.example.com'), 'a Turkish word stays');
+	pg_assert_same('/%C3%BCr%C3%BCnler/kad%C4%B1n', pg_page_clicks_fold_url('https://www.example.com/%C3%BCr%C3%BCnler/kad%C4%B1n', 'www.example.com'), 'each encoded word stays');
+	pg_assert_same('/%D0%BA%D0%B0%D1%82%D0%B0%D0%BB%D0%BE%D0%B3', pg_page_clicks_fold_url('/%D0%BA%D0%B0%D1%82%D0%B0%D0%BB%D0%BE%D0%B3'), 'a word of another script stays');
+	pg_assert_same('/t/*', pg_page_clicks_fold_url('/t/a8F3k29dLq0ZxY7wPm%C3%BC'), 'a code with an encoded letter is still a code');
+	pg_assert_same('/t/*', pg_page_clicks_fold_url('/t/%41%42c4d5e6f7g8h9i0j1k2'), 'an encoded code is still a code');
+	pg_assert_same('/t/*', pg_page_clicks_fold_url('/t/ab%C4cd1234567890xyz'), 'a part that does not decode is judged as it stands');
+}
+
 function test_page_clicks_fold_of_a_label()
 {
 	pg_assert_same('Add to cart', pg_page_clicks_fold_label("  Add \n\t to   cart "), 'white space folded');

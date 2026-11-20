@@ -11,7 +11,7 @@ module: page_clicks
 ## How does it name a click?
 - A click (capture, on the document) inside a link (`a[href]`, `role=link`) or a button (`button`, `role=button`, input submit/button/image): area by the nearest landmark (header, nav, main, footer, aside or their roles, else page), `link` or `button`, the address (links only, `href` resolved), the label (visible text, else `aria-label`, else an image's alt; a submit input's own value, never a typed field).
 - `foldUrl()` and `foldLabel()` are the twins of `pg_page_clicks_fold_url()` and `pg_page_clicks_fold_label()`, held to the server test's literal examples (`tests/page_clicks_script_test.php`). An element with neither address nor label left is dropped. Inside `#software_toolbar` or `#pg-cc` nothing is named.
-- Each element once a page view, at most 20. The deepest tenth (`tenth()`) is measured at load, on scroll (200 ms) and when sent.
+- Each element once a page view, at most 20. The deepest tenth (`tenth()`) is measured on the window's `load` (at once when the script runs after it), on scroll (200 ms) from then on, and when sent. Not before the load: the deferred script ran before the pictures had a height, and on a short page then every view counted as read to the end (the tenth only grows).
 
 ## How is it sent?
 - Once, on `visibilitychange` hidden or `pagehide`; a page back from the back-forward cache sends nothing more. Fields `cp`, `cs`, `c` = JSON `{d, t, e}` (`visitors/page-clicks.md` has the server side).

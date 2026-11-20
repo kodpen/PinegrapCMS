@@ -57,6 +57,7 @@ function pg_privacy_export_sections()
         'cart_quotes'        => lang('Cart quotes'),
         'form_submissions'   => lang('Form submissions'),
         'signatures'         => lang('Signatures'),
+        'applications'       => lang('Applications'),
         'comments'           => lang('Comments and reviews'),
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
@@ -65,6 +66,7 @@ function pg_privacy_export_sections()
         'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
+        'ad_conversions'     => lang('Ad service events'),
         'mail'               => lang('E-mail messages'),
         'mail_bounces'       => lang('E-mail bounces and complaints'),
         'sms'                => lang('Text messages'),
@@ -999,6 +1001,33 @@ function pg_privacy_export_collect(array $found)
         $sections['signatures'] = _pg_privacy_export_select("SELECT * FROM form_signatures WHERE " . $signature_where . " ORDER BY id", ($signature_where !== '') ? array(1) : array(), array(), array('strokes', 'stamp_token'));
     }
 
+    // Applications of the person's submissions (application review): the
+    // entry's state, decision, combined score and each submitted review's
+    // criterion scores. Never a reviewer or their notes (owner, poll 200):
+    // the reviewers' table is not read, and a review's notes are dropped
+    // by pg_application_export_review().
+    if ($submission_ids && pg_schema_has('application_entries', 'form_id')) {
+        $sections['applications'] = _pg_privacy_export_select(
+            "SELECT e.id, e.form_id, p.name AS programme, e.category, e.round, e.eligible, e.shortlisted, e.decision, e.decided_at, e.score_raw, e.score_adjusted FROM application_entries AS e LEFT JOIN application_programs AS p ON p.id = e.program_id WHERE " . _pg_privacy_export_in('e.form_id', $submission_ids) . " ORDER BY e.id",
+            $submission_ids
+        );
+
+        $entry_ids = _pg_privacy_export_column($sections['applications']['rows'], 'id');
+        $given = array();
+
+        if ($entry_ids && pg_schema_has('application_reviews', 'entry_id')) {
+            foreach (db_items("SELECT entry_id, round, scores, total FROM application_reviews WHERE (status = 2) AND " . _pg_privacy_export_in('entry_id', $entry_ids) . " ORDER BY entry_id, round, id") as $row) {
+                $given[(int) $row['entry_id']][] = pg_application_export_review($row);
+            }
+        }
+
+        foreach ($sections['applications']['rows'] as $index => $row) {
+            $sections['applications']['rows'][$index]['score_raw'] = pg_application_export_score($row['score_raw']);
+            $sections['applications']['rows'][$index]['score_adjusted'] = pg_application_export_score($row['score_adjusted']);
+            $sections['applications']['rows'][$index]['reviews'] = isset($given[(int) $row['id']]) ? $given[(int) $row['id']] : array();
+        }
+    }
+
     // The account's own comments, and those an account on the Fediverse sent
     // (once comments has remote_actor, 2026.11.0).
     $actors = (isset($person['actors']) && pg_schema_has('comments', 'remote_actor')) ? (array) $person['actors'] : array();
@@ -1118,6 +1147,12 @@ function pg_privacy_export_collect(array $found)
         ));
 
         $sections['consents'] = _pg_privacy_export_select("SELECT * FROM consent_log WHERE " . $consent_where . " ORDER BY created_at DESC, id DESC", ($consent_where !== '') ? array(1) : array(), array(), array('person_token'));
+    }
+
+    // The ad services' events of the person's orders, with the ids kept for
+    // them until each was sent.
+    if (pg_schema_has('ad_conversion_events', 'order_id')) {
+        $sections['ad_conversions'] = _pg_privacy_export_select("SELECT * FROM ad_conversion_events WHERE " . _pg_privacy_export_in('order_id', $order_ids) . " ORDER BY id", $order_ids);
     }
 
     // Messages sent to the person, without what the message itself carried.

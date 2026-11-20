@@ -359,6 +359,53 @@ function pg_signin_apple_key_problem($text)
 }
 
 /**
+ * What saving Sign in with Apple's application asks for, read from the post
+ * alone: the values as they are kept (trimmed, Apple's IDs in upper case) and
+ * a sentence for each field refused. An empty private key keeps the stored
+ * one. Writes nothing.
+ *
+ * @param array $post     apple_client_id, apple_team_id, apple_key_id,
+ *                        apple_private_key
+ * @param bool  $can_seal pg_connect_can_seal()
+ * @return array client_id, team_id, key_id, private_key, marks (field =>
+ *               sentence)
+ */
+function pg_signin_apple_app_decide($post, $can_seal)
+{
+    $read = function ($name) use ($post) {
+        return (isset($post[$name]) && is_string($post[$name])) ? trim($post[$name]) : '';
+    };
+
+    $decision = array(
+        'client_id'   => $read('apple_client_id'),
+        'team_id'     => strtoupper($read('apple_team_id')),
+        'key_id'      => strtoupper($read('apple_key_id')),
+        'private_key' => $read('apple_private_key'),
+        'marks'       => array(),
+    );
+
+    if (($decision['client_id'] !== '') && !preg_match('/^[A-Za-z0-9.\-]{1,255}$/', $decision['client_id'])) {
+        $decision['marks']['apple_client_id'] = lang('A Services ID is written like a domain in reverse, for example com.example.signin.');
+    }
+
+    foreach (array('apple_team_id' => $decision['team_id'], 'apple_key_id' => $decision['key_id']) as $field => $value) {
+        if (($value !== '') && !preg_match('/^[A-Z0-9]{10}$/', $value)) {
+            $decision['marks'][$field] = lang('Apple writes this as ten letters and digits.');
+        }
+    }
+
+    $problem = ($decision['private_key'] !== '') ? pg_signin_apple_key_problem($decision['private_key']) : '';
+
+    if ($problem !== '') {
+        $decision['marks']['apple_private_key'] = $problem;
+    } elseif ((($decision['client_id'] !== '') || ($decision['private_key'] !== '')) && !$can_seal) {
+        $decision['marks']['apple_private_key'] = lang('This site has no encryption key, so it cannot keep the permissions of a connected account.');
+    }
+
+    return $decision;
+}
+
+/**
  * The root script a provider sends people back to: its 'return' (Google's
  * google_auth.php, the address sites registered before Google joined this
  * flow), else signin.php.

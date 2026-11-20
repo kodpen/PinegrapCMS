@@ -37,6 +37,31 @@ function api_openapi_base_url() {
 
 }
 
+// An operation's description: the route's description and the scope it
+// requires, then its 'details' as a paragraph of their own: reference detail
+// a caller looks up rather than needs for a right call, which the MCP tool
+// list never reads, so a tool stays within its budget (pg_mcp_tool_budgets()).
+// '' when there is none.
+function api_openapi_operation_description($route) {
+
+	$description = isset($route['description']) ? (string)$route['description'] : '';
+
+	if ($route['scope'] !== '') {
+
+		$description .= (($description !== '') ? ' ' : '') . 'Requires the ' . $route['scope'] . ' scope.';
+
+	}
+
+	if (isset($route['details']) && ($route['details'] !== '')) {
+
+		$description .= (($description !== '') ? "\n\n" : '') . $route['details'];
+
+	}
+
+	return $description;
+
+}
+
 function api_openapi_build() {
 
 	$paths = array();
@@ -71,16 +96,11 @@ function api_openapi_build() {
 			'responses'   => api_openapi_responses($route)
 		);
 
-		if (isset($route['description'])) {
+		$description = api_openapi_operation_description($route);
 
-			$operation['description'] = $route['description'];
+		if ($description !== '') {
 
-		}
-
-		if ($route['scope'] !== '') {
-
-			$operation['description'] = (isset($operation['description']) ? $operation['description'] . ' ' : '')
-				. 'Requires the ' . $route['scope'] . ' scope.';
+			$operation['description'] = $description;
 
 		}
 
@@ -399,12 +419,14 @@ function api_openapi_security_schemes($oauth = null) {
 			'description' => 'HTTP Basic. The user name is the application key, the password is its secret. '
 				. 'An application key calls in the name of the account that owns it, within the scopes it was given, '
 				. 'and is the only credential that can manage webhook subscriptions. '
-				. 'A call only the person can make - marking what they have read, answering an approval, changing or deleting their own messages - answers 403 forbidden.'
+				. 'A call only the person can make - marking what they have read, answering an approval, changing or deleting their own messages - answers 403 forbidden. '
+				. 'The same key and secret also go as one token, Authorization: Bearer pgkt_<key>.<secret>, for a client that asks for an address and a single token: '
+				. 'it is taken exactly as HTTP Basic is, on this API and on the MCP address, never from the query string.'
 		),
 		'deviceToken' => array(
 			'type'        => 'http',
 			'scheme'      => 'bearer',
-			'description' => 'An access token, of one of two kinds. '
+			'description' => 'An access token, of one of two kinds; a token starting pgkt_ is an application key and its secret instead (see applicationKey). '
 				. 'The person\'s own team devices session (POST /auth/login) calls as that person, within the team devices application\'s permissions, '
 				. 'and is the only credential that can change the person\'s own words: change, delete or schedule their messages, ask or change a poll, pin a message. '
 				. 'An OAuth connection, made through the site\'s OAuth server, calls as the person who approved it, within the scopes they agreed to: '
@@ -1153,6 +1175,7 @@ function api_openapi_objects()
         'ContentReviewItem' => 'api_content_review_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
+        'SalesWatchReport' => 'api_sales_watch_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',
         'CustomerValueReport' => 'api_customer_value_report_schema',
         'VitalsReport'   => 'api_vitals_report_schema',
@@ -1385,6 +1408,8 @@ function api_openapi_responses($route) {
 					'message'    => array('type' => 'string'),
 					'field'      => array('type' => 'string'),
 					'request_id' => array('type' => 'string'),
+					'hint'       => array('type' => 'string', 'description' => 'On some codes: what to do next, one sentence in English.'),
+					'guide'      => array('type' => 'string', 'description' => 'With hint: the section of GET /guide that explains it, as topic#section.'),
 					'errors'     => array(
 						'type'  => 'array',
 						'items' => array(

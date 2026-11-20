@@ -183,18 +183,20 @@ function pg_settings_categories()
             'label' => lang('Visitors and privacy'),
             'group' => 'site',
             'icon'  => 'bi-incognito',
-            'description' => lang('Visitor tracking, cookie consent, the checkout\'s legal documents and the accessibility statement.'),
+            'description' => lang('Visitor tracking, cookie consent, the checkout\'s legal documents, the accessibility statement and the way to the Privacy centre.'),
             'sections' => array(
                 'pgset-analytics' => lang('Visitor Tracking'),
                 'pgset-cookies'   => lang('Cookie Consent'),
                 'pgset-legal'     => lang('Legal Documents'),
                 'pgset-a11y-statement' => lang('Accessibility Statement'),
+                'pgset-privacy-centre' => lang('Privacy centre'),
             ),
             'keywords' => array(
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-a11y-statement' => pg_settings_keywords(lang('accessibility, statement, accessibility statement, wcag, en 301 549, european accessibility act, disability')),
+                'pgset-privacy-centre' => pg_settings_keywords(lang('privacy centre, personal data, inventory, kvkk, gdpr, verbis, retention, transfer abroad')),
             ),
         ),
 
@@ -501,6 +503,8 @@ function pg_settings_categories()
                 'notify_target_delete' => 1,
                 'notify_target_codes'  => 2,
                 'notify_target_events' => 2,
+                'sales_watch_alerts'   => 1,
+                'sales_watch_pause'    => 1,
             ),
         ),
 
@@ -1036,6 +1040,14 @@ function pg_settings_legacy_anchors()
         // Google's sign-in fields moved onto Google's page of Connections; an
         // old link to them lands on the card's row that leads there.
         'oauth_google_row' => array('security',   'pgset-signin'),
+        // Apple's application moved onto Sign in with Apple's page; an old
+        // link to its fields lands on the card's row that leads there.
+        'signin_apple_row' => array('security',   'pgset-signin'),
+        'apple_client_id'  => array('security',   'pgset-signin'),
+        // The CAPTCHA providers' keys moved onto their pages; an old link to
+        // them lands on the card that chooses the provider.
+        'captcha_turnstile_site_key' => array('security', 'pgset-captcha'),
+        'captcha_hcaptcha_site_key'  => array('security', 'pgset-captcha'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

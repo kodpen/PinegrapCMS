@@ -49,6 +49,16 @@ define('PG_PLACE_LIST_FIND_LIMIT', 10);
 define('PG_PLACE_LIST_FIND_MAX', 200);
 
 /**
+ * The whole site's typed-address lookups on the public Photon instance: at
+ * most this many per PG_PLACE_LIST_RATE_WINDOW, and at least this many
+ * milliseconds between two (the instance answers back-to-back calls with
+ * HTTP 503; PG_PLACE_MAP_PUBLIC_PAUSE spaces the panel's bulk action the
+ * same). The site's own Photon server has no site-wide bound.
+ */
+define('PG_PLACE_LIST_FIND_SITE_LIMIT', 30);
+define('PG_PLACE_LIST_FIND_GAP_MS', 1000);
+
+/**
  * The block's mark as an attribute of its own (not data-pg-map-page): the
  * Preview's row in _SD_PAGE_SCRIPTS uses the same expression.
  *
@@ -234,6 +244,86 @@ function pg_place_list_saved_choice($tree)
 }
 
 /**
+ * Whether a saved page tree holds the "Map of places" block, in its own
+ * nodes or in a shared component it names (and those they name, a few
+ * levels deep). places.php answers only for such a page: another public
+ * page with a public form list would hand out the addresses and phones its
+ * list may not show. Any mention of the block's mark counts, so a block in
+ * an HTML element is not refused. Pure apart from $load.
+ *
+ * @param string   $tree_json pg_page_tree_json()
+ * @param callable $load      list of shared component ids => array(id => tree_json)
+ * @param int      $depth     levels of shared components read
+ * @return bool
+ */
+function pg_place_list_tree_holds_block($tree_json, $load, $depth = 4)
+{
+    $seen = array();
+    $trees = array((string) $tree_json);
+
+    for ($level = 0; $trees; $level++) {
+        $ids = array();
+
+        foreach ($trees as $json) {
+            $json = (string) $json;
+
+            if (stripos($json, 'data-pg-map') !== false) {
+                return true;
+            }
+
+            $walk = function ($node) use (&$walk, &$ids, &$seen) {
+                if (!is_array($node)) {
+                    return;
+                }
+
+                if (isset($node['type']) && ($node['type'] === 'shared_ref')) {
+                    $sid = isset($node['props']['sharedId']) ? (int) $node['props']['sharedId'] : 0;
+
+                    if (($sid > 0) && !isset($seen[$sid])) {
+                        $seen[$sid] = true;
+                        $ids[] = $sid;
+                    }
+
+                    return;
+                }
+
+                if (!empty($node['children']) && is_array($node['children'])) {
+                    foreach ($node['children'] as $child) {
+                        $walk($child);
+                    }
+                }
+            };
+            $walk(($json !== '') ? json_decode($json, true) : null);
+        }
+
+        if (!$ids || ($level >= $depth)) {
+            return false;
+        }
+
+        $trees = array_values((array) call_user_func($load, $ids));
+    }
+
+    return false;
+}
+
+/**
+ * The tree_json of shared components, by id.
+ *
+ * @param array $ids
+ * @return array id => tree_json
+ */
+function pg_place_list_shared_trees($ids)
+{
+    $trees = array();
+
+    foreach ((array) db_items("SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', array_map('intval', $ids)) . ")") as $row) {
+        $trees[(int) $row['id']] = (string) $row['tree_json'];
+    }
+
+    return $trees;
+}
+
+/**
  * Whether a field may hold a part: a coordinate a number field, the others
  * a plain text box or text area (or a number). Pure.
  *
@@ -378,7 +468,7 @@ function pg_place_list_page_reason($page_found, $access, $binned, $list, $public
 /**
  * The note a designer is shown for an empty answer or a cut list.
  *
- * @param string $reason page, list, fields, cut
+ * @param string $reason page, list, block, fields, cut
  * @return string
  */
 function pg_place_list_reason_text($reason)
@@ -392,6 +482,8 @@ function pg_place_list_reason_text($reason)
             return lang(array('string' => 'Map of places: the list has more than {var:1} records, so only the first {var:1} are shown and "Near me" is not offered. Narrow the list with its filters.', 'vars' => array((string) PG_PLACE_LIST_MAX)));
         case 'page':
             return lang('Map of places: the page is not open to everyone, so it shows no places.');
+        case 'block':
+            return lang('Map of places: this page holds no Map of places block, so it gives no places.');
     }
 
     return '';
@@ -450,6 +542,29 @@ function pg_place_list_records_sql($form_page_id, $clause, $order)
 }
 
 /**
+ * A stored coordinate as a number, null when it is none or out of range.
+ * A number field's text written by an import or the API is kept as sent, so
+ * a decimal comma ("40,98") reads as the record's form would save it
+ * (pg_coll_number_value()). Pure.
+ *
+ * @param string $text
+ * @param int    $bound 90 for a latitude, 180 for a longitude
+ * @return float|null
+ */
+function pg_place_list_coordinate($text, $bound)
+{
+    $text = str_replace(',', '.', trim((string) $text));
+
+    if (!preg_match('/^[+-]?(\d+(\.\d*)?|\.\d+)$/D', $text)) {
+        return null;
+    }
+
+    $value = (float) $text;
+
+    return (abs($value) <= $bound) ? $value : null;
+}
+
+/**
  * One place as the answer carries it. Pure.
  *
  * @param array  $record id, reference_code, address_name
@@ -464,19 +579,48 @@ function pg_place_list_item($record, $values, $roles, $url)
         return ($id > 0 && isset($values[$id])) ? trim((string) $values[$id]) : '';
     };
 
-    $lat = $value($roles['lat']);
-    $lng = $value($roles['lng']);
-    $point = (is_numeric($lat) && is_numeric($lng) && (abs((float) $lat) <= 90) && (abs((float) $lng) <= 180));
+    $lat = pg_place_list_coordinate($value($roles['lat']), 90);
+    $lng = pg_place_list_coordinate($value($roles['lng']), 180);
+    $point = ($lat !== null) && ($lng !== null);
 
     return array(
         'name'    => $value($roles['name']),
         'address' => pg_place_map_address_text($values, $roles['address']),
         'hours'   => $value($roles['hours']),
         'phone'   => $value($roles['phone']),
-        'lat'     => $point ? (float) $lat : null,
-        'lng'     => $point ? (float) $lng : null,
+        'lat'     => $point ? $lat : null,
+        'lng'     => $point ? $lng : null,
         'url'     => $url,
     );
+}
+
+/**
+ * Whether a page may give the block's answers: the list's rule
+ * (pg_place_list_page_reason(): open to everyone, not in the bin, a public
+ * form list) and the block in its tree. The list and the typed-address
+ * lookup both ask it, so neither answers for a page the other refuses.
+ *
+ * @param int $page_id
+ * @return array reason ('' or page, list, block), list (pg_sw_page_widget()), tree (tree_json)
+ */
+function pg_place_list_page_open($page_id)
+{
+    $page = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . (int) $page_id . "'");
+    $folder = $page ? (int) $page['page_folder'] : 0;
+    $list = $page ? pg_sw_page_widget((int) $page_id, 'form_list_view') : null;
+    $reason = pg_place_list_page_reason((bool) $page, $page ? (string) get_access_control_type($folder) : '', $page ? pg_folder_binned($folder) : false, $list, is_array($list) && pg_sw_form_widget_public($list['cfg']));
+
+    if ($reason !== '') {
+        return array('reason' => $reason, 'list' => null, 'tree' => '');
+    }
+
+    $tree = (string) pg_page_tree_json((int) $page_id);
+
+    if (!pg_place_list_tree_holds_block($tree, 'pg_place_list_shared_trees')) {
+        return array('reason' => 'block', 'list' => null, 'tree' => '');
+    }
+
+    return array('reason' => '', 'list' => $list, 'tree' => $tree);
 }
 
 /**
@@ -488,15 +632,13 @@ function pg_place_list_item($record, $values, $roles, $url)
 function pg_place_list_for_page($page_id)
 {
     $empty = array('places' => array(), 'cut' => false, 'reason' => '');
-    $page = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . (int) $page_id . "'");
-    $folder = $page ? (int) $page['page_folder'] : 0;
-    $list = $page ? pg_sw_page_widget((int) $page_id, 'form_list_view') : null;
-    $reason = pg_place_list_page_reason((bool) $page, $page ? (string) get_access_control_type($folder) : '', $page ? pg_folder_binned($folder) : false, $list, is_array($list) && pg_sw_form_widget_public($list['cfg']));
+    $gate = pg_place_list_page_open($page_id);
 
-    if ($reason !== '') {
-        return array('reason' => $reason) + $empty;
+    if ($gate['reason'] !== '') {
+        return array('reason' => $gate['reason']) + $empty;
     }
 
+    $list = $gate['list'];
     $cfg = $list['cfg'];
     $form_page_id = pg_sw_form_widget_form_page_id($cfg);
     $fields = array();
@@ -507,7 +649,7 @@ function pg_place_list_for_page($page_id)
         }
     }
 
-    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode((string) pg_page_tree_json((int) $page_id), true)));
+    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode($gate['tree'], true)));
 
     if ($roles === null) {
         return array('reason' => 'fields') + $empty;
@@ -685,4 +827,136 @@ function pg_place_list_find($text)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
 
     return pg_place_list_find_answer(pg_place_map_lookup($text));
+}
+
+/**
+ * Why a typed-address lookup is refused before anything is asked, or ''.
+ * Only the page that holds the block asks: a browser's same-origin request
+ * (Sec-Fetch-Site same-origin, else an Origin naming this host; a request
+ * with neither is not the page's), naming a page the list would answer for
+ * (pg_place_list_page_open()). A site without the block never looks up.
+ *
+ * @param array    $server  $_SERVER
+ * @param int      $page_id the page the request names
+ * @param callable $gate    pg_place_list_page_open()'s shape
+ * @return string '', browser, page, list or block
+ */
+function pg_place_list_find_refusal(array $server, $page_id, $gate = 'pg_place_list_page_open')
+{
+    $site = (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE'])) ? strtolower(trim($server['HTTP_SEC_FETCH_SITE'])) : '';
+    $origin = (isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN'])) ? trim($server['HTTP_ORIGIN']) : '';
+
+    if ($site !== '' ? ($site !== 'same-origin') : (($origin === '') || pg_request_cross_site($server))) {
+        return 'browser';
+    }
+
+    if ((int) $page_id <= 0) {
+        return 'page';
+    }
+
+    $open = call_user_func($gate, (int) $page_id);
+
+    return (is_array($open) && isset($open['reason'])) ? (string) $open['reason'] : 'page';
+}
+
+/**
+ * Where the typed address would be asked: the site's Photon server while its
+ * account is on, else the public instance (pg_place_map_source()).
+ *
+ * @return string
+ */
+function pg_place_list_find_host()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
+    pg_place_map_load_driver();
+
+    return (string) pg_place_map_source(pg_place_map_photon_app())['host'];
+}
+
+/**
+ * Whether the whole site has looked up enough on the public Photon instance
+ * for now: the last lookup less than PG_PLACE_LIST_FIND_GAP_MS ago, or
+ * PG_PLACE_LIST_FIND_SITE_LIMIT already in this minute. Then the visitor is
+ * told to wait and nothing is asked. Only counts and times are kept. The
+ * site's own Photon server is not bound here; the per-visitor
+ * pg_place_list_find_throttled() holds there too. The panel's lookups
+ * (place_coordinates.php) keep their own spacing and do not count.
+ *
+ * @param string        $host  pg_place_list_find_host()
+ * @param callable|null $gap   claims the next slot, true when a second has passed; null uses pg_place_list_find_gap_claim()
+ * @param callable|null $count waf_rate_record()'s shape; null uses it
+ * @return bool
+ */
+function pg_place_list_find_site_held($host, $gap = null, $count = null)
+{
+    if (rtrim((string) $host, '/') !== PG_ADDR_PHOTON_HOST) {
+        return false;
+    }
+
+    if (!call_user_func(is_callable($gap) ? $gap : 'pg_place_list_find_gap_claim')) {
+        return true;
+    }
+
+    if (!is_callable($count)) {
+        if (!function_exists('waf_rate_record')) {
+            return false;
+        }
+
+        $count = 'waf_rate_record';
+    }
+
+    return (int) call_user_func($count, 'site', 'place_find_site', PG_PLACE_LIST_RATE_WINDOW) > PG_PLACE_LIST_FIND_SITE_LIMIT;
+}
+
+/**
+ * The two statements that claim the next lookup's slot in the firewall's
+ * counter table: move the last lookup's time (seconds in window_start, the
+ * milliseconds in hits) to now when it is at least PG_PLACE_LIST_FIND_GAP_MS
+ * old, else make the first row. A changed or inserted row is the claim. Pure.
+ *
+ * @param string $key    waf_rate_key()
+ * @param int    $now_ms milliseconds since the epoch
+ * @return string[]
+ */
+function pg_place_list_find_gap_sql($key, $now_ms)
+{
+    $now_ms = (int) $now_ms;
+    $seconds = intdiv($now_ms, 1000);
+    $millis = $now_ms % 1000;
+    $key = str_replace(array('\\', "'"), array('\\\\', "\\'"), (string) $key);
+
+    return array(
+        "UPDATE waf_rate SET hits = " . $millis . ", window_start = " . $seconds . " WHERE bucket_key = '" . $key . "' AND (window_start * 1000 + hits) <= " . ($now_ms - PG_PLACE_LIST_FIND_GAP_MS),
+        "INSERT IGNORE INTO waf_rate (bucket_key, hits, window_start) VALUES ('" . $key . "', " . $millis . ", " . $seconds . ")",
+    );
+}
+
+/**
+ * Claims the site's next lookup slot (pg_place_list_find_gap_sql()); true
+ * when at least a second has passed since the last. Without the table the
+ * claim is given, as the firewall's counters give way.
+ *
+ * @return bool
+ */
+function pg_place_list_find_gap_claim()
+{
+    if (!function_exists('waf_rate_key') || !class_exists('db') || !db::$con) {
+        return true;
+    }
+
+    $sql = pg_place_list_find_gap_sql(waf_rate_key('site', 'place_find_gap'), (int) floor(microtime(true) * 1000));
+
+    if (!@mysqli_query(db::$con, $sql[0])) {
+        return true;
+    }
+
+    if (@mysqli_affected_rows(db::$con) > 0) {
+        return true;
+    }
+
+    if (!@mysqli_query(db::$con, $sql[1])) {
+        return true;
+    }
+
+    return @mysqli_affected_rows(db::$con) > 0;
 }

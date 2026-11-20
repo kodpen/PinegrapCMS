@@ -15,13 +15,16 @@
  * the line a designer sees (no list on the page, fields missing, a cut
  * list); a visitor gets ''.
  *
- *   POST find=<typed address>
+ *   POST find=<typed address>&page=<page id>
  *     -> {"ok": true, "state": "found"|"not_found"|"empty"|"wait"|"error",
  *        "lat": number|null, "lng": number|null}
  *
- * The lookup (X12) asks Photon once per press of Find, with its own lower
- * rate. The text comes in the body, so it is not in the address a server
- * log writes; it is neither stored nor logged and does not come back.
+ * The lookup asks Photon once per press of Find, with its own lower rate,
+ * only for a page the list answers for that holds the block, and on the
+ * public Photon instance within the site's own bound (30 a minute, a second
+ * apart; past it the answer is "wait"). The text comes in the body, so it
+ * is not in the address a server log writes; it is neither stored nor
+ * logged and does not come back.
  *
  * Refused: method 405, a cross-site request 403, rate 429.
  *
@@ -75,6 +78,16 @@ if ($method === 'POST') {
     if (pg_place_list_find_throttled()) {
         header('Retry-After: ' . PG_PLACE_LIST_RATE_WINDOW);
         places_answer(array('ok' => false, 'message' => lang('Too many requests. Please try again in a minute.')), 429);
+    }
+
+    // Only the page that holds the block, as the list's rule allows it.
+    if (pg_place_list_find_refusal($_SERVER, (int) ($_POST['page'] ?? 0)) !== '') {
+        places_answer(array('ok' => false, 'message' => lang('Access denied.')), 403);
+    }
+
+    // The site's bound on the public Photon instance: told to wait, nothing asked.
+    if (pg_place_list_find_site_held(pg_place_list_find_host())) {
+        places_answer(pg_place_list_find_answer(array('state' => 'wait')));
     }
 
     places_answer(pg_place_list_find($_POST['find'] ?? ''));

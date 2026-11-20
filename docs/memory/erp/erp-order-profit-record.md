@@ -12,9 +12,9 @@ description: Each order's cost rows and net profit (#10626): the three tables of
 ## How is an order computed?
 - Product: an invoiced order takes its invoice's `sale` moves (`erp_stock_moves.cost_total`), one row `invoice:<id>`, when every move has a cost; a move of cost 0 sends the order to the lines.
 - A line: a bundle by `order_item_components.unit_cost` × quantity per bundle × bundles (a component of cost 0 takes its average; source `average`); a plain line by the average cost met first, kept (`item:<order_item_id>`, source `average`) so a later average never rewrites it. No cost: no row, state `incomplete`.
-- A rate or estimate is one row per kind with `source_ref` '' (architect, message 10292): two never pile up. Payment: the method's rate on `orders.total`, not on a marketplace order. Shipping: the rates of the recipients' methods on `orders.shipping`, added up. Marketplace: per line the listing's `marketplace_product_map.commission` × the line's gross (price × quantity + `tax_total`), else the account's rate; source `estimate` when any line took the listing's rate.
+- A rate or estimate is one row per kind with `source_ref` '' (architect, message 10292): two never pile up. How each rate and the revenue are worked out: `erp-order-profit-rates-revenue.md`.
 - A row recorded by other code (source gateway, label, marketplace) replaces the rate or estimate of its kind; the pass never removes such rows. A writer calls `erp_order_profit_mark($order_id)` so the pass computes the order again.
-- Revenue: `total + gift_card_discount − tax − refunded_amount`, `erp_profit_report()`'s order rule less refunds. Margin: only `erp_order_profit_margin()`, net × 100 / revenue with `round()` to one decimal, NULL when revenue is 0; never written by hand (architect, message 10292).
+- Margin: only `erp_order_profit_margin()`, net × 100 / revenue with `round()` to one decimal, NULL when revenue is 0; never written by hand (architect, message 10292).
 - State: incomplete beats estimate (a rate or estimate row) beats final.
 
 ## How does the pass run?

@@ -18,6 +18,7 @@
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks [decision: decisions-made-schema-30.md]
 - back-in-stock-send-retry-shared-dates.md: Back-in-stock and waiting list senders (PR #10712): a mail failed in the request waits again; a series sharing its places is read on its last date and named without a date
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise [decision: decisions-made-messages.md]
+- back-in-stock-withdraw.md: Taking a back-in-stock or waiting list request back (#10713): withdraw=1 on stock_notify.php, which row goes, one answer with or without a row, the "Stop waiting" button [decision: here]
 - barcode-label-print-escaping.md: The barcode label print page (LabelEditor buildPrintHTML() in backend.src.js): barcode and template values read as numbers, CSS values or escaped text before they reach the print window
 - barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447) [decision: decisions-made-product-20.md]
@@ -64,7 +65,7 @@
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 - cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)
 - cart-product-form-answer-name.md: Designer cart product form answers keep their field name in form_data.name; readers fall back to form_fields.name for older rows (#10541, PR #10574)
-- cart-product-form-file-field.md: Where a shopper's File Upload works in the cart: designer cart via cart_action.php (FU2); classic cart, classic and designer express order via shopping_cart.php / express_order.php (FU3) [decision: decisions-made-product-80.md]
+- cart-product-form-file-field.md: A product form's File Upload field in the cart: the save paths (cart_action.php, shopping_cart.php, express_order.php), the kept file, refusals, the required check, how each cart draws it [decision: decisions-made-product-80.md]
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
@@ -107,16 +108,18 @@
 - course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code [decision: here]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
+- customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
 - customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
+- delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets [decision: here]
-- event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the six answers, rights, name search, counts, undo
+- event-tickets-check-in.md: Event ticket check-in at the door (TK3): event_check_in.php, the pick, the camera through BarcodeDetector or the typed code, one conditional UPDATE, the answers, rights, name search, counts, undo
 - event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets [decision: here]
 - event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch [decision: here]
 - event-tickets-page.md: Event tickets (TK2): the holder's page tickets.php behind the signed link, each ticket's QR and code, void ones without a QR, print, .ics; the my account tickets section, flag and account.tickets list
@@ -152,6 +155,7 @@
 - key-code-import.md: Key code CSV import and export (import_key_codes.php, view_key_codes.php): a code already there is updated, not re-added; BOM, separator, dates, yes/no cells, formula guard, offer's own code
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
+- marketplace-channel-price.md: A marketplace account's own price by rules (2026.11.0, 11.0.256): rule pick, rounding endings, the profit floor, the three repricer tables, history rows on marketplace:<account id>
 - marketplace-commission-and-invoice-columns.md: marketplace_product_map.commission and marketplace_order_map.invoice_sent (2026.11.0, 11.0.37): what each holds, NULL vs 0, the probes code reads them through (#1687)
 - marketplace-listing-view.md: Listings view of marketplace_products.php (#2066): article cards with pictures, category search by path words, one category for many articles, required attributes first
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
@@ -270,6 +274,7 @@
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
+- pick-pack-rules.md: Pick and pack's pure rules (includes/fn/pick_pack.php): shelf address sort, wave rule filter and ship-by day, cancelled order leaving a wave, pick list totals, scan verdict codes, pack state
 - place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country [decision: decisions-made-product-17.md]
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
@@ -296,6 +301,7 @@
 - product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function [decision: here]
 - product-form-upload-order-readers.md: How the order pages, prints and receipt e-mails show a product form answer's file: a link, a panel thumbnail for an image, the name alone in an e-mail
 - product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept [decision: here]
+- product-form-uploads.md: A File Upload field in product forms: what the feature does from field editor to sweep, which PR built each part, the owner's and architect's decisions, what was left out [decision: decisions-made-product-80.md]
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules [decision: decisions-made-product-26.md]
 - product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
@@ -336,7 +342,11 @@
 - referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings [decision: decisions-made-product-25.md, decisions-made-product-82.md]
 - referral-settings-card.md: Referral programme settings card (RF2): Settings › Ecommerce › Referral programme, its six config_text rows, what the save refuses, the referrer's reward mail and its texts
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
-- sales-watch-flow.md: Sales watch, orders stopped and payment broken (SW1, #10735): channels, the hourly norm and its cache, the windows, the store alert, the payment share, the timing
+- sales-watch-flow.md: Sales watch, orders stopped and payment broken (#10735): channels, the hourly norm and its cache, the windows, the store alert, the payment share, the timing
+- sales-watch-price.md: Sales watch price error shield (#10775): which sales look like a wrong price, the usual price, taking a product off sale, sales_watch_closed, putting it back, the brake
+- sales-watch-returns.md: Sales watch return spike (#10777): the nightly pass over order_returns, the rate a product is held to, the binomial upper tail, the one bell row return_spike
+- sales-watch-settings.md: Sales watch settings (#10772): the sales_watch config_text row, its defaults, sensitivity levels, price drop share, the pause per channel or store, the form part and chat targets
+- sales-watch.md: Sales watch overview: order rhythm alerts (orders stopped, payment broken, price error, return spike), what binds it, the architect's answers, each feature's PR, what is left out [decision: decisions-made-product-84.md]
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
 - shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API [decision: decisions-made-product-39.md]
@@ -362,13 +372,14 @@
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
-- stock-holds-record.md: The stock_holds table (11.0.253) and includes/fn/stock_holds.php: units free, units an order needs, placing under a per-product lock, release, the daily sweep (SH1, PR #10711)
+- stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a per-product lock, release, the daily sweep (SH1 #10711, SH2)
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]
 - stock-locations-moves.md: Stock per location, the operator's side: the Stock locations settings card, the stock history (view_stock_moves.php), the Transfer dialog, the product screen's last moves
 - stock-locations-pickup.md: Pickup at a location: a shipping method naming a stock location, no rate, offered only while the location holds the cart; the place on checkout, order screen, receipt, mails [decision: decisions-made-product-19.md]
 - stock-locations-screens.md: Stock per location on the panel: product screen boxes per location, the quick stock cells refused, the two bulk edits at one location, stock:<location> import and export columns
+- stock-locations-total-writers.md: Stock locations (#10814): writers that change only the total go through pg_stock_total_write() at a location; tracking off deletes rows, on rebuilds from the total; the source pin [decision: decisions-made-product-19.md]
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
 - store-credit-checkout.md: Store credit at checkout (PR #6234): open cards applied as applied_gift_cards rows before the totals, the "Use my store credit" box and per-order opt-out, the name on receipts
 - store-credit-mails.md: Store credit mails and expiry (11.0.171): credit_issued and credit_expiring actions, fields, the notice pass without a column, the job closing ended cards
@@ -394,6 +405,8 @@
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report [decision: decisions-made-product-5.md]
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel [decision: decisions-made-product-5.md]
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
+- supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
+- supplier-feed-readers.md: Supplier feed tables (11.0.255) and readers: format from the first bytes, record path, XML/CSV/JSON with a resumable cursor, flat keys, the field proposal (SF1, PR #10771)
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]

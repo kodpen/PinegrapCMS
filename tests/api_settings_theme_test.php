@@ -19,7 +19,8 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function api_settings_theme_source()
 {
-	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/api_settings.php');
+	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/api_settings.php')
+		. (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
 }
 
 function api_settings_theme_style()
@@ -68,19 +69,20 @@ function test_api_settings_theme_new_application_fields_named()
 {
 	$source = api_settings_theme_source();
 
-	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_name\">' . lang('Name') . '</label>", $source);
+	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_name\">' . lang('Application name') . '</label>", $source);
 	pg_assert_contains('name="name" id="n_name" maxlength="190" required', $source);
-	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_description\">' . lang('Description') . '</label>", $source);
+	pg_assert_contains("<label class=\"form-label pg-field-label\" for=\"n_description\">' . lang('Description') . ' <span class=\"fg-2 fw-normal\">' . lang('optional') . '</span></label>", $source);
 	pg_assert_contains('name="description" id="n_description" maxlength="500"', $source);
 	pg_assert_true(strpos($source, '<span class="fg-danger">*</span>') === false, 'a hand-written marker doubles the injected one');
 }
 
 function test_api_settings_theme_permission_groups_named()
 {
-	$source = api_settings_theme_source();
+	// The rows are drawn by the permission picker (app_permissions_view.php).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_permissions_view.php');
 
 	pg_assert_contains("<b id=\"' . \$id . '_label\">", $source);
-	pg_assert_contains("role=\"group\" aria-labelledby=\"' . \$id . '_label\"", $source);
+	pg_assert_contains("role=\"radiogroup\" aria-labelledby=\"' . \$id . '_label\"", $source);
 }
 
 function test_api_settings_theme_dialogs_named()
@@ -90,7 +92,7 @@ function test_api_settings_theme_dialogs_named()
 	pg_assert_contains('id="api_drawer" aria-labelledby="d_title"', $source);
 	pg_assert_contains('id="d_title"', $source);
 	pg_assert_contains('id="api_new" aria-labelledby="api_new_title"', $source);
-	pg_assert_contains('<h5 class="dialog-title" id="api_new_title">', $source);
+	pg_assert_contains('<h5 class="drawer-title mb-0" id="api_new_title">', $source);
 
 	foreach (array('api_sheet_oauth', 'api_sheet_device', 'api_sheet_secret') as $id) {
 		pg_assert_contains('id="' . $id . '" aria-labelledby="' . $id . '_title" open>', $source);

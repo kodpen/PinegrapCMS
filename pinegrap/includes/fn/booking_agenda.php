@@ -554,7 +554,8 @@ function pg_booking_agenda_rows($start, $end, $staff_id, $statuses)
 
 /**
  * The busy ranges of a staff member's Workspace calendar between two
- * moments: their own events, their departments' and the company's.
+ * moments: their own events, their departments' and the company's, with
+ * the later years' copies of a holiday marked yearly (pg_booking_ws_yearly()).
  *
  * @param int $user_id
  * @param int $from
@@ -571,19 +572,32 @@ function pg_booking_agenda_ws_busy($user_id, $from, $until)
 
     // skipped arrived with the holiday calendars' "Do not count".
     $skipped = pg_schema_has('ws_events', 'skipped') ? 'ws_events.skipped' : '0 AS skipped';
-    $rows = db_items(
+    $whose = "(
+                ws_events.scope = 'company'
+                " . ($departments ? "OR (ws_events.scope = 'department' AND ws_events.department_id IN (" . implode(', ', $departments) . "))" : '') . "
+                OR (ws_events.scope = 'people' AND EXISTS (SELECT 1 FROM ws_event_people WHERE ws_event_people.event_id = ws_events.id AND ws_event_people.user_id = '" . (int) $user_id . "'))
+            )";
+    $rows = (array) db_items(
         "SELECT ws_events.starts_at, ws_events.ends_at, ws_events.all_day, " . $skipped . "
         FROM ws_events
         WHERE
             ws_events.starts_at < '" . (int) $until . "'
             AND ws_events.ends_at >= '" . (int) $from . "'
-            AND (
-                ws_events.scope = 'company'
-                " . ($departments ? "OR (ws_events.scope = 'department' AND ws_events.department_id IN (" . implode(', ', $departments) . "))" : '') . "
-                OR (ws_events.scope = 'people' AND EXISTS (SELECT 1 FROM ws_event_people WHERE ws_event_people.event_id = ws_events.id AND ws_event_people.user_id = '" . (int) $user_id . "'))
-            )");
+            AND " . $whose);
 
-    return pg_booking_agenda_ws_ranges((array) $rows);
+    // A holiday marked "Every year" is a day off in every later year too.
+    if (pg_schema_has('ws_events', 'yearly')) {
+        $yearly = (array) db_items(
+            "SELECT ws_events.starts_at, ws_events.ends_at, ws_events.all_day, ws_events.yearly, " . $skipped . "
+            FROM ws_events
+            WHERE
+                ws_events.yearly = 1
+                AND ws_events.starts_at < '" . (int) $until . "'
+                AND " . $whose);
+        $rows = array_merge($rows, pg_booking_ws_yearly($yearly, $from, $until, new DateTimeZone(date_default_timezone_get())));
+    }
+
+    return pg_booking_agenda_ws_ranges($rows);
 }
 
 /**

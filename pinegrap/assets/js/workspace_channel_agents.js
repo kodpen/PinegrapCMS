@@ -411,6 +411,73 @@
             return wrap;
         }
 
+        // A discussion's one-go add (everyone_hint.php): the channel's
+        // agents not yet its own as a ticked list, all ticked, with "Add
+        // all" and "Add the chosen". One request adds the picked ones, each
+        // checked as a single add; a refused one is named.
+        function fromChannelNode(state) {
+            var wrap = el('div', 'ws-cha-from-channel mt-4');
+            var list = el('div', 'd-flex flex-column gap-2 my-2');
+            var boxes = [];
+            var buttons = el('div', 'd-flex flex-wrap gap-2');
+            var all = h.button('pg-button pg-button-quiet pg-button-sm text-nowrap', t('cha_add_all'), 'bi-plus-lg');
+            var some = h.button('pg-button pg-button-ghost pg-button-sm text-nowrap', t('cha_add_chosen'), 'bi-check2');
+
+            wrap.appendChild(el('div', 'form-label', t('cha_from_channel')));
+            wrap.appendChild(el('div', 'pg-field-help', t('cha_from_channel_help')));
+
+            state.from_channel.forEach(function (agent) {
+                var row = el('div', 'd-flex align-items-center gap-2');
+                var box = el('input', 'check');
+                var label = el('label', 'pg-text-2', (agent.name || agent.handle) + ' (@' + agent.handle + ')');
+
+                box.type = 'checkbox';
+                box.id = nextId();
+                box.checked = true;
+                box.value = String(agent.agent_id);
+                label.htmlFor = box.id;
+                box.addEventListener('change', function () {
+                    some.disabled = !boxes.some(function (one) { return one.checked; });
+                });
+                boxes.push(box);
+                row.appendChild(box);
+                row.appendChild(label);
+                list.appendChild(row);
+            });
+
+            function addIds(ids) {
+                all.disabled = true;
+                some.disabled = true;
+                h.api('ws_channel_agents_add_many', { channel_id: channel.id, agent_ids: ids })
+                    .then(function (next) {
+                        changed(next);
+
+                        if (next && next.refused && next.refused.length) {
+                            h.toast(t('cha_add_refused') + ' ' + next.refused.join('; '), 'danger');
+                        }
+                    })
+                    .catch(function (problem) {
+                        all.disabled = false;
+                        some.disabled = false;
+                        h.fail(problem);
+                    });
+            }
+
+            all.addEventListener('click', function () {
+                addIds(boxes.map(function (box) { return parseInt(box.value, 10); }));
+            });
+            some.addEventListener('click', function () {
+                addIds(boxes.filter(function (box) { return box.checked; }).map(function (box) { return parseInt(box.value, 10); }));
+            });
+
+            buttons.appendChild(all);
+            buttons.appendChild(some);
+            wrap.appendChild(list);
+            wrap.appendChild(buttons);
+
+            return wrap;
+        }
+
         // The @ list of the open channel reads channel.apps, which the
         // screen took with the channel (ws_channel_app_picker()): after an
         // agent is added or removed it is read again, so the list offers
@@ -468,6 +535,10 @@
             if (!state.can_edit) {
                 root.appendChild(el('div', 'pg-field-help', t('cha_readonly')));
             } else if (state.can_add && state.addable.length) {
+                if (discussion && state.from_channel && state.from_channel.length) {
+                    root.appendChild(fromChannelNode(state));
+                }
+
                 root.appendChild(addNode(state));
             }
 

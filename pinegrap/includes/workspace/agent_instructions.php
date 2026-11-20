@@ -28,6 +28,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_AGENT_INSTRUCTIONS_POLL', 15);
 define('WS_AGENT_INSTRUCTIONS_POLL_MIN', 5);
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/writing_rules.php');
+
 /**
  * The channels the agent is allowed in, with the rule that wakes it there
  * and the other agents allowed there (ws_agent_instructions_peers()).
@@ -320,6 +322,7 @@ function ws_agent_instructions_request_lines()
         '   - POST /workspace/agent-requests/{id}/answer with {"no_answer": true}: the message needs nothing from you (an acknowledgement, a thank-you, an answer to an answer). You may add "emoji" with one fitting emoji, left on the message that asked, with either form.',
         '   - POST /workspace/agent-requests/{id}/fail with {"reason": "..."}: you cannot do it; the reason is told to the person who asked.',
         'In an agent channel tell the site the model you run on at least once an hour: add "model": "<the model you run on>" to an answer (or use POST /workspace/agent-report); the brief asks for it when your last report is older.',
+        'When you can read your context window, add "context": {"used": <tokens in your context>, "size": <the window\'s size in tokens>} beside the model. POST /workspace/agent-report also takes "project" (the project you work on) and "branch" (your git branch). Send only what you can read; leave the rest out.',
         'A 409 edited answer means the message was changed after your claim: claim the request again and read the new words. A 403 answer means the channel no longer lets you answer there: give the request up with fail.',
         'A wake request has no message: your schedule woke you, and its brief carries the note of the wake. Do what the note says, write where you need with POST /workspace/channels/{id}/messages, then close the request with no_answer. Your schedule is GET /workspace/agent-wake; change it with POST /workspace/agent-wake.',
         'The person who asked and the channel\'s managers may mark an answer of yours right or wrong, with a short reason. GET /workspace/agent-feedback gives your marks and the counts of the last 7 and 30 days; read it now and then, and learn from a wrong one.',
@@ -340,6 +343,23 @@ function ws_agent_instructions_never_lines()
         '- print, log or write your key or your secret anywhere;',
         '- run two sessions on one key: one waits, and two would claim against each other.',
     );
+}
+
+/**
+ * The part of the text that says how a message is written, so the
+ * Workspace draws it (ws_writing_rules_lines()). Pure.
+ *
+ * @return string[]
+ */
+function ws_agent_instructions_writing_lines()
+{
+    $lines = array('How you write an answer or a message (the Workspace draws only these marks):');
+
+    foreach (ws_writing_rules_lines() as $line) {
+        $lines[] = '- ' . $line;
+    }
+
+    return $lines;
 }
 
 /**
@@ -370,10 +390,10 @@ function ws_agent_instructions_brief_line_for($agent)
 
 /**
  * The instructions an application agent follows: who it is, its channels
- * and what wakes it, how it waits, each request, the never-list and the
- * assistant rules. English, as the routine's are. It names nothing of this
- * repository and never the key or the secret, only the environment
- * variables that hold them. Pure.
+ * and what wakes it, how it waits, each request, how a message is written,
+ * the never-list and the assistant rules. English, as the routine's are.
+ * It names nothing of this repository and never the key or the secret,
+ * only the environment variables that hold them. Pure.
  *
  * @param array   $agent    the raw ws_agents row
  * @param array[] $channels ws_agent_instructions_channels()
@@ -388,6 +408,8 @@ function ws_agent_instructions_text($agent, $channels, $base)
     $lines = array_merge($lines, ws_agent_instructions_wait_lines(ws_agent_instructions_door($agent), $base));
     $lines[] = '';
     $lines = array_merge($lines, ws_agent_instructions_request_lines());
+    $lines[] = '';
+    $lines = array_merge($lines, ws_agent_instructions_writing_lines());
     $lines[] = '';
     $lines = array_merge($lines, ws_agent_instructions_never_lines());
     $lines[] = '';

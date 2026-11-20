@@ -73,6 +73,7 @@ if (!defined('PG_INIT_LOADED')) {
 }
 
 require_once(dirname(dirname(__FILE__)) . '/http.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing.php');
 
 // The providers this installation knows how to talk to.
 //
@@ -750,11 +751,15 @@ function mp_max_attempts() {
 // quantity mean live in one place:
 //
 //   price is what the shop's checkout charges for one unit, tax included
-//   (mp_product_price()): minor units in the shop, and decimal where
-//   marketplaces want it. Both live in one place because getting either wrong
-//   - by a factor of a hundred, or by the tax the shop adds at the checkout
-//   and a marketplace counts inside its sale price - is the kind of mistake
-//   that sells stock at cost.
+//   (mp_product_price()), moved by the account's price rules when it has
+//   any (mp_pricing_product_price(), never under the profit floor): minor
+//   units in the shop, and decimal where marketplaces want it. Both live in
+//   one place because getting either wrong - by a factor of a hundred, or by
+//   the tax the shop adds at the checkout and a marketplace counts inside its
+//   sale price - is the kind of mistake that sells stock at cost. The drivers
+//   send it as both the sale and the list price: a rule's price carries no
+//   struck-through price. site_price keeps the checkout's figure, and
+//   price_rule says whether a rule set price.
 //
 //   quantity is zero for a product that does not track stock. A marketplace has
 //   no concept of "not tracked", and the alternative - sending nothing - leaves
@@ -762,7 +767,7 @@ function mp_max_attempts() {
 function mp_product_row($account, $map) {
 
 	$product = db_item("SELECT id, name, price, inventory, inventory_quantity, out_of_stock, enabled,
-			title, taxable, tax_rate
+			title, taxable, tax_rate, brand
 		FROM products WHERE id = '" . e((int)$map['product_id']) . "'");
 
 	if (!$product) {
@@ -789,7 +794,14 @@ function mp_product_row($account, $map) {
 	// assembling a row by product id may not.
 	$remote_code = isset($map['remote_code']) ? trim((string)$map['remote_code']) : '';
 
-	$price = mp_product_price($product);
+	$site_price = mp_product_price($product);
+
+	$vat_rate = mp_product_vat_rate($product);
+
+	$channel = mp_pricing_product_price($account, $product, $site_price,
+		($vat_rate === null) ? mp_pricing_tax_off_rate($product) : $vat_rate);
+
+	$price = $channel['price'];
 
 	return array(
 		'product_id'  => (int)$product['id'],
@@ -799,11 +811,13 @@ function mp_product_row($account, $map) {
 		'title'       => $product['title'],
 		'price'       => $price,
 		'price_major' => mp_price_major($price),
+		'site_price'  => $site_price,
+		'price_rule'  => $channel['rule'],
 		'quantity'    => $quantity,
 		'tracked'     => $tracked,
 		'taxable'     => !empty($product['taxable']),
 		'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate'],
-		'vat_rate'    => mp_product_vat_rate($product)
+		'vat_rate'    => $vat_rate
 	);
 
 }

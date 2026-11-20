@@ -708,6 +708,10 @@ function api_fail($status_code, $code, $message, $field = null, $errors = null) 
 
 	}
 
+	// What to do next, in English, and the guide section that explains it,
+	// from the registry by code (includes/fn/agent_guide_hints.php).
+	$error = api_error_with_hint($error, $code);
+
 	// Refused for want of a valid token: say where one is to be had, the way
 	// an OAuth client expects to find out (includes/oauth/server.php).
 	if (($status_code === 401) && function_exists('pg_oauth_bearer_challenge')) {
@@ -738,6 +742,31 @@ function api_fail($status_code, $code, $message, $field = null, $errors = null) 
 	}
 
 	api_send($status_code, array('error' => $error), $code);
+
+}
+
+// An error object with hint and guide added when the registry holds its code;
+// unchanged otherwise. Kept apart from api_fail(), which exits, so a test can
+// read it.
+function api_error_with_hint($error, $code) {
+
+	if (!function_exists('pg_agent_guide_hint')) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide_hints.php');
+
+	}
+
+	$found = pg_agent_guide_hint((string)$code);
+
+	if ($found !== null) {
+
+		$error['hint'] = $found['hint'];
+
+		$error['guide'] = $found['guide'];
+
+	}
+
+	return $error;
 
 }
 

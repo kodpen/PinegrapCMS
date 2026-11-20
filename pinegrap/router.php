@@ -405,6 +405,12 @@ if ($item_name_lowercase == 'mcp.php') {
     exit();
 }
 
+// The same server with its compact tool list (mcp_compact.php).
+if ($item_name_lowercase == 'mcp_compact.php') {
+    require(dirname(__FILE__) . '/mcp_compact.php');
+    exit();
+}
+
 // If item is "robots.txt", then run that script.
 if ($item_name_lowercase == 'robots.txt') {
     require(dirname(__FILE__) . '/get_robots.txt.php');
@@ -422,6 +428,15 @@ if ($item_name_lowercase == 'sitemap.xml') {
 // the file manager, or to a page.
 if (($item_name_lowercase == 'llms.txt') && router_llms_txt_enabled()) {
     require(dirname(__FILE__) . '/get_llms.txt.php');
+    exit();
+}
+
+// llms.txt in the software folder: the guide's topic list for an AI agent
+// in a signed-in panel session (agent_guide.php). No file of that name
+// exists there, so the web server sends the request here.
+if ($item_name_lowercase == mb_strtolower(SOFTWARE_DIRECTORY) . '/llms.txt') {
+    define('PG_AGENT_GUIDE_LIST', true);
+    require(dirname(__FILE__) . '/agent_guide.php');
     exit();
 }
 

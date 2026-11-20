@@ -282,7 +282,7 @@ function test_workspace_erp_quote_invoice_is_checked_and_written_by_the_erp()
 	$inputs = workspace_erp_quote_change_test_source('ws_changes_input');
 
 	pg_assert_contains("\$action === 'invoice'", $inputs, 'the invoice action is proposed with no field');
-	pg_assert_contains('<#invoice:', workspace_erp_quote_change_test_source('ws_change_apply'), 'the decision tags the invoice draft');
+	pg_assert_contains('<#invoice:', workspace_erp_quote_change_test_source('ws_change_decision_text'), 'the decision tags the invoice draft');
 }
 
 // Every way to propose it names the action: the API's changes parameter,

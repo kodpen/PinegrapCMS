@@ -1778,6 +1778,10 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang(array('string' => 'Sheet {var:1} is too large to change here.', 'vars' => array($sheet)));
     }
 
+    if (strpos((string) $code, 'format_') === 0) {
+        return pg_office_format_message($code, $sheet);
+    }
+
     if (strpos((string) $code, 'sheets_') === 0) {
         return pg_office_sheets_message($code, $sheet);
     }
@@ -1891,10 +1895,17 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
     }
 
     // A row or column inserted or deleted (includes/fn/office_shift.php),
-    // or a sheet added, renamed, deleted or moved
-    // (includes/fn/office_sheets.php), is a save of its own.
+    // a sheet added, renamed, deleted or moved
+    // (includes/fn/office_sheets.php), or the format of a range of cells
+    // (includes/fn/office_format.php), is a save of its own.
     foreach ($changes as $change) {
         if (is_array($change) && isset($change['op'])) {
+            $format = (count($changes) === 1) ? pg_office_format_request($change) : null;
+
+            if ($format !== null) {
+                return pg_office_xlsx_format_save($path, $format, (string) $version, $directory, $fail);
+            }
+
             $sheets = (count($changes) === 1) ? pg_office_sheets_request($change) : null;
 
             if ($sheets !== null) {

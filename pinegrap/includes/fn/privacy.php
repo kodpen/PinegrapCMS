@@ -866,6 +866,9 @@ function pg_privacy_erase_tables()
         'shipment_labels' => array('find' => array('order_id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
             'label_file' => '',
         )),
+        // The ad services' events of the person's orders, sent or not: the
+        // buyer's ids and what each order said.
+        'ad_conversion_events' => array('find' => array('order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
         // A card the person bought loses the sender's name and message, a
         // card sent to them the address (_pg_privacy_erase_apply_gift_cards()).
         'gift_cards' => array('find' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'), 'action' => 'anonymise', 'fields' => array(
@@ -972,6 +975,16 @@ function pg_privacy_erase_tables()
         'form_data_cells'              => array('table' => 'form_data', 'find' => array('id' => 'cell_ids'), 'action' => 'anonymise', 'fields' => array('data' => '')),
         'form_data'                    => array('find' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
         'form_signatures'              => array('find' => array('form_id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
+        // The person's applications go with their submissions, each with the
+        // reviews given on it. A juror who is erased keeps their reviews on
+        // others' entries, without name, address or a working link
+        // (_pg_privacy_erase_apply_application_reviewers()).
+        'application_reviews'          => array('find' => array('entry_id' => 'application_entry_ids'), 'action' => 'delete', 'fields' => array()),
+        'application_entries'          => array('find' => array('form_id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
+        'application_reviewers'        => array('find' => array('user_id' => 'user_ids', 'email' => 'emails'), 'action' => 'anonymise', 'fields' => array(
+            'name'  => '',
+            'email' => '{token}',
+        )),
         'forms'                        => array('find' => array('id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1083,6 +1096,7 @@ function pg_privacy_erase_labels()
         'order_documents'              => lang('Accepted documents'),
         'order_returns'                => lang('Returns'),
         'shipment_labels'              => lang('Shipping labels'),
+        'ad_conversion_events'         => lang('Ad service events'),
         'gift_cards'                   => lang('Gift cards'),
         'store_credit'                 => lang('Store credit'),
         'erp_accounts'                 => lang('Current accounts'),
@@ -1103,6 +1117,9 @@ function pg_privacy_erase_labels()
         'form_data_cells'              => lang('Form answers holding the address'),
         'form_data'                    => lang('Form answers'),
         'form_signatures'              => lang('Signatures'),
+        'application_reviews'          => lang('Reviews of applications'),
+        'application_entries'          => lang('Applications'),
+        'application_reviewers'        => lang('Application reviewers'),
         'forms'                        => lang('Form submissions'),
         'watchers'                     => lang('Watched items'),
         'wishlist_items'               => lang('Favourites'),
@@ -1209,7 +1226,7 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
- *                wtable_row_ids, wtable_bin_ids
+ *                wtable_row_ids, wtable_bin_ids, application_entry_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -1233,6 +1250,7 @@ function pg_privacy_erase_scope(array $found)
         'revision_form_ids' => array(),
         'wtable_row_ids'   => array(),
         'wtable_bin_ids'   => array(),
+        'application_entry_ids' => array(),
     );
 
     // A counter sale keeps the cashier in user_id and its buyer in contact_id,
@@ -1263,6 +1281,11 @@ function pg_privacy_erase_scope(array $found)
 
     if ($where !== '') {
         $scope['form_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM forms WHERE " . $where));
+    }
+
+    // The applications of the person's submissions (application review).
+    if ($scope['form_ids'] && pg_schema_has('application_entries', 'form_id')) {
+        $scope['application_entry_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM application_entries WHERE " . _pg_privacy_export_in('form_id', $scope['form_ids'])));
     }
 
     // Fields of other records that hold the person's address.
@@ -1352,7 +1375,7 @@ function pg_privacy_erase_scope(array $found)
     if (pg_audit_ready()) {
         $conditions = array();
 
-        foreach (array('user' => 'user_ids', 'order' => 'order_ids', 'order_return' => 'return_ids', 'contact' => 'contact_ids', 'person' => 'emails') as $type => $key) {
+        foreach (array('user' => 'user_ids', 'order' => 'order_ids', 'order_return' => 'return_ids', 'contact' => 'contact_ids', 'person' => 'emails', 'application_entry' => 'application_entry_ids') as $type => $key) {
             if ($scope[$key]) {
                 $conditions[] = "((entity_type = '" . $type . "') AND " . _pg_privacy_export_in(($type === 'person') ? 'label' : 'entity_id', $scope[$key]) . ")";
             }
@@ -1575,8 +1598,8 @@ function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array(), 
  * line has the person's account (deleted, so it has no field list of its
  * own); a contact line has the deleted contact's personal columns; a person
  * line (an export) holds only ids, the token and counts. The label is
- * cleared on user, contact and person lines, where it is the user name, the
- * address or the name; an order keeps its number.
+ * cleared on user, contact, person and application entry lines, where it is
+ * the user name, the address or the name; an order keeps its number.
  *
  * @return array  entity_type => column => value, as pg_privacy_erase_tables()
  */
@@ -1628,6 +1651,9 @@ function pg_privacy_erase_audit_fields()
             'image'              => '',
         ),
         'person'       => array(),
+        // An application's line holds its state and scores; its label may
+        // name the applicant.
+        'application_entry' => array(),
     );
 }
 
@@ -1685,7 +1711,7 @@ function pg_privacy_erase_audit_row(array $row, $name, $key = null)
         }
     }
 
-    if (in_array($type, array('user', 'contact', 'person'), true) && isset($row['label']) && ((string) $row['label'] !== '')) {
+    if (in_array($type, array('user', 'contact', 'person', 'application_entry'), true) && isset($row['label']) && ((string) $row['label'] !== '')) {
         $changes['label'] = '';
     }
 
@@ -1697,17 +1723,22 @@ function pg_privacy_erase_audit_row(array $row, $name, $key = null)
  * A table or a find column the site does not have yet is passed over, and
  * only the replaced columns it has are written.
  *
- * @param array $scope  see pg_privacy_erase_scope()
- * @param bool  $apply  false for the dry run
+ * @param array      $scope  see pg_privacy_erase_scope()
+ * @param bool       $apply  false for the dry run
+ * @param array|null $only   the entries to run (a retention rule's), null for all
  * @return array  key => action, rows (the rows found), for the entries
  *                with rows only
  */
-function pg_privacy_erase_run(array $scope, $apply)
+function pg_privacy_erase_run(array $scope, $apply, $only = null)
 {
     $name = lang('Deleted customer');
     $result = array();
 
     foreach (pg_privacy_erase_tables() as $key => $spec) {
+        if (is_array($only) && !in_array($key, $only, true)) {
+            continue;
+        }
+
         $table = isset($spec['table']) ? $spec['table'] : $key;
 
         if (!pg_schema_has($table)) {
@@ -1879,6 +1910,19 @@ function _pg_privacy_erase_apply_bookings($where, array $fields, array $scope, $
     db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
 
     _pg_privacy_erase_write('bookings', $where, $fields, $name);
+}
+
+/**
+ * A juror's link stops working and their place in the programme is ended
+ * first, while the address still finds the row; then the name and the
+ * address go. The token hash is set to NULL, not '', as the column is
+ * unique. The reviews they gave stay with the entries.
+ */
+function _pg_privacy_erase_apply_application_reviewers($where, array $fields, array $scope, $name)
+{
+    db("UPDATE application_reviewers SET token_hash = NULL, revoked_at = IF(revoked_at = 0, '" . time() . "', revoked_at) WHERE " . $where);
+
+    _pg_privacy_erase_write('application_reviewers', $where, $fields, $name);
 }
 
 /**

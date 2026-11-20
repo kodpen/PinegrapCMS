@@ -11055,14 +11055,14 @@ body.pg-side-panel-open .pg-chat-launcher {
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1240px, calc(100vw - 6rem));
   --bs-dialog-backdrop-bg: var(--pg-scrim);
   --bs-dialog-backdrop-blur: 2px;
 }
 .pg-settings-modal.pg-sm {
   flex-direction: row;
   overflow: hidden;
-  height: min(680px, calc(100vh - 3.5rem));
+  height: min(880px, calc(100vh - 3.5rem));
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-sheet);
   background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
@@ -11075,7 +11075,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
   .pg-settings-modal.pg-sm {
-    height: min(680px, calc(100dvh - 3.5rem));
+    height: min(880px, calc(100dvh - 3.5rem));
   }
 }
 
@@ -11507,6 +11507,96 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* Folded rows of a settings pane (includes/settings/fold.php; Assistants and
+   agents): one framed list, a row a part, its head a button with the icon
+   tile, the name over one line of state, the pill and a chevron. The card a
+   row holds is drawn by its own function: inside the row it loses its frame
+   and its heading, which the head already says; a heading holding a button
+   (Add an agent) keeps the button. */
+.pg-set-fold {
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-card);
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+}
+.pg-set-fold-item + .pg-set-fold-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-set-fold-item.is-open {
+  background: color-mix(in srgb, var(--pg-accent) 3%, transparent);
+}
+.pg-set-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.pg-set-fold-head:hover {
+  background: var(--pg-hover);
+}
+.pg-set-fold-head:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.pg-set-fold-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-set-fold-name {
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-set-fold-line {
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-set-fold-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+  transition: transform .15s ease;
+}
+.pg-set-fold-item.is-open .pg-set-fold-chevron {
+  transform: rotate(180deg);
+}
+.pg-set-fold-body {
+  padding: 2px 16px 18px 63px;
+}
+.pg-set-fold-body > .pg-set-card > .card {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header,
+.pg-set-fold-body > .pg-set-card > .card > .card-body {
+  padding-inline: 0;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:not(:has(button, a)) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header > :not(button, a, form) {
+  display: none;
+}
+.pg-set-fold-body > .pg-set-card > .card > .card-header:has(button, a) {
+  justify-content: flex-end;
+  padding-block: 0;
+}
+@media (max-width: 575.98px) {
+  .pg-set-fold-body { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-set-fold-chevron { transition: none; }
+}
 /* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
    tables straight under their section title. */
 .pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
@@ -12723,6 +12813,168 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-agent-stack {
   margin-left: .45rem;
+}
+/* Channel info's Info and Activity tabs (workspace_channel_activity.js):
+   the segmented control under the panel's head, each tab its own scrolling
+   pane. */
+.ws-act-tabs-row {
+  flex-shrink: 0;
+  padding: var(--ws-space-2) var(--ws-space-4) 0;
+}
+.ws-act-tabs {
+  display: flex;
+  width: 100%;
+}
+.ws-act-tabs > .pg-seg-item {
+  flex: 1 1 0;
+}
+.ws-act-body[hidden],
+.ws-info-panel > .ws-panel-body[hidden] {
+  display: none;
+}
+/* The Activity tab: the summary line and the project, a row each agent,
+   label and value lines, linked lines with their age at the right, and the
+   bars of context and plan usage. */
+.ws-act-summary {
+  margin-top: var(--ws-space-3);
+}
+.ws-act-project {
+  margin-top: .15rem;
+  overflow-wrap: anywhere;
+}
+.ws-act-count {
+  margin-inline-start: .4rem;
+  vertical-align: baseline;
+}
+.ws-act-agent {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .45rem 0;
+}
+.ws-act-agent + .ws-act-agent {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-agent.is-stale .ws-act-report,
+.ws-act-agent.is-stale .ws-act-context {
+  opacity: .5;
+}
+.ws-act-face {
+  position: relative;
+  flex: none;
+}
+.ws-act-face > .avatar {
+  --bs-avatar-size: 1.75rem;
+}
+.ws-act-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}
+.ws-act-agent-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-act-agent-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .4rem;
+  font-size: var(--pg-text-2);
+}
+.ws-act-agent-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-act-state {
+  margin-inline-start: auto;
+}
+.ws-act-agent-line {
+  margin-top: .15rem;
+  overflow-wrap: anywhere;
+}
+.ws-act-context {
+  margin-top: .25rem;
+}
+.ws-act-bar {
+  height: 6px;
+  margin-top: .2rem;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--pg-quiet);
+}
+.ws-act-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pg-tone-blue);
+}
+.ws-act-bar.is-high > span {
+  background: var(--pg-tone-amber);
+}
+.ws-act-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .3rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-fact + .ws-act-fact {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-fact-key {
+  color: var(--pg-fg-3);
+}
+.ws-act-fact-value {
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.ws-act-line {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  padding: .25rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-line > .bi {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.ws-act-line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-act-line-side {
+  flex: none;
+}
+.ws-act-link {
+  color: inherit;
+  text-decoration: none;
+}
+.ws-act-link:hover,
+.ws-act-link:focus-visible {
+  text-decoration: underline;
+}
+.ws-act-more,
+.ws-act-all {
+  margin-top: .25rem;
+}
+.ws-act-window {
+  padding: .3rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-act-window + .ws-act-window {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-act-tip,
+.ws-act-loading {
+  margin: var(--ws-space-3) 0 0;
 }
 /* Channel settings' "Agents in this channel": one compact row an agent in
    an inner card (look A), which opens its settings under it, one agent at
@@ -19198,39 +19450,86 @@ a.ws-chip-message:hover,
   width: min(20rem, calc(100vw - 2rem));
   padding: var(--ws-space-2);
 }
+.ws-call.is-group {
+  width: min(28rem, calc(100vw - 2rem));
+}
+/* The grid: one tile a member; of two, one's own picture sits small in
+   the corner of the other's. The one speaking is ringed. */
 .ws-call-stage {
   position: relative;
+  display: grid;
+  gap: var(--ws-space-1);
+}
+.ws-call-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
   overflow: hidden;
   border-radius: var(--pg-radius);
   background: var(--pg-bg-2);
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow .15s ease;
 }
-.ws-call[data-kind="video"] .ws-call-stage {
+.ws-call[data-kind="video"] .ws-call-tile {
   aspect-ratio: 16 / 9;
 }
-.ws-call-remote {
-  display: block;
+.ws-call-tile.is-speaking {
+  box-shadow: 0 0 0 2px var(--pg-success-fg-emphasis);
+}
+.ws-call-tile.is-lost {
+  opacity: .5;
+}
+.ws-call-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.ws-call[data-kind="voice"] .ws-call-remote {
-  display: none;
+.ws-call-tile > .bi {
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
 }
-.ws-call-who {
-  padding: var(--ws-space-3);
-  text-align: center;
-  font-weight: var(--pg-weight-strong);
+.ws-call[data-kind="voice"] .ws-call-video,
+.ws-call-tile.is-camera-off .ws-call-video {
+  visibility: hidden;
 }
-.ws-call-self {
+.ws-call[data-kind="video"] .ws-call-tile:not(.is-camera-off) > .bi {
+  visibility: hidden;
+}
+.ws-call-tile-name {
+  position: absolute;
+  left: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  max-width: calc(100% - 2 * var(--ws-space-1));
+  overflow: hidden;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: var(--pg-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-call-stage[data-count="2"],
+.ws-call-stage[data-count="3"],
+.ws-call-stage[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
   position: absolute;
   right: var(--ws-space-1);
   bottom: var(--ws-space-1);
+  z-index: 1;
   width: 28%;
-  border-radius: var(--pg-radius);
-  object-fit: cover;
+  min-height: 0;
 }
-.ws-call.is-camera-off .ws-call-self {
-  visibility: hidden;
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self .ws-call-tile-name {
+  display: none;
 }
 .ws-call-bar {
   display: flex;
@@ -19578,6 +19877,42 @@ a.ws-chip-message:hover,
 .office-tab-hidden {
   font-style: italic;
   opacity: .7;
+}
+/* A workbook whose sheets may change: its tab list is laid out in one strip
+   with the sheet being added and the add button. */
+.office-tablist {
+  display: contents;
+}
+.office-tab-add,
+.office-tab-new {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  font: inherit;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  background: transparent;
+}
+.office-tab-add {
+  border-color: transparent;
+}
+.office-tab-add:hover {
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+}
+.office-tab-delete {
+  background: var(--pg-danger-bg-subtle);
+}
+.office-tab-delete .office-tab-name {
+  text-decoration: line-through;
+}
+.office-tab-moved {
+  border-style: dashed;
+  border-color: var(--pg-primary);
+}
+.office-tab-input {
+  width: 10rem;
+  font-size: .8125rem;
 }
 /* The separator and character set a .csv is read with, above its sheet. */
 .office-choice {

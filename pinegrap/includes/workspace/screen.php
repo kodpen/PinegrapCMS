@@ -963,7 +963,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_channel_activity_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
@@ -1019,7 +1019,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'poll'         => array('active' => 4),
         // Calls from the channel's head (workspace_calls.js): the public
         // route the browsers ask for, null while the database has no calls.
-        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING) : null,
+        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING, 'max' => WS_CALL_MAX_MEMBERS) : null,
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,

@@ -6,7 +6,7 @@ module: event_tickets
 
 ## What does GET /calendars/events/{id}/tickets answer?
 - Route `calendars.event_tickets`, handler `api_calendar_event_tickets()` in `includes/api/resources/event_tickets.php`, scope `orders:read` (T14: a ticket reaches a person only through its order). The event follows the calendar row rule (`api_calendar_event_visible_or_fail()`, 404 outside); 503 `service_unavailable` before the tickets table.
-- `data`: `EventTicket` rows oldest first, cursor on the ticket id; filters `recurrence_number`, `state` (valid, used, void). `guest_name` from the unit's product form, else the buyer's (`pg_check_in_with_names()`, one query a page).
+- `data`: `EventTicket` rows oldest first, cursor on the ticket id; filters `recurrence_number`, `state` (valid, used, void). `guest_name` as the tickets page names the guest (`pg_event_ticket_guest_name()` on the unit's product form), else the buyer's (`pg_check_in_with_names()`, one query a page).
 - `counts` beside the page (`EventTicketCounts`): sold (valid and used), checked_in, void, for the event or the repeat asked, whatever the state filter.
 - A key with only `calendars:*` is refused; an owner without the e-commerce right cannot give a key `orders:read` (`api_owner_scopes()`). No new scope or right.
 - No product route: a product's tickets are read on the check-in screen only. A product ticket route would be a new endpoint for the architect.

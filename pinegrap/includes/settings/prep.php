@@ -68,8 +68,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
-    // applications they use (connect_apps; Microsoft's is set up on Connected
-    // accounts, Apple's on its card here). Empty until the upgrade has run.
+    // applications they use (connect_apps; each is set up on its page of
+    // Connections, the card reads them for its state). Empty until the
+    // upgrade has run.
     $signin_ready = function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && array_key_exists('signin_providers', $row);
     $signin_on = $signin_ready ? pg_connect_scope_list(str_replace(',', ' ', (string) $row['signin_providers'])) : array();
     $signin_microsoft_checked = in_array('microsoft', $signin_on, true) ? ' checked="checked"' : '';
@@ -2485,6 +2486,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_disk_percent = isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10;
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
+
+    // Sales watch part of the Alerts card (includes/fn/sales_watch.php): one
+    // config_text row, drawn only with the shop on and the table there.
+    $sales_watch_ready = $ops_alerts_ready && defined('ECOMMERCE') && (ECOMMERCE === true)
+        && function_exists('pg_sales_watch_settings') && pg_schema_has('config_text');
+    $sales_watch = $sales_watch_ready ? pg_sales_watch_settings() : array();
+    $sales_watch_channels = $sales_watch_ready ? pg_sales_watch_channel_list() : array();
 
     // Chat notifications card: the Slack, Teams and Telegram targets, read
     // from their sealed entry. The address and the token are never drawn

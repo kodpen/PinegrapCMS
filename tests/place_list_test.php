@@ -22,6 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
 require_once(PG_FUNCTIONS_DIR . '/waf.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
 
 function place_list_test_fields()
 {
@@ -117,7 +118,7 @@ function test_place_list_endpoint_checks()
 	pg_assert_true(($cross !== false) && ($rate !== false) && ($read !== false) && ($find_rate !== false) && ($find !== false), 'the checks are there');
 	pg_assert_true($cross < $find_rate && $find_rate < $find, 'origin, then the lookup\'s rate, then the text');
 	pg_assert_true($find < $rate && $rate < $read, 'origin, then rate, then the page id');
-	pg_assert_same(2, preg_match_all('/\$_(GET|POST|REQUEST)\[/', $source), 'no other request value is read');
+	pg_assert_same(3, preg_match_all('/\$_(GET|POST|REQUEST)\[/', $source), 'no other request value is read');
 	pg_assert_same(0, preg_match('/\$_(GET|REQUEST)\[.find/', $source), 'the typed text is never read from the address');
 	pg_assert_same(30, PG_PLACE_LIST_RATE_LIMIT);
 }
@@ -324,7 +325,8 @@ function test_place_list_request_names_no_field()
 
 	pg_assert_same(0, preg_match('/\$_(GET|POST|REQUEST|COOKIE)\b/', $fn), 'the module reads no request value');
 	pg_assert_contains("pg_place_list_for_page((int) (\$_GET['page'] ?? 0))", $endpoint, 'the endpoint passes the page id alone');
-	pg_assert_contains('pg_place_list_saved_choice(json_decode((string) pg_page_tree_json(', $fn, 'the choice comes from the saved page');
+	pg_assert_contains('$tree = (string) pg_page_tree_json((int) $page_id);', $fn, 'the choice comes from the saved page');
+	pg_assert_contains('pg_place_list_saved_choice(json_decode($gate[\'tree\'], true))', $fn);
 }
 
 // The block's panel keeps the choice on the block, under the server's name,
@@ -337,4 +339,154 @@ function test_place_list_panel_section()
 	pg_assert_contains("var _SD_PLACE_MAP_PARTS = ['" . implode("', '", pg_place_list_parts()) . "'];", $js, 'the same parts');
 	pg_assert_contains("String(f.office_use_only) === '1') return false;", $js, 'no office-use-only field is offered');
 	pg_assert_contains("cfg.regionType !== 'form_list_view'", $js, 'the list places.php reads');
+}
+
+// An import or an API write keeps a number field's text as sent: a
+// coordinate with a decimal comma is still the point it names.
+function test_place_list_item_reads_a_decimal_comma()
+{
+	$roles = pg_place_list_field_roles(place_list_test_fields());
+	$item = pg_place_list_item(array('id' => 9), array(2 => 'Moda', 3 => ' 40,98 ', 4 => '29,0215'), $roles, '');
+
+	pg_assert_same(40.98, $item['lat']);
+	pg_assert_same(29.0215, $item['lng']);
+
+	$bad = pg_place_list_item(array('id' => 9), array(2 => 'Moda', 3 => '40,98,1', 4 => '29'), $roles, '');
+	pg_assert_same(null, $bad['lat'], 'two commas name no number');
+	pg_assert_same(null, $bad['lng'], 'no point without both');
+	pg_assert_same(null, pg_place_list_item(array('id' => 9), array(2 => 'x', 3 => '-90,5', 4 => '1'), $roles, '')['lat'], 'still in range');
+}
+
+// places.php answers only for a page that holds the block: another public
+// page with a public form list gives no addresses and phones its list may
+// not show. A block inside a shared component the page names, or one inside
+// that, counts.
+function test_place_list_page_must_hold_the_block()
+{
+	$asked = array();
+	$shared = array(
+		5 => json_encode(array('type' => 'root', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 6))))),
+		6 => json_encode(place_list_test_tree(null)),
+		7 => json_encode(array('type' => 'root', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 7))))),
+	);
+	$load = function ($ids) use ($shared, &$asked) {
+		$asked[] = $ids;
+		return array_intersect_key($shared, array_flip($ids));
+	};
+	$ref = function ($sid) {
+		return json_encode(array('type' => 'root', 'children' => array(array('type' => 'semantic', 'props' => array('tag' => 'div')), array('type' => 'shared_ref', 'props' => array('sharedId' => $sid)))));
+	};
+
+	pg_assert_true(pg_place_list_tree_holds_block(json_encode(place_list_test_tree(array('name' => 'Branch'))), $load), 'the block on the page');
+	pg_assert_same(array(), $asked, 'no shared component read for a block on the page');
+	pg_assert_false(pg_place_list_tree_holds_block(json_encode(array('type' => 'root', 'children' => array(array('type' => 'semantic', 'props' => array('tag' => 'div'))))), $load), 'a page without the block');
+	pg_assert_false(pg_place_list_tree_holds_block('', $load), 'no tree');
+	pg_assert_true(pg_place_list_tree_holds_block($ref(6), $load), 'in a shared component');
+	pg_assert_true(pg_place_list_tree_holds_block($ref(5), $load), 'in a shared component inside another');
+	pg_assert_false(pg_place_list_tree_holds_block($ref(7), $load), 'a component naming itself ends');
+	pg_assert_false(pg_place_list_tree_holds_block($ref(99), $load), 'a missing component');
+
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	$start = strpos($fn, 'function pg_place_list_for_page(');
+	$body = substr($fn, $start, strpos($fn, "\n}\n", $start) - $start);
+	pg_assert_true(strpos($body, 'pg_place_list_page_open(') !== false && strpos($body, 'pg_place_list_page_open(') < strpos($body, 'db_items(pg_place_list_records_sql('), 'the answer asks before any record is read');
+	$start = strpos($fn, 'function pg_place_list_page_open(');
+	pg_assert_contains("pg_place_list_tree_holds_block(\$tree, 'pg_place_list_shared_trees')", substr($fn, $start, strpos($fn, "\n}\n", $start) - $start), 'the page\'s gate asks for the block');
+	pg_assert_contains('Map of places block', pg_place_list_reason_text('block'));
+}
+
+// The typed-address lookup is tied to a page that holds the block: the
+// request names the page as the list's does, the server asks the page's own
+// rule for the list and the block; a request with neither Sec-Fetch-Site
+// nor Origin (not a browser), another site, a draft page, a page or site
+// without the block are all refused before any outside call.
+function test_place_list_find_needs_the_page_and_block()
+{
+	$asked = array();
+	$gate = function ($reason) use (&$asked) {
+		return function ($page_id) use ($reason, &$asked) {
+			$asked[] = $page_id;
+			return array('reason' => $reason);
+		};
+	};
+	$browser = array('HTTP_HOST' => 'example.com', 'HTTP_SEC_FETCH_SITE' => 'same-origin');
+
+	pg_assert_same('browser', pg_place_list_find_refusal(array('HTTP_HOST' => 'example.com'), 4, $gate('')), 'no headers: not a browser');
+	pg_assert_same('browser', pg_place_list_find_refusal(array('HTTP_HOST' => 'example.com', 'HTTP_SEC_FETCH_SITE' => 'same-site'), 4, $gate('')), 'a sibling site');
+	pg_assert_same('browser', pg_place_list_find_refusal(array('HTTP_HOST' => 'example.com', 'HTTP_SEC_FETCH_SITE' => 'none'), 4, $gate('')), 'typed into the address bar');
+	pg_assert_same('browser', pg_place_list_find_refusal(array('HTTP_HOST' => 'example.com', 'HTTP_ORIGIN' => 'https://other.test'), 4, $gate('')), 'another site\'s origin');
+	pg_assert_same('page', pg_place_list_find_refusal($browser, 0, $gate('')), 'no page named');
+	pg_assert_same(array(), $asked, 'nothing read for a refused request');
+
+	pg_assert_same('block', pg_place_list_find_refusal($browser, 4, $gate('block')), 'a page without the block');
+	pg_assert_same('page', pg_place_list_find_refusal($browser, 4, $gate('page')), 'a page not open to everyone');
+	pg_assert_same('', pg_place_list_find_refusal($browser, 4, $gate('')), 'the page with the block');
+	pg_assert_same('', pg_place_list_find_refusal(array('HTTP_HOST' => 'example.com', 'HTTP_ORIGIN' => 'https://example.com'), 4, $gate('')), 'a same-origin Origin');
+	pg_assert_same(array(4, 4, 4, 4), $asked);
+	pg_assert_same('page', pg_place_list_page_reason(true, 'private', false, array('cfg' => array()), true), 'a draft sits in the private Drafts folder');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/places.php');
+	$refusal = strpos($source, "pg_place_list_find_refusal(\$_SERVER, (int) (\$_POST['page'] ?? 0))");
+	$held = strpos($source, 'pg_place_list_find_site_held(');
+	$find = strpos($source, "pg_place_list_find(\$_POST['find'] ?? '')");
+	pg_assert_true(($refusal !== false) && ($held !== false) && ($find !== false), 'the checks are there');
+	pg_assert_true($refusal < $held && $held < $find, 'the page, then the site\'s bound, then the outside call');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_map.js');
+	pg_assert_contains('new root.URLSearchParams({ find: text, page: config.page })', $js, 'the page goes with the text');
+}
+
+// On the public Photon instance the whole site looks up at most 30 times a
+// minute, a second apart; at the bound the visitor is told to wait and
+// nothing is asked. The site's own Photon account has no site-wide bound,
+// and the panel's lookups do not count toward it.
+function test_place_list_find_site_bound()
+{
+	$calls = array();
+	$gap = function ($free) use (&$calls) {
+		return function () use ($free, &$calls) {
+			$calls[] = 'gap';
+			return $free;
+		};
+	};
+	$count = function ($n) use (&$calls) {
+		return function ($subject, $scope, $window) use ($n, &$calls) {
+			$calls[] = array($subject, $scope, $window);
+			return $n;
+		};
+	};
+
+	pg_assert_same(30, PG_PLACE_LIST_FIND_SITE_LIMIT);
+	pg_assert_same(1000, PG_PLACE_LIST_FIND_GAP_MS, 'the bulk action\'s spacing');
+	pg_assert_same(PG_PLACE_MAP_PUBLIC_PAUSE, PG_PLACE_LIST_FIND_GAP_MS * 1000, 'the same spacing as the panel\'s bulk action');
+
+	pg_assert_false(pg_place_list_find_site_held('https://photon.example.org', $gap(false), $count(99)), 'the site\'s own Photon: no site-wide bound');
+	pg_assert_same(array(), $calls, 'nothing counted for the own account');
+
+	pg_assert_true(pg_place_list_find_site_held('https://photon.komoot.io', $gap(false), $count(1)), 'back to back: wait');
+	pg_assert_same(array('gap'), $calls, 'a held lookup is not counted toward the minute');
+
+	$calls = array();
+	pg_assert_false(pg_place_list_find_site_held('https://photon.komoot.io/', $gap(true), $count(30)), 'the thirtieth of the minute');
+	pg_assert_same(array('gap', array('site', 'place_find_site', 60)), $calls, 'one counter for the site, a minute');
+	pg_assert_true(pg_place_list_find_site_held('https://photon.komoot.io', $gap(true), $count(31)), 'the thirty-first waits');
+
+	pg_assert_same(array('ok' => true, 'state' => 'wait', 'lat' => null, 'lng' => null), pg_place_list_find_answer(array('state' => 'wait')), 'today\'s wait answer');
+
+	$sql = pg_place_list_find_gap_sql('k|place_find_gap', 1700000000123);
+	pg_assert_same(2, count($sql), 'a conditional update, then a first row');
+	pg_assert_contains('window_start * 1000 + hits', $sql[0]);
+	pg_assert_contains('<= 1699999999123', $sql[0], 'a second after the last');
+	pg_assert_contains('INSERT IGNORE', $sql[1]);
+	pg_assert_contains('123, 1700000000', $sql[1], 'only times and counts are kept');
+
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+	foreach (array('pg_place_list_find_site_held', 'pg_place_list_find_gap_sql', 'pg_place_list_find_gap_claim') as $name) {
+		$start = strpos($fn, 'function ' . $name . '(');
+		pg_assert_true($start !== false, $name . ' is there');
+		pg_assert_same(0, preg_match('/find_text|\$text|_POST/', substr($fn, $start, strpos($fn, "\n}\n", $start) - $start)), $name . ' never sees the typed text');
+	}
+
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php') . file_get_contents(PG_FUNCTIONS_DIR . '/place_coordinates.php');
+	pg_assert_same(false, strpos($panel, 'pg_place_list_find_site_held'), 'the panel\'s lookups keep their own spacing');
 }

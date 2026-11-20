@@ -471,6 +471,41 @@ function pg_stock_seed_product($product_id, $default_id)
 }
 
 /**
+ * Bring products' rows in line with their tracking after a write that may
+ * have switched it: a product that does not track stock has no rows (they
+ * are deleted, no move: the total is unchanged), a tracked product with no
+ * row gets its default row from its total, as the first location seeds
+ * every product. Rerunnable; nothing without locations.
+ *
+ * @param int[] $product_ids
+ * @return void
+ */
+function pg_stock_tracking_sync(array $product_ids)
+{
+    $ids = array();
+
+    foreach ($product_ids as $product_id) {
+        if ((int) $product_id > 0) {
+            $ids[(int) $product_id] = (int) $product_id;
+        }
+    }
+
+    if (!$ids || !pg_stock_has_locations()) {
+        return;
+    }
+
+    $list = "'" . implode("', '", $ids) . "'";
+
+    db("DELETE product_stock FROM product_stock
+        INNER JOIN products ON products.id = product_stock.product_id
+        WHERE (product_stock.product_id IN (" . $list . ")) AND (products.inventory <> '1')");
+
+    foreach (db_values("SELECT id FROM products WHERE (id IN (" . $list . ")) AND (inventory = '1')") as $product_id) {
+        pg_stock_seed_product((int) $product_id, pg_stock_default_location());
+    }
+}
+
+/**
  * Change a product's stock at one location by $delta: the guarded row
  * update, the move, then the sum into products.inventory_quantity, in one
  * transaction. Without locations the product's total is changed by the

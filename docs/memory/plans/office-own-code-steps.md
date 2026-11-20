@@ -7,17 +7,18 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - `plans/office-own-code.md`. A step is marked done here with its PR number.
 
 ## Previews
-- OP1, .csv and .tsv open as a sheet: the delimiter (comma, semicolon, tab) and the encoding (UTF-8 with or without a mark, Windows-1254) are detected, a choice above the sheet corrects a wrong guess; view only. Done: PR #10484 (`platform/office-csv-preview.md`).
+- OP1, .csv and .tsv open as a sheet, delimiter and encoding detected; view only. Done: PR #10484 (`platform/office-csv-preview.md`).
 - OP2, .ods opens as a workbook through XL1's reader, with its cell ceiling; view only. Done: PR #10519 (`platform/office-ods-preview.md`).
-- OP3, .xls opens as a workbook through XL1's reader; view only, with "Save a copy as .xlsx" (written by the shared writer beside the file, or as a new message's file in a channel), which the user then edits. Done: PR #10542 (`platform/office-xls-preview.md`).
-- OP4, .pptx opens as a list of slides: each slide's title, text in reading order, pictures and speaker notes; no slide layout, no animation; the picture limits of the .docx preview apply. Done: PR #10585 (`platform/office-pptx-preview.md`).
+- OP3, .xls opens as a workbook through XL1's reader; view only, with "Save a copy as .xlsx". Done: PR #10542 (`platform/office-xls-preview.md`).
+- OP4, .pptx opens as a list of slides (title, text, pictures, notes); view only. Done: PR #10585 (`platform/office-pptx-preview.md`).
 
 ## Sheet editing (.xlsx)
 - OE1, rows and columns: insert and delete from a row's or column's head menu. References in the same sheet's formulas, merged ranges and the sheet's dimension are shifted; a workbook where the shift cannot be made safely (a table, a defined name, another sheet's formula or a merged range crossing the line) refuses with its reason.
   - Cut: OE1a (done, PR #10618), the server (`platform/office-sheet-rows-columns.md`); OE1b (done, PR #10637), the head menu.
 - OE2, sheets: add, rename, delete and reorder from the sheet tabs; a delete another sheet's formula points to is refused.
-  - Cut: OE2a (PR #10692), the server (`platform/office-sheets.md`); OE2b, the tabs' menu after OE2a, draft on `plan/office-own-code-oe2b-draft`.
+  - Cut: OE2a (PR #10692), the server (`platform/office-sheets.md`); OE2b (done, PR #10723), the tabs' menu (`platform/office-sheet-tabs.md`).
 - OE3, format of the selected cells: bold, italic, text colour, fill, alignment, number format (general, number, money, percent, date); written as new styles, existing ones untouched.
+  - Cut: OE3a (PR #10827), the server's style writer (`platform/office-sheet-format.md`); OE3b, the editor's controls and the preview reading the cells' formats.
 - OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet.
 - OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing.
 

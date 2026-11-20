@@ -3774,69 +3774,8 @@ function ws_change_apply($viewer, $change_id, $by_app = false)
         return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
     }
 
-    // The decision: who changed what, on Claude's proposal, under the answer.
-    // A kind of record with no tag (a note) is named by its words.
-    $tag = ($types[$type]['tag'] !== '')
-        ? '<#' . $types[$type]['tag'] . ':' . $record_id . '>'
-        : '“' . ws_change_record_name($type, $values) . '” (' . $types[$type]['label'] . ')';
-    $lines = array();
-
-    foreach ($fields as $item) {
-        $field = ws_change_field($types[$type], (string) $item['name']);
-
-        // A note on a task names its task in the sentence.
-        if (($type === 'task_note') && ($item['name'] === 'task_id')) {
-            continue;
-        }
-
-        if ($field[0] === 'ids') {
-            $lines[] = $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']);
-        } elseif ($action === 'update') {
-            $lines[] = ($field[3] === '')
-                ? $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”'
-                : $field[2] . ': “' . ws_change_show($type, $item['name'], $item['from'], 120) . '” → “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
-        } elseif ($action === 'delete') {
-            if (!in_array($item['from'], array('', null, false, 0), true)) {
-                $lines[] = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['from'], 120) . '”';
-            }
-        } else {
-            $lines[] = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
-        }
-    }
-
-    switch ($action) {
-        case 'create':
-            $sentence = ($type === 'task_note')
-                ? 'A note was added to {var:1} on Claude\'s proposal. {var:2}'
-                : '{var:1} was added on Claude\'s proposal. {var:2}';
-            break;
-
-        case 'delete':
-            $tag = '“' . ws_change_record_name($type, $record) . '” (' . $types[$type]['label'] . ' #' . $record_id . ')';
-            $sentence = !empty($done['binned'])
-                ? '{var:1} was moved to the Recycle Bin on Claude\'s proposal. It held: {var:2}'
-                : '{var:1} was deleted on Claude\'s proposal. It held: {var:2}';
-            break;
-
-        case 'add':
-            $sentence = 'Added to {var:1} on Claude\'s proposal. {var:2}';
-            break;
-
-        case 'remove':
-            $sentence = 'Taken out of {var:1} on Claude\'s proposal. {var:2}';
-            break;
-
-        // A sales quote turned into an invoice draft: the draft is tagged.
-        case 'invoice':
-            $lines = array('<#invoice:' . (int) ($done['invoice_id'] ?? 0) . '>');
-            $sentence = '{var:1} became the invoice draft {var:2} on Claude\'s proposal.';
-            break;
-
-        default:
-            $sentence = '{var:1} was changed on Claude\'s proposal. {var:2}';
-    }
-
-    $body = lang(array('string' => $sentence, 'vars' => array($tag, implode(' · ', $lines))));
+    $decision = ws_change_decision_text($types, $type, $action, $fields, $values, $record, $record_id, $done);
+    $body = $decision['body'];
 
     if (function_exists('ws_ai_voice')) {
         $body = ws_ai_voice($body, $change);
@@ -3869,6 +3808,120 @@ function ws_change_apply($viewer, $change_id, $by_app = false)
     ws_message_touch($change['message_id']);
 
     return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => $decision_id);
+}
+
+/**
+ * Does an applied proposal's decision leave a kind's values out? A contact's
+ * are personal data (e-mail address, phones, addresses), and the decision is
+ * read by every member of the channel, also those without the contacts
+ * right; ws_quick_create_save() names a contact by its tag alone as well.
+ *
+ * @param string $type a kind of ws_change_types()
+ * @return bool
+ */
+function ws_change_decision_private($type)
+{
+    return $type === 'contact';
+}
+
+/**
+ * The decision an applied proposal posts in its channel: who changed what,
+ * on Claude's proposal. A kind of record with no tag (a note) is named by its
+ * words. A contact is named without its values: every member reads the
+ * decision, also those without the contacts right.
+ *
+ * @param array  $types     ws_change_types()
+ * @param string $type      a kind of ws_change_types()
+ * @param string $action    create, update, delete, add, remove, invoice
+ * @param array  $fields    the proposal's fields: name, from, to
+ * @param array  $values    field => new value, as given to the writer
+ * @param array  $record    the record as the writer was given it
+ * @param int    $record_id the record written
+ * @param array  $done      the writer's answer: ok, id, binned, invoice_id
+ * @return array body (the translated sentence), lines (the value lines)
+ */
+function ws_change_decision_text(array $types, $type, $action, array $fields, array $values, $record, $record_id, array $done)
+{
+    $record_id = (int) $record_id;
+    $tag = ($types[$type]['tag'] !== '')
+        ? '<#' . $types[$type]['tag'] . ':' . $record_id . '>'
+        : '“' . ws_change_record_name($type, $values) . '” (' . $types[$type]['label'] . ')';
+    $lines = array();
+
+    // A private kind is named by its tag alone, as the proposal card hides
+    // the values from a reader without the kind's right.
+    $private = ws_change_decision_private($type);
+
+    foreach ($private ? array() : $fields as $item) {
+        $field = ws_change_field($types[$type], (string) $item['name']);
+
+        // A note on a task names its task in the sentence.
+        if (($type === 'task_note') && ($item['name'] === 'task_id')) {
+            continue;
+        }
+
+        if ($field[0] === 'ids') {
+            $lines[] = $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']);
+        } elseif ($action === 'update') {
+            $lines[] = ($field[3] === '')
+                ? $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”'
+                : $field[2] . ': “' . ws_change_show($type, $item['name'], $item['from'], 120) . '” → “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
+        } elseif ($action === 'delete') {
+            if (!in_array($item['from'], array('', null, false, 0), true)) {
+                $lines[] = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['from'], 120) . '”';
+            }
+        } else {
+            $lines[] = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
+        }
+    }
+
+    switch ($action) {
+        case 'create':
+            $sentence = ($type === 'task_note')
+                ? 'A note was added to {var:1} on Claude\'s proposal. {var:2}'
+                : '{var:1} was added on Claude\'s proposal. {var:2}';
+            break;
+
+        case 'delete':
+            // The record is gone, so its tag cannot stand in: a private
+            // kind is named by its number only and lists nothing it held.
+            if ($private) {
+                $tag = $types[$type]['label'] . ' #' . $record_id;
+                $sentence = !empty($done['binned'])
+                    ? '{var:1} was moved to the Recycle Bin on Claude\'s proposal.'
+                    : '{var:1} was deleted on Claude\'s proposal.';
+                break;
+            }
+
+            $tag = '“' . ws_change_record_name($type, $record) . '” (' . $types[$type]['label'] . ' #' . $record_id . ')';
+            $sentence = !empty($done['binned'])
+                ? '{var:1} was moved to the Recycle Bin on Claude\'s proposal. It held: {var:2}'
+                : '{var:1} was deleted on Claude\'s proposal. It held: {var:2}';
+            break;
+
+        case 'add':
+            $sentence = 'Added to {var:1} on Claude\'s proposal. {var:2}';
+            break;
+
+        case 'remove':
+            $sentence = 'Taken out of {var:1} on Claude\'s proposal. {var:2}';
+            break;
+
+        // A sales quote turned into an invoice draft: the draft is tagged.
+        case 'invoice':
+            $lines = array('<#invoice:' . (int) ($done['invoice_id'] ?? 0) . '>');
+            $sentence = '{var:1} became the invoice draft {var:2} on Claude\'s proposal.';
+            break;
+
+        default:
+            $sentence = '{var:1} was changed on Claude\'s proposal. {var:2}';
+    }
+
+
+    return array(
+        'body'  => trim(lang(array('string' => $sentence, 'vars' => array($tag, implode(' · ', $lines))))),
+        'lines' => $lines,
+    );
 }
 
 /**
@@ -4479,6 +4532,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
                 out_of_stock = IF(inventory = '1' AND inventory_quantity <= 0, '1', '0')
             WHERE id = '" . (int) $record['id'] . "'
             LIMIT 1");
+
+        // Stock locations: an untracked product has no rows, a tracked one
+        // gets its default row from the total.
+        pg_stock_tracking_sync(array((int) $record['id']));
     }
 
     // Site search keeps its own index of the promoted keywords.
@@ -4512,6 +4569,16 @@ function ws_change_write_product($viewer, $action, $record, $values)
 function ws_change_write_stock($viewer, $action, $record, $values)
 {
     $quantity = max(0, (int) ($values['quantity'] ?? 0));
+
+    // A tracked product on a site with stock locations is set through the
+    // writer at the default location (a decrease takes what it holds
+    // there); the total it leaves is the count the flag and the events use.
+    $written = pg_stock_total_write((int) $record['id'], 'set', $quantity, 0, 'workspace', 'workspace');
+
+    if ($written !== null) {
+        $quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $record['id'] . "'");
+    }
+
     $empty = ($quantity <= 0);
 
     // The timestamp is "out of stock since" on the product list, stamped
@@ -4521,11 +4588,15 @@ function ws_change_write_stock($viewer, $action, $record, $values)
     db("UPDATE products
         SET out_of_stock_timestamp = " . ($empty ? "IF(out_of_stock = '1', out_of_stock_timestamp, UNIX_TIMESTAMP())" : 'out_of_stock_timestamp') . ",
             out_of_stock = '" . ($empty ? '1' : '0') . "',
-            inventory_quantity = '" . $quantity . "',
+            " . (($written === null) ? "inventory_quantity = '" . $quantity . "'," : '') . "
             inventory = '1',
             timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $record['id'] . "'
         LIMIT 1");
+
+    // Tracking may have been switched on: the default row is built from
+    // the total.
+    pg_stock_tracking_sync(array((int) $record['id']));
 
     ws_change_log(lang(array('string' => 'Stock for product ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => $record['name'])));
 

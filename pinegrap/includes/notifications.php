@@ -294,6 +294,12 @@ function pg_notification_visible($notification, $rights)
 		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
 	}
 
+	// A product sold at a loss: for whoever may use the ERP, as only they see
+	// an order's profit.
+	if ($action == 'erp_profit_loss') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
@@ -858,6 +864,33 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;
 
+	} elseif ($action == 'erp_profit_loss') {
+
+		// title is the number of products and channels newly sold at a loss
+		// over the last 30 days, product_id the biggest loss (named when it is
+		// the only one) and order_total its channel's name
+		// (includes/erp/alerts.php). The link opens Profitability on the 30
+		// days the notice looked at.
+		$count = (int) $notification['title'];
+		$name  = '';
+
+		if (($count === 1) && ((int) ($notification['product_id'] ?? 0) > 0)) {
+			$product = db_item("SELECT name, short_description FROM products WHERE id = '" . (int) $notification['product_id'] . "' LIMIT 1");
+			$name = is_array($product) ? ((trim((string) $product['short_description']) !== '') ? (string) $product['short_description'] : (string) $product['name']) : '';
+		}
+
+		$day = (int) ($notification['timestamp'] ?? 0);
+		$day = ($day > 0) ? $day : time();
+
+		$display['title']       = lang('Sold at a loss');
+		$display['description'] = ($name !== '')
+			? lang(array('string' => '{var:1} sold at a loss on {var:2} over the last 30 days.', 'vars' => array(h($name), h($notification['order_total'] ?? ''))))
+			: lang(array('string' => '{var:1} product(s) sold at a loss on a channel over the last 30 days.', 'vars' => array($count)));
+		$display['url']         = 'erp_profitability.php?' . http_build_query(array('range' => 'dates', 'from' => date('Y-m-d', strtotime('-29 days', $day)), 'to' => date('Y-m-d', $day)));
+		$display['icon']        = 'assets/images/notification-order.png';
+		$display['badge']       = 'assets/images/notification-order-badge.png';
+		$display['action']      = $action;
+
 	} elseif ($action == 'mail_failed') {
 
 		// One message: form_id the mail_outbox row, order_total the
@@ -927,6 +960,10 @@ function pg_notification_display($notification, $reader_role = null)
 		if (isset($codes[$code])) {
 			$display['title'] = h($codes[$code]['label']);
 			$display['url']   = pg_ops_alert_reader_url($code, $reader_role);
+			// A sales watch row about a product opens that product.
+			if (((int) ($notification['product_id'] ?? 0) > 0) && (($codes[$code]['group'] ?? '') === 'sales')) {
+				$display['url'] = 'edit_product.php?id=' . (int) $notification['product_id'];
+			}
 		} else {
 			$display['title'] = h(lang('Operations alert'));
 			$display['url']   = 'welcome.php';

@@ -150,6 +150,9 @@ function ws_channel_detail($viewer, $channel)
     // The channel's agents beside its people (channel_agents_panel.php),
     // and a person's last seen, which only a manager reads.
     $brief['agents'] = ws_channel_member_agents($channel, time());
+    // Whether the channel has a repository link this reader may see: with
+    // an agent, it gives Channel info its Activity tab (channel_activity.php).
+    $brief['repository_linked'] = function_exists('ws_channel_activity_link_name') && (ws_channel_activity_link_name($viewer, $channel) !== '');
     $seen = ws_channel_member_seen($brief['can_manage'], $member_ids, time());
 
     foreach ($brief['members'] as $index => $member) {

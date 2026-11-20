@@ -18,6 +18,12 @@ description: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console age
 - Owner (2026-11-20, poll 182): on a schedule (`workflow/decisions-made-workspace-43.md`). Each run reads the request list, takes what waits, answers and ends. The site keeps no Anthropic key and calls no Anthropic address; no third door form is added.
 - The guide says the delay plainly: a call waits in the queue until the next run.
 
+## How is the step cut?
+- Architect (2026-11-20): in two, so that a Console agent works before the drawer is drawn.
+  - AA7a, after AA4 alone: U16 and U17 with their tests. It goes before the Workspace's diet (AG10 of `plans/ai-guide.md`), which enters the same route files.
+  - AA7b, after AA3 and AA7a: U18, the guide. Until it lands the architect gives the owner the set-up steps in his window.
+- Why: the owner said on 2026-11-20 that he has credit in the Claude Console to use on development once the connection works.
+
 ## What binds the step?
-- `includes/mcp/tools.php` is entered by AG7 and AG9 of `plans/ai-guide.md`, `includes/workspace/agent_instructions.php` by AW1 of `plans/agent-writing-rules.md`: AA7 enters neither while such a PR is open.
+- `includes/mcp/tools.php` is entered by AG7 and AG9 of `plans/ai-guide.md`, `includes/workspace/agent_instructions.php` by AW1 of `plans/agent-writing-rules.md`, and it and `api_agent_requests.php` by KA3 of `plans/channel-activity.md`: AA7a enters none while such a PR is open.
 - Nobody but the owner can try it with a Console agent: the PR says so under "Could not verify", and AA8 closes the plan only after his try on dev.

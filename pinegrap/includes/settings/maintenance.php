@@ -727,14 +727,110 @@ if ($ops_alerts_ready) {
                 return;
             }
 
+            var sales = document.getElementById("sales_watch_fields");
+
             function sync() {
                 fields.style.display = master.checked ? "" : "none";
+
+                if (sales) {
+                    sales.style.display = master.checked ? "" : "none";
+                }
             }
 
             master.addEventListener("change", sync);
             sync();
         })();
     </script>';
+}
+
+// ── Sales watch ──
+//
+// Part of the Alerts card, shown and hidden with its master switch: the
+// shop's own alerts (includes/fn/sales_watch.php), one config_text row. The
+// save module writes it only when this part was drawn (sales_watch_card).
+if ($ops_alerts_ready && $sales_watch_ready) {
+
+    $sales_watch_codes = pg_ops_alert_codes();
+    $sales_watch_alerts = '';
+
+    foreach (pg_sales_watch_alert_names() as $sales_watch_name) {
+
+        // An alert is offered once its code is in the catalogue.
+        if (!isset($sales_watch_codes[$sales_watch_name])) {
+            continue;
+        }
+
+        $sales_watch_alerts .= '
+                                    <div class="col-12 md:col-6">
+                                        <div class="form-field">
+                                            <input value="' . h($sales_watch_name) . '"' . (!empty($sales_watch[$sales_watch_name]) ? ' checked="checked"' : '') . ' class="check" type="checkbox" id="sales_watch_alert_' . h($sales_watch_name) . '" name="sales_watch_alerts[]"/>
+                                            <label for="sales_watch_alert_' . h($sales_watch_name) . '">' . h($sales_watch_codes[$sales_watch_name]['label']) . '</label>
+                                        </div>
+                                    </div>';
+    }
+
+    $sales_watch_level_options = '';
+
+    foreach (array('low' => lang('Low (0.1%)'), 'normal' => lang('Normal (1%)'), 'high' => lang('High (5%)')) as $sales_watch_level => $sales_watch_level_label) {
+        $sales_watch_level_options .= '<option value="' . h($sales_watch_level) . '"' . (($sales_watch['level'] === $sales_watch_level) ? ' selected="selected"' : '') . '>' . h($sales_watch_level_label) . '</option>';
+    }
+
+    $sales_watch_pauses = '';
+    $sales_watch_now = time();
+
+    foreach (array_merge(array('store' => lang('The whole store')), $sales_watch_channels) as $sales_watch_key => $sales_watch_label) {
+
+        // A pause ends at the midnight after its last day; the box shows that day.
+        $sales_watch_until = isset($sales_watch['paused'][$sales_watch_key]) && ($sales_watch['paused'][$sales_watch_key] > $sales_watch_now)
+            ? date('Y-m-d', $sales_watch['paused'][$sales_watch_key] - 1)
+            : '';
+
+        $sales_watch_pauses .= '
+                                    <div class="pg-f-sm">
+                                        <label for="sales_watch_pause_' . h($sales_watch_key) . '" class="form-label">' . h($sales_watch_label) . '</label>
+                                        <input type="date" data-pg-date name="sales_watch_pause[' . h($sales_watch_key) . ']" id="sales_watch_pause_' . h($sales_watch_key) . '" class="form-control" value="' . h($sales_watch_until) . '" />
+                                    </div>';
+    }
+
+    $output_ops_alert_settings .= '
+                    <div class="col-12" id="sales_watch_fields">
+                        <input type="hidden" name="sales_watch_card" value="1"/>
+                        <div class="row gy-5">
+                            <div class="col-12">
+                                <h4 class="pg-group-label">' . lang('Sales watch') . '</h4>
+                                <div class="form-text">' . lang('The store learns how many orders each channel - the site and every marketplace account - usually brings in each hour of the week, and says when the shop stops working as usual: orders stop coming in, or carts reach payment but are not completed. Counter sales are left out. A channel with fewer than 20 orders in eight weeks is not watched yet.') . '</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="row gy-5">' . $sales_watch_alerts . '
+                                </div>
+                            </div>
+                            <div class="pg-f-sm">
+                                <label for="sales_watch_level" class="form-label">' . lang('Sensitivity') . '</label>
+                                <select name="sales_watch_level" id="sales_watch_level" class="form-control">' . $sales_watch_level_options . '</select>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-text">' . lang('How unlikely a quiet spell has to be before it is told. High tells sooner and is wrong more often; low tells only what is almost certainly a problem.') . '</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . (!empty($sales_watch['close_products']) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="sales_watch_close_products" name="sales_watch_close_products"/></div>
+                                    <label class="" for="sales_watch_close_products">' . lang('Take a product off sale on a price error') . '</label><div class="form-text">' . lang('A product selling fast at far below its usual price is switched off until someone switches it on again. Stock is never changed. At most 5 products a check and 20 a day; when more look wrong at once, none is switched off and the alert asks whether a campaign is running.') . '</div>
+                                </div>
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="sales_watch_price_drop" class="form-label">' . lang('Price error below %') . '</label>
+                                <input type="number" name="sales_watch_price_drop" id="sales_watch_price_drop" min="10" max="90" step="1" class="form-control" value="' . (int) round($sales_watch['price_drop'] * 100) . '" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-text">' . lang('A price under this share of the product\'s usual price of the last 30 days counts as a possible error.') . '</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-label mb-0">' . lang('Pause the watch until') . '</div>
+                                <div class="form-text">' . lang('For a holiday or a planned shutdown: nothing is told for the store or the channel through the end of the chosen day. Leave empty to watch.') . '</div>
+                            </div>' . $sales_watch_pauses . '
+                            <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>
+                        </div>
+                    </div>';
 }
 
 $pg_settings_cards[] = '
@@ -774,10 +870,16 @@ $notify_checks = function ($name, $id_prefix, $options, $chosen) {
     return $out;
 };
 
+// The sales watch's codes are listed apart from the software's.
 $notify_alert_options = array();
+$notify_sales_options = array();
 
 foreach (pg_ops_alert_codes() as $notify_code => $notify_alert) {
-    $notify_alert_options[$notify_code] = $notify_alert['label'];
+    if (($notify_alert['group'] ?? '') === 'sales') {
+        $notify_sales_options[$notify_code] = $notify_alert['label'];
+    } else {
+        $notify_alert_options[$notify_code] = $notify_alert['label'];
+    }
 }
 
 $notify_event_options = function_exists('pg_notify_events') ? pg_notify_events() : array();
@@ -821,7 +923,10 @@ if (!$notify_ready) {
                                     'vars'   => array(h(date('Y-m-d H:i', (int) ($notify_failure['at'] ?? 0))), h((string) ($notify_failure['reason'] ?? ''))),
                                 )) . '</div></div>' : '') . '
                                 <div class="col-12"><div class="form-label">' . lang('Operations alerts') . '</div></div>'
-                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_alert_options, (array) ($notify_target['codes'] ?? array())) . '
+                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_alert_options, (array) ($notify_target['codes'] ?? array()))
+                                . ($notify_sales_options ? '
+                                <div class="col-12"><div class="form-label">' . lang('Sales watch') . '</div></div>'
+                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_sales_options, (array) ($notify_target['codes'] ?? array())) : '') . '
                                 <div class="col-12"><div class="form-label">' . lang('Workspace') . '</div></div>'
                                 . $notify_checks('notify_target_events[' . $notify_id . ']', 'notify_event_' . $notify_id, $notify_event_options, (array) ($notify_target['events'] ?? array())) . '
                                 <div class="col-12 d-flex flex-wrap gap-7 align-items-center">
@@ -869,7 +974,9 @@ if (!$notify_ready) {
                         <div class="form-text">' . lang('A number (negative for a group) or @channelname. The bot has to be a member of the chat.') . '</div>
                     </div>
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Operations alerts') . '</div></div>
-                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_alert_options, array_keys($notify_alert_options)) . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_alert_options, array_keys($notify_alert_options)) . '</div></div>' . ($notify_sales_options ? '
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Sales watch') . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_sales_options, array_keys($notify_sales_options)) . '</div></div>' : '') . '
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Workspace') . '</div></div>
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_events', 'notify_new_event', $notify_event_options, array()) . '</div></div>';
 

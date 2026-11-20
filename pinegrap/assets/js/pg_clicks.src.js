@@ -17,7 +17,8 @@
  * the panel bar and the cookie notice are left out.
  *
  * The deepest tenth of the page's height the bottom of the window reached
- * (0 to 10) is kept as the visitor scrolls. One request a page view, when
+ * (0 to 10) is kept as the visitor scrolls, measured from the page's load
+ * on (before it the pictures have no height yet) and when it is sent. One request a page view, when
  * the page is hidden or left: the page id, its day signature, the width
  * class and the figures. With the speed beacon on the page they travel in
  * its request (pg_vitals.src.js asks window.pgClicks.take()). Nothing is
@@ -77,9 +78,22 @@
         }
     }
 
-    // A path part that looks like a code (pg_page_clicks_code_like()).
+    // A path part that looks like a code (pg_page_clicks_code_like()),
+    // judged as the word it encodes; one that does not decode as it stands.
     function codeLike(part) {
-        return (part.length > 16) && (part.indexOf('-') < 0) && /[A-Za-z]/.test(part) && /[0-9]/.test(part);
+        var text = part;
+
+        if (part.indexOf('%') >= 0) {
+            try {
+                text = decodeURIComponent(part);
+            } catch (e) {
+                text = part;
+            }
+        }
+
+        var length = Array.from ? Array.from(text).length : text.length;
+
+        return (length > 16) && (text.indexOf('-') < 0) && /[A-Za-z]/.test(text) && /[0-9]/.test(text);
     }
 
     // The twin of pg_page_clicks_fold_url().
@@ -287,8 +301,17 @@
     var seen = {};
     var deepest = 0;
     var sent = false;
+    // The script runs deferred, before the pictures have loaded: the page is
+    // shorter then and the window's bottom seems further down it than it
+    // is. Until the load only the measure taken when the figures are sent
+    // counts.
+    var loaded = (doc.readyState === 'complete');
 
-    function measure() {
+    function measure(now) {
+        if (!loaded && !now) {
+            return;
+        }
+
         var html = doc.documentElement;
         var height = Math.max(html.scrollHeight || 0, (doc.body && doc.body.scrollHeight) || 0);
         var reached = tenth(root.pageYOffset || html.scrollTop || 0, root.innerHeight || html.clientHeight || 0, height);
@@ -358,7 +381,7 @@
             return null;
         }
 
-        measure();
+        measure(true);
 
         // The last elements named go when the part would pass the server's
         // limit, so the view and its depth are still counted.
@@ -400,7 +423,14 @@
         }
     }
 
-    measure();
+    if (loaded) {
+        measure();
+    } else {
+        root.addEventListener('load', function () {
+            loaded = true;
+            measure();
+        });
+    }
 
     doc.addEventListener('visibilitychange', function () {
         if (doc.visibilityState === 'hidden') {

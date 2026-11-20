@@ -243,6 +243,11 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
+	upgrade_2026_11_0_ad_conversion_events();    // 11.0.254
+	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
+	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
+	upgrade_2026_11_0_ws_note_app();             // 11.0.257
+	upgrade_2026_11_0_application_review();      // 11.0.258
 
 }
 
@@ -8190,5 +8195,323 @@ function upgrade_2026_11_0_stock_holds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
+
+}
+
+// The ad services' events (2026.11.0, 11.0.254; includes/fn/ad_conversions.php):
+// the send queue, the event log and the buyer's ids until the event is sent.
+// One row per event and service. ids holds that service's browser and click
+// ids, the address and the browser's name (NULL once sent or given up); no
+// plain e-mail or phone is ever kept, the body is built at send time. status:
+// 0 waits for the order, 1 due, 2 sent, 3 refused or given up. Rows older
+// than 30 days are swept by the general job, whatever their status.
+function upgrade_2026_11_0_ad_conversion_events() {
+
+	install_create_table('ad_conversion_events', "CREATE TABLE ad_conversion_events (
+		id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		service          VARCHAR(20) NOT NULL DEFAULT '',
+		event            VARCHAR(30) NOT NULL DEFAULT '',
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		event_id         VARCHAR(64) NOT NULL DEFAULT '',
+		ids              TEXT NULL,
+		detail           TEXT NULL,
+		person           TINYINT NOT NULL DEFAULT 0,
+		status           TINYINT NOT NULL DEFAULT 0,
+		attempts         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_attempt_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		last_status_code SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error       VARCHAR(500) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_service_event (service, event_id),
+		KEY idx_status_next (status, next_attempt_at),
+		KEY idx_order (order_id),
+		KEY idx_service_created (service, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Ad conversions: purchases can be queued for the ad services the shop connects.');
+
+}
+
+// Supplier feeds: the store pulls a supplier's XML, CSV or JSON list and keeps
+// price and stock in step (includes/fn/supplier_feed.php). supplier_feeds holds
+// one feed: the host shown, one encrypted blob with the address and the
+// credentials, the mapping and price rules as JSON, and the running pull's
+// cursor in state. supplier_feed_items holds one row per feed and supplier
+// record with its buy price (minor units of its currency, net of VAT) and the
+// product it matched. supplier_feed_runs logs each pull. No products column.
+function upgrade_2026_11_0_supplier_feeds() {
+
+	install_create_table('supplier_feeds', "CREATE TABLE supplier_feeds (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(150) NOT NULL DEFAULT '',
+		host            VARCHAR(255) NOT NULL DEFAULT '',
+		secret          TEXT NULL,
+		allow_http      TINYINT(1) NOT NULL DEFAULT 0,
+		format          VARCHAR(10) NOT NULL DEFAULT '',
+		interval_hours  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		vat_included    TINYINT(1) NOT NULL DEFAULT 0,
+		erp_account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		mapping         TEXT NULL,
+		rules           TEXT NULL,
+		state           TEXT NULL,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		pause_reason    VARCHAR(500) NOT NULL DEFAULT '',
+		next_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_next_run (status, next_run_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_items', "CREATE TABLE supplier_feed_items (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		supplier_key    VARCHAR(100) NOT NULL DEFAULT '',
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		barcode         VARCHAR(50) NOT NULL DEFAULT '',
+		buy_price       INT UNSIGNED NOT NULL DEFAULT 0,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		held_price      INT UNSIGNED NOT NULL DEFAULT 0,
+		stock           INT NOT NULL DEFAULT 0,
+		follow_price    TINYINT(1) NOT NULL DEFAULT 1,
+		closed_by_feed  TINYINT(1) NOT NULL DEFAULT 0,
+		active          TINYINT(1) NOT NULL DEFAULT 0,
+		dismissed       TINYINT(1) NOT NULL DEFAULT 0,
+		seen_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_feed_supplier_key (feed_id, supplier_key),
+		KEY idx_product (product_id),
+		KEY idx_barcode (barcode),
+		KEY idx_feed_seen (feed_id, seen_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_runs', "CREATE TABLE supplier_feed_runs (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		records         INT UNSIGNED NOT NULL DEFAULT 0,
+		added           INT UNSIGNED NOT NULL DEFAULT 0,
+		changed         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed          INT UNSIGNED NOT NULL DEFAULT 0,
+		reopened        INT UNSIGNED NOT NULL DEFAULT 0,
+		held            INT UNSIGNED NOT NULL DEFAULT 0,
+		failed          INT UNSIGNED NOT NULL DEFAULT 0,
+		detail          MEDIUMTEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_feed_started (feed_id, started_at),
+		KEY idx_started (started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Products: supplier feeds can be kept, ready for price and stock to follow a supplier\'s list.');
+
+}
+
+// The marketplace repricer's tables (2026.11.0, 11.0.256;
+// includes/fn/marketplace_pricing.php). A listing is the pair (account_id,
+// product_id), the unique key of marketplace_product_map, so a product
+// mapped again keeps its state. Money is integer minor units, 0 for none;
+// percents are hundredths of a percent; times are Unix seconds.
+//
+// marketplace_price_rules: one row per account and scope (0 the account,
+// 1 a category by product_groups.id in scope_id, 2 a brand by products.brand
+// in scope_key, which has no id). robot, step, min_margin and grow_cap are
+// read on the account's row only. No row sends the shop's price as before.
+//
+// marketplace_price_state: one row per listing: the strategy, a price and a
+// floor typed for it, the last buybox read, the robot's last price and when
+// a buybox was lost.
+//
+// marketplace_price_log: one row per price the robot or a rule set, sent or
+// only logged (try first); kept 90 days.
+function upgrade_2026_11_0_marketplace_pricing() {
+
+	install_create_table('marketplace_price_rules', "CREATE TABLE marketplace_price_rules (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		scope       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scope_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope_key   VARCHAR(100) NOT NULL DEFAULT '',
+		percent     INT NOT NULL DEFAULT 0,
+		fixed       INT NOT NULL DEFAULT 0,
+		rounding    VARCHAR(10) NOT NULL DEFAULT 'none',
+		robot       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		step        INT UNSIGNED NOT NULL DEFAULT 100,
+		min_margin  INT UNSIGNED NOT NULL DEFAULT 1000,
+		grow_cap    INT UNSIGNED NOT NULL DEFAULT 1000,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_account_scope (account_id, scope, scope_id, scope_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_state', "CREATE TABLE marketplace_price_state (
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		strategy      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		own_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		own_floor     INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_ours   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		robot_price   INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_price    INT UNSIGNED NOT NULL DEFAULT 0,
+		lost_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		state         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, product_id),
+		KEY idx_account_buybox (account_id, buybox_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('marketplace_price_log', "CREATE TABLE marketplace_price_log (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		old_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		new_price     INT UNSIGNED NOT NULL DEFAULT 0,
+		floor         INT UNSIGNED NOT NULL DEFAULT 0,
+		buybox_price  INT UNSIGNED NOT NULL DEFAULT 0,
+		currency      VARCHAR(3) NOT NULL DEFAULT '',
+		reason        VARCHAR(20) NOT NULL DEFAULT '',
+		sent          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		at            INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_listing_at (account_id, product_id, at),
+		KEY idx_account_at (account_id, at),
+		KEY idx_at (at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Marketplaces: an account can sell at its own prices by rules, never under a profit floor.');
+
+}
+
+// The application that changed a Workspace note (2026.11.0, 11.0.257;
+// includes/workspace/notes.php).
+//
+// Every application key acts for a person, so updated_by alone named that
+// person for every agent that wrote in a note. ws_notes.updated_app_id keeps
+// the application whose key made the last save, ws_note_versions.app_id the
+// one that saved each kept state; 0 means a person saved, which is what every
+// existing row becomes.
+function upgrade_2026_11_0_ws_note_app() {
+
+	install_add_column('ws_notes', 'updated_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_note_versions', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a note changed by an application, such as an AI agent, now names that application instead of the person its key belongs to.');
+
+}
+
+// The application review desk (2026.11.0, 11.0.258; includes/fn/application_review.php).
+//
+// A form becomes an application programme: application_programs holds the
+// period, the rounds with their criteria and weights, the eligibility rules,
+// the blind fields and the decision texts (JSON in TEXT). Reviewers belong
+// to a programme (application_reviewers): a panel user by user_id, an
+// outside juror by name and e-mail with only the hash of their link. Each
+// submission in a programme is one application_entries row with its
+// eligibility, combined score, decision and the hash of its correction link;
+// application_reviews holds one reviewer's scores of one entry in one round.
+// Scores are stored times 100. No column is added to forms or user.
+function upgrade_2026_11_0_application_review() {
+
+	install_create_table('application_programs', "CREATE TABLE application_programs (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		name                 VARCHAR(150) NOT NULL DEFAULT '',
+		status               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		opens_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		closes_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		category_field_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewers_per_entry  TINYINT UNSIGNED NOT NULL DEFAULT 2,
+		round                TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		blind                TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		waitlist_auto        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		rounds               TEXT NULL,
+		eligibility          TEXT NULL,
+		blind_fields         TEXT NULL,
+		texts                TEXT NULL,
+		created_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page_status (page_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviewers', "CREATE TABLE application_reviewers (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		name          VARCHAR(150) NOT NULL DEFAULT '',
+		email         VARCHAR(190) NOT NULL DEFAULT '',
+		token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		categories    TEXT NULL,
+		revoked_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_program_person (program_id, user_id, email),
+		UNIQUE KEY uniq_token_hash (token_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_entries', "CREATE TABLE application_entries (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		form_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		category          VARCHAR(100) NOT NULL DEFAULT '',
+		round             TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		eligible          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		eligibility_note  TEXT NULL,
+		score_raw         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		score_adjusted    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		spread            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		consensus         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		shortlisted       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decision          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		mailed_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		fix_token_hash    CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		fix_fields        TEXT NULL,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_form (form_id),
+		UNIQUE KEY uniq_fix_token_hash (fix_token_hash),
+		KEY idx_program_round_category (program_id, round, category),
+		KEY idx_program_decision (program_id, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('application_reviews', "CREATE TABLE application_reviews (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		program_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		entry_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewer_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		round            TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		status           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		scores           TEXT NULL,
+		total            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		conflict_reason  VARCHAR(500) NOT NULL DEFAULT '',
+		assigned_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		submitted_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_entry_reviewer_round (entry_id, reviewer_id, round),
+		KEY idx_reviewer_status (reviewer_id, status),
+		KEY idx_program_round_status (program_id, round, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
 
 }

@@ -1125,6 +1125,12 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body, $skip 
         }
     }
 
+    // A person's @herkes in a discussion that woke nobody says why
+    // (everyone_hint.php).
+    if (function_exists('ws_everyone_hint_after') && ws_message_everyone($body)) {
+        ws_everyone_hint_after($channel, ws_message_by_person(ws_message($message_id)), $body, $woken);
+    }
+
     $models = !empty(array_filter($woken, function ($value) {
         return strpos($value, 'model:') === 0;
     }));
@@ -1318,6 +1324,12 @@ function ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_ap
     // Claude, Pinegrap AI and the MCP aliases stay a person's to ask.
     if ($by_app) {
         return $asked;
+    }
+
+    // An edit that adds a person's @herkes in a discussion and wakes nobody
+    // says why, as a send does (everyone_hint.php).
+    if (function_exists('ws_everyone_hint_after')) {
+        ws_everyone_hint_after($channel, true, $added, $asked['agents']);
     }
 
     $asked['claude'] = function_exists('ws_claude_asked') && ws_claude_asked($added) && ws_claude_after_send($viewer, $channel, $message_id, $added);

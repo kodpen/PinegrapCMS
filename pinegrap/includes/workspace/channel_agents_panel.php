@@ -27,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function ws_channel_agents_actions()
 {
-    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card');
+    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_add_many', 'ws_channel_agents_remove', 'ws_agent_card', 'ws_channel_activity');
 }
 
 /**
@@ -220,7 +220,7 @@ function ws_channel_agents_addable($agents, $in)
 function ws_channel_agents_panel_state($viewer, $channel)
 {
     if (!ws_agents_ready()) {
-        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'can_edit' => false, 'can_add' => false, 'can_tier' => false);
+        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'from_channel' => array(), 'can_edit' => false, 'can_add' => false, 'can_tier' => false);
     }
 
     $rows = ws_channel_agents($channel['id']);
@@ -237,13 +237,22 @@ function ws_channel_agents_panel_state($viewer, $channel)
     // the card's working and waiting states.
     $counts = ws_agent_request_counts($agents, $now);
     $can_edit = (ws_channel_agent_add_problem($viewer, $channel) === '');
+    $addable = ws_channel_agents_addable(ws_agents_list(), $in);
+
+    // In a discussion the channel's agents not yet its own, offered as a
+    // ticked list to add in one go (everyone_hint.php).
+    $parent = ws_channel_is_thread($channel) && function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null;
+    $from_channel = ($parent && ((int) ($parent['archived_at'] ?? 0) === 0))
+        ? ws_channel_agents_from_channel($addable, array_column(ws_agent_channel_rows((int) $parent['id']), 'id'))
+        : array();
 
     return array(
         'ready'    => true,
         'agents'   => array_map(function ($row) use ($now, $counts) {
             return ws_channel_agent_panel_row($row, $now, $counts);
         }, $rows),
-        'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
+        'addable'  => $addable,
+        'from_channel' => $from_channel,
         'can_edit' => $can_edit,
         // A new agent: in a private channel, and in a discussion of one,
         // only from its manager (ws_channel_agent_enter_problem()), so
@@ -294,6 +303,12 @@ function ws_channel_agents_action($action, $request)
         return is_array($card) ? ws_action_ok(array('card' => $card)) : ws_action_error(lang('That agent could not be found.'));
     }
 
+    // The Activity tab of Channel info: every reader of the channel
+    // (channel_activity.php).
+    if ($action === 'ws_channel_activity') {
+        return ws_action_ok(array('activity' => ws_channel_activity($viewer, $channel, time())));
+    }
+
     if (!ws_agents_ready()) {
         return ws_action_error(lang('The database has to be updated first.'));
     }
@@ -302,6 +317,24 @@ function ws_channel_agents_action($action, $request)
 
     if ($problem !== '') {
         return ws_action_error(($problem === 'forbidden') ? lang('You cannot post in that channel.') : ws_channel_agent_error_text($problem));
+    }
+
+    // Several agents picked in a discussion's ticked list: each added as a
+    // single add is, with that form's defaults; a refused one is named.
+    if ($action === 'ws_channel_agents_add_many') {
+        $done = ws_channel_agents_add_many((array) ($request['agent_ids'] ?? array()), function ($id) use ($viewer, $channel) {
+            $agent = ws_agent($id);
+
+            if (!$agent) {
+                return array('name' => '#' . $id, 'error' => lang('That agent could not be found.'));
+            }
+
+            $result = ws_channel_agent_set_one($viewer, $channel, $agent, array());
+
+            return array('name' => (string) ($agent['name'] ?: $agent['handle']), 'error' => $result['error']);
+        });
+
+        return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel) + array('added' => $done['added'], 'refused' => $done['refused']));
     }
 
     $agent = ws_agent((int) ($request['agent_id'] ?? 0));
@@ -316,12 +349,6 @@ function ws_channel_agents_action($action, $request)
         return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
     }
 
-    $kind_problem = ws_channel_agent_kind_problem($agent['kind']);
-
-    if ($kind_problem !== '') {
-        return ws_action_error(ws_channel_agent_error_text($kind_problem));
-    }
-
     $input = array();
 
     foreach (array('wake_rule', 'wake_prefix', 'tier', 'loop_guard') as $field) {
@@ -330,24 +357,51 @@ function ws_channel_agents_action($action, $request)
         }
     }
 
+    $result = ws_channel_agent_set_one($viewer, $channel, $agent, $input);
+
+    if ($result['error'] !== '') {
+        return ws_action_error($result['error'], $result['field']);
+    }
+
+    return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
+}
+
+/**
+ * Adds or changes one agent of a channel as the panel's single add does:
+ * its kind, who may bring it in, then its settings, checked and saved.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $agent ws_agent()
+ * @param array $input wake_rule, wake_prefix, tier, loop_guard (any of them)
+ * @return array error: '' when saved, else the text; field
+ */
+function ws_channel_agent_set_one($viewer, $channel, $agent, $input)
+{
+    $kind_problem = ws_channel_agent_kind_problem($agent['kind']);
+
+    if ($kind_problem !== '') {
+        return array('error' => ws_channel_agent_error_text($kind_problem), 'field' => '');
+    }
+
     // The settings open only for whoever manages the channel, and a
     // discussion has none; the request can still be made without them.
     $current = ws_channel_agent_row($channel['id'], $agent['id']);
     $problem = ws_channel_agent_enter_problem($viewer, $channel, $current);
 
     if ($problem !== '') {
-        return ws_action_error(ws_channel_agent_error_text($problem));
+        return array('error' => ws_channel_agent_error_text($problem), 'field' => '');
     }
 
     $check = ws_channel_agent_check($input, $current, ws_can_manage_channel($viewer, $channel));
 
     if (!$check['ok']) {
-        return ws_action_error(ws_channel_agent_error_text($check['error']), $check['field']);
+        return array('error' => ws_channel_agent_error_text($check['error']), 'field' => (string) $check['field']);
     }
 
     ws_channel_agent_save($viewer, $channel['id'], $agent['id'], $check['values']);
 
-    return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
+    return array('error' => '', 'field' => '');
 }
 
 /**
@@ -399,6 +453,11 @@ function ws_channel_agents_js_strings()
         'cha_empty_thread' => lang('No agent of its own yet.'),
         'cha_remove_thread' => lang('Remove from the discussion'),
         'cha_remove_ask_thread' => lang('Take this agent out of the discussion? It is no longer woken here.'),
+        'cha_from_channel' => lang('The channel\'s agents'),
+        'cha_from_channel_help' => lang('They answer here only when named. Added here, they are woken by this discussion\'s messages as an agent added one by one is; messages written before are not read again.'),
+        'cha_add_all'     => lang('Add all'),
+        'cha_add_chosen'  => lang('Add the chosen'),
+        'cha_add_refused' => lang('Not added:'),
         'cm_following'    => lang('Follows here'),
         // Channel info and the channel head: people and agents.
         'cm_people'       => lang('People here'),

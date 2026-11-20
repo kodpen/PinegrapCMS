@@ -1,11 +1,11 @@
 ---
 name: connections-registry
-description: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (78 + 12 MCP connectors), the difference from the census's 79, adding a service
+description: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (79 + 12 MCP connectors), the difference from the census's 79, adding a service
 module: connections_registry
 ---
 
 ## What is the registry?
-- One row per outside product or API the site connects to: `name`, `group` (`pg_connections_groups()`), the one `place` of its setting, a `state` reader or the reason in `no_state`, `uses` (English, a few words), and `covers`: the keys of the lists that already exist which the row stands for. Pure data in `includes/fn/connections_registry.php`; nothing reads the database or calls a service. Each row's place and reader: `connections-registry-rows.md`.
+- One row per outside product or API the site connects to: `name`, `group` (`pg_connections_groups()`), the one `place` of its setting, a `state` reader or the reason in `no_state`, `uses` (English, a few words), and `covers`: the keys of the lists that already exist which the row stands for. Pure data in `includes/fn/connections_registry.php`. Each row's place and reader: `connections-registry-rows.md`.
 - A place is a Site Settings card `#settings/<category>/<card>`, a System tools screen, or a screen of `pg_connections_other_screens()` (only `search_console.php`). Group labels and `uses` are English source text; the screen that draws them adds their Turkish.
 
 ## What follows the registry elsewhere?
@@ -22,7 +22,7 @@ module: connections_registry
 - The 12 ready-made MCP connectors are rows of group `mcp`, counted apart: `pg_connections_connector_count()`.
 
 ## What is the figure?
-- `pg_connections_count()`: 78 services, beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
+- `pg_connections_count()`: 79 services (Meta Conversions API built since the census), beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
 - Architect (2026-11-17, agent channel message 7524): the public figure is the registry's count, kept by a test and never typed in a text.
 
 ## How does it differ from the census's 79? (`plans/integrations-census-today.md`)
@@ -30,5 +30,5 @@ module: connections_registry
 - Added, 1: OneNote (purpose `notes`, a person's pages into Workspace notes), which the census missed.
 
 ## How is a service added?
-- A row in `pg_connections_registry()` with its `covers`. The test fails while a key of a covered list has no row (payment and label drivers, `mp_providers()`, SMS, connect providers and purposes, model providers, the MCP catalogue, mail transports, address and captcha providers, cloud pickers, e-document drivers, chat notification kinds), unless `pg_connections_not_services()` names it with its reason.
+- A row in `pg_connections_registry()` with its `covers`, and its country and data (`core/privacy-inventory.md`). The test fails while a key of a covered list has no row (payment and label drivers, `mp_providers()`, SMS, connect and model providers, purposes, the MCP catalogue, mail, address and captcha, cloud pickers, e-document drivers, chat notifications), unless `pg_connections_not_services()` names it with its reason.
 - The test also fails for a place that is no card of its category nor a tool screen, and for a `reader` function that is declared nowhere.

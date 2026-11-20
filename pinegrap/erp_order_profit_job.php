@@ -5,7 +5,8 @@
  * Scheduled job: each finished order's costs and net profit. Reads the
  * marketplaces' real deductions, computes the orders a real cost marked, the
  * finished orders not computed yet, then rechecks the computed ones whose
- * figures changed. The work lives in
+ * figures changed; once a day, the products newly sold at a loss go to the
+ * bell (erp_alert_profit_loss()). The work lives in
  * includes/erp/order_profit.php; this script only decides who may start it
  * and when a tick stops.
  *
@@ -67,6 +68,12 @@ if (defined('ERP_ENABLED') && ERP_ENABLED) {
         log_activity(lang('The marketplace deductions could not be read; the next run tries again.'), 'UNKNOWN');
     } elseif (($deductions['reason'] === 'more') && ($result['reason'] === 'done')) {
         $result['reason'] = 'more';
+    }
+
+    // Once a day, with every order worked out: the products newly sold at a
+    // loss on a channel over the last 30 days go to the bell.
+    if ($result['reason'] === 'done') {
+        erp_alert_profit_loss();
     }
 }
 

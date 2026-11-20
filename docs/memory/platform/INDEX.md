@@ -62,6 +62,7 @@
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Artifact Canvas's save that used to write over it
+- feedback-rules.md: Satisfaction surveys' pure rules (includes/fn/feedback.php): score bands per kind, NPS/CSAT/effort sums, 30-day fatigue, low score, owner chooser, signed answer token
 - file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
@@ -97,6 +98,7 @@
 - image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, clamp, new-install default, System Status line (#5350, #6144, #6667) [decision: decisions-made-product-21.md]
 - image-same-address-why.md: Why a JPEG/PNG keeps its address and file and WebP is negotiated there: options weighed, outside facts, owner decisions, the bytes-match-extension rule [decision: decisions-made-product-17.md]
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address: switch bits, Vary, private caching behind an unconfirmed CDN, f=original in downloads and mails, no renames [decision: decisions-made-product-21.md]
+- image-server-draw-data.md: The server's draw of a Design Canvas data layer (DV1b): the PHP port of the model's marks, the reader the caller hands in, what waits for a browser, the one row read with the reader's rights
 - image-server-draw-fidelity.md: How the server's canvas drawing matches the editor's Chromium renderer: ImageMagick rounding and antialiasing traps, text placed letter by letter, the measured difference per document kind
 - image-server-draw.md: The server draws a Artifact Canvas document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
@@ -160,11 +162,13 @@
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
+- office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
+- office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves one sheet of an .xlsx: where it opens, what it sends, one change a save
 - office-sheets.md: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one change a save
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
-- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
+- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, cells without r, times and durations (#1118), the styles part the relationships name (#10765)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits [decision: decisions-made-product-84.md]
 - page-cache-background-writers.md: How the content import, the translation job and the bulk move to the visual designer mark the page cache dirty outside a signed-in request
@@ -213,7 +217,7 @@
 - short-link-names.md: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md. [decision: here]
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
-- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: here]
+- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: decisions-made-product-91.md]
 - sms-campaign-limit-and-labels.md: SMS campaign text limit and no maxlength, status labels, xref rows on group delete, save after the job claim, cancel confirm, read-only times, cut list name
 - sms-campaigns-module-load.md: functions.php does not load fn/sms_campaigns.php: a reader of SMS campaigns loads it itself, or a function_exists() check drops them silently (Sends lost them)
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens [decision: decisions-made-customers.md, decisions-made-product-8.md, decisions-made-schema-7.md]

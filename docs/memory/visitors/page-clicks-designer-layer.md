@@ -24,6 +24,7 @@ module: page_clicks
 
 ## What while the switch is off?
 - C17: the Visitors section's two lines, then "Turn on" only when `features`; others read "A manager can turn it on…". The button posts `token` to `turnOn` (CM3's saver, `page-clicks-switch.md`), redirect not followed, then loads the figures. No reader or saver of its own.
+- The post's answer tells nothing: an ended session redirects to sign-in and a refused token answers 200 with an error page. So the `page_clicks` read answers `on` (the reader), and with `on: false` or no figures the layer shows the empty state again with "Counting could not be turned on. Try again." Before, it showed "No page views were counted" while the switch stayed off.
 
 ## Which functions are tested?
 - Part: `foldUrl`, `foldLabel`, `name`, `match`, `lines`, `ask`, `deviceOf`, `empty`, `list`, `pct` in `tests/designer_clicks_part_test.php`. Server: the config and the window in `tests/page_clicks_test.php`.

@@ -6,7 +6,7 @@ module: agent_guide_workspace, agent_guide_erp
 
 ## Where do the two topics live?
 - `includes/fn/agent_guide_workspace.php` (`pg_agent_guide_workspace_sections()`) and `includes/fn/agent_guide_erp.php` (`pg_agent_guide_erp_sections()`), read by the engine (`agent-guide-engine.md`). Built in #10718 (plan ai-guide, AG4).
-- Sections of each: `records`, `jobs`, `writes`, `mistakes`; read one with `guide_read` topic and section.
+- Sections of each: `records`, `jobs`, `writes`, `mistakes`; workspace also `writing` (before `mistakes`), the lines of `workspace/workspace-writing-rules.md`. Read one with `guide_read` topic and section.
 
 ## When is each listed?
 - Through the registry's own rule, no code of their own: workspace while `WORKSPACE_ENABLED` and the caller holds a `workspace.` tool; erp while `ERP_ENABLED` and the caller holds an `erp.` tool. With the module off the topic is neither listed nor answered (404).
@@ -24,6 +24,6 @@ module: agent_guide_workspace, agent_guide_erp
 - An MCP call sends no `Idempotency-Key`, so the topic says to look in `erp_receipts_list` before posting a receipt again.
 
 ## What do they weigh?
-- Measured at AG4 with every module on: workspace 2,964 bytes, erp 2,666 (limit 4,096); the topic list with start, workspace and erp 352 bytes.
+- Measured at AG4 with every module on: workspace 2,964 bytes, erp 2,666 (limit 4,096); workspace 3,644 once `writing` was added (#10774); the topic list with start, workspace and erp 352 bytes.
 - The full MCP tool list: 858,106 bytes before, 862,504 after (+4,398, the "Guide: <topic>." lines: Workspace +3,402, ERP +996). The opening instructions are unchanged.
 - `tests/agent_guide_workspace_erp_test.php`: listing by module and tool, the words each topic must say, draft named before issue.

@@ -131,11 +131,18 @@ function test_workspace_channel_agent_enter_is_asked_by_the_panel_action()
 	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_agents_panel.php');
 	$action = substr($panel, strpos($panel, 'function ws_channel_agents_action('));
 	$action = substr($action, 0, strpos($action, "\nfunction "));
-	$asked = strpos($action, 'ws_channel_agent_enter_problem(');
+	$asked = strpos($action, 'ws_channel_agent_set_one(');
 
-	pg_assert_true($asked !== false, 'the panel action asks it');
-	pg_assert_true($asked < strpos($action, 'ws_channel_agent_save('), 'before the row is written');
-	pg_assert_true(strpos($action, 'ws_channel_agent_remove(') < $asked, 'after the branch that takes an agent out');
+	pg_assert_true($asked !== false, 'the panel action adds through the single add');
+	pg_assert_true(strpos($action, 'ws_channel_agent_remove(') < strrpos($action, 'ws_channel_agent_set_one('), 'the single add comes after the branch that takes an agent out');
+
+	// The single add, also the one-go add's: who may bring it in, before the row is written.
+	$one = substr($panel, strpos($panel, 'function ws_channel_agent_set_one('));
+	$one = substr($one, 0, strpos($one, "\nfunction "));
+	$enter = strpos($one, 'ws_channel_agent_enter_problem(');
+
+	pg_assert_true($enter !== false, 'the single add asks it');
+	pg_assert_true($enter < strpos($one, 'ws_channel_agent_save('), 'before the row is written');
 }
 
 // So does the route, before anything is written or rehearsed, and not for a

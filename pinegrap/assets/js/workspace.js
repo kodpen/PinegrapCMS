@@ -8735,6 +8735,7 @@
             me: CFG.me,
             ice: (CFG.calls && CFG.calls.ice) || [],
             ring: (CFG.calls && CFG.calls.ring) || 45,
+            max: (CFG.calls && CFG.calls.max) || 4,
             soundOn: function () { return soundOn(CFG.api_url, CFG.me); },
             openChannel: function (channelId) { app.open(channelId, 0); }
         };
@@ -11542,7 +11543,7 @@
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
 
-            // A voice or video call, in a conversation of two people.
+            // A voice or video call, in a channel of two people or more.
             var callTools = window.PGWsCalls ? window.PGWsCalls.headButtons(channel, { calls: !!CFG.calls, era: !!self.era, thread: !!self.isThread }, callHooks()) : null;
 
             if (callTools) {
@@ -12245,6 +12246,13 @@
 
             var body = el('div', 'ws-panel-body');
             panel.appendChild(body);
+
+            // Info and Activity (workspace_channel_activity.js): the tabs
+            // where the channel has an agent or a repository link; this
+            // body is the Info tab's pane.
+            if (window.PGWsChannelActivity) {
+                window.PGWsChannelActivity.mount(panel, body, channel);
+            }
 
             function section(label) {
                 body.appendChild(el('h3', 'ws-panel-kicker', label));
@@ -22662,15 +22670,28 @@
                 }
 
                 // The open items line, as a vote, an answer or a close moved it.
-                if ((data.open_items !== undefined) && self.channel && (JSON.stringify(data.open_items) !== JSON.stringify(self.openItems || []))) {
+                var itemsMoved = (data.open_items !== undefined) && self.channel && (JSON.stringify(data.open_items) !== JSON.stringify(self.openItems || []));
+
+                if (itemsMoved) {
                     self.openItems = data.open_items;
                     self.drawOpenItems();
+                }
+
+                // The Activity tab of Channel info reads again after a
+                // message, a vote or an answer of the channel changed.
+                if (window.PGWsChannelActivity && !self.isThread && self.infoOpen && self.channel && (data.messages.length || (data.changed || []).length || itemsMoved)) {
+                    window.PGWsChannelActivity.changed(self.channel.id);
                 }
 
                 // Who outside the team reads along, as it changes.
                 if ((data.shares !== undefined) && self.channel && !self.channel.guest && (JSON.stringify(data.shares) !== JSON.stringify(self.channel.shares || null))) {
                     self.channel.shares = data.shares;
                     self.drawShareNotice();
+                }
+
+                // The channel's call: the head's Join button, while one is on.
+                if (window.PGWsCalls && CFG.calls && self.channel && !self.isThread) {
+                    window.PGWsCalls.channelCall(self.channel.id, data.call || null, callHooks());
                 }
 
                 // A guest's link and whether they are here, as they change.
@@ -31315,6 +31336,8 @@
             avatar: avatar,
             avatarStack: avatarStack,
             agentFace: agentFace,
+            // A name that opens an agent's card (the Activity tab's rows).
+            agentCardHook: agentCardHook,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,

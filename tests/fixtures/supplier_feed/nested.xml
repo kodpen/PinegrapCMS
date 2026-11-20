@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <Bilgi><Tarih>2026-11-20</Tarih></Bilgi>
+  <Urunler>
+    <Urun id="7">
+      <StokKodu>A-100</StokKodu>
+      <Barkod>8690000000017</Barkod>
+      <UrunAdi>Çaydanlık &amp; Demlik</UrunAdi>
+      <AlisFiyati>1.234,50</AlisFiyati>
+      <Stok>12</Stok>
+      <ParaBirimi>TRY</ParaBirimi>
+      <Marka>Kodpen</Marka>
+      <ModelKodu>M1</ModelKodu>
+      <Kategori><Ad>Mutfak</Ad></Kategori>
+      <Aciklama><![CDATA[<p>Paslanmaz çelik</p>]]></Aciklama>
+      <Resimler><Resim>https://example.com/a1.jpg</Resim><Resim>https://example.com/a2.jpg</Resim></Resimler>
+    </Urun>
+    <Urun id="8">
+      <StokKodu>A-101</StokKodu>
+      <Barkod>8690000000024</Barkod>
+      <UrunAdi>Demlik</UrunAdi>
+      <AlisFiyati>99,90</AlisFiyati>
+      <Stok>0</Stok>
+      <ParaBirimi>TRY</ParaBirimi>
+      <Marka>Kodpen</Marka>
+      <ModelKodu>M1</ModelKodu>
+      <Kategori><Ad>Mutfak</Ad></Kategori>
+      <Resimler><Resim>https://example.com/b1.jpg</Resim></Resimler>
+    </Urun>
+    <Urun id="9">
+      <StokKodu>B-200</StokKodu>
+      <Barkod/>
+      <UrunAdi>Tencere</UrunAdi>
+      <AlisFiyati>450</AlisFiyati>
+      <Stok>3</Stok>
+      <ParaBirimi>TRY</ParaBirimi>
+      <Marka>Diğer</Marka>
+      <ModelKodu/>
+      <Kategori><Ad>Mutfak</Ad></Kategori>
+    </Urun>
+  </Urunler>
+</Root>

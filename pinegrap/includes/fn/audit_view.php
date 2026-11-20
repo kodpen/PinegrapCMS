@@ -580,6 +580,8 @@ function pg_audit_view_labels($kind)
             'order_return' => lang('Return request'),
             'store_credit' => lang('Store credit'),
             'booking'      => lang('Booking'),
+            'application_program' => lang('Application programme'),
+            'application_entry'   => lang('Application'),
             'file'         => lang('File'),
             'offer'        => lang('Offer'),
             'contact'      => lang('Contact'),
@@ -588,6 +590,7 @@ function pg_audit_view_labels($kind)
             'api_device'   => lang('Device'),
             'oauth_client' => lang('OAuth client'),
             'person'       => lang('Person'),
+            'privacy_rule' => lang('Retention rule'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
@@ -603,6 +606,8 @@ function pg_audit_view_labels($kind)
             'export'  => lang('Record exported'),
             'erase'   => lang('Erased'),
             'merge'   => lang('Records merged'),
+            'approve' => lang('Approved'),
+            'run'     => lang('Rule run'),
         ),
         'source' => array(
             'panel' => lang('Panel'),

@@ -33,3 +33,4 @@ description: Decisions list, schema part 38 (2026-11-20 on): the three tables of
 ## What else holds?
 - Every column NOT NULL with its default but the TEXT ones. No personal data is in any of the three.
 - The worker of the plan's first step writes the columns into its PR body and asks the architect before it is marked ready.
+- Defaults (architect, 2026-11-20, channel message 10816, SF1 #10771): `interval_hours` 1, `follow_price` 1, every other number 0, every VARCHAR ''. `active` starts 0 and the sync sets it, so two rows of a product are never both followed by default. `stock` stays signed: the reader stores no negative, but a subtraction on an unsigned column fails below zero.

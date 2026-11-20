@@ -4,17 +4,17 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 ---
 
 ## What are operations alerts?
-- Failures that used to show only on System Status or in the logs, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. 2026.11.0, step 11.0.5; PR #542 (backup, cron, integrity), PR #543 (errors, disk, mail, webhooks, certificate).
+- Failures and the sales watch, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. PR #542 (backup, cron, integrity), PR #543 (errors, disk, mail, webhooks, certificate).
 
 ## Where is an alert stored?
 - A `notifications` row, `action = 'ops'`, `order_total` = code, `title` = detail (or the code). No table (owner approval 2026-10-19). `pg_notification_display()` words it; `pg_ops_alert_recent()` feeds the System Status tile "Operations Alerts" (reported, not scored).
 - `data/temp/ops_alerts_state.json`: send times, last pass, certificate reading; a cache.
 
 ## When is an alert sent again?
-- Once per code per 24 h (`pg_ops_alert_due()`): the later of the newest bell row and the state file; claimed in the state file under `flock()` first. With a subject (`pg_ops_alert($code, $detail, $subject)`, sales channels) once per code and subject, state file only (`pg_ops_alert_key()`, #10735).
+- Once per code per 24 h (`pg_ops_alert_due()`): the later of the newest bell row and the state file; claimed in the state file under `flock()` first. With a subject (`pg_ops_alert($code, $detail, $subject)`, sales watch) once per code and subject, state file only (`pg_ops_alert_key()`, #10735).
 
 ## Which channels and settings?
-- Bell always (it is the record). E-mail (`ops_alert_email`) to `ops_alert_recipients` or the site address, queued; a `direct` code (`mail_failures`) is sent at once. Device banner (`ops_alert_push`) needs the Device notifications job.
+- Bell always (it is the record); Slack, Teams and Telegram targets choose codes. E-mail (`ops_alert_email`) to `ops_alert_recipients` or the site address, queued; a `direct` code (`mail_failures`) is sent at once. Device banner (`ops_alert_push`) needs the Device notifications job.
 - Settings › Updates and maintenance › Alerts (`pgset-alerts`, #3968). Thresholds, 0 = check off: `ops_alert_error_rate` 50/h, `ops_alert_disk_percent` 10 (also under 1 GB), `ops_alert_mail_failures` 10/day, `ops_alert_cert_days` 14. `OPS_ALERT*` constants in `init.php`; `OPS_ALERTS` reads 0 before the upgrade.
 
 ## Where is each source checked?
@@ -24,15 +24,15 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `error_spike`: last MB of `php_errors.log` (and `.1` when written within the hour), lines dated in the site zone; names the most frequent message.
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
 - `payment_notice`: a payment callback's log line (`commerce/payment-callback.md`), PR #2143.
-- `orders_stopped`, `payment_broken` (source `sales`): `commerce/sales-watch-flow.md`.
+- Sales watch, `group => 'sales'` (`commerce/sales-watch.md`): sources `sales` (`orders_stopped`, `payment_broken`), `sales_price` (`price_error`), `returns` (`return_spike`, nightly).
 - `cert_expiring`: https and a public host only; read once a day (`pg_ops_certificate_end()`), judged every pass; a failed reading says nothing.
 
 ## How does an alert name a failing webhook?
 - Scheme and host only (`pg_ops_alert_mask_url()`); path, query and user:password are cut: Slack, Discord and Zapier carry the secret in the path; the full URL stays on the webhook's edit screen (#5057).
 
 ## Which scheduled jobs count as stopped?
-- The catalogue's `stale_after`, as on the tile; the general job's is 2 h (was 6 h). Stopped, it is the only one named; as it cannot report its own death System Status and `health.php` call `pg_ops_alerts_check_cron()` too (mail then goes out directly).
+- The catalogue's `stale_after`, as on the tile; the general job's is 2 h. Stopped, it is the only one named; as it cannot report its own death System Status and `health.php` call `pg_ops_alerts_check_cron()` too (mail then goes out directly).
 - Inline job only while switched on (the mail pass always); dispatched job when selected or while dispatching is off; silent a week past its limit = retired, no longer alerted; never run is not a failure.
 
 ## How was it tested?
-- `tests/ops_alerts_test.php`; sandbox: upgrade twice, every source, a failed backup, bad recipient, bell endpoint.
+- `tests/ops_alerts_test.php`; sources tried in the sandbox.

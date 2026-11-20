@@ -95,8 +95,10 @@ function test_connections_registry_row_problems_names_what_is_missing()
 		'name'  => 'Example',
 		'group' => 'payments',
 		'place' => '#settings/commerce/pgset-payments',
-		'state' => array('kind' => 'app'),
-		'uses'  => 'Something',
+		'state'   => array('kind' => 'app'),
+		'uses'    => 'Something',
+		'country' => 'TR',
+		'data'    => array('contact'),
 	));
 
 	pg_assert_same(array('state'), $problems, 'a reader without its key is named');
@@ -108,6 +110,8 @@ function test_connections_registry_row_problems_names_what_is_missing()
 		'state'    => null,
 		'no_state' => 'Nothing stored tells whether it is used.',
 		'uses'     => 'Something',
+		'country'  => '*',
+		'data'     => array('none'),
 	));
 
 	pg_assert_same(array(), $problems, 'a row named as stateless is whole');
@@ -188,7 +192,7 @@ function test_connections_registry_count_follows_its_rule()
 	pg_assert_same($services, pg_connections_count(), 'the figure counts every row but the ready-made MCP connectors');
 	pg_assert_same($connectors, pg_connections_connector_count(), 'the connectors are counted apart');
 	pg_assert_same(count(ws_mcp_catalogue()), pg_connections_connector_count(), 'one connector per catalogue entry');
-	pg_assert_same(78, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
+	pg_assert_same(79, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
 }
 
 function test_connections_registry_groups_are_used_and_ordered()
