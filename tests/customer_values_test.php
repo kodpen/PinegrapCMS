@@ -380,3 +380,25 @@ function test_customer_values_report_names_hidden()
 	pg_assert_contains('pg_customer_value_order_names(', $screen);
 	pg_assert_true(strpos($screen, 'validate_ecommerce_report_access()') !== false, 'commerce reports right');
 }
+
+// orders.order_number has no unique index: an old site can hold two orders
+// with one number. A top customer is kept by that number, so a number that
+// stands for more than one order gives no name rather than another buyer's;
+// only a counted order is read.
+function test_customer_values_names_of_a_shared_number()
+{
+	$names = pg_customer_value_order_names_from_rows(array(
+		array('id' => 2, 'order_number' => 1002, 'billing_first_name' => 'Ayşe', 'billing_last_name' => 'Yılmaz', 'billing_company' => ''),
+		array('id' => 9, 'order_number' => 1007, 'billing_first_name' => 'Can', 'billing_last_name' => 'Demir', 'billing_company' => ''),
+		array('id' => 31, 'order_number' => 1007, 'billing_first_name' => 'Elif', 'billing_last_name' => 'Şahin', 'billing_company' => ''),
+		array('id' => 40, 'order_number' => 1010, 'billing_first_name' => '', 'billing_last_name' => '', 'billing_company' => 'Kodpen'),
+	));
+
+	pg_assert_same(array(1002 => array('id' => 2, 'name' => 'Ayşe Yılmaz'), 1010 => array('id' => 40, 'name' => 'Kodpen')), $names);
+
+	list($sql, $params) = pg_customer_value_order_names_query(array(1002, '1007', 0, 1002));
+
+	pg_assert_contains("status IN ('complete', 'exported')", $sql, 'only counted orders');
+	pg_assert_contains('order_number IN (?, ?)', $sql);
+	pg_assert_same(array(1002, 1007), $params);
+}

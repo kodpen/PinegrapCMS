@@ -1024,27 +1024,78 @@ function pg_customer_value_top_rows($top, $orders, $names)
  */
 function pg_customer_value_order_names($numbers)
 {
-    $numbers = array_values(array_unique(array_filter(array_map('intval', (array) $numbers))));
+    list($sql, $params) = pg_customer_value_order_names_query($numbers);
 
-    if (empty($numbers)) {
+    if ($sql === '') {
         return array();
     }
 
-    $result = db_q(
-        'SELECT id, order_number, billing_first_name, billing_last_name, billing_company FROM orders WHERE order_number IN (' . implode(', ', array_fill(0, count($numbers), '?')) . ')',
-        $numbers);
-    $names = array();
+    $result = db_q($sql, $params);
 
     if ($result === false) {
-        return $names;
+        return array();
     }
 
+    $rows = array();
+
     while ($row = mysqli_fetch_assoc($result)) {
-        $name = trim($row['billing_first_name'] . ' ' . $row['billing_last_name']);
-        $names[(int) $row['order_number']] = array('id' => (int) $row['id'], 'name' => ($name !== '') ? $name : trim((string) $row['billing_company']));
+        $rows[] = $row;
     }
 
     mysqli_free_result($result);
+
+    return pg_customer_value_order_names_from_rows($rows);
+}
+
+/**
+ * The read of pg_customer_value_order_names(): the counted orders that carry
+ * one of $numbers. Only a complete or exported order can be the one the
+ * summary kept. Pure.
+ *
+ * @param array $numbers
+ * @return array array(sql, params); sql '' when no number is given
+ */
+function pg_customer_value_order_names_query($numbers)
+{
+    $numbers = array_values(array_unique(array_filter(array_map('intval', (array) $numbers))));
+
+    if (empty($numbers)) {
+        return array('', array());
+    }
+
+    return array(
+        'SELECT id, order_number, billing_first_name, billing_last_name, billing_company FROM orders'
+            . " WHERE (status IN ('complete', 'exported')) AND (order_number IN (" . implode(', ', array_fill(0, count($numbers), '?')) . '))',
+        $numbers,
+    );
+}
+
+/**
+ * The names by order number from the rows read. orders.order_number has no
+ * unique index, so a number carried by more than one order gives no name:
+ * the summary cannot say which buyer it kept, and another buyer's name must
+ * not be shown in their place. Pure.
+ *
+ * @param array $rows id, order_number, billing_first_name, billing_last_name, billing_company
+ * @return array order number => array('id' => int, 'name' => string)
+ */
+function pg_customer_value_order_names_from_rows($rows)
+{
+    $names = array();
+    $shared = array();
+
+    foreach ((array) $rows as $row) {
+        $number = (int) $row['order_number'];
+
+        if (isset($names[$number]) || isset($shared[$number])) {
+            $shared[$number] = true;
+            unset($names[$number]);
+            continue;
+        }
+
+        $name = trim($row['billing_first_name'] . ' ' . $row['billing_last_name']);
+        $names[$number] = array('id' => (int) $row['id'], 'name' => ($name !== '') ? $name : trim((string) $row['billing_company']));
+    }
 
     return $names;
 }
