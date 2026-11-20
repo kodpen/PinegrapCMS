@@ -845,3 +845,123 @@ function erp_order_profit_record_fee($order_id, $fee, $enabled = null)
 
     return $ok;
 }
+
+/* ---------------------------------------------------------------------------
+   Label prices: the shipping cost a carrier label service charged
+   --------------------------------------------------------------------------- */
+
+/**
+ * The source_ref of a label's cost row: 'label:' and the shipment_labels id,
+ * so each label of an order (several addresses, a return label) is its own
+ * row and making the same label's row again changes nothing. Pure.
+ *
+ * @param int $label_id shipment_labels.id
+ * @return string
+ */
+function erp_order_profit_label_ref($label_id)
+{
+    return 'label:' . (int) $label_id;
+}
+
+/**
+ * A label's price in minor units of the order's currency, or null when it
+ * cannot be had. The service's decimal is read at two places, half away from
+ * zero (erp_decimal_units()); a price in another currency is converted at
+ * the rate of the label's day (erp_to_base()). Pure.
+ *
+ * @param array      $price    pg_label_price_normalize(): value, currency
+ * @param string     $currency the order's currency (the unit of orders.total)
+ * @param float|null $rate     units of the order's currency per one unit of
+ *                             the price's; null or 0 when none is recorded
+ * @return int|null
+ */
+function erp_order_profit_label_amount($price, $currency, $rate)
+{
+    if (!is_array($price) || !isset($price['value'], $price['currency'])
+        || (preg_match('/^\d{1,12}(\.\d{1,6})?$/', (string) $price['value']) !== 1)) {
+        return null;
+    }
+
+    $amount = (int) round(erp_decimal_units((string) $price['value'], 2));
+    $currency = strtoupper(trim((string) $currency));
+
+    if (($currency === '') || (strtoupper((string) $price['currency']) === $currency)) {
+        return $amount;
+    }
+
+    if (($rate === null) || ((float) $rate <= 0)) {
+        return null;
+    }
+
+    return erp_to_base($amount, (float) $rate);
+}
+
+/**
+ * Record what a label cost as the order's shipping cost (kind shipping,
+ * source label), replacing the rate typed for the order's shipping method,
+ * and ask the pass to compute the order again. Nothing is read or written
+ * while Accounting is off, and nothing beside the cost row: no receipt, till,
+ * bank or account move.
+ *
+ * @param int   $order_id
+ * @param int   $label_id shipment_labels.id
+ * @param array $price    pg_label_answer() price
+ * @param int   $now      unix time the label was made: the day of the rate
+ * @return bool whether a row was written
+ */
+function erp_order_profit_label_record($order_id, $label_id, $price, $now)
+{
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !erp_order_profit_ready() || empty($price) || ((int) $label_id <= 0)) {
+        return false;
+    }
+
+    $currency = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+    $rate = null;
+
+    if (($currency !== '') && (strtoupper((string) $price['currency']) !== strtoupper($currency)) && function_exists('pg_currency_rate')) {
+        $found = pg_currency_rate((string) $price['currency'], date('Y-m-d', (int) $now), $currency);
+        $rate = is_array($found) ? (float) $found['rate'] : null;
+    }
+
+    $amount = erp_order_profit_label_amount($price, $currency, $rate);
+
+    if ($amount === null) {
+        return false;
+    }
+
+    $ok = db_q("INSERT INTO erp_order_costs (order_id, kind, source, source_ref, amount, created_at, updated_at)
+        VALUES (?, 'shipping', 'label', ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE source = VALUES(source), amount = VALUES(amount), updated_at = VALUES(updated_at)",
+        array((int) $order_id, erp_order_profit_label_ref($label_id), $amount, (int) $now, (int) $now)) !== false;
+
+    if ($ok) {
+        erp_order_profit_mark($order_id);
+    }
+
+    return $ok;
+}
+
+/**
+ * Remove a cancelled label's cost row and ask the pass to compute the order
+ * again: with no label row left, the rate typed for its method comes back.
+ * Nothing is read or written while Accounting is off.
+ *
+ * @param int $order_id
+ * @param int $label_id shipment_labels.id
+ * @return bool
+ */
+function erp_order_profit_label_forget($order_id, $label_id)
+{
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !erp_order_profit_ready()) {
+        return false;
+    }
+
+    $ok = db_q("DELETE FROM erp_order_costs WHERE order_id = ? AND kind = 'shipping' AND source = 'label' AND source_ref = ?",
+        array((int) $order_id, erp_order_profit_label_ref($label_id))) !== false;
+
+    if ($ok) {
+        erp_order_profit_mark($order_id);
+    }
+
+    return $ok;
+}

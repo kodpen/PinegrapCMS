@@ -527,6 +527,37 @@ function pg_shipment_label_row($order_id, $ship_to_id, $driver, $answer, $file, 
 }
 
 /**
+ * Tell Accounting what a label cost (a price) or that it was cancelled (no
+ * price): its cost row is written or removed and the order's profit is
+ * computed again by the pass. Nothing is loaded, read or written while
+ * Accounting is off.
+ *
+ * @param int   $order_id
+ * @param int   $label_id shipment_labels.id
+ * @param array $price    pg_label_answer() price; empty for a cancelled label
+ * @param int   $now      unix time the label was made or cancelled
+ * @return bool whether Accounting changed a row
+ */
+function pg_shipment_label_profit($order_id, $label_id, $price, $now)
+{
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || ((int) $label_id <= 0)) {
+        return false;
+    }
+
+    // The gate every file under includes/erp/ checks; the ERP bootstrap
+    // defines it the same way.
+    if (!defined('PG_ERP_ENTRY')) {
+        define('PG_ERP_ENTRY', true);
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit.php');
+
+    return $price
+        ? erp_order_profit_label_record((int) $order_id, (int) $label_id, (array) $price, (int) $now)
+        : erp_order_profit_label_forget((int) $order_id, (int) $label_id);
+}
+
+/**
  * Whether a label's number becomes one of its address's parcels. A return
  * label's never does: the parcel comes back to the store, and its delivery
  * would announce the order delivered. Pure.
@@ -925,6 +956,10 @@ function pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, 
 
     db("INSERT INTO shipment_labels SET " . implode(', ', $values));
     $out['id'] = (int) mysqli_insert_id(db::$con);
+
+    // What the service charged becomes the order's shipping cost in
+    // Accounting.
+    pg_shipment_label_profit($order['id'], $out['id'], $answer['price'], (int) $row['created_at']);
 
     $out['ok'] = true;
     $out['number'] = $row['number'];
@@ -1672,6 +1707,9 @@ function pg_shipment_label_cancel($id)
     }
 
     db("UPDATE shipment_labels SET state = '" . e($update['state']) . "', cancelled_at = '" . (int) $update['cancelled_at'] . "' WHERE id = '" . (int) $row['id'] . "'");
+
+    // The cancelled label costs nothing: its cost row goes.
+    pg_shipment_label_profit((int) $row['order_id'], (int) $row['id'], array(), (int) $update['cancelled_at']);
 
     if (!(int) $row['is_return'] && ((string) $row['number'] !== '')) {
         $numbers = array();
