@@ -38,8 +38,8 @@ function pg_agent_guide_designer_examples() {
 			array('op' => 'update', 'node' => 'sd_2', 'add_classes' => 'pg-glow'),
 			array('op' => 'css', 'css' => '.pg-glow{box-shadow:0 0 24px rgba(13,110,253,.5)}')
 		)),
-		array('wish' => 'A button after a paragraph', 'ops' => array(
-			array('op' => 'insert', 'after' => 'sd_4', 'html' => '<a class="btn btn-primary" href="/contact">Contact us</a>')
+		array('wish' => 'A link after a paragraph', 'ops' => array(
+			array('op' => 'insert', 'after' => 'sd_4', 'html' => '<p><a href="/contact">Contact us</a></p>')
 		)),
 		array('wish' => 'A menu above the heading', 'ops' => array(
 			array('op' => 'move', 'node' => 'sd_5', 'before' => 'sd_3')

@@ -31,10 +31,6 @@ if (!defined('PG_INIT_LOADED')) {
 	define('PG_INIT_LOADED', true);
 }
 
-if (!defined('HOSTNAME_SETTING')) {
-	define('HOSTNAME_SETTING', 'example.test');
-}
-
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide_designer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/oauth/server.php');
@@ -59,8 +55,8 @@ function agent_guide_designer_test_text()
 function test_agent_guide_designer_assistant_prompt_stays_word_for_word()
 {
 	$cases = array(
-		array(array('node_id' => 'sd_4'), array('page_name' => 'home', 'page_id' => 7, 'framework' => 'bootstrap5'), 'bbd226250a0d4bea76d5b9d7ed6b8afd1b4323bb0d926d1daa71935910aa1000'),
-		array(array('node_id' => ''), array('page_name' => 'about', 'page_id' => 9, 'framework' => 'custom'), 'f3545de024f209c760a2f74528cd44c313520615b6cd20175cfce6a67c6a3c50')
+		array(array('node_id' => 'sd_4'), array('page_name' => 'home', 'page_id' => 7, 'framework' => 'bootstrap5'), '437cd2de01579df2fe65c4da91ff7b662f9c325d1770cdcb8d86da0a32917efb'),
+		array(array('node_id' => ''), array('page_name' => 'about', 'page_id' => 9, 'framework' => 'custom'), '56cdc47f7c1f17e7f6293c30556418604a8597f72ae86277a92ccc5c5affc47f')
 	);
 
 	foreach ($cases as $case) {

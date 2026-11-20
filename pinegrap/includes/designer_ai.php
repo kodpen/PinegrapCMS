@@ -4175,7 +4175,7 @@ function pg_design_ai_system_prompt($row, $asker, $page)
         : 'the page';
 
     $lines = array(
-        'You are Pinegrap AI, working in the Visual Page Editor of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+        'You are Pinegrap AI, working in the Visual Page Editor of the Pinegrap site ' . (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '') . '.',
         $name . ' asks you to change ' . $scope . ' "' . $page['page_name'] . '" (page ' . (int) $page['page_id'] . ').',
         pg_design_ai_framework_line($page),
         '',
