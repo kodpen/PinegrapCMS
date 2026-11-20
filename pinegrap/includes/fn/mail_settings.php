@@ -231,6 +231,35 @@ function pg_mail_settings_number_problem($key, $value)
 }
 
 /**
+ * Mailchimp's reason for refusing the MailChimp card, as the field shows it.
+ * mailchimp_request() appends the response and the request to its message,
+ * and the request carries the API key, which the card never prints back: a
+ * wrong List ID would show the stored key to whoever saved.
+ *
+ * @param string $message mailchimp_request()'s message
+ * @param string $key the key the request was sent with
+ * @return string plain text
+ */
+function pg_mail_settings_mailchimp_reason($message, $key)
+{
+    $reason = (string) $message;
+
+    foreach (array(lang('Response'), lang('Request')) as $label) {
+        $at = strpos($reason, "\n" . $label . ': ');
+
+        if ($at !== false) {
+            $reason = substr($reason, 0, $at);
+        }
+    }
+
+    if ((string) $key !== '') {
+        $reason = str_replace((string) $key, '***', $reason);
+    }
+
+    return trim($reason);
+}
+
+/**
  * Writes the posted boxes to config.php. A refusal marks its field or adds
  * an error to the form and writes nothing.
  *

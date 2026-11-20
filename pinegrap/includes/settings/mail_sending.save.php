@@ -72,7 +72,7 @@ if ($mailchimp_post && !$liveform->check_form_errors()) {
         'key'  => $mailchimp_key_post));
 
     if ($mailchimp_answer['status'] == 'error') {
-        $liveform->mark_error('mailchimp_key', lang('Sorry, the API key is not valid') . '. ' . h($mailchimp_answer['message']));
+        $liveform->mark_error('mailchimp_key', lang('Sorry, the API key is not valid') . '. ' . h(pg_mail_settings_mailchimp_reason($mailchimp_answer['message'], $mailchimp_key_post)));
     }
 }
 
@@ -83,7 +83,7 @@ if ($mailchimp_post && !$liveform->check_form_errors()) {
         'key'  => $mailchimp_key_post));
 
     if ($mailchimp_answer['status'] == 'error') {
-        $liveform->mark_error('mailchimp_list_id', lang('Sorry, the List ID is not valid') . '. ' . h($mailchimp_answer['message']));
+        $liveform->mark_error('mailchimp_list_id', lang('Sorry, the List ID is not valid') . '. ' . h(pg_mail_settings_mailchimp_reason($mailchimp_answer['message'], $mailchimp_key_post)));
     }
 }
 
@@ -100,7 +100,7 @@ if ($mailchimp_post && !$liveform->check_form_errors()) {
         && ($mailchimp_answer['mailchimp_response']['status'] == 404));
 
     if (($mailchimp_answer['status'] == 'error') && !$mailchimp_missing) {
-        $liveform->mark_error('mailchimp_store_id', lang('Sorry, the Store ID is not valid') . '. ' . h($mailchimp_answer['message']));
+        $liveform->mark_error('mailchimp_store_id', lang('Sorry, the Store ID is not valid') . '. ' . h(pg_mail_settings_mailchimp_reason($mailchimp_answer['message'], $mailchimp_key_post)));
 
     } elseif ($mailchimp_missing) {
 
@@ -122,7 +122,7 @@ if ($mailchimp_post && !$liveform->check_form_errors()) {
             'key'    => $mailchimp_key_post));
 
         if ($mailchimp_answer['status'] == 'error') {
-            $liveform->mark_error('mailchimp_store_id', lang('Sorry, the store could not be created') . '. ' . h($mailchimp_answer['message']));
+            $liveform->mark_error('mailchimp_store_id', lang('Sorry, the store could not be created') . '. ' . h(pg_mail_settings_mailchimp_reason($mailchimp_answer['message'], $mailchimp_key_post)));
         }
 
     } else {
@@ -144,7 +144,7 @@ if ($mailchimp_post && !$liveform->check_form_errors()) {
             'key'    => $mailchimp_key_post));
 
         if ($mailchimp_answer['status'] == 'error') {
-            $liveform->mark_error('mailchimp_automation', lang('Sorry, automation could not be updated') . '. ' . h($mailchimp_answer['message']));
+            $liveform->mark_error('mailchimp_automation', lang('Sorry, automation could not be updated') . '. ' . h(pg_mail_settings_mailchimp_reason($mailchimp_answer['message'], $mailchimp_key_post)));
         }
     }
 }
