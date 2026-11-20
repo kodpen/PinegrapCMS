@@ -5,11 +5,11 @@ module: supplier_feed_screen
 ---
 
 ## Where are the screens?
-- `view_supplier_feeds.php` (list) and `edit_supplier_feed.php` (Add and Edit), gate `validate_ecommerce_access()` (role under 3 or manage_ecommerce). Helpers in `includes/fn/supplier_feed_screen.php`, loaded only by the two screens and the test.
-- Reached from the Products list toolbar ("Supplier feeds", a ghost button) and the panel search; the Products menu row stays lit. The Products menu got no entry: its links are `btn btn-link` and `tools/check_look.php` lets `output.php` only fall.
+- `view_supplier_feeds.php` (list) and `edit_supplier_feed.php` (Add and Edit), gate `validate_ecommerce_access()` (role under 3 or manage_ecommerce). Helpers: `includes/fn/supplier_feed_screen.php`.
+- Reached from the Products menu panel ("Supplier feeds", last, after the catalogue entries) and the panel search; the row stays lit on both screens. The panel's links after its first group are one loop over screen, icon and label, so `tools/check_look.php`'s count for `output.php` fell (architect, 2026-11-20, channel message 11049).
 
 ## What does the list show?
-- Printed whole (`pg_list_table_printed()`, `view_supplier_feeds` in `pg_list_table_printed_lists()`): name, host (never the address), format, Pulled every, Last pull with its pill, Products matched, and Edit / Test pull (quiet small). Test pull posts the feed's id as the button's value to the edit screen.
+- Printed whole (`pg_list_table_printed()`): name, host (never the address), format, Pulled every, Last pull with its pill, Products matched, and Edit / Test pull (quiet small), then the row's "more" menu with Delete (Design examples › Menus). Test pull and Delete post the feed's id as the button's value to the edit screen; Delete asks the shared confirm (`data-confirm-content`).
 - No feed: one line on what a feed does and "Add supplier feed" (fill), no toolbar.
 
 ## How is the sign-in kept?
@@ -32,6 +32,6 @@ module: supplier_feed_screen
 - The selling price is not compared: the price rule's form is not on the screen yet. Nothing is written; the result is drawn under the form, four figures and up to 20 rows each.
 
 ## What is not here yet?
-- Pull now (comes with the sync, SF3), runs list, Delete in the list row's menu (a row menu is not on Design examples; Delete is at the foot of the status column, with a confirm saying the products stay).
+- Pull now and the runs list (with the sync, SF3); the F4 price rule's card goes to SF3 (architect, 2026-11-20, message 11049). Delete is also at the foot of the status column.
 
 Related: `commerce/supplier-feed-readers.md`, `commerce/supplier-feed-price-rule.md`.

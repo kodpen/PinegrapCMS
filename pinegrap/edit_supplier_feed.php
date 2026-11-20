@@ -35,8 +35,9 @@ if (!pg_supplier_feed_ready()) {
 $liveform = new liveform('edit_supplier_feed');
 $feed_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_supplier_feed.php';
 
-// A row's Test pull on the list posts the feed's id as the button's value.
-$feed_id = (int) ($_POST['test_pull'] ?? $_POST['id'] ?? $_GET['id'] ?? 0);
+// A row's Test pull and Delete on the list post the feed's id as the
+// button's value; the buttons here do the same.
+$feed_id = (int) ($_POST['test_pull'] ?? $_POST['submit_delete'] ?? $_POST['id'] ?? $_GET['id'] ?? 0);
 $feed = ($feed_id > 0) ? pg_supplier_feed_get($feed_id) : null;
 
 if (($feed_id > 0) && ($feed === null)) {
@@ -421,7 +422,7 @@ if ($feed !== null) {
                                         <dt>' . h(lang('Products matched')) . '</dt><dd class="pg-tabular">' . h(pg_format_number(pg_supplier_feed_matched_count($feed_id), 0)) . '</dd>
                                     </dl>
                                     ' . ($feed_mapping['confirmed'] ? '<div class="mt-5"><button type="submit" name="test_pull" value="' . $feed_id . '" formnovalidate class="pg-button pg-button-quiet">' . h(lang('Test pull')) . '</button></div>' : '') . '
-                                    <div class="mt-5 pt-3 border-top"><button type="submit" name="submit_delete" value="1" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The feed and its pull history are deleted. Its products stay and no longer follow it.')) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></div>
+                                    <div class="mt-5 pt-3 border-top"><button type="submit" name="submit_delete" value="' . $feed_id . '" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The feed and its pull history are deleted. Its products stay and no longer follow it.')) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></div>
                                 </div>
                             </div>
                         </div>';

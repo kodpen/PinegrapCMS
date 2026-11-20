@@ -182,7 +182,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             <a class="pg-button pg-button-fill" href="add_product.php"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-text theme-secondary" href="view_products.php?mode=variant_sets"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . lang('Variant Sets') . '</a>
                             <a class="btn btn-sm btn-text theme-secondary" href="import_products.php"><i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>' . lang(array('string'=>'Import') ) . '</a>
-                            <a class="pg-button pg-button-ghost" href="view_supplier_feeds.php"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . h(lang('Supplier feeds')) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <button type="submit" name="submit_data" value="Export Products" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                             </form>
