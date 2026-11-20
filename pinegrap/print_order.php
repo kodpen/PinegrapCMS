@@ -1105,7 +1105,7 @@ if ($ship_to_exists == true) {
                             ' . $output_legend . '
                             <div style="padding: 0.7em">
                                 <table cellpadding="4" class="order_details table table-bordered w-auto">
-                                    ' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '
+                                    ' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'print') . '
                                 </table>
                             </div>
                         </fieldset>';
@@ -1471,7 +1471,7 @@ if ($ship_to_exists == true) {
                                 ' . $output_legend . '
                                 <div style="padding: 0.7em">
                                     <table cellpadding="4" class="order_details table table-bordered w-auto">
-                                        ' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '
+                                        ' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'print') . '
                                     </table>
                                 </div>
                             </fieldset>';

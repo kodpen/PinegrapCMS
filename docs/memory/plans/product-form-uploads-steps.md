@@ -18,7 +18,7 @@ description: Plan product-form-uploads, steps FU1 to FU6: the field and the file
   - Existing files: `get_shopping_cart.php`, `shopping_cart.php`, `get_express_order.php`, `express_order.php`, `includes/fn/content.php` (`get_form_info()`'s file input). Both saves keep a stored file when no new one comes.
   - Features: U3 to U7 for these pages.
 
-- FU4a (M) after FU1: where people see the order.
+- FU4a (M) after FU1: where people see the order. Done in #10724.
   - Existing files: `view_order.php`, `includes/fn/content.php` (the two product form renderers and `get_form_review_info()`), `widgets_lists_order.php`, `widgets_order_preview.php`, `print_order.php`, `print_packing_slip.php`, `includes/fn/order_completion.php` (the plain receipt; held by RF1 and TK1).
   - Features: U9, U10.
 
