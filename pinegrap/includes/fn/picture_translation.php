@@ -1265,7 +1265,7 @@ function pg_picture_tr_marked($path = null)
     // A long run (the scheduled job) sees another request's set or clear.
     clearstatcache(true, $path);
 
-    return is_file($path) || !is_writable(dirname($path));
+    return is_file($path) || !pg_dir_writable(dirname($path));
 }
 
 /**
