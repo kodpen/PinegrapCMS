@@ -466,7 +466,7 @@ function pg_list_excel_text($value)
     $value = (string) $value;
 
     if (preg_match('//u', $value) !== 1) {
-        $value = function_exists('mb_scrub') ? mb_scrub($value, 'UTF-8') : mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        $value = function_exists('mb_scrub') ? mb_scrub($value, 'UTF-8') : mb_convert_encoding($value, 'UTF-8', 'UTF-8'); // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.mb_scrubFound -- guarded by function_exists()
     }
 
     return (mb_strlen($value, 'UTF-8') > 32767) ? mb_substr($value, 0, 32767, 'UTF-8') : $value;
