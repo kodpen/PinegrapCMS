@@ -14,12 +14,11 @@
  * (api_channel_reads.php) both answer with ws_channel_activity(), for every
  * team reader of the channel; a guest is never sent any of it.
  *
- * The report's context, project and branch and the repository's numbers are
- * part of the answer from the start and null until their readers are there:
- * ws_agent_report_context(), ws_agent_report_project() and
- * ws_agent_report_branch() (agent_report.php) take an agent row;
- * ws_channel_activity_repo($viewer, $channel, $now)
- * (channel_activity_repo.php) gives the repository part.
+ * An agent's context, project and branch come from its last report
+ * (ws_agent_report_context(), ws_agent_report_project(),
+ * ws_agent_report_branch() in agent_report.php), null where it named none;
+ * the repository part from ws_channel_activity_repo()
+ * (channel_activity_repo.php), null without a link the reader may see.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -264,7 +263,7 @@ function ws_channel_activity_project($reports, $repository)
 
 /**
  * The report's context, project and branch of one agent, null where the
- * report does not carry them or their reader is not there yet.
+ * report does not carry them.
  *
  * @param array $agent ws_agent_shape()
  * @return array context, project, branch

@@ -41,7 +41,7 @@ require_once(dirname(__FILE__) . '/listings.php');
 function mp_sync_run($seconds = 25) {
 
 	$summary = array('pushed' => 0, 'batches' => 0, 'done' => 0, 'failed' => 0, 'waiting' => 0,
-		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0);
+		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0, 'buybox_read' => 0);
 
 	if (!defined('DB_CONNECTED')) {
 
@@ -69,6 +69,10 @@ function mp_sync_run($seconds = 25) {
 	// A mapping set back to active here, its listing approved, has its stock
 	// and price queued again, and they go out on the next pass.
 	mp_sync_listing_states($deadline, $summary);
+
+	// The buybox read last: it changes no price and nothing waits on it, and
+	// a listing missed now is read on the next pass.
+	mp_sync_buybox($deadline, $summary);
 
 	mp_sync_sweep();
 
@@ -365,21 +369,24 @@ function mp_sync_send_batch($account, &$summary) {
 }
 
 // The channel prices a batch handed to the marketplace go into the price
-// history on the account's channel (marketplace:<account id>, source 'rule'),
-// so what the account sold at is kept beside the shop's own price. Only for
-// an account that sends prices and has price rules: without rules the
-// channel price is the shop's, already kept on the web channel. A product
-// the connector refused or did not get to is left out; it is recorded when
-// it goes.
+// history on the account's channel (marketplace:<account id>), source 'rule',
+// or 'panel' for a price typed on the listing, so what the account sold at
+// is kept beside the shop's own price. Only for an account that sends prices
+// and has price rules or typed prices: otherwise the channel price is the
+// shop's, already kept on the web channel. A product the connector refused
+// or did not get to is left out; it is recorded when it goes.
 function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) {
 
-	if (empty($account['push_price']) || !mp_pricing_account_rules((int)$account['id'])) {
+	$account_id = (int) $account['id'];
+
+	if (empty($account['push_price'])
+		|| (!mp_pricing_account_rules($account_id) && !mp_pricing_account_own_prices($account_id))) {
 
 		return 0;
 
 	}
 
-	$prices = array();
+	$prices = array('rule' => array(), 'panel' => array());
 
 	foreach ((array)$payload as $product) {
 
@@ -391,11 +398,12 @@ function mp_sync_record_channel_prices($account, $payload, $refused, $deferred) 
 
 		}
 
-		$prices[$product_id] = (int) $product['price'];
+		$prices[empty($product['price_own']) ? 'rule' : 'panel'][$product_id] = (int) $product['price'];
 
 	}
 
-	return mp_pricing_history_record((int)$account['id'], $prices);
+	return mp_pricing_history_record($account_id, $prices['rule'])
+		+ mp_pricing_history_record($account_id, $prices['panel'], 'panel');
 
 }
 
@@ -2063,5 +2071,220 @@ function mp_sync_sweep() {
 
 	db("DELETE FROM marketplace_sync_queue
 		WHERE (status = 'failed') AND (updated_timestamp < '" . (time() - 604800) . "') LIMIT 5000");
+
+}
+
+/* ---------------------------------------------------------------- buybox */
+
+// marketplace_price_state.buybox_ours: the bit set when other sellers sell
+// the listing; the seven bits under it hold our place in the buybox order
+// (1 is the buybox, capped at 127; 0 is no read).
+define('MP_BUYBOX_OTHERS', 128);
+
+// Seconds between two reads of one listing: hourly.
+function mp_sync_buybox_interval() {
+
+	return 3600;
+
+}
+
+// Calls per account in one pass. The job runs every five minutes, so this
+// stays far under the service's 1000 calls a minute and reads up to 6000
+// listings an account an hour.
+function mp_sync_buybox_calls() {
+
+	return 50;
+
+}
+
+// Barcodes per call: ten, the most Trendyol's service takes, or fewer for a
+// connector that takes fewer.
+function mp_sync_buybox_chunk($connector_size = 10) {
+
+	return max(1, min(10, (int)$connector_size));
+
+}
+
+// buybox_ours for a rank and whether other sellers sell the listing.
+function mp_buybox_ours_value($rank, $others) {
+
+	$rank = (int)$rank;
+
+	if ($rank < 1) {
+
+		return 0;
+
+	}
+
+	return min($rank, MP_BUYBOX_OTHERS - 1) + (($others || $rank > 1) ? MP_BUYBOX_OTHERS : 0);
+
+}
+
+// The rank and other sellers kept in buybox_ours.
+function mp_buybox_ours_read($value) {
+
+	$value = (int)$value;
+
+	return array(
+		'rank'   => $value & (MP_BUYBOX_OTHERS - 1),
+		'others' => ($value & MP_BUYBOX_OTHERS) !== 0
+	);
+
+}
+
+// The listings of an account whose buybox is due: approved there (remote_id),
+// sending (active), with a barcode, and on sale with stock here - what
+// mp_product_row() sends a quantity over zero for. Read an hour ago or more,
+// or never, the oldest first.
+function mp_sync_buybox_due_sql($account_id, $now, $limit) {
+
+	return "SELECT map.product_id, map.remote_code
+		FROM marketplace_product_map AS map
+		INNER JOIN products ON products.id = map.product_id
+		LEFT JOIN marketplace_price_state AS state
+			ON (state.account_id = map.account_id) AND (state.product_id = map.product_id)
+		WHERE (map.account_id = '" . e((int)$account_id) . "')
+		  AND (map.status = 'active')
+		  AND (map.remote_id <> '')
+		  AND (map.remote_code <> '')
+		  AND (products.enabled = 1)
+		  AND (products.out_of_stock = 0)
+		  AND (products.inventory = 1)
+		  AND (products.inventory_quantity > 0)
+		  AND (COALESCE(state.buybox_at, 0) <= '" . e((int)$now - mp_sync_buybox_interval()) . "')
+		ORDER BY COALESCE(state.buybox_at, 0) ASC, map.id ASC
+		LIMIT " . (int)$limit;
+
+}
+
+// The state columns of each listing asked about, product id => columns. A
+// listing the marketplace did not answer, or whose barcode it refuses, keeps
+// the read time with no rank and no price, so it waits an hour like the rest
+// instead of being asked again on every pass.
+function mp_sync_buybox_values($rows, $answer, $now) {
+
+	$read = array();
+
+	foreach ((isset($answer['buybox']) ? (array)$answer['buybox'] : array()) as $barcode => $row) {
+
+		$read[mb_strtolower(trim((string)$barcode))] = $row;
+
+	}
+
+	$values = array();
+
+	foreach ($rows as $row) {
+
+		$key = mb_strtolower(trim((string)$row['remote_code']));
+
+		$found = isset($read[$key]) ? $read[$key] : null;
+
+		$values[(int)$row['product_id']] = array(
+			'buybox_price' => $found ? max(0, (int)$found['price']) : 0,
+			'buybox_ours'  => $found ? mp_buybox_ours_value($found['rank'], !empty($found['others'])) : 0,
+			'buybox_at'    => (int)$now
+		);
+
+	}
+
+	return $values;
+
+}
+
+// One statement writing the reads, or '' for none. Only the buybox columns:
+// the strategy, the typed price and floor and the robot's columns stay as
+// they are, and a listing with no row gets one with their defaults.
+function mp_sync_buybox_state_sql($account_id, $values, $now) {
+
+	if (!$values) {
+
+		return '';
+
+	}
+
+	$rows = array();
+
+	foreach ($values as $product_id => $columns) {
+
+		$rows[] = "('" . e((int)$account_id) . "', '" . e((int)$product_id) . "', '"
+			. e((int)$columns['buybox_price']) . "', '" . e((int)$columns['buybox_ours']) . "', '"
+			. e((int)$columns['buybox_at']) . "', '" . e((int)$now) . "')";
+
+	}
+
+	return "INSERT INTO marketplace_price_state (account_id, product_id, buybox_price, buybox_ours, buybox_at, updated_at)
+		VALUES " . implode(",\n\t\t", $rows) . "
+		ON DUPLICATE KEY UPDATE buybox_price = VALUES(buybox_price), buybox_ours = VALUES(buybox_ours),
+			buybox_at = VALUES(buybox_at), updated_at = VALUES(updated_at)";
+
+}
+
+// The hourly buybox read of every active account whose connector has one.
+function mp_sync_buybox($deadline, &$summary) {
+
+	if (!pg_schema_has('marketplace_price_state', 'buybox_at')) {
+
+		return;
+
+	}
+
+	foreach (mp_accounts('', 'active') as $account) {
+
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
+
+		if (!mp_can($account['provider'], 'buybox')) {
+
+			continue;
+
+		}
+
+		mp_sync_buybox_account($account, $deadline, $summary);
+
+	}
+
+}
+
+function mp_sync_buybox_account($account, $deadline, &$summary) {
+
+	$account_id = (int)$account['id'];
+
+	$chunk = mp_sync_buybox_chunk();
+
+	$now = time();
+
+	$rows = (array) db_items(mp_sync_buybox_due_sql($account_id, $now, $chunk * mp_sync_buybox_calls()));
+
+	foreach (array_chunk($rows, $chunk) as $batch) {
+
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
+
+		$result = mp_call($account['provider'], 'buybox', array($account, array_column($batch, 'remote_code')));
+
+		if (!$result['ok']) {
+
+			// Read again on a later pass; the listings keep their last read.
+			mp_account_outcome($account_id, false, $result['error']);
+
+			return;
+
+		}
+
+		$sql = mp_sync_buybox_state_sql($account_id, mp_sync_buybox_values($batch, $result['data'], time()), time());
+
+		if ($sql !== '' && db($sql) !== false) {
+
+			$summary['buybox_read'] += count($batch);
+
+		}
+
+	}
 
 }

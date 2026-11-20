@@ -27,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_journey.php');
 
 /**
- * Whether the journey's tables are there (step 11.0.261): files land before
+ * Whether the journey's tables are there (step 11.0.264): files land before
  * the upgrade runs, and until then nothing is written.
  *
  * @return bool

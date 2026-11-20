@@ -3436,6 +3436,15 @@ button.pgie-sndfile:hover {
 
 /* -- Keyframes (pg_image_editor_keyframes.js) -- */
 
+/* A picked group's members moving on their own paths: the Path tab's line,
+   its quiet button after the words. */
+.pgie-grpown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
 /* A diamond per key on the layer's lane, over its bars; the path of the
    selected layer over the stage, under the selection box. */
 .pgie-trkey {

@@ -258,7 +258,7 @@ function test_lead_journey_migration_step_shape()
 	pg_assert_contains('CHAR(64) CHARACTER SET ascii', $tables['lead_browsers']['body'] ?? '', 'the key hash is ascii');
 
 	$source = lead_journey_test_source('includes/migrations/2026.11.0.php');
-	pg_assert_contains("upgrade_2026_11_0_lead_journey();            // 11.0.261", $source, 'called with its label');
+	pg_assert_contains("upgrade_2026_11_0_lead_journey();            // 11.0.264", $source, 'called with its label');
 
 	$install = lead_journey_test_source('install/index.php');
 	foreach (array_keys($expected) as $table) {

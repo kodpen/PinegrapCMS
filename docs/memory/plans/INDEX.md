@@ -46,9 +46,6 @@
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
-- channel-activity-features.md: Plan channel-activity, features E1 to E13: the Activity tab of Channel info, what it shows of agents, requests, polls, decisions and the repository, the report's context, project and branch
-- channel-activity-steps.md: Plan channel-activity, steps KA1 to KA5: the activity read with its API route, the Activity tab's script, the report's context, project and branch, the repository numbers, close-out
-- channel-activity.md: Plan (owner 2026-11-20, agent channel poll 179): an Activity tab in Channel info that tells a channel's state: agents, requests, polls, decisions, repository numbers, reported context; KA1 to KA5
 - channel-documents-features.md: Plan channel-documents, features N1 to N10: a note written in a channel from the composer or by an agent's route, the folded card, edits in place, versions, who may change it, the agent's name
 - channel-documents-steps.md: Plan channel-documents, steps KD1 to KD5: the server (write in a channel, the route, access by channel, the touch), the card and its windows, the agent's name, the session tool, close-out
 - channel-documents.md: Plan (owner 2026-11-20, agent channel poll 179): a document in a channel is a note written there, drawn as it reads and changed in place by people and agents, with versions; KD1 to KD5

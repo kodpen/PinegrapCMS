@@ -31,4 +31,5 @@ module: image_editor
 
 ## Where are there no tracks?
 - Under 600 px wide or under 500 px high (a phone either way up): the panel's delay and duration sliders do it (`image-editor-motion.md`), unless a phone held upright has a video: then the rows sit in the sheet under the play bar (`image-editor-phone-rows.md`).
-- The rows scroll past 150 px. Keyframe diamonds come from `Editor.trackMarks` (`image-editor-keyframes.md`).
+- A group's row above its members (`trackGroupRow()`, #10857): its name picks the group; the group's diamonds, no bars.
+- The rows scroll past 150 px. Diamonds: `Editor.trackMarks` (`image-editor-keyframes.md`).

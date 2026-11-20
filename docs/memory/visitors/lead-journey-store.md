@@ -1,11 +1,11 @@
 ---
 name: lead-journey-store
-description: The visitor journey's four tables (step 11.0.261), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
+description: The visitor journey's four tables (step 11.0.264), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
 module: lead_journey_store
 ---
 
 ## Which tables hold the journey?
-- Step 11.0.261 (`upgrade_2026_11_0_lead_journey()`), owner poll 194, columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No column on `visitors` or `contacts`; no IP, user agent or form content. All four are in `get_tables()`.
+- Step 11.0.264 (`upgrade_2026_11_0_lead_journey()`), owner poll 194, columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No column on `visitors` or `contacts`; no IP, user agent or form content. All four are in `get_tables()`.
 - Until the step runs `pg_lead_ready()` is false and nothing is written or listed.
 
 ## When is the browser key written?
