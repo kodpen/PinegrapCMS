@@ -27,7 +27,6 @@ priority: 6
 - `referral-programme.md`: a customer brings a friend and earns store credit.
 - `wholesale.md`: group offers, one account using another's prices, a minimum order.
 - `event-tickets.md`: a ticket with a QR code per place, check-in at the door, a waiting list.
-- `course-progress.md`: a learner's progress, timed lessons, a certificate.
 
 ## When is this file deleted?
 - With the last of the eight plans, together with `more-features-shared-files.md`; each plan's close-out removes its own line here.
