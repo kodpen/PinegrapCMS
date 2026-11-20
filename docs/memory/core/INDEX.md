@@ -169,6 +169,7 @@
 - picture-text-translation-queue.md: The picture drawing queue (#10266): "Draw the waiting pictures" on the Pictures group, the draw=1 view, which rows it draws, Stop and Continue
 - picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do [decision: decisions-made-schema-25.md]
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
+- privacy-inventory.md: Personal data inventory (privacy_inventory.php): the catalogue beside the erase table list, live counts, transfers from the registry rows' country and data, the tests
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
