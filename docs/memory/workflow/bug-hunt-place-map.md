@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-place-map
-description: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), what was read clean
+description: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean
 ---
 
 ## What was the area?
@@ -12,8 +12,8 @@ description: Bug hunt of the place map (architect 2026-11-20, agent channel mess
 - "Find missing coordinates" stopped every press at a record whose address was only a tab or line break (MySQL's TRIM keeps them, the lookup got an empty text and answered "empty", which stopped the call). `pg_place_map_bulk_outcome()` counts it as not found, so it is reported and skipped.
 
 ## What was opened as an issue?
-- #10779: the typed-address lookup (`POST places.php find=`) answers any client on any site with cURL, with or without the block; a non-browser request passes the same-origin check. Needs a decision on tying it to a page.
-- #10780: visitor lookups have no site-wide bound on the public Photon server (per visitor only, no spacing as the bulk has).
+- #10779 (fixed in #10838): the typed-address lookup answered any client on any site with cURL, with or without the block. Now only a browser's same-origin request for a page with the block (`platform/place-list-near.md`).
+- #10780 (fixed in #10838): visitor lookups had no site-wide bound on the public Photon server. Now 30 a minute, a second apart (`platform/place-list-near.md`).
 
 ## What was read clean?
 - The outgoing call: Photon only, `q` and `limit=1` sent, 5 s timeout and 3 s connect through `pg_curl_run()` (TLS, user agent), nothing logged, the answer's point range-checked.

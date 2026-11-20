@@ -49,6 +49,16 @@ define('PG_PLACE_LIST_FIND_LIMIT', 10);
 define('PG_PLACE_LIST_FIND_MAX', 200);
 
 /**
+ * The whole site's typed-address lookups on the public Photon instance: at
+ * most this many per PG_PLACE_LIST_RATE_WINDOW, and at least this many
+ * milliseconds between two (the instance answers back-to-back calls with
+ * HTTP 503; PG_PLACE_MAP_PUBLIC_PAUSE spaces the panel's bulk action the
+ * same). The site's own Photon server has no site-wide bound.
+ */
+define('PG_PLACE_LIST_FIND_SITE_LIMIT', 30);
+define('PG_PLACE_LIST_FIND_GAP_MS', 1000);
+
+/**
  * The block's mark as an attribute of its own (not data-pg-map-page): the
  * Preview's row in _SD_PAGE_SCRIPTS uses the same expression.
  *
@@ -585,6 +595,35 @@ function pg_place_list_item($record, $values, $roles, $url)
 }
 
 /**
+ * Whether a page may give the block's answers: the list's rule
+ * (pg_place_list_page_reason(): open to everyone, not in the bin, a public
+ * form list) and the block in its tree. The list and the typed-address
+ * lookup both ask it, so neither answers for a page the other refuses.
+ *
+ * @param int $page_id
+ * @return array reason ('' or page, list, block), list (pg_sw_page_widget()), tree (tree_json)
+ */
+function pg_place_list_page_open($page_id)
+{
+    $page = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . (int) $page_id . "'");
+    $folder = $page ? (int) $page['page_folder'] : 0;
+    $list = $page ? pg_sw_page_widget((int) $page_id, 'form_list_view') : null;
+    $reason = pg_place_list_page_reason((bool) $page, $page ? (string) get_access_control_type($folder) : '', $page ? pg_folder_binned($folder) : false, $list, is_array($list) && pg_sw_form_widget_public($list['cfg']));
+
+    if ($reason !== '') {
+        return array('reason' => $reason, 'list' => null, 'tree' => '');
+    }
+
+    $tree = (string) pg_page_tree_json((int) $page_id);
+
+    if (!pg_place_list_tree_holds_block($tree, 'pg_place_list_shared_trees')) {
+        return array('reason' => 'block', 'list' => null, 'tree' => '');
+    }
+
+    return array('reason' => '', 'list' => $list, 'tree' => $tree);
+}
+
+/**
  * The places a page's form list shows a visitor.
  *
  * @param int $page_id
@@ -593,15 +632,13 @@ function pg_place_list_item($record, $values, $roles, $url)
 function pg_place_list_for_page($page_id)
 {
     $empty = array('places' => array(), 'cut' => false, 'reason' => '');
-    $page = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . (int) $page_id . "'");
-    $folder = $page ? (int) $page['page_folder'] : 0;
-    $list = $page ? pg_sw_page_widget((int) $page_id, 'form_list_view') : null;
-    $reason = pg_place_list_page_reason((bool) $page, $page ? (string) get_access_control_type($folder) : '', $page ? pg_folder_binned($folder) : false, $list, is_array($list) && pg_sw_form_widget_public($list['cfg']));
+    $gate = pg_place_list_page_open($page_id);
 
-    if ($reason !== '') {
-        return array('reason' => $reason) + $empty;
+    if ($gate['reason'] !== '') {
+        return array('reason' => $gate['reason']) + $empty;
     }
 
+    $list = $gate['list'];
     $cfg = $list['cfg'];
     $form_page_id = pg_sw_form_widget_form_page_id($cfg);
     $fields = array();
@@ -612,13 +649,7 @@ function pg_place_list_for_page($page_id)
         }
     }
 
-    $tree = (string) pg_page_tree_json((int) $page_id);
-
-    if (!pg_place_list_tree_holds_block($tree, 'pg_place_list_shared_trees')) {
-        return array('reason' => 'block') + $empty;
-    }
-
-    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode($tree, true)));
+    $roles = pg_place_list_field_roles($fields, pg_place_list_saved_choice(json_decode($gate['tree'], true)));
 
     if ($roles === null) {
         return array('reason' => 'fields') + $empty;
@@ -796,4 +827,136 @@ function pg_place_list_find($text)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
 
     return pg_place_list_find_answer(pg_place_map_lookup($text));
+}
+
+/**
+ * Why a typed-address lookup is refused before anything is asked, or ''.
+ * Only the page that holds the block asks: a browser's same-origin request
+ * (Sec-Fetch-Site same-origin, else an Origin naming this host; a request
+ * with neither is not the page's), naming a page the list would answer for
+ * (pg_place_list_page_open()). A site without the block never looks up.
+ *
+ * @param array    $server  $_SERVER
+ * @param int      $page_id the page the request names
+ * @param callable $gate    pg_place_list_page_open()'s shape
+ * @return string '', browser, page, list or block
+ */
+function pg_place_list_find_refusal(array $server, $page_id, $gate = 'pg_place_list_page_open')
+{
+    $site = (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE'])) ? strtolower(trim($server['HTTP_SEC_FETCH_SITE'])) : '';
+    $origin = (isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN'])) ? trim($server['HTTP_ORIGIN']) : '';
+
+    if ($site !== '' ? ($site !== 'same-origin') : (($origin === '') || pg_request_cross_site($server))) {
+        return 'browser';
+    }
+
+    if ((int) $page_id <= 0) {
+        return 'page';
+    }
+
+    $open = call_user_func($gate, (int) $page_id);
+
+    return (is_array($open) && isset($open['reason'])) ? (string) $open['reason'] : 'page';
+}
+
+/**
+ * Where the typed address would be asked: the site's Photon server while its
+ * account is on, else the public instance (pg_place_map_source()).
+ *
+ * @return string
+ */
+function pg_place_list_find_host()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
+    pg_place_map_load_driver();
+
+    return (string) pg_place_map_source(pg_place_map_photon_app())['host'];
+}
+
+/**
+ * Whether the whole site has looked up enough on the public Photon instance
+ * for now: the last lookup less than PG_PLACE_LIST_FIND_GAP_MS ago, or
+ * PG_PLACE_LIST_FIND_SITE_LIMIT already in this minute. Then the visitor is
+ * told to wait and nothing is asked. Only counts and times are kept. The
+ * site's own Photon server is not bound here; the per-visitor
+ * pg_place_list_find_throttled() holds there too. The panel's lookups
+ * (place_coordinates.php) keep their own spacing and do not count.
+ *
+ * @param string        $host  pg_place_list_find_host()
+ * @param callable|null $gap   claims the next slot, true when a second has passed; null uses pg_place_list_find_gap_claim()
+ * @param callable|null $count waf_rate_record()'s shape; null uses it
+ * @return bool
+ */
+function pg_place_list_find_site_held($host, $gap = null, $count = null)
+{
+    if (rtrim((string) $host, '/') !== PG_ADDR_PHOTON_HOST) {
+        return false;
+    }
+
+    if (!call_user_func(is_callable($gap) ? $gap : 'pg_place_list_find_gap_claim')) {
+        return true;
+    }
+
+    if (!is_callable($count)) {
+        if (!function_exists('waf_rate_record')) {
+            return false;
+        }
+
+        $count = 'waf_rate_record';
+    }
+
+    return (int) call_user_func($count, 'site', 'place_find_site', PG_PLACE_LIST_RATE_WINDOW) > PG_PLACE_LIST_FIND_SITE_LIMIT;
+}
+
+/**
+ * The two statements that claim the next lookup's slot in the firewall's
+ * counter table: move the last lookup's time (seconds in window_start, the
+ * milliseconds in hits) to now when it is at least PG_PLACE_LIST_FIND_GAP_MS
+ * old, else make the first row. A changed or inserted row is the claim. Pure.
+ *
+ * @param string $key    waf_rate_key()
+ * @param int    $now_ms milliseconds since the epoch
+ * @return string[]
+ */
+function pg_place_list_find_gap_sql($key, $now_ms)
+{
+    $now_ms = (int) $now_ms;
+    $seconds = intdiv($now_ms, 1000);
+    $millis = $now_ms % 1000;
+    $key = str_replace(array('\\', "'"), array('\\\\', "\\'"), (string) $key);
+
+    return array(
+        "UPDATE waf_rate SET hits = " . $millis . ", window_start = " . $seconds . " WHERE bucket_key = '" . $key . "' AND (window_start * 1000 + hits) <= " . ($now_ms - PG_PLACE_LIST_FIND_GAP_MS),
+        "INSERT IGNORE INTO waf_rate (bucket_key, hits, window_start) VALUES ('" . $key . "', " . $millis . ", " . $seconds . ")",
+    );
+}
+
+/**
+ * Claims the site's next lookup slot (pg_place_list_find_gap_sql()); true
+ * when at least a second has passed since the last. Without the table the
+ * claim is given, as the firewall's counters give way.
+ *
+ * @return bool
+ */
+function pg_place_list_find_gap_claim()
+{
+    if (!function_exists('waf_rate_key') || !class_exists('db') || !db::$con) {
+        return true;
+    }
+
+    $sql = pg_place_list_find_gap_sql(waf_rate_key('site', 'place_find_gap'), (int) floor(microtime(true) * 1000));
+
+    if (!@mysqli_query(db::$con, $sql[0])) {
+        return true;
+    }
+
+    if (@mysqli_affected_rows(db::$con) > 0) {
+        return true;
+    }
+
+    if (!@mysqli_query(db::$con, $sql[1])) {
+        return true;
+    }
+
+    return @mysqli_affected_rows(db::$con) > 0;
 }
