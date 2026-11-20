@@ -564,6 +564,7 @@
     "Canned the week you order and posted within three working days, packed by the brewers.": "Sipariş verdiğiniz hafta kutulanır, biracılar tarafından paketlenip üç iş günü içinde kargoya verilir.",
     "Canned this week": "Bu hafta kutulandı",
     "Cannot add more than available stock": "Mevcut stok miktarından fazla eklenemez",
+    "Cannot be applied": "Uygulanamıyor",
     "Cannot be changed once there are movements.": "Hareket olduktan sonra değiştirilemez.",
     "Cannot be imported": "İçe aktarılamaz",
     "Cannot be opened": "Açılamaz",

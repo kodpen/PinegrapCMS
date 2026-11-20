@@ -2023,6 +2023,7 @@
     "{var:1} visit{suffix:1}": "{var:1} ziyaret",
     "{var:1} visit{suffix:1} in the last 30 minutes": "Son 30 dakikada {var:1} ziyaret",
     "{var:1} waiting": "{var:1} bekliyor",
+    "{var:1} waiting changes": "{var:1} bekleyen değişiklik",
     "{var:1} waiting comments": "{var:1} yorumu",
     "{var:1} waiting comment{suffix:1}": "{var:1} yorumu",
     "{var:1} waiting for approval": "{var:1} onay bekliyor",
