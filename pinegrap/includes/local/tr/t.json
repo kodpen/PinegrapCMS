@@ -1971,6 +1971,7 @@
     "The account has no password yet (signs in with Google)": "Hesabın henüz parolası yok (Google ile giriş yapıyor)",
     "The account has passkeys": "Hesabın geçiş anahtarları var",
     "The account has to be connected again.": "Hesabın yeniden bağlanması gerekiyor.",
+    "The account is connected for {var:1} only; reading mail needs one more sign-in, for {var:2}.": "Hesap yalnızca {var:1} için bağlı; postayı okumak için bir oturum açma daha gerekir: {var:2}.",
     "The account is connected to Apple": "Hesap Apple'a bağlı",
     "The account is connected to Google": "Hesap Google'a bağlı",
     "The account is connected to Microsoft": "Hesap Microsoft'a bağlı",
