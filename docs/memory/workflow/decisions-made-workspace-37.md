@@ -11,7 +11,7 @@ description: Decisions made, workspace part 37 (2026-11-16 on): channel commands
 - Poll 93 (message 6777), the five packages (the engine, commands for what has a button, records, application and agent commands, by-hand flows in the list): "Evet, hepsi; sırayla".
 - Poll 95 (message 6790), a channel's by-hand flows in the "/" list by name: "Evet; listeden seçilir, Enter "Bir akış başlat" düğmesinin işini yapar". Not chosen: a short command name of a flow's own; the menu alone. The keyword start left out on 2026-11-05 (#7110) stays out: picking from a list is no keyword.
 - Poll 96 (message 6792), a command typed for an agent that waits on its request queue: "Evet; satır yazanın adıyla kanalda görünür, anmayla aynı frenler". Not chosen: agents woken by a mention alone.
-- The column of poll 97: `decisions-made-schema-25.md`. Plan: `plans/channel-commands.md`.
+- The column of poll 97: `decisions-made-schema-25.md`. What was built: `workspace/workspace-command-overview.md`.
 
 ## What did the architect fix for channel commands? (architect, 2026-11-16, agent channel message 6770)
 - The registry is a PHP array in code, one entry per command; no table, no hook. A new built-in name wins over an application's earlier one; the application's row stays and is listed as shadowed.
