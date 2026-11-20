@@ -232,6 +232,44 @@ function pg_event_ticket_view(array $row, $key, array $context)
 }
 
 /**
+ * When an event's occurrence takes place, written in the site's date
+ * format, which is the page's language's (numbers, so no English day or
+ * month name on a page in another language): the start's date, its time
+ * when shown, and the end's time (with its date when it ends on another
+ * day). An all-day event gives its days only. Pure.
+ *
+ * @param array  $event       all_day, start_date_and_time, end_date_and_time,
+ *                            show_start_time, show_end_time (get_calendar_event())
+ * @param string $date_format a date() format
+ * @param string $time_format a date() format
+ * @return string
+ */
+function pg_event_ticket_when(array $event, $date_format, $time_format)
+{
+    $start = strtotime((string) ($event['start_date_and_time'] ?? ''));
+    $end = strtotime((string) ($event['end_date_and_time'] ?? ''));
+
+    if ($start === false) {
+        return '';
+    }
+
+    $end = (($end === false) || ($end < $start)) ? $start : $end;
+    $other_day = date('Y-m-d', $end) !== date('Y-m-d', $start);
+    $all_day = ((string) ($event['all_day'] ?? '0') === '1');
+    $show_start = !$all_day && !empty($event['show_start_time']);
+    $show_end = !$all_day && !empty($event['show_end_time']);
+
+    $when = date($date_format, $start) . ($show_start ? ' ' . date($time_format, $start) : '');
+
+    if ($other_day || $show_end) {
+        $until = trim(($other_day ? date($date_format, $end) : '') . ($show_end ? ' ' . date($time_format, $end) : ''));
+        $when .= ' – ' . $until;
+    }
+
+    return $when;
+}
+
+/**
  * The event a ticket is for, as its page writes it: name, the date and
  * time range, the place; null when the event is gone. The pair is the
  * ticket's event and occurrence.
@@ -252,10 +290,13 @@ function pg_event_tickets_page_event($event_id, $recurrence_number)
         return null;
     }
 
+    // Whether the times are shown: kept on the event, not returned above.
+    $event += (array) db_item("SELECT show_start_time, show_end_time FROM calendar_events WHERE id = '" . (int) $event_id . "'");
+
     return array(
         'name'  => trim((string) $event['name']),
-        // The range is the calendar's own words, built as the cart builds it.
-        'when'  => trim(html_entity_decode(strip_tags((string) $event['date_and_time_range']), ENT_QUOTES, 'UTF-8')),
+        'when'  => pg_event_ticket_when($event, pg_sw_default_date_format('date'),
+            (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i'),
         'place' => trim(html_entity_decode(strip_tags((string) $event['location']), ENT_QUOTES, 'UTF-8')),
         'event' => $event,
     );
@@ -355,7 +396,7 @@ function pg_event_ticket_card_html(array $view)
     $badges = array(
         'valid' => array('teal', lang('Valid')),
         'used'  => array('gray', lang('Used')),
-        'void'  => array('rose', lang('Void')),
+        'void'  => array('rose', lang('Voided')),
     );
     $badge = $badges[$view['state']] ?? $badges['void'];
 

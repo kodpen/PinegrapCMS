@@ -90,6 +90,19 @@ function test_event_tickets_page_guest_name_from_the_product_form()
 	)), 'no name asked');
 }
 
+function test_event_tickets_page_when_in_the_site_date_format()
+{
+	$event = array('all_day' => '0', 'start_date_and_time' => '2026-12-04 20:00:00', 'end_date_and_time' => '2026-12-04 23:00:00',
+		'show_start_time' => '1', 'show_end_time' => '1');
+
+	pg_assert_same('4.12.2026 20:00 – 23:00', pg_event_ticket_when($event, 'j.n.Y', 'H:i'), 'one evening');
+	pg_assert_same('4.12.2026 20:00', pg_event_ticket_when(array('show_end_time' => '0') + $event, 'j.n.Y', 'H:i'), 'no end time shown');
+	pg_assert_same('4.12.2026 20:00 – 5.12.2026 02:00', pg_event_ticket_when(array('end_date_and_time' => '2026-12-05 02:00:00') + $event, 'j.n.Y', 'H:i'), 'past midnight');
+	pg_assert_same('4.12.2026 – 6.12.2026', pg_event_ticket_when(array('all_day' => '1', 'end_date_and_time' => '2026-12-06 00:00:00') + $event, 'j.n.Y', 'H:i'), 'all-day days only');
+	pg_assert_same('12/4/2026 8:00 PM', pg_event_ticket_when(array('show_end_time' => '0') + $event, 'n/j/Y', 'g:i A'), 'twelve hours');
+	pg_assert_same('', pg_event_ticket_when(array('start_date_and_time' => 'nonsense') + $event, 'j.n.Y', 'H:i'), 'no date');
+}
+
 function test_event_tickets_page_view_draws_the_code_again()
 {
 	$key = event_tickets_page_test_key();
