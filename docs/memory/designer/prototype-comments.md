@@ -1,6 +1,6 @@
 ---
 name: prototype-comments
-description: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button sits still open
+description: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button and list sit
 module: prototype_comments
 ---
 
@@ -12,7 +12,7 @@ module: prototype_comments
 ## Which file covers which part?
 - The `prototype_comments` row, the guest's door `prototype_comment.php`, its gates, limits and plain text: `designer-prototype-comments-door.md`.
 - The viewer's comment mode (the Comment button, the box, pins, threads, "Not on the page any more"): `designer-prototype-comments-viewer.md`.
-- The editor's Comments button, pins on the canvas, the Prototype comments list, the heartbeat's stamp, the bell line: `designer-prototype-comments-list.md`.
+- The editor's Comments button, pins on the canvas, the list (the Prototype view's Comments tab), the heartbeat's stamp, the bell line: `designer-prototype-comments-list.md`.
 - "Make a task": `designer-prototype-comments-task.md`. What a later change must keep and the schema answer: `designer-prototype-comments-rules.md`. The share links: `designer-prototype-share-links.md`.
 
 ## How are a link's comments deleted?
@@ -26,8 +26,8 @@ module: prototype_comments
 - P3 said the frame tells the viewer the page: the viewer uses the page it drew and takes only the node and the place from the frame (P9).
 - P11's "Delete this link's comments" is the button **Delete comments**; its question names the link's count.
 
-## What is still open?
-- Where the Comments button and the list sit for good. They keep their first place: the button in the top bar's actions beside the Assistant, the list floating over the right column. Decided (architect, 2026-11-20, agent channel message 9873): the button into the canvas bar's Prototype mode, the list as a Comments tab beside the links panel; step PN6 of `plans/prototype-comments-place.md` moves them after DP24 (#10507). Until it lands nothing moves.
+## Where do the Comments button and the list sit?
+- Architect (2026-11-20, agent channel message 9873): inside the accepted look, no new look. The button is in the canvas bar's Prototype mode, the list the Comments tab beside Links in the Prototype view's side panel; the View menu's item **Prototype comments** reaches it from Design mode (#10602). Before, the button sat in the top bar beside the Assistant and the list floated over the right column.
 
 ## What was left out?
 - A picture attached to a comment, comments on a live page, an e-mail to the customer when the designer answers: each waits for a later yes of the owner.
