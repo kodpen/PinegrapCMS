@@ -3002,6 +3002,7 @@
     "Write a message…": "Bir mesaj yazın…",
     "Write a name in double braces to print it: {{seller.title}}. Triple braces print it without escaping. A block between {{#name}} and {{/name}} is shown when the value is set, and repeated for every line when the value is a list; a block between {{^name}} and {{/name}} is shown when it is empty.": "Bir adı basmak için çift küme parantezi içine yazın: {{seller.title}}. Üçlü parantez kaçırmadan basar. {{#ad}} ile {{/ad}} arasındaki blok değer doluysa gösterilir, değer bir listeyse her satır için yinelenir; {{^ad}} ile {{/ad}} arasındaki blok değer boşsa gösterilir.",
     "Write a news post; it appears on the news page as soon as you send it.": "Bir haber yazısı yazın; gönderdiğiniz anda haberler sayfasında görünür.",
+    "Write a note": "Not yaz",
     "Write a note about this beer": "Bu bira hakkında not yazın",
     "Write a note below: what you found and what you did.": "Aşağıya bir not yazın: ne gördünüz, ne yaptınız.",
     "Write a note. Its first line becomes its title.": "Bir not yazın. İlk satırı başlığı olur.",
