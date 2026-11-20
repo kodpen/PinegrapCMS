@@ -15,7 +15,8 @@
 // produces a response no client can parse and, with DEBUG on, puts the failing
 // SQL in front of a stranger. These four wrappers do the same work and fail the
 // way the API contract says to fail: a 500 with a request id, and the database
-// message only when the site is in debug mode.
+// message only when the site is in debug mode. The message always goes to the
+// error log, on a line under the same request id.
 
 if (!defined('PG_API_ENTRY')) {
 	exit;
@@ -50,11 +51,21 @@ function api_query($sql) {
 
 	if ($result === false) {
 
+		$detail = isset($exception) ? $exception->getMessage() : mysqli_error(db::$con);
+
+		// The answer says only that something failed; the log line says what,
+		// under the request id the client got (includes/api/fault.php).
+		if (function_exists('api_fault_query_record')) {
+
+			api_fault_query_record($detail);
+
+		}
+
 		$message = lang('A system error occurred.');
 
 		if (defined('DEBUG') && DEBUG) {
 
-			$message .= ' ' . (isset($exception) ? $exception->getMessage() : mysqli_error(db::$con));
+			$message .= ' ' . $detail;
 
 		}
 

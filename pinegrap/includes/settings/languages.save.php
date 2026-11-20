@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what the Languages and Translation screen writes: the source
- * language, the target languages and their settings, the Google key, the
- * attribution switch and the style note.
+ * language, the target languages and their settings, the attribution switch
+ * and the style note. The Google Cloud key is saved on its Connections page.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -131,13 +131,6 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     );
 
     db("UPDATE config SET " . implode(', ', $translation_sets));
-
-    // The key: blank keeps what is stored, the checkbox removes it.
-    if (post_value('translation_google_key_clear')) {
-        pg_tr_google_key_store('');
-    } elseif (trim((string) post_value('translation_google_key')) !== '') {
-        pg_tr_google_key_store(trim((string) post_value('translation_google_key')));
-    }
 
     // ── the target languages ──
     $translation_policy_changed = false;

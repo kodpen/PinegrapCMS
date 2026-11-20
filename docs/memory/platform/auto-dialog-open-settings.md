@@ -23,6 +23,7 @@ module: auto_dialogs
 
 ## Who sees a cart row?
 - `get_page_content.php` asks `pg_auto_dialog_session_has_cart()` (the session's order holds a line not saved for later) only while a printed row has audience cart (`pg_auto_dialogs_need_cart()`); `pg_auto_dialogs_on_page($rows, $page, $has_cart)` leaves a cart row out otherwise. A page that prints one calls `pg_page_cache_personal('popup_cart')`: no kept copy.
+- Read clean by the bug hunt of agent channel message 10243: a session with a cart carries the `pg_nc` marker, so the router never gives it a copy kept for visitors without one; the cookie choice is made in the browser, so a cached page stays right.
 
 ## Tested?
 - `tests/auto_dialog_form_test.php` (defaults, the cart rule, the form's values and fields, the script's triggers in both scripts), `tests/api_design_dialogs_regions_test.php` (the API's values and refusals). The step was run twice on a MariaDB 10.11 table from the starter backup; no browser run.

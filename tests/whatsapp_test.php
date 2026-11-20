@@ -187,12 +187,12 @@ function test_whatsapp_card_markup()
 	pg_assert_false(strpos($html, $app['app_secret']) !== false, 'no app secret');
 	pg_assert_false(strpos($html, $app['token']) !== false, 'no token');
 	pg_assert_contains('value="https://shop.test/pinegrap/whatsapp_webhook.php" readonly="readonly"', $html);
-	pg_assert_contains('id="whatsapp_verify_token" class="form-control" value="c0ffee" readonly="readonly"', $html);
+	pg_assert_contains('id="whatsapp_verify_token" value="c0ffee" readonly="readonly"', $html);
 	pg_assert_contains('value="+905321234567"', $html);
 	pg_assert_contains('Pinegrap Shop', $html, 'the connection line');
 
 	foreach (array(1, 2, 3, 4, 5) as $step) {
-		pg_assert_contains('<h6>' . $step . '. ', $html, 'step ' . $step);
+		pg_assert_contains('<h3 class="pg-field-label mb-1">' . $step . '. ', $html, 'step ' . $step);
 	}
 
 	pg_assert_same(substr_count($html, '<div'), substr_count($html, '</div>'), 'every div closed');

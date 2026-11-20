@@ -10,7 +10,7 @@ description: Decisions list, product part 64 (2026-11-16 on): the second study's
 - Poll 82 (message 6434), eight of nine: the post digest, the personal meeting link, the place map, customer value reports, the referral programme, wholesale, event tickets, courses. Left out: the first-steps list. Start file: `plans/more-features.md`.
 - Poll 85 (message 6514), a member's private plans as busy times of the meeting link: no. "diğer ekip üyesinin kişisel planları ekibin planlarından önce gelemez"; who wants a plan counted turns it into a team plan everybody sees (`commerce/booking-meeting-link.md`).
 - Poll 86 (message 6515), the referral programme: "Siparişi olan müşteri getirsin; ödül mağaza kredisi" (`plans/referral-programme.md`).
-- Poll 87 (message 6516), an administrator's yes for a wholesale buyer's order: "bunu mimara sor ve yapılmışken sağlam temelli yapılsın veya plandan çıksın". The architect took a company's buyers out of the plan (`plans/wholesale.md`).
+- Poll 87 (message 6516), an administrator's yes for a wholesale buyer's order: "bunu mimara sor ve yapılmışken sağlam temelli yapılsın veya plandan çıksın". The architect took a company's buyers out of the plan (`commerce/wholesale.md`).
 - Poll 88 (message 6517), a cancelled order's places: "Evet, yerler geri dönsün" (`plans/event-tickets.md`).
 
 ## How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)

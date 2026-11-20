@@ -195,6 +195,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/acks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/voice.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calls.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calls_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');

@@ -20,9 +20,13 @@
  * (pg_place_list_inject(), pg_place_tiles_page()). Without it (the editor's
  * Preview) the block keeps its sample.
  *
- * Distance and order by distance are worked out here, in the browser; no
- * position is sent anywhere. Node loads this file for its tests: the pure
- * functions are exported there.
+ * "Near me" (X11) asks the browser's own location question; the position
+ * stays in the browser, where the distances and the order are worked out.
+ * A typed address (X12) is looked up through places.php (POST, once per
+ * press of Find, Photon only); only the point it gives is used, and nothing
+ * typed is stored. Both are offered only when the answer holds the whole
+ * list: in a cut list the nearest place could be among those left out.
+ * Node loads this file for its tests: the pure functions are exported there.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -62,6 +66,39 @@
         });
 
         return withPoint.concat(without);
+    }
+
+    // A distance as the card prints it: one decimal under 10 km, whole
+    // kilometres above.
+    function formatKm(km, locale) {
+        var value = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
+
+        try {
+            return value.toLocaleString(locale || undefined, { maximumFractionDigits: 1 });
+        } catch (e) {
+            return String(value);
+        }
+    }
+
+    // Whether "Near me" and the address box are offered: the whole list
+    // (not cut) with at least one place that has coordinates.
+    function nearOffered(places, cut) {
+        return !cut && places.some(function (place) {
+            return typeof place.lat === 'number' && typeof place.lng === 'number';
+        });
+    }
+
+    // The rows the list shows: the places matching what was typed, in the
+    // list's order, or nearest first with their distance when a point to
+    // measure from is given ({lat, lng}).
+    function arrange(places, query, from) {
+        var rows = from ? order(places, from.lat, from.lng) : places.map(function (place, index) {
+            return { place: place, index: index, km: null };
+        });
+
+        return rows.filter(function (row) {
+            return !query || matches(row.place, query);
+        });
     }
 
     // Text as it is compared: lower case, no accents, Turkish dotted and
@@ -132,7 +169,7 @@
         return state;
     }
 
-    var api = { distance: distance, order: order, fold: fold, matches: matches, marketingAllowed: marketingAllowed, gate: gate, whenAllowed: whenAllowed };
+    var api = { distance: distance, order: order, formatKm: formatKm, nearOffered: nearOffered, arrange: arrange, fold: fold, matches: matches, marketingAllowed: marketingAllowed, gate: gate, whenAllowed: whenAllowed };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -175,9 +212,13 @@
         return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(place.address);
     }
 
-    function card(place, onMap) {
+    function card(place, onMap, km) {
         var item = el('li', 'pg-map-card');
         item.appendChild(el('h3', 'h6 mb-1', place.name || place.address));
+
+        if (typeof km === 'number') {
+            item.appendChild(el('p', 'mb-1 small fw-semibold', t('{km} km').replace('{km}', formatKm(km, root.document.documentElement.lang))));
+        }
 
         if (place.name && place.address) {
             item.appendChild(el('p', 'mb-1', place.address));
@@ -310,6 +351,126 @@
         });
     }
 
+    // "Near me" and, while the lookup is on, the address box, under the
+    // search. Each sets the point the list is ordered from and draws again.
+    function nearTools(block, search, list, view) {
+        var bar = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-3');
+        var said = el('p', 'small mb-0 w-100');
+        said.setAttribute('role', 'status');
+        said.hidden = true;
+
+        function tell(text) {
+            said.textContent = text;
+            said.hidden = !text;
+        }
+
+        function from(lat, lng, line) {
+            tell('');
+            view.from = { lat: lat, lng: lng, line: line };
+            view.show();
+
+            if (view.leaflet) {
+                view.leaflet.setView([lat, lng], Math.max(view.leaflet.getZoom(), 11));
+            }
+        }
+
+        if (root.navigator && root.navigator.geolocation) {
+            var near = el('button', 'btn btn-sm btn-outline-primary', t('Near me'));
+            near.type = 'button';
+            near.addEventListener('click', function () {
+                near.disabled = true;
+                // The browser asks the visitor; the position stays here.
+                root.navigator.geolocation.getCurrentPosition(function (position) {
+                    near.disabled = false;
+                    from(position.coords.latitude, position.coords.longitude, t('Nearest first from your position.'));
+                }, function () {
+                    near.disabled = false;
+                    tell(t('Your browser did not give a position.'));
+                }, { timeout: 15000, maximumAge: 300000 });
+            });
+            bar.appendChild(near);
+        }
+
+        if (config.find && root.URLSearchParams) {
+            var form = el('form', 'd-flex flex-wrap gap-2 flex-grow-1');
+            form.setAttribute('role', 'search');
+            form.setAttribute('aria-label', t('Find near an address'));
+            var box = el('input', 'form-control form-control-sm flex-grow-1 w-auto');
+            box.type = 'search';
+            box.name = 'pg-map-find';
+            box.autocomplete = 'off';
+            box.maxLength = 200;
+            box.placeholder = t('Address or postcode');
+            box.setAttribute('aria-label', t('Address or postcode'));
+            var find = el('button', 'btn btn-sm btn-outline-primary', t('Find'));
+            find.type = 'submit';
+            form.appendChild(box);
+            form.appendChild(find);
+
+            // One lookup per press; the text goes in the body and is not
+            // kept on the page after the answer.
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                var text = box.value.replace(/\s+/g, ' ').trim();
+
+                if (!text || find.disabled) {
+                    return;
+                }
+
+                find.disabled = true;
+
+                root.fetch(config.endpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new root.URLSearchParams({ find: text }).toString()
+                }).then(function (response) {
+                    return response.json().then(function (answer) {
+                        return { status: response.status, answer: answer };
+                    });
+                }).then(function (result) {
+                    find.disabled = false;
+                    var answer = result.answer || {};
+
+                    if (answer.ok && answer.state === 'found' && typeof answer.lat === 'number' && typeof answer.lng === 'number') {
+                        from(answer.lat, answer.lng, t('Nearest first from: {address}').replace('{address}', text));
+                    } else if (answer.ok && answer.state === 'not_found') {
+                        tell(t('The address was not found.'));
+                    } else if (result.status === 429 || answer.state === 'wait') {
+                        tell(t('The address service asks to wait. Try again in a minute.'));
+                    } else {
+                        tell(t('The address could not be looked up.'));
+                    }
+                }).catch(function () {
+                    find.disabled = false;
+                    tell(t('The address could not be looked up.'));
+                });
+            });
+            bar.appendChild(form);
+        }
+
+        if (!bar.firstChild) {
+            return;
+        }
+
+        bar.appendChild(said);
+
+        var after = search;
+
+        if (after && after.parentNode && /(^|\s)(input-group|form-floating)(\s|$)/.test(after.parentNode.className || '')) {
+            after = after.parentNode;
+        }
+
+        if (after && after.parentNode) {
+            after.parentNode.insertBefore(bar, after.nextSibling);
+        } else {
+            list.parentNode.insertBefore(bar, list);
+        }
+
+        block.setAttribute('data-pg-map-near', '1');
+    }
+
     function draw(block, places, note, cut) {
         var list = block.querySelector('[data-pg-map-list]');
         var search = block.querySelector('[data-pg-map-search]');
@@ -320,7 +481,7 @@
         }
 
         // A cut list offers no order by distance (the nearest place could be
-        // among those left out): a later step reads this mark.
+        // among those left out).
         if (cut) {
             block.setAttribute('data-pg-map-cut', '1');
         }
@@ -395,42 +556,52 @@
             list.parentNode.insertBefore(aside, list);
         }
 
+        // The point the list is ordered from: {lat, lng, line}, or null.
+        view.from = null;
+
         function show() {
             var query = search ? search.value : '';
-            var shown = 0;
+            var rows = arrange(places, query, view.from);
+            var shown = {};
             list.textContent = '';
             view.cards = [];
 
-            places.forEach(function (place, index) {
-                var marker = view.markers[index];
-                var match = !query || matches(place, query);
-
-                // The markers follow the search, as the list does.
-                if (marker && view.leaflet) {
-                    if (match && !view.leaflet.hasLayer(marker)) {
-                        marker.addTo(view.leaflet);
-                    } else if (!match && view.leaflet.hasLayer(marker)) {
-                        view.leaflet.removeLayer(marker);
-                    }
-                }
-
-                if (match) {
-                    var item = card(place, (marker && view.leaflet) ? function () {
-                        view.leaflet.setView(marker.getLatLng(), Math.max(view.leaflet.getZoom(), 15));
-                        marker.openPopup();
-                    } : null);
-                    view.cards[index] = item;
-                    list.appendChild(item);
-                    shown++;
-                }
+            rows.forEach(function (row) {
+                var marker = view.markers[row.index];
+                var item = card(row.place, (marker && view.leaflet) ? function () {
+                    view.leaflet.setView(marker.getLatLng(), Math.max(view.leaflet.getZoom(), 15));
+                    marker.openPopup();
+                } : null, row.km);
+                view.cards[row.index] = item;
+                list.appendChild(item);
+                shown[row.index] = true;
             });
 
+            // The markers follow the search, as the list does.
+            if (view.leaflet) {
+                view.markers.forEach(function (marker, index) {
+                    if (!marker) {
+                        return;
+                    }
+
+                    if (shown[index] && !view.leaflet.hasLayer(marker)) {
+                        marker.addTo(view.leaflet);
+                    } else if (!shown[index] && view.leaflet.hasLayer(marker)) {
+                        view.leaflet.removeLayer(marker);
+                    }
+                });
+            }
+
             if (status) {
-                status.textContent = shown ? '' : (query ? t('No place matches your search.') : t('No places to show yet.'));
+                status.textContent = rows.length ? (view.from ? view.from.line : '') : (query ? t('No place matches your search.') : t('No places to show yet.'));
             }
         }
 
         view.show = show;
+
+        if (nearOffered(places, cut)) {
+            nearTools(block, search, list, view);
+        }
 
         if (search) {
             search.addEventListener('input', show);

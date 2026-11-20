@@ -166,6 +166,37 @@ function pg_ai_connection_key_for($provider, $own)
 }
 
 /**
+ * What the assistants' form does with a model assistant's own key. A key
+ * typed for a provider with a connection is not stored (the form shows the
+ * connection instead of a key field); a key kept for another provider is
+ * dropped when the provider changes, so it is never sent to the new one:
+ * the assistant then reads the new provider's connection, or a key typed
+ * for a provider without one. Pure.
+ *
+ * @param array|null       $current  the stored assistant (ws_agent_shape():
+ *                                   kind, provider, key_set), null for new
+ * @param string           $provider the chosen provider
+ * @param string|null|bool $key      the form's decision: null keeps the
+ *                                   stored key, '' empties it, a sealed key
+ *                                   replaces it (false: it could not be
+ *                                   sealed, passed on)
+ * @return string|null|bool the decision to write
+ */
+function pg_ai_connection_agent_key($current, $provider, $key)
+{
+    if (pg_ai_connection_known($provider) && is_string($key) && ($key !== '')) {
+        $key = null;
+    }
+
+    if (($key === null) && is_array($current) && ((string) ($current['kind'] ?? '') === 'model')
+        && !empty($current['key_set']) && ((string) ($current['provider'] ?? '') !== (string) $provider)) {
+        $key = '';
+    }
+
+    return $key;
+}
+
+/**
  * What the data step does for one provider. Where no connection exists the
  * first stored key (in the order given) becomes it; every key equal to the
  * connection's is emptied; a key that differs is kept and goes on working.
@@ -373,10 +404,45 @@ function pg_ai_connection_voice_move($connection, $voice)
     }
 
     $move = pg_ai_connection_move($connection, $keys);
+
+    // An emptied speech key falls back to OpenAI's connection only when the
+    // speech has an OpenAI address of its own beside another transcripts
+    // service, or when the transcripts' key reads the connection too;
+    // otherwise it would fall back to a different key of the transcripts.
+    if (in_array(2, $move['empty'], true)) {
+        $transcripts_key = trim((string) ($voice['key'] ?? ''));
+        $falls_to_connection = $transcripts
+            ? (($transcripts_key === '') || in_array(1, $move['empty'], true))
+            : pg_ai_connection_voice_speech_on_connection($speech_url, $voice['url'] ?? '');
+
+        if (!$falls_to_connection) {
+            $move['empty'] = array_values(array_diff($move['empty'], array(2)));
+        }
+    }
+
     $names = array(1 => 'ws_voice_key', 2 => 'ws_voice_speech_key');
     $move['empty'] = array_values(array_map(function ($id) use ($names) {
         return $names[$id];
     }, $move['empty']));
 
     return $move;
+}
+
+/**
+ * Do the spoken answers call with OpenAI's connection when they keep no key
+ * of their own? Only with an OpenAI address of their own while the
+ * transcripts go to another service: otherwise they take the transcripts'
+ * key (ws_voice_key()), which falls back to the connection for OpenAI, and a
+ * key of another service is never sent to OpenAI. Pure.
+ *
+ * @param string $speech_url      the spoken answers' address, '' to follow
+ *                                the transcripts
+ * @param string $transcripts_url the transcripts' address, '' for OpenAI
+ * @return bool
+ */
+function pg_ai_connection_voice_speech_on_connection($speech_url, $transcripts_url)
+{
+    return (trim((string) $speech_url) !== '')
+        && pg_ai_connection_voice_on_openai($speech_url)
+        && !pg_ai_connection_voice_on_openai($transcripts_url);
 }

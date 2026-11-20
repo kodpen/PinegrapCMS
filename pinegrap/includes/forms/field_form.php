@@ -19,6 +19,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+
 /**
  * The form type of a page's form: custom, shipping or billing.
  *
@@ -321,8 +323,9 @@ function pg_field_form_required_value($type, $posted)
 
 /**
  * The field types a form of this kind offers, as select_field_type() lists
- * them: a file upload and a signature only on a custom form, a signature only
- * where its column exists.
+ * them: a file upload on a custom form, a product form and a variant set's
+ * form template; a signature only on a custom form, and only where its column
+ * exists.
  *
  * @param string $form_type        custom, shipping, billing, product, product_group
  * @param bool $signature_ready    pg_signature_ready()
@@ -332,7 +335,7 @@ function pg_field_form_types($form_type, $signature_ready)
 {
     $types = array('text box', 'text area', 'pick list', 'radio button', 'check box');
 
-    if ($form_type == 'custom') {
+    if (in_array($form_type, array('custom', 'product', 'product_group'), true)) {
         $types[] = 'file upload';
     }
 
@@ -360,6 +363,77 @@ function pg_field_form_validate_type($liveform, $type, $form_type)
     if (!is_string($type) || !in_array($type, pg_field_form_types($form_type, $signature_ready), true)) {
         $liveform->mark_error('type', lang('Please select a field type.'));
     }
+}
+
+/**
+ * Whether a field keeps an upload rule (allowed types, largest size) in
+ * form_fields.rules: a File Upload field of a product form or of a variant
+ * set's form template.
+ *
+ * @param string $form_type
+ * @param mixed  $type the field type
+ * @return bool
+ */
+function pg_field_form_has_upload_rule($form_type, $type)
+{
+    return in_array($form_type, array('product', 'product_group'), true) && ($type === 'file upload');
+}
+
+/**
+ * The upload settings drawn on the field form, from a stored rule; a field
+ * with no upload rule yet starts with images and PDF.
+ *
+ * @param string|null $rules form_fields.rules
+ * @return array upload_images, upload_pdf, upload_extensions, upload_max_mb
+ */
+function pg_field_form_upload_values($rules)
+{
+    $decoded = (is_string($rules) && (trim($rules) !== '')) ? json_decode($rules, true) : null;
+
+    if (!is_array($decoded) || !isset($decoded['upload'])) {
+        return array('upload_images' => 1, 'upload_pdf' => 1, 'upload_extensions' => '', 'upload_max_mb' => '');
+    }
+
+    $rule = pg_pfu_rule_clean($decoded);
+
+    return array(
+        'upload_images' => $rule['images'] ? 1 : 0,
+        'upload_pdf' => $rule['pdf'] ? 1 : 0,
+        'upload_extensions' => implode(', ', $rule['extensions']),
+        'upload_max_mb' => ($rule['max_mb'] > 0) ? (string) $rule['max_mb'] : '',
+    );
+}
+
+/**
+ * Checks the posted upload settings of a product form's File Upload field
+ * and the folder its files go into, marking what is wrong.
+ *
+ * @param liveform    $liveform
+ * @param array       $post
+ * @param string      $form_type
+ * @param string|null $stored_rules the field's form_fields.rules, null for a new field
+ * @return string|null the form_fields.rules value to store; null when the field keeps no upload rule
+ */
+function pg_field_form_validate_upload($liveform, $post, $form_type, $stored_rules = null)
+{
+    if (!pg_field_form_has_upload_rule($form_type, $post['type'] ?? '')) {
+        return null;
+    }
+
+    $limits = pg_upload_limits();
+    $posted = pg_pfu_rule_from_post($post, $limits['file_max']);
+
+    foreach ($posted['errors'] as $name => $message) {
+        $liveform->mark_error($name, $message);
+    }
+
+    $folder_id = is_scalar($post['upload_folder_id'] ?? null) ? trim((string) $post['upload_folder_id']) : '';
+
+    if (($folder_id === '') || ($folder_id === '0') || !pg_field_form_folder_exists($folder_id)) {
+        $liveform->mark_error('upload_folder_id', lang('Please select the folder the uploaded files go into.'));
+    }
+
+    return pg_pfu_rules_json($posted['rule'], $stored_rules);
 }
 
 /**
@@ -978,6 +1052,10 @@ function pg_field_form_new_field($folder_id)
         'office_use_only' => 0,
         'translate_values' => 1,
         'upload_folder_id' => $folder_id,
+        'upload_images' => 1,
+        'upload_pdf' => 1,
+        'upload_extensions' => '',
+        'upload_max_mb' => '',
         'quiz_question' => 0,
         'quiz_answer' => '',
         'information' => '',
@@ -1005,7 +1083,8 @@ function pg_field_form_checked($value)
 function pg_field_form_check_box_columns()
 {
     return array('required', 'wysiwyg', 'multiple', 'spacing_above', 'spacing_below',
-        'use_folder_name_for_default_value', 'office_use_only', 'translate_values', 'quiz_question');
+        'use_folder_name_for_default_value', 'office_use_only', 'translate_values', 'quiz_question',
+        'upload_images', 'upload_pdf');
 }
 
 /**
@@ -1076,6 +1155,46 @@ function pg_field_form_session_values($liveform, $field)
     }
 
     return $posted;
+}
+
+/**
+ * The allowed types and the largest size of a product form's File Upload
+ * field, drawn under its folder.
+ *
+ * @param array $field the field form values (pg_field_form_upload_values() keys)
+ * @return string HTML
+ */
+function pg_field_form_upload_rule_rows($field)
+{
+    $limits = pg_upload_limits();
+    $server_mb = ((int) $limits['file_max'] > 0) ? (int) floor((int) $limits['file_max'] / (1024 * 1024)) : 0;
+    $max_help = ($server_mb > 0)
+        ? lang(array('string' => 'Empty: {var:1} MB, the biggest file this server accepts.', 'vars' => array($server_mb)))
+        : '';
+
+    return '
+                    <div class="col-12 my-1">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" id="upload_images" name="upload_images" value="1"' . pg_field_form_checked($field['upload_images'] ?? 1) . '></div>
+                            <label for="upload_images">' . lang('Images (JPG, PNG, GIF, WebP)') . '</label>
+                        </div>
+                    </div>
+                    <div class="col-12 my-1">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" id="upload_pdf" name="upload_pdf" value="1"' . pg_field_form_checked($field['upload_pdf'] ?? 1) . '></div>
+                            <label for="upload_pdf">' . lang('PDF') . '</label>
+                        </div>
+                    </div>
+                    <div class="col-12 pg-field-span-6 my-3">
+                        <label for="upload_extensions" class="form-label">' . lang('Other file types') . '</label>
+                        <input type="text" id="upload_extensions" name="upload_extensions" class="form-control" maxlength="255" value="' . h((string) ($field['upload_extensions'] ?? '')) . '" aria-describedby="upload_extensions_help">
+                        <div id="upload_extensions_help" class="form-text">' . h(lang('Extensions separated by commas, such as ai, psd. With no type chosen, any file the site does not block is accepted.')) . '</div>
+                    </div>
+                    <div class="col-12 pg-field-span-6 my-3">
+                        <label for="upload_max_mb" class="form-label">' . lang('Largest file size (MB)') . '</label>
+                        <input type="number" id="upload_max_mb" name="upload_max_mb" class="form-control" min="1"' . ($server_mb > 0 ? ' max="' . $server_mb . '"' : '') . ' step="1" value="' . h((string) ($field['upload_max_mb'] ?? '')) . '"' . ($max_help !== '' ? ' aria-describedby="upload_max_mb_help"' : '') . '>
+                        ' . ($max_help !== '' ? '<div id="upload_max_mb_help" class="form-text">' . h($max_help) . '</div>' : '') . '
+                    </div>';
 }
 
 /**
@@ -1175,6 +1294,7 @@ function pg_field_form_cards($liveform, $field, $context)
                         <select name="upload_folder_id" id="upload_folder_id" class="form-control"' . ($kept_folder['help'] !== '' ? ' aria-describedby="upload_folder_id_help"' : '') . '>' . $kept_folder['options'] . '</select>
                         ' . $kept_folder['help'] . '
                     </div>
+                    ' . (in_array($form_type, array('product', 'product_group'), true) ? pg_field_form_upload_rule_rows($field) : '') . '
                 </div>
             </div>';
     }

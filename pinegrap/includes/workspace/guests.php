@@ -2316,7 +2316,7 @@ function ws_guest_handle($action, $request)
         case 'call_join':
             $joined = ws_call_join(ws_call_party_guest($context), $context['channel'], (int) ($request['call_id'] ?? 0));
 
-            return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id']) : array('status' => 'error', 'message' => $joined['error']);
+            return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id'], 'ice' => ws_call_member_ice()) : array('status' => 'error', 'message' => $joined['error']);
 
         case 'call_leave':
             $left = ws_call_leave(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0));

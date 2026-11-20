@@ -37,6 +37,9 @@
     var MOST = 20;
     var LABEL = 60;
     var URL_MOST = 255;
+    // Bytes of the JSON part the server reads (pg_page_clicks_parse());
+    // a longer one is dropped whole.
+    var BYTES = 8192;
 
     var MESSAGING_SCHEMES = {
         mailto: 'mailto:', tel: 'tel:', sms: 'sms:', smsto: 'sms:', mms: 'sms:',
@@ -62,6 +65,16 @@
     // A text cut to a number of characters (code points, as mb_substr()).
     function cut(text, length) {
         return Array.from ? Array.from(text).slice(0, length).join('') : text.slice(0, length);
+    }
+
+    // A text's length in UTF-8 bytes, as the server's strlen() counts it.
+    function bytes(text) {
+        try {
+            return encodeURIComponent(text).replace(/%[0-9A-F]{2}/gi, 'x').length;
+        } catch (e) {
+            // A lone surrogate: at most three bytes a unit.
+            return text.length * 3;
+        }
     }
 
     // A path part that looks like a code (pg_page_clicks_code_like()).
@@ -347,7 +360,17 @@
 
         measure();
 
-        return { cp: page, cs: signature, c: JSON.stringify({ d: device(), t: deepest, e: elements }) };
+        // The last elements named go when the part would pass the server's
+        // limit, so the view and its depth are still counted.
+        var list = elements.slice();
+        var part = JSON.stringify({ d: device(), t: deepest, e: list });
+
+        while (list.length && (bytes(part) > BYTES)) {
+            list.pop();
+            part = JSON.stringify({ d: device(), t: deepest, e: list });
+        }
+
+        return { cp: page, cs: signature, c: part };
     };
 
     function send() {

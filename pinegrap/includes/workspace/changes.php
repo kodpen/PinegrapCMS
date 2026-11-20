@@ -5684,6 +5684,7 @@ function ws_change_write_calendar_event($viewer, $action, $record, $values)
         db("DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . $id . "'");
         db("DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = '" . $id . "'");
         db("DELETE FROM remaining_reservation_spots WHERE calendar_event_id = '" . $id . "'");
+        pg_stock_notify_forget_event($id);
 
         ws_change_log(lang(array('string' => 'Calendar event ({var:1}) was deleted in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['name'])));
 

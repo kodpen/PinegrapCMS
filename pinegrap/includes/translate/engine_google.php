@@ -86,7 +86,7 @@ function pg_tr_google_translate($texts, $source, $target, &$error, $keep_terms =
     $out = array();
 
     if ($key === '') {
-        $error = lang('No Google Cloud API key is stored. Enter one in Settings > Languages and Translation.');
+        $error = lang('No Google Cloud API key is stored. Enter one on Google Cloud Translation\'s page of Connections.');
         return $out;
     }
 

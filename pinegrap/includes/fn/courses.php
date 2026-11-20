@@ -13,7 +13,8 @@
  * days since the enrolment day, counted at read, and with "Lessons in
  * order" the lesson before it done; a done lesson stays open and an editor
  * always passes. The enrolment day is read from the member's first counting
- * order that opens the folder, or else from the first-open row: no grant
+ * order that opens the folder (directly or through a parent folder, as
+ * check_private_access() walks them), or else from the first-open row: no grant
  * row names its order, and none is kept per grant.
  *
  * The certificate's code names the completion (course, member, moment) and
@@ -35,6 +36,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const PG_COURSE_KIND_DONE = 1;
 const PG_COURSE_KIND_FIRST_OPEN = 2;
 const PG_COURSE_KIND_COMPLETE = 3;
+
+// How many folders the walk up from a course folder reads at most, so a
+// broken parent chain cannot keep it going.
+const PG_COURSE_FOLDER_DEPTH = 64;
 
 /**
  * Whether the courses tables exist (2026.11.0, step 11.0.234). Files land
@@ -325,6 +330,57 @@ function pg_course_lessons($course_id)
 }
 
 /**
+ * The lessons that count for a course: those whose page sits right in the
+ * course's folder (pg_course_lesson_in_folder()). A lesson whose page left
+ * the folder or was deleted gates nothing (Z17): it does not hold back the
+ * lesson after it with "Lessons in order", is not listed to the member and
+ * does not keep the course from completing. The Courses screen names it.
+ * Pure.
+ *
+ * @param array $lessons      pg_course_lessons()
+ * @param array $page_folders page id => its folder id; a missing page has none
+ * @param int   $folder_id    the course's folder
+ * @return array the counted lessons, in the order given
+ */
+function pg_course_lessons_counted(array $lessons, array $page_folders, $folder_id)
+{
+    $out = array();
+
+    foreach ($lessons as $lesson) {
+        if (pg_course_lesson_in_folder($page_folders[(int) $lesson['page_id']] ?? 0, $folder_id)) {
+            $out[] = $lesson;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A course's lessons that count for its members (pg_course_lessons_counted()),
+ * in their order: what the gate, the blocks, the press and the completion
+ * read.
+ *
+ * @param array $course a course row
+ * @return array rows as pg_course_lessons()
+ */
+function pg_course_member_lessons(array $course)
+{
+    $lessons = pg_course_lessons($course['id'] ?? 0);
+    $page_ids = array_unique(array_map('intval', array_column($lessons, 'page_id')));
+    $page_folders = array();
+
+    if ($page_ids) {
+        $rows = db_items("SELECT page_id, page_folder FROM page WHERE page_id IN (" . implode(',', $page_ids) . ")");
+
+        foreach (is_array($rows) ? $rows : array() as $row) {
+            $page_folders[(int) $row['page_id']] = (int) $row['page_folder'];
+        }
+    }
+
+    return pg_course_lessons_counted($lessons, $page_folders, $course['folder_id'] ?? 0);
+}
+
+/**
  * The lesson a page is, with its course, or null for a page that is no
  * lesson.
  *
@@ -395,8 +451,78 @@ function pg_course_member_progress($user_id, $course_id)
 }
 
 /**
- * The member's orders with a line that opens a folder: their status and
- * date, for pg_course_enrolment_day().
+ * A folder and its parents, nearest first: the folders whose private access
+ * grant opens it, as check_private_access() walks them. The walk stops at
+ * the root, at a parent that names no folder, at a loop in a broken parent
+ * chain and after PG_COURSE_FOLDER_DEPTH folders. Pure.
+ *
+ * @param array $parents   folder_id => folder_parent
+ * @param int   $folder_id
+ * @return array folder ids (int)
+ */
+function pg_course_folder_chain(array $parents, $folder_id)
+{
+    $chain = array();
+    $current = (int) $folder_id;
+
+    while (($current > 0) && isset($parents[$current]) && !in_array($current, $chain, true) && (count($chain) < PG_COURSE_FOLDER_DEPTH)) {
+        $chain[] = $current;
+        $current = (int) $parents[$current];
+    }
+
+    return $chain;
+}
+
+/**
+ * The SQL condition matching a product whose private access grant opens one
+ * of the folders: the course folder or a parent of it. Pure; an empty chain
+ * matches nothing.
+ *
+ * @param array $chain pg_course_folder_chain()
+ * @return string
+ */
+function pg_course_grant_folder_sql(array $chain)
+{
+    $ids = array();
+
+    foreach ($chain as $id) {
+        if ((int) $id > 0) {
+            $ids[] = "'" . (int) $id . "'";
+        }
+    }
+
+    return $ids ? '(products.private_folder IN (' . implode(', ', $ids) . '))' : '(1 = 0)';
+}
+
+/**
+ * pg_course_folder_chain() over the site's folders, the tree read once per
+ * request.
+ *
+ * @param int $folder_id
+ * @return array folder ids (int)
+ */
+function pg_course_folder_ids($folder_id)
+{
+    static $parents = null;
+
+    if ((int) $folder_id <= 0) {
+        return array();
+    }
+
+    if ($parents === null) {
+        $parents = array();
+
+        foreach ((array) db_items("SELECT folder_id, folder_parent FROM folder") as $row) {
+            $parents[(int) $row['folder_id']] = (int) $row['folder_parent'];
+        }
+    }
+
+    return pg_course_folder_chain($parents, $folder_id);
+}
+
+/**
+ * The member's orders with a line that opens a folder, directly or through
+ * a parent: their status and date, for pg_course_enrolment_day().
  *
  * @param int $user_id
  * @param int $folder_id
@@ -416,7 +542,7 @@ function pg_course_member_orders($user_id, $folder_id)
         WHERE
             (orders.user_id = '" . (int) $user_id . "')
             AND (products.grant_private_access = '1')
-            AND (products.private_folder = '" . (int) $folder_id . "')" . pg_order_item_active_sql() . "
+            AND " . pg_course_grant_folder_sql(pg_course_folder_ids($folder_id)) . pg_order_item_active_sql() . "
         ORDER BY orders.order_date ASC");
 
     return is_array($rows) ? $rows : array();
@@ -466,15 +592,15 @@ function pg_course_mark_done($user_id, $course_id, $lesson_id)
     $now = time();
     $out = array('done' => pg_course_write_row(pg_course_done_row($user_id, $course_id, $lesson_id, $now)), 'completed' => false);
 
+    $course = pg_course_get($course_id);
     $progress = pg_course_member_progress($user_id, $course_id);
-    $lesson_ids = array_map('intval', array_column(pg_course_lessons($course_id), 'id'));
+    $lesson_ids = ($course !== null) ? array_map('intval', array_column(pg_course_member_lessons($course), 'id')) : array();
 
     $out['completed'] = pg_course_write_row(pg_course_completion_row($user_id, $course_id, $lesson_ids, $progress['done_ids'], $progress['completed_at'] > 0, $now));
 
     // Announced only by the press that wrote the completion row, so a
     // second press or a race announces nothing.
     if ($out['completed'] && function_exists('pg_announce')) {
-        $course = pg_course_get($course_id);
         $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . (int) $user_id . "'");
 
         pg_announce('course.completed', array(
@@ -918,7 +1044,7 @@ function pg_course_gate($page_id, $folder_id, $access_type)
         $enrolment_day = date('Y-m-d');
     }
 
-    $lessons = pg_course_lessons($course['id']);
+    $lessons = pg_course_member_lessons($course);
     $answer = pg_course_gate_answer(true, $access_type, $lesson, $lessons, $progress['done_ids'], $enrolment_day, date('Y-m-d'), $can_edit);
 
     if (!$answer['closed']) {

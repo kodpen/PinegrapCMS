@@ -321,6 +321,9 @@ if (!$_POST) {
         $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = ?";
         $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
+        // The event's waiting list goes with it.
+        pg_stock_notify_forget_event($liveform->get_field_value('id'));
+
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event'), $calendar_event_name) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_calendars = new liveform('calendars');
@@ -612,6 +615,12 @@ if (!$_POST) {
                 (string) $liveform->get_field_value('id'),
                 (string) $liveform->get_field_value('recurrence_number'),
                 (string) $liveform->get_field_value('number_of_remaining_spots'))) or output_error('Query failed.');
+
+            // Raised spots free places: those on the date's waiting list are
+            // mailed (only with tickets on).
+            if ((int) $liveform->get_field_value('number_of_remaining_spots') > (int) $spots_now) {
+                pg_stock_notify_event_freed(array(array((int) $liveform->get_field_value('id'), (int) $liveform->get_field_value('recurrence_number'))));
+            }
 
         }
 

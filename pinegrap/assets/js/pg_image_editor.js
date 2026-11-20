@@ -1354,6 +1354,8 @@
         mutate(this.doc);
         // A crop of a picture placed on its canvas keeps the canvas.
         M.keepCanvas(before, this.doc);
+        // Followers of a moved target go with it; a deleted target's let go.
+        M.attachKeep(before, this.doc, this.attachFit.bind(this));
         // A change that brings the opening document back (a filter put
         // back, a slider back at 0) leaves nothing to save.
         this.settleDirty();
@@ -1369,6 +1371,14 @@
         }
 
         this.render();
+    };
+
+    // A follower scaled with its target (M.attachKeep()): copy c of layer
+    // o with its type's own resize redone (a text's letters).
+    Editor.prototype.attachFit = function (o, c) {
+        var own = (Editor.layerTypes[o.type] || {}).resize, box = { x: c.x, y: c.y, w: c.w, h: c.h };
+
+        return own ? Object.assign(c, own.call(this, o, box, 'se'), box) : c;
     };
 
     // A whole new document from the model (a turn, a flip, a reset).

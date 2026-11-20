@@ -111,7 +111,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
                 <div class="pg-list-row-main">
                     <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
                     <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span><span data-pq-reason="1"> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '</span><span class="d-block" data-pq-note="1" hidden></span></div>
-                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Edit in the Artifact Canvas') . '</button></div>
+                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '">' . pg_design_canvas_icon_one_colour('') . lang('Edit in the Artifact Canvas') . '</button></div>
                 </div>
             </li>';
     }

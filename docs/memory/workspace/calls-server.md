@@ -30,4 +30,4 @@ description: Workspace calls on the server (CL1, #10499, step 11.0.243): tables,
 - Panel: `ws_call_start` (channel_id, kind), `ws_call_join` (channel_id, call_id), `ws_call_leave`, `ws_call_end`, `ws_call_signal` (call_id, to_member_id, kind, body).
 - Guest page: `call_join`, `call_leave`, `call_signal`, with its csrf.
 - API and MCP: `GET /workspace/channels/{id}/call` (`workspace:read`, `api_calls.php`), the live call or null; nothing starts, joins or ends a call for a person.
-- No switch yet: the Calls card that turns calls on is CL6.
+- Off until the Calls card (CL6) turns calls on: a start or join is refused while off (`calls-settings.md`).

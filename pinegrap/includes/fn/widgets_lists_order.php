@@ -40,7 +40,9 @@
 //                    forms, the subscriptions section;
 //   account.store_credit the member's store credit cards, and
 //   account.store_credit_uses each card's orders, keyed by
-//                    ^^__credit_id^^: the store credit section's cards.
+//                    ^^__credit_id^^: the store credit section's cards;
+//   account.tickets  the member's orders that hold event tickets, the
+//                    tickets section (widgets_event_tickets.php).
 //
 // The order lists read ^^__ship_to_key^^: 0 outside a shipments list (the
 // static value: the whole order), the recipient's id inside one, so an items
@@ -364,6 +366,27 @@ function pg_sw_list_order_sources()
                 array('__credit_use_order_url', lang('Order detail URL')),
                 array('__credit_use_date', lang('Order date')),
                 array('__credit_use_amount', lang('Amount spent')),
+            ),
+        ),
+        // The member's orders that hold event tickets
+        // (pg_event_tickets_account_view()), newest first, each with its
+        // signed tickets page link.
+        'account.tickets' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Tickets of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__tickets_order_no', lang('Order number')),
+                array('__tickets_order_date', lang('Order date')),
+                array('__tickets_events', lang('Events and products')),
+                array('__tickets_count', lang('Number of tickets')),
+                array('__tickets_count_label', lang('Number of tickets (words)')),
+                array('__tickets_valid', lang('Valid tickets')),
+                array('__tickets_state_label', lang('State')),
+                array('__tickets_tone', lang('State colour (success or secondary)')),
+                array('__tickets_url', lang('Tickets page URL')),
             ),
         ),
     );
