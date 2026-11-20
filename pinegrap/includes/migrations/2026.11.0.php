@@ -148,6 +148,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_bookings();                // 11.0.157
 	upgrade_2026_11_0_form_fee();                // 11.0.158
 	upgrade_2026_11_0_store_credit();            // 11.0.159
+	upgrade_2026_11_0_referral_credit();         // 11.0.245
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 	upgrade_2026_11_0_stock_locations();         // 11.0.162
@@ -233,7 +234,6 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
-	upgrade_2026_11_0_referral_credit();         // 11.0.245
 
 }
 
@@ -5000,6 +5000,40 @@ function upgrade_2026_11_0_store_credit() {
 
 }
 
+// A referral's reward as store credit (11.0.245, includes/fn/referral.php):
+// gift_cards.kind gains 'referral' at the end. A database that ran 11.0.159
+// before this release has the four values; a new install gets all five from
+// 11.0.159 and skips here. The enum is widened from what is there, never
+// narrowed, NOT NULL and its default kept as read.
+function upgrade_2026_11_0_referral_credit() {
+
+	$kind = install_column_info('gift_cards', 'kind');
+
+	if (!is_array($kind) || (stripos((string) $kind['Type'], "'referral'") !== false)) {
+
+		install_skipped('gift_cards.kind already holds referral');
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $kind['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$values[] = "'referral'";
+
+	$default = ((string) $kind['Default'] !== '') ? (string) $kind['Default'] : 'gift';
+
+	install_modify_column('gift_cards', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Store credit: a customer\'s reward for bringing a friend can be kept as store credit of its own kind.');
+
+}
+
 // The booking e-mails (2026.11.0, 11.0.161; includes/fn/booking_messages.php).
 // Campaign profiles of four new actions mail a booking's customer when it is
 // confirmed, before it starts, when it is moved and when it is cancelled. A
@@ -7822,40 +7856,5 @@ function upgrade_2026_11_0_ws_calls() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
-
-}
-
-
-// A referral's reward as store credit (11.0.245, includes/fn/referral.php):
-// gift_cards.kind gains 'referral' at the end. A database that ran 11.0.159
-// before this release has the four values; a new install gets all five from
-// 11.0.159 and skips here. The enum is widened from what is there, never
-// narrowed, NOT NULL and its default kept as read.
-function upgrade_2026_11_0_referral_credit() {
-
-	$kind = install_column_info('gift_cards', 'kind');
-
-	if (!is_array($kind) || (stripos((string) $kind['Type'], "'referral'") !== false)) {
-
-		install_skipped('gift_cards.kind already holds referral');
-
-		return;
-
-	}
-
-	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $kind['Type'], $matches);
-	$values = array();
-
-	foreach ($matches[1] as $value) {
-		$values[] = "'" . $value . "'";
-	}
-
-	$values[] = "'referral'";
-
-	$default = ((string) $kind['Default'] !== '') ? (string) $kind['Default'] : 'gift';
-
-	install_modify_column('gift_cards', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
-
-	install_note('Store credit: a customer\'s reward for bringing a friend can be kept as store credit of its own kind.');
 
 }
