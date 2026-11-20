@@ -43491,7 +43491,8 @@ const StyleDesigner = (function () {
             ['__address_book_url',      _sdT('Address book page (shop sites; the link drops when there is none)')],
             ['__my_account_wishlist_url', _sdT('Favourites page (shop sites; the link drops when there is none)')],
             ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
-            ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')]
+            ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')],
+            ['__referral_url',          _sdT('Referral link (shop sites; the link drops while the member cannot refer)')]
         ]},
         { label: _sdT('Form Submissions (loop_area)'), tokens: [
             ['form_name',               _sdT('Form name')],
@@ -45073,6 +45074,7 @@ const StyleDesigner = (function () {
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
             out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
+            out.push(['referral',             _sdT('Refer a friend (shop sites; hidden while the referral programme is off)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -46907,6 +46909,31 @@ const StyleDesigner = (function () {
         ])]);
     }
 
+    // pg_referral_account_html() for a member who can refer, with one
+    // reward kept and one taken back.
+    /* @pg-site-output */
+    function _sdAccountReferralHtml() {
+        var link = 'https://example.com/?a=R15-ABCDE12345';
+        var rows = [
+            { friend: 'A. K.', date: _sdDateSample(false), amount: '₺50,00', tone: 'success', label: _sdT('Rewarded') },
+            { friend: 'M. Y.', date: _sdDateSample(false), amount: '₺50,00', tone: 'secondary', label: _sdT('Taken back') }
+        ];
+        return '<div class="pg-sw-referral"><p class="mb-2">'
+            + esc(_sdT('Share your link. When a friend\'s first order is complete, you earn {var:1} in store credit.').replace('{var:1}', '₺50,00'))
+            + '</p><div class="input-group mb-2"><input type="text" class="form-control" value="' + esc(link) + '" readonly>'
+            + '<button type="button" class="btn btn-outline-primary">' + esc(_sdT('Copy')) + '</button></div>'
+            + '<div class="d-flex flex-wrap gap-2 mb-3">' + [_sdT('WhatsApp'), _sdT('E-mail'), _sdT('X'), _sdT('Facebook')].map(function (l) {
+                return '<a href="#" class="btn btn-sm btn-outline-secondary">' + esc(l) + '</a>';
+            }).join('') + '</div>'
+            + '<p class="mb-2">' + esc(_sdT('Rewards earned: {var:1}').replace('{var:1}', '1')) + '<span class="text-body-secondary mx-2">·</span>'
+            + esc(_sdT('Store credit earned: {var:1}').replace('{var:1}', '₺50,00')) + '</p>'
+            + '<div class="list-group pg-sw-referrals">' + rows.map(function (r) {
+                return '<div class="list-group-item d-flex justify-content-between align-items-center gap-2">'
+                    + '<span><span class="fw-semibold">' + esc(r.friend) + '</span><span class="text-body-secondary small ms-2">' + esc(r.date) + '</span></span>'
+                    + '<span><span class="me-2">' + esc(r.amount) + '</span><span class="badge text-bg-' + r.tone + '">' + esc(r.label) + '</span></span></div>';
+            }).join('') + '</div></div>';
+    }
+
     // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
     // in pg_booking_customer_view_rows()' shape.
     /* @pg-site-output */
@@ -47069,6 +47096,7 @@ const StyleDesigner = (function () {
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
         if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
+        if (section === 'referral') return _sdAccountReferralHtml();
         if (section === 'store_credit') {
             var use = function (u) {
                 return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
@@ -47097,7 +47125,8 @@ const StyleDesigner = (function () {
             subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
             store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
             store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.'),
-            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.')
+            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.'),
+            referral: _sdT('The site shows the member\'s referral link with Copy and share links, their referrals and the store credit earned; a member without a completed order, or an affiliate, is told why they cannot refer.')
         };
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
@@ -48397,7 +48426,9 @@ const StyleDesigner = (function () {
             ['has_store_credit', _sdT('The member has store credit or points to convert')],
             ['has_store_credit_cards', _sdT('The member has store credit cards')],
             ['has_subscriptions', _sdT('The member has subscriptions')],
-            ['has_tickets', _sdT('The member has orders with event tickets')]
+            ['has_tickets', _sdT('The member has orders with event tickets')],
+            ['has_referral', _sdT('The referral programme is on for the member')],
+            ['can_refer', _sdT('The member can refer friends (has a completed order, is no affiliate)')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],

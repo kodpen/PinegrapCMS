@@ -311,3 +311,125 @@ function test_referral_mail_wired_after_the_lock()
 	pg_assert_true(($release !== false) && ($mail !== false) && ($mail > $release), 'the mail is sent once the referrer\'s lock is let go');
 	pg_assert_contains("'queue'              => true", $source, 'through the mail queue');
 }
+
+// My Account's referral part (includes/fn/widgets_referral.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_referral.php');
+
+function referral_test_account_facts($changes = array())
+{
+	return array_merge(array(
+		'on'       => true,
+		'ready'    => true,
+		'code'     => pg_referral_code_make(41, referral_test_key()),
+		'referrer' => array('user_id' => 7, 'contact_id' => 41, 'email' => 'a@example.com', 'affiliate_approved' => 0, 'orders' => 1),
+	), $changes);
+}
+
+function test_referral_account_reason()
+{
+	pg_assert_same('ready', pg_referral_account_reason(referral_test_account_facts()), 'a customer with a completed order refers');
+	pg_assert_same('hidden', pg_referral_account_reason(referral_test_account_facts(array('on' => false))), 'programme off: no part');
+	pg_assert_same('hidden', pg_referral_account_reason(referral_test_account_facts(array('ready' => false))), 'upgrade not run: no part');
+	pg_assert_same('hidden', pg_referral_account_reason(referral_test_account_facts(array('code' => ''))), 'no site key or contact: no part');
+	pg_assert_same('hidden', pg_referral_account_reason(referral_test_account_facts(array('referrer' => null))), 'a contact without an account: no part');
+	pg_assert_same('affiliate', pg_referral_account_reason(referral_test_account_facts(array('referrer' => array('affiliate_approved' => 1, 'orders' => 3)))), 'an approved affiliate is told why');
+	pg_assert_same('no_order', pg_referral_account_reason(referral_test_account_facts(array('referrer' => array('affiliate_approved' => 0, 'orders' => 0)))), 'no completed order yet');
+}
+
+function test_referral_account_initials()
+{
+	pg_assert_same('A. K.', pg_referral_initials('ayşe', 'Kaya'), 'first and last name');
+	pg_assert_same('Ş. Ö.', pg_referral_initials(' şule ', 'özdemir'), 'multibyte letters upper-cased');
+	pg_assert_same('M.', pg_referral_initials('Mehmet', ''), 'one name');
+	pg_assert_same('', pg_referral_initials('', '  '), 'no name');
+}
+
+function test_referral_account_share_links()
+{
+	$links = pg_referral_share_links('https://shop.example.com/?a=R15-ABCDEFGHIJ', 'Get an offer & more');
+	$urls = array_column($links, 'url', 'key');
+
+	pg_assert_same(array('whatsapp', 'email', 'x', 'facebook'), array_column($links, 'key'), 'four share links in order');
+	pg_assert_same('https://wa.me/?text=Get%20an%20offer%20%26%20more%20https%3A%2F%2Fshop.example.com%2F%3Fa%3DR15-ABCDEFGHIJ', $urls['whatsapp'], 'WhatsApp text with the link');
+	pg_assert_contains('mailto:?subject=Get%20an%20offer%20%26%20more&body=', $urls['email'], 'e-mail subject');
+	pg_assert_contains('url=https%3A%2F%2Fshop.example.com%2F%3Fa%3DR15-ABCDEFGHIJ', $urls['x'], 'X carries the link');
+	pg_assert_same('https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshop.example.com%2F%3Fa%3DR15-ABCDEFGHIJ', $urls['facebook'], 'Facebook carries the link');
+	pg_assert_same(array(), pg_referral_share_links('', 'x'), 'no link: no share links');
+}
+
+function test_referral_account_view()
+{
+	$money = function ($cents) {
+		return '₺' . number_format($cents / 100, 2, ',', '.');
+	};
+	$rows = array(
+		array('status' => 'paid', 'amount' => 5000, 'created_timestamp' => 1763600000, 'billing_first_name' => 'Ayşe', 'billing_last_name' => 'Kaya'),
+		array('status' => 'ineligible', 'amount' => 5000, 'created_timestamp' => 1763500000, 'billing_first_name' => '', 'billing_last_name' => ''),
+		array('status' => 'paid', 'amount' => 2500, 'created_timestamp' => 0, 'billing_first_name' => 'Can', 'billing_last_name' => 'Er'),
+	);
+	$view = pg_referral_account_view($rows, $money, 'd.m.Y');
+
+	pg_assert_same(3, count($view['rows']), 'every row');
+	pg_assert_same('A. K.', $view['rows'][0]['friend'], 'the friend as initials only');
+	pg_assert_same('A friend', $view['rows'][1]['friend'], 'a friend without a name');
+	pg_assert_same('rewarded', $view['rows'][0]['state'], 'paid is rewarded');
+	pg_assert_same('success', $view['rows'][0]['tone'], 'rewarded is green');
+	pg_assert_same('taken_back', $view['rows'][1]['state'], 'ineligible is taken back');
+	pg_assert_same('Taken back', $view['rows'][1]['state_label'], 'its label');
+	pg_assert_same('₺50,00', $view['rows'][0]['amount_info'], 'the reward through the formatter');
+	pg_assert_same(date('d.m.Y', 1763600000), $view['rows'][0]['date'], 'the date');
+	pg_assert_same('', $view['rows'][2]['date'], 'no date for no timestamp');
+	pg_assert_same(2, $view['rewarded'], 'rewards kept');
+	pg_assert_same(1, $view['taken_back'], 'rewards taken back');
+	pg_assert_same(7500, $view['earned'], 'credit earned counts kept rewards only');
+	pg_assert_same('₺75,00', $view['earned_info'], 'credit earned, formatted');
+}
+
+function test_referral_account_html()
+{
+	$part = array(
+		'reason'        => 'ready',
+		'link'          => 'https://shop.example.com/?a=R15-ABCDEFGHIJ&x="y"',
+		'share'         => pg_referral_share_links('https://shop.example.com/?a=R15-ABCDEFGHIJ', 'Hi'),
+		'reward_info'   => '₺50,00',
+		'smallest_info' => '₺200,00',
+		'view'          => array('rows' => array(), 'rewarded' => 0, 'taken_back' => 0, 'earned' => 0, 'earned_info' => '₺0,00'),
+	);
+	$html = pg_referral_account_html($part);
+
+	pg_assert_contains('value="https://shop.example.com/?a=R15-ABCDEFGHIJ&amp;x=&quot;y&quot;"', $html, 'the link, escaped, in a read-only box');
+	pg_assert_contains('Copy', $html, 'a Copy button');
+	pg_assert_contains('href="https://wa.me/?text=', $html, 'the share links');
+	pg_assert_contains('₺50,00', $html, 'the reward named');
+	pg_assert_contains('₺200,00', $html, 'the smallest order named');
+	pg_assert_contains('No referrals yet.', $html, 'no referral yet');
+
+	$part['view'] = pg_referral_account_view(array(
+		array('status' => 'paid', 'amount' => 5000, 'created_timestamp' => 1763600000, 'billing_first_name' => '<b>A', 'billing_last_name' => 'K'),
+	), function ($c) { return '₺' . ($c / 100); }, 'd.m.Y');
+	$html = pg_referral_account_html($part);
+	pg_assert_contains('&lt;. K.', $html, 'initials escaped');
+	pg_assert_contains('Rewarded', $html, 'the state');
+	pg_assert_true(strpos($html, 'No referrals yet.') === false, 'rows replace the empty note');
+
+	$part['reason'] = 'no_order';
+	$html = pg_referral_account_html($part);
+	pg_assert_contains('once you have a completed order', $html, 'why they cannot refer yet');
+	pg_assert_true(strpos($html, 'wa.me') === false, 'no link or share before they can refer');
+	pg_assert_contains('Rewarded', $html, 'past referrals still listed');
+
+	$part['reason'] = 'affiliate';
+	pg_assert_contains('affiliate link', pg_referral_account_html($part), 'an affiliate is pointed to their affiliate link');
+
+	$part['reason'] = 'hidden';
+	pg_assert_same('', pg_referral_account_html($part), 'hidden: nothing');
+}
+
+function test_referral_account_wired_in_my_account()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php');
+
+	pg_assert_contains("pg_referral_account((int)USER_ID", $source, 'the my account extras read the part');
+	pg_assert_contains("'has_referral' => false", $source, 'the flag has a default');
+	pg_assert_contains("'referral' => ''", $source, 'the section has a default');
+}
