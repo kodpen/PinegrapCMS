@@ -327,7 +327,9 @@ function pg_wishlist_widget_html($tree, $widget_id, $rows, $ctx)
         foreach ($rows as $row) {
             $pid = (int)$row['id'];
             $t = $row_tree;
-            $wl_row_flags = pg_wishlist_widget_row_flags($row, $ctx);
+            // The list's flags hold inside a card too: the editor offers
+            // them on any node of the widget.
+            $wl_row_flags = pg_wishlist_widget_row_flags($row, $ctx) + $wl_flags;
             _eo_apply_visibility_bindings($t, $wl_row_flags);
 
             $form_ids = array(

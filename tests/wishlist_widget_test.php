@@ -281,6 +281,28 @@ function test_wishlist_widget_html_add_to_cart_forms()
 	pg_assert_true(strpos($html, 'oos-badge') > strpos($html, 'Product 12'), 'on its own card');
 }
 
+// A list-wide flag on something inside a saved product's card (a note
+// bound to is_signed_out in the card) is weighed there too: the editor
+// offers every flag of the widget on any node, and only the row's flags
+// were known in a row, so the node never showed.
+function test_wishlist_widget_html_list_flags_in_rows()
+{
+	$n = 'wishlist_widget_test_node';
+	$tree = wishlist_widget_test_tree(array(
+		$n('semantic', array('tag' => 'span', 'cssClass' => 'row-guest-note', 'text' => 'Sign in to keep it', '_bindings' => array('eo_visible_if' => 'is_signed_out'))),
+		$n('semantic', array('tag' => 'span', 'cssClass' => 'row-member-note', 'text' => 'Kept on every device', '_bindings' => array('eo_visible_if' => 'is_signed_in'))),
+	));
+	$rows = array(wishlist_widget_test_row(11), wishlist_widget_test_row(12));
+
+	$html = pg_wishlist_widget_html($tree, 9, $rows, wishlist_widget_test_ctx(array('signed_in' => false)));
+	pg_assert_same(2, substr_count($html, 'row-guest-note'), 'signed out: the note in every card');
+	pg_assert_same(0, substr_count($html, 'row-member-note'), 'signed out: not the member note');
+
+	$html = pg_wishlist_widget_html($tree, 9, $rows, wishlist_widget_test_ctx(array('signed_in' => true)));
+	pg_assert_same(2, substr_count($html, 'row-member-note'), 'signed in: the member note in every card');
+	pg_assert_same(0, substr_count($html, 'row-guest-note'), 'signed in: not the guest note');
+}
+
 // The forms sit after the widget, never inside a card, a list or a table.
 function test_wishlist_widget_html_forms_after_the_cards()
 {
