@@ -10149,6 +10149,7 @@ const StyleDesigner = (function () {
         applyIssueBadges(_redrawn);
         scheduleValidation();
         _sdLinkMarksSoon();
+        _sdTabLinksStale();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
     }
@@ -80653,7 +80654,7 @@ const StyleDesigner = (function () {
                (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
                ' data-key="' + esc(p.key) + '"' +
                (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
-               ' role="tab" tabindex="0" title="' + esc(title) + '">' +
+               ' role="tab" tabindex="0" data-title="' + esc(title) + '" title="' + esc(_sdTabLinksTitle(title, p.key, locked)) + '">' +
                '<span class="sd-tab-dot" aria-hidden="true"></span>' +
                st.before.map(pick).join('') +
                '<span class="sd-tab-name">' + esc(name) + '</span>' +
@@ -80716,6 +80717,7 @@ const StyleDesigner = (function () {
         // Every path that adds, removes or moves a tab ends here, so this is
         // where a group's tabs are pulled together and an empty group goes.
         _pgTabsNormalizeGroups();
+        _sdTabLinksStale();
         var editable = _pgTabLayoutEditable();
         var grouped = Object.keys(_pgTabGroups).length > 0;
         var open = grouped ? _pgTabStripOpenGroup(_pages, _activeKey) : '';
@@ -81191,6 +81193,11 @@ const StyleDesigner = (function () {
                 var tab = e.target.closest('.sd-tab');
                 if (tab && tab.dataset.key && tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
             });
+            // A tab's tip carries its link counts: counted once the pointer
+            // or the focus rests on a tab.
+            var counts = function (e) { if (e.target.closest('.sd-tab')) _sdTabLinksSoon(); };
+            list.addEventListener('mouseover', counts);
+            list.addEventListener('focusin', counts);
             // Double-click on a tab name renames it in place.
             list.addEventListener('dblclick', function (e) {
                 if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
@@ -90634,6 +90641,113 @@ const StyleDesigner = (function () {
                 setCanvasZoom(canvasZoom + (e.deltaY < 0 ? 0.1 : -0.1));
             }
         }, { passive: false });
+    }
+
+    // ── Link counts on a page tab ─────────────────────────────────────
+    // A page tab's tip says how many links the page has, how many lead to
+    // it and how many of its own are broken, as the Prototype view's links
+    // panel counts them: PGProtoHotspots.design() over every tab, the
+    // prototype_map read, mark(), tabCounts(). Nothing else walks the
+    // trees or asks the server. Counted when the pointer or the focus rests
+    // on a tab, again only after a redraw or a change of the strip, or once
+    // the answer is older than `ttl`. Without the read's answer the tip
+    // shows no counts: a link is never called broken without it. An e-mail
+    // design (no Prototype view), the component editor and a page without
+    // content rights show none.
+    // pause: ms the pointer or the focus rests before counting; ttl: ms an
+    // answer counts for.
+    var SD_TAB_LINKS = { pause: 250, ttl: 60000 };
+    // counts: tabCounts() by tab key, null before an answer; dirty: a
+    // redraw since the last count; sig, read, at: the last answer, its
+    // request and when it came; seq: the last run (a later one drops an
+    // earlier answer); asking: the run on its way, 0 for none.
+    var _sdTabLinks = { timer: 0, counts: null, dirty: true, sig: '', read: null, at: 0, seq: 0, asking: 0 };
+
+    function _sdTabLinksStale() {
+        _sdTabLinks.dirty = true;
+    }
+
+    function _sdTabLinksSoon() {
+        clearTimeout(_sdTabLinks.timer);
+        _sdTabLinks.timer = setTimeout(_sdTabLinksRun, SD_TAB_LINKS.pause);
+    }
+
+    function _sdTabLinksOff() {
+        return !window.PGProtoHotspots || typeof window.PGProtoHotspots.tabCounts !== 'function' ||
+            document.body.classList.contains('sd-email-design') || _sdComponentOnly();
+    }
+
+    function _sdTabLinksRun() {
+        var S = _sdTabLinks;
+        var H = window.PGProtoHotspots;
+        if (_sdTabLinksOff()) return;
+        var fresh = !!S.read && Date.now() - S.at < SD_TAB_LINKS.ttl;
+        if (!S.dirty && (S.asking || (S.counts && fresh))) return;
+        S.dirty = false;
+        var seq = S.asking = ++S.seq;
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs, _sharedCache);
+        var missing = designed.shared.filter(function (s) { return !s.loaded; }).map(function (s) { return s.id; });
+        var count = function (read) {
+            S.asking = 0;
+            S.counts = (read === null) ? null : H.tabCounts(H.mark(designed, read, tabs));
+            // A failed read is asked again on the next rest.
+            if (read === null) S.dirty = true;
+            _sdTabLinksPaint();
+        };
+        var ask = function () {
+            if (seq !== S.seq) return;
+            designed = H.design(tabs, _sharedCache);
+            var request = designed.request;
+            var sig = JSON.stringify(request);
+            if (!request.hrefs.length && !request.page_ids.length && !request.menus.length && !request.regions.length) {
+                count({});
+                return;
+            }
+            if (S.read && S.sig === sig && Date.now() - S.at < SD_TAB_LINKS.ttl) {
+                count(S.read);
+                return;
+            }
+            _pgApiPost('prototype_map', request).then(function (read) {
+                if (seq !== S.seq) return;
+                if (!read || read.status !== 'success') {
+                    count(null);
+                    return;
+                }
+                S.sig = sig;
+                S.read = read;
+                S.at = Date.now();
+                count(read);
+            }, function () {
+                if (seq === S.seq) count(null);
+            });
+        };
+        if (missing.length) prefetchShared(missing, ask);
+        else ask();
+    }
+
+    // The strip's tabs get their tips again in place: the strip is not
+    // drawn again for a count.
+    function _sdTabLinksPaint() {
+        var list = document.getElementById('sd-tabs-list');
+        if (!list) return;
+        Array.prototype.forEach.call(list.querySelectorAll('.sd-tab[data-key][data-title]'), function (el) {
+            el.title = _sdTabLinksTitle(el.getAttribute('data-title'), el.getAttribute('data-key'), el.classList.contains('sd-tab-locked'));
+        });
+    }
+
+    // A tab's tip: its name and marks (`base`), then one line per count.
+    function _sdTabLinksTitle(base, key, locked) {
+        var all = _sdTabLinks.counts;
+        var c = (!locked && all && Object.prototype.hasOwnProperty.call(all, String(key))) ? all[String(key)] : null;
+        if (!c || _sdTabLinksOff()) return base;
+        return [base, _sdTabLinksWord(c.out, 'out'), _sdTabLinksWord(c['in'], 'in'), _sdTabLinksWord(c.broken, 'broken')].join('\n');
+    }
+
+    function _sdTabLinksWord(n, kind) {
+        if (kind === 'out') return n === 1 ? _sdT('1 outgoing link') : (n ? _sdT('{var:1} outgoing links', n) : _sdT('No outgoing links'));
+        if (kind === 'in') return n === 1 ? _sdT('1 incoming link') : (n ? _sdT('{var:1} incoming links', n) : _sdT('No incoming links'));
+        return n === 1 ? _sdT('1 broken link') : (n ? _sdT('{var:1} broken links', n) : _sdT('No broken links'));
     }
 
     // ========================= UTIL =========================

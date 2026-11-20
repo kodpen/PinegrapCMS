@@ -12,6 +12,7 @@ description: Link marks on the editor canvas: red on a broken link, amber on one
 ## Where does the data come from?
 - The Prototype view's own pipeline over the open tab: `PGProtoHotspots.design()` with `_sharedCache` (a shared component is marked in each place it is drawn), `mark()`, `canvasMarks(marked, known)`. No second walk and no endpoint: the `prototype_map` read (designer/prototype-map-read.md), asked with `canvasRequest()`: the addresses but `''` and `#`, the kept page ids, no menus or regions.
 - `known` false (no answer yet, a failed read): only the empty links are marked; a link is never called broken without the read.
+- A page tab's link counts (designer/page-tab-link-counts.md) read the same pipeline over every tab, with menus and regions; the two keep their own answers.
 
 ## When is it read and drawn?
 - `render()` calls `_sdLinkMarksSoon()`; the run waits 600 ms after the last redraw (`SD_LINK_MARKS`). One read per request (its JSON), kept 60 s, at most 6 answers; a request on its way is not asked again; an answer for a request the tab no longer has is dropped. A page with no address asks nothing.
@@ -30,4 +31,4 @@ description: Link marks on the editor canvas: red on a broken link, amber on one
 - `tests/proto_hotspots_test.php` (`test_proto_hotspots_canvas_marks`): which links, why, the request. `tests/designer_canvas_link_marks_test.php`: the run, the place, the field order, the hooks and the CSS.
 
 ## Which PR?
-- DX1 of plan designer-next, PR #10469 (2026-11-20). Before it a broken link showed only in the Prototype view.
+- DX1, PR #10469 (2026-11-20). Before it a broken link showed only in the Prototype view.
