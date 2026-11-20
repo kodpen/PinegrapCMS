@@ -29,7 +29,7 @@ description: Turnstile and hCaptcha beside the built-in maths question - where t
 
 ## Settings?
 - `pg_captcha_settings_decide()` (pure) -> `pg_captcha_settings_check()` before the config row is written (siteverify with a made-up token; `pg_captcha_settings_answer()`, pure: a key error is marked; no answer keeps the keys with `enabled` 0, so an unreachable provider never refuses every form) -> `pg_captcha_settings_save()` after. `pg_captcha_settings_refusal()` also refuses without cURL. Choosing one provider switches the others off.
-- Keys typed on the provider's page of Connections since #NNNN. A post without a provider's key fields only switches it: on with its stored keys (`enable`, asked first), or off.
+- Keys typed on the provider's page of Connections since #10785. A post without a provider's key fields only switches it: on with its stored keys (`enable`, asked first), or off.
 - Tried against both endpoints with their test keys: Turnstile names a wrong secret (`invalid-input-secret`) even for a made-up token; hCaptcha judges the token first (`invalid-input-response`), so a wrong hCaptcha secret shows up only on the first real submission (refused and logged). 
 
 Related: docs/memory/waf/form-submission-checks.md, docs/memory/designer/custom-form-options-and-rules.md

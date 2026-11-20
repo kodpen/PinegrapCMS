@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Where is Sign in with Apple's application typed?
-- On `connections.php?service=signin_apple` (CX11f #NNNN, plan `plans/connections-merges-build.md`), no longer on the "Sign in with Google, Microsoft and Apple" card.
+- On `connections.php?service=signin_apple` (CX11f #10785, plan `plans/connections-merges-build.md`), no longer on the "Sign in with Google, Microsoft and Apple" card.
 - "Connection details": Apple's setup steps, the Return URL, Services ID, Team ID, Key ID, "Private key (.p8)" (never drawn back, "Stored. Leave empty to keep it."), "Save", "Open the Apple console". Status has "Disconnect" (`apple_remove`, `pg_connect_app_remove('apple')`) while a row is stored.
 - `pg_signin_apple_app_decide()` (`includes/fn/signin.php`, tested) holds the checks the card ran; a refused field writes nothing. Saved as before: `connect_apps` row `apple`, the key through `pg_signin_pem_private_key()`.
 - "Where it is used": the sign-in card, with whether its switch is on.
