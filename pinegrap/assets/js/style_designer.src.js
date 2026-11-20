@@ -11919,6 +11919,7 @@ const StyleDesigner = (function () {
         _sdTextInnerMark();
         // Compute the toolbar flip once the layout has settled
         requestAnimationFrame(function() { adjustCanvasToolbars(); updateIconResizeHandle(); });
+        _sdClicksDrawn();
     }
 
     // Boot Bootstrap Tooltip on any [data-bs-toggle="tooltip"] inside the canvas iframe. Idempotent:
@@ -92252,6 +92253,109 @@ const StyleDesigner = (function () {
         }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
     }
 
+    // ── The "Clicks" layer ────────────────────────────────────────────────
+    // The part 'clicks' (assets/js/style_designer_clicks.js), handed over
+    // with sdDesign.clicks only to whoever may open Visitors. Its toolbar
+    // toggle opens a panel over the canvas' right edge and the part's
+    // badges and tenth lines on the canvas; each canvas draw puts them back,
+    // and a draw of another tab asks for that page's figures.
+    var _sdClicks = { on: false, panel: null, key: null, reload: false, soon: 0 };
+
+    function _sdClicksPartInit() {
+        if (!_design || !_design.clicks || !_sdPartUrls('clicks')) return;
+        var bar = document.querySelector('.sd-toolbar-actions');
+        if (!bar || document.getElementById('sd-clicks-btn')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'sd-clicks-btn';
+        btn.className = 'sd-icon-btn sd-clicks-btn';
+        btn.title = _sdT('Clicks on this page\'s links and buttons');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.innerHTML = '<span class="bi bi-hand-index" aria-hidden="true"></span><span class="sd-clicks-btn-txt">' + esc(_sdT('Clicks')) + '</span>';
+        var undo = document.getElementById('sd-main-undo');
+        bar.insertBefore(btn, (undo && undo.parentNode === bar) ? undo : null);
+        btn.addEventListener('click', function () { _sdClicksToggle(!_sdClicks.on); });
+    }
+
+    // The panel beside the canvas the part draws in (host.panel).
+    function _sdClicksPanel() {
+        if (_sdClicks.panel) return _sdClicks.panel;
+        var wrap = document.querySelector('.sd-canvas-wrapper');
+        if (!wrap) return null;
+        var box = document.createElement('aside');
+        box.className = 'sd-clicks-panel';
+        box.setAttribute('aria-label', _sdT('Clicks'));
+        box.innerHTML = '<div class="sd-clicks-head"><span class="bi bi-hand-index" aria-hidden="true"></span><span class="sd-clicks-title">' + esc(_sdT('Clicks')) + '</span>'
+            + '<button type="button" class="sd-icon-btn sd-clicks-close" title="' + esc(_sdT('Close')) + '" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button></div>'
+            + '<div class="sd-clicks-body"></div>';
+        box.querySelector('.sd-clicks-close').addEventListener('click', function () { _sdClicksToggle(false); });
+        wrap.appendChild(box);
+        _sdClicks.panel = box;
+        return box;
+    }
+
+    function _sdClicksToggle(on) {
+        var btn = document.getElementById('sd-clicks-btn');
+        _sdClicks.on = !!on;
+        if (btn) {
+            btn.classList.toggle('active', _sdClicks.on);
+            btn.setAttribute('aria-pressed', _sdClicks.on ? 'true' : 'false');
+        }
+        clearTimeout(_sdClicks.soon);
+        if (!_sdClicks.on) {
+            if (_sdClicks.panel) _sdClicks.panel.hidden = true;
+            if (_sdPartLoaded('clicks')) _sdPartCall('clicks', 'close', []).catch(function () { /* nothing left open */ });
+            return;
+        }
+        var box = _sdClicksPanel();
+        if (!box) return;
+        box.hidden = false;
+        _sdClicksCanvasStyle();
+        _sdClicks.key = _activeKey;
+        _sdPartCall('clicks', 'open', [{ panel: box.querySelector('.sd-clicks-body') }]).then(function (opened) {
+            if (opened === false) _sdClicksToggle(false);
+        }, function () {
+            _sdClicksToggle(false);
+            _sdPartFailed();
+        });
+    }
+
+    // After a canvas draw: the layer drawn again, or the figures asked
+    // again when the canvas now shows another tab. Soon after the last draw,
+    // once the page's layout has settled.
+    function _sdClicksDrawn() {
+        if (!_sdClicks.on || !_sdPartLoaded('clicks')) return;
+        if (_sdClicks.key !== _activeKey) {
+            _sdClicks.key = _activeKey;
+            _sdClicks.reload = true;
+        }
+        _sdClicksCanvasStyle();
+        clearTimeout(_sdClicks.soon);
+        _sdClicks.soon = setTimeout(function () {
+            var method = _sdClicks.reload ? 'reload' : 'refresh';
+            _sdClicks.reload = false;
+            if (_sdClicks.on) _sdPartCall('clicks', method, []).catch(function () { /* drawn again on the next draw */ });
+        }, 150);
+    }
+
+    // The badges and lines live in the canvas document, which the editor's
+    // stylesheet does not reach: their look goes in with them, once a
+    // document.
+    /* @pg-site-output */
+    function _sdClicksCanvasStyle() {
+        var doc = canvasDoc;
+        if (!doc || !doc.head || doc.getElementById('sd-clicks-style')) return;
+        var st = doc.createElement('style');
+        st.id = 'sd-clicks-style';
+        st.textContent = '#sd-clicks-layer .sd-clicks-badge{display:inline-block;box-sizing:border-box;min-width:28px;padding:0 6px;border-radius:9px;'
+            + 'background:#d9480f;color:#fff;font:600 11px/18px system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;white-space:nowrap;'
+            + 'box-shadow:0 1px 3px rgba(0,0,0,.35);letter-spacing:0;text-transform:none}'
+            + '#sd-clicks-layer .sd-clicks-line{box-sizing:border-box;height:0;border-top:1px dashed rgba(217,72,15,.85);padding:0 8px;overflow:visible;'
+            + 'color:#d9480f;font:600 11px/18px system-ui,-apple-system,"Segoe UI",sans-serif;text-align:right;white-space:nowrap;'
+            + 'text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;letter-spacing:0;text-transform:none}';
+        doc.head.appendChild(st);
+    }
+
     // What the assistant panel (assets/js/designer_ai.js) reads and does in
     // the editor: the active tab's tree, page and selection, and one way to
     // put a proposed tree in place of the tab's own - as a single undo step,
@@ -92340,6 +92444,7 @@ const StyleDesigner = (function () {
                 _updateSaveButtonState();
             }
             _sdAiPartInit();
+            _sdClicksPartInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },

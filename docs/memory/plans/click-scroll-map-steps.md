@@ -25,7 +25,7 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
 
 - CM4 (M) after CM3: the designer's layer, cut by files because the core files are held by other PRs.
   - CM4a: new files only. Done in #10056. The part `clicks`, `assets/js/style_designer_clicks.js`: the twin fold and the canvas match (C21), badges, tenth lines, device choice, the side list of elements the canvas does not hold (C22), the empty state with its button through `visitors_clicks_switch.php` (CM3's saver, C17), variants not told apart (C23). `tests/designer_clicks_part_test.php`; `visitors/page-clicks-designer-layer.md`.
-  - CM4b, when no open PR holds them: `style_designer.src.js` (the "Clicks" toggle, the part's stub and the kit names listed in `visitors/page-clicks-designer-layer.md`), `includes/fn/output.php` (`pg_js_bundles()`, `pg_designer_parts()`), `includes/panel/designer.php` (the one read: `sdDesign.clicks`, its shape in the same file), `style_designer.css` (the styles listed there). Pictures to the owner: empty state, badges and lines on a page with data, the side list, a device choice.
+  - CM4b: the toggle, the stub, `pg_js_bundles()` and `pg_designer_parts()`, the read `page_clicks` in `includes/panel/designer.php`, `sdDesign.clicks` in `includes/designer_screen.php`, the panel styles. Done in #10715 (`visitors/page-clicks-designer-layer.md`). No pictures (`workflow/look-pictures-none.md`).
   - The switch through CM3's reader and saver in `page_clicks.php` only (message 6222).
 
 - CM5 (S) close-out: every C number checked against the code with its PR; `visitors/page-clicks.md` and `ui/visitors-clicks-section.md`; this plan's five files deleted and its line in `plans/website-features.md` removed.
