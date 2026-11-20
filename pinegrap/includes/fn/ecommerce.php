@@ -11897,6 +11897,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // order cancelled with the credit kept. Once, like the steps above.
     pg_credit_points_order_cancelled($order);
 
+    // ── Take back a referral's reward ──────────────────────────────────
+    // The whole reward, once: its row moves from paid to ineligible.
+    pg_referral_order_cancelled($order_id);
+
     // ── Take back the folder access the order's lines granted ──────────
     // Once, like the steps above; a restore grants it again.
     pg_order_folder_access_cancelled($order);
@@ -12349,6 +12353,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     if ($commission_line !== '') {
         log_activity($commission_line);
     }
+
+    // A referral's reward the cancellation took back.
+    pg_referral_order_restored($order_id);
 
     // Its reviews count again.
     pg_review_refresh_order($order_id);

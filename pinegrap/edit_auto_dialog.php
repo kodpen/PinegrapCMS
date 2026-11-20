@@ -92,6 +92,11 @@ if (!$_POST) {
         foreach (pg_auto_dialog_open_settings($auto_dialog) as $open_field => $open_value) {
             $liveform->assign_field_value($open_field, (string) $open_value);
         }
+
+        // What it shows: no component reads as none chosen.
+        $content = pg_auto_dialog_content($auto_dialog);
+        $liveform->assign_field_value('content', $content['content']);
+        $liveform->assign_field_value('component_id', ($content['component_id'] > 0) ? (string) $content['component_id'] : '');
     }
 
     $screen = 'edit';
@@ -149,7 +154,7 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF'] . '?id=' . $id);
         }
 
-        pg_auto_dialog_save($id, pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform)) or output_error('Query failed.');
+        pg_auto_dialog_save($id, pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform), pg_auto_dialog_form_content_values($liveform, pg_auto_dialog_form_content_asked())) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
         $liveform->remove_form();

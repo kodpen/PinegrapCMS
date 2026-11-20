@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-80
-description: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups and a layer attached to another; the phone's Workspace writing box with the field on top
+description: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,4 +16,17 @@ description: Decisions list, product part 80 (2026-11-20 on): Design Canvas laye
 - With a picture of the narrow field: "workspace yazma alanı mobilde daralıyor ve gerçekten zorlayıcı oluyor. bunun yerine yazı alanı üstte alt taraf kanal araçları olabilir. (masaüstünde zaten o şekilde.)"
 - It replaces the phone's one row with the tools switch (`workspace/workspace-channel-composer.md`): the field takes the full width, the tools row with Send sits under it. His words of 2026-10-31 stay: the box rides on the keyboard and the messages keep the screen.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/image-editor-overview.md, docs/memory/workspace/workspace-channel-composer.md
+## Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
+- Asked of a personalised product (photo mug, printed shirt, invitation, logo print), where the file is asked for by e-mail after the order today.
+- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız resim", "Hayır, gerek yok".
+- The field's settings choose the allowed types; cart, order, order e-mail and API show the file. `plans/product-form-uploads.md`.
+
+## When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
+- His answer: "30 gün sonra": the general job deletes the uploaded files of a cart that never became an order 30 days after the cart's last touch; an order's files are never swept.
+- Not chosen: "7 gün sonra", "Silinmesin".
+
+## Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
+- Asked: a nightly plan per product from the sales of every channel without the out-of-stock days, the season from last year, the supplier's measured lead time; days left, run-out day, the quantity to order net of open purchase orders, dead stock after 90 days at average cost; a press per supplier opening a purchase order a person checks and sends; the bell; API and MCP.
+- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `plans/stock-planning.md`.
+
+Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/image-editor-overview.md, docs/memory/workspace/workspace-channel-composer.md, docs/memory/commerce/cart-product-form-file-field.md

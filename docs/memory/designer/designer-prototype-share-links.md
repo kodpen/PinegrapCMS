@@ -7,6 +7,7 @@ module: prototype_links
 ## What is a share link?
 - A `prototype_links` row (`includes/fn/prototype_links.php`): design, start page (0 or no longer a draft: the first draft), token hash (unique), token sealed with the site key (`pg_proto_link_seal()`) so the address shows again, hint (6 characters). Address `prototype.php?link=<token>`; not `token` (validate_token_field() reads it). Drafts as last saved, scheduled too.
 - Revoked with its design: every style delete path calls `pg_proto_links_revoke_design()` (a later design may get the id: InnoDB on MySQL 5.7 after a restart).
+- A link may share a release bundle's preview instead (`bundle_id`): release-bundle-share-link.md.
 
 ## Who makes, lists and revokes them?
 - Roles 0-1: tab menu "Share prototype" (`_pgPrototypeShareDialog()`); designer sub-actions `prototype_link*` (not in `$content_ok`); API `GET|POST /design/designs/{id}/prototype-links`, `POST …/{link_id}/revoke` (designer owner, dry run, `'mcp' => false`). The API gives the address on create (and its replay) only; the password untrimmed (`api_design_prototype_link_password()`). A list, boolean, NUL byte or spaces alone are refused.

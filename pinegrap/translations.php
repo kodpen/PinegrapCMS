@@ -561,7 +561,7 @@ foreach ($rows as $row) {
     // The review toggle is named by what pressing it does: a reviewed row
     // goes back to not reviewed.
     $review_label = ($state === 'reviewed') ? lang('Mark as not reviewed') : lang('Mark as reviewed');
-    $state_class = $has ? (($state === 'reviewed') ? 'theme-success' : 'theme-warning') : 'theme-secondary';
+    $state_class = $has ? (($state === 'reviewed') ? 'pg-tone-teal' : 'pg-tone-amber') : 'pg-tone-gray';
     $engine_label = ($has && isset($engine_labels[$row['engine']])) ? $engine_labels[$row['engine']] : ($has ? (string) $row['engine'] : '');
     $row_owner = isset($index_row_owners[(int) $row['id']]) ? $index_row_owners[(int) $row['id']] : null;
     $row_owner_name = $row_owner ? (isset($index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']]) ? $index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']] : '') : '';
@@ -573,15 +573,15 @@ foreach ($rows as $row) {
                         // A reviewed translation is not offered for "keep as
                         // in the source": the action leaves it as it is.
                         . (($state !== 'reviewed') ? '<input class="check flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0 pg-tr-pick-spacer" style="width: 1em;"></span>') . '
-                        <div class="flex-grow-1" style="min-width: 0;">
+                        <div class="flex-grow-1 min-w-0">
                         <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
                         <div class="mt-1 small fg-secondary">'
-                            . ($row_owner ? '<span class="badge badge-subtle theme-secondary border me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
+                            . ($row_owner ? '<span class="pg-pill pg-tone-gray me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
                             . implode('', array_map(function ($picture) use ($open_picture_label) {
                                 return '<button type="button" class="badge badge-subtle theme-secondary border me-1 pg-tr-picture" data-pg-image-edit="' . h($picture['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-image me-1" aria-hidden="true"></i>' . h($picture['name']) . '<span class="visually-hidden"> · ' . h($open_picture_label) . '</span></button>';
                             }, isset($row_pictures[(int) $row['id']]) ? $row_pictures[(int) $row['id']] : array()))
-                            . (($row['kind'] === 'seo') ? '<span class="badge badge-subtle theme-secondary border me-1">SEO</span>' : '')
-                            . (($row['format'] === 'inline') ? '<span class="badge badge-subtle theme-secondary border me-1">HTML</span>' : '')
+                            . (($row['kind'] === 'seo') ? '<span class="pg-pill pg-tone-gray me-1">SEO</span>' : '')
+                            . (($row['format'] === 'inline') ? '<span class="pg-pill pg-tone-gray me-1">HTML</span>' : '')
                             . '<span class="font-monospace opacity-50">' . h(substr($row['hash'], 0, 8)) . '</span>'
                         . '</div>
                         </div>
@@ -592,13 +592,13 @@ foreach ($rows as $row) {
                     <div class="col-12 xl:col-2">
                         <div class="d-flex xl:flex-column align-items-start gap-3">
                             <div class="pg-tr-state">
-                                <span class="badge ' . $state_class . ' pg-tr-state-badge">' . h($state_label) . '</span>
-                                <span class="small fg-secondary pg-tr-engine">' . h($engine_label) . '</span>'
+                                <span class="pg-pill ' . $state_class . ' pg-tr-state-badge">' . h($state_label) . '</span>
+                                <span class="pg-text-meta pg-tr-engine">' . h($engine_label) . '</span>'
                                 . '<span class="badge theme-danger pg-tr-suspicious' . (($has && ((int) $row['suspicious'] === 1)) ? '' : ' d-none') . '" title="' . h($suspicious_text) . '"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span class="visually-hidden">' . h($suspicious_text) . '</span></span>' . '
                             </div>
-                            <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline theme-secondary pg-tr-save" title="' . h(lang('Save')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"><i class="bi bi-check-lg" aria-hidden="true"></i> ' . lang('Save') . '</button>
-                                <button type="button" class="btn btn-outline theme-secondary pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-save" title="' . h(lang('Save')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"><i class="bi bi-check-lg" aria-hidden="true"></i>' . lang('Save') . '</button>
+                                <button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
                             </div>
                         </div>
                     </div>
@@ -671,7 +671,7 @@ foreach ($jobs as $job) {
     }
 
     $output_jobs .= '<div class="d-flex align-items-center gap-3 py-3 border-top small" data-job-id="' . (int) $job['id'] . '">'
-        . '<span class="badge ' . (in_array($job['status'], array('done'), true) ? 'theme-success' : (in_array($job['status'], array('failed', 'cancelled'), true) ? 'theme-danger' : 'theme-warning')) . '">' . h(isset($status_labels[$job['status']]) ? $status_labels[$job['status']] : $job['status']) . '</span>'
+        . '<span class="pg-pill ' . (in_array($job['status'], array('done'), true) ? 'pg-tone-teal' : (in_array($job['status'], array('failed', 'cancelled'), true) ? 'pg-tone-rose' : 'pg-tone-amber')) . '">' . h(isset($status_labels[$job['status']]) ? $status_labels[$job['status']] : $job['status']) . '</span>'
         . '<span class="flex-grow-1 text-truncate">' . h(isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : $job['engine']) . ' · ' . h($job_scope) . '</span>'
         . '<span class="fg-secondary">' . (int) $job['done_count'] . '/' . (int) $job['total'] . (((int) $job['failed_count'] > 0) ? ' <span class="fg-danger">(' . (int) $job['failed_count'] . ')</span>' : '') . '</span>'
         . '<span class="fg-secondary">' . get_relative_time(array('timestamp' => (int) $job['created_at'])) . '</span>'
@@ -698,20 +698,20 @@ foreach ($glossary as $term) {
         . '<div class="flex-grow-1 text-break">'
         . '<span class="fw-semibold"' . $text_lang($source) . '>' . h($term['term']) . '</span>'
         . (((int) $term['keep'] === 1)
-            ? ' <span class="badge theme-secondary fw-normal">' . lang('keep as written') . '</span>'
+            ? ' <span class="pg-pill pg-tone-gray">' . lang('keep as written') . '</span>'
             : ' <span class="fg-secondary">→</span> <span' . $text_lang($language) . '>' . h($term['translation']) . '</span>')
-        . ($for_all ? ' <span class="badge badge-subtle theme-secondary fw-normal">' . lang('all languages') . '</span>' : '')
-        . (((int) $term['case_sensitive'] === 1) ? ' <span class="badge badge-subtle theme-secondary fw-normal font-monospace">Aa</span>' : '')
+        . ($for_all ? ' <span class="pg-pill pg-tone-gray">' . lang('all languages') . '</span>' : '')
+        . (((int) $term['case_sensitive'] === 1) ? ' <span class="pg-pill pg-tone-gray font-monospace">Aa</span>' : '')
         . (($term['note'] !== '') ? '<div class="fg-secondary">' . h($term['note']) . '</div>' : '')
         . '</div>'
-        . '<button type="button" class="btn btn-sm btn-text theme-secondary btn-icon pg-tr-term-edit" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>'
+        . '<button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-term-edit" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>'
         . '<form method="post" action="translations_action.php" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('Remove this term from the glossary?'))) . ');">'
         . '<input type="hidden" name="action" value="glossary_delete"/>'
         . '<input type="hidden" name="language" value="' . h($language) . '"/>'
         . $view_fields
         . '<input type="hidden" name="id" value="' . (int) $term['id'] . '"/>'
         . get_token_field()
-        . '<button type="submit" class="btn btn-sm btn-text theme-secondary btn-icon fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+        . '<button type="submit" class="pg-icon-button pg-icon-button-sm fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
         . '</form>'
         . '</div>';
 }
@@ -816,8 +816,8 @@ $output_bulk = $accept_offered ? '<div class="d-flex flex-wrap align-items-cente
                                 <input class="check pg-tr-pick-all" type="checkbox" id="pg_tr_pick_all"/>
                                 <label class="small" for="pg_tr_pick_all">' . lang('Select all on this page') . '</label>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" id="pg_tr_accept_source" disabled="disabled" data-bs-toggle="tooltip" title="' . h(lang('A name, a code, a word that reads the same in both languages: the source text is approved as the translation')) . '">
-                                <i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . ' <span class="opacity-75 pg-tr-pick-count">0</span>
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover" id="pg_tr_accept_source" disabled="disabled" data-bs-toggle="tooltip" title="' . h(lang('A name, a code, a word that reads the same in both languages: the source text is approved as the translation')) . '">
+                                <i class="bi bi-check2-square" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . ' <span class="opacity-75 pg-tr-pick-count">0</span>
                             </button>
                         </div>' : '';
 
@@ -885,10 +885,10 @@ echo pg_page_shell(array(
     <style>@layer custom {
     /* The source text is read, the translation is typed: the source gets the
        quiet treatment and keeps the line breaks of a multi-line text. */
-    .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: .9rem; }
-    .pg-tr-inline { font-family: var(--pg-font-mono); font-size: .82rem; }
-    .pg-tr-target { font-size: .9rem; field-sizing: content; min-height: 3.5rem; max-height: 24rem; }
-    .pg-tr-row.pg-tr-dirty .pg-tr-save { --bs-btn-color: var(--pg-primary); --bs-btn-border-color: var(--pg-primary); }
+    .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: var(--pg-text-base); }
+    .pg-tr-inline { font-family: var(--pg-font-mono); font-size: var(--pg-text-2); }
+    .pg-tr-target { font-size: var(--pg-text-base); field-sizing: content; min-height: 3.5rem; max-height: 24rem; }
+    .pg-tr-row.pg-tr-dirty .pg-tr-save { color: var(--pg-accent); box-shadow: inset 0 0 0 1px var(--pg-accent); }
     .pg-tr-pages { max-height: calc(100vh - 16rem); overflow-y: auto; }
     .pg-tr-progress { display: none; }
     .pg-tr-progress.show { display: block; }
@@ -945,43 +945,39 @@ echo pg_page_shell(array(
                     <div class="pg-tr-progress-text small"></div>
                     <div class="progress mt-1" style="height: 4px;"><div class="progress-bar pg-tr-progress-bar" style="width: 0%"></div></div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline theme-secondary pg-tr-cancel">' . lang('Stop') . '</button>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-cancel">' . lang('Stop') . '</button>
             </div>
         </div>
         <div class="row g-5">
             <div class="col-12 lg:col-4 2xl:col-3">
                 <div class="card mb-5">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Pages') . '</span>
-                        <span class="small fg-secondary"><span class="pg-tr-reviewed-total">' . (int) $site_stats['reviewed'] . '</span> ' . lang('reviewed') . '</span>
+                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
+                        <h2 class="pg-title-section mb-0">' . lang('Pages') . '</h2>
+                        <span class="pg-text-2"><span class="pg-tr-reviewed-total">' . (int) $site_stats['reviewed'] . '</span> ' . lang('reviewed') . '</span>
                     </div>
                     <div class="list-group list-group-flush pg-tr-pages">' . $output_pages . '</div>
                 </div>' . (($output_groups !== '') ? '
                 <div class="card mb-5">
-                    <div class="card-header">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Other texts') . '</span>
-                    </div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Other texts') . '</h2>
                     <div class="list-group list-group-flush">' . $output_groups . '</div>
                 </div>' : '') . '
                 <div class="card mb-5">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Recent updates') . '</span>
-                    </div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Recent updates') . '</h2>
                     <div class="card-body py-3" id="pg_tr_jobs">' . $output_jobs . '</div>
                 </div>
                 <div class="card mb-5" id="pg_tr_glossary">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Glossary') . '</span>
-                        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add a term') . '</button>
+                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
+                        <h2 class="pg-title-section mb-0">' . lang('Glossary') . '</h2>
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a term') . '</button>
                     </div>
                     <div class="card-body py-3">' . $output_glossary . '</div>
                 </div>
             </div>
             <div class="col-12 lg:col-8 2xl:col-9">
                 <div class="card mb-5">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</span>
-                        <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
+                    <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <h2 class="pg-title-section mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</h2>
+                        <span class="pg-text-2">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
                     <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
                         . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
@@ -1004,8 +1000,8 @@ echo pg_page_shell(array(
                     <div class="dialog-body">
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_import_file">' . lang('CSV file') . '</label>
-                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv" required="required"/>
-                            ' . pg_upload_limit_hint() . '
+                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv,' . PG_SHEET_IMPORT_ACCEPT . '" required="required"/>
+                            ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                             <div class="form-text">' . lang('A file exported from this screen, with its translation column filled in. Rows are matched by the hash column; a row whose source text has since changed is skipped.') . '</div>
                         </div>
                         <div class="form-field">
@@ -1014,8 +1010,8 @@ echo pg_page_shell(array(
                         </div>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="submit" class="btn btn-solid theme-primary">' . lang('Import') . '</button>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="submit" class="pg-button pg-button-fill">' . lang('Import') . '</button>
                     </div>
                 </form>
         </dialog>
@@ -1033,8 +1029,8 @@ echo pg_page_shell(array(
                         <p class="fw-semibold mb-0 pg-tr-clear-count"></p>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-outline theme-warning pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-danger pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
                     </div>
         </dialog>
         <dialog class="dialog" id="pg_tr_review_all_modal" aria-labelledby="pg_tr_review_all_modal_title">
@@ -1052,8 +1048,8 @@ echo pg_page_shell(array(
                         <p class="fw-semibold mb-0 pg-tr-review-all-count"></p>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-solid theme-primary pg-tr-review-all-go" data-plain="' . (int) $review_all_count . '" data-flagged="' . (int) $review_all_flagged . '"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-fill pg-tr-review-all-go" data-plain="' . (int) $review_all_count . '" data-flagged="' . (int) $review_all_flagged . '"><i class="bi bi-check2-all" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
         </dialog>
         <dialog class="dialog" id="pg_tr_accept_modal" aria-labelledby="pg_tr_accept_modal_title">
@@ -1066,8 +1062,8 @@ echo pg_page_shell(array(
                         <p class="fw-semibold mb-0 pg-tr-accept-count"></p>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-solid theme-primary pg-tr-accept-go"><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-fill pg-tr-accept-go"><i class="bi bi-check2-square" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
         </dialog>
         <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title"' . ($glossary_back ? ' data-reopen="1"' : '') . '>
@@ -1108,8 +1104,8 @@ echo pg_page_shell(array(
                         </div>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="submit" class="btn btn-solid theme-primary">' . lang('Save') . '</button>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="submit" class="pg-button pg-button-fill">' . lang('Save') . '</button>
                     </div>
                 </form>
         </dialog>' : '') . '

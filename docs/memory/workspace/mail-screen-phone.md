@@ -9,8 +9,14 @@ description: Communication › Incoming e-mail below 768 px: the pane in the lis
 - `open()` in `workspace_mail.js` scrolls the screen's root into view on a first open when `phone()` (`matchMedia('(max-width: 767.98px)')`, the stylesheet's width) holds; a redraw after a change does not move the page.
 - The pane and each mail have .5rem paddings there, so a mail is no longer about 260 px of a 375 px screen.
 
+## Why do the views wrap?
+- The views (Incoming, Sent, Not sent, Blocked e-mail, Drafts) are a `btn-group … flex-wrap` (`ws_mail_list_filters_html()`, #10543). The Workspace toolbar's rule keeps a group on one line, scrolling sideways with no scrollbar: at 390 px the group was 619 px in 358 and Blocked e-mail and Drafts lay out of sight.
+
+## How high are the pane's status and holder?
+- 31 px, as the pane's buttons: `state(…, roomy)` in `workspace_mail.js` leaves out `py-0` for the pane (#10543); before they were 23 px. A channel's mail card keeps `py-0`.
+
 ## What stays as it was?
 - Before a conversation is opened the toolbar still stands above the list; folding it there was not part of #10082.
 
 ## Tests?
-- `tests/workspace_mail_list_test.php` (`test_workspace_mail_pane_on_a_phone`: the media rule, the paddings, the scroll). Pictures at 390 px were taken on the sandbox for the PR.
+- `tests/workspace_mail_list_test.php` (`test_workspace_mail_pane_on_a_phone`: the media rule, the paddings, the scroll); `tests/mail_phone_width_test.php` (the views, the selects). Pictures at 390 px were taken on the sandbox for the PR.

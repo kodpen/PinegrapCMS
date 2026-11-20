@@ -250,7 +250,7 @@
         pickState(row, state);
 
         if (badge) {
-            badge.className = 'badge pg-tr-state-badge ' + ((state === 'reviewed') ? 'theme-success' : ((state === 'machine') ? 'theme-warning' : 'theme-secondary'));
+            badge.className = 'pg-pill pg-tr-state-badge ' + ((state === 'reviewed') ? 'pg-tone-teal' : ((state === 'machine') ? 'pg-tone-amber' : 'pg-tone-gray'));
             badge.textContent = text(state);
         }
         if (engineEl) {

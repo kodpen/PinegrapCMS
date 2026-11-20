@@ -28,6 +28,10 @@ define('WS_AGENT_REPORT_WINDOWS_MAX', 4);
 // A report older than this is drawn muted on the card.
 define('WS_AGENT_REPORT_STALE_AFTER', 86400);
 
+// In an agent channel an agent is asked for its model once its last report
+// is older than this many seconds (ws_agent_report_brief_line()).
+define('WS_AGENT_REPORT_ASK_AFTER', 3600);
+
 /**
  * The usage windows a report may name, key => English label, in the order
  * the card shows them. Pure.
@@ -188,6 +192,61 @@ function ws_agent_report_save($agent_id, $values, $now)
 {
     db("UPDATE ws_agents SET report_model = '" . e((string) $values['model']) . "', report_usage = '" . e((string) $values['usage']) . "', report_at = '" . (int) $now . "'
         WHERE id = '" . (int) $agent_id . "'");
+}
+
+/**
+ * A model named on its own (an answer's model field), checked by the
+ * report's rule. Pure but for lang().
+ *
+ * @param mixed $model
+ * @return array ok, error, model
+ */
+function ws_agent_report_model_check($model)
+{
+    $check = ws_agent_report_check($model, null);
+
+    return $check['ok'] ? array('ok' => true, 'error' => '', 'model' => $check['values']['model'])
+        : array('ok' => false, 'error' => $check['error'], 'model' => '');
+}
+
+/**
+ * Writes a model named with an answer: the model and the report's time,
+ * the usage windows of the last report kept.
+ *
+ * @param int    $agent_id
+ * @param string $model ws_agent_report_model_check()'s model
+ * @param int    $now
+ */
+function ws_agent_report_model_save($agent_id, $model, $now)
+{
+    db("UPDATE ws_agents SET report_model = '" . e((string) $model) . "', report_at = '" . (int) $now . "'
+        WHERE id = '" . (int) $agent_id . "'");
+}
+
+/**
+ * The brief's line that asks an application agent in an agent channel for
+ * its model: when it never reported or its last report is older than
+ * WS_AGENT_REPORT_ASK_AFTER. '' when the report is fresh, for another kind
+ * of agent or outside an agent channel. English, as the brief is. Pure.
+ *
+ * @param array $agent         the raw ws_agents row: kind, report_at
+ * @param bool  $agent_channel the request was asked in an agent channel
+ * @param int   $now
+ * @return string
+ */
+function ws_agent_report_brief_line($agent, $agent_channel, $now)
+{
+    if (!$agent_channel || (($agent['kind'] ?? '') !== 'app')) {
+        return '';
+    }
+
+    $at = (int) ($agent['report_at'] ?? 0);
+
+    if (($at > 0) && (((int) $now - $at) < WS_AGENT_REPORT_ASK_AFTER)) {
+        return '';
+    }
+
+    return 'Your model: the site has no report of it from the last hour. Add "model": "<the model you run on>" to this answer (or report it with POST /workspace/agent-report).';
 }
 
 /**

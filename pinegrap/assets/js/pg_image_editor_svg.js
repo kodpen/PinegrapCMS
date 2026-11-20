@@ -661,7 +661,8 @@
         var self = this, a = this.doc.artboard, nodes = [], saved = [];
 
         this.doc.layers.forEach(function (l) {
-            var n = l.hidden ? null : ((l.type === 'svg') ? svgSaveNode(l) : self.layerNode(l));
+            // With its groups' opacity on its own (M.groupLook()).
+            var n = l.hidden ? null : ((l.type === 'svg') ? svgSaveNode(M.groupLook(l)) : self.layerNode(M.groupLook(l)));
 
             if (n) {
                 nodes.push(n);

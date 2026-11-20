@@ -9,7 +9,6 @@
 	<exclude-pattern>*/pinegrap/includes/phpmailer/*</exclude-pattern>
 	<exclude-pattern>*/pinegrap/includes/stripe/*</exclude-pattern>
 	<exclude-pattern>*/pinegrap/includes/iyzipay-php/*</exclude-pattern>
-	<exclude-pattern>*/pinegrap/includes/phpexcel/*</exclude-pattern>
 	<exclude-pattern>*/pinegrap/includes/boxpacker/*</exclude-pattern>
 	<exclude-pattern>*/pinegrap/includes/dompdf/*</exclude-pattern>
 	<exclude-pattern>*/pinegrap/includes/qrcode/*</exclude-pattern>

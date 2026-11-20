@@ -1,11 +1,12 @@
 ---
 name: bug-hunt
-description: A bug hunt (owner 2026-11-15), only in an area the architect named: one per coordinator at a time; since 2026-11-19 it fixes what it finds in its own PR and opens a bug issue only for the rest
+description: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
 ---
 
 ## Is a bug hunt given out?
-- Yes, since 2026-11-15, only in an area the architect named in the agent channel. A coordinator starts no hunt of its own choice and runs one at a time.
+- Yes, since 2026-11-15, only in an area the architect named in the agent channel. A coordinator starts no hunt of its own choice and runs at most three at a time, each in its own named area.
 - Owner (2026-11-15, in the architect's window), when the workers stood idle: "bug avı ve düzeltmesi olur."
+- Architect (2026-11-20, agent channel, answer to K2's request 1632): three in place of one. A coordinator's places stood empty while every plan line waited on a merge; the limit was the sessions' own (the owner's words are the line above), and three hunts in three areas, inside the coordinator's 8 places, are far from the seven of 2026-11-06. Plan steps and open `bug` issues still come first.
 - Before: none from 2026-11-06, because seven hunts started within five minutes that day and quota went off building the project. The limits below keep that from coming back.
 
 ## What does a hunt do?
@@ -23,6 +24,6 @@ description: A bug hunt (owner 2026-11-15), only in an area the architect named:
 
 ## How is the next area chosen?
 - By the architect: code built in the last weeks that many users meet and that no hunt has read yet.
-- The areas given so far and what each hunt found and read clean: `bug-hunt-areas.md`, from 2026-11-17 on `bug-hunt-areas-2.md`.
+- The areas given so far and what each hunt found and read clean: `bug-hunt-areas.md`, from 2026-11-17 on `bug-hunt-areas-2.md`, from 2026-11-20 on `bug-hunt-areas-3.md`; the screens of 2026-11-19 and the areas given and still running: `bug-hunt-areas-4.md`.
 
 Related: docs/memory/workflow/bug-hunt-areas.md, docs/memory/workflow/test-coordinator.md, docs/memory/workflow/coordinator-no-plans.md

@@ -185,4 +185,152 @@ function test_workspace_app_command_scope_and_routes()
 	$objects = ws_openapi_objects();
 	pg_assert_same('ws_api_app_command_schema', $objects['WorkspaceAppCommand'] ?? null);
 	pg_assert_same(array_keys(ws_api_app_command_schema()), array_keys(ws_api_app_command_present('x', 'd', '', 7)));
+
+	pg_assert_true(isset($routes['workspace.commands.register']), 'register route');
+	$params = array();
+
+	foreach ($routes['workspace.commands.register']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same('list', $params['args']['type'] ?? null, 'args is a list');
+	pg_assert_true(!empty($params['args']['nullable']), 'null removes the definition');
+	pg_assert_true(!isset($params['args']['max_items']), 'the ninth item is refused by the check, as too_many_args');
+}
+
+// A definition in the registry's own shape: suggest is the server's, flags
+// default false, the label defaults to the name; every kind is accepted.
+function test_workspace_app_command_args_check_keeps_the_registry_shape()
+{
+	$ok = ws_app_command_args_check(array(
+		array('name' => 'who', 'kind' => 'person', 'label' => 'person'),
+		array('name' => 'day', 'kind' => 'date', 'optional' => true, 'anywhere' => true, 'suggest' => 'tasks'),
+	));
+
+	pg_assert_same(array(
+		array('name' => 'who', 'kind' => 'person', 'label' => 'person', 'optional' => false, 'suggest' => 'people', 'multiple' => false, 'anywhere' => false),
+		array('name' => 'day', 'kind' => 'date', 'label' => 'day', 'optional' => true, 'suggest' => 'dates', 'multiple' => false, 'anywhere' => true),
+	), $ok['args'], 'registry shape, suggest from the kind');
+
+	foreach (ws_command_argument_kinds() as $kind) {
+		pg_assert_true(isset(ws_app_command_args_check(array(array('name' => 'a', 'kind' => $kind)))['args']), 'kind ' . $kind);
+	}
+
+	pg_assert_same('', ws_app_command_args_check(array(array('name' => 'a', 'kind' => 'text')))['args'][0]['suggest'], 'text has no source');
+
+	foreach (array(null, '', array()) as $none) {
+		pg_assert_same(array('args' => array()), ws_app_command_args_check($none), 'no definition');
+	}
+
+	pg_assert_same('<person> [day]', ws_app_command_args_usage($ok['args']), 'usage from the labels');
+}
+
+// An unknown kind and a ninth argument are refused with their own codes;
+// other bad items name their index.
+function test_workspace_app_command_args_check_refuses()
+{
+	pg_assert_same(array('error' => 'invalid_kind', 'index' => 1), ws_app_command_args_check(array(array('name' => 'a', 'kind' => 'text'), array('name' => 'b', 'kind' => 'colour'))));
+
+	$nine = array();
+
+	for ($i = 0; $i < 9; $i++) {
+		$nine[] = array('name' => 'a' . $i, 'kind' => 'text');
+	}
+
+	pg_assert_same('too_many_args', ws_app_command_args_check($nine)['error']);
+	pg_assert_true(isset(ws_app_command_args_check(array_slice($nine, 0, 8))['args']), 'eight is the limit');
+
+	$bad = array(
+		array(array('name' => 'Who', 'kind' => 'text')),
+		array(array('name' => '1a', 'kind' => 'text')),
+		array(array('name' => 'abcdefghijklmnopqrstu', 'kind' => 'text')),
+		array(array('name' => 'a', 'kind' => 'text'), array('name' => 'a', 'kind' => 'date')),
+		array(array('name' => 'a', 'kind' => 'text', 'label' => str_repeat('x', 41))),
+		array(array('name' => 'a', 'kind' => 'text', 'label' => "two\nlines")),
+		array(array('name' => 'a', 'kind' => 'text', 'optional' => 'yes')),
+		array('a'),
+		array('x' => array('name' => 'a', 'kind' => 'text')),
+		'text',
+	);
+
+	foreach ($bad as $index => $args) {
+		pg_assert_same('invalid_args', ws_app_command_args_check($args)['error'] ?? null, 'bad item ' . $index);
+	}
+}
+
+// A stored entry that cannot be resolved is no definition, never an error.
+function test_workspace_app_command_args_read_unresolvable_is_none()
+{
+	pg_assert_same(array(), ws_app_command_args_read(null));
+	pg_assert_same(array(), ws_app_command_args_read(''));
+	pg_assert_same(array(), ws_app_command_args_read('{not json'));
+	pg_assert_same(array(), ws_app_command_args_read('"text"'));
+	pg_assert_same(array(), ws_app_command_args_read(json_encode(array(array('name' => 'a', 'kind' => 'colour')))), 'unknown kind');
+	pg_assert_same('dates', ws_app_command_args_read(json_encode(array(array('name' => 'day', 'kind' => 'date'))))[0]['suggest']);
+
+	$row = array('id' => 1, 'app_id' => 7, 'name' => 'rapor', 'description' => 'd', 'usage_text' => '', 'app_name' => 'A', 'args' => '[{"name":"a","kind":"nope"}]');
+	pg_assert_same(array(), ws_app_command_entry($row)['args'], 'the entry takes free text');
+
+	$row['args'] = json_encode(array(array('name' => 'day', 'kind' => 'date', 'label' => 'day')));
+	$entry = ws_app_command_entry($row);
+	pg_assert_same('date', $entry['args'][0]['kind'], 'a resolvable definition reaches the picker');
+	pg_assert_same(array_keys(ws_api_command_argument_schema()), array_keys(ws_api_command_present($entry)['args'][0]));
+}
+
+// The words after the command read into values by argument name.
+function test_workspace_app_command_values_by_name()
+{
+	$args = ws_app_command_args_check(array(
+		array('name' => 'who', 'kind' => 'person'),
+		array('name' => 'team', 'kind' => 'people', 'optional' => true),
+		array('name' => 'order', 'kind' => 'record', 'optional' => true),
+		array('name' => 'due', 'kind' => 'date', 'optional' => true),
+		array('name' => 'at', 'kind' => 'time', 'optional' => true),
+		array('name' => 'est', 'kind' => 'estimate', 'optional' => true),
+		array('name' => 'price', 'kind' => 'amount', 'optional' => true),
+		array('name' => 'topic', 'kind' => 'text', 'label' => 'topic'),
+	))['args'];
+
+	$read = ws_app_command_values($args, 'Quarter report <@user:5> <#order:12> 2025-x 25.12 14:30 ~2h 149,90 <@user:6> <@user:7>', '2026-11-20');
+
+	pg_assert_same('', $read['missing']);
+	pg_assert_same(array('who', 'team', 'order', 'due', 'at', 'est', 'price', 'topic'), array_keys($read['values']), 'every argument by name, in order');
+	pg_assert_same(5, $read['values']['who']);
+	pg_assert_same(array(6, 7), $read['values']['team'], 'people take the rest of the person tags');
+	pg_assert_same(array('type' => 'order', 'id' => 12), $read['values']['order']);
+	pg_assert_same('2026-12-25', $read['values']['due']);
+	pg_assert_same('14:30', $read['values']['at']);
+	pg_assert_same(120, $read['values']['est']);
+	pg_assert_same(14990, $read['values']['price'], 'minor units');
+	pg_assert_same('Quarter report 2025-x', $read['values']['topic'], 'the words left over');
+
+	$read = ws_app_command_values($args, 'just a topic <@user:5>', '2026-11-20');
+	pg_assert_same(null, $read['values']['team'], 'an optional argument not typed is null');
+	pg_assert_same(null, $read['values']['due']);
+
+	$read = ws_app_command_values($args, 'no person here', '2026-11-20');
+	pg_assert_same('who', $read['missing'], 'a required argument not read is named');
+
+	$two = ws_app_command_args_check(array(array('name' => 'env', 'kind' => 'text'), array('name' => 'tags', 'kind' => 'options', 'optional' => true)))['args'];
+	pg_assert_same(array('env' => 'staging', 'tags' => array('fast', 'quiet')), ws_app_command_values($two, 'staging fast, quiet')['values'], 'text in turn, the last takes the rest');
+}
+
+// The event carries values only for a command with a definition; one
+// without is told what it was told before.
+function test_workspace_app_command_payload_values_only_with_a_definition()
+{
+	$channel = array('id' => 3, 'name' => 'general', 'kind' => 'public');
+	$plain = ws_app_command_payload($channel, null, 7, 'report', 5, 'x', 'x');
+	pg_assert_false(array_key_exists('values', $plain), 'no definition: no values key');
+
+	$with = ws_app_command_payload($channel, null, 7, 'report', 5, 'x', 'x', 0, array('topic' => 'x'));
+	pg_assert_same(array('topic' => 'x'), $with['values']);
+	pg_assert_same(array_keys($plain), array_slice(array_keys($with), 0, count($plain)), 'the fields of before stay');
+}
+
+// The limit of twenty commands is unchanged by the definitions.
+function test_workspace_app_command_limit_unchanged()
+{
+	pg_assert_same(20, WS_APP_COMMANDS_MAX);
+	pg_assert_same(8, WS_APP_COMMAND_ARGS_MAX);
 }

@@ -148,6 +148,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_bookings();                // 11.0.157
 	upgrade_2026_11_0_form_fee();                // 11.0.158
 	upgrade_2026_11_0_store_credit();            // 11.0.159
+	upgrade_2026_11_0_referral_credit();         // 11.0.245
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 	upgrade_2026_11_0_stock_locations();         // 11.0.162
@@ -233,6 +234,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
+	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
+	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
 
 }
 
@@ -2059,6 +2062,8 @@ function upgrade_2026_11_0_workspace_note_sources() {
 // holds, even when both register at once. Deleting the application deletes
 // its commands; renaming it keeps them. usage_text, since USAGE is a
 // reserved word.
+// args, the arguments' definition, is added by 11.0.246 on a database that
+// ran this step before it; a new install creates it here.
 function upgrade_2026_11_0_workspace_app_commands() {
 
 	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
@@ -2069,6 +2074,7 @@ function upgrade_2026_11_0_workspace_app_commands() {
 		usage_text VARCHAR(200) NOT NULL DEFAULT '',
 		created_at INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		args TEXT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY idx_name (name),
 		KEY idx_app (app_id)
@@ -2638,7 +2644,10 @@ function upgrade_2026_11_0_comment_record_counts_progress_save() {
 // sign-in throttle, whose address bucket would lock sign-in. expires_at is 0
 // for a team link that runs for good; created_*, revoked_* (0: not revoked),
 // uses and last_used_at are unix times and counters like the other token
-// links. style_id has a key: the editor lists a design's links.
+// links. style_id has a key: the editor lists a design's links. bundle_id
+// is 0 for a design's link and the release bundle (page_bundle) whose preview
+// the link shares otherwise, with style_id 0 (11.0.244 adds it where this
+// step already ran).
 function upgrade_2026_11_0_prototype_links() {
 
 	install_create_table('prototype_links', "CREATE TABLE prototype_links (
@@ -2659,9 +2668,11 @@ function upgrade_2026_11_0_prototype_links() {
 		revoked_by             INT UNSIGNED NOT NULL DEFAULT 0,
 		uses                   INT UNSIGNED NOT NULL DEFAULT 0,
 		last_used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		bundle_id              INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uk_token (token_hash),
-		KEY idx_style (style_id)
+		KEY idx_style (style_id),
+		KEY idx_bundle (bundle_id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
@@ -4989,13 +5000,47 @@ function upgrade_2026_11_0_form_fee() {
 function upgrade_2026_11_0_store_credit() {
 
 	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
-	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual','referral') NOT NULL DEFAULT 'gift'");
 	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
 	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
 	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
 
 	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
+
+}
+
+// A referral's reward as store credit (11.0.245, includes/fn/referral.php):
+// gift_cards.kind gains 'referral' at the end. A database that ran 11.0.159
+// before this release has the four values; a new install gets all five from
+// 11.0.159 and skips here. The enum is widened from what is there, never
+// narrowed, NOT NULL and its default kept as read.
+function upgrade_2026_11_0_referral_credit() {
+
+	$kind = install_column_info('gift_cards', 'kind');
+
+	if (!is_array($kind) || (stripos((string) $kind['Type'], "'referral'") !== false)) {
+
+		install_skipped('gift_cards.kind already holds referral');
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $kind['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$values[] = "'referral'";
+
+	$default = ((string) $kind['Default'] !== '') ? (string) $kind['Default'] : 'gift';
+
+	install_modify_column('gift_cards', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Store credit: a customer\'s reward for bringing a friend can be kept as store credit of its own kind.');
 
 }
 
@@ -7821,5 +7866,39 @@ function upgrade_2026_11_0_ws_calls() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
+
+}
+
+// A release bundle's preview shared by a prototype link (2026.11.0,
+// 11.0.244; includes/fn/prototype_links.php, the Bundles screen's Share the
+// preview). prototype_links.bundle_id is the bundle (page_bundle.id), 0 for
+// a design's link, which stays as it was; idx_bundle gives a bundle's links
+// on the Bundles screen and their revoke when the bundle is deleted. The
+// table's own step (11.0.35) creates both on a database that has not run it.
+function upgrade_2026_11_0_prototype_link_bundles() {
+
+	if (!install_table_exists('prototype_links')) {
+
+		return;
+
+	}
+
+	install_add_column('prototype_links', 'bundle_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('prototype_links', 'idx_bundle', "INDEX idx_bundle (bundle_id)");
+
+}
+
+// An application command's arguments (2026.11.0, 11.0.246;
+// includes/workspace/app_commands.php). ws_app_commands.args keeps the
+// definition the application registered, as a JSON list in the shape of the
+// built-in commands' arguments (at most eight), so the composer offers values
+// for them and workspace.app.command carries them by name. NULL is a command
+// without a definition, which takes free text as before; existing rows stay
+// NULL. A new install has the column from 11.0.87.
+function upgrade_2026_11_0_ws_app_command_args() {
+
+	install_add_column('ws_app_commands', 'args', "TEXT NULL");
+
+	install_note('Workspace: an application\'s / command can name its arguments, offered in the channels like a built-in command\'s.');
 
 }

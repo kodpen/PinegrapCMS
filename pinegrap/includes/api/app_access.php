@@ -308,6 +308,7 @@ function api_app_event_area($name, $module_label = '') {
 		'booking'         => 'Bookings',
 		'subscription'    => 'Subscriptions',
 		'credit'          => 'Store credit',
+		'referral'        => 'Store credit',
 		'commission'      => 'Commissions',
 		'affiliate'       => 'Affiliates',
 		'product'         => 'Products',

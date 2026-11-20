@@ -79,8 +79,8 @@ if (!$_POST) {
                                 <div class="row">
                                     <div class="col-12 md:col-6 my-3">
                                         <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control', 'required'=>'required', 'accept'=>'.csv,text/csv,text/plain')) . '
-                                        ' . pg_upload_limit_hint() . '
+                                        ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control', 'required'=>'required', 'accept'=>'.csv,text/csv,text/plain,' . PG_SHEET_IMPORT_ACCEPT)) . '
+                                        ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
                                         <label class="form-label" for="custom_form_page_id">' . lang('Select the Custom Form') . '</label>
@@ -162,8 +162,13 @@ if (!$_POST) {
     
     $liveform->validate_required_field('custom_form_page_id', lang('Custom Form is required.'));
     
+    // A workbook comes in as the CSV file of its chosen sheet.
+    $sheet_refusal = pg_sheet_import_upload('file', lang('Import Submitted Forms'));
+
     // if no CSV file was uploaded, prepare error
-    if (!$_FILES['file']['name']) {
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+    } elseif (!$_FILES['file']['name']) {
         $liveform->mark_error('file', lang('Please select a file.'));
     } else {
         $upload_limits = pg_upload_limits();

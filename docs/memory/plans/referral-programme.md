@@ -10,7 +10,7 @@ priority: 6
 ## What is there today, and what is reused?
 - The affiliate programme is most of the rails: an approved contact's `affiliate_code`, the link (`pg_affiliate_link()`), the arrival kept for the visit and in the cookie affiliates have, the group offer put in the cart, and the order's `affiliate_code` (`pg_order_submit_affiliate_code()`, the last click wins). My Account has an Affiliate part (`commerce/affiliate-link-offer-code.md`, `commerce/affiliate-code-on-order.md`).
 - A commission is a row under the code as text, with the order, an amount and a state; it is made at completion, voided on a cancel and put back on a restore (`pg_order_complete_commission()`, `pg_order_cancel_commissions()`, `pg_order_restore_commissions()`). Its state is otherwise set by hand.
-- Store credit is a gift card bound to a customer: `pg_credit_issue()`, `pg_credit_void()`, its kinds a fixed list of four (`commerce/store-credit-model.md`). Credit that an order gave is taken back on a cancel and on any refund, with no "pending" state (#6306, `workflow/decisions-made-product-25.md`; `commerce/store-credit-points-take-back.md` is the model).
+- Store credit is a gift card bound to a customer: `pg_credit_issue()`, `pg_credit_void()`, its kinds a fixed list (`commerce/store-credit-model.md`; `referral` added by RF1). Credit that an order gave is taken back on a cancel and on any refund, with no "pending" state (#6306, `workflow/decisions-made-product-25.md`; `commerce/store-credit-points-take-back.md` is the model).
 - The offers' "new customer" condition looks only at an account's orders, so a guest always passes: it cannot stop a repeat.
 
 ## What binds it?

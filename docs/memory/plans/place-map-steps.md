@@ -13,17 +13,14 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
   - Pictures: the action on the form and its answers, the bulk action. To the owner.
   - Features: X4 to X7.
 
-- MP3 (M) after MP2: the endpoint, the block and its list.
+- MP3 (M) after MP2: the endpoint, the block and its list, done (PR #10062; `platform/place-list.md`, `includes/fn/place_list.php`, block `locations-map`). The `_SD_PAGE_SCRIPTS` row landed with it.
   - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-map`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`; held by other open PRs, the step names the clash).
   - New: the root file `places.php`, `assets/js/pg_map.js` (the list, its search, the cards; no map yet), the block family's file with its test and its canvas picture.
   - Tests: the endpoint giving only what the list page shows a visitor (a draft, an unfinished record and a private folder left out); the cut at 500, with "Near me" not drawn and the designer told both; its origin and rate checks; the script's distance and ordering under Node.
   - Pictures: the block as a list, the search, a card, a phone. To the owner.
   - Features: X1, X2, X3, X8, X10, X15, X16.
 
-- MP3b (S) after MP3: the block's field pickers. Architect (2026-11-16, agent channel message 7423): `places.php` never returns a field because the request names it; MP3 takes the page id only and finds the fields by the server's name rule, never an office-use-only field.
-  - The block's panel section, and the endpoint reading the chosen fields from the saved page. A chosen field counts only when it is the collection's, of a text or number kind and not office-use-only; else the name rule.
-  - Tests: a request naming a field gets nothing more; a saved choice of an office-use field refused; the fallback.
-  - Features: X2's pickers.
+- MP3b (S) after MP3: the block's field pickers, done (PR #10535; `platform/place-list-fields.md`). Features: X2's pickers.
 
 - MP4 (M) after MP3b: the map and the switch.
   - Existing files: `includes/settings/features.php` and `features.save.php` (the card with the tile setting), `includes/fn/consent.php` (the map as a service of the notice), the Firewall settings screen (a line to copy when the site's own policy lacks the tile host; the security headers the software sends do not change, X14).

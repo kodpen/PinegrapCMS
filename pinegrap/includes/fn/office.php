@@ -12,7 +12,11 @@
  * never written to here; changing a workbook's cells is the business of
  * includes/fn/office_edit.php, which the preview asks which cells it may
  * offer. A .csv or .tsv is read as one sheet of the same rows, its separator
- * and character set guessed, and is only looked at.
+ * and character set guessed, and is only looked at. An .ods is read as a
+ * workbook of the same rows through the importers' sheet reader
+ * (includes/fn/sheet_read.php), and is only looked at too; so is an .xls,
+ * which may be saved as a copy in .xlsx (pg_office_xls_copy()), written by
+ * the shared writer (includes/fn/xlsx_write.php), to be changed there.
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
@@ -82,6 +86,40 @@ define('PG_OFFICE_MAX_IMAGES', 8 * 1024 * 1024);
 define('PG_OFFICE_MAX_CSV', 8 * 1024 * 1024);
 
 /**
+ * How much of an .ods file's content.xml the preview walks, its sheets
+ * together, in bytes. The sheet reader walks the part from its beginning
+ * for each sheet, so the sheets are read while their count times the
+ * part's size stays within this (8 of an 8 MB part, 64 of a 1 MB one), and
+ * a part of thousands of small sheets is not walked thousands of times.
+ */
+define('PG_OFFICE_MAX_ODS_WALK', 64 * 1024 * 1024);
+
+/**
+ * The most sheets an .ods may have to be shown. A sheet's tab is a few bytes
+ * of content.xml, so the part's limit alone lets one ask for half a million.
+ */
+define('PG_OFFICE_MAX_ODS_SHEETS', 1000);
+
+/**
+ * The largest .xls file shown or copied, in bytes. The reader holds the
+ * whole file, and a sheet's cells as the library's arrays, in memory.
+ */
+define('PG_OFFICE_MAX_XLS', 8 * 1024 * 1024);
+
+/**
+ * How much of an .xls file the preview parses, its sheets together, in
+ * bytes: the reader parses the whole file again for each sheet, so sheets
+ * are read while their count times the file's size stays within this.
+ */
+define('PG_OFFICE_MAX_XLS_WALK', 64 * 1024 * 1024);
+
+/**
+ * The same for a copy as .xlsx, which takes every sheet whole; a workbook
+ * past it is refused rather than copied in part.
+ */
+define('PG_OFFICE_MAX_XLS_COPY_WALK', 256 * 1024 * 1024);
+
+/**
  * The kind of office file a name is, by its extension: 'docx', 'xlsx' or ''.
  * Macro-enabled and template variants are read the same way, as are the
  * strict OOXML ones; .doc and .xls (the binary formats) are not read.
@@ -109,10 +147,11 @@ function pg_office_kind($name)
  * or 'csv' for a .csv or .tsv, drawn as a sheet and only looked at. The
  * edits ask pg_office_kind(), which leaves the two out, so neither is ever
  * offered for editing here; a channel and the file window still open them
- * as text.
+ * as text. An .ods ('ods') or .xls ('xls') is drawn as a workbook and only
+ * looked at too.
  *
  * @param string $name
- * @return string docx | xlsx | csv | ''
+ * @return string docx | xlsx | csv | ods | xls | ''
  */
 function pg_office_preview_kind($name)
 {
@@ -123,6 +162,10 @@ function pg_office_preview_kind($name)
     }
 
     $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
+
+    if (($extension === 'ods') || ($extension === 'xls')) {
+        return $extension;
+    }
 
     return in_array($extension, array('csv', 'tsv'), true) ? 'csv' : '';
 }
@@ -142,10 +185,11 @@ function pg_office_ready()
  * one that would unpack past the limits, is refused.
  *
  * @param string $path
- * @param string $error why not, when null comes back
+ * @param string $error  why not, when null comes back
+ * @param string $marker the part every package of the kind holds: [Content_Types].xml for Word and Excel, content.xml for an .ods
  * @return ZipArchive|null
  */
-function pg_office_open($path, &$error)
+function pg_office_open($path, &$error, $marker = '[Content_Types].xml')
 {
     $error = '';
 
@@ -188,7 +232,7 @@ function pg_office_open($path, &$error)
         }
     }
 
-    if ($zip->locateName('[Content_Types].xml') === false) {
+    if ($zip->locateName((string) $marker) === false) {
         $zip->close();
         $error = lang('The file could not be read.');
 
@@ -443,27 +487,6 @@ function pg_office_xlsx_sheets($zip, &$refused = null)
 }
 
 /**
- * The built-in zip:// stream, which XMLReader walks a sheet through. PHPExcel
- * (the .xls and .ods importers) replaces that wrapper with its own for the
- * rest of the request and switches libxml's loader off, and XMLReader cannot
- * open a part through either; both are put back on every call, as PHPExcel
- * may be loaded after an earlier read in the same request. Nothing here asks libxml to resolve entities (no LIBXML_NOENT, always
- * LIBXML_NONET), so the loader being on changes nothing else.
- */
-function pg_office_zip_stream()
-{
-    if (!class_exists('PHPExcel_Settings', false)) {
-        return;
-    }
-
-    @stream_wrapper_restore('zip');
-
-    if (function_exists('libxml_disable_entity_loader')) {
-        @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
-    }
-}
-
-/**
  * The text of the element the reader is on, as XMLReader::readString()
  * gives it (every text and CDATA node inside it, whitespace included), read
  * node by node. readString(), readOuterXml() and expand() first build the
@@ -535,8 +558,6 @@ function pg_office_xlsx_strings($path, $part, $limited = true)
     if ($size < 0) {
         return $strings;
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -882,8 +903,6 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 {
     $rows = array();
     $truncated = false;
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -2182,6 +2201,432 @@ function pg_office_csv_read($path, $name, $choice = array())
     );
 }
 
+/* ---------------------------------------------------------------------------
+   OpenDocument spreadsheets
+   --------------------------------------------------------------------------- */
+
+/**
+ * The sheets of an .ods file in their order, counted as the sheet reader
+ * counts them (pg_sheet_rows(): every table:table, one inside another not
+ * being a sheet): the name, and whether it is hidden, which its table style
+ * says with table:display="false" (the automatic styles come before the
+ * body). content.xml is streamed once, node by node, held to the size the
+ * reader takes (PG_SHEET_ODS_MAX_PART); more than PG_OFFICE_MAX_ODS_SHEETS
+ * sheets make the file too large.
+ *
+ * @param string $path
+ * @param string $refused set to large or damaged when the sheets could not be listed
+ * @return array[] name, hidden
+ */
+function pg_office_ods_sheets($path, &$refused = null)
+{
+    $refused = '';
+    $size = pg_zip_entry_size($path, 'content.xml');
+
+    if ($size > PG_SHEET_ODS_MAX_PART) {
+        $refused = 'large';
+
+        return array();
+    }
+
+    $reader = new XMLReader();
+
+    if (($size <= 0) || !$reader->open(pg_zip_entry_uri($path, 'content.xml', $size), null, LIBXML_NONET)) {
+        $refused = 'damaged';
+
+        return array();
+    }
+
+    $table_ns = 'urn:oasis:names:tc:opendocument:xmlns:table:1.0';
+    $style_ns = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
+    $previous = libxml_use_internal_errors(true);
+    $out = array();
+    $hidden = array();
+    // The table style being read, and its depth: its properties stand
+    // right under it.
+    $style = null;
+    $style_depth = 0;
+    $skip = false;
+
+    while ($skip ? $reader->next() : $reader->read()) {
+        $skip = false;
+
+        if ($reader->nodeType !== XMLReader::ELEMENT) {
+            continue;
+        }
+
+        if (($style !== null) && ($reader->depth <= $style_depth)) {
+            $style = null;
+        }
+
+        if ($reader->namespaceURI === $style_ns) {
+            if ($reader->localName === 'style') {
+                $style = ($reader->getAttributeNs('family', $style_ns) === 'table') ? (string) $reader->getAttributeNs('name', $style_ns) : null;
+                $style_depth = $reader->depth;
+            } elseif (($style !== null) && ($reader->localName === 'table-properties') && ($reader->depth === $style_depth + 1) && ($reader->getAttributeNs('display', $table_ns) === 'false')) {
+                $hidden[$style] = true;
+            }
+
+            continue;
+        }
+
+        if (($reader->localName !== 'table') || ($reader->namespaceURI !== $table_ns)) {
+            continue;
+        }
+
+        if (count($out) >= PG_OFFICE_MAX_ODS_SHEETS) {
+            $refused = 'large';
+            break;
+        }
+
+        $out[] = array(
+            'name'   => (string) $reader->getAttributeNs('name', $table_ns),
+            'hidden' => isset($hidden[(string) $reader->getAttributeNs('style-name', $table_ns)]),
+        );
+
+        // Its rows are the sheet reader's to walk.
+        $skip = true;
+    }
+
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    $reader->close();
+
+    if (($refused === '') && (pg_zip_entry_overran() || empty($out))) {
+        $refused = 'damaged';
+    }
+
+    return ($refused === '') ? $out : array();
+}
+
+/**
+ * A cell of the sheet reader (pg_sheet_rows()) as the workbook preview shows
+ * one (pg_office_xlsx_rows()): a number without its exponent, a boolean as
+ * TRUE or FALSE, a date as Y-m-d (with the time of day when it has one), a
+ * time alone as hh:mm (hh:mm:ss when it has seconds), text and an error as
+ * they are, a missing cell as ''.
+ *
+ * @param array|null $cell
+ * @return string
+ */
+function pg_office_ods_text($cell)
+{
+    if (!is_array($cell) || !isset($cell['t'], $cell['v'])) {
+        return '';
+    }
+
+    switch ($cell['t']) {
+        case 'n':
+            return pg_office_xlsx_number($cell['v']);
+
+        case 'b':
+            return ($cell['v'] === '1') ? 'TRUE' : 'FALSE';
+
+        case 'd':
+            $serial = (float) $cell['v'];
+
+            if (abs($serial) < 1) {
+                return pg_office_xlsx_time($serial, (((int) round(abs($serial) * 86400)) % 60) ? 'time_s' : 'time');
+            }
+
+            return pg_office_xlsx_date($serial);
+    }
+
+    return (string) $cell['v'];
+}
+
+/**
+ * The rows of one .ods sheet as the preview draws them, read through the
+ * sheet reader (pg_sheet_rows()) and cut at the preview's limits, as
+ * pg_office_xlsx_rows() cuts a worksheet. The reader's walk is left as soon
+ * as the rows shown are read, so its cell ceilings hold on what is read.
+ *
+ * @param string $path
+ * @param int    $sheet      the sheet, 0 for the first
+ * @param int    $cells_left how many cells may still be read, counted down
+ * @param bool   $truncated  set when the sheet was cut
+ * @param string $error      the reader's: '' read, large past its ceilings, read or sheet
+ * @param string $kind       the reader's kind (pg_sheet_kind()): ods, or xls
+ * @return array[] n, cells
+ */
+function pg_office_ods_rows($path, $sheet, &$cells_left, &$truncated, &$error, $kind = 'ods')
+{
+    $rows = array();
+    $truncated = false;
+    // The walk puts libxml's error handling back when it ends, which a walk
+    // left early does not reach.
+    $previous = libxml_use_internal_errors();
+
+    foreach (pg_sheet_rows($path, $kind, $error, $sheet) as $number => $cells) {
+        if ((count($rows) >= PG_OFFICE_MAX_ROWS) || ($cells_left <= 0)) {
+            $truncated = true;
+            break;
+        }
+
+        $row = array();
+
+        foreach ($cells as $column => $cell) {
+            if ($column >= PG_OFFICE_MAX_COLUMNS) {
+                $truncated = true;
+                break;
+            }
+
+            $row[] = pg_office_ods_text($cell);
+        }
+
+        $rows[] = array('n' => (int) $number, 'cells' => $row);
+        $cells_left -= max(1, count($row));
+    }
+
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    return $rows;
+}
+
+/**
+ * An .ods file as the preview draws a workbook (pg_office_xlsx_read()):
+ * every sheet in order, the hidden ones flagged, its rows read through the
+ * importers' sheet reader under the preview's row, column and cell limits.
+ * A sheet past the reader's cell ceilings (PG_SHEET_ODS_MAX_CELLS,
+ * PG_SHEET_ODS_MAX_RANGE) refuses the file as too large. Only looked at:
+ * nothing here is offered for editing.
+ *
+ * The reader walks content.xml from its beginning for each sheet, so sheets
+ * are read while their count times the part's size stays within
+ * PG_OFFICE_MAX_ODS_WALK; those past it are listed with no rows, cut, as a
+ * workbook's sheets past its cell limit are.
+ *
+ * @param string $path
+ * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated), truncated
+ */
+function pg_office_ods_read($path)
+{
+    $zip = pg_office_open($path, $error, 'content.xml');
+
+    if ($zip === null) {
+        return array('ok' => false, 'error' => $error, 'sheets' => array(), 'truncated' => false);
+    }
+
+    $zip->close();
+
+    $sheets = pg_office_ods_sheets($path, $refused);
+
+    if ($refused !== '') {
+        return array('ok' => false, 'error' => pg_office_refusal_error($refused), 'sheets' => array(), 'truncated' => false);
+    }
+
+    $walks = max(1, intdiv(PG_OFFICE_MAX_ODS_WALK, max(1, pg_zip_entry_size($path, 'content.xml'))));
+    $cells_left = PG_OFFICE_MAX_CELLS;
+    $out = array();
+    $any_cut = false;
+
+    foreach ($sheets as $index => $sheet) {
+        $rows = array();
+        $cut = true;
+
+        if (($cells_left > 0) && ($index < $walks)) {
+            $rows = pg_office_ods_rows($path, $index, $cells_left, $cut, $failed);
+
+            if ($failed !== '') {
+                return array('ok' => false, 'error' => pg_office_refusal_error(($failed === 'large') ? 'large' : 'damaged'), 'sheets' => array(), 'truncated' => false);
+            }
+        }
+
+        if ($cells_left <= 0) {
+            $cut = true;
+        }
+
+        $any_cut = $any_cut || $cut;
+        $out[] = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+    }
+
+    return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+}
+
+/* ---------------------------------------------------------------------------
+   Excel 97-2003 workbooks (.xls)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Room for the .xls reader: it holds the file and a sheet's cells as the
+ * library's arrays, about 40 bytes of memory for each byte of the file (an
+ * 8 MB workbook of 260,000 cells peaked at 300 MB). The limit is raised to
+ * 512 MB, as the product import raises it, unless it is higher already.
+ */
+function pg_office_xls_memory()
+{
+    $limit = trim((string) @ini_get('memory_limit'));
+
+    if (($limit === '') || ($limit === '-1')) {
+        return;
+    }
+
+    $bytes = (int) $limit;
+    $unit = strtolower(substr($limit, -1));
+    $bytes *= ($unit === 'g') ? 1073741824 : (($unit === 'm') ? 1048576 : (($unit === 'k') ? 1024 : 1));
+
+    if ($bytes < 512 * 1048576) {
+        @ini_set('memory_limit', '512M');
+    }
+}
+
+/**
+ * The worksheets of an .xls file for the preview or a copy, after its size
+ * is measured: name and hidden, as the sheet reader lists them
+ * (pg_sheet_xls_sheets()), or an error.
+ *
+ * @param string $path
+ * @param string $error why not, when null comes back
+ * @return array[]|null
+ */
+function pg_office_xls_sheets($path, &$error)
+{
+    $error = '';
+    clearstatcache(true, $path);
+    $size = is_file($path) ? (int) @filesize($path) : -1;
+
+    if ($size > PG_OFFICE_MAX_XLS) {
+        $error = pg_office_refusal_error('large');
+
+        return null;
+    }
+
+    pg_office_xls_memory();
+
+    $sheets = ($size > 0) ? pg_sheet_xls_sheets($path) : 'read';
+
+    if (!is_array($sheets)) {
+        $error = pg_office_refusal_error('damaged');
+
+        return null;
+    }
+
+    if (count($sheets) > PG_OFFICE_MAX_ODS_SHEETS) {
+        $error = pg_office_refusal_error('large');
+
+        return null;
+    }
+
+    return $sheets;
+}
+
+/**
+ * An .xls file as the preview draws a workbook (pg_office_xlsx_read()):
+ * every worksheet in order, the hidden ones flagged, its rows read through
+ * the importers' sheet reader under the preview's row, column and cell
+ * limits, each cell shown as pg_office_ods_text() shows one. A formula
+ * shows the result the file stores. Only looked at: nothing here is offered
+ * for editing; a copy as .xlsx is (pg_office_xls_copy()).
+ *
+ * The reader parses the file again for each sheet, so sheets are read
+ * while their count times the file's size stays within
+ * PG_OFFICE_MAX_XLS_WALK; those past it are listed with no rows, cut.
+ *
+ * @param string $path
+ * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated), truncated
+ */
+function pg_office_xls_read($path)
+{
+    $sheets = pg_office_xls_sheets($path, $error);
+
+    if ($sheets === null) {
+        return array('ok' => false, 'error' => $error, 'sheets' => array(), 'truncated' => false);
+    }
+
+    $walks = max(1, intdiv(PG_OFFICE_MAX_XLS_WALK, max(1, (int) filesize($path))));
+    $cells_left = PG_OFFICE_MAX_CELLS;
+    $out = array();
+    $any_cut = false;
+
+    foreach ($sheets as $index => $sheet) {
+        $rows = array();
+        $cut = true;
+
+        if (($cells_left > 0) && ($index < $walks)) {
+            $rows = pg_office_ods_rows($path, $index, $cells_left, $cut, $failed, 'xls');
+
+            if ($failed !== '') {
+                return array('ok' => false, 'error' => pg_office_refusal_error('damaged'), 'sheets' => array(), 'truncated' => false);
+            }
+        }
+
+        if ($cells_left <= 0) {
+            $cut = true;
+        }
+
+        $any_cut = $any_cut || $cut;
+        $out[] = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+    }
+
+    return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+}
+
+/**
+ * The name of an .xls file's copy as .xlsx: its extension changed, any
+ * other name given .xlsx after it.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_office_xls_copy_name($name)
+{
+    $name = (string) $name;
+
+    if (preg_match('/\.xls$/i', $name)) {
+        return substr($name, 0, -4) . '.xlsx';
+    }
+
+    return (($name === '') ? 'copy' : $name) . '.xlsx';
+}
+
+/**
+ * An .xls file written again as an .xlsx by the shared writer
+ * (pg_xlsx_write_book()): every worksheet whole, in order, hidden ones kept
+ * hidden, each cell with its type (text, number, boolean, date or time,
+ * error). A formula comes over as the result the file stores: the reader
+ * does not read a formula's expression. Number formats other than dates
+ * and times, column widths, merged cells and styles are not carried.
+ *
+ * @param string $path   the .xls
+ * @param string $target where the .xlsx is written
+ * @return array ok, error
+ */
+function pg_office_xls_copy($path, $target)
+{
+    $sheets = pg_office_xls_sheets($path, $error);
+
+    if ($sheets === null) {
+        return array('ok' => false, 'error' => $error);
+    }
+
+    if (count($sheets) * (int) filesize($path) > PG_OFFICE_MAX_XLS_COPY_WALK) {
+        return array('ok' => false, 'error' => lang('This file is too large to copy here.'));
+    }
+
+    $failed = '';
+    $rows = function ($index) use ($path, &$failed) {
+        $error = '';
+
+        foreach (pg_sheet_rows($path, 'xls', $error, $index) as $number => $cells) {
+            yield $number => $cells;
+        }
+
+        if ($error !== '') {
+            $failed = $error;
+            throw new RuntimeException('The sheet could not be read.');
+        }
+    };
+
+    if (!pg_xlsx_write_book($sheets, $rows, $target)) {
+        @unlink($target);
+
+        return array('ok' => false, 'error' => ($failed !== '') ? pg_office_refusal_error('damaged') : lang('The copy could not be written.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
 /**
  * The script tag of the preview's drawing code (assets/js/pg_office_view.js),
  * for the screens that load it on first use, stamped with the file's time.
@@ -2208,6 +2653,8 @@ function pg_office_view_strings()
 {
     return array(
         'hidden'            => lang('Hidden sheet'),
+        'xls_copy'          => lang('Save a copy as .xlsx'),
+        'xls_copy_help'     => lang('This file is only shown here. A copy as .xlsx can be changed; formulas come over as their results.'),
         'sheets'            => lang('Sheets'),
         'changed_mark'      => lang('Changed'),
         'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
@@ -2285,6 +2732,14 @@ function pg_office_read($path, $name, $edit = false, $choice = array())
     // Only looked at, whether or not editing was asked for.
     if ($kind === 'csv') {
         return array('kind' => 'csv') + pg_office_csv_read($path, $name, $choice);
+    }
+
+    if ($kind === 'ods') {
+        return array('kind' => 'ods') + pg_office_ods_read($path);
+    }
+
+    if ($kind === 'xls') {
+        return array('kind' => 'xls') + pg_office_xls_read($path);
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');
