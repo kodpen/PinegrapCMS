@@ -154,9 +154,6 @@
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- visitor-push-features.md: Plan visitor-push, features N1 to N18: the switch, the site's worker, the "Notify me" block, a subscription, a message and how it arrives, the panel's card and screen, stock, an order, app mode
-- visitor-push-steps.md: Plan visitor-push, steps VP1 to VP8: the tables and the door, the sender, the block and switch, the panel's card and screen, stock, an order, app mode, close-out
-- visitor-push.md: Plan (owner 2026-11-16, agent channel message 5667): notifications a site visitor subscribes to in the browser without an account, sent from the panel; steps VP1 to VP8
 - website-features-rules.md: The rules every step of the nine website-side plans keeps (plans/website-features.md): fewest existing files, schema, switches, numbered features in a step's PR body, looks, texts, tests
 - website-features-shared-files.md: The existing files that steps of more than one website-side plan touch (plans/website-features.md), each with its steps; two steps on the same file are never open together
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
