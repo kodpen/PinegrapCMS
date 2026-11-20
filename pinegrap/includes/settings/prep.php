@@ -67,14 +67,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
-    $oauth_google_client_id = $row['oauth_google_client_id'];
-    // Shown in the field like the other API secrets on this screen (site
-    // convention - the operator preferred seeing it over a keep-blank rule);
-    // stored encrypted at rest either way.
-    $oauth_google_client_secret_value = '';
-    if (($row['oauth_google_client_secret'] ?? '') !== '') {
-        $oauth_google_client_secret_value = (string) decode_ssl_keys($row['oauth_google_client_secret'], ($row['oauth_google_secret_iv'] ?? ''));
-    }
     // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
     // applications they use (connect_apps; Microsoft's is set up on Connected
     // accounts, Apple's on its card here). Empty until the upgrade has run.
