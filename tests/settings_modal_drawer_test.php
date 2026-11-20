@@ -121,11 +121,14 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 			// (ws_settings_department_drawer()).
 			$drawer = (bool) preg_match('/^(pg_settings_drawer|ws_settings_[a-z_]+_drawer)\(/', $entry);
 			$form = (bool) preg_match('/^\'\s*<form method="post" action="(connect|view_waf_log)\.php" id="pgset_[a-z_]+(\' \. \$[a-z_]+ \. \')?" class="disable_shortcut d-none">/', $entry);
-			pg_assert_true($drawer || $form, $name . ': a drawer or a hidden Connect or Release form, got ' . substr($entry, 0, 60));
+			// Mailboxes' Bring in an .eml file: a hidden form its pane's
+			// fields name (ws_mail_eml_pane_form()).
+			$form = $form || (bool) preg_match('/^ws_mail_eml_pane_form\(\)$/', trim($entry));
+			pg_assert_true($drawer || $form, $name . ': a drawer or a hidden Connect, Release or .eml form, got ' . substr($entry, 0, 60));
 		}
 	}
 
-	pg_assert_same(18, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, the two department drawers, the Working calendar\'s three, Claude\'s new secret and set-up, the two agent drawers, the two MCP server drawers and the two mailbox drawers');
+	pg_assert_same(19, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret and set-up, the two agent drawers, the two MCP server drawers and the two mailbox drawers');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()

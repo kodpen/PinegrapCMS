@@ -1565,10 +1565,11 @@ function ws_mail_fetch_health(array $boxes, $now)
 
 /**
  * The mailboxes card: each box with its channel and last mail, its form,
- * and the .eml upload. In Site Settings (Mailboxes, with
- * $form) Test connection is a named submit button of the settings form
- * (ws_mail_test, value the box's id), and a box's form with its .eml upload,
- * and Add a mailbox, open in drawers (ws_settings_mail_drawer()).
+ * and the .eml upload. In Site Settings (Mailboxes, with $form) the pane is
+ * folded rows (ws_mail_settings_rows(), pg_settings_fold()): Test connection
+ * is a named submit button of the settings form (ws_mail_test, value the
+ * box's id), and a box's form and Add a mailbox open in drawers
+ * (ws_settings_mail_drawer()). includes/settings/fold.php must be loaded.
  *
  * @param string      $self_url
  * @param array       $viewer
@@ -1614,22 +1615,10 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         $reads = ((string) (ws_mail_box_settings($box)['host'] ?? '') !== '');
         $test = '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection'));
 
-        // In Site Settings each box is a list row with its icon tile, its
-        // place and last mail, its last check, and its buttons under them;
-        // the buttons wrap, or on a 320 px screen Edit ran past the card.
+        // In Site Settings each box is a list row of the pane's Mailboxes
+        // row (ws_mail_settings_box_row()).
         if ($form !== null) {
-            $rows .= '
-            <div class="pg-list-row' . ((int) $box['enabled'] === 1 ? '' : ' opacity-50') . '"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-inbox"></span></span>
-                <div class="pg-list-row-main">
-                    <div class="pg-list-row-head"><span class="pg-list-row-title">' . h((string) $box['name']) . '</span></div>
-                    <div class="pg-list-row-text">' . h((string) $box['address']) . ' · ' . $place . ' · ' . h(((int) $box['last_mail_at'] > 0) ? lang(array('string' => 'Last e-mail {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['last_mail_at']))) : lang('No e-mail yet')) . '</div>
-                    <div class="pg-list-row-text">' . ws_mail_box_check_line($box) . '</div>
-                    <div class="pg-list-row-actions flex-wrap">
-                        ' . ($reads ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm">' . $test . '</button>' : '') . '
-                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
-                    </div>
-                </div>
-            </div>';
+            $rows .= ws_mail_settings_box_row($box, $place, $form);
             continue;
         }
 
@@ -1657,24 +1646,12 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
     $intro = '<div class="pg-field-help mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>';
 
     if ($form !== null) {
-        return '
-    <div id="pgset-ws-mail" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
-                <span class="pg-title-section ws-grow">' . h(lang('Mailboxes')) . '</span>
-                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-0" aria-controls="pgset-ws-mail-0"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
-            </div>
-            <div class="card-body">
-                <p class="pg-card-sub">' . h(lang('Mailboxes read incoming e-mail: the mail sent to a mailbox\'s address is brought in here, read and answered.'))
-                    . ' ' . lang(array('string' => 'For sending: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mail_sending')) . '">' . h(lang('E-mail sending')) . '</a>')) . '</p>
-                ' . $rows . '
-                ' . $intro . '
-                ' . ws_mail_connections_html($viewer) . '
-                ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
-                ' . (function_exists('ws_mail_rules_html') ? ws_mail_rules_html($boxes, ws_mail_rule_people(), $form) : '') . '
-            </div>
-        </div>
-    </div>' . ws_mail_settings_script();
+        // The list's rows, or its empty state (the Design examples' "A
+        // list's empty state").
+        $rows = $boxes ? '<div class="pg-card-inner ws-agset-list">' . $rows . '</div>'
+            : '<div class="pg-card-inner"><div class="ws-empty py-5"><i class="bi bi-inbox" aria-hidden="true"></i>' . h(lang('No mailbox yet.')) . '</div></div>';
+
+        return pg_settings_fold(ws_mail_settings_rows($viewer, $boxes, $rows, $form)) . ws_mail_settings_script();
     }
 
     return '
@@ -1690,6 +1667,320 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                 ' . ws_mail_connections_html($viewer) . '
             </div>
         </div>' . ws_mail_settings_script();
+}
+
+/**
+ * A box's state for its pill: Off (switched off), Sign-in needed (the
+ * password or the connected account is refused or gone), Error (the last
+ * check failed otherwise), Reading. A box with no server is read from
+ * nothing: no pill, its line says so. Pure.
+ *
+ * @param array $box ws_mail_boxes row
+ * @return array key (off|sign_in|error|reading|none), words, tone (a
+ *               pg-tone- class), error (the failed check's first sentence)
+ */
+function ws_mail_box_state($box)
+{
+    $settings = ws_mail_box_settings($box);
+
+    if (empty($box['enabled'])) {
+        return array('key' => 'off', 'words' => lang('Off'), 'tone' => 'pg-tone-gray', 'error' => '');
+    }
+
+    if ((string) ($settings['host'] ?? '') === '') {
+        return array('key' => 'none', 'words' => '', 'tone' => '', 'error' => '');
+    }
+
+    $parts = explode('|', (string) ($box['last_error'] ?? ''), 2);
+    $error = (string) $parts[0];
+
+    if ($error === '') {
+        return array('key' => 'reading', 'words' => lang('Reading'), 'tone' => 'pg-tone-teal', 'error' => '');
+    }
+
+    // The code's own sentence, without what the server added after it.
+    $first = ws_mail_error_text($error, '', '');
+
+    if (in_array($error, array('auth', 'auth_disabled', 'no_password', 'no_account'), true)) {
+        return array('key' => 'sign_in', 'words' => lang('Sign-in needed'), 'tone' => 'pg-tone-amber', 'error' => $first);
+    }
+
+    return array('key' => 'error', 'words' => lang('Error'), 'tone' => 'pg-tone-rose', 'error' => $first);
+}
+
+/**
+ * The line under a box's name: where it is kept, then its last check (with
+ * the failed check's first sentence). Pure but for the words.
+ *
+ * @param array  $box
+ * @param string $place HTML: the channel's link or "Kept in the mailbox itself"
+ * @param array  $state ws_mail_box_state()
+ * @return string HTML
+ */
+function ws_mail_box_row_line($box, $place, $state)
+{
+    $settings = ws_mail_box_settings($box);
+
+    if ((string) ($settings['host'] ?? '') === '') {
+        $check = h(lang('Not read from a server'));
+    } elseif ((int) ($box['checked_at'] ?? 0) === 0) {
+        $check = h(lang('Not checked yet'));
+    } else {
+        $check = h(lang(array('string' => 'Checked {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['checked_at']))))
+            . (($state['error'] !== '') ? ': ' . h($state['error']) : '');
+    }
+
+    return $place . ' · ' . $check;
+}
+
+/**
+ * A box's row in Site Settings › Mailboxes, the settings pane's list row of
+ * the Design examples screen: icon tile, name and address, where it is kept
+ * and the last check, the state pill, then Test connection (a box read from
+ * a server) and Edit, quiet and small.
+ *
+ * @param array  $box
+ * @param string $place HTML
+ * @param string $form  the settings form's id
+ * @return string HTML
+ */
+function ws_mail_settings_box_row($box, $place, $form)
+{
+    $id = (int) $box['id'];
+    $state = ws_mail_box_state($box);
+    $test = ($state['key'] !== 'none' && $state['key'] !== 'off')
+        ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection')) . '</button>'
+        : '';
+
+    return '<div class="ws-agset-row" data-ws-mail-box="' . $id . '">'
+        . '<span class="pg-icon-tile ws-agset-face" aria-hidden="true"><i class="bi bi-inbox"></i></span>'
+        . '<div class="ws-agset-main">'
+        . '<div class="ws-agset-name"><strong class="pg-list-row-title">' . h((string) $box['name']) . '</strong><span class="pg-text-meta">' . h((string) $box['address']) . '</span></div>'
+        . '<div class="pg-text-meta ws-agset-summary">' . ws_mail_box_row_line($box, $place, $state) . '</div>'
+        . '</div>'
+        . (($state['words'] !== '') ? '<span class="pg-pill ws-agset-state ' . h($state['tone']) . '">' . h($state['words']) . '</span>' : '')
+        . '<div class="ws-agset-edit d-flex flex-wrap align-items-center gap-1">' . $test
+        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>'
+        . '</div></div>';
+}
+
+/**
+ * The Mailboxes row's line and pill: how many boxes, and the state that
+ * most needs a look (Error, then Sign-in needed), else Reading while one
+ * reads, else Off when all are off. Pure but for the words.
+ *
+ * @param array[] $boxes
+ * @return array line, pill (words, tone class; or null), attention
+ */
+function ws_mail_settings_boxes_face($boxes)
+{
+    $keys = array();
+
+    foreach ((array) $boxes as $box) {
+        $keys[] = ws_mail_box_state($box)['key'];
+    }
+
+    $count = count($keys);
+
+    if ($count === 0) {
+        return array('line' => lang('No mailbox yet.'), 'pill' => null, 'attention' => false);
+    }
+
+    $line = ($count === 1) ? lang('1 mailbox') : lang(array('string' => '{var:1} mailboxes', 'vars' => $count));
+
+    if (in_array('error', $keys, true)) {
+        return array('line' => $line, 'pill' => array(lang('Error'), 'pg-tone-rose'), 'attention' => true);
+    }
+
+    if (in_array('sign_in', $keys, true)) {
+        return array('line' => $line, 'pill' => array(lang('Sign-in needed'), 'pg-tone-amber'), 'attention' => true);
+    }
+
+    if (in_array('reading', $keys, true)) {
+        return array('line' => $line, 'pill' => array(lang('Reading'), 'pg-tone-teal'), 'attention' => false);
+    }
+
+    return array('line' => $line, 'pill' => (count(array_unique($keys)) === 1 && $keys[0] === 'off') ? array(lang('Off'), 'pg-tone-gray') : null, 'attention' => false);
+}
+
+/**
+ * Google's or Microsoft's connect row under "Accounts for mailboxes", the
+ * Design examples' connect row: the state in the words Connections uses
+ * (ws_mail_connection_html()), Connect after Not connected. A person below
+ * manager cannot open Connections: no link, the line says who connects it.
+ *
+ * @param array     $viewer
+ * @param string    $provider microsoft | google
+ * @param array|int $state    ws_mail_connection_state()
+ * @param bool      $ready    ws_mail_connect_ready()
+ * @return string HTML
+ */
+function ws_mail_account_row($viewer, $provider, $state, $ready)
+{
+    $google = ($provider === 'google');
+    $state = is_array($state) ? $state : array('count' => (int) $state, 'other' => array());
+    $connected = ((int) ($state['count'] ?? 0) > 0);
+    $other = (!$connected && !empty($state['other'])) ? (array) $state['other'] : array();
+
+    if ($connected) {
+        $pill = array('teal', lang('Connected'));
+        $button = lang('Manage');
+        $line = lang('Reading mailboxes');
+    } elseif ($other) {
+        $pill = array('amber', lang('Connected for another purpose'));
+        $button = lang('Connect');
+        $line = lang(array(
+            'string' => 'The account is connected for {var:1} only; reading mail needs one more sign-in, for {var:2}.',
+            'vars'   => array(ws_mail_connection_purpose_names($other), lang('Reading mailboxes'))));
+    } else {
+        $pill = array('gray', lang('Not connected'));
+        $button = lang('Connect');
+        $line = $ready ? ($google ? lang('Gmail or Google Workspace') : lang('Microsoft 365 or Outlook.com'))
+            : ($google ? lang('The Google application is not set up yet.') : lang('The Microsoft application is not set up yet.'));
+    }
+
+    $manager = ((int) ($viewer['role'] ?? 3) <= 2);
+
+    if (!$manager && !$connected) {
+        $line = $google
+            ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
+            : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.');
+    }
+
+    $inner = '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-' . ($google ? 'google' : 'microsoft') . '"></i></span>'
+        . '<span class="connections-row-main"><span class="connections-row-name">' . ($google ? 'Google' : 'Microsoft') . '</span><span class="pg-text-meta d-block">' . h($line) . '</span></span>'
+        . '<span class="connections-row-side"><span class="pg-pill pg-tone-' . $pill[0] . '">' . h($pill[1]) . '</span>'
+        . ($manager ? '<span class="pg-button pg-button-sm pg-button-quiet">' . h($button) . '</span>' : '') . '</span>';
+
+    return $manager
+        ? '<a class="pg-card-inner-row connections-row" href="' . h(ws_mail_connections_url($google ? 'google' : 'microsoft')) . '">' . $inner . '</a>'
+        : '<div class="pg-card-inner-row connections-row">' . $inner . '</div>';
+}
+
+/**
+ * Bring in an .eml file as the pane's last row: the mailbox, the file and
+ * Bring in. A file cannot travel with the pane's save, so the fields belong
+ * to a form of their own printed outside the settings form
+ * (ws_mail_eml_pane_form()); the save module reads ws_mail_eml (the box's
+ * id) and the file ws_mail_eml_file.
+ *
+ * @param array[] $boxes
+ * @return string HTML
+ */
+function ws_mail_eml_pane($boxes)
+{
+    if (!$boxes) {
+        return '<p class="pg-text-meta">' . h(lang('Add a mailbox first.')) . '</p>';
+    }
+
+    $f = ' form="pgset-ws-mail-eml-form"';
+    $choices = '';
+
+    foreach ($boxes as $box) {
+        $choices .= '<option value="' . (int) $box['id'] . '">' . h((string) $box['name']) . ' · ' . h((string) $box['address']) . '</option>';
+    }
+
+    return '<div id="pgset-ws-mail-eml" class="d-flex flex-wrap align-items-end gap-3">'
+        . '<div><label class="pg-field-label" for="ws-mail-eml-box">' . h(lang('Mailbox')) . '</label><select class="pg-input" id="ws-mail-eml-box" name="ws_mail_eml"' . $f . '>' . $choices . '</select></div>'
+        . '<div><label class="pg-field-label" for="ws-mail-eml-file">' . h(lang('E-mail file')) . '</label><input class="pg-input" type="file" id="ws-mail-eml-file" name="ws_mail_eml_file" accept=".eml,message/rfc822"' . $f . '></div>'
+        . '<button type="submit" class="pg-button pg-button-quiet pg-button-sm"' . $f . '><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Bring in')) . '</button>'
+        . '</div>'
+        . '<div class="pg-field-help">' . h(lang('An e-mail saved from a mail program comes in as if the mailbox had read it.')) . '</div>';
+}
+
+/**
+ * The form Bring in an .eml file posts, empty and outside the settings form
+ * (for $pg_settings_modals): its fields sit in the pane and name it.
+ *
+ * @return string HTML
+ */
+function ws_mail_eml_pane_form()
+{
+    return '
+            <form method="post" action="' . h(pg_settings_url('mailboxes')) . '" enctype="multipart/form-data" id="pgset-ws-mail-eml-form" class="disable_shortcut d-none">' . get_token_field() . '</form>';
+}
+
+/**
+ * The folded rows of Site Settings › Mailboxes, in reading order:
+ * Mailboxes (open unless another needs a look), Accounts for mailboxes,
+ * Incoming mail rules, Blocked senders, Bring in an .eml file.
+ *
+ * @param array   $viewer
+ * @param array[] $boxes ws_mail_settings_boxes()
+ * @param string  $list  HTML: the boxes' rows, or the empty state
+ * @param string  $form  the settings form's id
+ * @return array[] rows for pg_settings_fold()
+ */
+function ws_mail_settings_rows($viewer, $boxes, $list, $form)
+{
+    $rows = array();
+
+    $rows[] = array('key' => 'ws-mail', 'name' => lang('Mailboxes'), 'icon' => 'bi-inbox', 'tone' => 'pg-tone-team',
+        'html' => '
+    <div id="pgset-ws-mail" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                <span class="pg-title-section ws-grow">' . h(lang('Mailboxes')) . '</span>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-0" aria-controls="pgset-ws-mail-0"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
+            </div>
+            <div class="card-body">
+                ' . $list . '
+                <div class="pg-field-help mt-3">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs.'))
+                    . ' ' . lang(array('string' => 'For sending: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mail_sending')) . '">' . h(lang('E-mail sending')) . '</a>')) . '</div>
+            </div>
+        </div>
+    </div>') + ws_mail_settings_boxes_face($boxes);
+
+    if (function_exists('pg_connect_purpose') && pg_connect_purpose('mail_read')) {
+        $accounts = '';
+        $connected = 0;
+
+        foreach (array('google', 'microsoft') as $provider) {
+            $state = ws_mail_connection_read($provider);
+            $connected += ((int) $state['count'] > 0) ? 1 : 0;
+            $accounts .= ws_mail_account_row($viewer, $provider, $state, ws_mail_connect_ready($provider));
+        }
+
+        $rows[] = array('key' => 'ws-mail-accounts', 'name' => lang('Accounts for mailboxes'), 'icon' => 'bi-person-badge', 'tone' => 'pg-tone-blue',
+            'line' => lang('Gmail and Microsoft 365 mailboxes are read through a connected account.'),
+            'pill' => ($connected > 0) ? array(lang('Connected'), 'pg-tone-teal') : array(lang('Not connected'), 'pg-tone-gray'),
+            'attention' => false,
+            'html' => '<div class="pg-card-inner connections-list">' . $accounts . '</div>');
+    }
+
+    if (function_exists('ws_mail_rules_html')) {
+        $count = 0;
+        $support = false;
+
+        foreach ($boxes as $box) {
+            if (ws_mail_rule_box_ok($box)) {
+                $support = true;
+                $count += count(ws_mail_rules($box));
+            }
+        }
+
+        $html = ws_mail_rules_html($boxes, $support ? ws_mail_rule_people() : array(), $form);
+        $rows[] = array('key' => 'ws-mail-rules', 'name' => lang('Incoming mail rules'), 'icon' => 'bi-funnel', 'tone' => '',
+            'line' => !$support ? lang('Rules work in a support box.') : (($count === 0) ? lang('No rules yet.') : (($count === 1) ? lang('1 rule') : lang(array('string' => '{var:1} rules', 'vars' => $count)))),
+            'pill' => null, 'attention' => false,
+            'html' => ($html !== '') ? $html : '<p class="pg-text-meta">' . h(lang('Rules work in a support box.')) . '</p>');
+    }
+
+    if (function_exists('ws_mail_blocks_html')) {
+        $blocks = ws_mail_blocks_list();
+        $html = ws_mail_blocks_html($blocks, $form);
+        $count = count($blocks);
+        $rows[] = array('key' => 'ws-mail-blocks', 'name' => lang('Blocked senders'), 'icon' => 'bi-slash-circle', 'tone' => '',
+            'line' => ($count === 0) ? lang('No sender is blocked.') : (($count === 1) ? lang('1 blocked sender') : lang(array('string' => '{var:1} blocked senders', 'vars' => $count))),
+            'pill' => null, 'attention' => false,
+            'html' => ($html !== '') ? $html : '<p class="pg-text-meta">' . h(lang('No sender is blocked.')) . '</p>');
+    }
+
+    $rows[] = array('key' => 'ws-mail-eml', 'name' => lang('Bring in an .eml file'), 'icon' => 'bi-upload', 'tone' => '',
+        'line' => lang('An e-mail saved from a mail program, into a mailbox.'), 'pill' => null, 'attention' => false,
+        'html' => ws_mail_eml_pane($boxes));
+
+    return $rows;
 }
 
 /**
@@ -1734,9 +2025,9 @@ function ws_mail_eml_form($action, $id, $dialog)
 }
 
 /**
- * A Site Settings drawer of the mailboxes card: a box's form with its .eml
- * upload (a form of its own after it, ws_mail_eml_form()) or, with $box
- * null, Add a mailbox's.
+ * A Site Settings drawer of the mailboxes card: a box's form or, with $box
+ * null, Add a mailbox's. Bring in an .eml file is the pane's last row
+ * (ws_mail_eml_pane()).
  *
  * @param array|null $box
  * @param array      $viewer
@@ -1757,8 +2048,7 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     $id = (int) $box['id'];
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer))
-        . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
+        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer)), $in_dialog);
 }
 
 /**

@@ -11591,6 +11591,16 @@ body.pg-side-panel-open .pg-chat-launcher {
   justify-content: flex-end;
   padding-block: 0;
 }
+/* Mailboxes' rules and blocked senders: the row's head names the part, so
+   their own heading and top margin go inside a row. */
+.pg-set-fold-body > .ws-mail-rules,
+.pg-set-fold-body > .ws-mail-blocks {
+  margin-top: 0 !important;
+}
+.pg-set-fold-body > .ws-mail-rules > .pg-title-section,
+.pg-set-fold-body > .ws-mail-blocks > .pg-title-section {
+  display: none;
+}
 @media (max-width: 575.98px) {
   .pg-set-fold-body { padding-inline: 12px; }
 }

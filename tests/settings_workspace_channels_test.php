@@ -174,8 +174,8 @@ function test_settings_workspace_channels_mailbox_refusals_name_their_field()
 	pg_assert_contains("\$_FILES['ws_mail_eml_file']", $save, 'the .eml comes with its own form');
 
 	$mail = settings_workspace_channels_test_source('includes/workspace/mail_settings.php');
-	pg_assert_contains("name=\"ws_mail_eml\" value=\"' . (int) \$id . '\"", $mail, 'Bring in is a named button of its own form');
-	pg_assert_contains("ws_mail_eml_form(pg_settings_url('mailboxes'), \$id, true)", $mail, 'posting to the category\'s page');
+	pg_assert_contains('name="ws_mail_eml"\' . $f . \'>', $mail, 'Bring in names its box by ws_mail_eml, in a form of its own');
+	pg_assert_contains("action=\"' . h(pg_settings_url('mailboxes')) . '\" enctype=\"multipart/form-data\" id=\"pgset-ws-mail-eml-form\"", $mail, 'posting to the category\'s page');
 }
 
 function test_settings_workspace_channels_voice_provider_rules()
