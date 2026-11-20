@@ -10,7 +10,7 @@ module: referral
 - On arrival the friend's offer (`referral_offer_id`) goes into `$_SESSION['ecommerce']['special_offer_code']` when it runs today and no offer code is there, as an affiliate's group offer does.
 
 ## Which settings does it read?
-- `config_text` rows (`pg_referral_settings()`, card in RF2): `referral_on` ('1'), `referral_offer_id`, `referral_reward` (minor units; 0 keeps the programme off), `referral_reward_days` (0 = never expires), `referral_smallest` (minor units), `referral_month_cap` (0 = no limit). Off: nothing changes.
+- `config_text` rows (`pg_referral_settings()`, written by the card: `referral-settings-card.md`): `referral_on` ('1'), `referral_offer_id`, `referral_reward` (minor units; 0 keeps the programme off), `referral_reward_days` (0 = never expires), `referral_smallest` (minor units), `referral_month_cap` (0 = no limit). Off: nothing changes.
 
 ## When is a reward given?
 - At completion, beside `pg_order_complete_commission()`, only when the order earned no affiliate commission: `pg_referral_order_completed()`.

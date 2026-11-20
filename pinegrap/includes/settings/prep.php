@@ -375,6 +375,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
     $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
     $credit_refund_bonus = pg_credit_points_rate_for_input(pg_config_text('credit_refund_bonus'));
+
+    // Referral programme: config_text rows, read through the rules' own reader.
+    $referral_settings = pg_referral_settings_for_input();
+    $referral_ready = pg_referral_ready();
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];
