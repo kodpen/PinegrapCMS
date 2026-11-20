@@ -61,6 +61,7 @@
 - customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
 - dashboard-assistant-agents.md: Plan (owner 2026-11-21): the dashboard's Assistant card with Claude off: a notice at the top, the agent chat, questions and proposals kept, a short note when no agent is connected; one step, DA1
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
+- delivery-tower-screens-label.md: Plan delivery-tower, step DT4b: the Create Label chooser on the order screen for an address whose method names no carrier; its parts, the carriers' order, the label path's one argument
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 - delivery-tower.md: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
