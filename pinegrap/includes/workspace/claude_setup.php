@@ -290,14 +290,18 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
 
     $html = '';
 
+    // One child in each item: the stepper's grid has two columns, the number
+    // and the text, and would put a second child into the number's column.
     foreach ($steps as $step) {
         $html .= '
             <li class="stepper-item active ws-claude-step">
-                <div class="pg-field-label">' . $step['title'] . '</div>
-                <div class="pg-text-2 fg-secondary mb-3">' . $step['text'] . '</div>
-                ' . (!empty($step['more']) ? '<div class="pg-text-2 fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '
-                ' . ws_claude_setup_picture($step['art'], $host) . '
-                ' . $step['extra'] . '
+                <div class="ws-claude-step-body">
+                    <div class="pg-field-label">' . $step['title'] . '</div>
+                    <div class="pg-text-2 fg-secondary mb-3">' . $step['text'] . '</div>
+                    ' . (!empty($step['more']) ? '<div class="pg-text-2 fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '
+                    ' . ws_claude_setup_picture($step['art'], $host) . '
+                    ' . $step['extra'] . '
+                </div>
             </li>';
     }
 
