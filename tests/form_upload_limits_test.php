@@ -117,7 +117,7 @@ function test_form_upload_limits_record_rides_in_the_action()
 function test_form_upload_limits_accounts_import_box_takes_csv()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_accounts_import.php');
-	pg_assert_contains("'accept' => '.csv,.txt,text/csv'", $source, 'the picker offers what the server takes');
+	pg_assert_contains("'accept' => '.csv,.txt,text/csv,' . PG_SHEET_IMPORT_ACCEPT", $source, 'the picker offers what the server takes');
 	pg_assert_contains('erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES)', $source, 'the stated limit is the real one');
 }
 

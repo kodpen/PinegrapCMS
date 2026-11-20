@@ -18,6 +18,7 @@
     "A CAD program": "Bir CAD programı",
     "A CDN that ignores the Accept header would give its first copy to everyone, so requests through a CDN get the original until this is on. Switch it on only once the CDN caches pictures separately for each Accept value (on Cloudflare, a Cache Rule).": "Accept başlığını dikkate almayan bir CDN ilk kopyasını herkese verir; bu yüzden bu açılana kadar CDN üzerinden gelen istekler özgün dosyayı alır. Yalnızca CDN resimleri her Accept değeri için ayrı önbelleğe aldığında açın (Cloudflare'de bir Cache Rule ile).",
     "A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.": "Bir CSV dışa aktarımı en yeniden başlayarak en çok {var:1} satır içerir ve denetim izine yazılır.",
+    "A CSV file, or an .xlsx, .ods or .xls workbook. A workbook with more than one sheet asks which sheet to import.": "Bir CSV dosyası ya da .xlsx, .ods veya .xls çalışma kitabı. Birden çok sayfası olan bir çalışma kitabında hangi sayfanın içe aktarılacağı sorulur.",
     "A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.": "İlk satırı sütunları adlandıran bir CSV, Excel ya da OpenDocument dosyası: her biri kendi adındaki sütunu doldurur.",
     "A CSV, Excel or OpenDocument file: its first row names the columns.": "CSV, Excel ya da OpenDocument dosyası: ilk satırı sütunları adlandırır.",
     "A Candlelit Winter Dinner": "Mum Işığında Bir Kış Yemeği",
