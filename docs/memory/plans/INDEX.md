@@ -116,9 +116,6 @@
 - privacy-centre-features.md: Plan privacy-centre, features P1 to P12: the inventory and its transfers, the retention rules with their dry run and audit-line destruction records, the request box, API
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
-- product-form-uploads-features.md: Plan product-form-uploads, features U1 to U16: the field and its rules, the shopper's upload, who opens the file, where the order shows it, its later life and the sweep of unordered carts
-- product-form-uploads-steps.md: Plan product-form-uploads, steps FU1 to FU6: the field and the file's door, the designer carts, the classic carts, the order's readers and the API, the sweep, close-out
-- product-form-uploads.md: Plan (owner 2026-11-20, agent channel poll 160): a File Upload field in product forms, so a shopper's photo or print file stays with the cart line and the order; steps FU1 to FU6
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield and taking a product off sale, the return spike, delivery, settings, API
 - sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out

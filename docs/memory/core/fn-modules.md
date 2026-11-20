@@ -252,7 +252,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_inventory`: [[privacy-inventory]]
 - `privacy_retention`: [[privacy-log-retention]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]
-- `product_form_uploads`: [[cart-product-form-file-field]], [[product-form-upload-api-csv-completion]], [[product-form-upload-field]], [[product-form-upload-order-readers]], [[product-form-upload-sweep]]
+- `product_form_uploads`: [[cart-product-form-file-field]], [[product-form-upload-api-csv-completion]], [[product-form-upload-field]], [[product-form-upload-order-readers]], [[product-form-upload-sweep]], [[product-form-uploads]]
 - `product_list`: [[product-list-paging]], [[product-modify-dialog]]
 - `product_questions`: [[comments-widget-two-forms]], [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]], [[designer-prototype-viewer-links]], [[prototype-viewer-missed-click]], [[release-bundle-preview]]
