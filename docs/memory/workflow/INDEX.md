@@ -164,6 +164,7 @@
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-30.md: Decisions list, schema part 30 (2026-11-20 on): the event and its date on stock_notify; the stock plan's tables
 - decisions-made-schema-31.md: Decisions list, schema part 31 (2026-11-20 on): the order profit tables erp_order_costs, erp_order_profit and erp_cost_rates
+- decisions-made-schema-32.md: Decisions list, schema part 32 (2026-11-20 on): ws_app_answers, an application's answer shown to the writer of a command alone
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
