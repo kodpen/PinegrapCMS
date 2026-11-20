@@ -123,9 +123,10 @@ function pg_shipment_label_auto_due($driver, $paid_at, $auto, $now)
  * @param int    $ship_to_id
  * @param string $driver
  * @param int    $now
+ * @param int    $user_id who pressed Create Label, 0 for the run
  * @return array column => value
  */
-function pg_shipment_label_failed_row($order_id, $ship_to_id, $driver, $now)
+function pg_shipment_label_failed_row($order_id, $ship_to_id, $driver, $now, $user_id = 0)
 {
     return array(
         'order_id'         => (int) $order_id,
@@ -138,7 +139,7 @@ function pg_shipment_label_failed_row($order_id, $ship_to_id, $driver, $now)
         'label_file'       => '',
         'state'            => 'failed',
         'is_return'        => 0,
-        'user_id'          => 0,
+        'user_id'          => (int) $user_id,
         'created_at'       => (int) $now,
         'cancelled_at'     => 0,
         'label_removed_at' => 0,
