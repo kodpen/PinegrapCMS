@@ -991,6 +991,10 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
         return false;
     }
 
+    // With stock locations the units go back where the order took them:
+    // the location saved on the order, the default when it names none.
+    $location_id = pg_stock_order_item_location($order_item_id);
+
     foreach ($components as $component) {
         if ((string) $component['inventory'] !== '1') {
             continue;
@@ -998,11 +1002,25 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 
         $product_id = (int) $component['product_id'];
         $before = (int) $component['inventory_quantity'];
+        $units = max(1, (int) $component['quantity']) * max(0, (int) $quantity);
 
-        db("UPDATE products SET inventory_quantity = inventory_quantity + '" . (max(1, (int) $component['quantity']) * max(0, (int) $quantity)) . "' WHERE id = '" . $product_id . "'");
+        $written = pg_stock_total_write($product_id, 'adjust', $units, $location_id, 'return', 'order_item:' . (int) $order_item_id);
+        $location = null;
+
+        if ($written === null) {
+            db("UPDATE products SET inventory_quantity = inventory_quantity + '" . $units . "' WHERE id = '" . $product_id . "'");
+        } elseif ($written['ok']) {
+            $before = (int) $written['total_before'];
+            $location = array(
+                'id'       => (int) $written['location_id'],
+                'name'     => pg_stock_location_name($written['location_id']),
+                'quantity' => (int) $written['after'],
+            );
+        }
+
         db("UPDATE products SET out_of_stock = '0' WHERE (id = '" . $product_id . "') AND (inventory_quantity > 0)");
 
-        pg_product_stock_changed($product_id, $before, null, $source);
+        pg_product_stock_changed($product_id, $before, null, $source, $location);
     }
 
     return true;

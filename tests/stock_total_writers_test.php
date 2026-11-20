@@ -174,6 +174,32 @@ function test_stock_total_routed_writers_keep_their_old_write_without_locations(
 	}
 }
 
+function test_stock_total_bundle_return_goes_back_to_the_order_location()
+{
+	$bundles = stock_total_test_source('includes/fn/bundles.php');
+	$return = substr($bundles, (int) strpos($bundles, 'function pg_bundle_return_stock('));
+	$return = substr($return, 0, (int) strpos($return, "\n}\n"));
+
+	pg_assert_contains('$location_id = pg_stock_order_item_location($order_item_id);', $return, 'the location saved on the order');
+	pg_assert_contains("pg_stock_total_write(\$product_id, 'adjust', \$units, \$location_id, 'return',", $return, 'through the writer');
+
+	$writes = stock_total_test_writes($return);
+	pg_assert_same(1, count($writes), 'one total write, for a site without locations');
+
+	foreach ($writes as $line) {
+		$end = (int) strpos($return, $line) + strlen($line);
+		$guard = strrpos(substr($return, 0, $end), 'if ($written === null) {');
+		pg_assert_true(($guard !== false) && ($end - (int) $guard < 300), 'the total write is the no-locations branch: ' . $line);
+	}
+
+	$sales = stock_total_test_source('includes/fn/stock_sales.php');
+	$pick = substr($sales, (int) strpos($sales, 'function pg_stock_order_item_location('));
+	$pick = substr($pick, 0, (int) strpos($pick, "\n}\n"));
+
+	pg_assert_contains('SELECT orders.stock_location_id', $pick, 'read from the order');
+	pg_assert_contains('return $stored ? (int) pg_stock_resolve_location(pg_stock_locations(), $stored) : 0;', $pick, 'a location that is gone falls back to the default');
+}
+
 /**
  * Every file whose SQL writes products.inventory_quantity, with the number
  * of such statements. A writer that changes the total while the site has
@@ -198,8 +224,9 @@ function test_stock_total_source_pin_of_every_total_writer()
 		'includes/explorer/handle_catalog_edit.php'  => 1,
 		// The bulk edit writes by location when the site has them.
 		'includes/explorer/handle_products_bulk.php' => 3,
-		// A bundle's cached stock, its components' take (gated by
-		// pg_stock_sale_take()) and its return, which still writes the total.
+		// A bundle's cached stock (worked out from its components), its
+		// components' take (gated by pg_stock_sale_take()) and their return
+		// (gated by pg_stock_total_write()).
 		'includes/fn/bundles.php'                    => 3,
 		// Completion: the total only when pg_stock_sale_take() answers null.
 		'includes/fn/order_completion.php'           => 1,
