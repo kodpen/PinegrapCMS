@@ -85,7 +85,7 @@ function test_waf_subjects_root_index_is_the_router()
 // credential endpoints; the site's own api.php keeps its allowance.
 function test_waf_subjects_credential_endpoints()
 {
-	$api = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'shipworks.php', 'workspace_guest.php', 'payment_callback.php');
+	$api = array('integration.php', 'api.php', 'mcp.php', 'mcp_compact.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'shipworks.php', 'workspace_guest.php', 'payment_callback.php');
 
 	pg_assert_true(waf_names_script_in('/pinegrap/shipworks.php', '/pinegrap/shipworks.php?action=getorders', $api), 'ShipWorks');
 	pg_assert_true(waf_names_script_in('/pinegrap/workspace_guest.php', '/pinegrap/workspace_guest.php', $api), 'a guest room');
@@ -100,7 +100,7 @@ function test_waf_subjects_credential_endpoints()
 	// client and a person's guest room are held to the country rule like
 	// the panel.
 	$country = waf_country_api_scripts();
-	pg_assert_same(array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php', 'whatsapp_webhook.php', 'sms_webhook.php'), $country);
+	pg_assert_same(array('integration.php', 'mcp.php', 'mcp_compact.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php', 'whatsapp_webhook.php', 'sms_webhook.php'), $country);
 	pg_assert_false(waf_names_script_in('/pinegrap/shipworks.php', '/pinegrap/shipworks.php', $country), 'ShipWorks is not country-exempt');
 	pg_assert_false(waf_names_script_in('/pinegrap/workspace_guest.php', '/pinegrap/workspace_guest.php', $country), 'a guest room is not country-exempt');
 	pg_assert_contains("waf_setting('waf_country_exempt_api', 1) && waf_request_names_script(waf_country_api_scripts())", $waf, 'the country restriction reads its own list');
