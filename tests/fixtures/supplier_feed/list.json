@@ -1,0 +1,5 @@
+[
+  {"sku": "J1", "barcode": "8690000000055", "title": "Lamba", "price": "19.99", "quantity": 5, "brand": {"name": "Işık"}, "images": ["https://example.com/j1a.jpg", "https://example.com/j1b.jpg"]},
+  {"sku": "J2", "barcode": "8690000000062", "title": "Abajur", "price": 7.5, "quantity": 0, "brand": {"name": "Işık"}, "images": []},
+  {"sku": "J3", "barcode": null, "title": "Ampul", "price": "1,234.56", "quantity": "12", "brand": {"name": "Diğer"}, "active": true}
+]
