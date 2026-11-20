@@ -240,6 +240,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
 	upgrade_2026_11_0_erp_stock_days();          // 11.0.249
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
+	upgrade_2026_11_0_ws_app_answers();          // 11.0.252
 
 }
 
@@ -8098,5 +8099,32 @@ function upgrade_2026_11_0_erp_order_profit() {
 	}
 
 	install_note('Accounting: each finished order gets its costs and net profit, computed by the general job after the upgrade.');
+
+}
+
+// An application's answer to a / command, shown to the command's writer alone
+// (2026.11.0, 11.0.252; includes/workspace/app_answers.php). The application
+// answers with the signed answer_token workspace.app.command carried, at most
+// three times; the row is read by ws_sync for the open channel only, deleted
+// with its channel, application or account and swept after 24 hours. token
+// holds the token's 32-character signature, which counts the answers.
+function upgrade_2026_11_0_ws_app_answers() {
+
+	install_create_table('ws_app_answers', "CREATE TABLE ws_app_answers (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		app_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		command     VARCHAR(20) NOT NULL DEFAULT '',
+		token       CHAR(32) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body        TEXT NULL,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user_channel (user_id, channel_id, id),
+		KEY idx_created (created_at),
+		KEY idx_token (token)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an application can answer a / command so that only the person who typed it sees the answer.');
 
 }
