@@ -20,7 +20,7 @@ module: product_form_uploads
 - The designer cart's save calls them through `pg_pfu_cart_save()` (FU2, #10641), the classic cart and express order through `pg_pfu_cart_save_file()` (FU3, #10642); `commerce/cart-product-form-file-field.md`.
 
 ## Who opens the file?
-- `get_file.php`, its own block before the folder's check: a file with `attachment = 1` held by a product answer (`form_id = 0`, `order_item_id > 0`; `pg_pfu_file_lines()`) opens for the session's cart (`$_SESSION['ecommerce']['order_id']`), the signed-in buyer (`orders.user_id`) and staff with role below 3 or the commerce right (`pg_pfu_access_verdict()`), whatever the folder allows.
+- `get_file.php`, its own block before the folder's check: a file with `attachment = 1` held by a product answer (`form_id = 0`, `order_item_id > 0`; `pg_pfu_file_lines()`) opens for the session's cart (`$_SESSION['ecommerce']['order_id']`), the session's order just placed (`completed_order_id`, the receipt page's links; #10782), the signed-in buyer (`orders.user_id`) and staff with role below 3 or the commerce right (`pg_pfu_access_verdict()`), whatever the folder allows.
 - Anyone else: a visitor not signed in goes to sign in, a signed-in one gets the private file's 403. The submitted-form attachment check is skipped for these files.
 - The functions get_file.php calls use only `db_items()` and PHP (`platform/router-no-functions-php.md`).
 

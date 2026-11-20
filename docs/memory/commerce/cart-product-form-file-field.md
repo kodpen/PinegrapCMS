@@ -18,7 +18,7 @@ module: product_form_uploads
 - A gateway return to `express_order.php` carries no files and no Remove check, so it keeps the stored files.
 
 ## How is a kept file shown?
-- Designer widgets: `_pg_cart_item_form_blocks()` (`file`, `file_size`, `file_url`, `file_image_url`, `file_remove`, `control_required`), drawn by `_pg_render_cart_item_form_html()` and `pg_sw_part_cart_item_form()` (twin `_sdPartCartItemForm()`, binding `form_field_file_remove`). An answer with `file_id = 0` keeps no file.
+- Designer widgets: `_pg_cart_item_form_blocks()` (`file`, `file_size`, `file_url`, `file_image_url`, `file_remove`, `control_required`), drawn by `_pg_render_cart_item_form_html()` and `pg_sw_part_cart_item_form()` (twin `_sdPartCartItemForm()`, binding `form_field_file_remove`). An answer with `file_id = 0`, or whose file was deleted from Files since (`files.size` NULL through the LEFT JOIN, `pg_pfu_kept_file()`; #10782), keeps no file.
 - Classic pages: `get_form_info()` draws `pg_pfu_kept_file_html()` (link, size, image preview, Remove, "Choose a new file to replace it:") above the input, with `accept` from `pg_pfu_accept_attribute()`. The system layout's form posts multipart when a drawn product form has a file field; a custom layout gets the `enctype` in `$attributes` and, per File Upload field, `files[quantity number]` (id, name, size, url, html) and `accept`.
 - A kept file drops the input's `required` attribute everywhere.
 
