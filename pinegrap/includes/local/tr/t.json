@@ -2521,6 +2521,7 @@
     "The box {var:1} compares sizes: {var:2} is not a number.": "{var:1} kutusu büyüklük karşılaştırıyor: {var:2} bir sayı değil.",
     "The box {var:1} cuts a text: its second value must be a whole number of characters.": "{var:1} kutusu metni kesiyor: ikinci değeri tam sayı olarak karakter sayısı olmalı.",
     "The box {var:1} draws records only in an e-mail to a contact group.": "{var:1} kutusu kayıtları yalnız bir kişi grubuna giden e-postada gösterir.",
+    "The box {var:1} draws the records of a box that does not come before it.": "{var:1} kutusu, kendisinden önce gelmeyen bir kutunun kayıtlarını gösteriyor.",
     "The box {var:1} draws the records of a box that is not a “Read the records of a list” box of this flow.": "{var:1} kutusu, bu akışın bir “Bir listenin kayıtlarını oku” kutusu olmayan bir kutunun kayıtlarını gösteriyor.",
     "The box {var:1} ends no For each box: choose the loop it ends.": "{var:1} kutusu hiçbir Her biri için kutusunu bitirmiyor: bitirdiği döngüyü seçin.",
     "The box {var:1} ends no loop: choose the loop it ends.": "{var:1} kutusu hiçbir döngüyü bitirmiyor: bitirdiği döngüyü seçin.",

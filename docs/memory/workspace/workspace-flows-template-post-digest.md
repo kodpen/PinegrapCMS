@@ -15,5 +15,8 @@ description: Flow template post_digest, "Digest of new posts" (post-digest DG4):
 - Setting types added for it in `ws_flow_template_setting_types()`: `page` and `group` (an id above 0; the page open to everyone and the group's right are checked at publish), `subject` (spaces folded, not empty, at most 250 characters), `day` (1 Monday to 7 Sunday, kept as a list of one in the start's `days`).
 - The setup panel (`setupControl()` in workspace_flow.js) draws page and group as selects of `FL.steps.list_pages` / `mail_groups`, day as a select of the week's days.
 
+## What did the bug hunt find? (architect, agent channel message 10214, 2026-11-20)
+- The template itself read clean: its records box comes before the e-mail box, the Condition ends a week with none, the setup's page and group are checked at publish. The faults fixed were in the boxes it joins (`workspace-flows-email-group.md`).
+
 ## Tests?
 - `test_workspace_flow_templates_post_digest` and `_post_digest_answers` in `tests/workspace_flow_templates_test.php`. No run on a database.

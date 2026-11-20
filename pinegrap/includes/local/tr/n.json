@@ -2517,6 +2517,7 @@
     "Nobody has written yet. Start the discussion.": "Henüz kimse yazmadı. Tartışmayı başlatın.",
     "Nobody holds access on this group itself.": "Bu grubun kendisinde kimsenin yetkisi yok.",
     "Nobody in the contact group may get this e-mail: none was sent.": "Kişi grubunda bu e-postayı alabilecek kimse yok: gönderilmedi.",
+    "Nobody in the contact group may get this e-mail: the run would send none.": "Kişi grubunda bu e-postayı alabilecek kimse yok: çalışma hiç göndermez.",
     "Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.": "Ekipte {var:1} kullanıcı adına sahip kimse yok, bu yüzden kimseye atanmıyor: kişiyi @ listesinden seçin.",
     "Nobody is on the site right now.": "Şu anda sitede kimse yok.",
     "Nobody is online right now.": "Şu anda çevrimiçi kimse yok.",
