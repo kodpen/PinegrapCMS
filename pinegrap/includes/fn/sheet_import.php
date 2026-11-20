@@ -527,7 +527,39 @@ function pg_sheet_import_staged()
 
     $_SESSION['software']['sheet_import'] = $staged;
 
+    // A question left unanswered in a session that ended is in no session
+    // any more: its workbook goes by the file's age.
+    pg_sheet_import_sweep(PG_FUNCTIONS_DIR . '/data/temp', time());
+
     return $staged;
+}
+
+/**
+ * Removes the waiting workbooks (sheet_import_<token>.bin) older than
+ * PG_SHEET_IMPORT_MAX_AGE from a folder, whichever session kept them.
+ *
+ * @param string $directory
+ * @param int    $now
+ * @return int how many were removed
+ */
+function pg_sheet_import_sweep($directory, $now)
+{
+    $removed = 0;
+    $files = is_dir($directory) ? glob(rtrim($directory, '/') . '/sheet_import_*.bin') : array();
+
+    foreach ((array) $files as $file) {
+        if (preg_match('/\/sheet_import_[a-f0-9]{32}\.bin$/', $file) !== 1) {
+            continue;
+        }
+
+        $time = @filemtime($file);
+
+        if (($time !== false) && (($now - $time) > PG_SHEET_IMPORT_MAX_AGE) && @unlink($file)) {
+            $removed++;
+        }
+    }
+
+    return $removed;
 }
 
 /**
