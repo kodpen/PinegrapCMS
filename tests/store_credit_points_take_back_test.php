@@ -168,3 +168,34 @@ function test_store_credit_points_screen_noted_reads_order_lines()
 		'lines:101=2,102=1,-2=1',
 	)), 'summed per order line, shipping and surcharge left out');
 }
+
+function test_store_credit_points_lines_marker_names_order_lines()
+{
+	pg_assert_same('points-lines:101=2,102=1', pg_credit_points_lines_marker(array(101 => 2, 102 => '1', 103 => 0, -1 => 1)), 'order lines with a quantity only');
+	pg_assert_same('', pg_credit_points_lines_marker(array()), 'none');
+	pg_assert_same(array(101 => 2, 102 => 1), pg_credit_points_screen_noted(array('Reward points taken back: 40 ' . pg_credit_points_lines_marker(array(101 => 2, 102 => 1)))), 'read back');
+}
+
+function test_store_credit_points_screen_noted_reads_both_markers_once()
+{
+	pg_assert_same(array(101 => 3), pg_credit_points_screen_noted(array(
+		'lines:101=1,-1=1',
+		'Reward points taken back: 20 points-lines:101=2',
+	)), 'one refund on the order, one on its invoice');
+	pg_assert_same(array(101 => 2), pg_credit_points_screen_noted(array('points-lines:101=2 lines:101=2')), 'a note with both counts its line once');
+}
+
+function test_store_credit_points_invoiced_line_refund_then_zero_return_takes_once()
+{
+	$lines = array(array('order_item_id' => 101, 'quantity' => '2'));
+
+	// Invoiced order: the screen refunds line 101 x 2 and notes it, then a
+	// return of the same two units is recorded as refunded with 0.
+	$note = trim(pg_credit_points_marker(200) . ' ' . pg_credit_points_lines_marker(array(101 => 2)));
+	$before = array();
+	foreach (pg_credit_points_screen_noted(array($note)) as $id => $quantity) {
+		$before[$id]['screen'] = $quantity;
+	}
+
+	pg_assert_same(array(), pg_credit_points_units_to_take($lines, $before, array(101 => array('recorded' => 2))), 'the points are taken once');
+}

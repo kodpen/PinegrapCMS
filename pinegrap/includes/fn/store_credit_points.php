@@ -698,10 +698,36 @@ function pg_credit_points_units_to_take(array $lines, array $before, array $add)
 }
 
 /**
+ * The note an order screen refund by lines of an invoiced order leaves for
+ * the reward points count: the order lines and quantities it gave back
+ * (pg_credit_points_erp_quantities()). An order without an invoice notes its
+ * lines for the ERP already (erp_order_refund_lines_note()); this marker is
+ * written only where that one is not, and the ERP's count never reads it.
+ * Pure.
+ *
+ * @param array $quantities  order item id => quantity
+ * @return string  'points-lines:101=2,102=1'; '' for none
+ */
+function pg_credit_points_lines_marker(array $quantities)
+{
+    $parts = array();
+
+    foreach ($quantities as $item_id => $quantity) {
+        if (((int) $item_id > 0) && ((int) $quantity > 0)) {
+            $parts[] = (int) $item_id . '=' . (int) $quantity;
+        }
+    }
+
+    return $parts ? 'points-lines:' . implode(',', $parts) : '';
+}
+
+/**
  * The order lines and quantities the order screen's refunds by lines gave
- * back on an order without an invoice, from the lines their order_refunds
- * notes name (erp_order_refund_lines_note(): 'lines:12=1,-1=1'). Shipping
- * (-1) and the surcharge (-2) are no order line and are left out. Pure.
+ * back, from their order_refunds notes: the points-lines marker of an
+ * invoiced order (pg_credit_points_lines_marker()), else the lines an order
+ * without an invoice noted for the ERP (erp_order_refund_lines_note(),
+ * 'lines:12=1,-1=1', shipping -1 and surcharge -2 left out). A note is read
+ * from one of the two only, so no line counts twice. Pure.
  *
  * @param array $notes  order_refunds.notes values
  * @return array  order item id => quantity
@@ -711,7 +737,10 @@ function pg_credit_points_screen_noted(array $notes)
     $noted = array();
 
     foreach ($notes as $note) {
-        if (!preg_match_all('/(?:^|\s)lines:([-\d=.,]+)/', (string) $note, $found)) {
+        $note = (string) $note;
+
+        if (!preg_match_all('/(?:^|\s)points-lines:([-\d=.,]+)/', $note, $found)
+            && !preg_match_all('/(?:^|\s)lines:([-\d=.,]+)/', $note, $found)) {
             continue;
         }
 
@@ -734,8 +763,9 @@ function pg_credit_points_screen_noted(array $notes)
  * The units of an order's lines whose reward points refunds took back so
  * far, by way (pg_credit_points_units_taken()): the refunded returns, the
  * one being refunded left out, split by whether money went back with them,
- * and the order screen's refunds by lines as their notes name them. An
- * invoiced order's refunds by lines note no lines and count none here.
+ * and the order screen's refunds by lines as their notes name them
+ * (pg_credit_points_screen_noted()). An invoiced order's refunds written
+ * before the points-lines marker name no lines and count none.
  *
  * @param int $order_id
  * @param int $except_return_id  the return being refunded, 0 for none
