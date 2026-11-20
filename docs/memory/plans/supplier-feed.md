@@ -33,7 +33,7 @@ priority: 6
 
 ## Which tables? (owner 2026-11-20, poll 185, channel message 10642)
 - "Evet, üç tablo eklensin": `supplier_feeds`, `supplier_feed_items`, `supplier_feed_runs`; no `products` column. The columns: architect, channel message 10647, kept in the schema decisions list.
-- SF1's worker writes the columns into its PR body and asks the architect before it is marked ready.
+- The worker of SF1 writes the columns into its PR body and asks the architect before it is marked ready.
 
 ## What is built?
 - Features: `supplier-feed-features.md` (F1 to F14). Steps: `supplier-feed-steps.md`. Claim as `[plan:supplier-feed] <step> — <topic>`.
