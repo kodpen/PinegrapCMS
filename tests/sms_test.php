@@ -406,92 +406,156 @@ function test_sms_every_provider_has_a_driver()
 	pg_assert_false(pg_sms_driver('nonexistent'));
 }
 
-// A pane without the SMS card, or without the named provider's fields,
-// leaves the account alone.
-function test_sms_settings_posted_provider()
-{
-	pg_assert_same(null, pg_sms_settings_posted_provider(array('organization_name' => 'Kodpen')));
-	pg_assert_same(null, pg_sms_settings_posted_provider(array('sms_provider' => 'netgsm')));
-	pg_assert_same(null, pg_sms_settings_posted_provider(array('sms_provider' => 'other', 'sms_other_user' => 'x')));
-	pg_assert_same(null, pg_sms_settings_posted_provider(array('sms_provider' => array('netgsm'), 'sms_netgsm_user' => 'x')));
-	pg_assert_same('netgsm', pg_sms_settings_posted_provider(array('sms_provider' => 'netgsm', 'sms_netgsm_user' => '')));
-}
-
 function sms_test_none()
 {
 	return array('user' => '', 'password' => '', 'password_stored' => false, 'sender' => '', 'enabled' => false);
 }
 
+// The card's apps: Netgsm stored and sending unless told otherwise.
+function sms_test_apps($netgsm = null, $iletimerkezi = null, $twilio = null)
+{
+	return array(
+		'netgsm'       => is_array($netgsm) ? $netgsm : sms_test_app(),
+		'iletimerkezi' => is_array($iletimerkezi) ? $iletimerkezi : sms_test_none(),
+		'twilio'       => is_array($twilio) ? $twilio : sms_test_none(),
+	);
+}
+
+// A pane without the SMS card, or naming no provider, leaves the switch
+// alone.
+function test_sms_switch_decide_without_the_card()
+{
+	pg_assert_same(null, pg_sms_switch_decide(array('organization_name' => 'Kodpen'), sms_test_apps()));
+	pg_assert_same(null, pg_sms_switch_decide(array('sms_provider' => 'other', 'sms_enabled' => '1'), sms_test_apps()));
+	pg_assert_same(null, pg_sms_switch_decide(array('sms_provider' => array('netgsm')), sms_test_apps()));
+}
+
+// A site whose SMS is on keeps it on: an unrelated save of the pane writes
+// nothing, also when the stored password can no longer be read.
+function test_sms_switch_decide_running_site_is_left_alone()
+{
+	$post = array('sms_provider' => 'netgsm', 'sms_enabled' => '1');
+
+	$decision = pg_sms_switch_decide($post, sms_test_apps());
+	pg_assert_same('none', $decision['action']);
+	pg_assert_same(array(), $decision['marks']);
+
+	$unreadable = pg_sms_switch_decide($post, sms_test_apps(array('password' => '') + sms_test_app()));
+	pg_assert_same('none', $unreadable['action']);
+	pg_assert_same(array(), $unreadable['marks']);
+}
+
+// The switch cannot be turned on with a provider that is not connected.
+function test_sms_switch_decide_refuses_a_provider_not_connected()
+{
+	$decision = pg_sms_switch_decide(array('sms_provider' => 'twilio', 'sms_enabled' => '1'), sms_test_apps());
+
+	pg_assert_same('none', $decision['action']);
+	pg_assert_contains('Twilio', $decision['marks']['sms_enabled']);
+	pg_assert_contains('Connections', $decision['marks']['sms_enabled']);
+
+	$off = array('enabled' => false) + sms_test_app();
+	$incomplete = array('sender' => '') + $off;
+	$again = pg_sms_switch_decide(array('sms_provider' => 'netgsm', 'sms_enabled' => '1'), sms_test_apps($incomplete));
+	pg_assert_true(isset($again['marks']['sms_enabled']), 'an incomplete account is not connected');
+}
+
+// Choosing another connected provider switches over; switching on a
+// stored account that was off switches it on.
+function test_sms_switch_decide_switches()
+{
+	$twilio = array('enabled' => false, 'user' => 'AC1', 'sender' => '+14155550100') + sms_test_app();
+
+	$over = pg_sms_switch_decide(array('sms_provider' => 'twilio', 'sms_enabled' => '1'), sms_test_apps(null, null, $twilio));
+	pg_assert_same('switch', $over['action']);
+	pg_assert_true($over['enabled']);
+	pg_assert_same('twilio', $over['provider']);
+
+	$on = pg_sms_switch_decide(array('sms_provider' => 'netgsm', 'sms_enabled' => '1'), sms_test_apps(array('enabled' => false) + sms_test_app()));
+	pg_assert_same('switch', $on['action']);
+}
+
+// Off writes the switch alone, and only when something was on; no account
+// is removed.
+function test_sms_switch_decide_off()
+{
+	$off = pg_sms_switch_decide(array('sms_provider' => 'netgsm'), sms_test_apps());
+	pg_assert_same('switch', $off['action']);
+	pg_assert_false($off['enabled']);
+
+	$nothing = pg_sms_switch_decide(array('sms_provider' => 'netgsm'), sms_test_apps(sms_test_none()));
+	pg_assert_same('none', $nothing['action']);
+
+	$other = pg_sms_switch_decide(array('sms_provider' => 'twilio'), sms_test_apps());
+	pg_assert_same('switch', $other['action'], 'Netgsm on while the select names Twilio: off turns it off');
+}
+
+// A pane without the SMS card marks nothing.
+function test_sms_switch_check_without_the_card()
+{
+	$liveform = new sms_test_liveform();
+
+	pg_assert_same(null, pg_sms_switch_check(array('organization_name' => 'Kodpen'), $liveform));
+	pg_assert_same(array(), $liveform->errors);
+}
+
 function sms_test_post($fields)
 {
 	return $fields + array(
-		'sms_provider'        => 'netgsm',
 		'sms_netgsm_user'     => '8501234567',
 		'sms_netgsm_password' => '',
 		'sms_netgsm_sender'   => 'PINEGRAP',
 	);
 }
 
-// Nothing set up and nothing typed: nothing written, nothing asked.
-function test_sms_settings_decide_untouched_card()
+// A new account typed on its page is asked about at the provider and keeps
+// the card's switch (off).
+function test_sms_account_decide_new_account_asks()
 {
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_netgsm_user' => '', 'sms_netgsm_sender' => '')), 'netgsm', sms_test_none(), '');
-
-	pg_assert_same('none', $decision['action']);
-	pg_assert_false($decision['ask']);
-	pg_assert_same(array(), $decision['marks']);
-}
-
-// Switching on a new account asks the provider about it.
-function test_sms_settings_decide_switch_on_asks()
-{
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_password' => 'secret')), 'netgsm', sms_test_none(), '');
+	$decision = pg_sms_account_decide(sms_test_post(array('sms_netgsm_password' => 'secret')), 'netgsm', sms_test_none(), '');
 
 	pg_assert_same('save', $decision['action']);
 	pg_assert_true($decision['ask']);
+	pg_assert_false($decision['enabled'], 'the page never switches SMS on');
 	pg_assert_same('secret', $decision['password_effective']);
 	pg_assert_same(array(), $decision['marks']);
 }
 
-// An account left as it was is not written or asked about again, so an
-// unrelated save neither calls the provider nor re-seals the password.
-function test_sms_settings_decide_unchanged_account_is_left_alone()
+// An unchanged account is not written or asked about on Save.
+function test_sms_account_decide_unchanged_account_is_left_alone()
 {
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1')), 'netgsm', sms_test_app(), '');
+	$decision = pg_sms_account_decide(sms_test_post(array()), 'netgsm', sms_test_app(), '');
 
 	pg_assert_same('none', $decision['action']);
 	pg_assert_false($decision['ask']);
+	pg_assert_true($decision['enabled'], 'the switch is kept as stored');
 }
 
-// Neither is one this site can no longer read: the card's warning says so,
-// the other Communication settings still save.
-function test_sms_settings_decide_unreadable_password_does_not_block_other_saves()
+// Save and try asks about an unchanged account too, and reads the test
+// number; Save never reads it.
+function test_sms_account_decide_save_and_try()
 {
-	$before = array('password' => '') + sms_test_app();
+	$try = pg_sms_account_decide(sms_test_post(array('submit_try' => '1', 'sms_test_to' => '0532 123 45 67')), 'netgsm', sms_test_app(), '');
+	pg_assert_same('none', $try['action']);
+	pg_assert_true($try['ask']);
+	pg_assert_same('905321234567', $try['test_to']);
 
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1')), 'netgsm', $before, '');
+	$save = pg_sms_account_decide(sms_test_post(array('sms_test_to' => '0532 123 45 67')), 'netgsm', sms_test_app(), '');
+	pg_assert_same('', $save['test_to']);
 
-	pg_assert_same('none', $decision['action']);
-	pg_assert_same(array(), $decision['marks']);
-}
+	$empty = pg_sms_account_decide(sms_test_post(array('submit_try' => '1', 'sms_test_to' => '')), 'netgsm', sms_test_app(), '');
+	pg_assert_same('', $empty['test_to']);
+	pg_assert_same(array(), $empty['marks']);
 
-// Changing such an account without a new password names the cause.
-function test_sms_settings_decide_unreadable_password_on_change()
-{
-	$before = array('password' => '') + sms_test_app();
-
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_sender' => 'KODPEN')), 'netgsm', $before, '');
-
-	pg_assert_same(
-		lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.'),
-		$decision['marks']['sms_netgsm_password']);
-	pg_assert_false($decision['ask']);
+	$wrong = pg_sms_account_decide(sms_test_post(array('submit_try' => '1', 'sms_test_to' => '0212 123 45 67')), 'netgsm', sms_test_app(), '');
+	pg_assert_true(isset($wrong['marks']['sms_test_to']));
+	pg_assert_false($wrong['ask']);
 }
 
 // A changed sender is checked with the stored password.
-function test_sms_settings_decide_changed_sender_uses_stored_password()
+function test_sms_account_decide_changed_sender_uses_stored_password()
 {
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_sender' => 'KODPEN')), 'netgsm', sms_test_app(), '');
+	$decision = pg_sms_account_decide(sms_test_post(array('sms_netgsm_sender' => 'KODPEN')), 'netgsm', sms_test_app(), '');
 
 	pg_assert_same('save', $decision['action']);
 	pg_assert_true($decision['ask']);
@@ -499,78 +563,38 @@ function test_sms_settings_decide_changed_sender_uses_stored_password()
 	pg_assert_same('', $decision['password'], 'an empty box keeps the stored password');
 }
 
-function test_sms_settings_decide_required_fields()
+// Changing an account whose stored password cannot be read names the cause.
+function test_sms_account_decide_unreadable_password_on_change()
 {
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_user' => '', 'sms_netgsm_sender' => 'TOO LONG NAME')), 'netgsm', sms_test_none(), '');
+	$before = array('password' => '') + sms_test_app();
+
+	$decision = pg_sms_account_decide(sms_test_post(array('sms_netgsm_sender' => 'KODPEN')), 'netgsm', $before, '');
+
+	pg_assert_same(lang('The stored password cannot be read with this site\'s encryption key. Enter it again.'), $decision['marks']['sms_netgsm_password']);
+	pg_assert_false($decision['ask']);
+}
+
+function test_sms_account_decide_required_fields()
+{
+	$decision = pg_sms_account_decide(sms_test_post(array('sms_netgsm_user' => '', 'sms_netgsm_sender' => 'TOO LONG NAME')), 'netgsm', sms_test_none(), '');
 
 	pg_assert_same(array('sms_netgsm_user', 'sms_netgsm_password', 'sms_netgsm_sender'), array_keys($decision['marks']));
 	pg_assert_same(lang('A sender name has at most 11 characters.'), $decision['marks']['sms_netgsm_sender']);
 	pg_assert_false($decision['ask']);
 }
 
-// Switching off writes the switch alone, also where nothing can be sealed.
-function test_sms_settings_decide_switch_off()
+// Where nothing can be sealed, a typed account is refused on its first
+// field; an untouched page writes nothing.
+function test_sms_account_decide_cannot_keep_an_account()
 {
-	pg_assert_same('disable', pg_sms_settings_decide(sms_test_post(array()), 'netgsm', sms_test_app(), '')['action']);
-	pg_assert_same('disable', pg_sms_settings_decide(sms_test_post(array()), 'netgsm', sms_test_app(), 'No key.')['action']);
+	$decision = pg_sms_account_decide(sms_test_post(array('sms_netgsm_password' => 'secret')), 'netgsm', sms_test_none(), 'No key.');
 
-	$changed = pg_sms_settings_decide(sms_test_post(array('sms_netgsm_sender' => 'KODPEN')), 'netgsm', sms_test_app(), 'No key.');
-	pg_assert_same('disable', $changed['action']);
-	pg_assert_same(array(), $changed['marks']);
-	pg_assert_same(1, count($changed['notices']));
-}
-
-// Off and changed: kept, not asked.
-function test_sms_settings_decide_off_account_is_kept_unchecked()
-{
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_netgsm_password' => 'new')), 'netgsm', array('enabled' => false) + sms_test_app(), '');
-
-	pg_assert_same('save', $decision['action']);
-	pg_assert_false($decision['enabled']);
+	pg_assert_same(array('sms_netgsm_user' => 'No key.'), $decision['marks']);
 	pg_assert_false($decision['ask']);
-}
 
-// Off with the user code emptied removes the stored account.
-function test_sms_settings_decide_forget()
-{
-	pg_assert_same('forget', pg_sms_settings_decide(sms_test_post(array('sms_netgsm_user' => '')), 'netgsm', sms_test_app(), '')['action']);
-	pg_assert_same('forget', pg_sms_settings_decide(sms_test_post(array('sms_netgsm_user' => '')), 'netgsm', sms_test_app(), 'No key.')['action']);
-}
-
-// Switching on where nothing can be sealed is refused on the switch.
-function test_sms_settings_decide_cannot_keep_an_account()
-{
-	$decision = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_password' => 'secret')), 'netgsm', sms_test_none(), 'No key.');
-
-	pg_assert_same(array('sms_enabled' => 'No key.'), $decision['marks']);
-	pg_assert_false($decision['ask']);
-}
-
-// The test number: read only when its button was pressed, an empty one is a
-// plain save (Enter presses the button), a wrong one is marked.
-function test_sms_settings_decide_test_number()
-{
-	$typed = pg_sms_settings_decide(sms_test_post(array('sms_test' => '1', 'sms_test_to' => '0532 123 45 67')), 'netgsm', sms_test_app(), '');
-	pg_assert_same('905321234567', $typed['test_to']);
-
-	$empty = pg_sms_settings_decide(sms_test_post(array('sms_test' => '1', 'sms_test_to' => '')), 'netgsm', sms_test_app(), '');
-	pg_assert_same('', $empty['test_to']);
-	pg_assert_same(array(), $empty['marks']);
-
-	$not_pressed = pg_sms_settings_decide(sms_test_post(array('sms_test_to' => '0532 123 45 67')), 'netgsm', sms_test_app(), '');
-	pg_assert_same('', $not_pressed['test_to']);
-
-	$wrong = pg_sms_settings_decide(sms_test_post(array('sms_test' => '1', 'sms_test_to' => '0212 123 45 67')), 'netgsm', sms_test_app(), '');
-	pg_assert_true(isset($wrong['marks']['sms_test_to']));
-}
-
-// A pane without the SMS card marks nothing.
-function test_sms_settings_check_without_the_card()
-{
-	$liveform = new sms_test_liveform();
-
-	pg_assert_same(null, pg_sms_settings_check(array('organization_name' => 'Kodpen'), $liveform));
-	pg_assert_same(array(), $liveform->errors);
+	$untouched = pg_sms_account_decide(sms_test_post(array()), 'netgsm', sms_test_app(), 'No key.');
+	pg_assert_same(array(), $untouched['marks']);
+	pg_assert_same('none', $untouched['action']);
 }
 
 // A send result as pg_sms_send() returns it.
@@ -867,7 +891,7 @@ function test_sms_sender_valid_per_provider()
 	pg_assert_same('user', pg_sms_refused_field('twilio', '20404'));
 }
 
-// The Twilio card asks for the Account SID and Auth Token and takes a
+// Twilio's page asks for the Account SID and Auth Token and takes a
 // 34-character sender, copied with spaces or not.
 function test_sms_settings_twilio_card()
 {
@@ -879,19 +903,17 @@ function test_sms_settings_twilio_card()
 	pg_assert_contains('maxlength="34"', $fields);
 
 	$post = array(
-		'sms_provider'        => 'twilio',
-		'sms_enabled'         => '1',
 		'sms_twilio_user'     => 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
 		'sms_twilio_password' => 'test_auth_token',
 		'sms_twilio_sender'   => '+1 415 555 0100',
 	);
-	$decision = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	$decision = pg_sms_account_decide($post, 'twilio', sms_test_none(), '');
 	pg_assert_same('+14155550100', $decision['sender']);
 	pg_assert_same(array(), $decision['marks']);
 	pg_assert_true($decision['ask']);
 
 	$post['sms_twilio_sender'] = 'PINEGRAP';
-	$wrong = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	$wrong = pg_sms_account_decide($post, 'twilio', sms_test_none(), '');
 	pg_assert_contains('Messaging Service SID', $wrong['marks']['sms_twilio_sender']);
 	pg_assert_false($wrong['ask']);
 }
@@ -936,11 +958,9 @@ function test_sms_settings_account_field_labels()
 }
 
 // A required field is named as the provider names it.
-function test_sms_settings_decide_marks_with_provider_labels()
+function test_sms_account_decide_marks_with_provider_labels()
 {
-	$decision = pg_sms_settings_decide(array(
-		'sms_provider'               => 'iletimerkezi',
-		'sms_enabled'                => '1',
+	$decision = pg_sms_account_decide(array(
 		'sms_iletimerkezi_user'      => '',
 		'sms_iletimerkezi_password'  => '',
 		'sms_iletimerkezi_sender'    => 'PINEGRAP',
@@ -949,7 +969,7 @@ function test_sms_settings_decide_marks_with_provider_labels()
 	pg_assert_contains('API Key', $decision['marks']['sms_iletimerkezi_user']);
 	pg_assert_false($decision['ask']);
 
-	$netgsm = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_user' => '')), 'netgsm', sms_test_none(), '');
+	$netgsm = pg_sms_account_decide(sms_test_post(array('sms_netgsm_user' => '')), 'netgsm', sms_test_none(), '');
 	pg_assert_contains('User Code', $netgsm['marks']['sms_netgsm_user']);
 	pg_assert_contains('Password', $netgsm['marks']['sms_netgsm_password']);
 }
@@ -962,4 +982,43 @@ function test_sms_settings_script_is_generic()
 	pg_assert_contains('data-sms-provider', $script);
 	pg_assert_contains('sms_provider', $script);
 	pg_assert_false(stripos($script, 'netgsm') !== false);
+	pg_assert_contains('data-sms-connected', $script, 'it reads whether the chosen provider is connected');
+	pg_assert_contains('toggle.disabled = !connected && !toggle.checked;', $script, 'the switch cannot be turned on without one, and can always be turned off');
+}
+
+// The card shows each provider's connection and leads to its page; it holds
+// no account field and no secret.
+function test_sms_settings_connection_html()
+{
+	$providers = pg_sms_providers();
+
+	$connected = pg_sms_settings_connection_html('netgsm', $providers['netgsm'], sms_test_app(), true);
+	pg_assert_contains('id="pgsub-sms-netgsm-connection"', $connected);
+	pg_assert_contains('data-sms-connected="1"', $connected);
+	pg_assert_contains('connections.php?service=netgsm', $connected);
+	pg_assert_contains('>Manage in Connections<', $connected);
+	pg_assert_false(strpos($connected, ' hidden') !== false, 'the chosen one is shown');
+	pg_assert_false(strpos($connected, 'p:ss') !== false, 'no secret on the card');
+	pg_assert_false(strpos($connected, '<input') !== false, 'no account field on the card');
+
+	$not = pg_sms_settings_connection_html('twilio', $providers['twilio'], sms_test_none(), false);
+	pg_assert_contains('data-sms-connected="0"', $not);
+	pg_assert_contains('>Connect in Connections<', $not);
+	pg_assert_contains(' hidden', $not);
+
+	$unreadable = pg_sms_settings_connection_html('netgsm', $providers['netgsm'], array('password' => '') + sms_test_app(), true);
+	pg_assert_contains('data-sms-connected="0"', $unreadable, 'a password this site cannot read is no connection');
+}
+
+// The page's fields are in the page's look, and the password is never
+// drawn back.
+function test_sms_settings_account_fields_page_look()
+{
+	$providers = pg_sms_providers();
+	$fields = pg_sms_settings_account_fields('netgsm', $providers['netgsm'], sms_test_app());
+
+	pg_assert_contains('class="pg-input"', $fields);
+	pg_assert_false(strpos($fields, 'form-control') !== false, 'no Site Settings field look on the page');
+	pg_assert_contains('name="sms_netgsm_password" id="sms_netgsm_password" class="pg-input" value=""', $fields);
+	pg_assert_same(substr_count($fields, '<div'), substr_count($fields, '</div>'), 'every div closed');
 }

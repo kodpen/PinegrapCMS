@@ -1,6 +1,6 @@
 ---
 name: image-editor-video-files
-description: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
+description: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 module: image_editor
 ---
 
@@ -8,7 +8,7 @@ module: image_editor
 - Owner (2026-11-15, agent channel message 5103): he looked for video editing in the File Manager and found none (`workflow/decisions-made-product-56.md`). The video plan (V0 to V11, closed by #9234) took a video only through Import inside the canvas; no step gave Files a door. FV1 (#9775) added it.
 
 ## Where is it shown?
-- On every MP4, M4V or WebM (`pg_image_editor_clip_types()`) the user may edit: in the context menu by type alone (`itemCanvasVideo()` in `view_folders.php`, no query per file), after Download; in the file window when the file is on disk, first among its tools. The label is "Design Canvas", no text of its own. Before FV1: pictures and saved projects only.
+- On every MP4, M4V or WebM (`pg_image_editor_clip_types()`) the user may edit: in the context menu by type alone (`itemCanvasVideo()` in `view_folders.php`, no query per file), after Download; in the file window when the file is on disk, first among its tools. The label is "Artifact Canvas", no text of its own. Before FV1: pictures and saved projects only.
 
 ## What does a click open?
 - It asks the file window's answer (`explorer_file_get`, one file). `editor_project` (newest version accepted by `pg_image_editor_video_project()`) opens the video as its project (`image-editor-video-reopen.md`); the open checks the bytes.

@@ -5,7 +5,7 @@ description: The bug hunt of picture text translation, the server's side (#10569
 
 ## Which area was hunted?
 - Architect (2026-11-20, agent channel message 10096): picture text translation, the server's side, built in #10028 to #10448. `includes/fn/picture_translation.php`, `includes/fn/picture_server_draw.php`, `translation_job.php`, and the file gates `get_file.php`, `edit_files.php`, `includes/explorer/handle_recycle.php`.
-- Left out as held by other PRs: `translations.php`, `translations_action.php`, `assets/js/translations.js`, `view_folder_and_files_f.php`, the Design Canvas scripts.
+- Left out as held by other PRs: `translations.php`, `translations_action.php`, `assets/js/translations.js`, `view_folder_and_files_f.php`, the Artifact Canvas scripts.
 
 ## What did #10569 fix?
 - A source in the object store: the daily prune and the Pictures group's read took it for changed outside the editor and dropped its texts, rows and drawn pictures; its Languages list was empty and every draw refused (`core/picture-text-translation-store.md`).

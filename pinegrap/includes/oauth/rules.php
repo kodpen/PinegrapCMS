@@ -455,6 +455,8 @@ function pg_oauth_consent_presets(array $groups, array $all) {
 
 	return array(
 		'workspace'  => array('label' => 'Workspace', 'scopes' => $base),
+		'design'     => array('label' => 'Design', 'scopes' => array_merge($base, $reads(pg_oauth_consent_design_groups()))),
+		'content'    => array('label' => 'Content', 'scopes' => array_merge($base, $reads(pg_oauth_consent_content_groups()))),
 		'store'      => array('label' => 'Store', 'scopes' => array_merge($base, $reads(pg_oauth_consent_store_groups()))),
 		'accounting' => array('label' => 'Accounting', 'scopes' => array_merge($base, $reads(array('erp', 'erp_cash')))),
 		'all'        => array('label' => 'All', 'scopes' => array_values(array_unique(array_merge($base, $all))))
@@ -466,6 +468,23 @@ function pg_oauth_consent_presets(array $groups, array $all) {
 function pg_oauth_consent_store_groups() {
 
 	return array('products', 'orders', 'customers', 'offers', 'comments', 'commissions', 'campaigns', 'contact_groups');
+
+}
+
+// The scope groups the design preset reads: the designed pages' layouts,
+// the pages and files they use, and their A/B experiments.
+function pg_oauth_consent_design_groups() {
+
+	return array('design', 'pages', 'files', 'experiments');
+
+}
+
+// The scope groups the content preset reads: pages, files, events, form
+// entries, SEO findings, content review, visitor comments and translations
+// (a module's group, which adds nothing while the module is switched off).
+function pg_oauth_consent_content_groups() {
+
+	return array('pages', 'files', 'calendars', 'forms', 'seo', 'content_review', 'comments', 'translations');
 
 }
 

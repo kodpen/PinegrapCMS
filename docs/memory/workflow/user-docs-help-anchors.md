@@ -14,6 +14,7 @@ description: Help anchors of get_help_url.php that pinegrap.com lacks (25 of 288
 - `/visitors`: `overview`, `site-search`, `page-speed`, `ai-visibility`. `/seo`: `accessibility-check`. `/security`: `audit-trail`.
 - `/workspace-cont`: `flows`, `workflow-tables`, `e-mails`. `/api`: `marketplace-products`.
 - `/calendars`: `ticket-check-in` (Ticket check-in, `event_check_in.php`), added after the 2026-11-10 count.
+- `/erp`: `profitability` (Profitability, `erp_profitability.php`, #10698), added after the 2026-11-10 count.
 - All 25 are screens of the open version 2026.11.0: their sections come when the page is written past #500 (`user-docs-pages.md`).
 
 ## Which rows point beside a section that exists?

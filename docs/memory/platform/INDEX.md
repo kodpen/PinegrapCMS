@@ -48,7 +48,7 @@
 - content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out [decision: decisions-made-product-10.md, decisions-made-product-65.md]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
-- cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]
+- cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product-87.md, decisions-made-product.md]
 - curl-run-callers.md: Which outgoing calls use pg_curl_run(), what moving each changed (VERIFYHOST, proxy, http refused, TLS settings), which stay raw and why.
 - curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule and allow_http, where its callers are listed.
 - custom-form-upload-placement.md: Custom form file uploads (custom_form.php): an upload error code is refused at validation; every file is copied and given its files row before the forms row, and a failed copy sends the form back.
@@ -61,7 +61,7 @@
 - download-assistant-session.md: Who starts the session in the root download_assistant.php: pinegrap/init.php on an installed site, the assistant itself (da_session_start()) only before an install (#10439)
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
-- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Design Canvas's save that used to write over it
+- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Artifact Canvas's save that used to write over it
 - file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
@@ -86,11 +86,11 @@
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
 - image-derivative-upkeep.md: Upkeep of the image derivative cache: the daily sweep and its cursor, the purge that sets the folder aside, the storage line, and the warm-up pass that makes own-address WebP copies ahead of visitors
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, encode slots, files that get none
-- image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118) [decision: here]
-- image-editor-recycle-bin.md: The Design Canvas's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
-- image-editor-save.md: The Design Canvas's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
+- image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Artifact Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118) [decision: here]
+- image-editor-recycle-bin.md: The Artifact Canvas's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
+- image-editor-save.md: The Artifact Canvas's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape): replace, copy, new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
-- image-gd-palette-png.md: A palette PNG (PNG-8) through the GD image engine: a turn, flip or crop in the Design Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, while it fits 256 colours
+- image-gd-palette-png.md: A palette PNG (PNG-8) through the GD image engine: a turn, flip, crop in the Artifact Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, if it fits 256 colours
 - image-optimize-messages.md: What Optimize and Resize say when they leave a picture alone, per reason (pg_optimize_failure_message()); a .jpg that is no picture is unreadable, not a download
 - image-panel-thumbnails.md: Panel lists draw pictures from their 320 px WebP derivative (pg_image_panel_thumb_url(), thumbUrl()): which lists and files, 320 kept out of page srcset, warm-up pass, jpeg:size
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
@@ -98,7 +98,7 @@
 - image-same-address-why.md: Why a JPEG/PNG keeps its address and file and WebP is negotiated there: options weighed, outside facts, owner decisions, the bytes-match-extension rule [decision: decisions-made-product-17.md]
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address: switch bits, Vary, private caching behind an unconfirmed CDN, f=original in downloads and mails, no renames [decision: decisions-made-product-21.md]
 - image-server-draw-fidelity.md: How the server's canvas drawing matches the editor's Chromium renderer: ImageMagick rounding and antialiasing traps, text placed letter by letter, the measured difference per document kind
-- image-server-draw.md: The server draws a Design Canvas document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
+- image-server-draw.md: The server draws a Artifact Canvas document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out [decision: decisions-made-product-19.md]
@@ -162,6 +162,7 @@
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
+- office-sheets.md: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one change a save
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
@@ -225,7 +226,7 @@
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
 - sms-order-messages.md: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
-- sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
+- sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the account check on save, test message
 - sms-twilio-driver.md: Twilio SMS driver (includes/sms/twilio.php, PR #3647): Basic auth, Messages.json form POST, IncomingPhoneNumbers check, Messaging Service SID, sender rule, error codes, retry and uncertain rules
 - speculation-prefetch-left-out.md: What the Speculation Rules block leaves out: link paths, page types, and designer pages whose system widget signs in or out, runs cart or checkout or shows an account
 - speculation-prefetch.md: Speculation Rules prefetch of menu links (2026.11.0, 11.0.127, #3184): what the block lists, what is left out, who gets none, the Features switch, counting and the page cache [decision: decisions-made-product-4.md]

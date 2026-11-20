@@ -5,6 +5,7 @@ description: What MCP tells a model before it writes a form record (PR #8042): g
 
 ## What do the form tools say beyond their route's description?
 - `pg_mcp_tool_guidance()` (`includes/mcp/tools.php`) appends a line to `forms_submission_create` and `forms_submission_update`: read `forms_fields` (or the resource) first, an answer is addressed by the field name, a choice answer is one of its option values, a `rich_text` field keeps only what its `html_allowed` lists (never `class`) up to `max_length`, try with `dry_run` first. `forms_get` points at `forms_fields`.
+- These lines are `pg_mcp_tool_guidance_own()`; the guide's "Guide: <topic>." follows them (`agent-guide-engine.md`).
 - MCP only: the OpenAPI document keeps the route's description. It sits in the MCP layer so the forms route rows stay as the forms steps write them.
 
 ## Which resource reads a form's fields?

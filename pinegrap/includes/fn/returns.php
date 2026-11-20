@@ -4299,7 +4299,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         $returned_quantities[(int) $item['order_item_id']] = ($returned_quantities[(int) $item['order_item_id']] ?? 0) + (int) $item['quantity'];
     }
 
-    pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
+    pg_credit_points_lines_refunded($return['order_id'], $returned_quantities, array('id' => (int) $return['id'], 'amount' => (int) $amount));
 
     // A referral's reward, when what is left of the order no longer counts.
     pg_referral_order_refunded($return['order_id']);

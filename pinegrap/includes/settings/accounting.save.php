@@ -38,6 +38,14 @@ if (erp_efatura_threshold_ready() && isset($_POST['erp_efatura_web_threshold'], 
     $erp_settings_cards[] = 'efatura_threshold';
 }
 
+if (isset($_POST['stock_plan_safety_days'], $_POST['stock_plan_cover_days'], $_POST['stock_plan_dead_days'])) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
+
+    if (erp_stock_plan_cache_ready()) {
+        $erp_settings_cards[] = 'stock_plan';
+    }
+}
+
 // A refused value stops the whole save before anything is written.
 foreach (erp_settings_cards_refusals($_POST, $erp_settings_cards) as $erp_settings_field => $erp_settings_error) {
     $liveform->mark_error($erp_settings_field, h($erp_settings_error));

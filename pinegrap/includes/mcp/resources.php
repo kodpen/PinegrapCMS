@@ -18,6 +18,8 @@
  *   pinegrap://workspace/refs/{type}/{id}        GET /workspace/refs?type=&id=
  *   pinegrap://forms/{id}/fields                 GET /forms/{id}/fields
  *   pinegrap://workspace/canvas-guide            GET /workspace/canvas/guide
+ *   pinegrap://guide                             GET /guide
+ *   pinegrap://guide/{topic}                     GET /guide?topic=
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -83,6 +85,22 @@ function pg_mcp_resource_kinds() {
 			'name'        => 'workspace_canvas_guide',
 			'title'       => 'Drawing guide for canvases',
 			'description' => 'The guide to follow before drawing a canvas in a channel: board sizes, the grid, the type scale, spacing, a dark and a light board palette with a chart series, and the rules of each chart kind.'
+		),
+
+		'guide' => array(
+			'uri'         => 'pinegrap://guide',
+			'route'       => 'guide.read',
+			'name'        => 'guide',
+			'title'       => 'Guide topics',
+			'description' => 'How to work on this site: the topics of the guide for AI agents. Read start first, then an area\'s topic before the first work in it.'
+		),
+
+		'guide_topic' => array(
+			'uri_template' => 'pinegrap://guide/{topic}',
+			'route'        => 'guide.read',
+			'name'         => 'guide_topic',
+			'title'        => 'Guide topic',
+			'description'  => 'One topic of the guide for AI agents, in Markdown. topic is an id from pinegrap://guide, such as start.'
 		)
 
 	);
@@ -90,12 +108,12 @@ function pg_mcp_resource_kinds() {
 }
 
 // What a template variable takes: an id is a positive whole number written
-// without leading zeros, a type a lowercase word. A value must be written
+// without leading zeros, a type or a topic a lowercase word. A value must be written
 // out exactly so: nothing is percent-decoded, so %35 is not 5 and %2F is no
 // slash, and one uri always names one record.
 function pg_mcp_resource_variable_pattern($name) {
 
-	return ($name === 'type') ? '[a-z][a-z_]{0,31}' : '[1-9][0-9]{0,17}';
+	return (($name === 'type') || ($name === 'topic')) ? '[a-z][a-z_]{0,31}' : '[1-9][0-9]{0,17}';
 
 }
 

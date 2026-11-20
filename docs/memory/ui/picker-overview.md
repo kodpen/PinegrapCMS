@@ -19,7 +19,7 @@ module: picker
 - Registry, kinds, endpoint requests, access, value states: `picker-registry.md`. All (every item, paged): `picker-all-list-server.md`, `picker-all-list-dialog.md`.
 - The dialog, its keys and the phone sheet: `picker-dialog.md`; Upload, Recently used, several picks: `picker-upload.md`; pages, type chips, archived and binned marks, a caller's own entries: `picker-pages.md`.
 - The field (combobox with the chosen value, Browse, clear): `picker-field.md`; page settings on Create Page and Edit Page: `page-form-page-fields.md`; page fields on the other screens: `picker-page-fields-screens.md`.
-- Bridges: CKEditor's Link and Image dialogs `picker-editor-bridge.md`; the visual designer `picker-designer-bridge.md`; product builder pictures, contact photo, theme designer file `picker-remaining-screens.md`; Design Canvas From the site and the Workspace's file attach `picker-site-lists.md`.
+- Bridges: CKEditor's Link and Image dialogs `picker-editor-bridge.md`; the visual designer `picker-designer-bridge.md`; product builder pictures, contact photo, theme designer file `picker-remaining-screens.md`; Artifact Canvas From the site and the Workspace's file attach `picker-site-lists.md`.
 - Site page Edit mode (decided, unbuilt): `site-editor-picker-frame.md`.
 
 ## What stays outside it?

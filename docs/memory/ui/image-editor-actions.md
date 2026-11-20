@@ -1,6 +1,6 @@
 ---
 name: image-editor-actions
-description: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
+description: The Artifact Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
 module: image_editor
 ---
 
