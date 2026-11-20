@@ -19,7 +19,7 @@ description: Plan mail-settings-one, the architect's design of adding and removi
 - Google: the "Sign in with Google" button of Google's brand guidelines, its light form in both panel themes: white fill, 1 px #747775 border, 4 px corners, 40 px high, the four-colour G unchanged at 18 px, the text #1F1F1F in Roboto Medium 14 px.
 - Microsoft: white fill, 1 px #8C8C8C border, square corners, 41 px high, the four-square logo at 21 px, the text #5E5E5E in Segoe UI Semibold 15 px.
 - Neither takes a look A button class or tone; the logos are inline SVG, never redrawn or recoloured; the words are the provider's own wording in the panel's language.
-- The brand rules are rechecked on the providers' pages by the step that builds the buttons (EM5); a difference is asked of the architect.
+- The brand rules are rechecked on the providers' pages by the step that builds the buttons, DX2b (`design-examples-patterns-mail.md`); EM5 copies them. A difference is asked of the architect.
 
 ## (E) How is Remove mailbox drawn?
 - A dialog: a rose tile with the bin, "Remove the Support mailbox?", its address under the title.

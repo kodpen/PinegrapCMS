@@ -5,7 +5,7 @@ description: Plan mail-settings-one, the architect's design (picture mail-settin
 
 ## Where is the picture?
 - `plans/mail-settings-one/email-settings.jpg`, drawn from `email-settings.html` with the look A sheet kit (`plans/panel-design-language/sheet.css`, `boards.css`); boards A to E. Adding and removing a box (D, E): `mail-settings-one-design-box.md`.
-- Owner (2026-11-21, agent channel poll 211, message 11311): "Evet, böyle yapılsın" (`workflow/decisions-made-panel-14.md`). The steps build these parts as drawn.
+- Owner (2026-11-21, agent channel poll 211, message 11311): "Evet, böyle yapılsın" (`workflow/decisions-made-panel-14.md`). The parts are drawn first as Design examples patterns by step DX2b (`design-examples-patterns-mail.md`); the EM steps copy them.
 
 ## (A) How are the category's two tabs drawn?
 - Under the pane's head and purpose line: one segmented control [Segmented control and status], taller than a drawer's (34 px items, the label in the strong weight), each item its label, then a state pill. `role="tablist"`; the tab is kept in the address.
