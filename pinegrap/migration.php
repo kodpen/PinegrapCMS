@@ -50,26 +50,23 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Source Site Login Info') . '
-                                </div>
+                                <h2 class=\"card-header bg-reset border-0 pg-title-section\">' . lang('Source Site Login Info') . '</h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="url" class="form-label">' . lang('API URL') . '</label>
                                             <div class="input-group ">
                                                 <label class="input-group-text material-icons" aria-hidden="true">public</label>
                                                 ' . $liveform->output_field(array('type'=>'url', 'name'=>'url', 'id'=>'url', 'placeholder' => 'https://', 'class'=>'form-control', 'required'=>'required', 'aria-describedby'=>'url_hint')) . '
                                             </div>
                                             <div class="form-text" id="url_hint">' . lang('Example') . ': <code>https://www.example.com/pinegrap/api.php</code></div>
-                                            <div class="form-text text-end">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
+                                            <div class="form-text">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
                                         </div>
-                                        <div class="col-12"></div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
+                                        <div class="col-12 md:col-6 my-1">
                                             <label class="form-label" for="username">' . lang('Email') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'username', 'id'=>'username', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password')) . '
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
+                                        <div class="col-12 md:col-6 my-1">
                                             <label class="form-label" for="password">' . lang('Password') . '</label>
                                             ' . $liveform->output_field(array('type'=>'password', 'name'=>'password', 'id'=>'password', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password')) . '
                                         </div>
@@ -79,9 +76,7 @@ if (!$_POST) {
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Items to Migrate') . '
-                                </div>
+                                <h2 class=\"card-header bg-reset border-0 pg-title-section\">' . lang('Items to Migrate') . '</h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">

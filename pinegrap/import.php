@@ -349,7 +349,7 @@ $status_labels = array(
 
 $card = function ($title, $body) {
     return '<div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($title) . '</div>
+        <h2 class="card-header bg-reset border-0 pg-title-section">' . h($title) . '</h2>
         <div class="card-body">' . $body . '</div>
     </div>';
 };
@@ -417,9 +417,13 @@ if ($import === null) {
     $form_close = '</form>';
 
     $main .= $card(lang('Export file'), '
-            <label for="file" class="form-label">' . h(lang('File')) . '</label>
-            <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
-            ' . pg_upload_limit_hint());
+            <div class="row">
+                <div class="col-12 pg-field-span-6">
+                    <label for="file" class="form-label">' . h(lang('File')) . '</label>
+                    <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
+                    ' . pg_upload_limit_hint() . '
+                </div>
+            </div>');
 
     $buttons = '<button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Upload and check')) . '</span></button>';
 
