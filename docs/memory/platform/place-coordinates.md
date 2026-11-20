@@ -1,14 +1,14 @@
 ---
 name: place-coordinates
-description: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
+description: Coordinates of a collection's places (#10000): fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
 module: place_map
 ---
 
 ## Where are a place's coordinates kept?
-- In the record's own two number fields: no table and no column. A coordinate field has kind `number` and the name `latitude` / `lat` / `enlem` or `longitude` / `lng` / `lon` / `long` / `boylam` (`pg_place_map_names()`, compared after `pg_place_map_name()`: lower-case ASCII, words joined by `_`).
+- Architect (2026-11-16, messages 6553 and 6554): in the record's own two number fields, no table and no column; nothing is looked up when an address changes or a page is viewed. A coordinate field has kind `number` and the name `latitude` / `lat` / `enlem` or `longitude` / `lng` / `lon` / `long` / `boylam` (`pg_place_map_names()`, compared after `pg_place_map_name()`: lower-case ASCII, words joined by `_`).
 - The address is every plain text box or text area named `address`, `street`, `city`, `postcode`, `country` and the like (Turkish `adres`, `ilce`, `il`, `sehir`…), joined with ", " in form order, each part once, at most 300 characters.
 - A form with both coordinates and an address part has place fields (`pg_place_map_fields()`). Typed, imported or API-written values count like any other.
-- Architect (2026-11-16, message 6927), for MP3: once the map block names the fields (X2), the button looks first at the block's fields, else finds them by name; the block's pickers default to the same rule.
+- Architect (2026-11-16, message 6927): once the map block names its fields (`place-list-fields.md`), the button looks first at them, else by name. Not built: both buttons use the name rule only (#10628).
 
 ## What does "Find from the address" do?
 - Drawn right under the later of the two coordinate fields on a record's add and edit screens: `pg_place_map_form_tools()` prints at the end of `pg_submitted_form_fields_markup()` and its script moves the box after that field's column.
@@ -24,6 +24,6 @@ module: place_map
 
 ## Who may use it, and which service answers?
 - The record screens' rule (`pg_place_map_may()`): Manager and above, or the forms right with edit access to the form's folder. Token checked; a refusal is JSON 403.
-- Always Photon (`pg_place_map_source()`): the site's Photon server while its Photon account is on, else the public instance, also while Google Places or Mapbox gives the suggestions. Nothing is asked of those two (`plans/place-map-census.md`).
+- Always Photon (`pg_place_map_source()`): the site's Photon server while its Photon account is on, else the public instance, also while Google Places or Mapbox gives the suggestions. Nothing is asked of those two (`place-provider-terms.md`).
 - Architect (2026-11-16, message 6927, replacing 6794's hidden button): a site using Google suggestions at checkout should not have to change them to find its branches.
 - Nothing is looked up when a page is viewed: only `place_coordinates.php` calls the lookup (`tests/place_map_test.php` guards it).
