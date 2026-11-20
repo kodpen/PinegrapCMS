@@ -24,7 +24,7 @@ module: connections_screen
 - They are stored on the same `connect_apps` row `iys` as the account and saved by one decision; the card held nothing else.
 
 ## Why did the SMS card not move?
-- Netgsm, İleti Merkezi and Twilio are three registry services behind one "Send SMS" switch and one Provider select on one card; which page holds the switch and the choice is not settled by the plans. It goes to the architect and is its own step; the SMS card stays as it is until then.
+- Netgsm, İleti Merkezi and Twilio are three registry services behind one "Send SMS" switch and one Provider select on one card; they move in their own step CX11d2 (`plans/connections-merges-build.md`), each provider on its page while the card keeps the switch and the Provider select. The SMS card stays as it is until then.
 
 ## What stayed on Communication?
 - Chat (live chat, no outside service), SMS Messages and WhatsApp Messages (the site's message templates and switches), the WhatsApp Conversations field.

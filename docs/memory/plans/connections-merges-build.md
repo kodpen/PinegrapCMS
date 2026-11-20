@@ -12,15 +12,15 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - A page that needs something the sheet does not show, or a table or a column, goes to the architect first.
 
 ## Which steps are there?
-- CX7 The frame: a service's page (`connections.php?service=<key>`, breadcrumb, "Durum", "Kullanıldığı yerler" read from the registry), the list row with its one action, the "Bağlantılar ›" row in the Site Settings list. No field moves yet; a service without a page keeps its drawer until its step. Done in #10400; the mail routes folded into one row in CX3c (#10434).
+- CX7 The frame: a service's page (`connections.php?service=<key>`, breadcrumb, "Durum", "Kullanıldığı yerler" read from the registry), the list row with its one action, the "Bağlantılar ›" row in Site Settings. No field moves yet. Done in #10400; the mail routes folded into one row in CX3c (#10434).
 - CX8 GitHub: "Bağlantı bilgileri" on its page; the repository links move from the "GitHub depoları" card, with a `pg_settings_legacy_anchors()` row and the registry row's `place` in the same step. Done in #10418: the page is `ui/connections-service-page.md`; the Channels card stays at its address as a pointer.
 - CX9 AI providers, after CX2 has landed: one connection per provider, the idempotent data step and the feature cards without a key (Voice message transcripts, the assistants and agents), as `connections-merges-panel-rules.md` says.
 - CX9 done in two: CX9a #10470, connections, pages, data step (`api/ai-connections.md`); CX9b #10493, the feature cards without a key (`api/ai-connections-feature-cards.md`).
-- CX10 Google and Microsoft: the application and each connected account on the provider's page. It answers CX4 (a provider's client is typed on its page).
-- CX10 also shows the redirect addresses, the APIs to enable, an "API not enabled" error, Google's verification warning: `connections-merges-cx10-google.md`.
+- CX10 Google and Microsoft: the application and each account on the provider's page (answers CX4); redirect addresses, APIs to enable, errors: `connections-merges-cx10-google.md`.
 - CX10 done in two (`ui/connections-provider-page.md`). CX10a #10512: Google's and Microsoft's pages, application, accounts, the four parts. CX10b #10529: the Sign in with Google application on Google's page under its card's gate.
 - CX11 The other groups, one step each in the census's order (`integrations-census-screens.md`: SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance, the Workspace's categories), cut when the step before lands.
-- Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576 (message 10151), CX11d Communication #10621 (WhatsApp, İYS); the SMS card's three providers are a step of their own after the architect's answer.
+- Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576 (message 10151), CX11d Communication #10621 (WhatsApp, İYS).
+- CX11d2 (S) after CX11d: Netgsm, İleti Merkezi and Twilio each get their own page (`connections.php?service=<key>`); the card keeps the switch and the "Sağlayıcı" select and holds no key (architect 2026-11-20, agent channel message 10263).
 
 ## What binds CX9 already?
 - Architect (2026-11-17, message 9391): one connection per provider, no table and no column, stored where the registry's key services keep theirs.
