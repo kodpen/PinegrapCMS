@@ -501,6 +501,8 @@ function pg_settings_categories()
                 'notify_target_delete' => 1,
                 'notify_target_codes'  => 2,
                 'notify_target_events' => 2,
+                'sales_watch_alerts'   => 1,
+                'sales_watch_pause'    => 1,
             ),
         ),
 

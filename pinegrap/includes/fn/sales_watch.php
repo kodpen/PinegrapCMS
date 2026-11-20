@@ -756,6 +756,35 @@ function pg_sales_watch_channels($now)
 }
 
 /**
+ * The channels Settings › Alerts can pause: the site and every active
+ * marketplace account that pulls orders, whether or not a pass judges it
+ * today.
+ *
+ * @return array key => label
+ */
+function pg_sales_watch_channel_list()
+{
+    $list = array('site' => lang('Site'));
+
+    if (!pg_schema_has('marketplace_accounts', 'pull_orders')) {
+        return $list;
+    }
+
+    foreach ((array) db_items(
+        "SELECT id, provider, name
+        FROM marketplace_accounts
+        WHERE
+            (status = 'active')
+            AND (pull_orders = '1')
+        ORDER BY id") as $account) {
+        $label = trim((string) $account['name']);
+        $list['mp_' . (int) $account['id']] = ($label !== '') ? $label : ucfirst((string) $account['provider']);
+    }
+
+    return $list;
+}
+
+/**
  * Read the norm's counts from orders: the 8 weeks and a day before $cut,
  * per channel, and the payment share's two totals.
  *
@@ -885,9 +914,23 @@ function pg_sales_watch_check($now)
     }
 
     $now = (int) $now;
+
+    // The store paused: nothing is read at all.
+    if (pg_sales_watch_paused($settings, 'store', $now)) {
+        return $found;
+    }
+
     $alpha = pg_sales_watch_alpha($settings['sensitivity']);
     $data = pg_sales_watch_norm_data($now);
     $channels = pg_sales_watch_channels($now);
+
+    // A paused channel is not judged; with one of two paused, the other is
+    // told by its own name rather than as the store.
+    foreach (array_keys($channels) as $key) {
+        if (pg_sales_watch_paused($settings, $key, $now)) {
+            unset($channels[$key]);
+        }
+    }
 
     $earliest = $now;
     foreach ($channels as $channel) {
@@ -909,7 +952,7 @@ function pg_sales_watch_check($now)
             $times['site'][] = (int) $row['order_date'];
         }
 
-        if (count($channels) > 1) {
+        if (count($channels) > (isset($channels['site']) ? 1 : 0)) {
             foreach ((array) db_items(
                 "SELECT DISTINCT marketplace_order_map.account_id, orders.id, orders.order_date
                 FROM orders
@@ -941,7 +984,7 @@ function pg_sales_watch_check($now)
         }
     }
 
-    if (!empty($settings['payment_broken']) && ((int) $data['completed'] >= 20)) {
+    if (!empty($settings['payment_broken']) && isset($channels['site']) && ((int) $data['completed'] >= 20)) {
 
         $completed = array();
 

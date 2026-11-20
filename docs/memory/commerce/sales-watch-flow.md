@@ -24,7 +24,7 @@ module: sales_watch
 - Per code and subject (`site`, `mp_<id>`, `store`) through `pg_ops_alert($code, $detail, $subject)`; the subject's send time lives only in `ops_alerts_state.json` (no column on `notifications`), so a lost file may repeat an alert once (architect, `plans/sales-watch.md`).
 
 ## Which settings?
-- `pg_sales_watch_settings()`: both on, sensitivity 0.01, until the Sales watch part of Settings › Alerts (SW2) stores `config_text` rows.
+- The `sales_watch` `config_text` row: each alert on or off, sensitivity, the pause per channel or store (`sales-watch-settings.md`, #10772).
 
 ## How fast is it?
 - 200,000 orders over a year (two marketplace accounts) plus 60,000 abandoned carts, MariaDB: norm build 0.33 s, pass with a warm cache 0.005 s (#10735).

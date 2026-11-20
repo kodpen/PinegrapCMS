@@ -315,6 +315,47 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // ── Sales watch ──────────────────────────────────────────────────────
+    // Only when its part of the Alerts card was drawn (the shop on, the
+    // config_text table there). The calendar may post a date in the site's
+    // format; it is read as ISO first. A date that is not one refuses the
+    // save. Written after the config row.
+    $sales_watch_save = null;
+
+    if (post_value('sales_watch_card') && function_exists('pg_sales_watch_settings_from_post') && pg_schema_has('config_text')) {
+
+        $sales_watch_pause_posted = array();
+
+        foreach ((array) post_value('sales_watch_pause') as $sales_watch_key => $sales_watch_date) {
+
+            $sales_watch_date = trim(is_string($sales_watch_date) ? $sales_watch_date : '');
+
+            if (($sales_watch_date !== '') && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $sales_watch_date) && validate_date($sales_watch_date)) {
+                $sales_watch_date = (string) prepare_form_data_for_input($sales_watch_date, 'date');
+            }
+
+            $sales_watch_pause_posted[(string) $sales_watch_key] = $sales_watch_date;
+        }
+
+        $sales_watch_result = pg_sales_watch_settings_from_post(array(
+            'alerts'         => (array) post_value('sales_watch_alerts'),
+            'level'          => (string) post_value('sales_watch_level'),
+            'close_products' => (bool) post_value('sales_watch_close_products'),
+            'price_drop'     => trim((string) post_value('sales_watch_price_drop')),
+            'pause'          => $sales_watch_pause_posted,
+        ), array_keys(pg_sales_watch_channel_list()), time());
+
+        foreach ($sales_watch_result['invalid'] as $sales_watch_key) {
+            $liveform->mark_error('sales_watch_pause[' . $sales_watch_key . ']', lang('This is not a date.'));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+
+        $sales_watch_save = pg_sales_watch_settings_encode($sales_watch_result['settings']);
+    }
+
     // ── Maintenance mode ─────────────────────────────────────────────────
     // The 2026.11.0 columns (11.0.7); before the upgrade nothing is written.
     // The end time arrives from a datetime-local box in the site's own time
@@ -386,6 +427,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_maintenance_settings . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if ($sales_watch_save !== null) {
+        pg_config_text_save('sales_watch', $sales_watch_save);
+    }
 
     // The mode changed: in the log, and System Status is told at once rather
     // than after its ten-minute cache.
