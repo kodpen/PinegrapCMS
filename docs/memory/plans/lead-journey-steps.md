@@ -4,7 +4,7 @@ description: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and
 ---
 
 ## Which steps are there?
-- LJ1a (S) first, no schema: new `includes/fn/lead_journey.php` with the pure parts: the tie decision, the move on a shared browser, the score model and its decay.
+- LJ1a (S) done (#10842), no schema: new `includes/fn/lead_journey.php` with the pure parts: the tie decision, the move on a shared browser, the score model and its decay.
   - `tests/lead_journey_test.php` red first: no key without the yes, a refusal after a yes, two contacts on one browser, a panel user, a tie back inside and outside the keep period, a score after its half-life. Features: J2 to J4, J6 (the rules).
 - LJ1b (M) after LJ1a, only after the owner's yes to poll 194 (message 10747): the four tables as a migration step in the open version, the columns of the schema decisions list; the consent-gated browser key and its catalogue row; the ties at each act's own save path. Features: J1 to J4, J14.
 - LJ2 (M) after LJ1b: the journey read (pure merge of the sources by time), the contact screen and the Workspace customer card, the export and erase hooks, the keep period trim. Features: J5, J13.

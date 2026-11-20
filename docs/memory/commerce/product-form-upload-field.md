@@ -26,6 +26,7 @@ module: product_form_uploads
 
 ## What deletes the files?
 - `pg_pfu_remove_line_files()` before the answers go in `remove_order_item()`, `pg_order_drop_saved_lines()` and `remove_item_from_cart.php`; `pg_pfu_remove_order_files()` in `delete_order()`; `pg_pfu_remove_unit_files($line, $quantity)` for a lowered quantity (called by the cart saves).
+- A quantity the cart itself lowers (`check_inventory()`, the fixed or maximum quantity in `check_quantity()`, `check_reservations()`, `pg_bundle_check_inventory()`) drops the units above it through `pg_pfu_quantity_lowered()`; a raised or unchanged quantity calls nothing. Before #10776 those files stayed and went into the order. Pinned by `tests/product_form_uploads_lowered_test.php`.
 - A file another answer still holds is kept (`pg_pfu_files_to_remove()`). Pinned by `tests/product_form_uploads_test.php`.
 - A cart that never became an order loses its files 30 days after its last touch: `commerce/product-form-upload-sweep.md`.
 
