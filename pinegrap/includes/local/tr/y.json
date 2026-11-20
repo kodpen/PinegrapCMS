@@ -1059,6 +1059,7 @@
     "Your order waits with your name on it between 10:00 and 18:00; we mail class places with the class day.": "Siparişiniz 10:00 ile 18:00 arasında üzerinde adınızla bekler; atölye yerlerini atölye günüyle birlikte e-postayla bildiririz.",
     "Your organization has not allowed this site to read OneDrive files yet: an administrator has to grant the application the SharePoint permission MyFiles.Read.": "Kuruluşunuz bu sitenin OneDrive dosyalarını okumasına henüz izin vermedi: bir yöneticinin uygulamaya SharePoint MyFiles.Read iznini vermesi gerekiyor.",
     "Your organization's name and address are written here when the campaign is saved.": "Kuruluşunuzun adı ve adresi kampanya kaydedilirken buraya yazılır.",
+    "Your own account": "Kendi hesabınız",
     "Your own account is connected ({var:1}).": "Kendi hesabınız bağlı ({var:1}).",
     "Your own account is disconnected from @{var:1}.": "Kendi hesabınızın @{var:1} bağlantısı kesildi.",
     "Your own account is not connected.": "Kendi hesabınız bağlı değil.",
