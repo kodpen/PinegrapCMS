@@ -36,6 +36,8 @@ function delete_order($request) {
     db("DELETE FROM ship_tos WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM order_item_gift_cards WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM applied_gift_cards WHERE order_id = '" . e($order['id']) . "'");
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+    pg_pfu_remove_order_files($order['id']);
     db("DELETE FROM form_data WHERE (order_id = '" . e($order['id']) . "') AND (order_id != '0')");
     db("DELETE FROM shipping_tracking_numbers WHERE order_id = '" . e($order['id']) . "'");
 
