@@ -697,9 +697,7 @@ function pg_stock_notify_send($product_id)
 
         // The devices that asked are told beside the mail or the text,
         // never instead: a notification unseen for a day is dropped.
-        if ($push_on) {
-            pg_stock_notify_push_send((int) $row['id'], $name, $path);
-        }
+        $pushed = $push_on ? pg_stock_notify_push_send((int) $row['id'], $name, $path) : 0;
 
         $to = pg_stock_notify_email((string) $row['email_address']);
 
@@ -745,7 +743,7 @@ function pg_stock_notify_send($product_id)
             continue;
         }
 
-        email(array(
+        $went = email(array(
             'to'                 => $to,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
@@ -754,6 +752,15 @@ function pg_stock_notify_send($product_id)
             'body'               => $mail['body'],
             'queue'              => $queued,
         ));
+
+        // A mail that failed in the request told nobody: the row waits for
+        // the product's next announcement, unless a device or WhatsApp
+        // message told the visitor already.
+        if (!$told && ($pushed === 0) && pg_stock_notify_mail_unsent($went, function_exists('pg_mail_last_error_permanent') && pg_mail_last_error_permanent())) {
+            pg_stock_notify_unclaim((int) $row['id']);
+            unset($mailed[strtolower($to)]);
+            continue;
+        }
 
         $sent++;
     }
@@ -1298,7 +1305,7 @@ function pg_stock_notify_event_send($event_id, $date)
 
         $mailed[strtolower($to)] = true;
 
-        email(array(
+        $went = email(array(
             'to'                 => $to,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
@@ -1307,6 +1314,14 @@ function pg_stock_notify_event_send($event_id, $date)
             'body'               => $mail['body'],
             'queue'              => $queued,
         ));
+
+        // A mail that failed in the request told nobody: the row waits for
+        // the next freed place.
+        if (pg_stock_notify_mail_unsent($went, function_exists('pg_mail_last_error_permanent') && pg_mail_last_error_permanent())) {
+            pg_stock_notify_unclaim((int) $row['id']);
+            unset($mailed[strtolower($to)]);
+            continue;
+        }
 
         $sent++;
     }
@@ -1326,6 +1341,34 @@ function pg_stock_notify_claim($row_id)
     db("UPDATE stock_notify SET sent_at = UNIX_TIMESTAMP() WHERE (id = '" . (int) $row_id . "') AND (sent_at = 0)");
 
     return (int) mysqli_affected_rows(db::$con);
+}
+
+/**
+ * Puts a claimed row back to waiting: its mail could not go out, so the
+ * next announcement tries it again. Only the sender that claimed it calls
+ * this, so the row is still its own.
+ *
+ * @param int $row_id
+ * @return void
+ */
+function pg_stock_notify_unclaim($row_id)
+{
+    db("UPDATE stock_notify SET sent_at = 0 WHERE (id = '" . (int) $row_id . "') AND (sent_at > 0)");
+}
+
+/**
+ * Whether a claimed row's mail did not go out and may be tried again: email()
+ * failed, sending in the request without the queue, and not for good (a
+ * failure for good, such as no way to send at all, would only fail again).
+ * Pure.
+ *
+ * @param bool $sent      email()'s answer
+ * @param bool $permanent pg_mail_last_error_permanent()
+ * @return bool
+ */
+function pg_stock_notify_mail_unsent($sent, $permanent)
+{
+    return !$sent && !$permanent;
 }
 
 /**
