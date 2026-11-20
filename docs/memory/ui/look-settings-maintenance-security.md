@@ -10,7 +10,7 @@ description: Site Settings Maintenance, Firewall, Security and Features in look 
 ## What changed on them?
 - Every `btn btn-sm btn-outline theme-*` (card header links such as Setup Instructions, Backup Manager, Firewall Log, Policy Reports, Sessions, Open it; the test, connect and rebuild buttons in rows) is `pg-button pg-button-quiet pg-button-sm`; icons inside lost `me-1`, the button's gap spaces them. Names, values, `form` attributes and confirmations stay.
 - Number inputs in an adorned field lost the inline `text-align: right` for the class `text-end`.
-- Help lines lost `text-end` (the cron jobs' Recommended Schedule lines): help runs from the field's left edge (`plans/panel-old-screens-rules.md`).
+- Help lines lost `text-end` (the cron jobs' Recommended Schedule lines): help runs from the field's left edge (`look-sheet-silent.md`).
 - Group headings: the cron jobs drawer's job names (`h5`) are `h4.pg-group-label`, Firewall's "Always let in" (`h6.fg-secondary`) is `h3.pg-group-label`, Security's "Form Submission Limits" (`div.form-label.fw-bold`) is `div.pg-group-label`. Their ids stay; `tests/settings_card_names_test.php` and `settings_group_names_test.php` read them.
 - Firewall's Active Automatic Bans table is `table table-hover mb-0 pg-embedded-table` (`look-embedded-table.md`). Its Release button, drawn in `includes/settings/prep.php`, is a quiet small button since S5c.
 - The Allowed and Banned IP badges are `pg-pill pg-tone-teal` and `pg-pill pg-tone-rose`.

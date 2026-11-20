@@ -574,6 +574,28 @@ if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('co
                         </div>';
 }
 
+// Event tickets (includes/fn/event_tickets.php): off on every site, a new
+// install too. On, a completed order's event reservation or "Gives tickets"
+// product line makes one ticket per unit and the buyer gets their link.
+if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-event-tickets" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Tickets')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="event_tickets_card" value="1"/>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_event_tickets_switch_on() ? ' checked="checked"' : '') . ' id="event_tickets_on" name="event_tickets_on" aria-describedby="event_tickets_on_help"/>
+                                        <label class="pg-text-2" for="event_tickets_on">' . h(lang('Tickets with a QR code for events')) . '</label>
+                                    </div>
+                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="event_tickets_on_help">' . h(lang('A completed order gives one ticket per place for each calendar event reservation and each product marked Gives tickets, and the buyer gets a link to them by e-mail. A cancelled order\'s tickets become void.')) . '</p>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // Visitor notifications (includes/fn/site_push.php): off on every site, a new
 // install too, until it is switched on here. Read and saved only through the
 // module's one reader and saver. With it off the "Notify me" block draws

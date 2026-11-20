@@ -5,8 +5,8 @@ module: page_bundles
 ---
 
 ## What is a release bundle?
-- A named list of visual-design drafts on the Bundles screen: new pages, and replacements (a copy of a live page in Drafts standing for it, as an experiment's variant). Previewed together, published at one moment (by a time or over the API; the screen's Publish is missing, #10557), taken back together. Nothing is staged inside a page.
-- Built by plan release-bundle (2026-11-16 to 2026-11-20), steps RB1 #9961, RB2 #9998, RB2b #10191, RB3 #9999, RB4 #10108, RB5 #10296, RB6 #10518, RB7 #10482; fixes #10045 to #10048, #10158.
+- A named list of visual-design drafts on the Bundles screen: new pages, and replacements (a copy of a live page in Drafts standing for it, as an experiment's variant). Previewed together, published at one moment (by hand on the screen, by a time or over the API), taken back together. Nothing is staged inside a page.
+- Built by plan release-bundle (2026-11-16 to 2026-11-20), steps RB1 #9961, RB2 #9998, RB2b #10191, RB3 #9999, RB4 #10108, RB5 #10296, RB6 #10518, RB7 #10482; fixes #10045 to #10048, #10158, #10557.
 
 ## Which decisions bind it?
 - Owner (2026-11-16, agent channel poll 63, message 5748): a draft may stand for a live page outside an experiment ("Evet, geçebilsin"). The decision of 2026-10-06 stays whole: no working copy, a live page's own Publish goes live at once (B17).
@@ -22,12 +22,11 @@ module: page_bundles
 - The Publish sheet's held row: `designer-publish-sheet-held-row.md`. The API: `api/api-design-bundles.md`.
 
 ## Which features stand, checked against the code (2026-11-20)?
-- B1-B4, B6: module and screen (RB1, RB2). B5: the hold in the save, bin and API delete (RB1), the sheet row (RB2b). B7-B9, B11, B12: in the module (RB3), reached by the time and the API only, see below. B13 (RB4), B14 (RB5), B15 (RB6), B16 (RB7), B17 and B18 (RB3) as written.
+- B1-B4, B6: module and screen (RB1, RB2). B5: the hold in the save, bin and API delete (RB1), the sheet row (RB2b). B7-B9, B11, B12: in the module (RB3), reached from the screen since #10557, the time and the API. B13 (RB4), B14 (RB5), B15 (RB6), B16 (RB7), B17 and B18 (RB3) as written.
 - B10: the Site Log names the bundle; History does not show its name yet: `pg_page_bundle_revision_names()` exists with no caller.
 
 ## What is not built yet?
-- The Bundles screen has no Publish and no Take back: RB3 built the dialogs and runners but never wired them into `page_bundles.php` (bug #10557). "Publish the rest" of a partly published bundle has no button either.
-- No menu row and no link from Pages to the Bundles screen; the architect's follow-up waits only on the screen's Publish now (`release-bundle-screen.md`). It is reached from the bell line and the preview's Close.
+- No menu row and no link from Pages to the Bundles screen; the architect's follow-up is free now that the screen publishes (`release-bundle-screen.md`). It is reached from the bell line and the preview's Close.
 - B10's History label (above).
 
 ## How is a new part added?

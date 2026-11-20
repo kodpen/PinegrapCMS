@@ -20,8 +20,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 // ── Visitor Tracking ──
-// The Google Analytics figures part of the card ($google_analytics_figures).
-require(PG_FUNCTIONS_DIR . '/includes/settings/privacy_analytics.php');
+// The Google tag and the Google Analytics figures are set on Google
+// Analytics' page of Connections; this card shows the connection and leads
+// there.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+$google_analytics_connected = ($google_analytics == 1) && (pg_ga_tag_id($google_analytics_web_property_id) !== '');
+$google_analytics_figures_on = pg_ga_linked();
 
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">
@@ -50,27 +55,6 @@ $pg_settings_cards[] = '
                                                         <div class="pg-f-md">
                                                             <label for="pay_per_click_flag" class="form-label">' . lang('Pay Per Click Tracking Code Flag') . '</label>
                                                             <input type="text" name="pay_per_click_flag" id="pay_per_click_flag" class="form-control" value="' . h($pay_per_click_flag) . '" />
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $google_analytics_checked . ' class="collapse-switcher" type="checkbox" id="google_analytics" name="google_analytics" data-bs-target="#google_analytics_row"/></div>
-                                                                <label class="" for="google_analytics">' . lang('Enable Google Analytics') . '</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="collapse popover fade bs-popover-bottom p-0 " id="google_analytics_row">
-                                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
-                                                            <div class="popover-body">
-                                                               <div class="row gy-5">
-                                                                    <div class="col-12 ">
-                                                                        <label for="stats_url" class="form-label">' . lang('Website Analytics URL') . '</label>
-                                                                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
-                                                                    </div>
-                                                                    <div class="col-12 ">
-                                                                        <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
-                                                                        <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . h($google_analytics_web_property_id) . '" maxlength="50"/>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -103,7 +87,20 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
-                                        </div>' : '') . $google_analytics_figures . '
+                                        </div>' : '') . '
+                                        <div id="pgsub-google-analytics" class="col-12">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'Google Analytics'))) . '</span>' . ($google_analytics_connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($google_analytics_connected
+                                                    ? lang(array('string' => 'The Google tag {var:1} counts visits on the site\'s pages. Its ID, the analytics address and the dashboard figures are kept on Google Analytics\' page of Connections.', 'vars' => pg_ga_tag_id($google_analytics_web_property_id)))
+                                                    : lang('With a Google tag ID, Google Analytics counts visits on the site\'s pages and its figures can be shown on the dashboard. Both are set on Google Analytics\' page of Connections.')) . '</div>' . ($google_analytics_figures_on
+                                                    ? '<div class="form-text mt-0">' . h(lang('The dashboard shows its figures.')) . '</div>'
+                                                    : '') . '
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_analytics">' . h($google_analytics_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>
                                    </div>
                                 </div>
                             </div>

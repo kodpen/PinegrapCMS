@@ -115,7 +115,10 @@
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
 - content-proposals-deleted-page.md: An editor's waiting change whose page is deleted or in the Recycle Bin: stale and told on Apply, or refused and still waiting; the count skips a gone page; "Deleted page" in the list (#10219)
 - content-proposals-designer-side.md: Waiting content changes, the designer's side: the list screen, Compare, apply through the gate with one revision, stale, dismiss with a reason, take back
-- content-proposals-workspace.md: Waiting content changes asked in the Workspace: when and as whom, who is asked, what a yes or no does, a withdrawn or replaced change taking its request back
+- content-proposals-editor-side.md: Waiting content changes, the editor's side in the Page Design Studio: the tab's mark, the waiting change laid on the canvas, the answer shown to the editor, the designers' tab count
+- content-proposals-editor-strip.md: Waiting content changes on the Page Design Studio's page strip: the tab's mark, its sizes, a folded page's mark climbing to a chip or the Pages button, the mark in every list of pages
+- content-proposals-overview.md: Start file of waiting content changes (publish approval, card "Content Approval"): what it is, the owner's and architect's decisions that bind it, what is left out, which file holds each part [decision: here]
+- content-proposals-workspace.md: Waiting content changes asked in the Workspace: when and as whom, who is asked, what a yes or no does, a withdrawn or replaced change taking its request back [decision: here]
 - content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows [decision: here]
 - course-progress.md: Start file of courses: ordered and timed lessons on a private folder's pages, progress, quiz lessons, the learner's blocks, the certificate, the Courses screen; decisions, PRs, files, left out [decision: decisions-made-product-34.md]
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
@@ -318,6 +321,7 @@
 - designer-blocks-launch.md: The launch- block family (Product Launch): six blocks, their interactions, bento-features and the Variant Picker reused, the sticky spec head
 - designer-blocks-library.md: The Library block family (library- prefix): shelf hero with today's hours and formats, shelf mark guide with the ten subject classes, library card with its loans table
 - designer-blocks-listen.md: The listen- block family (Listen group): the "Listen" block that reads the article aloud in the visitor's browser; its buttons, canvas and Preview, the d-flex trap, what is left out
+- designer-blocks-map.md: The map of the "Map of places" block (place-map MP4): the Maps switch and its tiles in Site Settings, Features, consent before any tile, the vendored Leaflet, the Firewall copy line, headers unchanged [decision: here]
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
 - designer-blocks-music.md: The Music block family (music- prefix, own palette group): release hero, tour dates, press kit; general blocks placed instead; rules, test
@@ -327,6 +331,7 @@
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test
 - designer-blocks-planetarium.md: The Planetarium block family (planetarium- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-sky-* rules, motion and test
 - designer-blocks-podcast.md: The Podcast block family (podcast- prefix): episode hero with chapters, sponsor placements drawn on an episode and a season, transcript with timed turns; blocks placed instead; tests
+- designer-blocks-popup.md: The Pop-ups blocks (popup- prefix, group Pop-ups): offer code with Copy, newsletter, announcement bar, cart waiting; the data-pg-popup-* marks the site's dialog script reads; rules, tests
 - designer-blocks-recruitment.md: The Recruitment block family (recruitment- prefix): job search hero, job board with contract filters, salary guide with ten-step bars; general blocks placed instead; rules, test
 - designer-blocks-restaurant.md: The Restaurant block family (restaurant- prefix): evening hero with a slip and a plate, tasting menu card with wines, chef's counter drawing; blocks placed instead; tests
 - designer-blocks-school.md: The School block family (school- prefix, own palette group): hero with an age finder, age ladder, school year in terms; general blocks placed instead; rules, test
@@ -443,6 +448,7 @@
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
+- designer-spacing-box.md: Style › Spacing as one box (DP7): outer and inner sides typed, dragged or stepped, Shift and Alt, the screen-size chooser in the head, the part 'spacing', what it writes (today's classes) and reads
 - designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
 - designer-tab-anchor.md: A link or search result to an element inside a Bootstrap tab not shown opens that tab and scrolls to it: pg_bs_tips.js on load and hashchange, pg_search_highlight.js reveal() (#4823).
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
@@ -559,6 +565,7 @@
 - overview-drop-targets.md: Designer Overview drop targets (#10263): the gap between rows as one 14 px target, the middle 14 px as "inside", the level picked by the pointer among legal parents, the label and the refused row
 - overview-long-drags.md: Designer Overview long drags (#10309): tree folded to its sections, a closed branch opened after 600 ms, 48 px scroll zones, the tree given back after Esc or a drop
 - overview-long-page.md: Designer Overview on a long page (#10207): section rows with counts, only the selection's section open on opening, 12 px indents and a depth badge, the sticky path, the pure functions
+- overview-move-without-drag.md: Designer Overview, moving without dragging (DP16): row buttons, keys on a focused row, Ctrl+X / Ctrl+V, the "Move…" window part, one undo step, a refused move said in words
 - overview-search-map.md: Designer Overview (DP13): the tree search part (name, text, class, id; Turkish letters folded; results with their path; Ctrl+F) and the page map at the tree's right edge [decision: here]
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left [decision: decisions-made-product-2.md, decisions-made-product-40.md]
@@ -597,6 +604,7 @@
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-back-key.md: P in the visual editor opens the Prototype view with the selected element's link picked (_sdProtoBack()); where the key is left alone, what it picks, why P
 - prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel [decision: here]
+- prototype-comments-ping.md: The prototype viewer's keep-alive ping to the comment door (every 10 minutes), why the guest's session needs it, what the door does with it
 - prototype-comments.md: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button sits still open [decision: here]
 - prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
@@ -613,6 +621,7 @@
 - prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers; what Tidy up clears
 - prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge [decision: decisions-made-product-57.md]
 - prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing [decision: here]
+- prototype-search.md: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back [decision: here]
 - prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes [decision: decisions-made-product-57.md]
 - prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes(), _sdProtoThumb()): the page picture's loading state and fallback, and the 84 floor of a shared part's height
 - prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md, decisions-made-product-63.md, decisions-made-product-72.md, decisions-made-product-78.md]
@@ -624,11 +633,11 @@
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
-- release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words [decision: here]
+- release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: where the Bundles screen shows them, what they post and the screen does with it, the "changed since" choice, focus on Cancel, their words [decision: here]
 - release-bundle-preview.md: A release bundle's preview (prototype.php?bundle=<id>): its waiting drafts, a link to a replaced page opening the replacement, the frame signed for the bundle, who opens it
 - release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
-- release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
+- release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete [decision: here]
 - release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle [decision: decisions-made-schema-29.md]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
 - release-bundle-time.md: A release bundle's publish time: the general job's pass, publishing once in the name of who set the time, a bundle held back to open with its reason, the bell line

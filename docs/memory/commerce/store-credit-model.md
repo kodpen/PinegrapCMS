@@ -5,7 +5,7 @@ module: store_credit
 ---
 
 ## What is store credit in the data?
-- A `gift_cards` row with `user_id` > 0 (indexed `idx_user`). `kind` ENUM gift/points/refund/manual (default gift), `reason` VARCHAR(255), `issued_by` (0 = the shop), `expires_at` unix time (0 = never). Step `upgrade_2026_11_0_store_credit()` (11.0.159); every older card stays `user_id` 0, kind gift: a plain gift card. Decided in #5039; no second table.
+- A `gift_cards` row with `user_id` > 0 (indexed `idx_user`). `kind` ENUM gift/points/refund/manual/referral (default gift; `referral` appended by 11.0.245, `commerce/referral-rules.md`), `reason` VARCHAR(255), `issued_by` (0 = the shop), `expires_at` unix time (0 = never). Step `upgrade_2026_11_0_store_credit()` (11.0.159); every older card stays `user_id` 0, kind gift: a plain gift card. Decided in #5039; no second table.
 - `expires_at` is the moment the card stops; `pg_credit_issue()` also writes `expiration_date` (what `submit_order.php` and the gift card screens already check) as the last valid day: `pg_credit_expiration_date()`, midnight belongs to the day before. A staff edit of `expiration_date` on the gift card screen does not move `expires_at`, so the readers check both: `pg_credit_open_sql()` and `pg_credit_card_open()` need `expires_at` and `expiration_date` to allow the card, and balance, pick and checkout agree.
 
 ## Which functions are there? (`includes/fn/store_credit.php`)

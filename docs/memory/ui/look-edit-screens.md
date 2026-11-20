@@ -24,7 +24,7 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - Its buttons are drawn by their role in the same block, at every width, the markup keeping its Bootstrap classes (#9680): the bar's one solid success or primary button is the save action in `.pg-button-fill`'s values, a `theme-danger` button (solid or outline) a ghost in the danger rose (`--pg-tone-rose-text`, hover `--pg-hover`), every other button `.pg-button-quiet`. No add or edit bar has two solid success or primary buttons; a screen that adds one makes two fills.
 
 ## What is not done yet?
-- The card's line under the title. Field spans: with each screen's group of the panel-old-screens plan; kept screens wait for the owner (`look-field-widths.md`).
+- The card's line under the title. Field spans: set per screen by the panel-old-screens groups (`look-overview.md`); kept screens wait for the owner (`look-kept-screens.md`).
 - The unsaved note at the bar's left is not drawn.
 - `product_builder.php`'s own section titles stay its own.
 

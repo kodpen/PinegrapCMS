@@ -20,6 +20,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 // ── Search Engine Optimization ──
+// The IndexNow key is typed on IndexNow's page of Connections; this card
+// shows its state and leads there.
+$indexnow_connected = (trim((string) $indexnow_key) !== '');
+
 $pg_settings_cards[] = '
                         <div id="pgset-seo" class="pg-set-card">
                             <div class="card">
@@ -72,14 +76,15 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'A page opened on another name of this site (with or without www) moves to the same address on {var:1} with a permanent redirect, so search engines see one copy of each page. Turn it on only once that name opens this site. The panel, the API and file downloads answer on every name.', 'vars' => array(HOSTNAME_SETTING)))) . '</div>
                                             </div>
                                         </div>
-                                        <div class="pg-f-lg">
-                                            <label for="indexnow_key" class="form-label">' . lang('IndexNow Key') . '</label>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <input type="text" name="indexnow_key" id="indexnow_key" class="form-control" value="' . h($indexnow_key) . '"/>
-                                                <button type="button" class="pg-button pg-button-quiet pg-button-sm text-nowrap" onclick="generateIndexNowKey()"><i class="bi bi-key-fill" aria-hidden="true"></i>' . lang('Generate') . '</button>
-                                            </div>
-                                            <div class="form-text">' . lang('If you provide an IndexNow Key, search engines that support IndexNow will be automatically notified when your sitemap.xml file is updated.') . ' 
-                                                <a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
+                                        <div id="pgsub-indexnow" class="col-12">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'IndexNow'))) . '</span>' . ($indexnow_connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($indexnow_connected
+                                                    ? lang('Search engines that support IndexNow are told when the sitemap.xml file changes. Its key is kept on IndexNow\'s page of Connections.')
+                                                    : lang('With an IndexNow key, search engines that support IndexNow are told when the sitemap.xml file changes. The key is set on IndexNow\'s page of Connections.')) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=indexnow">' . h($indexnow_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                             </div>
                                         </div>
                                     </div>

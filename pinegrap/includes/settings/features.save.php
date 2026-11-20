@@ -66,6 +66,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_course_switch_save((bool) post_value('courses_on'));
     }
 
+    // Event tickets: one config_text row, '1' on, removed when off, only when
+    // its card was on the form.
+    if (array_key_exists('event_tickets_card', $_POST) && function_exists('pg_event_tickets_switch_save')) {
+        pg_event_tickets_switch_save((bool) post_value('event_tickets_on'));
+    }
+
     // Visitor notifications: through the switch's one saver
     // (includes/fn/site_push.php), only when its card was on the form.
     if (array_key_exists('site_push_card', $_POST) && function_exists('pg_site_push_switch_save')) {

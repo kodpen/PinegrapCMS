@@ -1,6 +1,6 @@
 ---
 name: mail-screen-phone
-description: Communication › Incoming e-mail below 768 px: the pane in the list's place, the toolbar folded while a mail is read, the scroll to the pane, the narrower paddings (#10082)
+description: Communication › Incoming e-mail below 768 px: the pane in the list's place, the toolbar folded while a mail is read, the scroll to the pane, the narrower paddings (#10082), the channel pill on touch
 ---
 
 ## What does the screen do on a phone?
@@ -14,6 +14,9 @@ description: Communication › Incoming e-mail below 768 px: the pane in the lis
 
 ## How high are the pane's status and holder?
 - 31 px, as the pane's buttons: `state(…, roomy)` in `workspace_mail.js` leaves out `py-0` for the pane (#10543); before they were 23 px. A channel's mail card keeps `py-0`.
+
+## How big is the channel pill in the pane's head?
+- On a touch screen (`@media (pointer: coarse)` after the E-mails phone block) "In #channel" (`.ws-mail-pane-channel`) is at least 2rem (32 px) high; under a mouse the 22 px status pill stays (#10545, PR #10592). Test: `tests/workspace_phone_touch_test.php`.
 
 ## What stays as it was?
 - Before a conversation is opened the toolbar still stands above the list; folding it there was not part of #10082.
