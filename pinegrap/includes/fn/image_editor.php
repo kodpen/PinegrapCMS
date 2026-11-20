@@ -5678,6 +5678,10 @@ function pg_image_editor_strings_actions()
         'actMotion'      => lang('Motion'),
         'actMore'        => lang('More'),
         'actMoreOptions' => lang('More options'),
+        'actNudgeLeft'   => lang('Move left'),
+        'actNudgeUp'     => lang('Move up'),
+        'actNudgeDown'   => lang('Move down'),
+        'actNudgeRight'  => lang('Move right'),
     );
 }
 

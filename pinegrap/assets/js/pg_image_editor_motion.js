@@ -1089,7 +1089,7 @@
 
         if ((this.time !== null) && !h && this.keyHit) {
             p = this.toDoc(e.clientX, e.clientY);
-            hit = this.keyHit(p);
+            hit = this.keyHit(p, 0, e.pointerType);
 
             if (hit) {
                 if (this.playing) {

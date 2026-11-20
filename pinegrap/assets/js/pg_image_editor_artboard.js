@@ -1216,8 +1216,9 @@
         } else {
             // A redacted area takes the press only inside its outline; an
             // erased or adjusted area is the picture's own, so a press in a
-            // see-through hole takes the picture with it.
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q) { return !M.pictureArea(l) && M.areaHit(l, q); });
+            // see-through hole takes the picture with it. A selected layer
+            // within a finger's reach keeps the press (pickedReach()).
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q) { return !M.pictureArea(l) && M.areaHit(l, q); }, this.pickedReach(e));
 
             if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
                 b.pic = false;

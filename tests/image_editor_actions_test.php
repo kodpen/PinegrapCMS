@@ -295,3 +295,40 @@ function test_image_editor_actions_owning_labels()
 		pg_assert_true(isset($own[$key]), $key . ' is the actions part\'s');
 	}
 }
+
+// Layers that move (s.move: neither locked nor fixed) get four arrows on the
+// phone's bar after Delete; none where nothing moves, none over the object
+// on a desktop (its arrow keys nudge). M.nudgeStep(): 1 px, big 10 px.
+function test_image_editor_actions_nudge_arrows()
+{
+	$r = image_editor_actions_node(
+		'console.log(JSON.stringify({'
+		. ' move: names({ layers: 1, free: 1, move: 1, sheet: true }),'
+		. ' still: names({ layers: 1, free: 1, move: 0, sheet: false }),'
+		. ' locked: names({ layers: 1, free: 0, move: 0, sheet: true }),'
+		. ' object: names({ place: "object", layers: 1, free: 1, move: 1, kind: "text" }),'
+		. ' steps: [M.nudgeStep("left"), M.nudgeStep("right", true), M.nudgeStep("up", false), M.nudgeStep("down", 1), M.nudgeStep("toString"), M.nudgeStep("")]'
+		. '}));'
+	);
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
+	pg_assert_same(array('options', 'duplicate', 'remove', 'nudgeLeft', 'nudgeUp', 'nudgeDown', 'nudgeRight'), $r['move'], 'the arrows after Delete');
+	pg_assert_same(array('duplicate', 'remove'), $r['still'], 'nothing moves: no arrows');
+	pg_assert_same(array('options', 'duplicate', '-remove'), $r['locked'], 'locked layers: no arrows');
+	pg_assert_same(array('editText', 'duplicate', 'remove', 'lock', 'more'), $r['object'], 'no arrows over the object');
+	pg_assert_same(array(array(-1, 0), array(10, 0), array(0, -1), array(0, 10), null, null), $r['steps'], '1 px, held 10 px, another dir nothing');
+
+	$own = pg_image_editor_strings_actions();
+
+	foreach (array('actNudgeLeft', 'actNudgeUp', 'actNudgeDown', 'actNudgeRight') as $key) {
+		pg_assert_true(isset($own[$key]), $key . ' is the actions part\'s');
+	}
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/pg_image_editor.src.css');
+	pg_assert_true(preg_match('/\.pgie \.pgie-act\.pgie-actnudge \{[^}]*min-width: 44px;/', $css) === 1, 'an arrow is a 44 px target');
+}
