@@ -160,6 +160,7 @@
 - decisions-made-product-89.md: Decisions list, product part 89 (2026-11-20 on): plans from the owner's hourly polls: a buybox repricer above a profit floor; NPS and CSAT after a service; a jury desk for applications
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product-90.md: Decisions list, product part 90 (2026-11-20 on): plans from the owner's hourly polls; customer rhythm, a delivery tower, a pick and pack station and a visitor journey with an interest score
+- decisions-made-product-91.md: Decisions list, product part 91 (2026-11-20 on): a survey after a service is a service message, the periodic NPS commercial (poll 198); the export leaves out jury notes and names (poll 200)
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
@@ -198,6 +199,8 @@
 - decisions-made-schema-41.md: Decisions list, schema part 41 (2026-11-20 on): pick and pack's four tables (product_bins, pick_waves, pick_wave_orders, order_packs) and the "Packing only" right user.manage_packing (poll 193)
 - decisions-made-schema-42.md: Decisions list, schema part 42 (2026-11-20 on): the visitor journey's four tables (lead_browsers, lead_visits, contact_journey, contact_scores), marketing consent, 13 months, tying back (poll 194)
 - decisions-made-schema-43.md: Decisions list, schema part 43 (2026-11-20 on): a repeating event with shared places gives a series ticket checked in once per date; the event_ticket_checkins table (poll 195, bug #10755)
+- decisions-made-schema-44.md: Decisions list, schema part 44 (2026-11-20 on): the application review desk's four tables and their columns, no reviewer right column (poll 199)
+- decisions-made-schema-45.md: Decisions list, schema part 45 (2026-11-20 on): the satisfaction loop's two tables, feedback_surveys (a survey's settings) and feedback_responses (one row per sent survey), their columns (poll 197)
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace

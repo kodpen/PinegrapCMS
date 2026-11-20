@@ -196,3 +196,38 @@ function test_erp_profitability_rate_changed()
 	pg_assert_same(false, erp_profitability_rate_changed(null, erp_profitability_rate_in('', '')), 'none kept, none typed');
 	pg_assert_same(true, erp_profitability_rate_changed(null, erp_profitability_rate_in('0', '')), 'a new rate of 0 percent');
 }
+
+// The report reads the profit rows of finished sales only: an order cancelled
+// after the pass computed it is left out at once, not when the pass reaches
+// it again.
+function test_erp_profitability_reads_finished_sales_only()
+{
+	$sql = erp_profitability_profit_from(1767225600, 1769904000, 'marketplace:5');
+
+	pg_assert_true(strpos($sql, erp_order_profit_counted_join()) !== false, 'only finished sales');
+	pg_assert_true(strpos($sql, "erp_order_profit.order_date >= '1767225600'") !== false, 'the period start');
+	pg_assert_true(strpos($sql, "erp_order_profit.order_date < '1769904000'") !== false, 'the period end');
+	pg_assert_true(strpos($sql, "erp_order_profit.channel = 'marketplace:5'") !== false, 'the channel');
+	pg_assert_true(strpos(erp_profitability_profit_from(1, 2, ''), 'channel') === false, 'every channel');
+}
+
+// An order's revenue is split over the lines charged with it, as the pass
+// costs them (erp_order_charged_items()): a recurring line that starts later
+// was not charged and takes no revenue.
+function test_erp_profitability_lines_charged_only()
+{
+	$items = array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 2, 'price' => 3000, 'tax_total' => 600,
+			'recurring_payment_period' => '', 'recurring_start_date' => '0000-00-00', 'product_start' => 0),
+		array('id' => 2, 'product_id' => 8, 'quantity' => 1, 'price' => 5000, 'tax_total' => 1000,
+			'recurring_payment_period' => 'Monthly', 'recurring_start_date' => '2026-02-01', 'product_start' => 0),
+	);
+
+	pg_assert_same(array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 2.0, 'weight' => 6600),
+	), erp_profitability_lines(strtotime('2026-01-10 12:00:00'), $items, false));
+
+	// Started on the order's day: charged with it.
+	$items[1]['recurring_start_date'] = '2026-01-10';
+	pg_assert_same(2, count(erp_profitability_lines(strtotime('2026-01-10 12:00:00'), $items, false)));
+}
