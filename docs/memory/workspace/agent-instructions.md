@@ -12,7 +12,7 @@ description: How an application agent learns its work from the site: GET /worksp
 ## What is in the text, in order?
 - `ws_agent_instructions_text($agent, $channels, $base)`, pure, English: who it is (name, `@handle`, role label, the Site API, HTTP Basic from `PINEGRAP_KEY` / `PINEGRAP_SECRET`); its allowed, unarchived channels with what wakes it (`ws_agent_instructions_wake()` per `wake_rule`).
 - How it waits, by `ws_agent_instructions_door()`: poll; push split into routine (`ws_claude_url_valid()` accepts the address) or webhook. Poll: the list every 15 s, never under 5 s, one `curl` loop line that sleeps on an empty list or an empty read (a network failure) and stops on anything else (a request, an error body). Webhook: the call names site, handle and id; read the list on start too. Routine: one run a fire, ending when the list is done.
-- Each request (claim and its 409s, brief, the optional progress note (`agent-progress-note.md`), answer / `no_answer` + one emoji / fail, 409 edited, 403, a wake request), the never-list, reading again on another version, `pg_ai_prompt_rules('assistant')` last.
+- Each request (claim and its 409s, brief, the optional progress note (`agent-progress-note.md`), answer / `no_answer` + one emoji / fail, 409 edited, 403, a wake request), how a message is written (`ws_agent_instructions_writing_lines()`, the lines of `workspace-writing-rules.md`), the never-list, reading again on another version, `pg_ai_prompt_rules('assistant')` last.
 - Never the key, the secret or the door's address: only the variables' names.
 
 ## What is the version rule?
