@@ -44,6 +44,11 @@ define('WS_FLOW_RECORDS_SCAN', 500);
 // The most earlier runs of the anchor looked at for the window's edge.
 define('WS_FLOW_RECORDS_RUNS', 100);
 
+// The most characters of a record's summary: the description field is often
+// the whole post, and the box's list of 50 records has to fit
+// WS_FLOW_LOOP_ITEMS_BYTES.
+define('WS_FLOW_RECORDS_SUMMARY', 200);
+
 /**
  * The box's settings: page_id, the list page (0 for none), and only_new,
  * 1 for only the records new since the last run. Pure.
@@ -499,9 +504,31 @@ function ws_flow_records_rows($read, $window)
 }
 
 /**
- * The items of the rows as the feed gives them: title, summary, picture
- * (an upload everybody may open, or an http(s) address typed), the address
- * of the record's page and its date.
+ * A record's summary as the box gives it: spaces folded, cut at a word to
+ * WS_FLOW_RECORDS_SUMMARY characters and marked with an ellipsis. Pure.
+ *
+ * @param string $text the record's RSS description
+ * @return string
+ */
+function ws_flow_records_summary($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+
+    if (mb_strlen($text, 'UTF-8') <= WS_FLOW_RECORDS_SUMMARY) {
+        return $text;
+    }
+
+    $cut = mb_substr($text, 0, WS_FLOW_RECORDS_SUMMARY + 1, 'UTF-8');
+    $space = mb_strrpos($cut, ' ', 0, 'UTF-8');
+    $cut = ($space !== false) && ($space > (int) (WS_FLOW_RECORDS_SUMMARY / 2)) ? mb_substr($cut, 0, $space, 'UTF-8') : mb_substr($cut, 0, WS_FLOW_RECORDS_SUMMARY, 'UTF-8');
+
+    return rtrim($cut, " \t.,;:-") . '…';
+}
+
+/**
+ * The items of the rows as the feed gives them: title, summary (cut by
+ * ws_flow_records_summary()), picture (an upload everybody may open, or an
+ * http(s) address typed), the address of the record's page and its date.
  *
  * @param array   $pick pg_sw_form_feed_pick()
  * @param array[] $rows ws_flow_records_rows() rows
@@ -538,7 +565,7 @@ function ws_flow_records_items($pick, $rows)
 
         $items[] = array(
             'title'   => (string) $text['title'],
-            'summary' => (string) $text['description'],
+            'summary' => ws_flow_records_summary((string) $text['description']),
             'picture' => $picture,
             'link'    => $link,
             'date'    => date('Y-m-d H:i', (int) $row['date']),
