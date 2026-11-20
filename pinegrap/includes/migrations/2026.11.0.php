@@ -248,6 +248,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
 	upgrade_2026_11_0_application_review();      // 11.0.258
+	upgrade_2026_11_0_pick_pack();               // 11.0.260
 
 }
 
@@ -8513,5 +8514,83 @@ function upgrade_2026_11_0_application_review() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
+
+}
+
+// Pick and pack (11.0.260; includes/fn/pick_pack.php). A shelf address per
+// product and stock location, pick waves and the addresses in each, and one
+// pack row per address (orders' ship_to_id) with its scan counts. None of the
+// four holds customer data; an order's deletion removes its wave and pack
+// rows (delete_order()). The "Packing only" right is a column of its own,
+// read for role 3 only (roles 0-2 and the orders right hold the screens).
+function upgrade_2026_11_0_pick_pack() {
+
+	install_create_table('product_bins', "CREATE TABLE product_bins (
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		bin          VARCHAR(40) NOT NULL DEFAULT '',
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id, location_id),
+		KEY idx_location_bin (location_id, bin)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('pick_waves', "CREATE TABLE pick_waves (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		status       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		single_item  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		rule         TEXT NULL,
+		picked       TEXT NULL,
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_created (status, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('pick_wave_orders', "CREATE TABLE pick_wave_orders (
+		wave_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		removed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (wave_id, ship_to_id),
+		KEY idx_ship_to (ship_to_id),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// `lines` is a reserved word in MySQL and MariaDB: every query names it
+	// in backticks.
+	install_create_table('order_packs', "CREATE TABLE order_packs (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		wave_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		status       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		packer_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		packed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		short_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		units        INT UNSIGNED NOT NULL DEFAULT 0,
+		scanned      INT UNSIGNED NOT NULL DEFAULT 0,
+		refused      INT UNSIGNED NOT NULL DEFAULT 0,
+		`lines`      TEXT NULL,
+		missing      TEXT NULL,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_ship_to (ship_to_id),
+		KEY idx_order (order_id),
+		KEY idx_status_packed (status, packed_at),
+		KEY idx_packer_packed (packer_id, packed_at),
+		KEY idx_wave (wave_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_table_exists('user')) {
+		install_add_column('user', 'manage_packing', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('user does not exist, skipped');
+	}
+
+	install_note('Orders: the tables for shelf addresses, pick waves and packs, and the "Packing only" user right, were added; nothing changes until they are used.');
 
 }
