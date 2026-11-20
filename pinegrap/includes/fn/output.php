@@ -8129,6 +8129,9 @@ function pg_js_bundles()
         // Border and corner: their pure class mappings (window.PGSpacingBox,
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        // The Options panel's search: its pure fold-and-match module
+        // (window.PGOptionsSearch), then the part that lists the results.
+        'assets/js/style_designer_optsearch.min.js' => array('assets/js/pg_options_search.js', 'assets/js/style_designer_optsearch.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8214,6 +8217,9 @@ function pg_designer_parts()
         // The spacing box of Style › Spacing and the size chooser in its
         // head, drawn when the section is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The Options panel's search: a row of any tab found by its label,
+        // section, CSS property or class prefix, listed with its path.
+        'optsearch' => 'assets/js/style_designer_optsearch.min.js',
     );
 }
 

@@ -23,9 +23,8 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `interactions` (#8281, D5 part 7): the Interactions section's rows and fields, `designer-interactions-part.md`.
 - `treesearch` (DP13), `move` (DP16): the Overview's search and "Move…" window: `overview-search-map.md`, `overview-move-without-drag.md`.
 - `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
-- `spacing` (DP7): Style › Spacing's box, `designer-spacing-box.md`.
-- Assistant code kept in the core, needed at open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), the alt-text button (`_sdAiAltButton()`).
+- `spacing` (DP7; handed over since #10658), `optsearch` (DP8): `designer-spacing-box.md`, `designer-options-search.md`.
+- Assistant code kept in the core for open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), `_sdAiAltButton()`.
 
-## What comes next?
-- D5 is complete.
-- `open` with `?sd_perf=1` (`designer-performance.md`) needs a browser on a running site: not measured.
+## What is not measured?
+- `open` with `?sd_perf=1` (`designer-performance.md`) needs a browser on a running site (D5 is complete).

@@ -25362,9 +25362,20 @@ const StyleDesigner = (function () {
         designPane.hidden = true;
         var searchWrap = document.createElement('div');
         searchWrap.className = 'sd-props-search-wrap';
+        // A combobox: its results list (#sd-props-results) is filled by the
+        // part 'optsearch'; "/" focuses it, the × empties it.
         searchWrap.innerHTML =
-            '<span class="bi bi-search"></span>' +
-            '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">';
+            '<span class="bi bi-search" aria-hidden="true"></span>' +
+            '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search or add an option…')) + '" autocomplete="off"' +
+                ' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sd-props-results" aria-label="' + esc(_sdT('Search or add an option…')) + '">' +
+            '<kbd class="sd-props-search-key" aria-hidden="true">/</kbd>' +
+            '<button type="button" class="sd-props-search-clear bi bi-x-lg" aria-label="' + esc(_sdT('Clear the search')) + '"></button>';
+        var searchResults = document.createElement('div');
+        searchResults.id = 'sd-props-results';
+        searchResults.className = 'sd-props-results';
+        searchResults.setAttribute('role', 'listbox');
+        searchResults.setAttribute('aria-label', _sdT('Options found'));
+        searchResults.hidden = true;
         // Over the search: the selected element's identity row and its
         // tabs (_sdPropsHead()).
         var propsHead = document.createElement('div');
@@ -25373,6 +25384,7 @@ const StyleDesigner = (function () {
         propsHead.hidden = true;
         optPane.appendChild(propsHead);
         optPane.appendChild(searchWrap);
+        optPane.appendChild(searchResults);
         if (props) optPane.appendChild(props);
         outer.insertBefore(designPane, outer.firstChild);
         outer.insertBefore(optPane, designPane);
@@ -25404,16 +25416,228 @@ const StyleDesigner = (function () {
                 if (!(w > 0)) return;
                 var was = outer.classList.contains('sd-rcol-narrow');
                 outer.classList.toggle('sd-rcol-narrow', w < 300);
+                var sb = document.getElementById('sd-props-search');
+                if (sb) sb.placeholder = w < 300 ? _sdT('Search or add…') : _sdT('Search or add an option…');
                 if (!was && w < 300) _sdNarrowStack(document.getElementById('sd-properties'));
             }).observe(outer);
         }
 
         var inp = document.getElementById('sd-props-search');
-        if (inp) {
-            inp.addEventListener('input', function() {
-                filterPropertiesPanel(this.value.trim());
-            });
+        if (inp) _sdOptSearchBind(inp, searchWrap);
+    }
+
+    // ── The Options search: the core's hooks ──
+    // The box finds a row in all three tabs (the part 'optsearch',
+    // window.PGOptionsSearch): results 120 ms after typing, Up and Down move,
+    // Enter opens the row (_sdOptSearchGo()); the first Esc empties the box,
+    // the second leaves it; "/" focuses it where no field is typed in.
+    var _SD_OPT_SEARCH_MS = 120;
+    var _sdOptSearchT = 0;
+
+    function _sdOptSearchBind(inp, wrap) {
+        var mark = function () { wrap.classList.toggle('sd-has-q', !!inp.value); };
+        inp.addEventListener('input', function () {
+            mark();
+            clearTimeout(_sdOptSearchT);
+            _sdOptSearchT = 0;
+            var v = this.value;
+            if (!v.trim()) { _sdOptSearchRun(''); return; }
+            _sdOptSearchT = setTimeout(function () { _sdOptSearchT = 0; _sdOptSearchRun(v); }, _SD_OPT_SEARCH_MS);
+        });
+        inp.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                clearTimeout(_sdOptSearchT);
+                _sdOptSearchT = 0;
+                if (this.value) { this.value = ''; mark(); _sdOptSearchRun(''); } else this.blur();
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return;
+            if (!this.value.trim()) return;
+            e.preventDefault();
+            var k = e.key;
+            var run = _sdOptSearchT ? _sdOptSearchRun(this.value) : Promise.resolve();
+            clearTimeout(_sdOptSearchT);
+            _sdOptSearchT = 0;
+            run.then(function () { return _sdPartCall('optsearch', 'key', [k]); }).catch(_sdPartFailed);
+        });
+        var clr = wrap.querySelector('.sd-props-search-clear');
+        if (clr) clr.addEventListener('click', function () {
+            clearTimeout(_sdOptSearchT);
+            _sdOptSearchT = 0;
+            inp.value = '';
+            mark();
+            _sdOptSearchRun('');
+            inp.focus();
+        });
+        // "/" goes to the box while no field, text or editor takes typing
+        // (no other handler had "/" before).
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+            var act = document.activeElement;
+            if (act && act !== document.body && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName))) return;
+            if (act && act.closest && act.closest('.cm-editor, [contenteditable="true"], .modal')) return;
+            if (document.querySelector('.modal.show')) return;
+            if (!inp.offsetParent) _sdRcolShow('options');
+            if (!inp.offsetParent) return;
+            e.preventDefault();
+            inp.focus();
+            inp.select();
+        });
+    }
+
+    // Runs the search for `typed`: the label filter of before
+    // (filterPropertiesPanel(), which draws every tab), then the part, which
+    // adds the rows found by CSS property or class prefix, lists the results
+    // and says when there is none. Answers when the results are drawn.
+    function _sdOptSearchRun(typed) {
+        typed = String(typed || '').trim();
+        filterPropertiesPanel(typed);
+        if (!typed) { _sdOptSearchClose(); return Promise.resolve(); }
+        // Once loaded the part ran inside the filter (_sdOptSearchRefine()).
+        if (_sdPartLoaded('optsearch')) return Promise.resolve();
+        return _sdPartCall('optsearch', 'search', [_sdOptSearchHost(typed)]).catch(_sdPartFailed);
+    }
+
+    // Called at the end of filterPropertiesPanel() (each search and each
+    // panel redraw while the box has words): the part's search on the box's
+    // own words. False before the part has run, so the filter keeps its line.
+    function _sdOptSearchRefine() {
+        var box = document.getElementById('sd-props-search');
+        var typed = box ? box.value.trim() : '';
+        var api = _sdPartApis.optsearch;
+        if (!typed || !_sdPartLoaded('optsearch') || !api || typeof api.search !== 'function') return false;
+        api.search(_sdOptSearchHost(typed));
+        return true;
+    }
+
+    // Hides the results list and the class offer.
+    function _sdOptSearchClose() {
+        var list = document.getElementById('sd-props-results');
+        var box = document.getElementById('sd-props-search');
+        var add = document.getElementById('sd-props-search-add');
+        if (list) { list.hidden = true; list.innerHTML = ''; }
+        if (add) add.hidden = true;
+        if (box) { box.setAttribute('aria-expanded', 'false'); box.removeAttribute('aria-activedescendant'); }
+    }
+
+    // What the part reads and calls: the panel drawn with every tab, the
+    // box and its list, the open tab, the tabs' names, the element's classes.
+    function _sdOptSearchHost(typed) {
+        var box = document.getElementById('sd-props-search');
+        return {
+            typed: typed,
+            live: function () { return !!box && box.value.trim() === typed; },
+            panel: document.getElementById('sd-properties'),
+            box: box,
+            list: document.getElementById('sd-props-results'),
+            tab: _sdOptTab,
+            tabName: function (t) { return _sdOptTabName(t); },
+            has: _sdOptSearchHas,
+            canAdd: function () { return !!(selectedNode || selectedNodes.length) && _collab.mayEdit && !_sdPanelLockReason(_sdOptSearchNodes()); },
+            empty: _sdPropsSearchEmpty,
+            go: _sdOptSearchGo,
+            addClass: _sdOptSearchAdd
+        };
+    }
+
+    function _sdOptSearchNodes() {
+        return (selectedNodes.length > 1 ? selectedNodes.slice() : [selectedNode]).filter(function (n) { return n && n.props; });
+    }
+
+    // The classes every selected element holds.
+    function _sdOptSearchHas() {
+        var lists = _sdOptSearchNodes().map(function (n) { return String(n.props.cssClass || '').split(/\s+/).filter(Boolean); });
+        if (!lists.length) return [];
+        return lists[0].filter(function (c) { return lists.every(function (l) { return l.indexOf(c) !== -1; }); });
+    }
+
+    // The name of an Options tab as its strip shows it.
+    function _sdOptTabName(t) {
+        return t === 'style' ? _sdT('Style') : t === 'advanced' ? _sdT('Advanced') : _sdT('Content');
+    }
+
+    // Enter on a result (PGOptionsSearch.target()): the search ends, the
+    // panel shows the row's tab with its card open (_sdOptReveal()), the
+    // focus goes to the row's control and a card that was closed is marked
+    // "just opened" until the panel is drawn again. A spacing row (hidden
+    // under the box) focuses its side of the box (`side`); a control not in
+    // view leaves the focus on the card's head.
+    function _sdOptSearchGo(t, side) {
+        var box = document.getElementById('sd-props-search');
+        clearTimeout(_sdOptSearchT);
+        _sdOptSearchT = 0;
+        if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
+        _sdPropsSearchEmpty('');
+        _sdOptSearchClose();
+        var panel = document.getElementById('sd-properties');
+        if (!panel || !t) return;
+        var c = t.control;
+        var find = function () {
+            var card = panel.querySelector('[data-sd-card="' + c.sid + '"]');
+            if (!card) return null;
+            var own = Array.prototype.filter.call(card.querySelectorAll('.sd-prop-row, .sd-sp-row'), function (r) { return r.closest('[data-sd-card]') === card; });
+            var text = function (r) { var l = r.querySelector('.sd-prop-label, .sd-sp-label'); return l ? l.textContent.replace(/\s+/g, ' ').trim() : ''; };
+            var row = (c.nth >= 0 && own[c.nth] && text(own[c.nth]) === c.label) ? own[c.nth] : own.filter(function (r) { return text(r) === c.label; })[0];
+            return row || card;
+        };
+        _sdOptTab = t.tab;
+        var el = _sdOptReveal(find);
+        if (!el) { renderProperties(); return; }
+        var card = el.matches('[data-sd-card]') ? el : el.closest('[data-sd-card]');
+        var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
+        if (t.openSection && hdr && !hdr.querySelector('.sd-just-opened')) {
+            var tag = document.createElement('span');
+            tag.className = 'sd-sect-tag sd-just-opened';
+            tag.textContent = _sdT('just opened');
+            var title = hdr.querySelector('.sd-sect-title');
+            hdr.insertBefore(tag, title ? title.nextSibling : null);
+            card.classList.add('sd-card-just');
         }
+        var ctl = el === card ? null : el.querySelector('.sd-seg-on, select:not([hidden]), input:not([type="hidden"]), textarea, .sd-seg, button:not(.sd-sp-toggle):not(.sd-chg-reset)');
+        if (ctl && ctl.offsetParent) {
+            ctl.focus();
+            if (ctl.scrollIntoView) ctl.scrollIntoView({ block: 'nearest' });
+            return;
+        }
+        if (hdr) { hdr.focus(); if (hdr.scrollIntoView) hdr.scrollIntoView({ block: 'nearest' }); }
+        // The spacing box is drawn by its part once the card shows.
+        if (side && card) {
+            var tries = 0;
+            var seek = function () {
+                var b = card.isConnected ? card.querySelector('.sd-spb-v[data-k="' + side.k + '"][data-s="' + side.s + '"]') : null;
+                if (b) { b.focus(); return; }
+                if (++tries < 30 && card.isConnected) requestAnimationFrame(seek);
+            };
+            seek();
+        }
+    }
+
+    // "+ Add the class “…”" under the "nothing found" line: the class added
+    // to every selected element not holding it, as one undo step; the search
+    // ends. View mode nudges; a content-level lock refuses (K4).
+    function _sdOptSearchAdd(cls) {
+        cls = String(cls || '').trim();
+        if (!cls) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var all = _sdOptSearchNodes();
+        if (!all.length || _sdPanelLockReason(all)) return;
+        var nodes = all.filter(function (n) { return String(n.props.cssClass || '').split(/\s+/).indexOf(cls) === -1; });
+        var box = document.getElementById('sd-props-search');
+        if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
+        _sdPropsSearchEmpty('');
+        _sdOptSearchClose();
+        var add = function (n) { n.props.cssClass = (String(n.props.cssClass || '').trim() + ' ' + cls).trim(); };
+        if (!nodes.length) { renderProperties(); return; }
+        if (all.length > 1) {
+            _sdMcCommit(nodes, add);
+        } else {
+            saveState();
+            add(nodes[0]);
+            _sdRenderNode(nodes[0], render);
+        }
+        sdToast(esc(_sdT('The class “{var}” was added.', cls)), 'success');
     }
 
     // Shows tab `key` of the right column ('options' or 'design').
@@ -25558,7 +25782,9 @@ const StyleDesigner = (function () {
             }
         });
 
-        _sdPropsSearchEmpty(shown.length ? '' : typed);
+        // Once the part 'optsearch' has run it decides the line (it also
+        // finds rows by CSS property and class prefix).
+        if (!_sdOptSearchRefine()) _sdPropsSearchEmpty(shown.length ? '' : typed);
     }
 
     function initLeftPanel() {
@@ -35705,8 +35931,9 @@ const StyleDesigner = (function () {
         var box = document.getElementById('sd-props-search');
         var searching = !!(box && box.value.trim());
         if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
-        if (box) box.value = '';
+        if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
         _sdPropsSearchEmpty('');
+        _sdOptSearchClose();
         _sdOptTab = tab;
         panel.scrollTop = 0;
         renderProperties();
