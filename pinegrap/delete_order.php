@@ -55,6 +55,10 @@ function delete_order($request) {
     // The order's return requests and their lines name its order lines by id.
     pg_returns_delete_for_order($order['id']);
 
+    // The order's event tickets: a row left behind would still pass at the
+    // door.
+    pg_event_tickets_delete_for_order($order['id']);
+
     // Cancel the order abandoned and review request auto campaigns of this
     // order that have not been sent yet: both would reach the customer about
     // an order that is gone.

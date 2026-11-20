@@ -19,9 +19,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
 - `designer-panels-*`: 22 files; start at `designer-panels.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
-- `panel-old-*`: 12 files.
 - `place-map-*`: 6 files; start at `place-map.md`.
-- `publish-approval-*`: 8 files; start at `publish-approval.md`.
 - `storefront-api-*`: 9 files.
 
 ## Files

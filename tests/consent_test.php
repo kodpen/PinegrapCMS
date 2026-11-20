@@ -498,10 +498,14 @@ function test_consent_ga_tag_and_analytics_link_are_printed_escaped()
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/privacy.save.php');
 	$write = strpos($save, 'db("UPDATE config');
-	foreach (array('google_analytics_web_property_id', 'stats_url', 'tracking_code_duration') as $name) {
-		$at = strpos($save, "mark_error('" . $name . "'");
-		pg_assert_true(($at !== false) && ($at < $write), $name . ' refused before the write');
-	}
+	$at = strpos($save, "mark_error('tracking_code_duration'");
+	pg_assert_true(($at !== false) && ($at < $write), 'tracking_code_duration refused before the write');
+
+	// The tag ID and the analytics address are taken on Google Analytics'
+	// page of Connections, each only in its own format (pg_ga_tag_input()).
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+	$taken = pg_ga_tag_input(array('google_analytics_web_property_id' => 'G-1"><script>', 'stats_url' => 'javascript:alert(1)'));
+	pg_assert_same(array('google_analytics_web_property_id', 'stats_url'), array_keys($taken['errors']), 'both refused');
 
 	$menu = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 	pg_assert_contains('h(STATS_URL)', $menu);

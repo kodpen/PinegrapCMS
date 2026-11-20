@@ -625,6 +625,28 @@ function pg_image_draw_font_fits($path, $weight, $italic, $text)
 }
 
 /**
+ * The opacity a layer's groups give it, as the editor's M.groupAlpha():
+ * the own opacity of each group in grp (gfx[group]['opacity'], 1 without
+ * one) multiplied; an entry of a group the layer is not in is ignored.
+ * Pure.
+ *
+ * @param array $layer
+ * @return float
+ */
+function pg_image_draw_group_opacity($layer)
+{
+    $alpha = 1.0;
+    $fx = is_array($layer['gfx'] ?? null) ? $layer['gfx'] : array();
+
+    foreach ((is_array($layer['grp'] ?? null) ? $layer['grp'] : array()) as $group) {
+        $own = (is_string($group) && is_array($fx[$group] ?? null)) ? $fx[$group] : array();
+        $alpha *= pg_image_draw_number($own, 'opacity', 0, 1, 1) ?? 1.0;
+    }
+
+    return $alpha;
+}
+
+/**
  * Whether a layer carries nothing beyond the fields this renderer knows:
  * any other field with a value (a shadow, a warp, an eraser's strokes) is
  * something the editor draws and this does not. Pure.
@@ -635,9 +657,11 @@ function pg_image_draw_font_fits($path, $weight, $italic, $text)
  */
 function pg_image_draw_known($layer, $own)
 {
-    // grp names the layer's groups in the editor: a group has no look of
-    // its own, so it draws as the layers do ungrouped.
-    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'grp'), $own);
+    // grp names the layer's groups in the editor, gfx their own opacity
+    // and Animate's keys (pg_image_draw_group_opacity(); keys move only
+    // in an animation, never at rest): a group draws as its layers do
+    // ungrouped, faded by its opacity.
+    $known = array_merge(array('id', 'type', 'name', 'locked', 'hidden', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'grp', 'gfx'), $own);
 
     foreach ($layer as $key => $value) {
         if (!in_array((string) $key, $known, true) && !empty($value)) {
@@ -734,6 +758,8 @@ function pg_image_draw_plan($doc, $can, $picture = null, $until = 0.0)
         if (in_array(null, $item, true)) {
             return $fail('kind');
         }
+
+        $item['opacity'] *= pg_image_draw_group_opacity($layer);
 
         if ($item['opacity'] <= 0) {
             continue;

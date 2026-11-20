@@ -1784,50 +1784,69 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-color: color-mix(in srgb, var(--sd-text) 5%, transparent); color: var(--sd-text);
 }
 
-/* ── Visual Box Model ── */
-.sd-bm-wrap {
-    background: var(--sd-panel-bg); padding: .75rem; 
-    border-bottom: 1px solid var(--sd-panel-border);
-    display: flex; justify-content: center; -webkit-user-select: none; user-select: none;
-    margin-bottom: .6rem; margin-top: .2rem;
+/* ── The spacing box (Style › Spacing, part 'spacing') ── */
+/* Outer (margin) and inner (padding) boxes, four sides each: grey is
+   inherited or the default, filled accent is set at the chosen size, a
+   frame is the side being typed, "~" a value that differs. */
+.sd-bm-wrap { -webkit-user-select: none; user-select: none; }
+.sd-spb-host { margin: 8px 0 2px; }
+.sd-spb-host:empty { min-height: 150px; }
+.sd-spb-m, .sd-spb-p { position: relative; padding: 22px 34px; font-size: 11.5px; }
+.sd-spb-m {
+    border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--sd-warning) 50%, transparent);
+    background: color-mix(in srgb, var(--sd-warning) 6%, transparent);
 }
-.sd-bm-margin {
-    position: relative; width: 100%; max-width: 250px; aspect-ratio: 1.6;
-    background: color-mix(in srgb, var(--sd-warning) 8%, var(--sd-panel-bg)); border: 1px solid color-mix(in srgb, var(--sd-warning) 22%, var(--sd-panel-bg)); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
+.sd-spb-p {
+    border-radius: 9px; border: 1px dashed color-mix(in srgb, var(--sd-success) 55%, transparent);
+    background: color-mix(in srgb, var(--sd-success) 7%, transparent);
 }
-.sd-bm-margin:hover { background: color-mix(in srgb, var(--sd-warning) 13%, var(--sd-panel-bg)); border-color: color-mix(in srgb, var(--sd-warning) 32%, var(--sd-panel-bg)); }
-.sd-bm-padding {
-    position: relative; width: 72%; height: 60%;
-    background: color-mix(in srgb, var(--sd-success) 8%, var(--sd-panel-bg)); border: 1px dashed color-mix(in srgb, var(--sd-success) 22%, var(--sd-panel-bg)); border-radius: 2px;
-    display: flex; align-items: center; justify-content: center;
+.sd-spb-lab {
+    position: absolute; left: 9px; top: 5px; font-size: 9.5px; letter-spacing: .1em;
+    text-transform: uppercase; font-weight: 700; color: var(--sd-warning); pointer-events: none;
 }
-.sd-bm-padding:hover { background: color-mix(in srgb, var(--sd-success) 13%, var(--sd-panel-bg)); border-color: color-mix(in srgb, var(--sd-success) 32%, var(--sd-panel-bg)); }
-.sd-bm-center {
-    width: 50%; height: 40%; background: var(--sd-raised-bg-2); border: 1px solid var(--sd-border-strong);
-    display: flex; align-items: center; justify-content: center;
-    font-size: .8rem; font-weight: 600; color: var(--sd-text-muted); border-radius: 2px;
+.sd-spb-p > .sd-spb-lab { color: var(--sd-success); }
+.sd-spb-core {
+    height: 30px; border-radius: 7px; background: var(--sd-input-bg); border: 1px solid var(--sd-border-strong);
+    display: grid; place-items: center; color: var(--sd-text-muted); font-size: 11px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sd-bm-lbl {
-    position: absolute; top: 4px; left: 6px; font-size: 11px; font-weight: 700;
-    text-transform: uppercase; color: color-mix(in srgb, var(--sd-text) 50%, transparent); pointer-events: none;
+.sd-spb-v {
+    position: absolute; min-width: 26px; height: 19px; padding: 0 5px; border: 0; border-radius: 6px;
+    display: grid; place-items: center; background: transparent; color: var(--sd-text-muted);
+    font: inherit; font-size: 11px; font-weight: 650; line-height: 1; cursor: ns-resize; touch-action: none;
 }
-.sd-bm-v {
-    position: absolute; font-size: 13px; font-weight: bold; color: var(--sd-text);
-    cursor: pointer; padding: 3px 8px; border-radius: 3px; transition: background .15s;
-    -webkit-user-select: none; user-select: none;
+.sd-spb-v::before { content: ''; position: absolute; inset: -3px; }
+.sd-spb-v:hover:not(:disabled) { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 10%, transparent); }
+.sd-spb-v:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
+.sd-spb-v.is-set, .sd-spb-v.is-set:hover { background: var(--sd-accent-strong); color: var(--sd-on-accent); }
+.sd-spb-v.is-mixed { color: var(--sd-accent); box-shadow: inset 0 0 0 1px var(--sd-accent-line); }
+.sd-spb-v.is-drag { box-shadow: inset 0 0 0 1px var(--sd-accent-line); color: var(--sd-text); }
+.sd-spb-v.is-edit {
+    width: 34px; text-align: center; cursor: text; background: var(--sd-input-bg);
+    border: 1px solid var(--sd-accent-line); color: var(--sd-text); outline: none;
 }
-.sd-bm-v:hover { background: color-mix(in srgb, var(--sd-text) 25%, transparent); }
-/* A side whose value differs across the selected elements ("~"). */
-.sd-bm-v.sd-bm-mixed { color: var(--sd-accent); box-shadow: inset 0 0 0 1px var(--sd-accent-line); }
-.sd-bm-v.mt { top: 2px; left: 50%; transform: translateX(-50%); }
-.sd-bm-v.mb { bottom: 2px; left: 50%; transform: translateX(-50%); }
-.sd-bm-v.ml { left: 4px; top: 50%; transform: translateY(-50%); }
-.sd-bm-v.mr { right: 4px; top: 50%; transform: translateY(-50%); }
-.sd-bm-v.pt { top: 2px; left: 50%; transform: translateX(-50%); }
-.sd-bm-v.pb { bottom: 2px; left: 50%; transform: translateX(-50%); }
-.sd-bm-v.pl { left: 4px; top: 50%; transform: translateY(-50%); }
-.sd-bm-v.pr { right: 4px; top: 50%; transform: translateY(-50%); }
+.sd-spb-v.is-bad { border-color: var(--sd-danger); }
+.sd-spb-v:disabled { cursor: default; }
+.sd-spb-t { top: 2px; left: 50%; transform: translateX(-50%); }
+.sd-spb-b { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.sd-spb-s { left: 4px; top: 50%; transform: translateY(-50%); }
+.sd-spb-e { right: 4px; top: 50%; transform: translateY(-50%); }
+/* Under a 300 px panel the box keeps its drawing with side paddings of 27. */
+.sd-spb-host { container-type: inline-size; }
+@container (max-width: 230px) {
+    .sd-spb-m, .sd-spb-p { padding-left: 27px; padding-right: 27px; }
+}
+/* The screen-size chooser in the section's head, drawn while it is open. */
+.sd-spb-sizes { display: flex; gap: 3px; margin-left: auto; }
+.sd-sect-hdr:not(.sd-sect-open) > .sd-spb-sizes { display: none; }
+.sd-spb-size {
+    height: 19px; min-width: 24px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent;
+    font-size: 10px; font-weight: 700; color: var(--sd-icon-quiet); cursor: pointer; display: grid; place-items: center;
+}
+.sd-spb-size:hover { color: var(--sd-text); }
+.sd-spb-size.is-has { color: var(--sd-text-muted); }
+.sd-spb-size.is-on { background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-spb-size:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
 
 /* ── Attributes column (bottom panel, right) ── */
 .sd-bp-attrs-col {
@@ -7979,3 +7998,72 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-tabs-all-item .sd-tab-cc, .sd-tabs-list .sd-tab-cc { margin-left: .4rem; cursor: inherit; }
 /* A tab with a waiting change keeps room for its name beside the pill. */
 .sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }
+
+/* ── Moving without dragging (D41 to D44) ─────────────────────────────────
+   The row buttons (one group, on the row under the pointer, with the focus
+   or selected), the focused row, a cut row, the "Move…" window. */
+.sd-tree-list li:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-tree-list li.sd-tree-cut { opacity: .5; }
+.sd-tree-list li.sd-tree-cut > .sd-tree-lbl { text-decoration: line-through dashed; }
+.sd-tree-list li > .sd-tree-lbl ~ .sd-tree-mv:not(.sd-tree-sect-count) {
+    flex-shrink: 0; min-width: auto; overflow: visible;
+}
+.sd-tree-mv { display: inline-flex; gap: 2px; margin-left: auto; padding-left: 4px; }
+.sd-tree-mv-b {
+    width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px;
+    background: transparent; color: var(--sd-text-muted); font-size: 11px; line-height: 20px; cursor: pointer;
+}
+.sd-tree-mv-b:hover { background: var(--sd-accent-soft); color: var(--sd-text); }
+.sd-tree-drag-ghost .sd-tree-mv { display: none; }
+@media (pointer: coarse) { .sd-tree-mv-b { width: 32px; height: 28px; line-height: 28px; } }
+
+.sd-move-dialog { width: min(480px, calc(100vw - 32px)); }
+.sd-move-handle { display: none; }
+.sd-move-head { gap: 8px; }
+.sd-move-icon { color: var(--sd-accent); }
+.sd-move-title { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.3; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sd-move-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.sd-move-search { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px;
+    border: 1px solid var(--sd-input-border); border-radius: 6px; background: var(--sd-input-bg); color: var(--sd-text-muted); }
+.sd-move-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--sd-text); font-size: 13px; }
+.sd-move-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.sd-move-list li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px;
+    border-radius: 6px; cursor: pointer; color: var(--sd-text); }
+.sd-move-list li.sd-move-act { background: var(--sd-hover-bg, var(--sd-accent-soft)); }
+.sd-move-list li.sd-move-on { background: var(--sd-accent-soft); }
+.sd-move-list li.sd-move-more { cursor: default; color: var(--sd-text-muted); font-size: 12px; }
+.sd-move-tile { flex: 0 0 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: var(--sd-raised-bg); }
+.sd-move-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sd-move-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-path { font-size: 11px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-move-list mark { padding: 0; background: var(--sd-accent-soft); color: inherit; }
+.sd-move-check { color: var(--sd-accent); }
+.sd-move-foot { flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+.sd-move-places { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--sd-raised-bg); }
+.sd-move-place { height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-text-muted); font-size: 12px; cursor: pointer; }
+.sd-move-place.sd-move-place-on { background: var(--sd-accent); color: var(--sd-on-accent); }
+.sd-move-why { flex: 1; min-width: 0; font-size: 12px; color: var(--sd-text-muted); }
+.sd-move-why.sd-move-refused { color: var(--sd-warning); }
+.sd-move-go { margin-left: auto; }
+
+/* A 390 px phone: a sheet of the full height from the bottom, under the top
+   bar, with touch sizes (designer-panels-measures-6.md). */
+@media (max-width: 575.98px) {
+    .sd-move-dialog { position: fixed; inset: 58px 0 0 0; width: 100%; max-width: none; height: auto; max-height: none;
+        margin: 0; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; }
+    .sd-move-dialog:not([open]) { display: none; }
+    .sd-move-handle { display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px;
+        background: var(--sd-border-strong); touch-action: none; }
+    .sd-move-head .btn-close { width: 36px; height: 36px; }
+    .sd-move-body { flex: 1; }
+    .sd-move-search { height: 40px; }
+    .sd-move-list { max-height: none; flex: 1; }
+    .sd-move-list li { min-height: 54px; }
+    .sd-move-tile { flex-basis: 32px; height: 32px; }
+    .sd-move-places { height: 44px; align-items: center; }
+    .sd-move-place { height: 36px; }
+    .sd-move-go { height: 44px; }
+}

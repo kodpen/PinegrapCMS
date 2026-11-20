@@ -5,8 +5,8 @@ module: image_editor
 ---
 
 ## Where does a group live?
-- On its layers: `l.grp` lists the groups a layer is in, the outermost first (`['g1', 'g2']`: g2 inside g1). No group entry elsewhere, so a scene's layers carry their groups and an older document opens unchanged. No schema.
-- A group has no look of its own: its layers draw as they do ungrouped, on the stage, in an export and in the server's draw (`pg_image_draw_known()` takes `grp`). Group ids are `g<n>`, unique over every scene (`M.groupNewId()`).
+- On its layers: `l.grp` lists the groups a layer is in, the outermost first (`['g1', 'g2']`: g2 inside g1); a group's own look sits on its members too (`l.gfx`, `image-editor-groups-look.md`). No group entry elsewhere, so a scene's layers carry their groups and an older document opens unchanged. No schema.
+- Without a look of its own a group draws as its layers do ungrouped, on the stage, in an export and in the server's draw (`pg_image_draw_known()` takes `grp`). Group ids are `g<n>`, unique over every scene (`M.groupNewId()`).
 - Its members lie next to each other in `doc.layers`; `M.groupTidy()` gathers them where the topmost lies and ends a group of fewer than two layers (after a delete, a copy, an ungroup).
 - Code: the GROUP section of `pg_image_editor_model.js`; the editor side in `pg_image_editor_layers.js`; labels in `pg_image_editor_strings_layers()` (`keyGroup`, `keyUngroup` in access).
 
@@ -24,8 +24,8 @@ module: image_editor
 ## What does the layers list show?
 - `M.groupRows()`: a group is one row (its icon, "Group n (count)", show/hide and lock for all its layers) with a chevron opening it to its members, indented by depth. A press on its name picks it (Shift adds); a group the selection lies inside opens by itself unless closed by hand (`groupsOpen`).
 
-## What is left for GC1b?
-- Size and turn of a picked group as one box, a group's own opacity, Animate's keys on a group, Group and Ungroup in the bar over the object and the phone's bar (`docs/memory/plans/design-canvas-groups.md`).
+## What does a group do of its own?
+- Its size, turn, opacity and Animate's keys, Group and Ungroup on the bars: `image-editor-groups-look.md` (GC1b).
 
 ## How is it checked?
 - `tests/image_editor_groups_test.php`: every model command under Node, presses, keys, order, duplicate and delete on an editor, the menu, the help sheet, and the server's plan of a grouped document against the ungrouped one. Not run in a browser: the stage and the export draw from the same layers as before (`paintLayers()` ignores `grp`).

@@ -4,7 +4,7 @@ description: Site Settings Privacy to General and the settings page toolbar in l
 ---
 
 ## Which files moved?
-- `includes/settings/privacy.php`, `privacy_analytics.php`, `languages.php`, `seo.php`, `workspace_team.php`, `fediverse.php`, `appearance.php`, `api.php`, `general.php`, the page `screen.php` and `prep.php` (step S5c of the plan panel-old-screens). Contact had nothing old left but the popover arrows. No `*.save.php` changed: field names and values stay.
+- `includes/settings/privacy.php`, `privacy_analytics.php` (gone since CX11b: its part is on Google Analytics' page of Connections), `languages.php`, `seo.php`, `workspace_team.php`, `fediverse.php`, `appearance.php`, `api.php`, `general.php`, the page `screen.php` and `prep.php` (step S5c of the plan panel-old-screens). Contact had nothing old left but the popover arrows. No `*.save.php` changed: field names and values stay.
 - `tools/check_look.php` counts 0 old buttons in all of them; their baseline entries are gone.
 
 ## What changed in the cards?

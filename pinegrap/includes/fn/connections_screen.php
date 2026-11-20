@@ -661,7 +661,8 @@ function pg_connections_screen_page_providers()
  * connected accounts' application that falls back to it), "details" (its
  * provider's application, for a manager; an AI provider's key, for who may
  * change the assistants; IndexNow's key, for who may open Site Settings ›
- * SEO), "uses", then "repositories" on
+ * SEO; Google Analytics' tag and figures, for who may open Visitors and
+ * privacy), "uses", then "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
  * is left out. Pure.
@@ -671,7 +672,9 @@ function pg_connections_screen_page_providers()
  *                    the GitHub repository links), 'ai' (bool: may change
  *                    the assistants, connections_ai_may_manage()), 'signin'
  *                    (bool: may open Accounts and sign-in), 'seo' (bool: may
- *                    open the SEO settings, IndexNow's key)
+ *                    open the SEO settings, IndexNow's key), 'privacy' (bool:
+ *                    may open Visitors and privacy, Google Analytics' tag
+ *                    and figures)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -687,6 +690,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (!empty($can['ai']) && isset(pg_ai_connection_services()[$id])) {
         $cards[] = 'details';
     } elseif (($id === 'indexnow') && !empty($can['seo'])) {
+        $cards[] = 'details';
+    } elseif (($id === 'google_analytics') && !empty($can['privacy'])) {
         $cards[] = 'details';
     }
 

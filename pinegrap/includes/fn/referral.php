@@ -555,7 +555,8 @@ function pg_referral_order_completed($order_id, $code)
         return 'busy';
     }
 
-    $answer = pg_referral_order_reward($order, $code, $contact_id, $settings);
+    $reward = null;
+    $answer = pg_referral_order_reward($order, $code, $contact_id, $settings, $reward);
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
@@ -564,8 +565,35 @@ function pg_referral_order_completed($order_id, $code)
     if ($answer === '') {
         pg_referral_mail_reward($contact_id, $settings['reward'], $settings['days']);
     }
+    // Announced once the lock is free, once per reward: a restore's new
+    // card is announced only as credit.issued.
+    if (($answer === '') && is_array($reward)) {
+        pg_announce('referral.rewarded', pg_referral_rewarded_event($reward));
+    }
 
     return $answer;
+}
+
+/**
+ * What referral.rewarded carries: the referral's commission row, the
+ * friend's order, the reward, the referrer's contact and account and the
+ * store credit card it was given on. Pure.
+ *
+ * @param array $reward id, reference_code, affiliate_code, order_id, amount, contact_id, user_id, card_id
+ * @return array
+ */
+function pg_referral_rewarded_event(array $reward)
+{
+    return array(
+        'id'             => (int) ($reward['id'] ?? 0),
+        'reference_code' => (string) ($reward['reference_code'] ?? ''),
+        'affiliate_code' => (string) ($reward['affiliate_code'] ?? ''),
+        'order_id'       => (int) ($reward['order_id'] ?? 0),
+        'amount'         => (int) ($reward['amount'] ?? 0),
+        'customer_id'    => (int) ($reward['contact_id'] ?? 0),
+        'account_id'     => (int) ($reward['user_id'] ?? 0),
+        'card_id'        => (int) ($reward['card_id'] ?? 0),
+    );
 }
 
 /**
@@ -576,9 +604,10 @@ function pg_referral_order_completed($order_id, $code)
  * @param string $code
  * @param int    $contact_id
  * @param array  $settings pg_referral_settings()
+ * @param array|null $reward   set to what referral.rewarded carries once given
  * @return string
  */
-function pg_referral_order_reward(array $order, $code, $contact_id, array $settings)
+function pg_referral_order_reward(array $order, $code, $contact_id, array $settings, &$reward = null)
 {
     if (pg_referral_order_row($order['id']) !== null) {
         return 'done';
@@ -615,10 +644,23 @@ function pg_referral_order_reward(array $order, $code, $contact_id, array $setti
         return 'credit';
     }
 
+    $reference_code = (string) generate_commission_reference_code();
+
     db_q(
         "INSERT INTO commissions (reference_code, affiliate_code, order_id, amount, status, created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
         VALUES (?, ?, ?, ?, 'paid', 0, UNIX_TIMESTAMP(), 0, UNIX_TIMESTAMP())",
-        array((string) generate_commission_reference_code(), $code, (string) (int) $order['id'], (string) (int) $settings['reward']));
+        array($reference_code, $code, (string) (int) $order['id'], (string) (int) $settings['reward']));
+
+    $reward = array(
+        'id'             => (int) mysqli_insert_id(db::$con),
+        'reference_code' => $reference_code,
+        'affiliate_code' => $code,
+        'order_id'       => (int) $order['id'],
+        'amount'         => (int) $settings['reward'],
+        'contact_id'     => (int) $contact_id,
+        'user_id'        => (int) $referrer['user_id'],
+        'card_id'        => (int) $card_id,
+    );
 
     log_activity(pg_log_lang(array(
         'string' => 'Referral reward of {var:1} given as store credit for order #{var:2}.',

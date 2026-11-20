@@ -5,7 +5,7 @@ description: What a Site Settings card hands over beside its markup (PR #8710): 
 
 ## What may a card put in `$pg_settings_modals[]`?
 - Its drawer (`pg_settings_drawer()`, `ui/settings-modal-drawer.md`) or a hidden Connect form: `<form method="post" action="connect.php" id="pgset_…" class="disable_shortcut d-none">`, which a button in the card submits by its `form` attribute, since forms cannot be nested.
-- The Connect forms: Merchant Center (`pgset_merchant_connect`, `commerce_merchant.php`), Google Analytics (`pgset_ga_connect`, `privacy_analytics.php`), the backup cloud (`pgset_backup_connect_<type>`, `maintenance.php`).
+- The Connect forms: Merchant Center (`pgset_merchant_connect`, `commerce_merchant.php`), the backup cloud (`pgset_backup_connect_<type>`, `maintenance.php`).
 - Never a dialog: a second layer over the settings could leave them unsaved (`workflow/decisions-made-panel-3.md`). Anything a card shows beside its fields opens in its drawer. `tests/settings_modal_drawer_test.php` reads every card file and fails on `data-bs-toggle="dialog"`, a `<dialog>`, or another kind of entry.
 
 ## Why do the Connect forms stay outside the drawer?
