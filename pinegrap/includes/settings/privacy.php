@@ -264,3 +264,21 @@ if (pg_schema_has('config_text')) {
                             </div>
                         </div>';
 }
+
+// ── Privacy centre ──
+// The personal data inventory, its transfers and downloads live on their own
+// screen under Contacts (privacy_centre.php); this card only leads there.
+$pg_settings_cards[] = '
+                        <div id="pgset-privacy-centre" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Privacy centre') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-column align-items-start gap-2">
+                                        <div class="form-text mt-0">' . h(lang('The personal data the site keeps, why and for how long, and the outside services it goes to, with an Excel and a PDF download for your KVKK or GDPR records.')) . '</div>
+                                        <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_centre.php">' . h(lang('Open the Privacy centre')) . '</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';

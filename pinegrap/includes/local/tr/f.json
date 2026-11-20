@@ -454,6 +454,7 @@
     "Files left out": "Dışarıda kalan dosyalar",
     "Files of a type that cannot be uploaded here are left out.": "Buraya yüklenemeyen türdeki dosyalar dışarıda bırakılır.",
     "Files overwriting...": "Dosyaların üzerine yazılıyor...",
+    "Files sent with forms": "Formlarla gönderilen dosyalar",
     "Files stay on the disk.": "Dosyalar diskte kalır.",
     "Files take up to {size} here.": "Dosyalar burada en çok {size} alır.",
     "Files that do not match the released version of the software were found. The list is in the activity log; Repair Software puts the released files back.": "Yazılımın yayımlanan sürümüyle eşleşmeyen dosyalar bulundu. Liste etkinlik günlüğünde; Yazılımı Onar yayımlanan dosyaları geri koyar.",
