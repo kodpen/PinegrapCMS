@@ -13,7 +13,7 @@ description: Plan order-profit, steps NP1 to NP7: the cost record and the pass, 
   - `includes/payments/driver.php` (`pg_payment_answer()`'s `fee`), `iyzico.php`, `stripe.php`, `paypal.php`, `submit_order.php` (the cost row after the payment write). Tests on recorded answers. Feature: N3.
 - NP3 (S) after NP1: label prices.
   - `includes/fn/carrier_labels.php` (`pg_label_answer()`'s price), the Kargonomi, Shippo and Sendcloud drivers; the cost row when a label is made, removed when it is cancelled. Feature: N5.
-- NP4 (M) after NP1: Trendyol deductions.
+- NP4 (M) after NP1: Trendyol deductions. Done in #10657.
   - `includes/api/outbound/connectors/trendyol.php` (a paged finance read; endpoints from Trendyol's document, written into `commerce/trendyol-api-facts.md`), its pass; tests on recorded answers. Feature: N4.
 - NP5 (M) after NP1: the screens.
   - `view_order.php` (the Profit card in `pg_order_view_card_column()`), `view_orders.php` and `includes/fn/commerce_list.php` (column, filter), new `erp_profitability.php` with its menu entry, settings card and workbook.

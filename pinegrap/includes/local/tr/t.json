@@ -5049,6 +5049,7 @@
     "The market decides": "Pazar karar verir",
     "The marketplace account is not active.": "Pazaryeri hesabı etkin değil.",
     "The marketplace cancelled this order after it had shipped.": "Pazaryeri bu siparişi kargolandıktan sonra iptal etti.",
+    "The marketplace deductions could not be read; the next run tries again.": "Pazaryeri kesintileri okunamadı; bir sonraki çalışma yeniden deniyor.",
     "The marketplace never finished this batch.": "Pazaryeri bu partiyi hiç tamamlamadı.",
     "The marketplace requires {var:1} for this category, and it has not been filled in.": "Pazaryeri bu kategori için {var:1} istiyor ve doldurulmamış.",
     "The marketplace sent an order with no lines.": "Pazaryeri, kalemi olmayan bir sipariş gönderdi.",

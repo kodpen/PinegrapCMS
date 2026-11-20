@@ -23,4 +23,4 @@ description: Trendyol finance (current account statement) service: settlements p
 - Whether `supplierId` is really required; how late a Sale record appears after delivery (the read goes back two days each time it catches up).
 - The rate limit of the finance service (none written; the general 50 per 10 s is assumed).
 
-Related: docs/memory/commerce/trendyol-api-facts.md, docs/memory/erp/erp-order-profit-record.md
+Related: docs/memory/commerce/trendyol-api-facts.md, docs/memory/erp/erp-order-profit-deductions.md
