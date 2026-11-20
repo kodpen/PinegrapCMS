@@ -16,7 +16,7 @@ module: page_bundles
 - The bin's functions come through `pg_page_bundle_load_recycle()` (`view_folder_and_files_f.php`); `recycle_bin.php` alone lacks them (#10045).
 
 ## What does a failure do?
-- `pg_page_bundle_publish_run()` (pure, writes as callables) stops at the first failure and takes back what this run wrote, newest first. The write and take-back share one copy of the rows (`pg_page_bundle_publish_ops()`), so a take-back reads what its write stored: before, a replaced page's take-back read `revision_before` 0 and the bundle went `partial` (#10046). The bundle keeps its status (open, scheduled, partial) with `failed_page_id` and `failed_reason`.
+- `pg_page_bundle_publish_run()` (pure, writes as callables) stops at the first failure and takes back what this run wrote, newest first. The write and take-back share one copy of the rows (`pg_page_bundle_publish_ops()`), so a take-back reads what its write stored; before, it read `revision_before` 0 and the bundle went `partial` (#10046). The bundle keeps its status (open, scheduled, partial) with `failed_page_id` and `failed_reason`.
 - Only when a take-back fails too does it move to `partial`; the items written stay `written` (what stands), the rest wait for "Publish the rest" (the same publish, from `partial`).
 
 ## How is it taken back?
@@ -26,7 +26,7 @@ module: page_bundles
 
 ## Where is the bundle named?
 - Site Log: one line per page ("page (…) was published with / replaced by / taken back from the release bundle (…)") and one for the bundle.
-- History: `pg_page_bundle_revision_names($page_id, $revisions)` gives revision_no => bundle name (the first `bundle` revision after an item's `revision_before`); not drawn yet.
+- History: `pg_page_bundle_revision_names($page_id, $revisions)` gives revision_no => bundle name (the first `bundle` revision after an item's `revision_before`); no caller yet (B10 gap).
 
 ## What stays as it is?
 - A live page's own Publish goes live at once with a replacement waiting: the hold reads `draft_page_id` only. A shared component saved from a replacement's tab is live at once; a bundle writes no shared component, menu or collection record. Dialogs: `release-bundle-dialogs.md`. Tests: `tests/page_bundles_publish_test.php`.

@@ -1,0 +1,5 @@
+order_number,number,carrier,email,expires,enabled,note
+10045,1234567890,Yurtiçi Kargo,ayse@example.com,2026-12-31,1,"Kapı 3, ""arka"""
+
+10046,1Z999AA10123456784,,can@example.com,,0,12.5
+10047,0532,Aras,x@y.z,2027-01-15,1,Şişli

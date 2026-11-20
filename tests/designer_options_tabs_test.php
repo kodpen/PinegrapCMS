@@ -9,9 +9,11 @@
  * Advanced and the card ids they keep, which of their sections open, a
  * content-level user's hidden sections left out, a tab without a section
  * not drawn, the tab kept for the same kind of element and Content for
- * another, Left and Right, the strip's badges, and the closed Translation
- * and Bind data summaries. The helpers are cut out of the source and run
- * under Node; without Node those cases are skipped.
+ * another, Left and Right, the strip's badges, the closed Translation
+ * and Bind data summaries, and the rows Advanced › Layout draws by the
+ * element's context with the note naming the rows left out. The helpers
+ * are cut out of the source and run under Node; without Node those cases
+ * are skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -38,15 +40,22 @@ function designer_options_tabs_test_block($from_marker, $to_marker)
 	return ($to === false) ? '' : substr($source, $from, $to - $from);
 }
 
-// Runs $code after the two pure blocks; its `out` comes back decoded. Null without Node.
-function designer_options_tabs_test_run($code)
+// Runs $code after the two pure blocks, and the block of Layout by context
+// when $layout; its `out` comes back decoded. Null without Node.
+function designer_options_tabs_test_run($code, $layout = false)
 {
 	$tabs = designer_options_tabs_test_block('The Options tabs: pure helpers', 'end of the Options tabs');
 	$changed = designer_options_tabs_test_block('What counts as changed: pure helpers', 'end of what counts as changed');
 	pg_assert_true($tabs !== '', 'the editor has the block of the Options tabs');
 	pg_assert_true($changed !== '', 'the editor has the block of what counts as changed');
 
-	if ($tabs === '' || $changed === '' || !function_exists('exec')) {
+	if ($layout) {
+		$lay = designer_options_tabs_test_block('Layout by context: pure helpers', 'end of layout by context');
+		pg_assert_true($lay !== '', 'the editor has the block of Layout by context');
+		$tabs .= $lay;
+	}
+
+	if ($tabs === '' || $changed === '' || ($layout && $lay === '') || !function_exists('exec')) {
 		return null;
 	}
 
@@ -493,4 +502,219 @@ JS
 	}
 
 	pg_assert_same(array(0, 1, 0, 1, 0), $answer);
+}
+
+// Advanced › Layout reads the element's context (D19): a flex box gets
+// its box rows, the child of one its own rows under "parent: flex", both
+// get both, neither gets only "Make it a container". A row holding a
+// value is drawn whatever the context.
+function test_designer_options_layout_by_context()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+out = {
+	box: _sdLayPlan({ flex: true, parentFlex: false }, {}),
+	item: _sdLayPlan({ flex: false, parentFlex: true }, {}),
+	both: _sdLayPlan({ flex: true, parentFlex: true }, {}),
+	neither: _sdLayPlan({}, {}),
+	held: _sdLayPlan({ flex: false, parentFlex: false }, { gap: true, order: true, justify: true }),
+	heldBox: _sdLayPlan({ flex: false, parentFlex: false }, { container: true }),
+	noCtx: _sdLayPlan(),
+	of: ['container', 'gap', 'alignSelf', 'fill', 'nothing'].map(_sdLayOf)
+};
+JS
+		, true);
+
+	if ($answer === null) {
+		return;
+	}
+
+	$box = array('container', 'direction', 'wrap', 'justify', 'alignItems', 'alignContent', 'gap');
+	$item = array('alignSelf', 'order', 'grow', 'shrink', 'fill');
+
+	pg_assert_same($box, $answer['box']['rows'], 'a flex container: Flex Container, direction, wrap, alignment and gap');
+	pg_assert_false($answer['box']['make'], 'a flex container has no "Make it a container"');
+	pg_assert_false($answer['box']['tag'], 'nor the tag of a flex parent');
+	pg_assert_same(array(), $answer['box']['hidden']['box']);
+	pg_assert_same(array('self', 'order', 'grow', 'shrink'), $answer['box']['hidden']['item'], 'its own alignment, order, grow and shrink are left out');
+
+	pg_assert_same($item, $answer['item']['rows'], 'the child of a flex box: its own alignment, order, grow, shrink and fill');
+	pg_assert_true($answer['item']['make'], 'and "Make it a container"');
+	pg_assert_true($answer['item']['tag'], 'under the tag "parent: flex"');
+	pg_assert_same(array('direction', 'wrap', 'alignment', 'gap'), $answer['item']['hidden']['box'], 'direction, wrap, alignment and gap are left out');
+	pg_assert_same(array(), $answer['item']['hidden']['item']);
+
+	pg_assert_same(array_merge($box, $item), $answer['both']['rows'], 'both: the box rows, then the element\'s own');
+	pg_assert_false($answer['both']['make']);
+	pg_assert_true($answer['both']['tag']);
+	pg_assert_same(array('box' => array(), 'item' => array()), $answer['both']['hidden'], 'nothing is left out');
+
+	pg_assert_same(array(), $answer['neither']['rows'], 'neither: no row');
+	pg_assert_true($answer['neither']['make'], 'only "Make it a container"');
+	pg_assert_false($answer['neither']['tag']);
+	pg_assert_same(array('direction', 'wrap', 'alignment', 'gap'), $answer['neither']['hidden']['box']);
+	pg_assert_same(array('self', 'order', 'grow', 'shrink'), $answer['neither']['hidden']['item']);
+	pg_assert_same($answer['neither'], $answer['noCtx'], 'no context reads as neither');
+
+	pg_assert_same(array('justify', 'gap', 'order'), $answer['held']['rows'], 'a row holding a value is drawn, in its place');
+	pg_assert_same(array('direction', 'wrap', 'alignment'), $answer['held']['hidden']['box'], 'alignment is named while two of its rows are left out');
+	pg_assert_same(array('self', 'grow', 'shrink'), $answer['held']['hidden']['item']);
+	pg_assert_false($answer['heldBox']['make'], 'a Flex Container row holding a value stands for the button');
+
+	pg_assert_same(array('box', 'box', 'item', 'item', ''), $answer['of']);
+}
+
+// Which rows hold a value: the row's class at the base or at any screen
+// size, never a class that only starts like it.
+function test_designer_options_layout_held()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+var gap = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
+var grow = [['grow-0','0'],['grow-1','1']];
+var dir = [['row','Row'],['column','Column'],['row-reverse','Row Reverse'],['column-reverse','Column Reverse']];
+out = [
+	_sdLayHeld('p-2 gap-3', 'gap-', gap),
+	_sdLayHeld('gap-md-2', 'gap-', gap),
+	_sdLayHeld('row-gap-3 gap-x', 'gap-', gap),
+	_sdLayHeld('flex-grow-1', 'flex-', grow),
+	_sdLayHeld('flex-lg-grow-0', 'flex-', grow),
+	_sdLayHeld('flex-row', 'flex-', grow),
+	_sdLayHeld('flex-xxl-column-reverse', 'flex-', dir),
+	_sdLayHeld('', 'gap-', gap),
+	_sdLayHeld(undefined, 'gap-', gap)
+];
+JS
+		, true);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, false, true, true, false, true, false, false), $answer);
+}
+
+// The note names the rows left out and why (D20), in the panel's words;
+// "Make it a container" stands in it while the element is not a flex box.
+function test_designer_options_layout_note()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+out = {
+	item: _sdLayNoteHtml(_sdLayPlan({ parentFlex: true }, {}), false),
+	box: _sdLayNoteHtml(_sdLayPlan({ flex: true }, {}), false),
+	neither: _sdLayNoteHtml(_sdLayPlan({}, {}), false),
+	several: _sdLayNoteHtml(_sdLayPlan({}, {}), true),
+	both: _sdLayNoteHtml(_sdLayPlan({ flex: true, parentFlex: true }, {}), false),
+	one: _sdLayList(['gap']),
+	two: _sdLayList(['direction', 'gap']),
+	none: _sdLayList([])
+};
+JS
+		, true);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_contains('This element is not a flex container; the direction, line wrapping, alignment and gap rows are hidden.', $answer['item']);
+	pg_assert_contains('data-sd-lay-make', $answer['item'], 'the child of a flex box can be made a container');
+	pg_assert_contains('>Make it a container</button>', $answer['item']);
+	pg_assert_contains('role="note"', $answer['item']);
+	pg_assert_false(strpos($answer['item'], 'Its parent') !== false, 'its parent is a flex box');
+
+	pg_assert_contains('Its parent is not a flex container; the own alignment, flex order, grow and shrink rows are hidden.', $answer['box']);
+	pg_assert_false(strpos($answer['box'], 'data-sd-lay-make') !== false, 'a flex container has no button');
+
+	pg_assert_contains('This element is not a flex container; the direction, line wrapping, alignment and gap rows are hidden. Its parent is not a flex container; the own alignment, flex order, grow and shrink rows are hidden.', $answer['neither']);
+	pg_assert_contains('Not every selected element is a flex container;', $answer['several']);
+	pg_assert_contains('Not every selected element has a flex parent;', $answer['several']);
+	pg_assert_contains('>Make them containers</button>', $answer['several']);
+	pg_assert_same('', $answer['both'], 'nothing left out: no note');
+
+	pg_assert_same('gap', $answer['one']);
+	pg_assert_same('direction and gap', $answer['two']);
+	pg_assert_same('', $answer['none']);
+}
+
+// "Make it a container" writes today's class: d-flex, or the flex form of
+// a display class at its own screen size, so a hidden element stays
+// hidden where it was.
+function test_designer_options_layout_make_container()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+out = [
+	_sdLayMakeCls(''),
+	_sdLayMakeCls(undefined),
+	_sdLayMakeCls('p-3 d-block mb-2'),
+	_sdLayMakeCls('d-none d-md-block'),
+	_sdLayMakeCls('d-inline-block d-lg-none'),
+	_sdLayMakeCls('d-md-grid'),
+	_sdLayMakeCls('d-none'),
+	_sdLayMakeCls('d-print-block text-end'),
+	_sdLayMakeCls('d-block d-sm-table d-sm-table-cell')
+];
+JS
+		, true);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'd-flex',
+		'd-flex',
+		'p-3 d-flex mb-2',
+		'd-none d-md-flex',
+		'd-flex d-lg-none',
+		'd-md-flex d-flex',
+		'd-none d-flex',
+		'd-print-block text-end d-flex',
+		'd-flex d-sm-flex',
+	), $answer);
+}
+
+// A flex box is read from the element's own classes: Bootstrap's
+// components drawn as one count, unless a display class at the base
+// draws them otherwise and no flex class holds at any size.
+function test_designer_options_layout_flex_components()
+{
+	$answer = designer_options_tabs_test_run(<<<'JS'
+out = [
+	_sdOptIsFlex('semantic', 'nav nav-pills'), _sdOptIsFlex('semantic', 'navbar navbar-expand-lg'), _sdOptIsFlex('semantic', 'btn-group'),
+	_sdOptIsFlex('semantic', 'card h-100'), _sdOptIsFlex('semantic', 'list-group'), _sdOptIsFlex('semantic', 'input-group mb-3'),
+	_sdOptIsFlex('semantic', 'hstack gap-3'), _sdOptIsFlex('semantic', 'vstack'), _sdOptIsFlex('semantic', 'pagination'),
+	_sdOptIsFlex('semantic', 'nav d-none d-md-flex'), _sdOptIsFlex('row', 'g-3'),
+	_sdOptIsFlex('row', 'd-block'), _sdOptIsFlex('semantic', 'card d-block'), _sdOptIsFlex('semantic', 'nav d-none'), _sdOptIsFlex('semantic', 'card-body'),
+	_sdOptIsFlex('semantic', 'list-group-item'), _sdOptIsFlex('semantic', 'navx'), _sdOptIsFlex('semantic', 'nav-link'),
+	_sdOptIsFlex('semantic', 'row d-grid')
+];
+JS
+		, true);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		true, true, true,
+		true, true, true,
+		true, true, true,
+		true, true,
+		false, false, false, false,
+		false, false, false,
+		false,
+	), $answer);
+}
+
+// The panel draws Layout from the plan: the rows by context, the tag in
+// its head, the note under the rows, the context of several elements, the
+// button's click.
+function test_designer_options_layout_wired()
+{
+	$source = designer_options_tabs_test_source();
+
+	pg_assert_contains('var _layPlan = _sdLayPlan(_layCtx, _layHeld);', $source, 'rowCss() plans Layout by the context');
+	pg_assert_contains("if (_layPlan.tag) fxHtml = _sdSectTag(fxHtml, _sdT('parent: flex'));", $source, 'the tag stands in the section\'s head');
+	pg_assert_contains('_sdLayNoteHtml(_layPlan, _laySeveral)', $source, 'the note is drawn under the rows');
+	pg_assert_contains("var mk = t.closest('[data-sd-lay-make]');", $source, 'the panel handles "Make it a container"');
+	pg_assert_contains("lay: { several: true, cls: nodes.map(function (n) { return (n.props || {}).cssClass || ''; }).join(' ') }", $source, 'several elements: rows held by any of them');
+	pg_assert_contains("(o.tag ? '<span class=\"sd-sect-tag\">' + esc(o.tag) + '</span>' : '')", $source, 'a card draws its tag after its name');
 }

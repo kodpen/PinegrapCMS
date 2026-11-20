@@ -5,8 +5,8 @@ description: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magn
 
 ## What does Ctrl+F do in the Prototype view?
 - Architect (2026-11-19, plans/prototype-next.md): "Ctrl+F searches page names and link texts."
-- (PX4 #10561) Ctrl+F (Cmd+F) opens a row under the view's bar: the box, the count, the match before and after, Close. The bar's magnifier ("Search pages and links (Ctrl+F)") opens and closes it too, the way on a phone.
-- It is taken only while the view is open and the focus is in it, or the pointer is over it and no other text field is typed in (`_sdProtoSearchKey()`). The Overview's tree search keeps its Ctrl+F: its listener runs first and the view's skips a key already taken (`defaultPrevented`). Elsewhere the browser's own find. In the view's own box Ctrl+F selects the words again; no rule sends a second Ctrl+F to the browser (none existed).
+- (PX4 #10561) Ctrl+F (Cmd+F) opens a row at the top of the view, over the map: the box, the count, the match before and after, Close. The magnifier first in the canvas bar's Prototype tools ("Search pages and links (Ctrl+F)", DP24's `.sd-bp-ptools`) opens and closes it too, the way on a phone.
+- It is taken only while the view is open and the focus is in it or in its zones of the canvas bar (`.sd-bp-pv`), or the pointer is over one of them and no other text field is typed in (`_sdProtoSearchKey()`). The Overview's tree search keeps its Ctrl+F: its listener runs first and the view's skips a key already taken (`defaultPrevented`). Elsewhere the browser's own find. In the view's own box Ctrl+F selects the words again; no rule sends a second Ctrl+F to the browser (none existed).
 
 ## What does it find?
 - `PGProtoHotspots.searchOf(layout, query, label)`: a frame by the name it shows (`_sdProtoFrameName()`: "Untitled page", "Shared component 5"), each link by its row's text (a menu item as "Menu › Item"), a chip by its address ("Hidden page" for a hidden one). Frames in reading order (top to bottom, then left), each frame's name before its links, then the chips.

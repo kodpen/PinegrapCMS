@@ -1467,6 +1467,7 @@
     "Open in the channel": "Kanalda aç",
     "Open in the editor": "Düzenleyicide açık",
     "Open in the form": "Formda aç",
+    "Open in the visual designer": "Görsel tasarımcıda aç",
     "Open invoices": "Açık faturalar",
     "Open invoices by account and by how long they have been past due, in the base currency.": "Açık faturalar cari hesaba ve vadeyi ne kadar aştıklarına göre, ana para biriminde.",
     "Open it": "Aç",
@@ -1737,6 +1738,7 @@
     "Opened with a talk by both artists": "İki sanatçının söyleşisiyle açıldı",
     "Opened with a walk along the river with the artist": "Sanatçıyla nehir boyunca bir yürüyüşle açıldı",
     "Opened {var:1}": "{var:1} açıldı",
+    "Opened {var:1} times": "{var:1} kez açıldı",
     "Opened {var} times": "{var} kez açıldı",
     "Opened, the flow goes on at once": "Açılır, akış hemen devam eder",
     "Opening": "Açılış",
@@ -2868,6 +2870,7 @@
     "overdue only": "yalnız gecikenler",
     "overheads, costs, percentage": "genel giderler, maliyetler, yüzde",
     "owes you": "size borçlu",
+    "own alignment": "kendi hizalaması",
     "own suppliers, vendors, photographer, florist, catering": "kendi tedarikçiler, firmalar, fotoğrafçı, çiçekçi, yemek",
     "own tents, field, glamping, cabins": "kendi çadırı, alan, glamping, kulübeler",
     "ownership, rights, files, domain": "sahiplik, haklar, dosyalar, alan adı"

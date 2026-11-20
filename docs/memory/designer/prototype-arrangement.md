@@ -18,7 +18,7 @@ description: The Prototype view's layout(): frames, rows, chips, arrows; a grid 
 - Architect (2026-11-16, agent channel message 6252): the chips' column (outside this design) takes no `maxH`. A chip is about a quarter of a shared frame, and Fit on a design too large shows the grid's start, so a long chip column keeps the grid in view. If a real design shows trouble, it gets the same `maxH: 'grid'`, no new core code.
 - Fit on a design too large for 10%: the view passes the core's `start()` from `PGProtoHotspots.fitStart(layout)`, the start frame's top left (raised to its band's heading right above it), so Fit shows the grid's start, not the middle (`test_proto_hotspots_many_shared_parts`).
 ## What does Tidy up clear?
-- "Tidy up" in the bar (icon and name from 768 px, icon alone on a phone; title and label on both) asks first, then draws the arrangement again. An operator who may arrange tabs (`_pgTabLayoutEditable()`) and is not in view mode (`_collab.mayEdit`) clears `_pgTabProto` through `_pgTabsLayoutSave()` and this browser's places; the confirmation says it is for every editor of the design.
+- "Tidy up" in the canvas bar's Prototype tools (icon and name; the name folds with the bar's labels, title and aria-label stay) asks first, then draws the arrangement again. An operator who may arrange tabs (`_pgTabLayoutEditable()`) and is not in view mode (`_collab.mayEdit`) clears `_pgTabProto` through `_pgTabsLayoutSave()` and this browser's places; the confirmation says it is for every editor of the design.
 - Anyone else, and view mode (the design open in another tab), clears only this browser's places: the confirmation and a toast say the shared places stay.
 
 ## What else?

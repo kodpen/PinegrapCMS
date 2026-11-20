@@ -17,7 +17,7 @@ description: The Prototype view's links panel: the selected frame's links out an
 - A change of the selected frame lets go of a picked link that is neither the frame's own nor one into it; a redraw lets go of one whose row is gone.
 
 ## Where are the problems?
-- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The bar says "N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`, whose "Broken links" group has one button per broken link (frame · label, why and address), which picks it. A press outside closes it.
+- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The canvas bar's map zone says "N pages · N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`, whose "Broken links" group has one button per broken link (frame · label, why and address), which picks it. A press outside closes it.
 - A frame with broken links carries a red count (`.sd-proto-badge`) on its head, also when dimmed.
 - Links without a target, pages no link leads to and "N to check": designer/prototype-problems.md.
 

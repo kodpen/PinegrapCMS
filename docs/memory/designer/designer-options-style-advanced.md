@@ -15,7 +15,7 @@ description: The Options panel's Style and Advanced tabs (DP5b): the sections' n
 ## Which sections open by themselves?
 - While a browser kept nothing for it, `_sdOptOpenByDefault(key, ctx)` decides: Text opens on a text element, Spacing always, Layout on a flex box or the child of one, Show by the visit when a condition is set; the other Style and Advanced sections stay closed. A state the browser kept wins (`_sdSectOpenRead()`).
 - A text element (`_sdOptIsText()`): h1 to h6, p or span, or a heading or paragraph content element, the ones whose Text section offers display sizes. A link or a button is not.
-- A flex box (`_sdOptIsFlex()`): a grid row, or the class `row`, `d-flex` or `d-inline-flex` at any screen size. Layout's rows by context ("parent: flex") are DP6.
+- A flex box (`_sdOptIsFlex()`): `d-flex` or `d-inline-flex` at any screen size, else a grid row or a Bootstrap class that is flex by itself (`row`, `nav`, `card`…) unless a base display class says otherwise; the list and Layout's rows by context are in `designer-options-layout.md` (#10504).
 - `renderProperties()` reads the context once per draw into `_sdSectBuild.ctx` (`_sdOptCtx()`: the node, its parent through `_sdAnyParent()`, `_sdCondRowsOf()`); `_sdSectKey()` applies the rule to a keyed Style or Advanced card and holds back or draws its body to match. Content keeps the rules of `designer-options-section-cards.md`.
 
 ## What do their closed sections say?

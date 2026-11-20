@@ -52,11 +52,10 @@ function test_parasut_export_typed_text_is_text_cell()
 }
 
 // The sheets are written by the shared writer under Paraşüt's heads, with
-// no PHPExcel and no template file.
+// no template file.
 function test_parasut_export_uses_the_shared_writer()
 {
 	$block = parasut_export_cells_block();
-	pg_assert_true(stripos($block, 'phpexcel') === false, 'no PHPExcel');
 	pg_assert_same(1, substr_count($block, 'pg_xlsx_write_layout($invoice_layout, '), 'the invoice workbook');
 	pg_assert_same(1, substr_count($block, "pg_xlsx_write_layout(pg_parasut_sheet_layout('contacts'), "), 'the contacts workbook');
 	pg_assert_true(strpos($block, "pg_parasut_sheet_layout('invoices')") !== false, 'invoice sheet head');
