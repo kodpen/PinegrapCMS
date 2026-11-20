@@ -984,6 +984,9 @@ function pg_settings_legacy_anchors()
         'pgset-images'     => array('features',   'pgset-images'),
         'pgset-signature'  => array('features',   'pgset-signature'),
         'pgset-seo'        => array('seo',        'pgset-seo'),
+        // The IndexNow key moved onto IndexNow's page of Connections; an old
+        // link to its field lands on the card that shows the connection.
+        'indexnow_key'     => array('seo',        'pgset-seo'),
         'pgsub-site-icon'  => array('seo',        'pgset-site-icon'),
         'pgsub-app'        => array('seo',        'pgset-site-icon'),
         'pgsub-social'     => array('seo',        'pgset-social'),
