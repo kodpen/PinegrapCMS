@@ -20,6 +20,7 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 
 ## Which address, and who may call?
 - Given out at the site root, `site.com/mcp.php` (`router.php` hands it to `pinegrap/mcp.php`); the file in the software folder answers too. Both are in `pg_oauth_resource_addresses()['mcp']`, each with its own protected-resource document: a client compares its `resource` with the address it connected to. Compare resources with `pg_oauth_resource_key()`.
+- The compact list, `mcp_compact.php`, is the same server and resource with its tools behind five (`mcp-compact-list.md`).
 - Callers: an OAuth token issued for `mcp` (not one for `integration`), a team devices token or an application key, with the API's rate limit and request log. No session (`PG_NO_SESSION`); a call without credentials gets a 401 whose challenge says where to sign in.
 
 ## Which protocol?

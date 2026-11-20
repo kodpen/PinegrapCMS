@@ -25,15 +25,19 @@
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
+- bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
 - bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]
+- bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean [decision: here]
 - bug-hunt-customer-reviews.md: Bug hunt of the store's customer reviews (architect, agent channel message 10333, 2026-11-20): the fault fixed, the issue opened, what was read clean
+- bug-hunt-event-tickets.md: Bug hunt of event tickets, a ticket's lifetime and the door (architect 2026-11-20, agent channel message 10668, #10754): what was read, the five faults fixed, the two issues, what was found clean [decision: here]
 - bug-hunt-mail-sending.md: Bug hunt of Site Settings › E-mail sending (architect, agent channel message 10151, 2026-11-20): the five faults fixed, the issue opened, what was read clean
+- bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), what was read clean [decision: here]
 - bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean [decision: here]
 - bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
@@ -57,6 +61,7 @@
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
 - decisions-made-panel-11.md: Decisions list, panel part 11 (2026-11-20 on): the Site Settings dialog wider and taller, the Assistants and agents category tidied
+- decisions-made-panel-12.md: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to three drawings: Application Access New application (poll 188), Edit application (poll 189), Assistants and agents (poll 190)
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
@@ -152,7 +157,10 @@
 - decisions-made-product-86.md: Decisions list, product part 86 (2026-11-20 on): an order sold beyond the stock is flagged now; holding units during payment enters a plan; no lock and no automatic refund
 - decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre and a supplier feed enter plans
 - decisions-made-product-88.md: Decisions list, product part 88 (2026-11-20 on): Application Access drawn again, with starting points, bulk permission choices, a guide per way to connect and an agent set up from the application
+- decisions-made-product-89.md: Decisions list, product part 89 (2026-11-20 on): plans from the owner's hourly polls: a buybox repricer above a profit floor; NPS and CSAT after a service; a jury desk for applications
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
+- decisions-made-product-90.md: Decisions list, product part 90 (2026-11-20 on): plans from the owner's hourly polls; customer rhythm, a delivery tower, a pick and pack station and a visitor journey with an interest score
+- decisions-made-product-91.md: Decisions list, product part 91 (2026-11-20 on): a survey after a service is a service message, the periodic NPS commercial (poll 198); the export leaves out jury notes and names (poll 200)
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
@@ -185,7 +193,14 @@
 - decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
 - decisions-made-schema-37.md: Decisions list, schema part 37 (2026-11-20 on): the application that saved a note, kept on the note and on its versions
 - decisions-made-schema-38.md: Decisions list, schema part 38 (2026-11-20 on): the three tables of the supplier feed: supplier_feeds, supplier_feed_items, supplier_feed_runs; no column on products
+- decisions-made-schema-39.md: Decisions list, schema part 39 (2026-11-20 on): the three tables of the marketplace repricer: marketplace_price_rules, marketplace_price_state, marketplace_price_log
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
+- decisions-made-schema-40.md: Decisions list, schema part 40 (2026-11-20 on): customer_rhythm (one row per customer, poll 191) and shipment_problems (a problem found on a parcel, poll 192), their columns
+- decisions-made-schema-41.md: Decisions list, schema part 41 (2026-11-20 on): pick and pack's four tables (product_bins, pick_waves, pick_wave_orders, order_packs) and the "Packing only" right user.manage_packing (poll 193)
+- decisions-made-schema-42.md: Decisions list, schema part 42 (2026-11-20 on): the visitor journey's four tables (lead_browsers, lead_visits, contact_journey, contact_scores), marketing consent, 13 months, tying back (poll 194)
+- decisions-made-schema-43.md: Decisions list, schema part 43 (2026-11-20 on): a repeating event with shared places gives a series ticket checked in once per date; the event_ticket_checkins table (poll 195, bug #10755)
+- decisions-made-schema-44.md: Decisions list, schema part 44 (2026-11-20 on): the application review desk's four tables and their columns, no reviewer right column (poll 199)
+- decisions-made-schema-45.md: Decisions list, schema part 45 (2026-11-20 on): the satisfaction loop's two tables, feedback_surveys (a survey's settings) and feedback_responses (one row per sent survey), their columns (poll 197)
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace

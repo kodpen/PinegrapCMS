@@ -344,6 +344,7 @@
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
 - designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6) [decision: here]
+- designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu with its badge, Find and History; its measures
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
@@ -356,6 +357,7 @@
 - designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), express order frame, cycle guard.
 - designer-canvas-theme-view.md: The editor's Dark/Light canvas view and the theme switchers on the canvas are one state on the canvas <html>, never stored: applyCanvasTheme(), pgThemeNoStore, why not <body>.
 - designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers [decision: here]
+- designer-chrome-measures.md: The Page Design Studio chrome's sizes beside its colour tokens: type, heights, gaps, corners, shadows, focus ring, changed dot, the Options panel's parts in order and each control's states [decision: here]
 - designer-chrome-tokens.md: The Page Design Studio chrome's --sd-* colour tokens in style_designer.css: which token is for what, the measured ratios, the four areas that read tokens only, and the test that checks them
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
@@ -408,6 +410,7 @@
 - designer-options-copy-style.md: Options panel "Copy style" and "Paste style" (DP10): the brush, what is never taken, fitting to another kind, one undo step, the copy kept in the browser; the quick strip on Content
 - designer-options-layout.md: Advanced › Layout in the Options panel draws its rows by context (DP6, #10504): flex container rows, flex child rows under "parent: flex", the note naming hidden rows, "Make it a container"
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
+- designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: The label filter of the Options panel's search box (filterPropertiesPanel()): what it hides, sections without rows, the No option matches line, Turkish İ and capitals
@@ -419,12 +422,17 @@
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
+- designer-page-strip.md: The Page Design Studio's page strip: the design's menu (Settings, Delete), how the strip makes room on a narrow screen in six steps, what never goes, the "+N" lists, which file holds the rest [decision: here]
 - designer-page-workspace-tasks.md: The visual designer tab menu's "Workspace tasks" item: the Workspace record drawer of page:<id> (tasks, open one, new task tagged with the page), its gates and wiring
 - designer-pages-window.md: The designer's Pages window (DP20): the Pages button and Ctrl+P, Add Page, the search by name and address, the filters, pages by group, keys, F2, dragging onto a group, "Recently opened" per browser
 - designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width. [decision: here]
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
+- designer-panels-differences.md: Differences between the Page Design Studio as built and its accepted designer-panels drawings: one list for the owner, fixes cut from it later [decision: here]
+- designer-panels-keep.md: What a change to the Page Design Studio's Options panel, Overview, page strip or canvas bar may never lose (K1 to K12 of plan designer-panels) and the rules every such change keeps
+- designer-panels-numbers.md: Plan designer-panels' feature numbers D1 to D62 and K1 to K12: which PR built each, the memory file and the test that hold it; checked against the code at the close-out (#10760)
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
+- designer-panels-overview.md: Start file of the Page Design Studio's redrawn chrome (plan designer-panels, ended #10760): Options panel, Overview tree, page strip, canvas bar; what binds them, which file holds what [decision: decisions-made-product-69.md, decisions-made-product-71.md]
 - designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the parts (D5)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far

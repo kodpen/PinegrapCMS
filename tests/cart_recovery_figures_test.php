@@ -18,7 +18,9 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_recovery.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_recovery_figures.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/customer_values.php');
 
 // The presenter's money helper lives in includes/api/response.php, which loads
 // only behind the API's own entry. A stand-in of the same shape.
@@ -210,4 +212,115 @@ function test_cart_recovery_section_rows()
 	));
 	pg_assert_same('B', $rows[0][0], 'the most recovered revenue first');
 	pg_assert_same(7, count($rows[0]), 'message, channel, sent and the four figures');
+}
+
+// A touch row with its order's columns, as pg_cart_recovery_touch_rows()
+// reads it; order null: the order is gone.
+function cart_recovery_figures_test_joined(array $touch, $order)
+{
+	$joined = array(
+		'order_found'           => null,
+		'order_status'          => null,
+		'order_cancelled_at'    => null,
+		'order_total'           => null,
+		'order_refunded_amount' => null,
+		'order_date'            => null,
+	);
+
+	if (is_array($order)) {
+		$joined = array(
+			'order_found'           => (string) $touch['order_id'],
+			'order_status'          => $order['status'],
+			'order_cancelled_at'    => isset($order['cancelled_at']) ? $order['cancelled_at'] : null,
+			'order_total'           => (string) $order['total'],
+			'order_refunded_amount' => (string) (isset($order['refunded_amount']) ? $order['refunded_amount'] : 0),
+			'order_date'            => (string) (isset($order['order_date']) ? $order['order_date'] : 0),
+		);
+	}
+
+	return $touch + $joined;
+}
+
+function test_cart_recovery_touch_read_cancelled_and_refunded()
+{
+	$now = 1800000000;
+	$recovered = array('recovered' => 1, 'completed_total' => 12550);
+
+	$rows = array(
+		// Completed and kept: recovered with its total.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(1, 'email', 10, $now - 9000, $recovered),
+			array('status' => 'complete', 'total' => 12550)),
+		// Cancelled after the completion.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(2, 'email', 10, $now - 9000, $recovered),
+			array('status' => 'cancelled', 'cancelled_at' => (string) ($now - 100), 'total' => 12550)),
+		// Refunded in full.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(3, 'email', 10, $now - 9000, $recovered),
+			array('status' => 'exported', 'total' => 12550, 'refunded_amount' => 12550)),
+		// Refunded in part: still recovered, the refund taken off.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(4, 'email', 10, $now - 9000, $recovered),
+			array('status' => 'complete', 'total' => 12550, 'refunded_amount' => 2550)),
+		// The order was deleted: read as written.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(5, 'email', 10, $now - 9000, $recovered), null),
+	);
+
+	$read = pg_cart_recovery_touches_read($rows, $now);
+
+	pg_assert_same(5, count($read), 'no completed cart is left out');
+	pg_assert_same(array(1, 12550), array((int) $read[0]['recovered'], (int) $read[0]['completed_total']), 'a kept order stays recovered');
+	pg_assert_same(array(0, 0), array((int) $read[1]['recovered'], (int) $read[1]['completed_total']), 'a cancelled order is not recovered, no revenue');
+	pg_assert_same(array(0, 0), array((int) $read[2]['recovered'], (int) $read[2]['completed_total']), 'a full refund is not recovered, no revenue');
+	pg_assert_same(array(1, 10000), array((int) $read[3]['recovered'], (int) $read[3]['completed_total']), 'a partial refund: recovered, the total less the refund');
+	pg_assert_same(array(1, 12550), array((int) $read[4]['recovered'], (int) $read[4]['completed_total']), 'a deleted order: read as written');
+
+	$f = pg_cart_recovery_figures($read, $now - 86400, $now, 0);
+
+	pg_assert_same(5, $f['reached'], 'a cancelled or refunded cart is still reached');
+	pg_assert_same(5, $f['left'], 'and still left');
+	pg_assert_same(3, $f['recovered'], 'only the kept, partly refunded and deleted orders are recovered');
+	pg_assert_same(12550 + 10000 + 12550, $f['revenue'], 'revenue after the refunds');
+
+	// A refund larger than the recovered total never goes below zero.
+	$over = pg_cart_recovery_touch_read(cart_recovery_figures_test_joined(
+		cart_recovery_figures_test_touch(6, 'email', 10, $now - 9000, array('recovered' => 1, 'completed_total' => 1000)),
+		array('status' => 'complete', 'total' => 5000, 'refunded_amount' => 1500)), $now);
+	pg_assert_same(array(1, 0), array((int) $over['recovered'], (int) $over['completed_total']), 'revenue never below zero');
+
+	// An undone cancel: the order counts again, so the figure comes back.
+	$undone = pg_cart_recovery_touch_read(cart_recovery_figures_test_joined(
+		cart_recovery_figures_test_touch(2, 'email', 10, $now - 9000, $recovered),
+		array('status' => 'complete', 'total' => 12550)), $now);
+	pg_assert_same(1, (int) $undone['recovered'], 'an undone cancel is recovered again');
+}
+
+function test_cart_recovery_touch_read_open_cart_under_six_hours()
+{
+	$now = 1800000000;
+
+	$rows = array(
+		// Started 5 hours ago, a pop-up taken: not left yet.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(1, 'page', 3, $now - 17000),
+			array('status' => 'incomplete', 'total' => 0, 'order_date' => $now - 18000)),
+		// Started exactly 6 hours ago: left.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(2, 'page', 3, $now - 17000),
+			array('status' => 'incomplete', 'total' => 0, 'order_date' => $now - 21600)),
+		// One second short of 6 hours.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(3, 'page', 3, $now - 17000),
+			array('status' => 'incomplete', 'total' => 0, 'order_date' => $now - 21599)),
+		// A deleted order: read as written.
+		cart_recovery_figures_test_joined(cart_recovery_figures_test_touch(4, 'page', 3, $now - 17000), null),
+	);
+
+	$read = pg_cart_recovery_touches_read($rows, $now);
+	$ids = array();
+
+	foreach ($read as $row) {
+		$ids[] = (int) $row['order_id'];
+	}
+
+	pg_assert_same(array(2, 4), $ids, 'an open cart under 6 hours old is not left; it enters at 6 hours');
+
+	$f = pg_cart_recovery_figures($read, $now - 86400, $now, 0);
+	pg_assert_same(2, $f['left'], 'the young cart is neither left');
+	pg_assert_same(2, $f['reached'], 'nor reached');
+	pg_assert_same(array('reached' => 2, 'returned' => 0, 'recovered' => 0, 'revenue' => 0), $f['channels']['page'], 'nor on the page channel');
 }

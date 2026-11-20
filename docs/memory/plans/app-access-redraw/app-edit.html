@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Application Access: the edit drawer (Overview, Connect, Agent)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="../panel-design-language/boards.css">
+</head>
+<body>
+<div class="stage">
+<h1 class="sheet-title">Uygulama Erişimi › Uygulamayı düzenle</h1>
+<p class="sheet-sub">Çekmece genişler (760 px). Başında uygulamanın simgesi, adı, türü ve kimin adına çalıştığı; altında sekmeler: Genel, Bağlan, İzinler, Ajan, Olaylar, Cihazlar, Kayıtlar. İzinler sekmesi yeni uygulamadaki seçicinin aynısıdır.</p>
+
+<div class="boards">
+
+<!-- overview -->
+<div class="board">
+<p class="cap"><b><i>A</i>Genel</b>Durum bir bakışta; tehlikeli işler en altta, ayrı.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div><h2>Claude Console ajanı</h2><p>Entegrasyon · anahtar ve gizli anahtar · <span class="asline">Kimin adına: <b>uygulamanın kendisi (@console)</b></span></p></div><span class="st t-teal" style="margin-left:auto">Etkin</span><button class="ib" style="margin-left:6px"><i class="bi bi-x-lg"></i></button></div>
+  <div class="tabs"><div class="seg"><span class="on">Genel</span><span>Bağlan</span><span>İzinler <em>9</em></span><span>Ajan</span><span>Olaylar</span><span>Cihazlar</span><span>Kayıtlar</span></div></div>
+  <div class="db">
+    <div class="facts">
+      <div class="fact"><small>Durum</small><b style="color:var(--teal)">Etkin</b></div>
+      <div class="fact"><small>Son kullanım</small><b>2 dk önce</b></div>
+      <div class="fact"><small>24 saatte hata</small><b>0</b></div>
+      <div class="fact"><small>Sahibi</small><b>Erdal Güral</b></div>
+    </div>
+
+    <div class="gl">Ayrıntılar</div>
+    <div class="row2">
+      <div><label class="lab">Uygulamanın adı</label><div class="in">Claude Console ajanı</div></div>
+      <div><label class="lab">Açıklama <em>isteğe bağlı</em></label><div class="in">Geliştirme kanalındaki ajan</div></div>
+    </div>
+    <div class="rows mt">
+      <div class="rw"><div class="t"><b>Etkin</b><small>Kapatınca anahtar hemen reddedilir; ayarlar durur.</small></div><span class="sw on"></span></div>
+      <div class="rw"><div class="t"><b>Anahtar</b><small style="font-family:ui-monospace,Menlo,monospace">pk_7f3a91c2d45e8b06</small></div><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+    </div>
+
+    <div class="gl">Özet</div>
+    <div class="rows">
+      <div class="rw"><span class="tile t-blue"><i class="bi bi-shield-lock"></i></span><div class="t"><b>İzinler</b><small>23 izinden 9'u seçili · para hareketi olan yok</small></div><button class="btn ghost sm">İzinlere git<i class="bi bi-chevron-right"></i></button></div>
+      <div class="rw"><span class="tile t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>Ajan</b><small>@console · 2 kanalda</small></div><button class="btn ghost sm">Ajana git<i class="bi bi-chevron-right"></i></button></div>
+      <div class="rw"><span class="tile"><i class="bi bi-sliders"></i></span><div class="t"><b>Gelişmiş</b><small>IP listesi yok · hız sınırı varsayılan</small></div><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+    </div>
+
+    <div class="gl" style="color:var(--rose)">Tehlikeli</div>
+    <div class="rows">
+      <div class="rw"><div class="t"><b>Yeni gizli anahtar</b><small>Eski gizli anahtar bir gün daha çalışır, sonra kapanır.</small></div><button class="btn quiet sm"><i class="bi bi-arrow-repeat"></i>Yenisini üret</button></div>
+      <div class="rw"><div class="t"><b>Uygulamayı sil</b><small>Anahtar hemen kapanır; ajanı ve kanal satırları da kalkar.</small></div><button class="btn danger sm"><i class="bi bi-trash"></i>Sil</button></div>
+    </div>
+  </div>
+  <div class="df"><span class="hint"><i class="bi bi-link-45deg"></i>Sitenin bağlandığı hizmetler için: Bağlantılar</span><span class="sp"></span><button class="btn fill">Kaydet</button></div>
+</div>
+</div>
+
+<!-- connect -->
+<div class="board">
+<p class="cap"><b><i>B</i>Bağlan</b>Her bağlanma yolu için bir rehber; her biri önce kimin adına çalıştığını söyler. Yeni uygulamanın 3. adımı da bunu gösterir.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div><h2>Claude Console ajanı</h2><p>Entegrasyon · anahtar ve gizli anahtar · <span class="asline">Kimin adına: <b>uygulamanın kendisi (@console)</b></span></p></div><span class="st t-teal" style="margin-left:auto">Etkin</span><button class="ib" style="margin-left:6px"><i class="bi bi-x-lg"></i></button></div>
+  <div class="tabs"><div class="seg"><span>Genel</span><span class="on">Bağlan</span><span>İzinler <em>9</em></span><span>Ajan</span><span>Olaylar</span><span>Cihazlar</span><span>Kayıtlar</span></div></div>
+  <div class="db">
+    <div class="gl">Nasıl bağlanacaksın?</div>
+    <div class="rows">
+      <div class="rw"><span class="tile t-blue"><i class="bi bi-key"></i></span><div class="t"><b>Anahtar ve gizli anahtar</b><small>Sunucu ya da betik. Site adresi, HTTP Basic, deneme için tek satır curl, API belgesi.</small></div><span class="who a"><i class="bi bi-box"></i>Uygulama</span><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+      <div class="rw"><span class="tile t-blue"><i class="bi bi-ticket-perforated"></i></span><div class="t"><b>Tek belirteç</b><small>Bir adres ve tek belirteç isteyen istemci için: Authorization: Bearer.</small></div><span class="who a"><i class="bi bi-box"></i>Uygulama</span><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+      <div class="rw open"><span class="tile t-amber"><i class="bi bi-terminal"></i></span><div class="t"><b>Claude Console <span class="who a"><i class="bi bi-box"></i>Uygulama</span></b><small>Anthropic'in yönetilen ajanı kanalda kendi adıyla yanıt verir.</small>
+        <div class="note info" style="margin-top:10px"><i class="bi bi-info-circle"></i><div><small>Anthropic'in sayfalarında 20.11.2026'da okunduğu gibi; ürün beta aşamasında, adımlar değişebilir.</small></div></div>
+        <div class="nst" style="margin-top:12px"><span class="n">1</span><div class="c"><b>Kasaya tek belirteci ekle</b><p>Console'daki kasada (vault) yeni bir "bearer" kaydı aç, belirteci yapıştır.</p></div></div>
+        <div class="nst" style="margin-top:6px"><span class="n">2</span><div class="c"><b>MCP sunucusunu ekle</b>
+          <div class="kvs"><div class="kv"><span class="k" style="width:70px">Adres</span><span class="v">https://ornek.com/pinegrap/mcp.php</span><button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div></div></div></div>
+        <div class="nst" style="margin-top:10px"><span class="n">3</span><div class="c"><b>İzin verilen adreslere siteyi ekle</b><p>Ajanın ağı yalnız izin verilen adreslere ulaşır: <b style="color:var(--fg);font-weight:600">ornek.com</b></p></div></div>
+        <div class="nst" style="margin-top:6px"><span class="n">4</span><div class="c"><b>Başlangıç metnini sistem talimatı yap</b><p style="margin-bottom:6px">Metin Ajan sekmesinde. <span style="color:var(--accent);font-weight:550">Başlangıç metnini kopyala</span></p></div></div>
+        <div class="nst" style="margin-top:6px"><span class="n">5</span><div class="c"><b>Zamanlanmış çalıştırma kur</b><p style="margin-bottom:0">Ajan her çalışmada bekleyen istekleri alır, yanıtlar ve biter. Bir çağrı, sonraki çalışmaya kadar kuyrukta bekler.</p></div></div>
+      </div></div>
+      <div class="rw"><span class="tile t-violet"><i class="bi bi-stars"></i></span><div class="t"><b>MCP, oturum açarak</b><small>Claude, ChatGPT ve adres isteyen istemciler. Kanalda kendi adına yanıt veren ajan için bunu değil, "Kanalda ajan"ı kullan.</small></div><span class="who p"><i class="bi bi-person"></i>Oturum açan kişi</span><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+      <div class="rw"><span class="tile t-rose"><i class="bi bi-phone"></i></span><div class="t"><b>Mobil uygulama ve ekip cihazları</b><small>Cihaz nereden eşlenir, ekip neyle oturum açar.</small></div><span class="who p"><i class="bi bi-person"></i>Oturum açan kişi</span><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+      <div class="rw"><span class="tile t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>Kanalda ajan</b><small>İki ortam değişkeni, başlangıç metni, ajanın nasıl beklediği.</small></div><span class="who a"><i class="bi bi-box"></i>Uygulama</span><i class="bi bi-chevron-down" style="color:var(--fg3)"></i></div>
+    </div>
+    <p class="help" style="margin-top:12px">Bu uygulamanın türüne uymayan rehberler soluk durur ve neden uymadığını söyler.</p>
+  </div>
+  <div class="df"><span class="hint"><i class="bi bi-book"></i>API belgesi</span><span class="sp"></span><button class="btn quiet">Kapat</button></div>
+</div>
+</div>
+
+<!-- agent -->
+<div class="board">
+<p class="cap"><b><i>C</i>Ajan</b>Anahtar, ajan ve kanal tek yerden: bugünkü üç ekran yerine bir sekme.</p>
+<div class="drw">
+  <div class="dh"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div><h2>Claude Console ajanı</h2><p>Entegrasyon · anahtar ve gizli anahtar · <span class="asline">Kimin adına: <b>uygulamanın kendisi (@console)</b></span></p></div><span class="st t-teal" style="margin-left:auto">Etkin</span><button class="ib" style="margin-left:6px"><i class="bi bi-x-lg"></i></button></div>
+  <div class="tabs"><div class="seg"><span>Genel</span><span>Bağlan</span><span>İzinler <em>9</em></span><span class="on">Ajan</span><span>Olaylar</span><span>Cihazlar</span><span>Kayıtlar</span></div></div>
+  <div class="db">
+    <div class="rows">
+      <div class="rw"><span class="tile lg t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>Console <span style="color:var(--fg3);font-weight:400">@console</span></b><small>Bekleyen kapı · son görülme 2 dk önce · bekleyen istek yok</small></div><span class="st t-teal">Çalışıyor</span></div>
+    </div>
+
+    <div class="gl">Ajanın bilgileri</div>
+    <div class="row2">
+      <div><label class="lab">Çağrı adı</label><div class="in"><i class="bi bi-at"></i>console</div></div>
+      <div><label class="lab">Görünen ad</label><div class="in">Console</div></div>
+    </div>
+    <div class="mt"><label class="lab">Rol <em>kanalda adının yanında görünür</em></label><div class="in">Geliştirici</div></div>
+    <div class="mt"><label class="lab">Kapı</label>
+      <div class="row2">
+        <div class="choice on"><span class="rd"></span><div><b>Bekleyen kapı</b><small>Ajan kuyruğunu kendisi okur. Kurulum gerekmez.</small></div></div>
+        <div class="choice"><span class="rd"></span><div><b>İtilen kapı</b><small>Site, çağrı gelince ajanın adresine haber verir.</small></div></div>
+      </div>
+    </div>
+
+    <div class="gl">Kanallar <span style="font-weight:400">işaretlediğin kanalda @console yazılınca uyanır</span></div>
+    <div class="in" style="height:32px;font-size:13px;margin-bottom:8px"><i class="bi bi-search"></i><span class="ph">Kanal ara</span><span class="end">2 / 14 seçili</span></div>
+    <div class="rows">
+      <div class="rw"><span class="ck on"><i class="bi bi-check"></i></span><div class="t"><b><i class="bi bi-hash" style="color:var(--fg3)"></i>pinegrap-geliştirme</b><small>@console yazılınca uyanır</small></div><button class="btn ghost sm">Kanalın ajan ayarları<i class="bi bi-box-arrow-up-right"></i></button></div>
+      <div class="rw"><span class="ck on"><i class="bi bi-check"></i></span><div class="t"><b><i class="bi bi-hash" style="color:var(--fg3)"></i>destek</b><small>@console yazılınca uyanır</small></div><button class="btn ghost sm">Kanalın ajan ayarları<i class="bi bi-box-arrow-up-right"></i></button></div>
+      <div class="rw"><span class="ck"></span><div class="t"><b style="font-weight:500"><i class="bi bi-hash" style="color:var(--fg3)"></i>genel</b></div></div>
+      <div class="rw"><span class="ck"></span><div class="t"><b style="font-weight:500"><i class="bi bi-hash" style="color:var(--fg3)"></i>muhasebe</b></div></div>
+      <div class="rw"><span class="ck"></span><div class="t"><b style="font-weight:500;color:var(--fg3)"><i class="bi bi-lock" style="color:var(--fg3)"></i>yönetim</b><small>Bu kanalı yönetme yetkin yok.</small></div></div>
+    </div>
+
+    <div class="gl">Başlangıç metni</div>
+    <div class="code">Sen ornek.com sitesinin Workspace'inde @console adlı ajansın.
+HTTP Basic ile bağlan: PINEGRAP_KEY ve PINEGRAP_SECRET.
+1. GET …/integration.php/workspace/agent-instructions
+2. Oradaki talimatları izle; istek kuyruğunu bekle.<button class="btn quiet sm"><i class="bi bi-copy"></i>Kopyala</button></div>
+  </div>
+  <div class="df"><button class="btn danger sm" style="height:34px">Ajanı kaldır</button><span class="sp"></span><button class="btn quiet">Dene</button><button class="btn fill">Kaydet</button></div>
+</div>
+</div>
+
+</div>
+
+<div class="legend">
+  <span><b>Ajanı olmayan uygulamada</b> Ajan sekmesi tek düğmeyle açılır: "Bu uygulamayı ajan yap".</span>
+  <span><b>Kilitli uygulama</b> bütün sekmeleri salt okunur gösterir.</span>
+  <span><b>Bağlantılar</b> ekranında "Bu siteye ulaşan uygulamalar" satırı buraya getirir.</span>
+</div>
+</div>
+</body>
+</html>

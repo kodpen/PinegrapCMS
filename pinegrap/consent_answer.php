@@ -75,5 +75,11 @@ if ($changes && pg_consent_enabled() && pg_consent_log_ready() && pg_consent_ans
     }
 }
 
+// Marketing refused: the ad services' rows of this visitor's order not sent
+// yet lose the buyer's ids.
+if ($changes && ($status === 200)) {
+    pg_ad_conversion_consent_changed($changes);
+}
+
 http_response_code($status);
 echo json_encode($reply);

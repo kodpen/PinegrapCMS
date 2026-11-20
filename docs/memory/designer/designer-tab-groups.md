@@ -15,7 +15,7 @@ description: Page tab order and named coloured groups in the designer (style.sty
 ## Which group is open, and how does the strip fit?
 - One group is open at a time: always the open page's (`_pgTabStripOpenGroup()`), drawn as a box with its name, colour and tabs; every other group is a chip with name and count, "Other" (pages without a group) last. Nothing about folding is stored; the old `pg_sd_tabgroups_<styleId>` key is no longer read (#10245).
 - A chip lists its pages (first five, "N more pages", "Open the group in the strip": that group's last open page, else its first). A page picked there opens, and its group with it.
-- The strip never scrolls: `_pgTabsFit()` measures it and `_pgTabStripPlan()` (pure, `tests/designer_tab_strip_test.php`) picks the first of the six steps that fits; hidden tabs go behind "+N", chips behind "+N groups" / "N groups". Steps: `plans/designer-panels-measures-7.md` until close-out.
+- The strip never scrolls: `_pgTabsFit()` measures it and `_pgTabStripPlan()` (pure, `tests/designer_tab_strip_test.php`) picks the first of the six steps that fits; hidden tabs go behind "+N", chips behind "+N groups" / "N groups". Steps: `designer-page-strip.md`.
 
 ## How does new code open a tab?
 - With `_pgTabsInsertAfterActive(p)`, not `_pages.push`: right of the active tab, in its group.

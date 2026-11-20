@@ -11055,14 +11055,14 @@ body.pg-side-panel-open .pg-chat-launcher {
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1240px, calc(100vw - 6rem));
   --bs-dialog-backdrop-bg: var(--pg-scrim);
   --bs-dialog-backdrop-blur: 2px;
 }
 .pg-settings-modal.pg-sm {
   flex-direction: row;
   overflow: hidden;
-  height: min(680px, calc(100vh - 3.5rem));
+  height: min(880px, calc(100vh - 3.5rem));
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-sheet);
   background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
@@ -11075,7 +11075,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
   .pg-settings-modal.pg-sm {
-    height: min(680px, calc(100dvh - 3.5rem));
+    height: min(880px, calc(100dvh - 3.5rem));
   }
 }
 
@@ -19198,39 +19198,86 @@ a.ws-chip-message:hover,
   width: min(20rem, calc(100vw - 2rem));
   padding: var(--ws-space-2);
 }
+.ws-call.is-group {
+  width: min(28rem, calc(100vw - 2rem));
+}
+/* The grid: one tile a member; of two, one's own picture sits small in
+   the corner of the other's. The one speaking is ringed. */
 .ws-call-stage {
   position: relative;
+  display: grid;
+  gap: var(--ws-space-1);
+}
+.ws-call-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
   overflow: hidden;
   border-radius: var(--pg-radius);
   background: var(--pg-bg-2);
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow .15s ease;
 }
-.ws-call[data-kind="video"] .ws-call-stage {
+.ws-call[data-kind="video"] .ws-call-tile {
   aspect-ratio: 16 / 9;
 }
-.ws-call-remote {
-  display: block;
+.ws-call-tile.is-speaking {
+  box-shadow: 0 0 0 2px var(--pg-success-fg-emphasis);
+}
+.ws-call-tile.is-lost {
+  opacity: .5;
+}
+.ws-call-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.ws-call[data-kind="voice"] .ws-call-remote {
-  display: none;
+.ws-call-tile > .bi {
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
 }
-.ws-call-who {
-  padding: var(--ws-space-3);
-  text-align: center;
-  font-weight: var(--pg-weight-strong);
+.ws-call[data-kind="voice"] .ws-call-video,
+.ws-call-tile.is-camera-off .ws-call-video {
+  visibility: hidden;
 }
-.ws-call-self {
+.ws-call[data-kind="video"] .ws-call-tile:not(.is-camera-off) > .bi {
+  visibility: hidden;
+}
+.ws-call-tile-name {
+  position: absolute;
+  left: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  max-width: calc(100% - 2 * var(--ws-space-1));
+  overflow: hidden;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: var(--pg-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-call-stage[data-count="2"],
+.ws-call-stage[data-count="3"],
+.ws-call-stage[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
   position: absolute;
   right: var(--ws-space-1);
   bottom: var(--ws-space-1);
+  z-index: 1;
   width: 28%;
-  border-radius: var(--pg-radius);
-  object-fit: cover;
+  min-height: 0;
 }
-.ws-call.is-camera-off .ws-call-self {
-  visibility: hidden;
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self .ws-call-tile-name {
+  display: none;
 }
 .ws-call-bar {
   display: flex;
@@ -19578,6 +19625,42 @@ a.ws-chip-message:hover,
 .office-tab-hidden {
   font-style: italic;
   opacity: .7;
+}
+/* A workbook whose sheets may change: its tab list is laid out in one strip
+   with the sheet being added and the add button. */
+.office-tablist {
+  display: contents;
+}
+.office-tab-add,
+.office-tab-new {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  font: inherit;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  background: transparent;
+}
+.office-tab-add {
+  border-color: transparent;
+}
+.office-tab-add:hover {
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+}
+.office-tab-delete {
+  background: var(--pg-danger-bg-subtle);
+}
+.office-tab-delete .office-tab-name {
+  text-decoration: line-through;
+}
+.office-tab-moved {
+  border-style: dashed;
+  border-color: var(--pg-primary);
+}
+.office-tab-input {
+  width: 10rem;
+  font-size: .8125rem;
 }
 /* The separator and character set a .csv is read with, above its sheet. */
 .office-choice {

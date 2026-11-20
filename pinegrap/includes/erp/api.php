@@ -51,6 +51,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock_plan.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_reports.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_order_profit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_purchase_orders.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_quote_templates.php');
 
@@ -197,6 +198,8 @@ function erp_openapi_objects()
         'ErpVatReport' => 'erp_api_vat_report_schema',
         'ErpCashTransfer' => 'erp_api_cash_transfer_schema',
         'ErpProfitReport' => 'erp_api_profit_report_schema',
+        'ErpOrderProfit' => 'erp_api_order_profit_schema',
+        'ErpProfitability' => 'erp_api_profitability_schema',
         'ErpCashflowReport' => 'erp_api_cashflow_report_schema',
         'ErpCashForecast' => 'erp_api_cash_forecast_schema',
         'ErpLateFee' => 'erp_api_late_fee_schema',
@@ -1772,6 +1775,39 @@ function erp_api_routes()
                 array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
                 array('name' => 'orders', 'in' => 'query', 'type' => 'bool', 'description' => 'Also count the completed orders no invoice has been raised for yet, by their order date, the goods at today\'s average cost. Off when left out.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 500, 'default' => 50, 'description' => 'How many product and account rows to list; products_count and accounts_count say how many there are.'),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.orders.profit',
+            'method' => 'GET',
+            'path' => '/erp/orders/{id}/profit',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_orders_profit',
+            'returns' => 'ErpOrderProfit',
+            'summary' => 'An order\'s costs and net profit',
+            'description' => 'What the order screen\'s Profit card shows: revenue without tax and less refunds, each cost kind (product, payment fee, marketplace deductions, shipping, other), net profit and margin (a percentage, null without revenue), with the cost rows and where each came from (invoice, average cost, bundle, the payment service, the marketplace, the carrier label, a typed rate, an estimate). state is final, estimate (a rate or estimate in it) or incomplete (no product cost known). The general job works an order out after it is finished: until then computed is false and the figures are null; stale true means it is being worked out again. Money in minor units of the store currency.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.profitability',
+            'method' => 'GET',
+            'path' => '/erp/profitability',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_profitability',
+            'returns' => 'ErpProfitability',
+            'summary' => 'Profit by product and channel over a period',
+            'description' => 'Accounting > Profitability: the orders placed in the period whose profit the general job has worked out, each split over its lines, by channel (web, or marketplace:<account id>) and by product and channel, the most profitable first: units, revenue without tax, the costs by kind, net profit and margin. uncomputed counts the period\'s finished orders not worked out yet. Each product row carries its break-even price on its channel, from the last 90 days\' figures whatever the period: the lowest unit price without tax that makes no loss, and the price that reaches the target margin when one is set; null when it sold nothing in those days or no price can reach it. Prices are never changed from it. Name a month, or from and to; the current month when neither is sent; at most two years.',
+            'params' => array(
+                array('name' => 'month', 'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'YYYY-MM.'),
+                array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'The first day of the period, with to.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'datetime', 'description' => 'The last day of the period, with from.'),
+                array('name' => 'channel', 'in' => 'query', 'type' => 'string', 'max_length' => 48, 'description' => 'web, or marketplace:<account id>. Every channel when left out.'),
+                array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One product only. Every product when left out.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 1000, 'default' => 50, 'description' => 'How many product rows to list; products_count says how many there are.'),
             ),
         ),
 

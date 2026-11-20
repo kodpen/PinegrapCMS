@@ -12,6 +12,7 @@ description: Accounting › Profitability (#10698): product by channel by period
 - Only `erp_order_profit` rows whose `order_date` is in the period: finished orders the general job computed. Finished orders with no row yet are counted in a note.
 - Cards: net sales, costs, net profit, margin (against the target). Tables: By channel, and By product and channel (units, net sales, product cost, payment fees, marketplace deductions, shipping cost, other costs, net profit, margin), most profitable first, 1,000 rows on screen.
 - A margin below the target margin is drawn amber (`erp_profitability_below_target()`). A group counts its orders in Estimate and Incomplete state under the product's name.
+- The table ends with a "Break-even price" column from the last 90 days (`erp-order-profit-break-even-bell.md`).
 - At most 20,000 orders a period (`ERP_PROFITABILITY_MAX_ORDERS`), then a note to choose a shorter period.
 
 ## How is an order split over products?

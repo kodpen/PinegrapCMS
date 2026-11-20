@@ -36,7 +36,10 @@
  * view.count(), view.edits() for the save request ([{sheet, name, cell,
  * value}] for a workbook, or the one row or column to insert or delete,
  * [{sheet, name, op, row}] / [{sheet, name, op, column}], chosen from a
- * row's or column's head menu; [{p, text}] for a document), view.version, and
+ * row's or column's head menu; or the one sheet to add, rename, delete or
+ * move, [{op: sheet_add, to}] / [{op: sheet_rename, sheet, name, to}] /
+ * [{op: sheet_delete, sheet, name}] / [{op: sheet_move, sheet, name, to}],
+ * chosen from the sheet tabs; [{p, text}] for a document), view.version, and
  * view.reset() to drop every change. What is being typed counts already, so
  * a Save pressed before Enter sends it too. Nothing is saved from here; the
  * window that drew the view sends the edits.
@@ -409,6 +412,15 @@
         var pending = null;
         var menu = null;
 
+        // The one sheet change waiting, a save of its own as well ({action:
+        // add|rename|delete|move, sheet, to}; `to` is the new name, or the
+        // place a moved sheet takes). The tabs offer it when the server
+        // allows the workbook's sheets to change.
+        var sheetPending = null;
+        var sheetsEditable = editable && !!office.sheets_edit && !!office.sheets_edit.ok;
+        var strip = sheetsEditable ? el('div', 'office-tabs') : null;
+        var addButton = null;
+
         // The changes as they stand, with the value of the cell being typed
         // in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -446,7 +458,7 @@
         }
 
         function count() {
-            return cellCount() + (pending ? 1 : 0);
+            return cellCount() + (pending ? 1 : 0) + (sheetPending ? 1 : 0);
         }
 
         function notify() {
@@ -460,7 +472,7 @@
         function sheetEditable(index) {
             var edit = office.sheets[index].edit;
 
-            return editable && !!edit && !!edit.ok && !pending;
+            return editable && !!edit && !!edit.ok && !pending && !sheetPending;
         }
 
         // Rows and columns move on a sheet whose cells may change, unless it
@@ -515,6 +527,10 @@
                     + (strings.recalc ? ' ' + strings.recalc : ''));
             } else if (cellCount() > 0) {
                 parts.push(fill(strings.changed, cellCount()) + (strings.recalc ? ' ' + strings.recalc : ''));
+            } else if (sheetPending) {
+                parts.push(sheetPendingText());
+            } else if (sheetsEditable) {
+                parts.push(strings.sheet_hint || '');
             }
 
             if (shown.note) {
@@ -527,7 +543,7 @@
             var list = changesNow();
 
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index);
+                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index) || (!!sheetPending && sheetPending.sheet === index);
                 var mark = tab.querySelector('.office-tab-changed');
 
                 tab.classList.toggle('office-tab-edited', edited);
@@ -778,6 +794,10 @@
         // nothing beside cell changes, and only an undo while a row or
         // column waits.
         function menuItems(lines) {
+            if (sheetPending) {
+                return [{ label: strings.sheet_undo, run: cancelSheet }];
+            }
+
             if (pending) {
                 return [{ label: strings.shift_undo, run: cancelPending }];
             }
@@ -805,16 +825,16 @@
             return items;
         }
 
-        function openMenu(anchor, lines) {
+        function openMenu(anchor, items, label) {
             closeMenu(false);
 
             var node = el('div', 'menu show office-head-menu');
             var buttons = [];
 
             node.setAttribute('role', 'menu');
-            node.setAttribute('aria-label', strings.shift_menu || '');
+            node.setAttribute('aria-label', label || '');
 
-            menuItems(lines).forEach(function (item) {
+            items.forEach(function (item) {
                 var button = el('button', 'menu-item pg-link-body-emphasis');
                 button.type = 'button';
                 button.setAttribute('role', 'menuitem');
@@ -834,9 +854,9 @@
                 } else {
                     button.addEventListener('click', function () {
                         closeMenu(false);
-                        item.run();
 
-                        if (shown.cell && shown.cell.isConnected) {
+                        // An item that put the focus somewhere itself says so.
+                        if (!item.run() && shown.cell && shown.cell.isConnected) {
                             shown.cell.focus({ preventScroll: true });
                         }
                     });
@@ -881,6 +901,206 @@
             (buttons[0] || node).focus({ preventScroll: true });
         }
 
+        // The waiting sheet change in words, for the status line.
+        function sheetPendingText() {
+            var change = sheetPending;
+            var name = (change.action === 'add') ? change.to : office.sheets[change.sheet].name;
+            var text = fill(strings['sheet_pending_' + change.action], name);
+
+            if (change.action === 'rename') {
+                text = text.replace('{2}', change.to);
+            } else if (change.action === 'move') {
+                text = text.replace('{2}', change.to + 1);
+            }
+
+            return text;
+        }
+
+        // The tabs as the waiting change leaves them: a new name, a sheet
+        // struck through or marked as moving, a sheet being added.
+        function drawTabs() {
+            tabList().forEach(function (tab, index) {
+                var mine = !!sheetPending && sheetPending.sheet === index;
+
+                tab.querySelector('.office-tab-name').textContent = (mine && sheetPending.action === 'rename') ? sheetPending.to : (office.sheets[index].name || ('#' + (index + 1)));
+                tab.classList.toggle('office-tab-delete', mine && sheetPending.action === 'delete');
+                tab.classList.toggle('office-tab-moved', mine && sheetPending.action === 'move');
+            });
+
+            var added = strip ? strip.querySelector('.office-tab-new') : null;
+
+            if (added) {
+                added.remove();
+            }
+
+            if (strip && sheetPending && sheetPending.action === 'add') {
+                added = el('button', 'office-tab-new');
+                added.type = 'button';
+                added.appendChild(el('span', 'office-tab-name', sheetPending.to));
+                added.appendChild(el('span', 'visually-hidden', ', ' + (strings.changed_mark || '')));
+                added.addEventListener('click', function () {
+                    openMenu(added, sheetMenuItems(-1), strings.sheet_menu);
+                });
+                strip.insertBefore(added, addButton);
+            }
+        }
+
+        function setSheetPending(change) {
+            sheetPending = change;
+            shown.note = '';
+            drawTabs();
+
+            if (shown.index >= 0) {
+                show(shown.index);
+            }
+
+            notify();
+        }
+
+        function cancelSheet() {
+            if (sheetPending) {
+                setSheetPending(null);
+            }
+        }
+
+        function focusTab(index) {
+            var tab = (index >= 0) ? tabList()[index] : (strip ? strip.querySelector('.office-tab-new') : null);
+
+            (tab || addButton || tabs).focus({ preventScroll: true });
+
+            return true;
+        }
+
+        // Why a name cannot be given to a sheet, as the server checks it:
+        // 1 to 31 characters, none of \ / ? * [ ] :, no apostrophe at either
+        // end, not History, and not another sheet's name in any case.
+        function nameError(name, index) {
+            var length = Array.from(name).length;
+
+            if (!length || length > 31 || !name.trim() || /[\\\/?*\[\]:\u0000-\u001f\u007f]/.test(name)
+                || name.charAt(0) === '\'' || name.charAt(name.length - 1) === '\'' || name.toLowerCase() === 'history') {
+                return strings.sheet_bad || '';
+            }
+
+            for (var at = 0; at < office.sheets.length; at++) {
+                if (at !== index && String(office.sheets[at].name).toLowerCase() === name.toLowerCase()) {
+                    return fill(strings.sheet_taken, office.sheets[at].name);
+                }
+            }
+
+            return '';
+        }
+
+        function newName() {
+            var number = office.sheets.length + 1;
+
+            while (nameError(fill(strings.sheet_new || 'Sheet{1}', number), -1)) {
+                number++;
+            }
+
+            return fill(strings.sheet_new || 'Sheet{1}', number);
+        }
+
+        // A name typed in place of a tab (index) or of the add button (-1):
+        // Enter keeps it, Esc leaves the sheet as it was.
+        function askName(index) {
+            closeMenu(false);
+
+            var tab = (index >= 0) ? tabList()[index] : null;
+            var anchor = tab || addButton;
+            var input = el('input', 'form-control form-control-sm office-tab-input');
+            var done = false;
+
+            input.type = 'text';
+            input.value = (index >= 0) ? office.sheets[index].name : newName();
+            input.setAttribute('aria-label', strings.sheet_name || '');
+            anchor.parentNode.insertBefore(input, anchor);
+
+            if (tab) {
+                tab.hidden = true;
+            }
+
+            function finish(keep, leaving) {
+                if (done) {
+                    return;
+                }
+
+                var name = input.value;
+                var error = keep ? nameError(name, index) : '';
+
+                if (error && !leaving) {
+                    shown.note = error;
+                    drawStatus();
+                    input.focus();
+                    return;
+                }
+
+                done = true;
+                input.remove();
+
+                if (tab) {
+                    tab.hidden = false;
+                }
+
+                shown.note = '';
+
+                if (keep && !error && (index < 0 || name !== office.sheets[index].name)) {
+                    setSheetPending((index < 0) ? { action: 'add', sheet: -1, to: name } : { action: 'rename', sheet: index, to: name });
+                } else {
+                    drawStatus();
+                }
+
+                if (!leaving) {
+                    focusTab(index);
+                }
+            }
+
+            input.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    finish(true, false);
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    finish(false, false);
+                }
+            });
+
+            input.addEventListener('blur', function () {
+                finish(true, true);
+            });
+
+            input.focus();
+            input.select();
+        }
+
+        // What a sheet tab's menu offers: one sheet change a save, nothing
+        // beside other changes, and only an undo while one waits.
+        function sheetMenuItems(index) {
+            if (sheetPending) {
+                return [{ label: strings.sheet_undo, run: function () { var at = sheetPending.sheet; cancelSheet(); return focusTab(at); } }];
+            }
+
+            if (pending || cellCount() > 0) {
+                return [{ label: strings.sheet_first }];
+            }
+
+            var items = [{ label: strings.sheet_rename, icon: 'bi-pencil', run: function () { askName(index); return true; } }];
+
+            if (index > 0) {
+                items.push({ label: strings.sheet_left, icon: 'bi-arrow-left', run: function () { setSheetPending({ action: 'move', sheet: index, to: index - 1 }); return focusTab(index); } });
+            }
+
+            if (index < office.sheets.length - 1) {
+                items.push({ label: strings.sheet_right, icon: 'bi-arrow-right', run: function () { setSheetPending({ action: 'move', sheet: index, to: index + 1 }); return focusTab(index); } });
+            }
+
+            items.push({ label: fill(strings.sheet_delete, office.sheets[index].name), icon: 'bi-trash', run: function () { setSheetPending({ action: 'delete', sheet: index }); return focusTab(index); } });
+
+            return items;
+        }
+
         function wireGrid(table) {
             // A cell reached with Tab is selected as a click would select it,
             // so the arrows, Enter and typing work on it at once.
@@ -900,7 +1120,7 @@
                 }
 
                 event.preventDefault();
-                openMenu(head, [{ axis: head.getAttribute('data-axis'), at: parseInt(head.getAttribute('data-at'), 10) }]);
+                openMenu(head, menuItems([{ axis: head.getAttribute('data-axis'), at: parseInt(head.getAttribute('data-at'), 10) }]), strings.shift_menu);
 
                 return true;
             }
@@ -917,7 +1137,7 @@
                 if (td && sheetShiftable(shown.index) && !td.classList.contains('office-editing')) {
                     event.preventDefault();
                     select(td);
-                    openMenu(td, [{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]);
+                    openMenu(td, menuItems([{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]), strings.shift_menu);
                 }
             });
 
@@ -966,14 +1186,19 @@
                 // The menu key or Shift+F10 offers the cell's row and column.
                 if ((key === 'ContextMenu' || (key === 'F10' && event.shiftKey)) && sheetShiftable(shown.index)) {
                     event.preventDefault();
-                    openMenu(td, [{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]);
+                    openMenu(td, menuItems([{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]), strings.shift_menu);
                     return;
                 }
 
-                if (key === 'Escape' && pending) {
+                if (key === 'Escape' && (pending || sheetPending)) {
                     event.preventDefault();
                     event.stopPropagation();
-                    cancelPending();
+
+                    if (pending) {
+                        cancelPending();
+                    } else {
+                        cancelSheet();
+                    }
                     return;
                 }
 
@@ -1066,14 +1291,36 @@
         pane.id = paneId;
         pane.setAttribute('role', 'tabpanel');
 
+        function tabList() {
+            return Array.prototype.slice.call(tabs.querySelectorAll('.office-tab'));
+        }
+
+        function openTab(index) {
+            tabList().forEach(function (tab, at) {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+                tab.tabIndex = -1;
+
+                if (at === index) {
+                    tab.classList.add('active');
+                    tab.setAttribute('aria-selected', 'true');
+                    tab.tabIndex = 0;
+                    pane.setAttribute('aria-labelledby', tab.id);
+                }
+            });
+
+            show(index);
+        }
+
         office.sheets.forEach(function (sheet, index) {
-            var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''), sheet.name || ('#' + (index + 1)));
+            var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''));
             tab.type = 'button';
             tab.id = paneId + '_tab_' + index;
             tab.setAttribute('role', 'tab');
             tab.setAttribute('aria-selected', 'false');
             tab.setAttribute('aria-controls', paneId);
             tab.tabIndex = -1;
+            tab.appendChild(el('span', 'office-tab-name', sheet.name || ('#' + (index + 1))));
 
             // A hidden sheet shows only in italics and a changed one only by
             // a dot, so both are said in words too.
@@ -1086,60 +1333,110 @@
             changedMark.hidden = true;
             tab.appendChild(changedMark);
 
+            // The open sheet's tab, clicked again, offers the sheet's menu.
             tab.addEventListener('click', function () {
-                Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (other) {
-                    other.classList.remove('active');
-                    other.setAttribute('aria-selected', 'false');
-                    other.tabIndex = -1;
-                });
-                tab.classList.add('active');
-                tab.setAttribute('aria-selected', 'true');
-                tab.tabIndex = 0;
-                pane.setAttribute('aria-labelledby', tab.id);
-                show(index);
+                if (sheetsEditable && tab.classList.contains('active')) {
+                    openMenu(tab, sheetMenuItems(index), strings.sheet_menu);
+                } else {
+                    openTab(index);
+                }
+            });
+
+            tab.addEventListener('contextmenu', function (event) {
+                if (!sheetsEditable) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                if (!tab.classList.contains('active')) {
+                    openTab(index);
+                }
+
+                openMenu(tab, sheetMenuItems(index), strings.sheet_menu);
             });
 
             tabs.appendChild(tab);
 
             // The first sheet that is not hidden opens; failing that, the first.
             if (current === null && !sheet.hidden) {
-                current = tab;
+                current = index;
             }
         });
 
-        if (current === null && tabs.firstChild) {
-            current = tabs.firstChild;
-        }
-
         // Arrow keys, Home and End move between the sheet tabs and open the
-        // one they land on; only the open tab sits in the Tab order.
+        // one they land on; only the open tab sits in the Tab order. The menu
+        // key or Shift+F10 offers the sheet's menu, F2 its new name.
         tabs.addEventListener('keydown', function (event) {
-            var list = Array.prototype.slice.call(tabs.querySelectorAll('.office-tab'));
+            var list = tabList();
             var at = list.indexOf(event.target);
-            var next = null;
+            var next = -1;
 
             if (at < 0 || event.altKey || event.ctrlKey || event.metaKey) {
                 return;
             }
 
-            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-                next = list[(at + 1) % list.length];
-            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-                next = list[(at - 1 + list.length) % list.length];
-            } else if (event.key === 'Home') {
-                next = list[0];
-            } else if (event.key === 'End') {
-                next = list[list.length - 1];
+            if (sheetsEditable && (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) {
+                event.preventDefault();
+                openMenu(list[at], sheetMenuItems(at), strings.sheet_menu);
+                return;
             }
 
-            if (next) {
+            if (sheetsEditable && event.key === 'F2' && !sheetPending && !pending && !cellCount()) {
                 event.preventDefault();
-                next.focus();
-                next.click();
+                askName(at);
+                return;
+            }
+
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                next = (at + 1) % list.length;
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                next = (at - 1 + list.length) % list.length;
+            } else if (event.key === 'Home') {
+                next = 0;
+            } else if (event.key === 'End') {
+                next = list.length - 1;
+            }
+
+            if (next >= 0) {
+                event.preventDefault();
+                list[next].focus();
+                openTab(next);
             }
         });
 
-        book.appendChild(tabs);
+        // A workbook whose sheets may change has the tabs, the sheet being
+        // added and the add button in one strip; the tab list is laid out as
+        // part of it.
+        if (strip) {
+            tabs.className = 'office-tablist';
+            strip.appendChild(tabs);
+
+            addButton = el('button', 'office-tab-add');
+            addButton.type = 'button';
+            addButton.title = strings.sheet_add || '';
+            addButton.setAttribute('aria-label', strings.sheet_add || '');
+
+            var plus = el('span', 'bi bi-plus-lg');
+            plus.setAttribute('aria-hidden', 'true');
+            addButton.appendChild(plus);
+
+            addButton.addEventListener('click', function () {
+                if (sheetPending || pending || cellCount() > 0) {
+                    shown.note = sheetPending ? (strings.sheet_one || '') : (strings.sheet_first || '');
+                    drawStatus();
+                    return;
+                }
+
+                askName(-1);
+            });
+
+            strip.appendChild(addButton);
+            book.appendChild(strip);
+        } else {
+            book.appendChild(tabs);
+        }
+
         book.appendChild(pane);
 
         if (editable) {
@@ -1148,8 +1445,12 @@
 
         container.appendChild(book);
 
-        if (current) {
-            current.click();
+        if (current === null && office.sheets.length) {
+            current = 0;
+        }
+
+        if (current !== null) {
+            openTab(current);
         }
 
         return {
@@ -1158,6 +1459,21 @@
             count: count,
             edits: function () {
                 var list = [];
+
+                if (sheetPending) {
+                    var sheetChange = { op: 'sheet_' + sheetPending.action };
+
+                    if (sheetPending.action !== 'add') {
+                        sheetChange.sheet = sheetPending.sheet;
+                        sheetChange.name = office.sheets[sheetPending.sheet].name;
+                    }
+
+                    if (sheetPending.action !== 'delete') {
+                        sheetChange.to = sheetPending.to;
+                    }
+
+                    return [sheetChange];
+                }
 
                 if (pending) {
                     // The server inserts before the line it is sent, so a
@@ -1181,7 +1497,9 @@
             reset: function () {
                 shown.editor = null;
                 pending = null;
+                sheetPending = null;
                 changes = office.sheets.map(function () { return {}; });
+                drawTabs();
 
                 if (shown.index >= 0) {
                     show(shown.index);

@@ -192,3 +192,18 @@ function test_workspace_quick_edit_offer_empty_dates_keep_the_offer_running()
 	pg_assert_true(ws_change_check($viewer, 'offer', 'update', $offer, array('end_date' => '2026-09-30')) !== '', 'an end before the start is refused');
 	pg_assert_same('', ws_change_check($viewer, 'offer', 'delete', $offer, array()), 'a deletion has no dates to check');
 }
+
+// The decision a drawer edit leaves in the channel names a contact by its
+// tag alone, as a new contact's does: its lines would show the old and new
+// e-mail address to every member, also those who may not see contacts.
+function test_workspace_quick_edit_decision_of_a_contact_is_its_tag()
+{
+	$lines = array('E-mail: “old@example.com” → “new@example.com”');
+	$contact = ws_quick_edit_decision_body('contact', '<#contact:5>', $lines);
+
+	pg_assert_same(lang(array('string' => '{var:1} was changed.', 'vars' => array('<#contact:5>'))), $contact, 'the tag alone');
+	pg_assert_true(strpos($contact, 'example.com') === false, 'no address in the channel');
+
+	$product = ws_quick_edit_decision_body('product', '<#product:9>', array('Price: “10” → “12”', 'Brand: “a” → “b”'));
+	pg_assert_same(lang(array('string' => '{var:1} was changed. {var:2}', 'vars' => array('<#product:9>', 'Price: “10” → “12” · Brand: “a” → “b”'))), $product, 'other kinds keep their lines');
+}
