@@ -347,7 +347,7 @@ function erp_api_routes()
             'dry_run' => true,
             'returns' => 'ErpAccount',
             'summary' => 'Change an ERP account',
-            'description' => 'Changes only the fields sent; the rest of the card stays as it is. The currency cannot be changed here: a card with movements is kept in the currency they were written in. contact_id ties the card to a customer record, null or 0 unties it; a customer already tied to another card is refused. A dry run makes every check and its detail names the fields that would change. PATCH is accepted beside POST.',
+            'description' => 'Changes only the fields sent; the rest of the card stays as it is. The currency cannot be changed here: a card with movements is kept in the currency they were written in. contact_id ties the card to a customer record, null or 0 unties it; a customer already tied to another card is refused. price_account_id makes the account buy at another account\'s prices (payment terms and credit limit stay its own), with the panel\'s one-hop checks; the refusal is a 422 on that field. A dry run makes every check and its detail names the fields that would change. PATCH is accepted beside POST.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
@@ -369,6 +369,7 @@ function erp_api_routes()
                 array('name' => 'notes', 'in' => 'body', 'type' => 'string', 'max_length' => 2000),
                 array('name' => 'credit_limit', 'in' => 'body', 'type' => 'money', 'min' => 0, 'description' => 'The most the account may owe, in minor units of the store currency. 0 is no limit.'),
                 array('name' => 'invoice_email', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Where invoices are e-mailed when that is not the main address. Empty clears it.'),
+                array('name' => 'price_account_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Uses the prices of: the account whose agreed prices and account discount this account buys at instead of its own; null or 0 uses its own. One hop only: refused when the chosen account uses another account\'s prices itself, or while other accounts use this account\'s prices.'),
             ),
         ),
 
