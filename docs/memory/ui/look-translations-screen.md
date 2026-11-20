@@ -25,7 +25,7 @@ description: The Translations screen (translations.php) in look A (S6c): card ti
 - The text column's `min-width: 0` is the `min-w-0` class.
 
 ## What stayed?
-- The Artifact Canvas parts named by the artifact-canvas-rename plan (AC4): a row's picture chip (`bi-image`, `badge` button) and Edit in the Artifact Canvas / Draw the waiting pictures (`bi-brush`).
+- A row's picture chip (`bi-image`, `badge` button) and Draw the waiting pictures (`bi-brush`). Edit in the Artifact Canvas shows the canvas's own icon since #10646 (`design-canvas-icon.md`).
 - The suspicious mark (`badge theme-danger`, an icon with a hidden text): an icon mark, not a status; the alerts (engine notes, progress, index note); the gray `small fg-secondary` notes; the language menu's code chip; the page list's 3 px and the progress bar's 4 px bar height and the reviewed row's 1em spacer: no token names them.
 - The page and group lists stay Bootstrap `list-group` rows; the dialogs' fields are full width in their dialog.
 

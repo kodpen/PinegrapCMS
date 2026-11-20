@@ -7,7 +7,7 @@ module: image_editor
 ## What is it?
 - One editor for the whole software, written here with no outside engine: photo work, marking, redaction, vectors and SVG, a blank canvas sized as an artboard, animation, optimisation on save.
 - On screen it is the Artifact Canvas ("Yapıt Tuvali", owner 2026-11-20, `workflow/decisions-made-panel-10.md`), with its own icon (`design-canvas-icon.md`); code names keep `image_editor`.
-- A core part: a `<dialog>` with a full-screen button, opened from any screen by one call (`pgImageEditor.open()`, alias `window.openImageEditor()`); a caller may limit tools to a floating mini bar (`ui/image-editor-modal.md`, `image-editor-callers.md`).
+- A core `<dialog>` with a full-screen button, opened from any screen by one call (`pgImageEditor.open()`, alias `window.openImageEditor()`); a caller may limit tools to a floating mini bar (`ui/image-editor-modal.md`, `image-editor-callers.md`).
 - Texts and shapes stay editable: a save keeps its document in `file_versions`, so a later open edits layers, not pixels (a canvas too: "New image", Workspace).
 - It replaced a bundled third-party editor (#4609).
 
