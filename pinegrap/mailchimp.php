@@ -1179,11 +1179,12 @@ function mailchimp_request($request) {
     // then log and return error.
     if ($curl_errno || $response_code === 0) {
 
-        $message = 
+        // The message is logged and mailed: it never carries the key.
+        $message = pg_mailchimp_error_message(
             lang('MailChimp Error') . "\n" .
             lang('cURL Error Number') . ': ' . $curl_errno . '.' . "\n" .
-            lang('cURL Error Message') . ': ' . $curl_error . '.' . "\n" .
-            lang('Request') . ': ' . print_r($request, true);
+            lang('cURL Error Message') . ': ' . $curl_error . '.',
+            null, $request, $key);
 
         log_activity($message);
 
@@ -1196,10 +1197,10 @@ function mailchimp_request($request) {
 
     if ($response_code < 200 or $response_code > 299) {
         
-        $message = 
-            lang('MailChimp Error') . ': ' . $response['title'] . '. ' . $response['detail'] . "\n" .
-            lang('Response') . ': ' . print_r($response, true) . "\n" .
-            lang('Request') . ': ' . print_r($request, true);
+        // The message is logged and mailed: it never carries the key.
+        $message = pg_mailchimp_error_message(
+            lang('MailChimp Error') . ': ' . (isset($response['title']) ? $response['title'] : '') . '. ' . (isset($response['detail']) ? $response['detail'] : ''),
+            $response, $request, $key);
 
         // If quiet is disabled (default) or the response code is not 404, then log and email error.
         if (!$quiet or $response_code != 404) {

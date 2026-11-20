@@ -15825,6 +15825,14 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-emoji-item {
     height: 2.5rem;
   }
+  /* Cells a finger can pick, as the emoji items; six still fit 320 px. */
+  .ws-table-pick-grid {
+    grid-template-columns: repeat(6, 2.5rem);
+  }
+  .ws-table-pick-cell {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
   .ws-react {
     height: 1.9rem;
   }
@@ -17432,6 +17440,17 @@ a.ws-chip-message:hover,
   tab-size: 4;
   resize: vertical;
 }
+/* iOS Safari zooms the page in when a field under 16px takes the focus and
+   leaves it zoomed: on a touch screen the emoji search, the poll window's
+   fields and the code and calculation areas are 16px. After .ws-code-edit,
+   whose own size it has to outrank. */
+@media (pointer: coarse) {
+  .ws-emoji-search,
+  #ws-poll-form .form-control,
+  .ws-code-edit {
+    font-size: var(--pg-text-field-touch);
+  }
+}
 
 /* A block of code in a message: its own box, scrolled inside rather than
    stretching the conversation. */
@@ -17927,6 +17946,13 @@ a.ws-chip-message:hover,
      375 px screen. */
   .ws-mail-pane .ws-mail-item {
     padding: .5rem;
+  }
+}
+/* On touch the conversation's channel pill is a 32 px link, as the pane's
+   other tools; the 22 px status pill stays under a mouse. */
+@media (pointer: coarse) {
+  .ws-mail-pane-channel {
+    min-height: 2rem;
   }
 }
 /* The "/" list of a note's inserts, under the caret. */
@@ -20875,8 +20901,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     min-height: 2.5rem;
   }
   /* Narrow pads keep the inserts, Send and Send later on one line at
-     375 px; the row still wraps where even that has no room. */
+     375 px; the row still wraps where even that has no room. 44 px high,
+     the touch target a finger hits; the height costs no width. */
   .ws-composer-tools .btn {
+    min-height: 2.75rem;
     padding: .3rem .4rem;
   }
   /* The field takes the full width on top and the row of tools with Send
@@ -21099,6 +21127,17 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
      the height between the header and the box. */
   body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs),
   body.ws-keyboard .ws-channel-card > .ws-tabs {
+    display: none;
+  }
+  /* The expanded box (Aa) rides on the keyboard as the one-line box does:
+     its 50vh cap reads the layout viewport, so the field alone could take
+     what the keyboard leaves and push the tools and Send under it. The
+     hint names Ctrl+Enter, which a phone's keyboard does not have. */
+  body.ws-keyboard .ws-composer .ws-rich.is-expanded {
+    min-height: 2.5rem;
+    max-height: 6rem;
+  }
+  body.ws-keyboard .ws-composer-hint {
     display: none;
   }
 }
@@ -28658,6 +28697,8 @@ select.pg-list-table-field option.private {
   /* A figure's value (the report's figure, a figure card), and on a phone. */
   --pg-text-figure: 1.625rem;
   --pg-text-figure-sm: 1.3125rem;
+  /* A field on a touch screen: iOS Safari zooms the page in on a smaller one. */
+  --pg-text-field-touch: 16px;
   --pg-weight-regular: var(--bs-font-weight-normal);
   --pg-weight-medium: var(--bs-font-weight-medium);
   --pg-weight-strong: 550;

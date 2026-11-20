@@ -8125,6 +8125,9 @@ function pg_js_bundles()
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
+        // The spacing box of Style › Spacing: its pure class mapping
+        // (window.PGSpacingBox), then the part that draws it.
+        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/style_designer_spacing.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8207,6 +8210,9 @@ function pg_designer_parts()
         // The prototype comments of the design: the pins on the canvas and
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',
+        // The spacing box of Style › Spacing and the size chooser in its
+        // head, drawn when the section is first shown.
+        'spacing' => 'assets/js/style_designer_spacing.min.js',
     );
 }
 

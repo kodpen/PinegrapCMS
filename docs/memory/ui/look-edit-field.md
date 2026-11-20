@@ -12,7 +12,7 @@ description: Add and edit screens in look A: .form-label and .form-control in th
 
 ## How does it reach the screens?
 - No screen's markup changes: the rule sets Bootstrap's `--bs-control-*` and `--bs-label-margin-bottom` variables, so the panel's `.is-invalid` / `.is-valid` border (set as a property) still wins.
-- Every screen with `pg-measure-edit` takes it in its cards, the owner's kept screens (`product_builder`, `edit_user`, `edit_offer`) too: a shared rule of the family reaches them (`plans/panel-old-screens-rules.md`).
+- Every screen with `pg-measure-edit` takes it in its cards, the owner's kept screens (`product_builder`, `edit_user`, `edit_offer`) too: a shared rule of the family reaches them (`look-kept-screens.md`).
 - Bootstrap utilities on a label (`small`, `fg-secondary`, `mb-0`) still win: their layer comes after `custom`.
 
 ## What keeps its own field?
