@@ -624,7 +624,8 @@ function erp_profitability_report($from, $to, $channel = '')
     $start = (int) strtotime($from . ' 00:00:00');
     $end = (int) strtotime($to . ' 00:00:00 +1 day');
 
-    $profits = (array) db_items("SELECT erp_order_profit.order_id, erp_order_profit.channel, erp_order_profit.state,
+    $profits = (array) db_items("SELECT erp_order_profit.order_id, erp_order_profit.order_date, erp_order_profit.channel,
+            erp_order_profit.state,
             erp_order_profit.revenue, erp_order_profit.cost_product, erp_order_profit.cost_payment,
             erp_order_profit.cost_marketplace, erp_order_profit.cost_shipping, erp_order_profit.cost_other,
             erp_order_profit.net
@@ -643,23 +644,33 @@ function erp_profitability_report($from, $to, $channel = '')
 
     foreach (array_chunk($profits, ERP_PROFITABILITY_CHUNK) as $chunk) {
         $ids = array();
+        $dates = array();
 
         foreach ($chunk as $profit) {
             $ids[] = (int) $profit['order_id'];
+            $dates[(int) $profit['order_id']] = (int) $profit['order_date'];
+        }
+
+        $items = array();
+
+        foreach ((array) db_items("SELECT order_items.id, order_items.order_id, order_items.product_id, order_items.quantity,
+                order_items.price, order_items.tax_total, order_items.recurring_payment_period,
+                order_items.recurring_start_date, products.start AS product_start
+            FROM order_items
+            LEFT JOIN products ON products.id = order_items.product_id
+            WHERE order_items.order_id IN (" . implode(',', $ids) . ") AND order_items.saved_for_later = 0
+            ORDER BY order_items.id ASC") as $item) {
+            $items[(int) $item['order_id']][] = $item;
         }
 
         $lines = array();
 
-        foreach ((array) db_items("SELECT id, order_id, product_id, quantity, price, tax_total FROM order_items
-            WHERE order_id IN (" . implode(',', $ids) . ") AND saved_for_later = 0
-            ORDER BY id ASC") as $item) {
-            $lines[(int) $item['order_id']][] = array(
-                'id' => (int) $item['id'],
-                'product_id' => (int) $item['product_id'],
-                'quantity' => (float) $item['quantity'],
-                'weight' => erp_order_profit_line_gross($item),
-            );
-            $product_ids[(int) $item['product_id']] = true;
+        foreach ($items as $order_id => $order_items) {
+            $lines[$order_id] = erp_profitability_lines($dates[$order_id] ?? 0, $order_items);
+
+            foreach ($lines[$order_id] as $line) {
+                $product_ids[$line['product_id']] = true;
+            }
         }
 
         $item_costs = array();
@@ -709,6 +720,34 @@ function erp_profitability_report($from, $to, $channel = '')
         'products' => $products,
         'uncomputed' => ($channel === '') ? $uncomputed : 0,
     );
+}
+
+/**
+ * An order's lines as erp_profitability_split() takes them: only the lines
+ * charged with the order (erp_order_charged_items()), as the pass costs
+ * them, so a recurring line that starts later takes no share of the revenue.
+ * Pure.
+ *
+ * @param int       $order_date     Unix time the order was placed
+ * @param array     $items          order_items rows: id, product_id, quantity, price, tax_total,
+ *                                  recurring_payment_period, recurring_start_date, product_start
+ * @param bool|null $clearcommerce  See erp_order_charged_items()
+ * @return array  list of id, product_id, quantity, weight (the line's gross)
+ */
+function erp_profitability_lines($order_date, $items, $clearcommerce = null)
+{
+    $lines = array();
+
+    foreach (erp_order_charged_items(array('order_date' => (int) $order_date), (array) $items, $clearcommerce) as $item) {
+        $lines[] = array(
+            'id' => (int) $item['id'],
+            'product_id' => (int) $item['product_id'],
+            'quantity' => (float) $item['quantity'],
+            'weight' => erp_order_profit_line_gross($item),
+        );
+    }
+
+    return $lines;
 }
 
 /**
