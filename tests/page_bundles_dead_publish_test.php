@@ -219,3 +219,15 @@ function test_page_bundle_reads_do_not_finish()
 	pg_assert_contains('pg_page_bundle_undo_item(', $finish, 'the rest by the failure\'s own undo');
 	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $finish, 'a failed query is a failed take-back');
 }
+
+// A bundle deleted while the action waited is "not found", never "being
+// published right now": the API answered 409 bundle_busy for it.
+function test_page_bundle_with_lock_gone_is_not_busy()
+{
+	$lock = pg_test_function_source('pg_page_bundle_with_lock');
+	$start = strpos($lock, 'if (!$fresh)');
+	pg_assert_true($start !== false, 'a bundle gone is told');
+
+	$gone = substr($lock, $start, strpos($lock, '}', $start) - $start);
+	pg_assert_contains("'busy' => false", $gone, 'not as busy');
+}
