@@ -286,7 +286,7 @@ description: Generated from the module field of the memory files: each includes/
 - `reseal`: [[encryption-key-reseal-registry]]
 - `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]], [[order-returns-refund-cancelled-order]]
 - `reviews`: [[bug-hunt-customer-reviews]], [[comment-page-copy-columns]], [[product-review-photos]], [[product-review-purchase-stands]], [[product-reviews-verified]]
-- `sales_watch`: [[sales-watch-flow]], [[sales-watch-settings]]
+- `sales_watch`: [[sales-watch]], [[sales-watch-flow]], [[sales-watch-price]], [[sales-watch-settings]]
 - `sales_watch_returns`: [[sales-watch-returns]]
 - `save_bar`: [[save-bar-helper]]
 - `search_audits`: [[search-and-audits-screen]]

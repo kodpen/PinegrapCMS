@@ -96,6 +96,7 @@
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events [decision: decisions-made-schema-9.md]
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
 - api-sales-report-periods.md: GET /reports/sales: periods are site days and months by site.timezone's rules across clock changes; only periods with orders come back, at most 400; more is refused with 422 instead of being cut
+- api-sales-watch-report.md: GET /reports/sales-watch (#10817, orders:read, an MCP tool): per channel the norm and the 12 hours before and after, the last pass, 7 days of sales alerts, products taken off sale
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-settings-no-endpoint.md: Why settings, firewall, sessions, backups and updates have no external API endpoint (#5238), and the two doors that stay open
 - api-single-value-fields.md: The external API refuses a JSON list or object in a field that takes one value (422), before any cast.

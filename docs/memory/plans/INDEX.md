@@ -123,9 +123,6 @@
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield, taking a product off sale, the return spike, delivery, settings, API
-- sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
-- sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
 - stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5
