@@ -134,6 +134,34 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
 }
 
 /**
+ * The TXT record the DKIM card shows: the generated key under the selector
+ * and domain mail is signed with now (email() falls back to "pinegrap" and the
+ * domain of the site's address). The stored record keeps the names the key
+ * was generated with, and a selector changed since would send the operator to
+ * publish it where no signature points.
+ *
+ * @param string $stored the generated record (files.description of dkim.key)
+ * @param string $selector DKIM_SELECTOR
+ * @param string $domain DKIM_DOMAIN
+ * @param string $email_address EMAIL_ADDRESS
+ * @return string '' when no key was generated
+ */
+function pg_mail_settings_dkim_shown_record($stored, $selector, $domain, $email_address)
+{
+    $key = pg_mail_dkim_key($stored);
+
+    if ($key === '') {
+        return '';
+    }
+
+    $selector = ((string) $selector !== '') ? (string) $selector : 'pinegrap';
+    $at = strrchr((string) $email_address, '@');
+    $domain = ((string) $domain !== '') ? (string) $domain : (($at !== false) ? substr($at, 1) : '');
+
+    return pg_dkim_txt_record($selector, $domain, $key);
+}
+
+/**
  * Whether one of the TXT records published for the selector carries the whole
  * generated key. A record cut short (a DNS panel stopping at 255 characters)
  * holds only the key's start and signs nothing, so it does not pass.
