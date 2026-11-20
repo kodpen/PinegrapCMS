@@ -5,7 +5,7 @@ description: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, perio
 
 ## What is a survey?
 - (Q1) Three kinds: NPS (0 to 10, "How likely are you to recommend us?"), CSAT (1 to 5) and effort (1 to 7). One main question, an optional comment, at most three extra questions (single choice or short text). Default texts through `lang()`; the shop may retype them per site language.
-- (Q2) A survey's settings: name, touchpoint and its filter (service, event, course, form, mail box), delay, channel, fallback owner, escalation user, Workspace channel, review invitation, on or off. A new survey starts off.
+- (Q2) A survey's settings: name, touchpoint and its filter (service, event, course, form, mail box), delay, channel, fallback owner, escalation user, Workspace channel, review invitation, service or commercial, on or off. A new survey starts off.
 
 ## When is it sent?
 - (Q3) Touchpoints: a booking moved to `done`; a ticket checked in; `course.completed`; a form submission N days after it came, or when its chosen single-choice field takes a chosen value; `order.delivered`; a Workspace mail conversation closed. The missing announcements (booking done, conversation closed, check-in for flows) are added by the plan.
