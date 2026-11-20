@@ -539,3 +539,36 @@ function test_payment_paypal_cancel()
 	pg_assert_false($answer['success'], 'no capture id');
 	pg_assert_same(array(), payment_paypal_test_calls());
 }
+
+/* ---------------------------------------------------------------------------
+   The fee PayPal kept
+   --------------------------------------------------------------------------- */
+
+// A completed capture answers seller_receivable_breakdown's paypal_fee; a
+// pending one has none yet; a fee in another currency keeps its code.
+function test_payment_paypal_fee_from_the_capture()
+{
+	$answer = payment_paypal_test_complete(array('GET /v2/checkout/orders/5O190127TN364715T' => array(200, payment_paypal_test_fixture('order_captured'))));
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(429, $answer['fee']);
+	pg_assert_same('', $answer['fee_currency']);
+	pg_assert_same(0.0, $answer['fee_rate']);
+
+	$captured = payment_paypal_test_fixture('order_captured');
+	$captured['purchase_units'][0]['payments']['captures'][0]['status'] = 'PENDING';
+	$pending = payment_paypal_test_complete(array('GET /v2/checkout/orders/5O190127TN364715T' => array(200, $captured)));
+	pg_assert_same('pending', $pending['status']);
+	pg_assert_same(null, $pending['fee']);
+
+	$captured = payment_paypal_test_fixture('order_captured');
+	$captured['purchase_units'][0]['payments']['captures'][0]['seller_receivable_breakdown']['paypal_fee'] = array('currency_code' => 'USD', 'value' => '4.65');
+	$usd = payment_paypal_test_complete(array('GET /v2/checkout/orders/5O190127TN364715T' => array(200, $captured)));
+	pg_assert_same(465, $usd['fee']);
+	pg_assert_same('USD', $usd['fee_currency']);
+	pg_assert_same(0.0, $usd['fee_rate'], 'no rate: the day\'s rate converts it');
+
+	$captured = payment_paypal_test_fixture('order_captured');
+	unset($captured['purchase_units'][0]['payments']['captures'][0]['seller_receivable_breakdown']);
+	pg_assert_same(null, payment_paypal_test_complete(array('GET /v2/checkout/orders/5O190127TN364715T' => array(200, $captured)))['fee']);
+}

@@ -400,3 +400,21 @@ function test_shipment_tracking_writes_through_the_write_path()
 		pg_assert_contains($part, $open);
 	}
 }
+
+// A marketplace sold the order: its address is the marketplace's relay for
+// the buyer, who hears about the delivery from the marketplace. The order
+// screen keeps the shop's delivered e-mail and text message back there
+// (update_order.php), and so does an arrival a carrier reports.
+function test_shipment_tracking_keeps_the_customer_notice_back_for_a_marketplace_order()
+{
+	pg_assert_true(pg_shipment_tracking_notify(''), 'a shop order hears of its delivery');
+	pg_assert_true(pg_shipment_tracking_notify('standard'));
+	pg_assert_false(pg_shipment_tracking_notify('marketplace'), 'a marketplace order does not');
+
+	$open = pg_test_function_source('pg_shipment_tracking_open');
+	pg_assert_contains('orders.type AS order_type', $open, 'the run reads the order type with the parcel');
+
+	$apply = pg_test_function_source('pg_shipment_tracking_apply');
+	pg_assert_contains("'notify' => pg_shipment_tracking_notify(", $apply, 'the arrival passes the notice switch');
+	pg_assert_contains("SELECT type FROM orders WHERE id = '", $apply, "a carrier webhook's row is read for its type");
+}

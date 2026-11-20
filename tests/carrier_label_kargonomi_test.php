@@ -200,6 +200,7 @@ function test_carrier_label_kargonomi_create_buys_the_cheapest_and_reads_the_lab
 	pg_assert_same('pdf', $answer['label_format']);
 	pg_assert_same(0, strpos($answer['label'], '%PDF-'));
 	pg_assert_contains('confirmed with the cheapest carrier', implode(' ', $answer['log']));
+	pg_assert_same(array('value' => '24.10', 'currency' => 'TRY'), $answer['price'], 'the cheapest confirmed: the offer of the carrier the shipment names, before VAT');
 }
 
 function test_carrier_label_kargonomi_create_takes_the_asked_carrier_and_reads_places_once()
@@ -227,6 +228,27 @@ function test_carrier_label_kargonomi_create_takes_the_asked_carrier_and_reads_p
 		'POST /shipments', 'GET /shipment-price-comparison/8', 'POST /confirm-shipping-price', 'GET /shipments/8/barcode?format=pdf',
 	), carrier_label_kargonomi_test_sent(), 'the numbers came with the confirmation; places are read once a request');
 	pg_assert_contains('confirmed with surat', implode(' ', $first['log']));
+	pg_assert_same(array('value' => '23.05', 'currency' => 'TRY'), $first['price'], 'the price of the offer confirmed');
+	pg_assert_same(array('value' => '22.90', 'currency' => 'TRY'), $second['price']);
+}
+
+// An offer's price text as a plain decimal; the price of what was confirmed.
+function test_carrier_label_kargonomi_price()
+{
+	pg_assert_same('22.67', pg_label_kargonomi_price_value('22.67 + KDV'));
+	pg_assert_same('1250.50', pg_label_kargonomi_price_value('1.250,50 TL + KDV'));
+	pg_assert_same('1250', pg_label_kargonomi_price_value('1,250'));
+	pg_assert_same('18.5', pg_label_kargonomi_price_value('18,5'));
+	pg_assert_same('', pg_label_kargonomi_price_value('Hizmet Dışı Bölge'));
+	pg_assert_same('', pg_label_kargonomi_price_value(''));
+
+	$offers = json_decode(carrier_label_kargonomi_test_fixture('price_comparison.json'), true);
+
+	pg_assert_same(array('value' => '22.67', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '-1', array()), 'no carrier named: the cheapest');
+	pg_assert_same(array('value' => '22.90', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '-1', array('shipping_provider_slug' => 'ptt')));
+	pg_assert_same(array('value' => '24.10', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '4', array('shipping_provider_slug' => 'ptt')), 'the carrier confirmed wins');
+	pg_assert_same(array(), pg_label_kargonomi_price($offers, '6', array()), 'out of the carrier\'s area: no price');
+	pg_assert_same(array(), pg_label_kargonomi_price(array(), '-1', array()));
 }
 
 function test_carrier_label_kargonomi_refusals_before_a_call()

@@ -5,7 +5,7 @@ description: Plan stock-planning, features P1 to P14: the daily record, sales sp
 
 ## What is recorded every day?
 - (P1) Per tracked product and day, a row only when it sold or its stock was 0 at the night pass: the units sold and that stock. Units come from complete and exported orders of every type (web, marketplace, counter) and ERP sales invoices with `order_id = 0`; a bundle counts as its components; carts and cancelled orders never count; a return is not taken off. Each night recounts the last 14 days' units (a late marketplace order, a later cancel); a past day's stock is never rewritten.
-- (P2) On its first run the pass fills the sold units of the past 365 days, their stock unknown, and keeps the day the record began in a setting. Rows older than 400 days are deleted. With the Accounting module off nothing is written.
+- (P2) On its first run the pass fills the sold units of the past 420 days (the season's two windows of last year), their stock unknown, and keeps the day the record began in a setting. Rows older than 430 days are deleted. With the Accounting module off nothing is written.
 
 ## How is the speed read?
 - (P3) Units a day: the units of the last 56 days on which the product was in stock, divided by those days. After the record began a day with no row was in stock and sold nothing; a day before it counts as in stock. Under 14 such days, or no sale in them: "Not enough history", and the product stays on its minimum stock.

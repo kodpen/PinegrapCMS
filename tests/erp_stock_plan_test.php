@@ -4,7 +4,7 @@
  *
  * The daily stock record (includes/erp/stock_plan.php): which sales count,
  * a bundle as its components, the day by the site's time zone, sparse rows,
- * the 14-day recount that keeps a past day's stock, the 365-day fill run
+ * the 14-day recount that keeps a past day's stock, the 420-day fill run
  * once, and nothing written with the Accounting module off.
  *
  * @author      Erdal Güral (Kodpen)
@@ -197,7 +197,7 @@ function test_erp_stock_plan_recount_window()
 
 function test_erp_stock_plan_fill_once()
 {
-	pg_assert_same(array('from' => '2025-11-18', 'to' => '2026-11-17'), erp_stock_plan_fill_range('2026-11-18'), 'the 365 days before the record began');
+	pg_assert_same(array('from' => '2025-09-24', 'to' => '2026-11-17'), erp_stock_plan_fill_range('2026-11-18'), 'the 420 days before the record began');
 
 	$slice = erp_stock_plan_fill_slice('2026-11-18', '', 30);
 	pg_assert_same(array('from' => '2026-10-19', 'to' => '2026-11-17'), $slice, 'the first slice ends the day before the record');
@@ -205,10 +205,10 @@ function test_erp_stock_plan_fill_once()
 	$next = erp_stock_plan_fill_slice('2026-11-18', $slice['from'], 30);
 	pg_assert_same(array('from' => '2026-09-19', 'to' => '2026-10-18'), $next, 'the next slice carries on backwards');
 
-	$last = erp_stock_plan_fill_slice('2026-11-18', '2025-12-01', 30);
-	pg_assert_same(array('from' => '2025-11-18', 'to' => '2025-11-30'), $last, 'the last slice stops at 365 days');
+	$last = erp_stock_plan_fill_slice('2026-11-18', '2025-10-07', 30);
+	pg_assert_same(array('from' => '2025-09-24', 'to' => '2025-10-06'), $last, 'the last slice stops at 420 days');
 
-	pg_assert_same(null, erp_stock_plan_fill_slice('2026-11-18', '2025-11-18', 30), 'nothing left once the fill reached its start');
+	pg_assert_same(null, erp_stock_plan_fill_slice('2026-11-18', '2025-09-24', 30), 'nothing left once the fill reached its start');
 
 	pg_assert_true(erp_stock_plan_fill_due(array('began' => '2026-11-18', 'filled' => false)), 'due until done');
 	pg_assert_false(erp_stock_plan_fill_due(array('began' => '2026-11-18', 'filled' => true)), 'never again once done');
@@ -221,7 +221,7 @@ function test_erp_stock_plan_day_marks()
 	pg_assert_same('2026-11-20', erp_stock_plan_mark_day(20261120), 'and read back');
 	pg_assert_same('', erp_stock_plan_mark_day(0), 'no mark is no day');
 	pg_assert_same('2026-11-19', erp_stock_plan_shift_day('2026-11-20', -1), 'the day before');
-	pg_assert_same('2025-10-16', erp_stock_plan_shift_day('2026-11-20', -400), 'the pruning edge');
+	pg_assert_same('2025-09-16', erp_stock_plan_shift_day('2026-11-20', -ERP_STOCK_PLAN_KEEP_DAYS), 'the pruning edge: 430 days');
 }
 
 function test_erp_stock_plan_queries()

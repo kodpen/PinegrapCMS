@@ -4,7 +4,7 @@ description: The Prototype view's links panel row dragged onto a frame or chip (
 ---
 
 ## What does a drag of a panel row do?
-- Architect (2026-11-19, agent channel, plans/prototype-next.md): drag a links-panel row onto a frame to set that link's target.
+- Architect (2026-11-19, agent channel, plan prototype-next): drag a links-panel row onto a frame to set that link's target.
 - (PX2 #10505) A row of the links panel (designer/prototype-list.md) whose link may be drawn, under "Outgoing" or "Incoming", pressed and moved past 4 px is carried to the canvas. Let go on a frame or chip that takes the link, the link now goes there: `_sdProtoConnect()`, the same write as an arrow drawn from a mark (designer/prototype-drawing.md), so the tab is opened, the lock answered, one undo step, the shared part and live page warnings (K1 to K4, designer/prototype-view-rules.md).
 - Nothing new is stored and nothing is asked of the server; no second way of writing a target.
 

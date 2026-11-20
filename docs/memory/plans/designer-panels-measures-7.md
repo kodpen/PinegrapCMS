@@ -16,7 +16,7 @@ description: Plan designer-panels, the page strip on a narrow screen as text (`p
 - Step 5: all chips become one chip ("4 grup").
 - Step 6: only the open page's tab stays; a name that does not fit is cut with an ellipsis, the tab at least 60 px wide.
 - Architect (2026-11-17, agent channel message 8798, DP18 #10245): at step 6 the name is cut last. Before it, in this order: the Add page button ("+") leaves the row, the Pages button loses its count (the count in its tip), the draft pill takes its short form (its dashed outline without the word, the word in its tip). The box is its colour line.
-- Until DP20 puts "Sayfa ekle" in the head of the Pages window (D50), it is the first row of the list the Pages button opens and calls the "+" button's action. DP19 keeps the draft's short form and gives the other states theirs the same way; nothing changes above step 6.
+- "Sayfa ekle" (Add Page) stands in the head of the Pages window (D50, DP20 #10607). DP19 keeps the draft's short form and gives the other states theirs the same way; nothing changes above step 6.
 
 ## What never goes?
 - The open page's tab, its state (the changed dot, the draft pill, the lock) and its three-dot menu: at every step.

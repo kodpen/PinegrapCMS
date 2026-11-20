@@ -8,7 +8,7 @@ description: Decisions list, product part 74 (2026-11-17): the owner's looks of 
 
 ## Is the place map block's list form accepted? (owner, 2026-11-17, agent channel poll 139, message 8930)
 - "Evet, böyle çıksın" to one sheet of six pictures (MP3 #10062): the heading, the search box and the place cards (name, address, opening hours, phone link, "Yol Tarifi") on a page; the search by district, postcode or name; "Aramanıza uyan bir yer yok." when nothing matches; one card a row on a phone; the block on the designer's canvas with a sample map picture and sample cards.
-- The cards use the site theme's own card and button styles. The map and "Haritayı göster" are MP4's and come to him apart (`plans/place-map.md`, "Whose look?").
+- The cards use the site theme's own card and button styles. The map and "Haritayı göster" are MP4's and come to him apart (`platform/place-list.md`, `designer/designer-blocks-map.md`).
 
 ## Is the picture drawing queue accepted? (owner, 2026-11-17, agent channel poll 140, message 8977)
 - "Evet, böyle çıksın" to one sheet of six pictures (PT5 #10266): "Bekleyen görselleri çiz" with its count on the Pictures group; the running view (count left, "Durdur", each row's picture, language and state); the stopped view ("Durduruldu: 3 kaldı", "Devam Et"); an "Elle bakılmalı" row with "Tasarım Tuvali'nde düzenle"; the finished view; on a phone the name whole and the pill under it.

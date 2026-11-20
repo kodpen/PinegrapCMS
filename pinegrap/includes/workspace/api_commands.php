@@ -230,6 +230,53 @@ function ws_api_commands_delete($params)
     api_ok(array('name' => '/' . (string) $row['name'], 'deleted' => true));
 }
 
+/**
+ * Answers a command's writer alone (POST /workspace/commands/answer,
+ * app_answers.php).
+ */
+function ws_api_commands_answer($params)
+{
+    ws_api_viewer();
+    $app_id = ws_api_command_app_id();
+    $check = ws_app_answer_check($app_id, $params);
+
+    if (!$check['ok']) {
+        $messages = array(
+            'not_ready'     => lang('Run the software upgrade first.'),
+            'token_invalid' => lang('This answer token is not valid.'),
+            'token_expired' => lang('This answer token has expired.'),
+            'wrong_app'     => lang('This answer token belongs to another application.'),
+            'command_gone'  => lang('This application no longer holds that command.'),
+            'limit_reached' => lang('This command has been answered three times.'),
+            'text_required' => lang('Write the answer.'),
+            'text_too_long' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)),
+            'writer_gone'   => lang('The person who typed the command can no longer read that channel.'),
+        );
+        $error = (string) $check['error'];
+        $field = ($check['field'] !== '') ? $check['field'] : null;
+
+        api_fail((int) $check['status'], ((int) $check['status'] === 503) ? 'service_unavailable' : $error, $messages[$error] ?? $error, $field);
+    }
+
+    $claims = $check['claims'];
+    $out = array(
+        'channel_id'   => (int) $claims['channel_id'],
+        'user_id'      => (int) $claims['user_id'],
+        'command'      => '/' . (string) $claims['command'],
+        'answers_left' => WS_APP_ANSWER_MAX - (int) $check['used'] - 1,
+    );
+
+    api_dry_run_stop('created', 'workspace_app_answer', $out);
+
+    $id = ws_app_answer_write($check);
+
+    if ($id <= 0) {
+        api_fail(500, 'server_error', lang('The answer could not be saved.'));
+    }
+
+    api_ok(array('id' => $id) + $out, 201);
+}
+
 /* ---------------------------------------------------------------------------
    Running a command (POST /workspace/commands/run)
    --------------------------------------------------------------------------- */

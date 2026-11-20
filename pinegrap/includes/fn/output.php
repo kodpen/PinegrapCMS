@@ -8123,12 +8123,16 @@ function pg_js_bundles()
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
+        // The Options panel's search: its pure fold-and-match module
+        // (window.PGOptionsSearch), then the part that lists the results.
+        'assets/js/style_designer_optsearch.min.js' => array('assets/js/pg_options_search.js', 'assets/js/style_designer_optsearch.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
         // Border and corner: their pure class mappings (window.PGSpacingBox,
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8205,6 +8209,9 @@ function pg_designer_parts()
         // The Overview's tree search: the page's elements found by name,
         // text, class and id, listed with their path.
         'treesearch' => 'assets/js/style_designer_treesearch.min.js',
+        // The Options panel's search: a row of any tab found by its label,
+        // section, CSS property or class prefix, listed with its path.
+        'optsearch' => 'assets/js/style_designer_optsearch.min.js',
         // The "Move…" window: an element moved without dragging, its
         // target searched by name, Before, Into or After.
         'move' => 'assets/js/style_designer_move.min.js',
@@ -8214,6 +8221,9 @@ function pg_designer_parts()
         // The spacing box of Style › Spacing and the size chooser in its
         // head, drawn when the section is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The Pages window: every page by group, searched and filtered,
+        // opened, renamed and moved into a group.
+        'pages' => 'assets/js/style_designer_pages.min.js',
     );
 }
 

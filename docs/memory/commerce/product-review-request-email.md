@@ -26,6 +26,7 @@ description: The e-mail asking a buyer for a review (order_review_request; 2026.
 ## What cancels it?
 - `delete_order()` cancels the order's `ready`/`paused` `order_abandoned` and `order_review_request` campaigns.
 - `process_order_cancellation()`, in the request whose write cancelled the order (staff may cancel after shipping), calls `pg_review_request_cancel()`. A restored order gets no new request: the cancelled row ends it.
+- `pg_return_refund()`, once refunded returns gave back every unit of the order (`pg_return_order_fully_refunded()`; owner decision #7202: no purchase is left), calls it too; a partly refunded order keeps its request (#10651).
 
 ## How does Comment Moderation filter reviews?
 - `view_comments.php`: `pg_filter_select('verified')` beside the sort menu: All comments / Verified purchases (`verified_order_id > 0`) / Not verified (`= 0`), `?verified=` '' / yes / no, kept in `$_SESSION['software']['comments']['verified']` (`pg_review_verified_filter_sql()`). Only with the review columns.

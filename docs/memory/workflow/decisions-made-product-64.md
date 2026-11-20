@@ -26,7 +26,7 @@ description: Decisions list, product part 64 (2026-11-16 on): the second study's
 
 ## What does the place map use to find an address, and where is it listed in the notice? (architect, 2026-11-16, agent channel message 6794)
 - "Find from the address" and a visitor's typed address use Photon only: a Google result may not be kept past 30 days or shown on another map, a Mapbox one only on Mapbox tiles. Which Photon, and the button: `decisions-made-product-66.md`.
-- The map is a `marketing` service of the cookie notice, listed only on a page that carries the map with the Maps switch on; no third class. The security headers do not change. Plan: `plans/place-map.md`.
+- The map is a `marketing` service of the cookie notice, listed only on a page that carries the map with the Maps switch on; no third class. The security headers do not change (`designer/designer-blocks-map.md`).
 
 ## Does a back-in-stock notice on the device replace the mail or SMS? (architect, 2026-11-16, agent channel message 6786)
 - No, it goes beside it. The device came with the request by a hidden field, unasked, so it cannot be the visitor's one chosen way; the mail or SMS rule is unchanged. The one-message rule of #1864 was about the paid SMS.

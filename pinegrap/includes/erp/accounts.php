@@ -508,6 +508,13 @@ function erp_account_save($data)
         }
     }
 
+    // Days a supplier takes from order to invoice, typed on the card; 0 is
+    // not typed (11.0.251, the stock plan). Written on every save like the
+    // payment term, so a partial update passes the stored value.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'lead_days')) {
+        $columns['lead_days'] = min(365, max(0, (int) ($data['lead_days'] ?? 0)));
+    }
+
     // The most the account may owe, base-currency kurus, 0 for none (4.98).
     if (array_key_exists('credit_limit', $data)
         && function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'credit_limit')) {

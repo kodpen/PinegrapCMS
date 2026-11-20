@@ -209,6 +209,21 @@ switch (($_SESSION['software']['ecommerce']['view_orders']['type'] ?? '')) {
         break;
 }
 
+// The order's net profit (includes/erp/order_profit_view.php): the column
+// and the "Sold at a loss" filter only with Accounting on and ERP access,
+// as product cost is seen nowhere else. Without it neither is drawn and a
+// filter kept in the session does nothing.
+$order_profit_on = false;
+if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit_view.php');
+    $order_profit_on = erp_order_profit_shown($user);
+}
+
+if ($order_profit_on) {
+    $sql_type .= ' ' . erp_order_profit_filter_sql((string) ($_SESSION['software']['ecommerce']['view_orders']['profit'] ?? ''));
+}
+
 $decrease_year['start_month'] = '01';
 $decrease_year['start_day'] = '01';
 $decrease_year['start_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') - 1;
@@ -2486,6 +2501,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // (includes/fn/order_list.php), one query for the whole page.
     $cart_totals = pg_order_list_cart_totals($order_rows);
 
+    // The page's profit rows, one read for the whole list.
+    $order_profits = $order_profit_on ? erp_order_profit_for_orders(array_column($order_rows, 'id')) : array();
+
     // Every order of the filter is printed: the list table driver sorts and
     // searches them in the browser (browser mode).
     $list_rows = array();
@@ -2632,11 +2650,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 'actions' => pg_list_cell($output_cancel_button . $output_shipping_tracking_cell, 'align-middle text-nowrap'),
             ),
         );
+
+        if ($order_profit_on) {
+            $list_rows[count($list_rows) - 1]['cells']['profit'] = pg_list_cell(erp_order_profit_list_cell($order_profits[(int) $id] ?? null), 'align-middle', array('data-pg-sort-value' => isset($order_profits[(int) $id]) ? (string) (int) $order_profits[(int) $id]['net'] : ''));
+        }
     }
 
     $list = pg_list_table_printed(array(
         'list' => 'view_orders',
-        'columns' => pg_commerce_list_specs(pg_order_list_columns(AFFILIATE_PROGRAM == true, MEMBER_ID_LABEL), $sort_columns, $quick_edit),
+        'columns' => pg_commerce_list_specs(pg_order_list_columns(AFFILIATE_PROGRAM == true, MEMBER_ID_LABEL, $order_profit_on), $sort_columns, $quick_edit),
         'levels' => $sort_levels,
         'rows' => $list_rows,
         'edit' => array('url' => 'view_orders.php', 'columns' => $quick_edit),
@@ -3294,6 +3316,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
+                    ' . ($order_profit_on ? pg_filter_select('profit', array('' => lang('Any profit'), 'loss' => lang('Sold at a loss')), (string) ($_SESSION['software']['ecommerce']['view_orders']['profit'] ?? ''), array('label' => lang('Profit'), 'action' => 'view_orders.php', 'id' => 'profit')) : '') . '
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>

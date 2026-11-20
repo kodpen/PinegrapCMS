@@ -818,7 +818,51 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
         'card_last4'     => (string) $paid->getLastFourDigits(),
         'card_ref'       => pg_payment_iyzico_card_ref($paid->getCardUserKey(), $paid->getCardToken()),
         'log'            => $log,
-    );
+    ) + pg_payment_iyzico_fee($paid, $currency, $settings['currency'], $total, $charged_total);
+}
+
+/**
+ * What iyzico kept of a payment, from its answer (direct, 3-D Secure, Pay
+ * With Iyzico): the commission at the merchant's rate
+ * (iyziCommissionRateAmount) plus the fixed fee per transaction
+ * (iyziCommissionFee), in the currency the payment was taken in. The
+ * instalment charge the buyer paid (merchantCommissionRateAmount) is the
+ * store's revenue, not a fee.
+ *
+ * @param \Iyzipay\Model\PaymentResource $paid
+ * @param string $currency       the currency the request was sent in
+ * @param string $order_currency the store's currency
+ * @param int    $order_amount   hundredths of the store's currency the payment was for
+ * @param int    $paid_amount    hundredths iyzico took, in $currency
+ * @return array pg_payment_fee(); empty when iyzico named no fee
+ */
+function pg_payment_iyzico_fee($paid, $currency, $order_currency, $order_amount, $paid_amount)
+{
+    $parts = array($paid->getIyziCommissionRateAmount(), $paid->getIyziCommissionFee());
+
+    if (($parts[0] === null) && ($parts[1] === null)) {
+        return array();
+    }
+
+    $fee = 0;
+
+    foreach ($parts as $part) {
+        if ($part === null) {
+            continue;
+        }
+
+        $hundredths = pg_payment_hundredths(is_scalar($part) ? $part : null);
+
+        if (($hundredths === null) || ($hundredths < 0)) {
+            return array();
+        }
+
+        $fee += $hundredths;
+    }
+
+    $answered = trim((string) $paid->getCurrency());
+
+    return pg_payment_fee($fee, ($answered !== '') ? $answered : $currency, $order_currency, (int) $order_amount, (int) $paid_amount);
 }
 
 /**
@@ -1077,7 +1121,7 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
         'card_last4'     => (string) $paid->getLastFourDigits(),
         'card_ref'       => pg_payment_iyzico_card_ref($paid->getCardUserKey(), $paid->getCardToken()),
         'log'            => $log,
-    );
+    ) + pg_payment_iyzico_fee($paid, ($settings['protected_currency'] !== '') ? $settings['protected_currency'] : $settings['currency'], $settings['currency'], $expected_paid, $paid_cents);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1264,7 +1308,7 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
         'amount'         => (($installment > 1) && ($paid_cents > $base_total)) ? $paid_cents : $base_total,
         'installments'   => ($installment > 1) ? $installment : 1,
         'log'            => $log,
-    );
+    ) + pg_payment_iyzico_fee($retrieved, $settings['currency'], $settings['currency'], $paid_cents, $paid_cents);
 }
 
 /* ---------------------------------------------------------------------------

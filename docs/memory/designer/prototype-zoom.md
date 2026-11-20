@@ -4,7 +4,7 @@ description: The Prototype view's zoom to a frame (PX1, #10476): a double-click 
 ---
 
 ## What does a double-click on a frame do?
-- Architect (2026-11-19, agent channel, plans/prototype-next.md): zoom to a frame on double-click in the Prototype view; Esc or "All" goes back.
+- Architect (2026-11-19, agent channel, plan prototype-next): zoom to a frame on double-click in the Prototype view; Esc or "All" goes back.
 - (PX1 #10476) The view shows that frame whole in the middle of the canvas, 48 px clear of its edges, at most 200%: the graph canvas core's `view.zoomTo(item)` (ui/graph-canvas-core-sizes-ports.md). A page frame or a shared part's frame; never a chip.
 - The canvas captures the pointer, so a frame gets no `dblclick`: as on the Flows canvas, two taps on one frame, the second within 450 ms (`PGProtoHotspots.ZOOM_TAP`), are the double-click. The adapter's `release` hands every release to `_sdProtoTap()`: a frame pressed and let go without a move is a tap, anything else (a link mark, its "+" handle, an arrow, the empty canvas, a drag) breaks the pair; `PGProtoHotspots.zoomTap()` decides.
 - A mark's first click picks its link and may move the view to the link's other end, so a double-click on a mark only picks it. The foot button ("Show the whole page") keeps its clicks.

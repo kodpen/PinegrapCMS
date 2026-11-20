@@ -553,14 +553,21 @@ function api_customer_value_present($summary, $pass, $names_shown, $names) {
 
 	}
 
+	// A cohort answers only the months after it that have begun by the
+	// summary's month, as the screen leaves the others blank: a month not
+	// begun yet has no figure, not a zero.
 	$cohorts = array();
 
+	$last = pg_customer_value_month((int)$summary['at']);
+
 	foreach ((array)$summary['cohorts'] as $key => $row) {
+
+		$first = ((int)substr((string)$key, 0, 4) * 12) + (int)substr((string)$key, 5, 2) - 1;
 
 		$cohorts[] = array(
 			'month'         => (string)$key,
 			'customers'     => (int)$row[0],
-			'ordered_again' => array_map('intval', array_slice(array_values((array)$row), 1, 12))
+			'ordered_again' => array_map('intval', array_slice(array_values((array)$row), 1, max(0, min(12, $last - $first))))
 		);
 
 	}

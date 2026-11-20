@@ -251,6 +251,7 @@ function pg_sw_list_order_sources()
                 array('__return_item_name', lang('Product name')),
                 array('__return_item_ordered', lang('Ordered')),
                 array('__return_item_left', lang('How many may go back')),
+                array('__return_item_gift_card', lang('Gift card (1 or empty)')),
                 array('__return_item_qty_label', lang('Label of the quantity box')),
             ),
         ),
@@ -896,7 +897,8 @@ function pg_sw_list_order_item_parts_rows(&$items, $fields, $data, $gift_cards, 
 // The rows of the return form lists: array('order.return_deliveries' =>
 // array(0 => rows), 'order.return_delivery_lines' => array(delivery id =>
 // rows)). $deliveries: pg_return_customer_view()'s deliveries (ship_to_id,
-// label, deadline, lines: id, name, quantity, returnable); a delivery with
+// label, deadline, lines: id, name, quantity, returnable, gift_card); a
+// gift card line is marked, as it is never returnable; a delivery with
 // nothing left to give back gets no form, as pg_return_form_html() skips
 // it. Raw words: the pass escapes them once, the reasons are markup.
 function pg_sw_list_order_return_form_rows($deliveries)
@@ -921,6 +923,7 @@ function pg_sw_list_order_return_form_rows($deliveries)
                 '__return_item_name'      => (string)$line['name'],
                 '__return_item_ordered'   => (string)(int)$line['quantity'],
                 '__return_item_left'      => (string)$left,
+                '__return_item_gift_card' => !empty($line['gift_card']) ? '1' : '',
                 '__return_item_qty_label' => lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string)$line['name']))),
             );
         }

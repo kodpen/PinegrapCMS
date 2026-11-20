@@ -48,6 +48,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock_plan.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_reports.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_purchase_orders.php');
@@ -191,6 +192,7 @@ function erp_openapi_objects()
         'ErpStockMove' => 'erp_api_stock_move_schema',
         'ErpStockCount' => 'erp_api_stock_count_schema',
         'ErpStockCountItem' => 'erp_api_stock_count_item_schema',
+        'ErpStockPlanRow' => 'erp_api_stock_plan_schema',
         'ErpAgingReport' => 'erp_api_aging_report_schema',
         'ErpVatReport' => 'erp_api_vat_report_schema',
         'ErpCashTransfer' => 'erp_api_cash_transfer_schema',
@@ -1570,6 +1572,22 @@ function erp_api_routes()
             'params' => array_merge(array(
                 array('name' => 'low', 'in' => 'query', 'type' => 'bool', 'description' => 'Only products at or below their minimum.'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the product code or its name.'),
+            ), $paging),
+        ),
+
+        array(
+            'id' => 'erp.stock_plan.list',
+            'method' => 'GET',
+            'path' => '/erp/stock-plan',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_stock_plan_list',
+            'returns' => array('list' => 'ErpStockPlanRow'),
+            'summary' => 'Stock plan: when each product runs out and what to order',
+            'description' => 'The plan the ERP works out every night for each product that tracks stock (not bundles): units_per_day is what it sold a day over its last 56 days in stock, season last year\'s change for the coming weeks (1 when too little was sold), supplier the account of its latest purchase invoice or order, lead_days the days that supplier takes (lead_source measured from its last orders, typed on its account card, or none). days_left, runout_date and order_by_date (the run-out day less the lead time and the safety days) are counted from the night\'s stock; quantity is what to order to cover the lead time, the safety and cover days, less the stock and what open purchase orders still bring. state is runs_out (it runs out before goods can come), order_now, soon (order by within 14 days), fine, or no_history (too little sold to plan; the minimum stock applies). dead is true when it is in stock and has not sold for the dead-stock days; dead_value is that stock at average cost in kurus, null when no cost is known. Read only: nothing is ordered from here. Cursor paged by product id.',
+            'params' => array_merge(array(
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('runs_out', 'order_now', 'soon', 'fine', 'no_history')),
+                array('name' => 'supplier_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the products this account supplies.'),
+                array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
             ), $paging),
         ),
 

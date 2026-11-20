@@ -1406,3 +1406,57 @@ function test_payment_iyzico_subscription_cancel_deletes_the_stored_card()
 	pg_assert_false($refused['success']);
 	pg_assert_same('Kart bulunamadı', $refused['error']);
 }
+
+/* ---------------------------------------------------------------------------
+   The fee iyzico kept
+   --------------------------------------------------------------------------- */
+
+// iyzico's commission at the merchant's rate plus its fixed fee; the
+// instalment charge the buyer paid (merchantCommissionRateAmount) is not one.
+function test_payment_iyzico_fee_from_the_payment_answer()
+{
+	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array(
+		'paymentId' => '24680', 'fraudStatus' => 1, 'paidPrice' => 107.14, 'currency' => 'TRY',
+		'iyziCommissionRateAmount' => 2.67, 'iyziCommissionFee' => 0.25, 'merchantCommissionRateAmount' => 0))));
+
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
+
+	pg_assert_true($answer['success']);
+	pg_assert_same(292, $answer['fee']);
+	pg_assert_same('', $answer['fee_currency']);
+	pg_assert_same(0.0, $answer['fee_rate']);
+
+	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '1', 'fraudStatus' => 1))));
+	pg_assert_same(null, payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment())['fee'], 'no fee named');
+
+	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '1', 'fraudStatus' => 1, 'iyziCommissionRateAmount' => 'n/a'))));
+	pg_assert_same(null, payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment())['fee'], 'a fee that is not a number');
+}
+
+// In the protected currency the fee is in that currency, with the rate the
+// payment was converted at: 107.14 was sent as 3.18.
+function test_payment_iyzico_fee_in_the_protected_currency()
+{
+	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array(
+		'paymentId' => '1', 'fraudStatus' => 1, 'paidPrice' => 3.18, 'currency' => 'USD',
+		'iyziCommissionRateAmount' => 0.08, 'iyziCommissionFee' => 0.01))));
+
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(array('protected_currency' => 'USD', 'protected_rate' => 0.0297)), payment_iyzico_test_payment());
+
+	pg_assert_same(9, $answer['fee']);
+	pg_assert_same('USD', $answer['fee_currency']);
+	pg_assert_same(10714 / 318, $answer['fee_rate']);
+}
+
+function test_payment_iyzico_pay_with_iyzico_fee()
+{
+	payment_iyzico_test_http(array('/payment/iyzipos/checkoutform/auth/ecom/detail' => payment_iyzico_test_success(array(
+		'paymentId' => '9001', 'installment' => 1, 'paidPrice' => 107.14, 'currency' => 'TRY',
+		'iyziCommissionRateAmount' => 3.1, 'iyziCommissionFee' => 0.25))));
+
+	$answer = pg_payment_answer('complete', pg_payment_pay_with_iyzico_complete_with(payment_iyzico_test_order(), 10714, array('token' => 'tok-1'), payment_iyzico_test_pwi_state(), payment_iyzico_test_settings()));
+
+	pg_assert_true($answer['success']);
+	pg_assert_same(335, $answer['fee']);
+	pg_assert_same('', $answer['fee_currency']);
+}
