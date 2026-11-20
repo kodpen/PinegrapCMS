@@ -206,3 +206,34 @@ function test_api_app_template_posted()
 	pg_assert_same('', api_app_template_posted(array('own'), $cards));
 	pg_assert_same('', api_app_template_posted('', $cards));
 }
+
+// The sheet draws the step line and one choice card per starting point, the
+// first one picked, with look A's buttons only.
+function test_api_app_new_view_draws_the_cards()
+{
+	if (!function_exists('h')) {
+		function h($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
+	}
+
+	if (!function_exists('get_token_field')) {
+		function get_token_field() { return '<input type="hidden" name="token" value="t">'; }
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/app_new_view.php');
+
+	$cards = api_app_templates_test_cards(array('id' => 7, 'name' => 'Assistants'));
+	$html = api_app_new_view($cards, '<div class="api-perm"></div>', 'note');
+
+	pg_assert_same(3, substr_count($html, 'class="stepper-item'), 'three steps');
+	pg_assert_contains('aria-current="step">What connects</li>', $html, 'step 1 is current');
+
+	foreach ($cards as $id => $card) {
+		pg_assert_contains('name="start" value="' . $id . '" id="n_start_' . $id . '"', $html, $id . ': its card');
+	}
+
+	pg_assert_same(1, substr_count($html, ' checked>'), 'one card picked');
+	pg_assert_contains('id="n_start_signin" data-kind="oauth" data-existing="7"', $html, 'the sign-in card opens the application there is');
+	pg_assert_contains('Set up already', $html);
+	pg_assert_false(strpos($html, 'btn btn-') !== false, 'no old button');
+	pg_assert_contains('<details class="api-new-advanced"', $html, 'Advanced starts closed');
+}

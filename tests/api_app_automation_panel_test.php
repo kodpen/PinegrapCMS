@@ -270,7 +270,9 @@ function test_api_app_locked_row_shows_no_form_and_no_sample()
 // No text of the screen names an automation platform before its app is out.
 function test_api_app_automation_texts_name_no_platform()
 {
-	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_templates.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_new_view.php');
 
 	foreach (array('Zapier', 'n8n', 'Pabbly', 'Make.com') as $name) {
 		pg_assert_false(stripos($panel, $name) !== false, $name . ' is not named');

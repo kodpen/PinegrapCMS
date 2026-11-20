@@ -2328,6 +2328,7 @@
     "Claude's key needs writing in the Workspace and the Tasks, which your account cannot hand on.": "Claude'un anahtarı Çalışma Alanı'na ve Görevler'e yazabilmeli; hesabınız bu izni devredemiyor.",
     "Claude's routine in the Workspace is told there is work: it fetches the texts through the API with their context, the glossary and the style note, and posts the translations back. The run shares the routine's daily allowance; this screen follows its progress.": "Workspace'teki Claude rutinine iş olduğu bildirilir: metinleri bağlamı, sözlük ve üslup notuyla API üzerinden alır, çevirileri geri gönderir. Çalışma rutinin günlük hakkını paylaşır; bu ekran ilerlemeyi izler.",
     "Claude's routine, its address and token, is set on the Claude card.": "Claude rutininin adresi ve jetonu Claude kartında ayarlanır.",
+    "Claude, ChatGPT or another MCP client. A person signs in on this site and agrees to what it may do; there is no secret.": "Claude, ChatGPT ya da başka bir MCP istemcisi. Kişi bu sitede oturum açar ve neler yapabileceğini onaylar; gizli anahtar yoktur.",
     "Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.": "Claude, ajanlar, Pinegrap AI, MCP sunucuları ve toplu değişiklikler.",
     "Claude, the agents, Pinegrap AI, voice transcripts, the MCP servers and bulk changes.": "Claude, ajanlar, Pinegrap AI, sesli mesaj dökümleri, MCP sunucuları ve toplu değişiklikler.",
     "Clay": "Kil",

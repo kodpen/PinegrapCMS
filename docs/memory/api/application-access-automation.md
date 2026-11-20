@@ -4,9 +4,9 @@ description: Application Access for automation platforms: the "Automation platfo
 ---
 
 ## What does the "Automation platform" starting point do?
-- New application › "Starting point", shown only for "An integration": "I will choose the permissions" (nothing ticked, as before) or "Automation platform", which ticks the rows of `api_app_start_choices(pg_automation_contract_scopes(), api_scope_groups())` (`includes/api/app_access.php`) and names them in one line.
+- New application's first step, the "Automation platform" card (`api_app_templates()`, `application-access-new-sheet.md`): it ticks the rows of `api_app_start_choices(pg_automation_contract_scopes(), api_scope_groups())` (`includes/api/app_access.php`), and step 2 names them in one line.
 - A row offering both levels of a contract scope takes write; a scope no row offers (a module that is off) is left out. Tested: never a scope holding a `moves_money` route.
-- Nothing about the choice is stored: the application is an integration like any other. The posted `start` only adds the note to the one secret sheet that follows (`api_new_credentials['automation']`).
+- Nothing about the choice is stored: the application is an integration like any other. The posted `start`, checked against the cards, sets the kind and adds the note to the one secret sheet that follows (`api_new_credentials['automation']`).
 
 ## What does the secret sheet show?
 - Every integration's sheet (made or rotated): 1 Site address (the API found from it through `/.well-known/pinegrap.json`), 2 Key, 3 Secret, each with Copy; the note "An automation platform asks for these three values…" only after the automation starting point.

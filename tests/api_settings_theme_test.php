@@ -19,7 +19,8 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function api_settings_theme_source()
 {
-	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/api_settings.php');
+	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/api_settings.php')
+		. (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
 }
 
 function api_settings_theme_style()
@@ -90,7 +91,7 @@ function test_api_settings_theme_dialogs_named()
 	pg_assert_contains('id="api_drawer" aria-labelledby="d_title"', $source);
 	pg_assert_contains('id="d_title"', $source);
 	pg_assert_contains('id="api_new" aria-labelledby="api_new_title"', $source);
-	pg_assert_contains('<h5 class="dialog-title" id="api_new_title">', $source);
+	pg_assert_contains('<h5 class="drawer-title mb-0" id="api_new_title">', $source);
 
 	foreach (array('api_sheet_oauth', 'api_sheet_device', 'api_sheet_secret') as $id) {
 		pg_assert_contains('id="' . $id . '" aria-labelledby="' . $id . '_title" open>', $source);
