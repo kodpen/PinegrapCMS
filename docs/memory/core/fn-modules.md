@@ -251,7 +251,7 @@ description: Generated from the module field of the memory files: each includes/
 - `quiet_hours`: [[api-workspace-quiet-hours]], [[quiet-hours]]
 - `ready_reports`: [[order-report-ready-reports]], [[order-report-ready-strip]], [[visitor-report-ready-reports]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
-- `referral`: [[referral-busy-retry]], [[referral-checks]], [[referral-rules]], [[referral-settings-card]]
+- `referral`: [[referral-busy-retry]], [[referral-checks]], [[referral-programme]], [[referral-rules]], [[referral-settings-card]]
 - `referral_report`: [[referral-report-and-event]]
 - `referral_source_list_edit`: [[list-table-quick-edit-referral-sources]]
 - `region_list`: [[list-table-region-lists]]
