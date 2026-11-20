@@ -1664,6 +1664,7 @@ function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
             'failed' => lang('Sorry, we could not accept your request.'),
             'network' => lang('Network error.'),
             'close' => lang('Close'),
+            'held' => lang('Send or close this comment first.'),
         ),
     );
 }
