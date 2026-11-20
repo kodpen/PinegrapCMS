@@ -10,7 +10,7 @@ description: The designer's Prototype view (_sdProtoOpen()): what it is, its con
 
 ## Where are its controls?
 - In the canvas bar's Prototype mode (#10507, designer/designer-canvas-bar-prototype.md). "N broken" and "N to check" open the problems list (designer/prototype-list.md, designer/prototype-problems.md).
-- "All arrows" (designer/prototype-focus.md), "Tidy up" (designer/prototype-arrangement.md), "Suggest targets · n" (designer/prototype-suggest.md), "Play" (the prototype viewer at the selected page, hidden when no tab has an address).
+- "All arrows" (designer/prototype-focus.md), "Tidy up" (designer/prototype-arrangement.md), "Suggest targets · n" (designer/prototype-suggest.md), "Play" (designer/prototype-viewer-missed-click.md).
 
 ## How is a drawing built?
 - `_sdProtoLoad()`: `PGProtoHotspots.design()` over `_pages` and `_sharedCache`, `prefetchShared()`, `_pgApiPost('prototype_map', request)` (designer/prototype-map-read.md), `mark()`, `layout()` (designer/prototype-hotspots.md). A later load or a close drops an earlier answer (`_sdProto.seq`).
