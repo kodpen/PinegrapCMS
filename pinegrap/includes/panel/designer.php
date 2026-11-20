@@ -201,6 +201,14 @@ function pg_panel_designer($request, $action)
 
     $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
 
+    // Content changes that wait for approval, as the page's tab shows them
+    // (includes/fn/content_proposals.php): every role that opens the editor,
+    // each reading or changing only what is their own.
+    if (in_array($sub, array('content_change_state', 'content_change_withdraw', 'content_change_seen'), true)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+        respond(pg_content_proposals_studio($sub, $request, $user));
+    }
+
     // A content-level operator (manager, user) gets the endpoints the
     // editor needs to READ a page and to work inside it. Everything that
     // shapes the design — adding, detaching or deleting pages, saving a

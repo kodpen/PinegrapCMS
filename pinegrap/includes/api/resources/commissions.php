@@ -138,6 +138,9 @@ function api_commission_present($row, $affiliates = array()) {
 		'status'               => (string)$row['status'],
 		'amount'               => api_money($row['amount']),
 		'affiliate_code'       => (string)$row['affiliate_code'],
+		// affiliate, or referral: a customer's reward for a friend's order,
+		// given as store credit and set by the order, never by hand.
+		'kind'                 => pg_referral_commission_kind($row['affiliate_code']),
 		'affiliate_name'       => (($affiliate !== null) && ((string)$affiliate['affiliate_name'] !== '')) ? (string)$affiliate['affiliate_name'] : null,
 		// The affiliate's contact, for GET /customers/{id}.
 		'affiliate_contact_id' => ($affiliate !== null) ? (int)$affiliate['id'] : null,
@@ -168,6 +171,7 @@ function api_commission_schema() {
 		'status'               => 'string',
 		'amount'               => 'integer',
 		'affiliate_code'       => 'string',
+		'kind'                 => 'string',
 		'affiliate_name'       => 'string?',
 		'affiliate_contact_id' => 'integer?',
 		'order_id'             => 'integer?',
@@ -329,6 +333,12 @@ function api_commissions_update($params) {
 	if ($row === null) {
 
 		api_fail_not_found(lang('Commission'));
+
+	}
+
+	if (pg_referral_commission_kind($row['affiliate_code']) === 'referral') {
+
+		api_fail_validation(lang('This is a referral\'s reward: its order sets the status, so it cannot be changed here.'), 'status');
 
 	}
 

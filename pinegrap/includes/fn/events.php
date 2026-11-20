@@ -326,6 +326,7 @@ function pg_event_workspace_events()
         'calendar_event.reserved',
         'credit.issued',
         'credit.expired',
+        'referral.rewarded',
         'course.completed',
         'erp.invoice.created',
         'erp.invoice.paid',

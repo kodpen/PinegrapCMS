@@ -7,6 +7,7 @@ module: content_proposals
 ## When is a waiting change asked in the Workspace?
 - (PA5, #9968) When a change starts waiting or is replaced (`pg_content_proposals_hold()` → `pg_content_proposals_ask()`), with the Workspace on (`pg_content_proposals_workspace()`: `WORKSPACE_ENABLED`, `ws_enabled()`, `ws_approvals_ready()`) and a channel named on the card ("Content Approval", `pg_content_proposals_settings()['channel_id']`).
 - Asked nowhere (`pg_content_proposals_ask_where()`) when the channel is gone, archived or not public/private, the editor may not post there, or no designer can be asked; the bell lines (`content-proposals-bell.md`) still go.
+- Architect (2026-11-16): a channel on the card that is archived, deleted or no longer a channel is asked nowhere; the change waits as any other.
 - Opened with `ws_approval_create()` as the editor, rule "any", title "Content change: <page>", text tagging `<#page:ID>` (so `record_type` is `page`). `channel_id` / `message_id` of the `design_proposals` row keep the link (0 when asked nowhere); no column was added (architect, message 5857).
 
 ## Who is asked?

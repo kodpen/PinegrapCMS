@@ -4915,6 +4915,143 @@ function pg_indexnow_ping_failure($answer)
 }
 
 /**
+ * Whether a text is an IndexNow key: IndexNow's own format, 8 to 128
+ * letters, digits and dashes. The key becomes a file name under the public
+ * files directory (<key>.txt), so nothing else may reach the file system.
+ *
+ * @param string $key
+ * @return bool
+ */
+function pg_indexnow_key_valid($key)
+{
+    return is_string($key) && (preg_match('/^[A-Za-z0-9-]{8,128}$/', $key) === 1);
+}
+
+/**
+ * A new random IndexNow key: 32 hexadecimal characters.
+ *
+ * @return string
+ */
+function pg_indexnow_key_new()
+{
+    return bin2hex(random_bytes(16));
+}
+
+/**
+ * Whether the key's verification file is in the public files and holds
+ * the key, as IndexNow's search engines read it.
+ *
+ * @param string $key
+ * @return bool
+ */
+function pg_indexnow_key_file_ok($key)
+{
+    $key = trim((string) $key);
+
+    if (!pg_indexnow_key_valid($key)) {
+        return false;
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $key . '.txt';
+
+    return is_file($path) && (trim((string) @file_get_contents($path)) === $key);
+}
+
+/**
+ * Stores the IndexNow key (config.indexnow_key) and keeps its verification
+ * file <key>.txt in the public files in step: the old key's file and its
+ * Files row are removed when the key changes, the new one is written and
+ * listed. An empty key removes the connection. A stored key that does not
+ * fit the format is left alone rather than used as a path.
+ *
+ * @param string $new_key trimmed key, '' to remove it
+ * @return bool false when the key does not fit the format (nothing written)
+ */
+function pg_indexnow_key_save($new_key)
+{
+    $new_key = trim((string) $new_key);
+
+    if (($new_key !== '') && !pg_indexnow_key_valid($new_key)) {
+        return false;
+    }
+
+    // Trimmed like the new key: a key once stored with spaces around it is
+    // then recognised, and its file removed, when the key changes.
+    $current_key = db("SELECT indexnow_key FROM config");
+    $current_key = ($current_key !== null) ? trim((string) $current_key) : '';
+
+    if (($current_key !== '') && ($current_key !== $new_key) && pg_indexnow_key_valid($current_key)) {
+        $old_file_name = $current_key . '.txt';
+        $old_file_path = FILE_DIRECTORY_PATH . '/' . $old_file_name;
+
+        if (file_exists($old_file_path)) {
+            @unlink($old_file_path);
+        }
+
+        db("DELETE FROM files WHERE name = '" . escape($old_file_name) . "'");
+    }
+
+    if ($new_key !== '') {
+        $new_file_name = $new_key . '.txt';
+        $new_file_path = FILE_DIRECTORY_PATH . '/' . $new_file_name;
+
+        $handle = @fopen($new_file_path, 'w');
+        if ($handle) {
+            fwrite($handle, $new_key);
+            fclose($handle);
+        }
+
+        $target = array(
+            'folder'      => (int) getPublicRootFolderId(),
+            'description' => 'IndexNow verification key',
+            'type'        => 'txt',
+            'size'        => file_exists($new_file_path) ? (int) filesize($new_file_path) : 0,
+            'design'      => 1,
+            'user'        => (int) USER_ID,
+        );
+
+        $existing = db_item("SELECT name, folder, description, type, size, design, user
+            FROM files WHERE name = '" . escape($new_file_name) . "' LIMIT 1");
+
+        if (is_array($existing) && isset($existing['name'])) {
+            // Updated only when a value differs.
+            if (((int) $existing['folder'] !== $target['folder'])
+                || ((string) $existing['description'] !== $target['description'])
+                || ((string) $existing['type'] !== $target['type'])
+                || ((int) $existing['size'] !== $target['size'])
+                || ((int) $existing['design'] !== $target['design'])
+                || ((int) $existing['user'] !== $target['user'])) {
+                db("UPDATE files SET
+                        folder = '" . $target['folder'] . "',
+                        description = '" . escape($target['description']) . "',
+                        type = '" . escape($target['type']) . "',
+                        size = '" . $target['size'] . "',
+                        design = '" . $target['design'] . "',
+                        user = '" . $target['user'] . "',
+                        timestamp = UNIX_TIMESTAMP()
+                    WHERE name = '" . escape($new_file_name) . "'");
+            }
+        } else {
+            db("INSERT INTO files (name, folder, description, type, size, design, user, timestamp)
+                VALUES ('" . escape($new_file_name) . "', '" . $target['folder'] . "', '" . escape($target['description']) . "',
+                    '" . escape($target['type']) . "', '" . $target['size'] . "', '" . $target['design'] . "', '" . $target['user'] . "', UNIX_TIMESTAMP())");
+        }
+
+        log_activity(
+            lang(array('string' => 'IndexNow file ({var:1}) was synchronized', 'vars' => $new_file_name)),
+            $_SESSION['sessionusername']
+        );
+    }
+
+    db("UPDATE config SET
+            indexnow_key = '" . escape($new_key) . "',
+            last_modified_user_id = '" . USER_ID . "',
+            last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    return true;
+}
+
+/**
  * Checks if the sitemap content has changed and securely pings IndexNow if necessary.
  * This unifies the sitemap check logic safely on the backend.
  *

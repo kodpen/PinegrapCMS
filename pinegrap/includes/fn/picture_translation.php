@@ -266,11 +266,14 @@ function pg_picture_tr_uses_write($file_id, $words)
 
 /**
  * A file deleted for good, binned or flattened: its uses, its rows and the
- * languages' pictures go. Strings and translations stay, as for a page.
+ * languages' pictures go. Strings and translations stay, as for a page. A
+ * binned file keeps its uses: restored, its next visit in a language writes
+ * a waiting row again, which the page pass asks only of a file with texts.
  *
- * @param int $file_id
+ * @param int  $file_id
+ * @param bool $keep_texts true to keep the file's uses (a binned file)
  */
-function pg_picture_tr_forget($file_id)
+function pg_picture_tr_forget($file_id, $keep_texts = false)
 {
     $file_id = (int) $file_id;
 
@@ -278,7 +281,7 @@ function pg_picture_tr_forget($file_id)
         return;
     }
 
-    if (pg_picture_tr_store_ready()) {
+    if (!$keep_texts && pg_picture_tr_store_ready()) {
         db("DELETE FROM translation_uses WHERE owner_type = 'file' AND owner_id = '$file_id'");
     }
 
@@ -362,8 +365,38 @@ function pg_picture_tr_translations_removed($language)
 }
 
 /**
+ * Whether a file holds its newest version's pixels and that version holds a
+ * document, with what it needs handed in. Bytes on this disk are compared
+ * with the version. A file whose bytes are only in the object store is not
+ * fetched by a pass over many files: the size of the version reads as held,
+ * since a door that changes the bytes (rotate, optimize, an upload over it)
+ * writes them to the disk first. Pure.
+ *
+ * @param array|null $newest  the newest file_versions row (size, doc_json)
+ * @param string     $path    the file's bytes on this disk, '' when none
+ * @param int|null   $stored  the files row's size when its bytes are only in
+ *                            the object store, else null
+ * @param callable   $matches (row, path) => whether the bytes are the version's
+ * @return bool
+ */
+function pg_picture_tr_holds_version($newest, $path, $stored, $matches)
+{
+    if (!is_array($newest) || (pg_picture_tr_row_doc($newest) === null)) {
+        return false;
+    }
+
+    if ((string) $path !== '') {
+        return (bool) call_user_func($matches, $newest, (string) $path);
+    }
+
+    return ($stored !== null) && isset($newest['size']) && ((int) $stored === (int) $newest['size']);
+}
+
+/**
  * Whether a file's newest version holds a document and the file still holds
  * that version's pixels (not rotated, optimized or uploaded over since).
+ * Nothing is fetched from the object store: the daily prune asks it of every
+ * translated picture.
  *
  * @param int    $file_id
  * @param string $name the file's stored name
@@ -372,21 +405,37 @@ function pg_picture_tr_translations_removed($language)
 function pg_picture_tr_live($file_id, $name)
 {
     $newest = pg_file_versions_ready() ? pg_file_versions_newest($file_id) : null;
+    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $name);
+    $stored = null;
 
-    return $newest && (pg_picture_tr_row_doc($newest) !== null)
-        && pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename((string) $name));
+    // Moved to the object store, the file is no longer on this disk: its
+    // cached copy, else its size.
+    if ($newest && !is_file($path)) {
+        $row = db_item("SELECT id, name, type, size" . (pg_file_storage_ready() ? ', storage, storage_key' : '') . " FROM files WHERE id = '" . (int) $file_id . "' LIMIT 1");
+        $path = is_array($row) ? pg_file_present_path($row) : '';
+        $stored = (($path === '') && is_array($row) && (pg_file_storage($row) === 's3')) ? (int) $row['size'] : null;
+    }
+
+    return pg_picture_tr_holds_version($newest, $path, $stored, 'pg_file_versions_matches_file');
 }
 
 /**
  * Drops the texts and rows of every picture that was deleted, binned or
  * changed outside the editor, within a time budget. The daily sweep calls
- * it; a picture not reached is looked at on the next run.
+ * it; each run goes on after the picture the last one stopped at, so every
+ * picture is looked at in turn however many there are.
  *
  * @param float $deadline microtime(true) to stop after
  * @return int pictures dropped
  */
 function pg_picture_tr_prune($deadline)
 {
+    // What a door that does not call the module left, first: a picture
+    // still in the folder its source moved out of, a row whose picture is
+    // gone. Two queries, so a budget spent on the pictures never skips them.
+    pg_picture_tr_follow(null);
+    $lost = pg_picture_tr_lost();
+
     $ids = array();
 
     if (pg_picture_tr_store_ready()) {
@@ -397,18 +446,26 @@ function pg_picture_tr_prune($deadline)
         }
     }
 
+    $rowed = array();
+
     if (pg_picture_tr_ready()) {
         $rows = db_items("SELECT DISTINCT file_id FROM file_translation");
 
         foreach (is_array($rows) ? $rows : array() as $row) {
             $ids[(int) $row['file_id']] = true;
+            $rowed[(int) $row['file_id']] = true;
         }
     }
 
+    $cursor_path = pg_picture_tr_prune_cursor_path();
+    $after = (int) @file_get_contents($cursor_path);
+    $checked = array();
+    $through = true;
     $dropped = 0;
 
-    foreach (array_keys($ids) as $file_id) {
+    foreach (pg_picture_tr_prune_order(array_keys($ids), $after) as $file_id) {
         if (microtime(true) > $deadline) {
+            $through = false;
             break;
         }
 
@@ -417,26 +474,94 @@ function pg_picture_tr_prune($deadline)
         $binned = $exists && pg_folder_binned((int) $file['folder']);
         $live = $exists && !$binned && pg_picture_tr_live($file_id, $file['name']);
 
-        if (pg_picture_tr_prune_reason($exists, $binned, $live) !== '') {
-            pg_picture_tr_forget($file_id);
+        $reason = pg_picture_tr_prune_reason($exists, $binned, $live);
+
+        // A binned file whose rows went on an earlier run keeps its texts:
+        // nothing is left to drop.
+        if (($reason === 'binned') && !isset($rowed[$file_id])) {
+            $reason = '';
+        }
+
+        if ($reason !== '') {
+            pg_picture_tr_forget($file_id, $reason === 'binned');
             $dropped++;
         }
+
+        $checked[] = $file_id;
     }
 
-    // What a door that does not call the module left: a picture still in
-    // the folder its source moved out of, a row whose picture is gone.
-    if (microtime(true) <= $deadline) {
-        pg_picture_tr_follow(null);
-        pg_picture_tr_lost();
+    if ($ids) {
+        @file_put_contents($cursor_path, (string) pg_picture_tr_prune_cursor($checked, $after, $through), LOCK_EX);
+    }
+
+    // A page kept by the file cache may name a language's picture just
+    // deleted; this runs in the job, which no signed-in request follows.
+    if (($dropped > 0) || ($lost > 0)) {
+        pg_page_cache_mark_dirty();
     }
 
     // The mark as the queue finds the rows now: a mark lost with a swept
     // data/temp is set again, one left by rows the prune dropped clears.
-    if (microtime(true) <= $deadline) {
-        pg_picture_tr_mark_check();
-    }
+    pg_picture_tr_mark_check();
 
     return $dropped;
+}
+
+/**
+ * The order the prune looks at the pictures in: those after the one the
+ * last run stopped at, then from the start. Pure.
+ *
+ * @param array $ids   file ids
+ * @param int   $after the last id the previous run looked at, 0 for none
+ * @return array ids
+ */
+function pg_picture_tr_prune_order($ids, $after)
+{
+    $ids = array_values(array_unique(array_map('intval', (array) $ids)));
+    sort($ids);
+
+    $later = array();
+    $earlier = array();
+
+    foreach ($ids as $id) {
+        if ($id > (int) $after) {
+            $later[] = $id;
+        } else {
+            $earlier[] = $id;
+        }
+    }
+
+    return array_merge($later, $earlier);
+}
+
+/**
+ * Where the next run starts: from the start after a whole pass, else after
+ * the last picture looked at (where it was when none was). Pure.
+ *
+ * @param array $checked ids looked at, in order
+ * @param int   $after   where this run started
+ * @param bool  $through every picture was looked at
+ * @return int
+ */
+function pg_picture_tr_prune_cursor($checked, $after, $through)
+{
+    if ($through) {
+        return 0;
+    }
+
+    return $checked ? (int) end($checked) : (int) $after;
+}
+
+/**
+ * The file that keeps where the prune stopped (data/temp, per database).
+ *
+ * @return string
+ */
+function pg_picture_tr_prune_cursor_path()
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : '';
+
+    return PG_FUNCTIONS_DIR . '/data/temp/picture_prune_' . md5($database) . '.txt';
 }
 
 /* ---------------------------------------------------------------------------
@@ -527,17 +652,21 @@ function pg_picture_tr_follow($file_ids)
 /**
  * Rows whose language picture is gone (deleted with a folder, say) wait to
  * be drawn again instead of naming a file that is not there.
+ *
+ * @return int rows changed
  */
 function pg_picture_tr_lost()
 {
     if (!pg_picture_tr_ready()) {
-        return;
+        return 0;
     }
 
-    db("UPDATE file_translation ft
+    $done = db("UPDATE file_translation ft
         LEFT JOIN files p ON p.id = ft.picture_file_id
         SET ft.picture_file_id = 0, ft.state = 0
         WHERE ft.picture_file_id > 0 AND p.id IS NULL");
+
+    return $done ? (int) mysqli_affected_rows(db::$con) : 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -629,23 +758,34 @@ function pg_picture_tr_url_name($value, $base, $hosts)
 
 /**
  * One address pointed at the picture $map gives for its name: the host, the
- * query and the quoting as written stay. Pure.
+ * query and the quoting as written stay. A drawing time in $stamps is added
+ * as v=<drawn_at> after the query: a redraw keeps the picture's name, and
+ * get_file.php lets a browser keep a picture a week (it ignores v). Written
+ * &amp; as in the attribute the address stands in. Pure.
  *
  * @param string $value
  * @param string $base
  * @param array  $hosts
- * @param array  $map   source name => picture name
+ * @param array  $map    source name => picture name
+ * @param array  $stamps source name => the picture's drawn_at
  * @return string
  */
-function pg_picture_tr_url_swap($value, $base, $hosts, $map)
+function pg_picture_tr_url_swap($value, $base, $hosts, $map, $stamps = array())
 {
     $name = pg_picture_tr_url_name($value, $base, $hosts);
 
-    if (($name === '') || !isset($map[$name]) || !preg_match('~^(\s*(?:(?:https?:)?//[^/?#]+)?)(/[^?#]*)(.*)$~s', (string) $value, $m)) {
+    if (($name === '') || !isset($map[$name]) || !preg_match('~^(\s*(?:(?:https?:)?//[^/?#]+)?)(/[^?#]*)(\?[^#]*)?(#.*)?$~s', (string) $value, $m)) {
         return $value;
     }
 
-    return $m[1] . $base . rawurlencode($map[$name]) . $m[3];
+    $query = isset($m[3]) ? $m[3] : '';
+    $stamp = isset($stamps[$name]) ? (int) $stamps[$name] : 0;
+
+    if ($stamp > 0) {
+        $query .= (($query === '') ? '?' : '&amp;') . 'v=' . $stamp;
+    }
+
+    return $m[1] . $base . rawurlencode($map[$name]) . $query . (isset($m[4]) ? $m[4] : '');
 }
 
 /**
@@ -737,17 +877,18 @@ function pg_picture_tr_page_names($html, $base, $hosts)
  * @param string $html
  * @param string $base
  * @param array  $hosts
- * @param array  $map source name => picture name
+ * @param array  $map    source name => picture name
+ * @param array  $stamps source name => the picture's drawn_at
  * @return string
  */
-function pg_picture_tr_page_swap($html, $base, $hosts, $map)
+function pg_picture_tr_page_swap($html, $base, $hosts, $map, $stamps = array())
 {
     if (!$map) {
         return $html;
     }
 
-    return pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, $map) {
-        return pg_picture_tr_url_swap($value, $base, $hosts, $map);
+    return pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, $map, $stamps) {
+        return pg_picture_tr_url_swap($value, $base, $hosts, $map, $stamps);
     });
 }
 
@@ -767,7 +908,7 @@ function pg_picture_tr_page_sql($names, $language)
         return "'" . e($name) . "'";
     }, array_values($names)));
 
-    return "SELECT f.id, f.name, f.folder, ft.state, p.name AS picture,
+    return "SELECT f.id, f.name, f.folder, ft.state, ft.drawn_at, p.name AS picture,
                    (SELECT 1 FROM translation_uses u WHERE u.owner_type = 'file' AND u.owner_id = f.id LIMIT 1) AS has_uses
             FROM files f
             LEFT JOIN file_translation ft ON ft.file_id = f.id AND ft.language = '" . e($language) . "'
@@ -783,11 +924,12 @@ function pg_picture_tr_page_sql($names, $language)
  *
  * @param array $rows from pg_picture_tr_page_sql()
  * @param bool  $rtl
- * @return array map (name => picture), waiting (file ids)
+ * @return array map (name => picture), stamps (name => drawn_at of a
+ *               swapped picture that has one), waiting (file ids)
  */
 function pg_picture_tr_page_plan($rows, $rtl)
 {
-    $plan = array('map' => array(), 'waiting' => array());
+    $plan = array('map' => array(), 'stamps' => array(), 'waiting' => array());
 
     foreach (is_array($rows) ? $rows : array() as $row) {
         $picture = isset($row['picture']) ? (string) $row['picture'] : '';
@@ -795,6 +937,10 @@ function pg_picture_tr_page_plan($rows, $rtl)
 
         if (($state !== null) && pg_picture_tr_shown($state) && ($picture !== '')) {
             $plan['map'][(string) $row['name']] = $picture;
+
+            if (!empty($row['drawn_at'])) {
+                $plan['stamps'][(string) $row['name']] = (int) $row['drawn_at'];
+            }
         } elseif (($state === null) && !empty($row['has_uses']) && !$rtl) {
             $plan['waiting'][] = (int) $row['id'];
         }
@@ -854,7 +1000,7 @@ function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query,
         }
     }
 
-    return pg_picture_tr_page_swap($html, $base, $hosts, $plan['map']);
+    return pg_picture_tr_page_swap($html, $base, $hosts, $plan['map'], $plan['stamps']);
 }
 
 /**
@@ -1150,7 +1296,7 @@ function pg_picture_tr_marked($path = null)
     // A long run (the scheduled job) sees another request's set or clear.
     clearstatcache(true, $path);
 
-    return is_file($path) || !is_writable(dirname($path));
+    return is_file($path) || !pg_dir_writable(dirname($path));
 }
 
 /**
@@ -1451,8 +1597,15 @@ function pg_picture_tr_live_doc($file_id, $name)
 {
     $newest = pg_file_versions_ready() ? pg_file_versions_newest((int) $file_id) : null;
     $json = $newest ? (string) $newest['doc_json'] : '';
+    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $name);
 
-    if (($json === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename((string) $name))) {
+    // A file moved to the object store is read through its cached copy, as
+    // the Design Canvas opens it (pg_image_editor_file()).
+    if (($json !== '') && !is_file($path)) {
+        $path = pg_file_local_copy((int) $file_id);
+    }
+
+    if (($json === '') || ($path === '') || !pg_file_versions_matches_file($newest, $path)) {
         return null;
     }
 
@@ -1710,6 +1863,50 @@ function pg_picture_tr_keep_query($file_id, $language, $picture_id, $fit, $doc_h
  *               (id, name) and drawn_at
  */
 function pg_picture_tr_keep($source, $language, $drawn, $fit, $doc_hash, $user_id)
+{
+    // Two draws of one picture and language at once (a panel tab and the
+    // server's job) would each find no picture yet and write a files row of
+    // their own, the first left visible in Files. Under the lock the second
+    // finds the first's row and writes over it. A server that answers no
+    // lock (null) still keeps the picture, without that protection.
+    $lock = pg_picture_tr_keep_lock_sql((int) $source['id'], (string) $language);
+    $got = db_value("SELECT GET_LOCK(" . $lock . ", 10)");
+
+    if (($got !== null) && ((int) $got !== 1)) {
+        @unlink($drawn['path']);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $kept = pg_picture_tr_keep_write($source, $language, $drawn, $fit, $doc_hash, $user_id);
+
+    if ($got !== null) {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
+
+    return $kept;
+}
+
+/**
+ * The name of the lock a language's picture is kept under, as SQL. GET_LOCK
+ * names belong to the whole database server, so the database is part of
+ * the name; hashed, so the name stays under 64 characters and the language
+ * is never quoted into the statement. Pure.
+ *
+ * @param int    $file_id
+ * @param string $language
+ * @return string an SQL expression
+ */
+function pg_picture_tr_keep_lock_sql($file_id, $language)
+{
+    return "CONCAT('pg_picture_keep_', MD5(CONCAT(DATABASE(), ':', '" . md5((int) $file_id . '|' . (string) $language) . "')))";
+}
+
+/**
+ * The keep's writes, under its lock (pg_picture_tr_keep()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_picture_tr_keep_write($source, $language, $drawn, $fit, $doc_hash, $user_id)
 {
     $file_id = (int) $source['id'];
     $now = time();

@@ -7689,31 +7689,6 @@ function delete_shipping_cutoff(tr) {
 }
 
 
-function generateIndexNowKey() {
-    try {
-        // Prefer a real UUID when the browser supports it.
-        if (typeof crypto.randomUUID === "function") {
-            const uuidPart = crypto.randomUUID().replace(/-/g, "");
-            const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-            const key = uuidPart + randomPart;
-
-            const input = document.getElementById("indexnow_key");
-            if (input) {
-                input.value = key;
-                input.classList.add("is-valid");
-            } else {
-                console.warn("IndexNow input field not found.");
-            }
-        } else {
-            console.error("crypto.randomUUID is not supported in this browser.");
-            alert(lang("Your browser does not support secure key generation. Please use a modern browser."));
-        }
-    } catch (error) {
-        console.error("Error generating IndexNow key:", error);
-        alert(lang("An error occurred while generating the key. Please try again."));
-    }
-}
-
 // Handle error state specifically for backup process
 function software_backup_handleError(response, backup_btn) {
     software_backup_updateProgress(100, response.message, true);

@@ -16,7 +16,7 @@ module: content_proposals
 - A failed write of the waiting change (`db_q()` false: a lock timeout, an area over `max_allowed_packet`) answers the save as failed with "could not be kept for approval" (`pg_content_proposals_written()`), never as a change that waits; nothing was kept and no page written.
 
 ## How is a held save kept?
-- One `design_proposals` row with `agent = 'editor'`, `requested_by` the editor, `status = 'pending'`, `base_hash` the stored tree's fingerprint; no column was added (architect, `plans/publish-approval-census.md`).
+- One `design_proposals` row with `agent = 'editor'`, `requested_by` the editor, `status = 'pending'`, `base_hash` the stored tree's fingerprint; no column was added (architect, agent channel message 5857).
 - `ops` are the module's own, each with the value it replaces: `text`, `src`, `note` per node id; `area` for a marked editable area, whole, `was` its fingerprint; `fields` for the page settings a content level writes (`pg_content_proposals_field_keys()`, never name, folder, home, design, draft or times); a tree without node ids is one `{op: tree, tree, base_hash}`. Shared components are never in them.
 - `pg_content_proposals_plan()`: no waiting change and a change → insert; a waiting change → replaced in place; the page saved as it is → withdrawn (`dismissed`, `decided_by = requested_by`).
 
@@ -24,7 +24,7 @@ module: content_proposals
 - Only this module. The assistant's readers take `PG_DESIGN_AI_ROWS` (`agent <> 'editor'`): `pg_design_ai_proposal()`, `pg_design_ai_request_present()`, `pg_design_ai_attach()`, `pg_design_ai_proposals_map()`, `api_design_proposals_list()`; the API's `pending_proposals` count and the conversation cleanup in `includes/workspace/threads.php` say it in SQL.
 
 ## Where are the other parts?
-- The designer's side is in `content-proposals-designer-side.md` (PA4a), the bell lines and the count in `content-proposals-bell.md` (PA4b), the Workspace request in `content-proposals-workspace.md` (PA5). The editor's tab state and the count on the page's tab (PA3) are not built yet.
+- Editor's side (PA3, #10188): `content-proposals-editor-side.md`; designer's side (PA4a, #9930): `content-proposals-designer-side.md`; bell lines and count (PA4b, #9939): `content-proposals-bell.md`; Workspace request (PA5, #9968): `content-proposals-workspace.md`. Decisions, what is left out: `content-proposals-overview.md`.
 
 ## Which test guards it?
 - `tests/content_proposals_test.php`: the switch off, each save left alone, the operations, one waiting change, the save's wiring, each assistant reader skipping editor rows.

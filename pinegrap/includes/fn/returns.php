@@ -4280,6 +4280,9 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
 
+    // A referral's reward, when what is left of the order no longer counts.
+    pg_referral_order_refunded($return['order_id']);
+
     // And the folder access those lines granted.
     pg_order_folder_access_lines_refunded($return['order_id'], $returned_quantities);
 

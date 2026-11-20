@@ -898,7 +898,8 @@
             var g = groups[l.id];
 
             if (g) {
-                self.motionGroup(g, l, M.motionAt(l, self.motionNow(), end));
+                // Its groups' keys over its own (M.groupMotionAt()).
+                self.motionGroup(g, l, M.groupMotionAt(self.doc.layers, l, self.motionNow(), end));
             }
         });
 
@@ -927,7 +928,7 @@
         // A typed text or a drawn stroke: the node again, cut.
         if ((g.pgCut || '') !== cut) {
             var copy = (st.chars !== null) ? Object.assign({}, l, { text: Array.from(String(l.text || '')).slice(0, st.chars).join('') }) : l;
-            var n = this.layerNode(copy);
+            var n = this.layerNode(M.groupLook(copy));
 
             g.textContent = '';
 

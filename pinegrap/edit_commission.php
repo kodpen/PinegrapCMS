@@ -67,7 +67,24 @@ if (!$_POST) {
             lang('Ineligible') => 'ineligible',
             lang('Paid') => 'paid'
         );
-    
+
+    // A referral's row is shown, not edited: its order sets its status.
+    $is_referral = (pg_referral_commission_kind($commission['affiliate_code']) === 'referral');
+
+    if ($is_referral) {
+        $status_field = '
+                                            <p class="form-label">' . h(lang('Status')) . '</p>
+                                            <p class="fw-bold mb-2">' . h(array_search((string) $commission['status'], $status_options, true) ?: (string) $commission['status']) . '</p>
+                                            <p class="mb-0">' . h(lang('This is a referral\'s reward: its order sets the status, so it cannot be changed here.')) . '</p>';
+        $save_button = '';
+    } else {
+        $status_field = '
+                                            <label for="status" class="form-label">' . lang('Status') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'status', 'id'=>'status', 'class'=>'form-control', 'options'=>$status_options));
+        $save_button = '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>';
+    }
+
     print
     pg_page_shell([
         'title'=> lang('Edit Commission'),
@@ -93,14 +110,11 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 pg-field-span-6 my-3">
-                                            <label for="status" class="form-label">' . lang('Status') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'status', 'id'=>'status', 'class'=>'form-control', 'options'=>$status_options)) . '
+                                        <div class="col-12 pg-field-span-6 my-3">' . $status_field . '
                                         </div>
                                     </div>
                                 </div>
-                            </div>', $commission, '
-                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>') . '
+                            </div>', $commission, $save_button) . '
     </form>
 </main>' .
     output_footer();
@@ -117,6 +131,12 @@ if (!$_POST) {
 
     if ($status === '') {
         $liveform->mark_error('status', lang('Please select a status.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_commission.php?id=' . $id);
+        exit();
+    }
+
+    if (pg_referral_commission_kind($commission['affiliate_code']) === 'referral') {
+        $liveform->mark_error('status', lang('This is a referral\'s reward: its order sets the status, so it cannot be changed here.'));
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_commission.php?id=' . $id);
         exit();
     }

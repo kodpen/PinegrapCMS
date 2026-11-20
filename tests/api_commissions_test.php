@@ -421,3 +421,9 @@ function test_api_commissions_events_are_in_the_catalogue()
 	pg_assert_true(isset($events['affiliate.approved']), 'affiliate.approved');
 	pg_assert_true(api_webhook_event_is_valid('commission.status_changed'));
 }
+
+function test_api_commissions_kind_tells_a_referral_apart()
+{
+	pg_assert_same('affiliate', api_commission_present(api_commissions_test_row())['kind'], 'an affiliate\'s commission');
+	pg_assert_same('referral', api_commission_present(api_commissions_test_row(array('affiliate_code' => 'R15-0A1B2C3D4E', 'status' => 'paid')))['kind'], 'a referral code\'s row, from the same one function');
+}

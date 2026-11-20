@@ -2229,6 +2229,14 @@ function ws_handle_action($action, $request)
                 if (!empty($request['sound'])) {
                     $out['sound'] = ws_sound_lines($viewer['id'], (int) ($request['sound_after'] ?? -1));
                 }
+
+                // A call that rings the person in any channel of theirs; no
+                // query while no call is live on the site (calls.php).
+                $rings = ws_call_rings_for($viewer);
+
+                if ($rings) {
+                    $out['rings'] = $rings;
+                }
             }
 
             // A scheduled action is due: the screen starts a run (ws_tick)
@@ -5387,6 +5395,8 @@ function ws_handle_action($action, $request)
         case 'ws_call_leave':
         case 'ws_call_end':
         case 'ws_call_signal':
+        case 'ws_call_decline':
+        case 'ws_call_sync':
             $call = ws_calls_ready() ? ws_call((int) ($request['call_id'] ?? 0)) : null;
             $channel = $call ? ws_channel((int) $call['channel_id']) : null;
 
@@ -5395,6 +5405,19 @@ function ws_handle_action($action, $request)
             }
 
             $party = ws_call_party_person($viewer, $channel);
+
+            // The look of a browser in the call, every second: the call and
+            // the signals sent to it, whichever channel is open on the
+            // screen; nothing of the channel's own look.
+            if ($action === 'ws_call_sync') {
+                return ws_action_ok(array('call' => ws_call_live_part($party, (int) $channel['id'], (int) ($request['call_after'] ?? 0))));
+            }
+
+            if ($action === 'ws_call_decline') {
+                $result = ws_call_decline($party, $call);
+
+                return $result['ok'] ? ws_action_ok(array()) : ws_action_error($result['error']);
+            }
 
             if ($action === 'ws_call_leave') {
                 $result = ws_call_leave($party, (int) $call['id']);

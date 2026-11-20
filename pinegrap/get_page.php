@@ -211,6 +211,13 @@ if ((ECOMMERCE == true) && (AFFILIATE_PROGRAM == true) && ((isset($_GET['a']) ==
 	$_SESSION['ecommerce']['special_offer_code'] = trim($_GET['a']);
 }
 
+// A customer's referral link: the friend's offer in the cart, and the code
+// kept for the visit when visitor tracking is off (includes/fn/referral.php).
+if ((ECOMMERCE == true) && isset($_GET['a']) && ($_GET['a'] != ''))
+{
+	pg_referral_arrival($_GET['a']);
+}
+
 // if there is a page name, then get page that was requested
 if (isset($page_name) && $page_name)
 {

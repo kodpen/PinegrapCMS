@@ -1794,3 +1794,305 @@ function pg_content_proposals_settled($approval, $outcome, $actor_id)
         ws_message_system((int) $approval['channel_id'], $said);
     }
 }
+
+/* ---------------------------------------------------------------------------
+   The editor's side: what the Page Design Studio shows on a page's tab
+   --------------------------------------------------------------------------- */
+
+/**
+ * What a closed change answers its editor: applied, dismissed by a designer
+ * (a change the editor withdrew is no answer) or stale; '' for the rest.
+ *
+ * @param array $row design_proposals row
+ * @return string applied | dismissed | stale | ''
+ */
+function pg_content_proposals_answer_kind($row)
+{
+    $status = (string) $row['status'];
+
+    if ($status === 'dismissed') {
+        return ((int) $row['decided_by'] !== (int) $row['requested_by']) ? 'dismissed' : '';
+    }
+
+    return in_array($status, array('applied', 'stale'), true) ? $status : '';
+}
+
+/**
+ * What the Studio shows on each page's tab, from the editor rows of the
+ * design's pages. The person's own waiting change and the newest answer to
+ * one of theirs they have not closed (for PG_CONTENT_PROPOSALS_KEEP_DAYS
+ * days); for roles 0 and 1, how many changes wait. Nobody else's change is
+ * handed over. Pure.
+ *
+ * @param array $rows    design_proposals rows (id, page_id, status, requested_by,
+ *                       decided_by, decided_at, steps)
+ * @param int   $user_id
+ * @param int   $role
+ * @param int   $now
+ * @return array page_id => waiting (id or 0), answer (null or id, kind, reason), count
+ */
+function pg_content_proposals_studio_rows($rows, $user_id, $role, $now)
+{
+    $pages = array();
+    $since = (int) $now - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400;
+    $at = function ($page_id) use (&$pages) {
+        if (!isset($pages[$page_id])) {
+            $pages[$page_id] = array('waiting' => 0, 'answer' => null, 'count' => 0);
+        }
+    };
+
+    foreach ((array) $rows as $row) {
+        $page_id = (int) $row['page_id'];
+        $id = (int) $row['id'];
+        $own = ((int) $row['requested_by'] === (int) $user_id);
+
+        if ((string) $row['status'] === 'pending') {
+            if ((int) $role <= 1) {
+                $at($page_id);
+                $pages[$page_id]['count']++;
+            }
+
+            if ($own) {
+                $at($page_id);
+                $pages[$page_id]['waiting'] = max($pages[$page_id]['waiting'], $id);
+            }
+
+            continue;
+        }
+
+        $kind = $own ? pg_content_proposals_answer_kind($row) : '';
+        $steps = json_decode((string) $row['steps'], true);
+        $steps = is_array($steps) ? $steps : array();
+
+        if (($kind === '') || !empty($steps['seen']) || (($kind !== 'stale') && ((int) $row['decided_at'] < $since))) {
+            continue;
+        }
+
+        $at($page_id);
+
+        if (($pages[$page_id]['answer'] === null) || ($pages[$page_id]['answer']['id'] < $id)) {
+            $pages[$page_id]['answer'] = array('id' => $id, 'kind' => $kind,
+                'reason' => ($kind === 'dismissed') ? (string) ($steps['reason'] ?? '') : '');
+        }
+    }
+
+    return $pages;
+}
+
+/**
+ * The sentence an answer shows the editor: the bell line's own.
+ *
+ * @param string $kind   applied | dismissed | stale
+ * @param string $page   the page's name
+ * @param string $reason a dismissal's reason
+ * @return string
+ */
+function pg_content_proposals_answer_text($kind, $page, $reason)
+{
+    return pg_content_proposals_bell_words('content_' . $kind, $page, $reason)['title'];
+}
+
+/**
+ * May this person withdraw the change? Only its editor, while it waits.
+ *
+ * @param array|null $row
+ * @param int        $user_id
+ * @return string '' when they may, else closed | other
+ */
+function pg_content_proposals_withdraw_check($row, $user_id)
+{
+    if (!is_array($row) || ((string) $row['status'] !== 'pending')) {
+        return 'closed';
+    }
+
+    return ((int) $row['requested_by'] === (int) $user_id) ? '' : 'other';
+}
+
+/**
+ * A change's steps with its answer marked as closed by the editor.
+ *
+ * @param string $steps_json
+ * @return string
+ */
+function pg_content_proposals_steps_seen($steps_json)
+{
+    $steps = json_decode((string) $steps_json, true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps['seen'] = 1;
+
+    return (string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * The page as the editor's waiting change makes it, laid on their canvas:
+ * the operations on the page as it is now. Null when they no longer fit.
+ *
+ * @param array $row
+ * @return array|null tree, fields (only those a content level writes)
+ */
+function pg_content_proposals_laid($row)
+{
+    $page = _pg_cp_page($row);
+    $ops = json_decode((string) $row['ops'], true);
+
+    if (!$page || !is_array($ops)) {
+        return null;
+    }
+
+    $applied = pg_content_proposals_apply_ops($page['tree'], $page['fields'], $ops);
+
+    if (!$applied['ok']) {
+        return null;
+    }
+
+    $fields = array();
+
+    foreach (pg_content_proposals_field_keys() as $key) {
+        if (array_key_exists($key, $applied['fields'])) {
+            $fields[$key] = $applied['fields'][$key];
+        }
+    }
+
+    // The editor's own payload shape (pg_designer_tree_decode()).
+    $tree = pg_designer_tree_decode(pg_designer_tree_encode($applied['tree']));
+
+    return is_array($tree) ? array('tree' => $tree, 'fields' => $fields) : null;
+}
+
+/**
+ * What the Studio shows on the design's tabs for this person
+ * (pg_content_proposals_studio_rows()), with the words of each answer and
+ * the page their waiting change makes.
+ *
+ * @param array $user
+ * @param int   $style_id
+ * @return array page_id => waiting, answer (id, kind, text), count, laid
+ */
+function pg_content_proposals_studio_state($user, $style_id)
+{
+    if (!pg_content_proposals_ready()) {
+        return array();
+    }
+
+    $rows = db_items((string) pg_db_bind(
+        "SELECT p.id, p.page_id, p.status, p.requested_by, p.decided_by, p.decided_at, p.steps, page.page_name
+         FROM design_proposals AS p
+         INNER JOIN page ON page.page_id = p.page_id
+         WHERE p.agent = ? AND page.page_style = ? AND (p.status = 'pending' OR p.requested_by = ?)
+         ORDER BY p.id DESC LIMIT 500",
+        array(PG_CONTENT_PROPOSALS_AGENT, (int) $style_id, (int) $user['id']), 'escape'));
+    $rows = is_array($rows) ? $rows : array();
+    $names = array();
+
+    foreach ($rows as $row) {
+        $names[(int) $row['page_id']] = (string) $row['page_name'];
+    }
+
+    $state = array();
+
+    foreach (pg_content_proposals_studio_rows($rows, (int) $user['id'], (int) $user['role'], time()) as $page_id => $page) {
+        if ($page['answer']) {
+            $page['answer']['text'] = pg_content_proposals_answer_text($page['answer']['kind'], $names[$page_id], $page['answer']['reason']);
+        }
+
+        $page['laid'] = null;
+
+        if ($page['waiting'] > 0) {
+            $row = pg_content_proposals_get($page['waiting']);
+            $page['laid'] = $row ? pg_content_proposals_laid($row) : null;
+        }
+
+        $state[(int) $page_id] = $page;
+    }
+
+    return $state;
+}
+
+/**
+ * The editor withdraws their waiting change: dismissed by themselves, as a
+ * save of the page as it is does it, its approval request taken back.
+ * Tells nobody.
+ *
+ * @param array $user
+ * @param int   $id
+ * @return array ok, error
+ */
+function pg_content_proposals_withdraw($user, $id)
+{
+    $row = pg_content_proposals_get($id);
+    $check = pg_content_proposals_withdraw_check($row, (int) $user['id']);
+
+    if ($check !== '') {
+        return array('ok' => false, 'error' => ($check === 'other')
+            ? lang('Only the person who made the change can withdraw it.') : lang('This change is no longer waiting.'));
+    }
+
+    $done = db_q("UPDATE design_proposals SET status = 'dismissed', decided_by = requested_by, decided_at = ? WHERE id = ? AND status = 'pending'",
+        array(time(), (int) $row['id']));
+
+    if (($done === false) || (mysqli_affected_rows(db::$con) < 1)) {
+        return array('ok' => false, 'error' => lang('This change is no longer waiting.'));
+    }
+
+    if (pg_content_proposals_request_closes('withdraw', (int) $row['message_id'])) {
+        pg_content_proposals_request_close($row, (int) $user['id']);
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The editor closes the answer to one of their changes; it is not shown
+ * again.
+ *
+ * @param array $user
+ * @param int   $id
+ * @return array ok, error
+ */
+function pg_content_proposals_answer_seen($user, $id)
+{
+    $row = pg_content_proposals_get($id);
+
+    if (!$row || ((int) $row['requested_by'] !== (int) $user['id']) || ((string) $row['status'] === 'pending')) {
+        return array('ok' => false, 'error' => lang('Sorry, we could not accept your request.'));
+    }
+
+    db_q("UPDATE design_proposals SET steps = ? WHERE id = ?", array(pg_content_proposals_steps_seen((string) $row['steps']), (int) $row['id']));
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The Studio's panel actions (includes/panel/designer.php, sub-actions
+ * content_change_*): every role that opens the Studio; each reads or
+ * changes only what is the person's own, and the count only for designers.
+ *
+ * @param string $sub
+ * @param array  $request
+ * @param array  $user
+ * @return array the JSON answer
+ */
+function pg_content_proposals_studio($sub, $request, $user)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+
+    if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE) {
+        return array('status' => 'error', 'message' => lang('Permission denied.'));
+    }
+
+    $id = isset($request['id']) ? (int) $request['id'] : 0;
+
+    if ($sub === 'content_change_withdraw') {
+        $done = pg_content_proposals_withdraw($user, $id);
+    } elseif ($sub === 'content_change_seen') {
+        $done = pg_content_proposals_answer_seen($user, $id);
+    } else {
+        $state = pg_content_proposals_studio_state($user, isset($request['style_id']) ? (int) $request['style_id'] : 0);
+
+        // A JSON object even when empty: the editor reads it by page id.
+        return array('status' => 'success', 'pages' => (object) $state,
+            'list_url' => pg_content_proposals_may_decide($user) ? 'content_changes.php' : '');
+    }
+
+    return $done['ok'] ? array('status' => 'success') : array('status' => 'error', 'message' => $done['error']);
+}
