@@ -23,6 +23,6 @@ module: privacy_centre
 
 ## What was verified?
 - `tests/privacy_centre_test.php`: rows cover every catalogue line, recipients and abroad, unknown counts, record sums, file names, the PDF's escaping and its two sentences.
-- Not run on a database or a browser when written (#PR): the count queries of KV1 and the PDF rendering are first seen on dev.
+- Not run on a database or a browser when written (#10789): the count queries of KV1 and the PDF rendering are first seen on dev.
 
 Related: [[privacy-inventory]], [[personal-data-erasure]], [[personal-data-export]]
