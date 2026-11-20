@@ -1027,9 +1027,10 @@ function ws_mail_sent_position_resets($before, $after)
 }
 
 /**
- * Whether a mailbox may be removed by this person, before anything is
- * written: the Workspace settings right, a box that exists, and not a
- * WhatsApp or SMS account's box (kept by its own card). Pure.
+ * Whether a mailbox may be removed, or turned off or on, by this person,
+ * before anything is written: the Workspace settings right, a box that
+ * exists, and not a WhatsApp or SMS account's box (kept by its own card).
+ * Pure.
  *
  * @param array      $viewer
  * @param array|null $box ws_mail_box()
@@ -1102,6 +1103,62 @@ function ws_mail_box_remove_confirm($box)
         'string' => 'Remove the mailbox {var:1}? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are.',
         'vars'   => (string) $box['name'],
     ));
+}
+
+/**
+ * Turn off or Turn on from a box row's menu: the posted value
+ * "<box id>:off" or "<box id>:on", read to the box's id and its new state.
+ * Pure.
+ *
+ * @param mixed $value
+ * @return array|null id, enabled (0|1); null for anything else
+ */
+function ws_mail_box_switch_value($value)
+{
+    if (!is_scalar($value) || !preg_match('/^([1-9][0-9]{0,9}):(on|off)$/', (string) $value, $m)) {
+        return null;
+    }
+
+    return array('id' => (int) $m[1], 'enabled' => ($m[2] === 'on') ? 1 : 0);
+}
+
+/**
+ * Switch a box checked by ws_mail_box_remove_check() off or on: an off box
+ * is not read and its pill reads Off. A Site Log line names it.
+ *
+ * @param array  $box
+ * @param int    $enabled 0|1
+ * @param string $username
+ */
+function ws_mail_box_switch_write($box, $enabled, $username)
+{
+    db("UPDATE ws_mail_boxes SET enabled = '" . ($enabled ? 1 : 0) . "', updated_at = '" . time() . "' WHERE id = '" . (int) $box['id'] . "'");
+    log_activity(lang(array('string' => $enabled ? 'the mailbox {var:1} was turned on' : 'the mailbox {var:1} was turned off', 'vars' => (string) $box['name'])), $username);
+}
+
+/**
+ * A box row's "more" menu, the Design examples' Menus part: Turn off (or
+ * Turn on for a box that is off), a divider, then Remove in danger, which
+ * asks ws_mail_box_remove_confirm() first (ws_mail_settings_script()). Both
+ * are submit buttons of the settings form: ws_mail_switch ("<id>:off" or
+ * "<id>:on") and ws_mail_remove (the box's id).
+ *
+ * @param array  $box
+ * @param string $form the settings form's id
+ * @return string HTML
+ */
+function ws_mail_box_menu($box, $form)
+{
+    $id = (int) $box['id'];
+    $on = !empty($box['enabled']);
+    $f = ' form="' . h($form) . '"';
+
+    return '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
+        . '<ul class="menu pg-menu-end">'
+        . '<li><button type="submit" name="ws_mail_switch" value="' . $id . ':' . ($on ? 'off' : 'on') . '"' . $f . ' class="menu-item"><i class="bi ' . ($on ? 'bi-pause-circle' : 'bi-play-circle') . ' me-3" aria-hidden="true"></i>' . h($on ? lang('Turn off') : lang('Turn on')) . '</button></li>'
+        . '<li><hr class="menu-divider"></li>'
+        . '<li><button type="submit" name="ws_mail_remove" value="' . $id . '"' . $f . ' class="menu-item fg-emphasis-danger" data-ws-mail-confirm="' . h(ws_mail_box_remove_confirm($box)) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Remove')) . '</button></li>'
+        . '</ul></span>';
 }
 
 /**
@@ -1737,7 +1794,7 @@ function ws_mail_box_row_line($box, $place, $state)
  * A box's row in Site Settings › Mailboxes, the settings pane's list row of
  * the Design examples screen: icon tile, name and address, where it is kept
  * and the last check, the state pill, then Test connection (a box read from
- * a server) and Edit, quiet and small.
+ * a server) and Edit, quiet and small, and last its menu (ws_mail_box_menu()).
  *
  * @param array  $box
  * @param string $place HTML
@@ -1761,6 +1818,7 @@ function ws_mail_settings_box_row($box, $place, $form)
         . (($state['words'] !== '') ? '<span class="pg-pill ws-agset-state ' . h($state['tone']) . '">' . h($state['words']) . '</span>' : '')
         . '<div class="ws-agset-edit d-flex flex-wrap align-items-center gap-1">' . $test
         . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>'
+        . ws_mail_box_menu($box, $form)
         . '</div></div>';
 }
 
@@ -2137,6 +2195,18 @@ function ws_mail_settings_script()
                     sync(form);
                 }
             });
+
+            // Remove in a box row\'s menu says what goes before the settings
+            // form is sent; a no stops the submit. Captured, so it runs
+            // before any submit handler of the pane or the dialog.
+            document.addEventListener(\'click\', function (event) {
+                var button = event.target.closest ? event.target.closest(\'[data-ws-mail-confirm]\') : null;
+
+                if (button && !window.confirm(button.getAttribute(\'data-ws-mail-confirm\'))) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }, true);
 
             // A redirect address of the Gmail part is copied; the line under the
             // addresses says whether it was. Plain http has no clipboard API

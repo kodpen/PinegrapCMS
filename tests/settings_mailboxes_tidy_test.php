@@ -184,3 +184,31 @@ function test_settings_mailboxes_pane_wiring()
 	pg_assert_contains('$pg_settings_modals[] = ws_mail_eml_pane_form();', $pane, 'the .eml form outside the settings form');
 	pg_assert_false(strpos($card, "ws_mail_eml_form(pg_settings_url('mailboxes')") !== false, 'the drawer no longer holds the .eml upload');
 }
+
+function test_settings_mailboxes_row_menu()
+{
+	$html = ws_mail_settings_box_row(settings_mailboxes_tidy_test_box(), '#support', 'f');
+	$menu = substr($html, (int) strpos($html, '<span class="pg-menu-wrap">'));
+
+	pg_assert_contains('<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button><ul class="menu pg-menu-end">', $html, 'the Design examples\' row menu');
+	pg_assert_true(strpos($html, 'data-bs-target="#pgset-ws-mail-4"') < strpos($html, 'pg-menu-wrap'), 'last in the row\'s actions, after Edit');
+	pg_assert_contains('name="ws_mail_switch" value="4:off" form="f" class="menu-item"', $menu, 'Turn off for a box that is on');
+	pg_assert_true(strpos($menu, 'ws_mail_switch') < strpos($menu, '<hr class="menu-divider">') && strpos($menu, '<hr class="menu-divider">') < strpos($menu, 'ws_mail_remove'), 'Turn off, a divider, then Remove');
+	pg_assert_contains('name="ws_mail_remove" value="4" form="f" class="menu-item fg-emphasis-danger" data-ws-mail-confirm="' . h(ws_mail_box_remove_confirm(settings_mailboxes_tidy_test_box())) . '"', $menu, 'Remove in danger, with its confirm');
+	pg_assert_contains('value="4:on"', ws_mail_settings_box_row(settings_mailboxes_tidy_test_box(array('enabled' => 0)), '', 'f'), 'Turn on for a box that is off');
+	pg_assert_contains("closest(\\'[data-ws-mail-confirm]\\')", settings_mailboxes_tidy_test_source('includes/workspace/mail_settings.php'), 'the confirm is asked before the submit');
+}
+
+function test_settings_mailboxes_switch_value()
+{
+	pg_assert_same(array('id' => 4, 'enabled' => 0), ws_mail_box_switch_value('4:off'), 'off');
+	pg_assert_same(array('id' => 4, 'enabled' => 1), ws_mail_box_switch_value('4:on'), 'on');
+
+	foreach (array(null, '', '4', '0:on', '4:maybe', '4:on OR 1=1', array('4:on')) as $bad) {
+		pg_assert_same(null, ws_mail_box_switch_value($bad), 'refused: ' . json_encode($bad));
+	}
+
+	$save = settings_mailboxes_tidy_test_source('includes/settings/mailboxes.save.php');
+	pg_assert_contains("ws_mail_box_switch_value(post_value('ws_mail_switch'))", $save, 'posted as ws_mail_switch');
+	pg_assert_true(strpos($save, '$ws_switching = ws_mail_box_remove_check(') < strpos($save, 'ws_mail_box_switch_write('), 'checked before it is written');
+}

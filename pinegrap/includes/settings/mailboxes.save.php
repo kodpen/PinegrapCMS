@@ -10,7 +10,8 @@
  * blocked sender's Allow again (ws_mail_allow, value the block's id), or an
  * incoming mail rule's Add rule (ws_mail_rule_add, the fields ws_mail_rule_*)
  * and Delete (ws_mail_rule_delete, value "<box id>:<rule id>"), or a
- * mailbox's Remove (ws_mail_remove, value its id).
+ * mailbox's Remove (ws_mail_remove, value its id) and Turn off or on
+ * (ws_mail_switch, "<id>:off" or "<id>:on"), from its row's menu.
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
@@ -74,6 +75,21 @@ $ws_value = post_value('ws_mail_test');
 
 if (($ws_value !== null) && is_scalar($ws_value)) {
     ws_mail_settings_post($ws_viewer, 'mail_test', $liveform, array('box_id' => (int) $ws_value), null, $ws_warn);
+}
+
+// Turn off or Turn on in a box row's menu ("<id>:off" or "<id>:on").
+$ws_switch = ws_mail_box_switch_value(post_value('ws_mail_switch'));
+
+if (($ws_switch !== null) && ws_mail_ready()) {
+    $ws_box = ws_mail_box($ws_switch['id']);
+    $ws_switching = ws_mail_box_remove_check($ws_viewer, $ws_box);
+
+    if ($ws_switching['ok']) {
+        ws_mail_box_switch_write($ws_box, $ws_switch['enabled'], (string) ($_SESSION['sessionusername'] ?? ''));
+        $liveform->add_notice($ws_switch['enabled'] ? lang('The mailbox is read again.') : lang('The mailbox is no longer read.'));
+    } else {
+        $ws_warn($ws_switching['error']);
+    }
 }
 
 // A mailbox's Remove: its settings, stored password and rules go; its
