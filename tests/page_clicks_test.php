@@ -265,3 +265,23 @@ function test_consent_statistics_not_refused_is_the_anonymous_counts_check()
 	pg_assert_contains('pg_request_is_automated()', $allowed, 'no crawler or script');
 	pg_assert_true(strpos(page_clicks_test_source('includes/fn/consent.php'), "return !empty(\$choices[\$category]);") !== false, 'pg_consent_allows() still asks for a yes');
 }
+
+// A stored copy of a page keeps the script up to the cache's hour after the
+// switch is turned off, and the signature is good for a day: page_view.php
+// must ask the switch itself, as the API's description promises ("nothing is
+// counted while the switch is off").
+function test_page_clicks_nothing_counted_while_the_switch_is_off()
+{
+	pg_assert_true(pg_page_clicks_may_count(true, false, false, true), 'switch on, a visitor who did not refuse');
+	pg_assert_false(pg_page_clicks_may_count(false, false, false, true), 'switch off: nothing counted');
+	pg_assert_false(pg_page_clicks_may_count(true, true, false, true), 'a crawler or script');
+	pg_assert_false(pg_page_clicks_may_count(true, false, true, true), 'somebody signed in');
+	pg_assert_false(pg_page_clicks_may_count(true, false, false, false), 'statistics refused');
+
+	pg_assert_false(pg_page_clicks_allowed(), 'without a connection the switch reads off, so the beacon is refused');
+
+	$source = page_clicks_test_source('includes/fn/page_clicks.php');
+	$start = strpos($source, 'function pg_page_clicks_allowed()');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_contains('pg_page_clicks_switch_on()', $body, 'the beacon\'s gate reads the one reader of the switch');
+}
