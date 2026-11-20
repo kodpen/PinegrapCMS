@@ -2254,6 +2254,16 @@ function ws_note_cards_map($viewer, $message_ids)
 
     $shares = (array) db_items("SELECT * FROM ws_note_shares WHERE message_id IN (" . implode(',', $message_ids) . ")");
     $out = array();
+    $kept = array();
+
+    // How many versions each note keeps: the count in the card's foot.
+    if (!empty($shares) && ws_note_versions_ready()) {
+        $note_ids = array_unique(array_map(function ($share) { return (int) $share['note_id']; }, $shares));
+
+        foreach ((array) db_items("SELECT note_id, COUNT(*) AS kept FROM ws_note_versions WHERE note_id IN (" . implode(',', $note_ids) . ") GROUP BY note_id") as $row) {
+            $kept[(int) $row['note_id']] = (int) $row['kept'];
+        }
+    }
 
     foreach ($shares as $share) {
         $note = ws_note($share['note_id']);
@@ -2283,6 +2293,13 @@ function ws_note_cards_map($viewer, $message_ids)
             'updated'    => $card['updated'],
             'revision'   => (int) ($note['revision'] ?? 0),
             'updated_at' => (int) $note['updated_at'],
+            // The share behind the card: its channel, whether the channel's
+            // posters may edit, and whether a note group wrote it (the
+            // owner's switch is only on the channel's own share).
+            'channel_id'   => (int) $share['channel_id'],
+            'channel_edit' => !empty($share['can_edit']),
+            'via_group'    => !empty($share['via_group']),
+            'versions'     => $kept[(int) $note['id']] ?? 0,
         );
     }
 
@@ -3156,5 +3173,18 @@ function ws_notes_js_strings()
         'notes_menu_unpin'      => lang('Remove from the menu'),
         'notes_menu_pinned'     => lang('My Notes is in the menu now, right under the workspace.'),
         'notes_menu_unpinned'   => lang('My Notes is no longer in the menu; the workspace menu still has it.'),
+        // A note in a channel: its card and windows (workspace_channel_notes.js).
+        'cn_write'              => lang('Write a note'),
+        'cn_channel_edit'       => lang('People who may post here can edit'),
+        'cn_channel_edit_on'    => lang('People who may post in this channel can edit the note now.'),
+        'cn_channel_edit_off'   => lang('Only the people the note is shared with can edit it now.'),
+        'cn_show_all'           => lang('Show all'),
+        'cn_show_less'          => lang('Show less'),
+        'cn_changed'            => ws_js_template('Changed by {var:1} · {var:2}', 2),
+        'cn_versions'           => lang('Versions'),
+        'cn_menu'               => lang('Note actions'),
+        'cn_open_notes'         => lang('Open on the notes screen'),
+        'cn_show'               => lang('Show'),
+        'cn_put_back_done'      => lang('The version was put back.'),
     );
 }

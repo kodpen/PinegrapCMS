@@ -21,6 +21,6 @@ description: Where a /workspace/ route for a channel or its agents still differs
 - The agent row gives raw facts (state, percent, resets_at); the panel draws words (`ws_channel_agent_state_words()`) the API never sends.
 - Approvals: the panel form names agents for a person; over the API only a team devices session may.
 - An agent's tier applies its proposals at once only on `workspace.changes.propose` with its key; through an OAuth connection or the task route they stay proposals.
-- Every call of an agent's own (requests, brief, claim, answer, fail, agent-wake, agent-report, agent-instructions, approvals decide) is HTTP only, `'mcp' => false`; the brief and the instructions say so (`workspace/agent-route-words.md`).
+- An agent's own calls (instructions, requests, brief, claim, answer, fail, progress, agent-wake, agent-report) are MCP tools only for its own key (`'mcp' => 'agent'`, `mcp-agent-own-tools.md`); its feedback read and the approvals decide stay HTTP only. The brief and the instructions say so (`workspace/agent-route-words.md`).
 
 Related: docs/memory/api/channel-api-not-built.md, docs/memory/api/api-panel-coverage-channels.md

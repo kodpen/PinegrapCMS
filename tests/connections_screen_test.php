@@ -214,7 +214,7 @@ function test_connections_screen_folds_the_mail_routes()
 	}
 
 	pg_assert_same('#settings/mail_sending/pgset-mailchimp', $registry['mailchimp']['place'], 'Mailchimp is set up in E-mail sending too');
-	pg_assert_same(80, pg_connections_count(), 'the figure stays');
+	pg_assert_same(81, pg_connections_count(), 'the figure stays');
 
 	$rows = array(
 		'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'state' => 'connected', 'search' => array('Stripe')),

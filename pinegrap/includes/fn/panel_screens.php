@@ -78,6 +78,7 @@ function pg_panel_search_screens()
         array('ecommerce', 'Store', 'Orders', 'bi-receipt', 'view_orders.php', array('siparis', 'siparisler', 'order', 'orders', 'ord', 'sip')),
         array('ecommerce', 'Store', 'Products', 'bi-box-seam', 'view_products.php', array('urun', 'urunler', 'product', 'products', 'pro', 'uru')),
         array('ecommerce', 'Store', 'Create {var:1}', 'bi-box-seam', 'add_product.php', array('urun ekle', 'urun olustur', 'add product', 'create product', 'yeni urun', 'urunek'), 'Product'),
+        array('ecommerce', 'Store', 'Supplier feeds', 'bi-cloud-download', 'view_supplier_feeds.php', array('tedarikci', 'tedarikçi', 'xml', 'supplier', 'feed', 'besleme', 'stok senkron', 'bayi')),
         array('ecommerce', 'Store', 'Product Groups', 'bi-boxes', 'view_product_groups.php', array('urun grubu', 'grup', 'product group', 'group', 'gru')),
         array('ecommerce', 'Store', 'Add Product Group', 'bi-boxes', 'add_product_group.php', array('grup ekle', 'add group', 'yeni grup', 'grupekle')),
         array('ecommerce', 'Store', 'Offers', 'bi-percent', 'view_offers.php', array('teklif', 'teklifler', 'indirim', 'offer', 'offers', 'off', 'tek', 'ind')),

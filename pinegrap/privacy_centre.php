@@ -28,6 +28,14 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_centre.php');
 include_once('liveform.class.php');
 $liveform = new liveform('privacy_centre');
 
+// The views: the inventory, or the request box (includes/privacy_centre_requests.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
+
+if ((($_GET['view'] ?? '') === 'requests') || (($_POST['view'] ?? '') === 'requests')) {
+    require(PG_FUNCTIONS_DIR . '/includes/privacy_centre_requests.php');
+    exit();
+}
+
 $privacy_centre_translate = 'lang';
 $privacy_centre_country = function_exists('pg_erp_store_country') ? (string) pg_erp_store_country() : '';
 $privacy_centre_transfers = pg_privacy_transfers_live($privacy_centre_country);
@@ -186,6 +194,7 @@ pg_page_shell(array(
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
+    ' . pg_privacy_centre_views('inventory', pg_privacy_requests_counts()['open']) . '
     ' . $privacy_centre_toolbar . '
     <div class="alert theme-info mb-7">' . h(lang('The legal grounds and retentions are suggested defaults, not legal advice. Check them for your own notice and your VERBİS record. Erased data stays in backups made before the erasure until those backups are removed.')) . '</div>
     ' . $privacy_centre_inventory . '

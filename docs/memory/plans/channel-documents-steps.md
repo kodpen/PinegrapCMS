@@ -8,7 +8,7 @@ description: Plan channel-documents, steps KD1 to KD5: the server (write in a ch
   - `includes/workspace/notes.php`: `ws_note_access()` reads a channel row's `can_edit`; the save touches the cards' messages; `ws_note_channel_write_check()` and `ws_note_channel_write()`, shared by the panel and the API; the panel actions `ws_note_channel_write` and `ws_note_channel_edit` (the switch).
   - New `includes/workspace/api_channel_notes.php` (the route, its dry run through the check); `ws_api_message_note_card()` gains the three fields; `php tools/check_api_schema.php`.
   - Tests, red first: access by owner, person share and channel share, each with and without `can_edit` and the right to post; the touch; the Markdown rules; the refusals (locked, may not post, too long). Features: N2 to N7.
-- KD2 (M) after KD1: the card and its windows.
+- KD2 (M) after KD1: the card and its windows. Done: PR #10863.
   - New `assets/js/workspace_channel_notes.js` in the bundle list (`pg_js_bundles()`); in `workspace.js` only the attach menu's entry, `noteCardNode()`'s call and the card's menu items; the fold in `backend.src.css`; texts with `php tools/tr_add.php`.
   - The Versions drawer reads what the notes screen's version list reads; no second store.
   - Tests on the pure parts (the fold's state, the foot's words, which menu items a reader gets). Seen on dev: a note written in a channel, changed over the API while the channel is open, put back from a version; a wide screen and a phone. Features: N1, N8, N9.

@@ -14541,6 +14541,7 @@ function pg_order_event_places_move($order_id, $direction)
 
     $lines = db_items(
         "SELECT
+            order_items.id AS order_item_id,
             order_items.calendar_event_id,
             order_items.recurrence_number,
             order_items.quantity,
@@ -14552,6 +14553,9 @@ function pg_order_event_places_move($order_id, $direction)
         INNER JOIN calendar_events ON calendar_events.id = order_items.calendar_event_id
         WHERE (order_items.order_id = '" . $order_id . "') AND (order_items.calendar_event_id > 0)" . pg_order_item_active_sql());
 
+    // Places a refunded return took gave themselves back with the refund
+    // (pg_event_tickets_return_places()): only the rest moves here.
+    $lines = pg_event_tickets_places_left((array) $lines, pg_event_tickets_refunded_units($order_id));
     $moved = array();
 
     foreach (pg_order_event_places((array) $lines, $on) as $place) {

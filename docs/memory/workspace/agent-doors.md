@@ -20,7 +20,7 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - A request whose message is being edited is held (no knock, not listed, `409 editing`): [[agent-edit-hold]].
 
 ## Which routes does an app agent use?
-- `api_agent_requests.php`, `'mcp' => false` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all).
+- `api_agent_requests.php`, `'mcp' => 'agent'` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all).
 - `POST …/{id}/claim` (409 already_claimed / closed; 👀 by the agent's application), `…/answer` (text under the asking message with the asker mentioned, or `no_answer`; written through `ws_assistant_writer()`; 403 when the channel row no longer allows the agent or the asker cannot write there; ✅), `…/fail` (reason told under the message when it can be). Shown as Claude's requests are (`WorkspaceClaudeRequest`).
 - A model agent's request is answered by the site (`model-assistants.md`); the screen and `ws_api_assistants_carry_on()` carry it on as Pinegrap AI's (`models` in the ask's result).
 

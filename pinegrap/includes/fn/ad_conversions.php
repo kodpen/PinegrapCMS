@@ -25,6 +25,10 @@
  *   pg_ad_conversion_send_<service>(), when one exists. Sent (2) or refused
  *   or given up (3) rows drop their ids. Rows over 30 days are swept.
  *
+ * The visitor's other events (Lead, CompleteRegistration, add to cart,
+ * begin checkout) are written due at once, only with consent, by the
+ * functions after pg_ad_conversion_dispatch().
+ *
  * Consent is read by pg_ad_conversion_consent_by() from three inputs: the
  * cookie notice on, the stored answer and the service's "Send personal data
  * while the cookie notice is off" box; never pg_consent_allows(), which
@@ -58,6 +62,9 @@ define('PG_AD_CONVERSION_SWEEP_BATCHES', 20);
 // The most due rows one pass of the general job reads.
 define('PG_AD_CONVERSION_PASS_ROWS', 50);
 
+// The most add to cart events one cart sends, per service.
+define('PG_AD_CONVERSION_CART_ADDS', 20);
+
 /**
  * The services an event can go to, in the order they are worked.
  *
@@ -83,7 +90,8 @@ function pg_ad_conversions_ready()
  *
  * @param mixed $raw the stored JSON
  * @return array connected (bool), events (string[]), person_notice_off
- *               (bool), without_person (string[])
+ *               (bool), without_person (string[]), lead_forms (int[], the
+ *               form pages whose records are a Lead)
  */
 function pg_ad_conversion_settings_parse($raw)
 {
@@ -99,7 +107,27 @@ function pg_ad_conversion_settings_parse($raw)
         'events' => array_key_exists('events', $data) ? $list($data['events']) : array('purchase'),
         'person_notice_off' => !empty($data['person_notice_off']),
         'without_person' => $list($data['without_person'] ?? array()),
+        'lead_forms' => pg_ad_conversion_page_ids($data['lead_forms'] ?? array()),
     );
+}
+
+/**
+ * A list of page ids as positive integers, in order, each once. Pure.
+ *
+ * @param mixed $value
+ * @return int[]
+ */
+function pg_ad_conversion_page_ids($value)
+{
+    $ids = array();
+
+    foreach (is_array($value) ? $value : array() as $id) {
+        if ((is_int($id) || (is_string($id) && ctype_digit($id))) && ((int) $id > 0)) {
+            $ids[] = (int) $id;
+        }
+    }
+
+    return array_values(array_unique($ids));
 }
 
 /**
@@ -562,6 +590,8 @@ function pg_ad_conversion_payment_step($order_id)
         return;
     }
 
+    pg_ad_conversion_begin_checkout($order_id);
+
     $plan = pg_ad_conversion_payment_step_plan(pg_consent_enabled(), pg_consent_choices(), pg_ad_conversion_settings_all());
 
     if ($plan === array()) {
@@ -820,6 +850,339 @@ function pg_ad_conversion_dispatch($budget)
     return $sent;
 }
 
+// The visitor's events: Lead (a record of a form the shop picked),
+// CompleteRegistration (an account opened), add to cart and begin checkout.
+// Each goes only to a service that has it ticked, and only with the visitor's
+// consent: no row is written without it. The row is due at once; the
+// general job sends it as it sends a purchase.
+
+/**
+ * The visitor's events a service can tick besides the purchase. Pure.
+ *
+ * @return string[]
+ */
+function pg_ad_conversion_visitor_events()
+{
+    return array('lead', 'complete_registration', 'add_to_cart', 'begin_checkout');
+}
+
+/**
+ * The services a visitor's event goes to: connected, the event ticked, the
+ * visitor's consent for that service (pg_ad_conversion_consent_by()); a Lead
+ * only for a form the service lists. Pure.
+ *
+ * @param string $event
+ * @param bool   $notice_on
+ * @param array  $choices
+ * @param array  $settings     service => pg_ad_conversion_settings_parse()
+ * @param int    $form_page_id the form's page, for a Lead
+ * @return string[]
+ */
+function pg_ad_conversion_visitor_plan($event, $notice_on, array $choices, array $settings, $form_page_id = 0)
+{
+    $services = array();
+
+    if (!in_array($event, pg_ad_conversion_visitor_events(), true)) {
+        return $services;
+    }
+
+    foreach ($settings as $service => $one) {
+        if (empty($one['connected']) || !in_array($event, (array) ($one['events'] ?? array()), true)) {
+            continue;
+        }
+
+        if (($event === 'lead') && !in_array((int) $form_page_id, (array) ($one['lead_forms'] ?? array()), true)) {
+            continue;
+        }
+
+        if (pg_ad_conversion_consent_by($notice_on, $choices, !empty($one['person_notice_off']))) {
+            $services[] = $service;
+        }
+    }
+
+    return $services;
+}
+
+/**
+ * A visitor's event id: lead-<form record reference>, reg-<user id>,
+ * checkout-<order reference> (once per order), cart-<order reference>-<n>
+ * (the cart's n-th add); at most 64 characters, '' without a key. Pure.
+ *
+ * @param string     $event
+ * @param string|int $key
+ * @param int        $count the add's number in the cart, for add to cart
+ * @return string
+ */
+function pg_ad_conversion_visitor_event_id($event, $key, $count = 0)
+{
+    $key = (string) $key;
+    $prefixes = array('lead' => 'lead-', 'complete_registration' => 'reg-', 'begin_checkout' => 'checkout-', 'add_to_cart' => 'cart-');
+
+    if (($key === '') || !isset($prefixes[$event])) {
+        return '';
+    }
+
+    $suffix = ($event === 'add_to_cart') ? '-' . (int) $count : '';
+
+    return substr($prefixes[$event] . substr($key, 0, 64 - strlen($prefixes[$event]) - strlen($suffix)) . $suffix, 0, 64);
+}
+
+/**
+ * Whether a cart that sent this many add to cart events to a service may
+ * send one more. Pure.
+ *
+ * @param int $count
+ * @return bool
+ */
+function pg_ad_conversion_cart_add_allowed($count)
+{
+    return (int) $count < PG_AD_CONVERSION_CART_ADDS;
+}
+
+/**
+ * What an add to cart says that is not about a person: the line, its value
+ * in minor units. Pure.
+ *
+ * @param string $sku        products.name, as the purchase's lines carry it
+ * @param int    $quantity
+ * @param int    $unit_price minor units
+ * @param string $currency
+ * @param int    $time
+ * @return array
+ */
+function pg_ad_conversion_cart_add_detail($sku, $quantity, $unit_price, $currency, $time)
+{
+    $quantity = max(1, (int) $quantity);
+    $unit_price = (int) round((float) $unit_price);
+
+    return array(
+        'value' => $unit_price * $quantity,
+        'currency' => (string) $currency,
+        'order_number' => '',
+        'time' => (int) $time,
+        'contents' => array(array('id' => (string) $sku, 'quantity' => $quantity, 'price' => $unit_price)),
+    );
+}
+
+/**
+ * The ids of a visitor's event, with the e-mail hashed (a Lead and a
+ * registration have no order to read it from at send time); the plain
+ * address is never kept. Pure.
+ *
+ * @param array  $ids   pg_ad_conversion_ids_for()
+ * @param string $email '' for none
+ * @return array
+ */
+function pg_ad_conversion_visitor_ids(array $ids, $email)
+{
+    $hash = pg_ad_conversion_hash_email($email);
+
+    if ($hash !== '') {
+        $ids['email_sha256'] = $hash;
+    }
+
+    return $ids;
+}
+
+/**
+ * The receipt's mark for a browser pixel pasted on the site: the purchase's
+ * event id in data-pg-event-id, so the pixel sends the id the server sends
+ * and the service counts the purchase once. Pure.
+ *
+ * @param string $reference_code the order's
+ * @return string
+ */
+function pg_ad_conversion_receipt_marker($reference_code)
+{
+    $event_id = pg_ad_conversion_purchase_event_id($reference_code);
+
+    return ($event_id === '') ? '' : '<span hidden data-pg-event-id="' . htmlspecialchars($event_id, ENT_QUOTES, 'UTF-8') . '"></span>';
+}
+
+/**
+ * The services a visitor's event goes to in this request, read from the
+ * settings and the visitor's consent; empty at once when none takes it.
+ *
+ * @param string $event
+ * @param int    $form_page_id
+ * @return string[]
+ */
+function pg_ad_conversion_visitor_services($event, $form_page_id = 0)
+{
+    if (!pg_ad_conversions_ready()) {
+        return array();
+    }
+
+    $settings = pg_ad_conversion_settings_all();
+    $ticked = false;
+
+    foreach ($settings as $one) {
+        $ticked = $ticked || (!empty($one['connected']) && in_array($event, $one['events'], true));
+    }
+
+    if (!$ticked) {
+        return array();
+    }
+
+    return pg_ad_conversion_visitor_plan($event, pg_consent_enabled(), pg_consent_choices(), $settings, $form_page_id);
+}
+
+/**
+ * Writes a visitor's event for each service, due at once, with that
+ * service's ids (cookies, address, browser name) and the
+ * hashed e-mail when one is given. A row already there for the event id is
+ * left as it is.
+ *
+ * @param string   $event
+ * @param string[] $event_ids service => event id
+ * @param int      $order_id  0 without an order
+ * @param array    $detail
+ * @param string   $email
+ * @return void
+ */
+function pg_ad_conversion_visitor_write($event, array $event_ids, $order_id, array $detail, $email = '')
+{
+    $ip = function_exists('waf_client_ip') ? waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $user_agent = (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
+    $detail = json_encode($detail);
+    $now = time();
+
+    foreach ($event_ids as $service => $event_id) {
+        if ($event_id === '') {
+            continue;
+        }
+
+        $ids = json_encode(pg_ad_conversion_visitor_ids(pg_ad_conversion_ids_for($service, $_COOKIE, $ip, $user_agent), $email));
+
+        db_q(pg_ad_conversion_insert_sql(), array($service, $event, (int) $order_id, $event_id, $ids, $detail, 1, 1, $now, $now));
+    }
+}
+
+/**
+ * A Lead: a record of a form the shop picked on a service's page.
+ *
+ * @param int    $form_page_id   the form's page
+ * @param string $reference_code the record's
+ * @param string $email          the submitter's address, '' for none
+ * @return void
+ */
+function pg_ad_conversion_lead($form_page_id, $reference_code, $email)
+{
+    $services = pg_ad_conversion_visitor_services('lead', (int) $form_page_id);
+    $event_id = pg_ad_conversion_visitor_event_id('lead', $reference_code);
+
+    if (($services === array()) || ($event_id === '')) {
+        return;
+    }
+
+    $detail = array('value' => 0, 'currency' => '', 'order_number' => '', 'time' => time(), 'contents' => array());
+
+    pg_ad_conversion_visitor_write('lead', array_fill_keys($services, $event_id), 0, $detail, $email);
+}
+
+/**
+ * CompleteRegistration: an account the visitor opened.
+ *
+ * @param int    $user_id
+ * @param string $email
+ * @return void
+ */
+function pg_ad_conversion_registration($user_id, $email)
+{
+    if ((int) $user_id <= 0) {
+        return;
+    }
+
+    $services = pg_ad_conversion_visitor_services('complete_registration');
+
+    if ($services === array()) {
+        return;
+    }
+
+    $detail = array('value' => 0, 'currency' => '', 'order_number' => '', 'time' => time(), 'contents' => array());
+
+    pg_ad_conversion_visitor_write('complete_registration', array_fill_keys($services, pg_ad_conversion_visitor_event_id('complete_registration', (int) $user_id)), 0, $detail, $email);
+}
+
+/**
+ * Add to cart, from cart_action.php: returns at once unless a service has
+ * the event ticked and the visitor consented; at most
+ * PG_AD_CONVERSION_CART_ADDS a cart and service.
+ *
+ * @param int    $order_id   the cart
+ * @param string $sku        products.name
+ * @param int    $quantity
+ * @param int    $unit_price minor units
+ * @return void
+ */
+function pg_ad_conversion_add_to_cart($order_id, $sku, $quantity, $unit_price)
+{
+    $services = ((int) $order_id > 0) ? pg_ad_conversion_visitor_services('add_to_cart') : array();
+
+    if ($services === array()) {
+        return;
+    }
+
+    $order = pg_ad_conversion_order_row((int) $order_id);
+
+    if (($order === null) || !pg_ad_conversion_order_sendable($order['type'] ?? '')) {
+        return;
+    }
+
+    $event_ids = array();
+
+    foreach ($services as $service) {
+        $result = db_q("SELECT COUNT(*) FROM ad_conversion_events WHERE order_id = ? AND service = ? AND event = 'add_to_cart'", array((int) $order_id, $service));
+        $row = $result ? mysqli_fetch_row($result) : null;
+        $count = (int) ($row[0] ?? 0);
+
+        if (pg_ad_conversion_cart_add_allowed($count)) {
+            $event_ids[$service] = pg_ad_conversion_visitor_event_id('add_to_cart', $order['reference_code'], $count + 1);
+        }
+    }
+
+    $detail = pg_ad_conversion_cart_add_detail($sku, $quantity, $unit_price, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', time());
+
+    pg_ad_conversion_visitor_write('add_to_cart', $event_ids, (int) $order_id, $detail);
+}
+
+/**
+ * Begin checkout, at the payment step: once per order (the event id is the
+ * order's), with the cart's lines and total.
+ *
+ * @param int $order_id
+ * @return void
+ */
+function pg_ad_conversion_begin_checkout($order_id)
+{
+    $services = pg_ad_conversion_visitor_services('begin_checkout');
+
+    if ($services === array()) {
+        return;
+    }
+
+    $order = pg_ad_conversion_order_row((int) $order_id);
+
+    if (($order === null) || !pg_ad_conversion_order_sendable($order['type'] ?? '')) {
+        return;
+    }
+
+    $lines = array();
+    $result = db_q("SELECT product_name, quantity, price FROM order_items WHERE order_id = ? ORDER BY id", array((int) $order_id));
+
+    while ($result && ($line = mysqli_fetch_assoc($result))) {
+        $lines[] = $line;
+    }
+
+    $result = db_q("SELECT total FROM orders WHERE id = ?", array((int) $order_id));
+    $row = $result ? mysqli_fetch_row($result) : null;
+    $total = (int) round((float) ($row[0] ?? 0));
+    $detail = pg_ad_conversion_purchase_detail($total, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', '', time(), $lines);
+
+    pg_ad_conversion_visitor_write('begin_checkout', array_fill_keys($services, pg_ad_conversion_visitor_event_id('begin_checkout', $order['reference_code'])), (int) $order_id, $detail);
+}
+
 // The services' senders.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_meta.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_tiktok.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_ga4.php');
