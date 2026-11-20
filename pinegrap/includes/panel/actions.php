@@ -313,6 +313,7 @@ function pg_panel_actions()
         'ws_audit_list', 'ws_timeline', 'ws_home', 'ws_tick', 'ws_calc',
         'ws_notes', 'ws_note_get', 'ws_note_save', 'ws_note_delete',
         'ws_note_from_message', 'ws_note_share', 'ws_note_channel',
+        'ws_note_channel_write', 'ws_note_channel_edit',
         'ws_note_unshare', 'ws_note_file', 'ws_note_claude',
         'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_note_groups',
         'ws_note_group_save', 'ws_note_group_order', 'ws_note_group_delete', 'ws_note_place',
