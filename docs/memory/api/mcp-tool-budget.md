@@ -10,12 +10,12 @@ description: The MCP tool size budget (AG9): 600 characters a description, 4,096
 ## How does the test hold them?
 - `tests/mcp_tool_budget_test.php` builds every route of the core and the modules as tools for a caller with every scope, and keeps two lists: tools over 600 characters, tools over 4,096 bytes.
 - The lists may only shrink: a tool over a budget that is not listed fails (fit it, never list it); a listed tool that fits fails until it is taken off.
-- On 2026-11-20: 584 tools, 217 descriptions over 600 characters (workspace 97, erp 28, design 11, the rest 81), 13 tools over 4,096 bytes (7 of them workspace). The plan's 209 was counted before later routes landed.
+- On 2026-11-20: 584 tools, 222 descriptions over 600 characters (workspace 102, erp 28, design 11, the rest 81), 13 tools over 4,096 bytes (7 of them workspace). The plan's 209 was counted before later routes landed.
 
 ## Where does long reference text go?
 - A route row's `details` key: read only by `api_openapi_operation_description()` (`includes/api/openapi.php`), which writes description, the scope sentence, then the details as their own paragraph. `pg_mcp_tool_from_route()` never reads it (tested).
 - What a caller needs for a right call stays in the description, a parameter's description or the guide section the tool's "Guide: <topic>." line names; only lookup detail moves to `details`.
 - The diet steps (AG10 Workspace, AG11 ERP, AG12 the rest) take tools off the lists; each PR body gives the tool list's bytes before and after.
 
-## Which tests changed with it?
-- `tests/mcp_test.php` and `tests/mcp_blog_post_test.php` expect "Guide: store." on product tools since the store guide topic is listed; they failed on `development` before PR #PRNUM.
+## Why does the test fix the guide line?
+- `pg_mcp_tool_guide_line()` reads the modules on once a request (static), so its "Guide: <topic>." depends on what ran first: present in `php tools/test.php mcp`, empty in the full run. The test strips it and adds the line a site with store, workspace and erp on sends, so the lists are the same in every run.

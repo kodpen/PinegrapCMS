@@ -195,6 +195,7 @@ function mcp_tool_budget_test_long_descriptions()
 		'workspace_refs_get',
 		'workspace_plan_get',
 		'workspace_plan_items_create',
+		'workspace_search',
 		'workspace_my_day_get',
 		'workspace_channels_apply_template',
 		'workspace_flows_list',
@@ -229,13 +230,17 @@ function mcp_tool_budget_test_long_descriptions()
 		'workspace_mail_messages_send',
 		'workspace_mail_drafts_send',
 		'workspace_personal_plans_list',
+		'workspace_personal_plans_create',
 		'workspace_personal_plans_update',
 		'workspace_channels_agents_list',
 		'workspace_channels_agents_card',
 		'workspace_channels_agents_set',
 		'workspace_messages_mark',
+		'workspace_memory_general_list',
 		'workspace_memory_general_create',
+		'workspace_memory_move_general',
 		'workspace_memory_create',
+		'workspace_memory_update',
 		'workspace_channels_canvases_create',
 		'workspace_messages_canvas_get',
 		'workspace_messages_canvas_edit',
@@ -253,7 +258,8 @@ function mcp_tool_budget_test_long_descriptions()
 		'workspace_channels_notes_create',
 		'translations_strings_list',
 		'translations_refresh',
-		'translations_status',	);
+		'translations_status',
+	);
 }
 
 // Tools larger than 4,096 bytes as JSON today. Take a tool off when it fits;
@@ -273,11 +279,12 @@ function mcp_tool_budget_test_large_tools()
 		'workspace_changes_propose',
 		'workspace_tasks_changes_propose',
 		'workspace_channels_canvases_create',
-		'workspace_messages_canvas_edit',	);
+		'workspace_messages_canvas_edit',
+	);
 }
 
 // Every route of the core and of the modules, as tools for a caller holding
-// every scope they use.
+// every scope they use, on a site with every module on.
 function mcp_tool_budget_test_tools()
 {
 	static $tools = null;
@@ -293,7 +300,24 @@ function mcp_tool_budget_test_tools()
 			}
 		}
 
-		$tools = pg_mcp_tools_list(pg_mcp_routes_for($all, array_keys($scopes)));
+		$registry = pg_agent_guide_registry();
+
+		$modules = array('store', 'workspace', 'erp');
+
+		$tools = array();
+
+		foreach (pg_mcp_routes_for($all, array_keys($scopes)) as $route) {
+			$tool = pg_mcp_tool_from_route($route);
+
+			// The guide line depends on the modules a site runs, read once a
+			// request: measure every tool as a site with every module on sends it.
+			$topic = pg_agent_guide_topic_of_route($registry, pg_agent_guide_listed($registry, array($route['id']), $modules), $route['id']);
+
+			$tool['description'] = trim((string)preg_replace('/ ?Guide: [a-z_]+\.$/', '', $tool['description'])
+				. (($topic !== '') ? ' Guide: ' . $topic . '.' : ''));
+
+			$tools[] = $tool;
+		}
 	}
 
 	return $tools;
