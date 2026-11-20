@@ -140,7 +140,8 @@
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 - decisions-made-product-81.md: Decisions list, product part 81 (2026-11-20 on): the Google Cloud Translation key moves to its own Connections page (the reading of polls 146, 147 and 149); each order's net profit
-- decisions-made-product-82.md: Decisions list, product part 82 (2026-11-20 on): a referred friend is known by account and folded e-mail together; no address match in the self check; a reward met by a busy lock is tried again
+- decisions-made-product-82.md: Decisions list, product part 82 (2026-11-20 on): the referral programme's friend check, address rule and busy lock; a line's reward points taken back once
+- decisions-made-product-83.md: Decisions list, product part 83 (2026-11-20 on): a subscription renewal order keeps no legal document copies; a NULL legal_acceptance stays read as accepted
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
