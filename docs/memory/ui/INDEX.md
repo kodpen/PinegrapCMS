@@ -657,7 +657,7 @@
 - settings-modal-endpoint.md: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save (place kept), reload on a language change, Safe Mode scheme change, a stale page.
 - settings-modal-entry-points.md: How Site Settings opens: header gear button, pgOpenSettings, URL hooks via fromUrl, pg_settings_link, legacy anchors, orphaned settings.php, removed hub.
 - settings-modal-injected-markup.md: Rules for settings pane markup injected by AJAX: jQuery .html(), pg_settings_scripts, scope-taking initializers, delegated listeners, code fields.
-- settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
+- settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility. [decision: decisions-made-panel-11.md]
 - settings-modal-navigation.md: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, the leaving bar, one dialog after another, return URL, notice handoff.
 - settings-modal-overview.md: Start file for the settings-modal-* files: Site Settings dialog (gear button, list, Search settings, pane, card drawer, Unsaved Changes), decisions, which file holds what, adding a card
 - settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751) [decision: decisions-made-panel-9.md]

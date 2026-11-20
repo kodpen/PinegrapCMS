@@ -30,6 +30,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-10.md: Where does an area's tab strip sit? (owner, 2026-11-19, agent channel poll 153, message 9494)
 - decisions-made-panel-10.md: Is the Design Canvas renamed Artifact Canvas? (owner, 2026-11-20)
 - decisions-made-panel-10.md: Which drawing is the Artifact Canvas icon? (owner, 2026-11-20)
+- decisions-made-panel-11.md: Where are the rules and the earlier parts?
+- decisions-made-panel-11.md: Is the Site Settings dialog bigger? (owner, 2026-11-20, in the architect's window)
+- decisions-made-panel-11.md: Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -462,6 +465,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
 - decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
 - decisions-made-product-87.md: Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
+- decisions-made-product-88.md: Where are the rules and the earlier parts?
+- decisions-made-product-88.md: Is Application Access drawn again? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-88.md: Does Application Access move into Connections? (owner, 2026-11-20, in the architect's window)
+- decisions-made-product-88.md: Is an agent given to a channel from the application's screen? (owner, 2026-11-20, in the architect's window)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -567,6 +574,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-36.md: Does the request box get a table? (owner, 2026-11-20, agent channel poll 177, channel message 10555)
 - decisions-made-schema-36.md: Which columns does it have? (architect, 2026-11-20, channel message 10557)
 - decisions-made-schema-36.md: Where do destruction records live? (architect, 2026-11-20, channel message 10557)
+- decisions-made-schema-37.md: Where are the rules and the earlier parts?
+- decisions-made-schema-37.md: Is the application that changed a note kept? (owner, 2026-11-20, agent channel poll 180, message 10580)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?

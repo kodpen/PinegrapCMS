@@ -24,6 +24,12 @@
 - ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
 - ai-guide-steps.md: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine with the API and MCP doors, the designer topic, the other topics, the panel's door, the compact tool list, presets
 - ai-guide.md: Plan (owner 2026-11-20, agent channel poll 170): the site explains itself to AI agents cheaply: a guide generated from code, read over MCP, API and the panel; a compact tool list; AG1 to AG14
+- app-access-redraw-features-2.md: Plan app-access-redraw, features U9 to U14: a guide per way to connect, the key as one token, the Agent tab (agent and channel rows), the edit drawer's tabs, the link with Connections
+- app-access-redraw-features.md: Plan app-access-redraw, features U1 to U8: the New application sheet in three steps, the starting points and who each acts as, the permission picker with search, groups and the four bulk buttons
+- app-access-redraw-steps.md: Plan app-access-redraw, steps AA1 to AA8: the New application sheet, the permission picker, the drawer and guides, the key as one token, the Agent tab, Connections' row, Claude Console, close-out
+- app-access-redraw.md: Plan (owner 2026-11-20, urgent): Application Access redrawn: starting points, a permission picker with bulk choices, a guide per way to connect, an agent made from the application; AA1 to AA8
+- assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
+- assistants-settings-tidy.md: Plan (owner 2026-11-20, urgent, in the architect's window): Site Settings › Assistants and agents tidied: each part one folded row, Claude's long guide in its drawer, repeated help cut; AT1 to AT4
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -121,6 +127,7 @@
 - sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield and taking a product off sale, the return spike, delivery, settings, API
 - sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
 - sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
+- settings-dialog-size.md: Plan (owner 2026-11-20, urgent, in the architect's window): the Site Settings dialog wider and taller on a desktop, never full width; one step, SZ1
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
 - stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5
