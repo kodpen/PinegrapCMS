@@ -1682,6 +1682,7 @@
     "No form is chosen. Pick the form that should be shown.": "Form seçilmedi. Hangi formun gösterileceğini seçin.",
     "No form is chosen. Pick the form whose submissions should be listed.": "Form seçilmedi. Gönderimleri listelenecek formu seçin.",
     "No form is chosen. The detail view does not know whose record to show.": "Form seçilmedi. Detay görünümü hangi formun bir kaydını göstereceğini bilemiyor.",
+    "No form yet.": "Henüz form yok.",
     "No forms were deleted": "Hiçbir form silinmedi",
     "No forms were deleted because none were selected.": "Seçilmediği için hiçbir form silinmedi.",
     "No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.": "Hiçbir çatı yüklenmez: bootstrap.css ve bootstrap.js dışarıda kalır. Palette sade HTML öğeleri, metin, formlar ve sistem widget'ları bulunur; stiller sizindir.",

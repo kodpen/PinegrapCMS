@@ -7,7 +7,7 @@ description: An app agent's progress note on a request it holds: the progress ro
 - While an agent works on a request for minutes, it says in one short line where it is ("reading the plans", "waiting for CI, back by 22:30"). Before it, nothing changed on the screen between the claim and the answer and no time showed (proposal in channel 25, message 5086; step cut in 5131).
 
 ## Who may write it, and when?
-- `POST /workspace/agent-requests/{id}/progress` (`workspace.agent_requests.progress`, `workspace:write`, `'mcp' => false`, dry run), body `{"text": "..."}`, in `api_agent_requests.php`. Only an active app agent's own key (`ws_api_agent_caller()`, else 403) on one of its own requests (else 404).
+- `POST /workspace/agent-requests/{id}/progress` (`workspace.agent_requests.progress`, `workspace:write`, `'mcp' => 'agent'`: a tool for the agent's own key only, dry run), body `{"text": "..."}`, in `api_agent_requests.php`. Only an active app agent's own key (`ws_api_agent_caller()`, else 403) on one of its own requests (else 404).
 - `ws_agent_progress_check()` (pure, `agent_shown.php`): 409 `not_claimed` while queued or sent, 409 `closed` once answered, failed or cancelled, 422 for an empty note or over `WS_AGENT_PROGRESS_MAX` (200) characters after spaces fold, 429 `rate_limited` with `Retry-After` inside `WS_AGENT_PROGRESS_GAP` (30) seconds of the last note.
 - The write is conditional on the ai_state it checked, so two notes sent at once cannot both pass the brake. No message, no wake, no inbox line, no Site Log line.
 

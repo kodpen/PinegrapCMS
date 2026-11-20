@@ -22,7 +22,7 @@ description: /create contact (/oluştur kişi) in a channel: how the line is rea
 
 ## What does the decision say?
 - "{tag} was added." with no lines: the lines would show the e-mail address to members without the contacts right; the tag shows the contact only to who may see it.
-- An applied proposal for a contact follows the same rule (#10778): `ws_change_decision_text()` in changes.php keeps the create and update sentences with no value lines (`ws_change_decision_private()`). A deleted contact is named "Contact #5 was deleted on Claude's proposal.", its number only, no "It held:" (wording open with the architect). Other kinds keep their lines.
+- An applied proposal for a contact follows the same rule (#10778): `ws_change_decision_text()` in changes.php keeps the create and update sentences with no value lines (`ws_change_decision_private()`). A deleted contact is named "Contact #5 was deleted on Claude's proposal.", its number only, no "It held:". Architect (2026-11-20): the number alone stays; a name in a locked message would show to members without the contacts right and outlive the erased record. Other kinds keep their lines.
 
 ## What about /create row (K22)?
 - Its own file: workspace-create-row-command.md.
