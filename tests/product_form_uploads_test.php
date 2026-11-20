@@ -97,6 +97,16 @@ function test_product_form_uploads_who_opens_the_file()
 	pg_assert_false(pg_pfu_access_verdict($lines, array('user_id' => 0, 'role' => 0)), 'a role without a user opened the file');
 }
 
+function test_product_form_uploads_guest_opens_the_file_of_the_order_just_placed()
+{
+	$lines = array(array('order_id' => '40', 'order_user_id' => '0', 'order_status' => 'complete'));
+
+	// The receipt page links the file; the session's cart is gone by then.
+	pg_assert_true(pg_pfu_access_verdict($lines, array('completed_order_id' => 40)), 'the guest who just placed the order was refused');
+	pg_assert_false(pg_pfu_access_verdict($lines, array('completed_order_id' => 41)), 'another completed order opened the file');
+	pg_assert_false(pg_pfu_access_verdict(array(array('order_id' => '0')), array('completed_order_id' => 0)), 'no completed order matched a line of no order');
+}
+
 function test_product_form_uploads_removed_line_takes_its_file()
 {
 	$rows = array(
@@ -259,6 +269,12 @@ function test_product_form_uploads_kept_file()
 	pg_assert_same('', pg_pfu_kept_file(array('data' => 'print.pdf', 'file_id' => 4), '/site/')['image_url'], 'a PDF got a preview');
 	pg_assert_same(array(), pg_pfu_kept_file(array('data' => 'old.jpg', 'file_id' => 0), '/'), 'a name saved as text was shown as a file');
 	pg_assert_same('a.jpg', pg_pfu_kept_file(array('data' => '../../a.jpg', 'file_id' => 1), '/')['name'], 'a path stayed in the name');
+
+	// The cart reads files.size through a LEFT JOIN: NULL is a file deleted
+	// from Files since, whose link would not open and whose required field
+	// would read as answered.
+	pg_assert_same(array(), pg_pfu_kept_file(array('data' => 'gone.jpg', 'file_id' => 9, 'file_size' => null), '/'), 'a file deleted from Files was shown as kept');
+	pg_assert_same('empty.txt', pg_pfu_kept_file(array('data' => 'empty.txt', 'file_id' => 9, 'file_size' => '0'), '/')['name'], 'an empty file was not shown');
 }
 
 function test_product_form_uploads_cart_action_paths()
