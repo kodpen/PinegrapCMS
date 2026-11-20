@@ -25,5 +25,5 @@ module: agent_guide_workspace, agent_guide_erp
 
 ## What do they weigh?
 - Measured at AG4 with every module on: workspace 2,964 bytes, erp 2,666 (limit 4,096); the topic list with start, workspace and erp 352 bytes.
-- The full MCP tool list: 854,183 bytes before, 858,569 after (+4,386, the "Guide: <topic>." lines: Workspace +3,402, ERP +984). The opening instructions are unchanged.
+- The full MCP tool list: 858,106 bytes before, 862,504 after (+4,398, the "Guide: <topic>." lines: Workspace +3,402, ERP +996). The opening instructions are unchanged.
 - `tests/agent_guide_workspace_erp_test.php`: listing by module and tool, the words each topic must say, draft named before issue.
